@@ -105,6 +105,17 @@ namespace Rebellion.Game.Factions
             get => _headquarters ??= new HeadquartersSettings();
             set => _headquarters = value ?? new HeadquartersSettings();
         }
+
+        /// <summary>
+        /// Captures faction rules without sharing the editable headquarters settings.
+        /// </summary>
+        /// <returns>An independent copy retaining the stored rule values.</returns>
+        public FactionSettings CreateCopy()
+        {
+            FactionSettings copy = (FactionSettings)MemberwiseClone();
+            copy._headquarters = _headquarters?.CreateCopy();
+            return copy;
+        }
     }
 
     /// <summary>
@@ -116,5 +127,11 @@ namespace Rebellion.Game.Factions
         public string FacilityTypeID { get; set; }
         public bool IsMobile { get; set; }
         public bool IsBombardable { get; set; }
+
+        /// <summary>
+        /// Captures the headquarters rules for one faction.
+        /// </summary>
+        /// <returns>An independent copy of the rule values.</returns>
+        public HeadquartersSettings CreateCopy() => (HeadquartersSettings)MemberwiseClone();
     }
 }

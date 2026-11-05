@@ -9,7 +9,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
-using Rebellion.Util.Reflection;
 
 /// <summary>
 /// Provides the typed game data composed from the selected content pack and scenario.
@@ -110,10 +109,10 @@ public sealed class GameDataCatalog
     }
 
     /// <summary>
-    /// Creates detached event definitions for the campaign's enabled categories and dependencies.
+    /// Selects catalog-owned event definitions for the campaign's enabled categories and dependencies.
     /// </summary>
     /// <param name="generationConfig">The campaign's resolved generation settings.</param>
-    /// <returns>The enabled event definitions in authored order.</returns>
+    /// <returns>A campaign-owned array of shared, read-only definitions in authored order.</returns>
     internal GameEvent[] CreateGameEvents(GameGenerationConfig generationConfig)
     {
         if (generationConfig == null)
@@ -151,7 +150,7 @@ public sealed class GameDataCatalog
             }
         } while (removedDependency);
 
-        return retained.ToArray().GetDeepCopy();
+        return retained.ToArray();
     }
 
     /// <summary>

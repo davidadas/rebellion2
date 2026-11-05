@@ -177,5 +177,19 @@ namespace Rebellion.Game
         /// Creates a game summary with the standard launch selections.
         /// </summary>
         public GameSummary() { }
+
+        /// <summary>
+        /// Captures launch selections without sharing mutable arrays or custom settings.
+        /// </summary>
+        /// <returns>An independent launch summary retaining the same seed and content identity.</returns>
+        public GameSummary CreateCopy()
+        {
+            GameSummary copy = (GameSummary)MemberwiseClone();
+            copy._startingFactionIds = (string[])_startingFactionIds?.Clone();
+            copy._modIds = (string[])_modIds?.Clone();
+            copy._modVersions = (string[])_modVersions?.Clone();
+            copy._customSettings = _customSettings?.CreateCopy();
+            return copy;
+        }
     }
 }

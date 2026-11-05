@@ -199,6 +199,12 @@ namespace Rebellion.Game.Messages
             Title = title;
             Body = body;
         }
+
+        /// <summary>
+        /// Copies a message into an independently mutable campaign history.
+        /// </summary>
+        /// <returns>A message that owns its mutable presentation and acknowledgement state.</returns>
+        public abstract Message CreateCopy();
     }
 
     /// <summary>
@@ -220,5 +226,11 @@ namespace Rebellion.Game.Messages
         /// <param name="body">The message body.</param>
         public StatusMessage(MessageType type, string title, string body)
             : base(type, title, body) { }
+
+        /// <summary>
+        /// Copies the message text, navigation, and acknowledgement state.
+        /// </summary>
+        /// <returns>An independent status message retaining all stored values.</returns>
+        public override Message CreateCopy() => (StatusMessage)MemberwiseClone();
     }
 }

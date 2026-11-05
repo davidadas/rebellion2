@@ -12,7 +12,6 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Reflection;
 
 namespace Rebellion.Tests.Generation
 {
@@ -150,7 +149,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Build_CustomGenerationConfig_UsesSettingsForPlanetResources()
         {
-            GameGenerationConfig generation = TestContent.Data.GenerationConfig.GetDeepCopy();
+            GameGenerationConfig generation = TestContent.Data.GenerationConfig.CreateCopy();
             PlanetResourceProfile resources = generation.PlanetResources.Profiles.Single(profile =>
                 profile.Availability == GameResourceAvailability.Normal
             );
@@ -247,9 +246,9 @@ namespace Rebellion.Tests.Generation
         {
             Faction template = TestContent.Data.Factions[0];
             int authored = template.Settings.GarrisonEfficiency;
-            FactionSettings settings = template.Settings.GetDeepCopy();
+            FactionSettings settings = template.Settings.CreateCopy();
             settings.GarrisonEfficiency = authored + 2;
-            GameGenerationConfig generation = TestContent.Data.GenerationConfig.GetDeepCopy();
+            GameGenerationConfig generation = TestContent.Data.GenerationConfig.CreateCopy();
             generation.FactionModifiers = new List<FactionModifierConfig>
             {
                 new FactionModifierConfig { FactionID = template.InstanceID, Settings = settings },
@@ -279,7 +278,7 @@ namespace Rebellion.Tests.Generation
         public void Build_DuplicateFactionModifier_ThrowsInvalidOperationException()
         {
             string factionID = TestContent.Data.Factions[0].InstanceID;
-            GameGenerationConfig generation = TestContent.Data.GenerationConfig.GetDeepCopy();
+            GameGenerationConfig generation = TestContent.Data.GenerationConfig.CreateCopy();
             generation.FactionModifiers = new List<FactionModifierConfig>
             {
                 new FactionModifierConfig { FactionID = factionID },
@@ -623,7 +622,7 @@ namespace Rebellion.Tests.Generation
                 Seed = 12345,
                 CustomSettings = new CustomGameSettings
                 {
-                    GenerationConfig = TestContent.Data.GenerationConfig.GetDeepCopy(),
+                    GenerationConfig = TestContent.Data.GenerationConfig.CreateCopy(),
                 },
             };
             summary.CustomSettings.GenerationConfig.DisabledEventCategories =
@@ -657,7 +656,7 @@ namespace Rebellion.Tests.Generation
                 Seed = 12345,
                 CustomSettings = new CustomGameSettings
                 {
-                    GenerationConfig = TestContent.Data.GenerationConfig.GetDeepCopy(),
+                    GenerationConfig = TestContent.Data.GenerationConfig.CreateCopy(),
                 },
             };
             summary.CustomSettings.GenerationConfig.DisabledEventCategories =
@@ -749,7 +748,7 @@ namespace Rebellion.Tests.Generation
                 Seed = 12345,
                 CustomSettings = new CustomGameSettings
                 {
-                    GenerationConfig = gameData.GenerationConfig.GetDeepCopy(),
+                    GenerationConfig = gameData.GenerationConfig.CreateCopy(),
                 },
             };
             summary.CustomSettings.GenerationConfig.DisabledEventCategories =

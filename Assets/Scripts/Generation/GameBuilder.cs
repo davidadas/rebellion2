@@ -6,7 +6,6 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
-using Rebellion.Util.Reflection;
 
 namespace Rebellion.Generation
 {
@@ -46,7 +45,7 @@ namespace Rebellion.Generation
             IRandomNumberProvider randomProvider
         )
         {
-            _summary = (summary ?? throw new ArgumentNullException(nameof(summary))).GetDeepCopy();
+            _summary = (summary ?? throw new ArgumentNullException(nameof(summary))).CreateCopy();
             _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
             _randomProvider =
                 randomProvider ?? throw new ArgumentNullException(nameof(randomProvider));
@@ -105,11 +104,13 @@ namespace Rebellion.Generation
                 .Where(s => (int)s.Visibility <= galaxySize)
                 .ToArray();
             GameGenerationConfig generationConfig =
-                _summary.CustomSettings?.GenerationConfig?.GetDeepCopy()
-                ?? _gameData.GenerationConfig.GetDeepCopy();
-            GameConfig gameConfig = _gameData.GameConfig.GetDeepCopy();
+                _summary.CustomSettings?.GenerationConfig?.CreateCopy()
+                ?? _gameData.GenerationConfig.CreateCopy();
+            GameConfig gameConfig = _gameData.GameConfig.CreateCopy();
             _summary.CustomSettings?.ApplyRuntimeRules(gameConfig);
-            Faction[] factions = _gameData.Factions.GetDeepCopy();
+            Faction[] factions = _gameData
+                .Factions.Select(faction => faction.CreateForNewGame())
+                .ToArray();
             ApplyFactionModifiers(factions, generationConfig.FactionModifiers);
 
             return new GenerationContext
@@ -168,7 +169,7 @@ namespace Rebellion.Generation
                         $"Faction modifier '{modifier.FactionID}' requires settings."
                     );
 
-                faction.Settings = modifier.Settings.GetDeepCopy();
+                faction.Settings = modifier.Settings.CreateCopy();
             }
         }
 

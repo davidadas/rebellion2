@@ -7,7 +7,6 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Units;
-using Rebellion.Util.Reflection;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -84,7 +83,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                     ManufacturingSpeedPercent = 135,
                 },
                 AIDifficultyModifiers = new DifficultyModifiers { ManufacturingSpeedPercent = 165 },
-                GenerationConfig = TestContent.Data.GenerationConfig.GetDeepCopy(),
+                GenerationConfig = TestContent.Data.GenerationConfig.CreateCopy(),
                 GarrisonRules = new GarrisonRuleSettings
                 {
                     SupportThreshold = 70,
@@ -666,7 +665,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             GameSummary launched = null;
             summary.CustomSettings = new CustomGameSettings
             {
-                GenerationConfig = TestContent.Data.GenerationConfig.GetDeepCopy(),
+                GenerationConfig = TestContent.Data.GenerationConfig.CreateCopy(),
             };
             summary.CustomSettings.GenerationConfig.DisabledEventCategories =
                 new List<GameEventCategory> { GameEventCategory.Story, GameEventCategory.Disaster };
@@ -946,7 +945,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             summary.CustomSettings = new CustomGameSettings
             {
                 AIDifficultyModifiers = easy.CreateCopy(),
-                GenerationConfig = TestContent.Data.GenerationConfig.GetDeepCopy(),
+                GenerationConfig = TestContent.Data.GenerationConfig.CreateCopy(),
             };
             summary.CustomSettings.AIDifficultyModifiers.MineOutputPercent = 777;
             view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
@@ -1274,7 +1273,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         public void Initialize_MissingFactionStartingForceBudget_HidesAbsentTableCell()
         {
             ContentPack source = TestContent.Pack;
-            GameGenerationConfig generationConfig = source.GameData.GenerationConfig.GetDeepCopy();
+            GameGenerationConfig generationConfig = source.GameData.GenerationConfig.CreateCopy();
             generationConfig.UnitDeployment.FactionBudgets.RemoveAt(1);
             ContentPack pack = CopyPackWithGenerationConfig(source, generationConfig);
 

@@ -56,6 +56,12 @@ namespace Rebellion.Game.Messages
         public bool Damaged { get; set; }
         public bool Destroyed { get; set; }
         public bool Captured { get; set; }
+
+        /// <summary>
+        /// Copies the recorded unit presentation and outcome.
+        /// </summary>
+        /// <returns>An independent unit entry retaining the captured values.</returns>
+        public CombatReportUnit CreateCopy() => (CombatReportUnit)MemberwiseClone();
     }
 
     /// <summary>
@@ -68,6 +74,12 @@ namespace Rebellion.Game.Messages
         public string UnitName { get; set; }
         public int HullBefore { get; set; }
         public int HullAfter { get; set; }
+
+        /// <summary>
+        /// Copies the recorded hull damage.
+        /// </summary>
+        /// <returns>An independent damage entry retaining the captured values.</returns>
+        public CombatReportShipDamage CreateCopy() => (CombatReportShipDamage)MemberwiseClone();
     }
 
     /// <summary>
@@ -80,6 +92,12 @@ namespace Rebellion.Game.Messages
         public string UnitName { get; set; }
         public int SquadsBefore { get; set; }
         public int SquadsAfter { get; set; }
+
+        /// <summary>
+        /// Copies the recorded squadron losses.
+        /// </summary>
+        /// <returns>An independent loss entry retaining the captured values.</returns>
+        public CombatReportFighterLoss CreateCopy() => (CombatReportFighterLoss)MemberwiseClone();
     }
 
     /// <summary>
@@ -121,6 +139,20 @@ namespace Rebellion.Game.Messages
             new List<CombatReportShipDamage>();
         public List<CombatReportFighterLoss> FighterLosses { get; set; } =
             new List<CombatReportFighterLoss>();
+
+        /// <summary>
+        /// Copies the report and its recorded unit outcomes into another message history.
+        /// </summary>
+        /// <returns>An independent report retaining its presentation and outcome values.</returns>
+        public override Message CreateCopy()
+        {
+            CombatReport copy = (CombatReport)MemberwiseClone();
+            copy.AttackingUnits = AttackingUnits?.Select(unit => unit.CreateCopy()).ToList();
+            copy.DefendingUnits = DefendingUnits?.Select(unit => unit.CreateCopy()).ToList();
+            copy.ShipDamage = ShipDamage?.Select(damage => damage.CreateCopy()).ToList();
+            copy.FighterLosses = FighterLosses?.Select(loss => loss.CreateCopy()).ToList();
+            return copy;
+        }
 
         /// <summary>
         /// Captures a completed combat result as a durable report for faction message history.

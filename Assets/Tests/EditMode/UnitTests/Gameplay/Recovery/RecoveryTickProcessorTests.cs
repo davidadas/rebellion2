@@ -7,7 +7,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
-using Rebellion.Util.Reflection;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -22,7 +21,7 @@ namespace Rebellion.Tests.Gameplay
         )
         {
             (GameRoot game, Planet planet) = BuildScene();
-            game.SetConfig(TestContent.Data.GameConfig.GetDeepCopy());
+            game.SetConfig(TestContent.Data.GameConfig.CreateCopy());
             Officer officer = EntityFactory.CreateOfficer("officer", "empire");
             officer.ForceValue = rank;
             officer.InjuryPoints = 10;

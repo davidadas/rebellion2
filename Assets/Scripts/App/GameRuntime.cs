@@ -7,7 +7,6 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Gameplay;
 using Rebellion.Util.Logging;
-using Rebellion.Util.Reflection;
 using UnityEngine;
 
 /// <summary>
@@ -358,7 +357,7 @@ public sealed class GameRuntime
             )
                 ? factionOverride
                 : template.Settings;
-            faction.Settings = settings.GetDeepCopy();
+            faction.Settings = settings.CreateCopy();
         }
     }
 

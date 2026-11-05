@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using Rebellion.Game;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Game
@@ -6,6 +7,54 @@ namespace Rebellion.Tests.Game
     [TestFixture]
     public class GameConfigTests
     {
+        [Test]
+        public void CreateCopy_ConfiguredRules_PreservesAllValues()
+        {
+            GameConfig source = TestContent.Data.GameConfig;
+
+            GameConfig copy = source.CreateCopy();
+
+            Assert.AreEqual(
+                SerializationHelper.Serialize(source),
+                SerializationHelper.Serialize(copy)
+            );
+        }
+
+        [Test]
+        public void CreateCopy_EditingNestedRules_DoesNotChangeSource()
+        {
+            GameConfig source = TestContent.Data.GameConfig.CreateCopy();
+            string before = SerializationHelper.Serialize(source);
+            GameConfig copy = source.CreateCopy();
+
+            copy.AI.Selection.TechnologyUtility.Building.Capability.Curve.Exponent += 1;
+            copy.Captive.EscapeAttemptInterval.Minimum += 1;
+            copy.Captive.EscapeTable.Clear();
+            copy.Jedi.MissionEncounterPriorityOfficerInstanceIDs.Clear();
+            copy.DifficultyModifiers[GameDifficulty.Hard].ManufacturingSpeedPercent += 1;
+            copy.Movement.DistanceDivisor += 1;
+
+            Assert.AreEqual(before, SerializationHelper.Serialize(source));
+        }
+
+        [Test]
+        public void CreateCopy_OmittedRules_PreservesNullSettings()
+        {
+            GameConfig source = new GameConfig
+            {
+                AI = null,
+                DifficultyModifiers = null,
+                Movement = null,
+            };
+
+            GameConfig copy = source.CreateCopy();
+
+            Assert.AreEqual(
+                SerializationHelper.Serialize(source),
+                SerializationHelper.Serialize(copy)
+            );
+        }
+
         [TestCase(0, ForceRankLabel.None)]
         [TestCase(9, ForceRankLabel.None)]
         [TestCase(10, ForceRankLabel.Novice)]

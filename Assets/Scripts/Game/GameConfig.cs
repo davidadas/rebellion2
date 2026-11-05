@@ -55,6 +55,39 @@ namespace Rebellion.Game
             new ProbabilityTablesConfig();
 
         /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public GameConfig CreateCopy()
+        {
+            GameConfig copy = (GameConfig)MemberwiseClone();
+            copy.DifficultyModifiers = DifficultyModifiers?.ToDictionary(
+                entry => entry.Key,
+                entry => entry.Value?.CreateCopy()
+            );
+            copy.AI = AI?.CreateCopy();
+            copy.Movement = Movement?.CreateCopy();
+            copy.Production = Production?.CreateCopy();
+            copy.Smuggling = Smuggling?.CreateCopy();
+            copy.Planet = Planet?.CreateCopy();
+            copy.Combat = Combat?.CreateCopy();
+            copy.Uprising = Uprising?.CreateCopy();
+            copy.SupportShift = SupportShift?.CreateCopy();
+            copy.Blockade = Blockade?.CreateCopy();
+            copy.Jedi = Jedi?.CreateCopy();
+            copy.DuelResolution = DuelResolution?.CreateCopy();
+            copy.Research = Research?.CreateCopy();
+            copy.Assassination = Assassination?.CreateCopy();
+            copy.Recovery = Recovery?.CreateCopy();
+            copy.Captive = Captive?.CreateCopy();
+            copy.GameSpeed = GameSpeed?.CreateCopy();
+            copy.Messages = Messages?.CreateCopy();
+            copy.Espionage = Espionage?.CreateCopy();
+            copy.ProbabilityTables = ProbabilityTables?.CreateCopy();
+            return copy;
+        }
+
+        /// <summary>
         /// AI decision-making and mission dispatch.
         /// </summary>
         [PersistableObject]
@@ -89,6 +122,23 @@ namespace Rebellion.Game
 
             public AIFleetDeploymentConfig FleetDeployment { get; set; } =
                 new AIFleetDeploymentConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIConfig CreateCopy()
+            {
+                AIConfig copy = (AIConfig)MemberwiseClone();
+                copy.MissionTables = MissionTables?.CreateCopy();
+                copy.MissionPlanning = MissionPlanning?.CreateCopy();
+                copy.Garrison = Garrison?.CreateCopy();
+                copy.Selection = Selection?.CreateCopy();
+                copy.NonCapitalSummary = NonCapitalSummary?.CreateCopy();
+                copy.Infrastructure = Infrastructure?.CreateCopy();
+                copy.FleetDeployment = FleetDeployment?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -115,6 +165,12 @@ namespace Rebellion.Game
             public double Midpoint { get; set; } = 0.5;
 
             public double Steepness { get; set; } = 10;
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIResponseCurveConfig CreateCopy() => (AIResponseCurveConfig)MemberwiseClone();
         }
 
         /// <summary>
@@ -128,6 +184,17 @@ namespace Rebellion.Game
             public double SaturationValue { get; set; } = 1;
 
             public AIResponseCurveConfig Curve { get; set; } = new AIResponseCurveConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIConsiderationConfig CreateCopy()
+            {
+                AIConsiderationConfig copy = (AIConsiderationConfig)MemberwiseClone();
+                copy.Curve = Curve?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -181,6 +248,17 @@ namespace Rebellion.Game
             public int MaximumUnprotectedOfficerMissionFoilProbability { get; set; }
 
             public AIMissionUtilityConfig Utility { get; set; } = new AIMissionUtilityConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIMissionPlanningConfig CreateCopy()
+            {
+                AIMissionPlanningConfig copy = (AIMissionPlanningConfig)MemberwiseClone();
+                copy.Utility = Utility?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -202,6 +280,21 @@ namespace Rebellion.Game
 
             public AIOfficerTargetUtilityConfig OfficerTarget { get; set; } =
                 new AIOfficerTargetUtilityConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIMissionUtilityConfig CreateCopy()
+            {
+                AIMissionUtilityConfig copy = (AIMissionUtilityConfig)MemberwiseClone();
+                copy.Objective = Objective?.CreateCopy();
+                copy.Priority = Priority?.CreateCopy();
+                copy.Sabotage = Sabotage?.CreateCopy();
+                copy.Diplomacy = Diplomacy?.CreateCopy();
+                copy.OfficerTarget = OfficerTarget?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -232,6 +325,28 @@ namespace Rebellion.Game
             public AIConsiderationConfig BlockedAttackIntel { get; set; }
 
             public AIConsiderationConfig TrainingValue { get; set; } = new AIConsiderationConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIMissionObjectiveUtilityConfig CreateCopy()
+            {
+                AIMissionObjectiveUtilityConfig copy =
+                    (AIMissionObjectiveUtilityConfig)MemberwiseClone();
+                copy.Success = Success?.CreateCopy();
+                copy.FoilRisk = FoilRisk?.CreateCopy();
+                copy.TravelCost = TravelCost?.CreateCopy();
+                copy.TravelTime = TravelTime?.CreateCopy();
+                copy.ExecutionDelay = ExecutionDelay?.CreateCopy();
+                copy.ParticipantTravelTime = ParticipantTravelTime?.CreateCopy();
+                copy.OfficerRisk = OfficerRisk?.CreateCopy();
+                copy.IntelAge = IntelAge?.CreateCopy();
+                copy.AttackPreparationIntel = AttackPreparationIntel?.CreateCopy();
+                copy.BlockedAttackIntel = BlockedAttackIntel?.CreateCopy();
+                copy.TrainingValue = TrainingValue?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -261,6 +376,27 @@ namespace Rebellion.Game
                 new AIConsiderationConfig();
 
             public AIConsiderationConfig Diplomacy { get; set; } = new AIConsiderationConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIMissionPriorityUtilityConfig CreateCopy()
+            {
+                AIMissionPriorityUtilityConfig copy =
+                    (AIMissionPriorityUtilityConfig)MemberwiseClone();
+                copy.Reconnaissance = Reconnaissance?.CreateCopy();
+                copy.Recruitment = Recruitment?.CreateCopy();
+                copy.Rescue = Rescue?.CreateCopy();
+                copy.SubdueUprising = SubdueUprising?.CreateCopy();
+                copy.Research = Research?.CreateCopy();
+                copy.JediTraining = JediTraining?.CreateCopy();
+                copy.Espionage = Espionage?.CreateCopy();
+                copy.MobileHeadquartersEspionage = MobileHeadquartersEspionage?.CreateCopy();
+                copy.ManufacturingEspionage = ManufacturingEspionage?.CreateCopy();
+                copy.Diplomacy = Diplomacy?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -291,6 +427,26 @@ namespace Rebellion.Game
             public AIConsiderationConfig SpecialForces { get; set; } = new AIConsiderationConfig();
 
             public AIConsiderationConfig OtherUnit { get; set; } = new AIConsiderationConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AISabotageUtilityConfig CreateCopy()
+            {
+                AISabotageUtilityConfig copy = (AISabotageUtilityConfig)MemberwiseClone();
+                copy.Infrastructure = Infrastructure?.CreateCopy();
+                copy.Defense = Defense?.CreateCopy();
+                copy.Shield = Shield?.CreateCopy();
+                copy.AttackTarget = AttackTarget?.CreateCopy();
+                copy.AttackDefense = AttackDefense?.CreateCopy();
+                copy.FavoredSupportRegiment = FavoredSupportRegiment?.CreateCopy();
+                copy.GarrisonRegiment = GarrisonRegiment?.CreateCopy();
+                copy.GarrisonStarfighter = GarrisonStarfighter?.CreateCopy();
+                copy.SpecialForces = SpecialForces?.CreateCopy();
+                copy.OtherUnit = OtherUnit?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -329,6 +485,29 @@ namespace Rebellion.Game
 
             public AIConsiderationConfig SectorSupportRisk { get; set; } =
                 new AIConsiderationConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIDiplomacyUtilityConfig CreateCopy()
+            {
+                AIDiplomacyUtilityConfig copy = (AIDiplomacyUtilityConfig)MemberwiseClone();
+                copy.Competition = Competition?.CreateCopy();
+                copy.TravelTime = TravelTime?.CreateCopy();
+                copy.SupportDeficit = SupportDeficit?.CreateCopy();
+                copy.CoreWorld = CoreWorld?.CreateCopy();
+                copy.HeadquartersSector = HeadquartersSector?.CreateCopy();
+                copy.SystemPresence = SystemPresence?.CreateCopy();
+                copy.Concentration = Concentration?.CreateCopy();
+                copy.IndustrialOpportunity = IndustrialOpportunity?.CreateCopy();
+                copy.ConstructionFacility = ConstructionFacility?.CreateCopy();
+                copy.Shipyard = Shipyard?.CreateCopy();
+                copy.TrainingFacility = TrainingFacility?.CreateCopy();
+                copy.ResourceNode = ResourceNode?.CreateCopy();
+                copy.SectorSupportRisk = SectorSupportRisk?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -345,6 +524,23 @@ namespace Rebellion.Game
             public AIConsiderationConfig FacilityResearch { get; set; } =
                 new AIConsiderationConfig();
             public AIConsiderationConfig TroopResearch { get; set; } = new AIConsiderationConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIOfficerTargetUtilityConfig CreateCopy()
+            {
+                AIOfficerTargetUtilityConfig copy = (AIOfficerTargetUtilityConfig)MemberwiseClone();
+                copy.Combat = Combat?.CreateCopy();
+                copy.Espionage = Espionage?.CreateCopy();
+                copy.Diplomacy = Diplomacy?.CreateCopy();
+                copy.Leadership = Leadership?.CreateCopy();
+                copy.ShipResearch = ShipResearch?.CreateCopy();
+                copy.FacilityResearch = FacilityResearch?.CreateCopy();
+                copy.TroopResearch = TroopResearch?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -425,6 +621,22 @@ namespace Rebellion.Game
             public int ColonizationFleetMinimumRegimentCount { get; set; }
 
             public int ColonizationFleetMaximumRegimentCount { get; set; }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIFleetDeploymentConfig CreateCopy()
+            {
+                AIFleetDeploymentConfig copy = (AIFleetDeploymentConfig)MemberwiseClone();
+                copy.AttackUtility = AttackUtility?.CreateCopy();
+                copy.OfficerCommandUtility = OfficerCommandUtility?.CreateCopy();
+                copy.DefenseUtility = DefenseUtility?.CreateCopy();
+                copy.DefenseAllocationUtility = DefenseAllocationUtility?.CreateCopy();
+                copy.ColonizationUtility = ColonizationUtility?.CreateCopy();
+                copy.ColonizationTargetUtility = ColonizationTargetUtility?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -439,6 +651,22 @@ namespace Rebellion.Game
             public AIConsiderationConfig Ready { get; set; } = new AIConsiderationConfig();
             public AIConsiderationConfig StrategicValue { get; set; } = new AIConsiderationConfig();
             public AIConsiderationConfig TravelCost { get; set; } = new AIConsiderationConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIOfficerCommandUtilityConfig CreateCopy()
+            {
+                AIOfficerCommandUtilityConfig copy =
+                    (AIOfficerCommandUtilityConfig)MemberwiseClone();
+                copy.ForceImprovement = ForceImprovement?.CreateCopy();
+                copy.ReadinessGain = ReadinessGain?.CreateCopy();
+                copy.Ready = Ready?.CreateCopy();
+                copy.StrategicValue = StrategicValue?.CreateCopy();
+                copy.TravelCost = TravelCost?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -491,6 +719,33 @@ namespace Rebellion.Game
 
             public AIConsiderationConfig ExposedBombardment { get; set; } =
                 new AIConsiderationConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIAttackUtilityConfig CreateCopy()
+            {
+                AIAttackUtilityConfig copy = (AIAttackUtilityConfig)MemberwiseClone();
+                copy.TravelTime = TravelTime?.CreateCopy();
+                copy.TravelOpportunityCost = TravelOpportunityCost?.CreateCopy();
+                copy.StrategicValue = StrategicValue?.CreateCopy();
+                copy.SectorSupport = SectorSupport?.CreateCopy();
+                copy.SystemPresence = SystemPresence?.CreateCopy();
+                copy.Readiness = Readiness?.CreateCopy();
+                copy.Ready = Ready?.CreateCopy();
+                copy.CaptureViability = CaptureViability?.CreateCopy();
+                copy.TravelEfficiency = TravelEfficiency?.CreateCopy();
+                copy.ExpectedLossRisk = ExpectedLossRisk?.CreateCopy();
+                copy.OpportunityCost = OpportunityCost?.CreateCopy();
+                copy.IntelAgeRisk = IntelAgeRisk?.CreateCopy();
+                copy.ExistingOrder = ExistingOrder?.CreateCopy();
+                copy.Headquarters = Headquarters?.CreateCopy();
+                copy.HeadquartersBuildupCost = HeadquartersBuildupCost?.CreateCopy();
+                copy.OrbitalAdvantage = OrbitalAdvantage?.CreateCopy();
+                copy.ExposedBombardment = ExposedBombardment?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -515,6 +770,23 @@ namespace Rebellion.Game
                 new AIConsiderationConfig();
 
             public AIConsiderationConfig ExistingOrder { get; set; } = new AIConsiderationConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIColonizationUtilityConfig CreateCopy()
+            {
+                AIColonizationUtilityConfig copy = (AIColonizationUtilityConfig)MemberwiseClone();
+                copy.Base = Base?.CreateCopy();
+                copy.StrategicValue = StrategicValue?.CreateCopy();
+                copy.TravelEfficiency = TravelEfficiency?.CreateCopy();
+                copy.AnchorProximity = AnchorProximity?.CreateCopy();
+                copy.Ready = Ready?.CreateCopy();
+                copy.OpportunityCost = OpportunityCost?.CreateCopy();
+                copy.ExistingOrder = ExistingOrder?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -526,6 +798,19 @@ namespace Rebellion.Game
             public AIConsiderationConfig Energy { get; set; } = new AIConsiderationConfig();
 
             public AIConsiderationConfig Resources { get; set; } = new AIConsiderationConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIColonizationTargetUtilityConfig CreateCopy()
+            {
+                AIColonizationTargetUtilityConfig copy =
+                    (AIColonizationTargetUtilityConfig)MemberwiseClone();
+                copy.Energy = Energy?.CreateCopy();
+                copy.Resources = Resources?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -542,6 +827,20 @@ namespace Rebellion.Game
 
             public AIConsiderationConfig OpportunityCost { get; set; } =
                 new AIConsiderationConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIDefenseUtilityConfig CreateCopy()
+            {
+                AIDefenseUtilityConfig copy = (AIDefenseUtilityConfig)MemberwiseClone();
+                copy.Base = Base?.CreateCopy();
+                copy.SectorRisk = SectorRisk?.CreateCopy();
+                copy.TravelTime = TravelTime?.CreateCopy();
+                copy.OpportunityCost = OpportunityCost?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -564,6 +863,23 @@ namespace Rebellion.Game
 
             public AIConsiderationConfig ReinforcementNeed { get; set; } =
                 new AIConsiderationConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIDefenseAllocationUtilityConfig CreateCopy()
+            {
+                AIDefenseAllocationUtilityConfig copy =
+                    (AIDefenseAllocationUtilityConfig)MemberwiseClone();
+                copy.SectorRisk = SectorRisk?.CreateCopy();
+                copy.StrategicValue = StrategicValue?.CreateCopy();
+                copy.DefenseNeed = DefenseNeed?.CreateCopy();
+                copy.TravelEfficiency = TravelEfficiency?.CreateCopy();
+                copy.ForceEfficiency = ForceEfficiency?.CreateCopy();
+                copy.ReinforcementNeed = ReinforcementNeed?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -592,6 +908,20 @@ namespace Rebellion.Game
             public int DiplomacyEconomyConfidencePercent { get; set; }
             public AIProductionUtilityConfig ProductionUtility { get; set; } =
                 new AIProductionUtilityConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AISelectionConfig CreateCopy()
+            {
+                AISelectionConfig copy = (AISelectionConfig)MemberwiseClone();
+                copy.DemandUtility = DemandUtility?.CreateCopy();
+                copy.TechnologyUtility = TechnologyUtility?.CreateCopy();
+                copy.MaintenanceRecovery = MaintenanceRecovery?.CreateCopy();
+                copy.ProductionUtility = ProductionUtility?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -608,6 +938,13 @@ namespace Rebellion.Game
             public double GarrisonWeight { get; set; }
             public double AgentWeight { get; set; }
             public double ProductionWeight { get; set; }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIMaintenanceRecoveryConfig CreateCopy() =>
+                (AIMaintenanceRecoveryConfig)MemberwiseClone();
         }
 
         /// <summary>
@@ -629,6 +966,22 @@ namespace Rebellion.Game
                 new AISpecialForcesSelectionUtilityConfig();
 
             public AIConsiderationConfig DuplicateCost { get; set; } = new AIConsiderationConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AITechnologySelectionUtilityConfig CreateCopy()
+            {
+                AITechnologySelectionUtilityConfig copy =
+                    (AITechnologySelectionUtilityConfig)MemberwiseClone();
+                copy.Building = Building?.CreateCopy();
+                copy.Starfighter = Starfighter?.CreateCopy();
+                copy.Regiment = Regiment?.CreateCopy();
+                copy.SpecialForces = SpecialForces?.CreateCopy();
+                copy.DuplicateCost = DuplicateCost?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -638,6 +991,18 @@ namespace Rebellion.Game
         public class AIBuildingSelectionUtilityConfig
         {
             public AIConsiderationConfig Capability { get; set; } = new AIConsiderationConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIBuildingSelectionUtilityConfig CreateCopy()
+            {
+                AIBuildingSelectionUtilityConfig copy =
+                    (AIBuildingSelectionUtilityConfig)MemberwiseClone();
+                copy.Capability = Capability?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -653,6 +1018,23 @@ namespace Rebellion.Game
             public AIConsiderationConfig MissingTorpedo { get; set; } = new AIConsiderationConfig();
             public AIConsiderationConfig PlanetDefenseEfficiency { get; set; } =
                 new AIConsiderationConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIStarfighterSelectionUtilityConfig CreateCopy()
+            {
+                AIStarfighterSelectionUtilityConfig copy =
+                    (AIStarfighterSelectionUtilityConfig)MemberwiseClone();
+                copy.Laser = Laser?.CreateCopy();
+                copy.Ion = Ion?.CreateCopy();
+                copy.Torpedo = Torpedo?.CreateCopy();
+                copy.MissingIon = MissingIon?.CreateCopy();
+                copy.MissingTorpedo = MissingTorpedo?.CreateCopy();
+                copy.PlanetDefenseEfficiency = PlanetDefenseEfficiency?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -668,6 +1050,22 @@ namespace Rebellion.Game
             public AIConsiderationConfig Base { get; set; } = new AIConsiderationConfig();
             public AIConsiderationConfig MaintenanceCost { get; set; } =
                 new AIConsiderationConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIRegimentSelectionUtilityConfig CreateCopy()
+            {
+                AIRegimentSelectionUtilityConfig copy =
+                    (AIRegimentSelectionUtilityConfig)MemberwiseClone();
+                copy.Attack = Attack?.CreateCopy();
+                copy.Defense = Defense?.CreateCopy();
+                copy.BombardmentDefense = BombardmentDefense?.CreateCopy();
+                copy.Base = Base?.CreateCopy();
+                copy.MaintenanceCost = MaintenanceCost?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -678,6 +1076,18 @@ namespace Rebellion.Game
         {
             public AIConsiderationConfig BuildEfficiency { get; set; } =
                 new AIConsiderationConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AISpecialForcesSelectionUtilityConfig CreateCopy()
+            {
+                AISpecialForcesSelectionUtilityConfig copy =
+                    (AISpecialForcesSelectionUtilityConfig)MemberwiseClone();
+                copy.BuildEfficiency = BuildEfficiency?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -711,6 +1121,26 @@ namespace Rebellion.Game
             public AIConsiderationConfig HeadroomRisk { get; set; } = new AIConsiderationConfig();
 
             public AIConsiderationConfig Shortfall { get; set; } = new AIConsiderationConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIProductionUtilityConfig CreateCopy()
+            {
+                AIProductionUtilityConfig copy = (AIProductionUtilityConfig)MemberwiseClone();
+                copy.IndustrialDefense = IndustrialDefense?.CreateCopy();
+                copy.FacilityAvailability = FacilityAvailability?.CreateCopy();
+                copy.LocalConstructionGrowth = LocalConstructionGrowth?.CreateCopy();
+                copy.CompletionTime = CompletionTime?.CreateCopy();
+                copy.InterruptionCost = InterruptionCost?.CreateCopy();
+                copy.TravelCost = TravelCost?.CreateCopy();
+                copy.ColonyFoundation = ColonyFoundation?.CreateCopy();
+                copy.HeadquartersReinforcement = HeadquartersReinforcement?.CreateCopy();
+                copy.HeadroomRisk = HeadroomRisk?.CreateCopy();
+                copy.Shortfall = Shortfall?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -796,6 +1226,20 @@ namespace Rebellion.Game
                 new AIProductionDemandUtilityConfig();
             public AIFleetProductionAllocationUtilityConfig FleetAllocationUtility { get; set; } =
                 new AIFleetProductionAllocationUtilityConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIInfrastructureConfig CreateCopy()
+            {
+                AIInfrastructureConfig copy = (AIInfrastructureConfig)MemberwiseClone();
+                copy.PlacementUtility = PlacementUtility?.CreateCopy();
+                copy.AllocationUtility = AllocationUtility?.CreateCopy();
+                copy.DemandUtility = DemandUtility?.CreateCopy();
+                copy.FleetAllocationUtility = FleetAllocationUtility?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -818,6 +1262,26 @@ namespace Rebellion.Game
                 new AIConsiderationConfig();
             public AIConsiderationConfig AssemblyCapacityNeed { get; set; } =
                 new AIConsiderationConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIFleetProductionAllocationUtilityConfig CreateCopy()
+            {
+                AIFleetProductionAllocationUtilityConfig copy =
+                    (AIFleetProductionAllocationUtilityConfig)MemberwiseClone();
+                copy.AttackReadiness = AttackReadiness?.CreateCopy();
+                copy.AttackRequirements = AttackRequirements?.CreateCopy();
+                copy.SystemPresence = SystemPresence?.CreateCopy();
+                copy.Headquarters = Headquarters?.CreateCopy();
+                copy.TargetValue = TargetValue?.CreateCopy();
+                copy.ColonyRegiments = ColonyRegiments?.CreateCopy();
+                copy.ColonyCapacity = ColonyCapacity?.CreateCopy();
+                copy.AssemblyWeakness = AssemblyWeakness?.CreateCopy();
+                copy.AssemblyCapacityNeed = AssemblyCapacityNeed?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -864,6 +1328,41 @@ namespace Rebellion.Game
             public AIConsiderationConfig FinalReadiness { get; set; } = new AIConsiderationConfig();
             public AIConsiderationConfig StarfighterFill { get; set; } =
                 new AIConsiderationConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIProductionDemandUtilityConfig CreateCopy()
+            {
+                AIProductionDemandUtilityConfig copy =
+                    (AIProductionDemandUtilityConfig)MemberwiseClone();
+                copy.Deficit = Deficit?.CreateCopy();
+                copy.TrainingBacklog = TrainingBacklog?.CreateCopy();
+                copy.SectorCoverage = SectorCoverage?.CreateCopy();
+                copy.PrimaryHub = PrimaryHub?.CreateCopy();
+                copy.FacilityBalance = FacilityBalance?.CreateCopy();
+                copy.FacilityInvestment = FacilityInvestment?.CreateCopy();
+                copy.ColonyFoundation = ColonyFoundation?.CreateCopy();
+                copy.FacilityPortfolio = FacilityPortfolio?.CreateCopy();
+                copy.UpgradeValue = UpgradeValue?.CreateCopy();
+                copy.UpgradeHeadquarters = UpgradeHeadquarters?.CreateCopy();
+                copy.ResourceShortage = ResourceShortage?.CreateCopy();
+                copy.MaintenanceShortfall = MaintenanceShortfall?.CreateCopy();
+                copy.MaintenanceReserve = MaintenanceReserve?.CreateCopy();
+                copy.DefenseDeficit = DefenseDeficit?.CreateCopy();
+                copy.DefenseValue = DefenseValue?.CreateCopy();
+                copy.DefenseHeadquarters = DefenseHeadquarters?.CreateCopy();
+                copy.DefenseThreat = DefenseThreat?.CreateCopy();
+                copy.ShieldSupport = ShieldSupport?.CreateCopy();
+                copy.ShieldSectorRisk = ShieldSectorRisk?.CreateCopy();
+                copy.FleetTargetValue = FleetTargetValue?.CreateCopy();
+                copy.AttackReinforcement = AttackReinforcement?.CreateCopy();
+                copy.FleetReadiness = FleetReadiness?.CreateCopy();
+                copy.FinalReadiness = FinalReadiness?.CreateCopy();
+                copy.StarfighterFill = StarfighterFill?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -894,6 +1393,26 @@ namespace Rebellion.Game
 
             public AIConsiderationConfig ResourceOpportunityCost { get; set; } =
                 new AIConsiderationConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIInfrastructurePlacementUtilityConfig CreateCopy()
+            {
+                AIInfrastructurePlacementUtilityConfig copy =
+                    (AIInfrastructurePlacementUtilityConfig)MemberwiseClone();
+                copy.SystemCoverage = SystemCoverage?.CreateCopy();
+                copy.ExistingHub = ExistingHub?.CreateCopy();
+                copy.ConstructionHub = ConstructionHub?.CreateCopy();
+                copy.SecondTrainingFacility = SecondTrainingFacility?.CreateCopy();
+                copy.AvailableEnergy = AvailableEnergy?.CreateCopy();
+                copy.PlanetValue = PlanetValue?.CreateCopy();
+                copy.SystemSecurity = SystemSecurity?.CreateCopy();
+                copy.DemandProximity = DemandProximity?.CreateCopy();
+                copy.ResourceOpportunityCost = ResourceOpportunityCost?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -912,6 +1431,21 @@ namespace Rebellion.Game
                 new AIConsiderationConfig();
 
             public AIConsiderationConfig StrategicValue { get; set; } = new AIConsiderationConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIInfrastructureAllocationUtilityConfig CreateCopy()
+            {
+                AIInfrastructureAllocationUtilityConfig copy =
+                    (AIInfrastructureAllocationUtilityConfig)MemberwiseClone();
+                copy.ExistingFacilities = ExistingFacilities?.CreateCopy();
+                copy.UnassignedHub = UnassignedHub?.CreateCopy();
+                copy.FeasibleCapacity = FeasibleCapacity?.CreateCopy();
+                copy.StrategicValue = StrategicValue?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -957,6 +1491,13 @@ namespace Rebellion.Game
             public int InteriorStarfighterBaselinePercent { get; set; }
 
             public bool RequireStaticDefenseBeforeStarfighters { get; set; }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AINonCapitalSummaryConfig CreateCopy() =>
+                (AINonCapitalSummaryConfig)MemberwiseClone();
         }
 
         /// <summary>
@@ -986,6 +1527,12 @@ namespace Rebellion.Game
             public int FleetLoadingDeficitThreshold { get; set; }
 
             public int InteriorCaptureFloorPercent { get; set; }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public GarrisonConfig CreateCopy() => (GarrisonConfig)MemberwiseClone();
         }
 
         /// <summary>
@@ -1052,6 +1599,24 @@ namespace Rebellion.Game
                 }
                 return consequence;
             }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public UprisingConfig CreateCopy()
+            {
+                UprisingConfig copy = (UprisingConfig)MemberwiseClone();
+                copy.PrimaryConsequenceTable =
+                    PrimaryConsequenceTable == null
+                        ? null
+                        : new Dictionary<int, int>(PrimaryConsequenceTable);
+                copy.SecondaryConsequenceTable =
+                    SecondaryConsequenceTable == null
+                        ? null
+                        : new Dictionary<int, int>(SecondaryConsequenceTable);
+                return copy;
+            }
         }
 
         /// <summary>
@@ -1083,6 +1648,12 @@ namespace Rebellion.Game
             public int DiplomacyNeutralPlanetSupportBase { get; set; }
 
             public int DiplomacyNeutralPlanetSupportRange { get; set; }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public SupportShiftConfig CreateCopy() => (SupportShiftConfig)MemberwiseClone();
         }
 
         /// <summary>
@@ -1100,6 +1671,12 @@ namespace Rebellion.Game
             public int DefaultFighterHyperdrive { get; set; }
 
             public int DefaultPersonnelHyperdrive { get; set; }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public MovementConfig CreateCopy() => (MovementConfig)MemberwiseClone();
         }
 
         /// <summary>
@@ -1119,6 +1696,12 @@ namespace Rebellion.Game
             public int ResourceStartupBasePercent { get; set; }
 
             public int ResourceStartupRandomPercent { get; set; }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public ProductionConfig CreateCopy() => (ProductionConfig)MemberwiseClone();
         }
 
         /// <summary>
@@ -1135,6 +1718,20 @@ namespace Rebellion.Game
             public int StarfighterSuppression { get; set; }
 
             public int RegimentSuppression { get; set; }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public SmugglingConfig CreateCopy()
+            {
+                SmugglingConfig copy = (SmugglingConfig)MemberwiseClone();
+                copy.LossPercentByMinimumSupport =
+                    LossPercentByMinimumSupport == null
+                        ? null
+                        : new Dictionary<int, int>(LossPercentByMinimumSupport);
+                return copy;
+            }
         }
 
         /// <summary>
@@ -1146,6 +1743,12 @@ namespace Rebellion.Game
             public int MaxEnergy { get; set; }
 
             public int MaxRawMaterials { get; set; }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public PlanetConfig CreateCopy() => (PlanetConfig)MemberwiseClone();
         }
 
         /// <summary>
@@ -1160,6 +1763,19 @@ namespace Rebellion.Game
                 new PlanetaryAssaultConfig();
 
             public SpaceCombatConfig SpaceCombat { get; set; } = new SpaceCombatConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public CombatConfig CreateCopy()
+            {
+                CombatConfig copy = (CombatConfig)MemberwiseClone();
+                copy.Bombardment = Bombardment?.CreateCopy();
+                copy.PlanetaryAssault = PlanetaryAssault?.CreateCopy();
+                copy.SpaceCombat = SpaceCombat?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -1181,6 +1797,12 @@ namespace Rebellion.Game
             public int DestroyPlanetCoreSupportPenalty { get; set; }
             public int DestroyPlanetOuterRimSupportPenalty { get; set; }
             public int DestroyPlanetOuterRimSupportThreshold { get; set; }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public BombardmentConfig CreateCopy() => (BombardmentConfig)MemberwiseClone();
         }
 
         /// <summary>
@@ -1198,6 +1820,12 @@ namespace Rebellion.Game
             public int DefenderWinsMaximum { get; set; }
             public int AttackerWinsMinimum { get; set; }
             public int CaptureGarrisonCount { get; set; }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public PlanetaryAssaultConfig CreateCopy() => (PlanetaryAssaultConfig)MemberwiseClone();
         }
 
         /// <summary>
@@ -1237,6 +1865,12 @@ namespace Rebellion.Game
             public int AutoResolveComponentDelayMaximum { get; set; }
 
             public int AutoResolveComponentDelayRecovery { get; set; }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public SpaceCombatConfig CreateCopy() => (SpaceCombatConfig)MemberwiseClone();
         }
 
         /// <summary>
@@ -1250,6 +1884,12 @@ namespace Rebellion.Game
             public int FighterProductionPenaltyPercent { get; set; }
 
             public int EvacuationLossPercent { get; set; }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public BlockadeConfig CreateCopy() => (BlockadeConfig)MemberwiseClone();
         }
 
         /// <summary>
@@ -1311,6 +1951,22 @@ namespace Rebellion.Game
                     .DefaultIfEmpty(int.MaxValue)
                     .Min();
             }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public JediConfig CreateCopy()
+            {
+                JediConfig copy = (JediConfig)MemberwiseClone();
+                copy.MissionEncounterPriorityOfficerInstanceIDs =
+                    MissionEncounterPriorityOfficerInstanceIDs?.ToList();
+                copy.RankLabelByMinimumForceRank =
+                    RankLabelByMinimumForceRank == null
+                        ? null
+                        : new Dictionary<int, int>(RankLabelByMinimumForceRank);
+                return copy;
+            }
         }
 
         /// <summary>
@@ -1331,6 +1987,20 @@ namespace Rebellion.Game
             public int InjurySecondaryRollMaximum { get; set; }
 
             public int CombatReward { get; set; }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public DuelResolutionConfig CreateCopy()
+            {
+                DuelResolutionConfig copy = (DuelResolutionConfig)MemberwiseClone();
+                copy.CombatCaptureAvoidance =
+                    CombatCaptureAvoidance == null
+                        ? null
+                        : new Dictionary<int, int>(CombatCaptureAvoidance);
+                return copy;
+            }
         }
 
         /// <summary>
@@ -1346,6 +2016,12 @@ namespace Rebellion.Game
             public int RefreshIntervalBase { get; set; }
 
             public int RefreshIntervalSpread { get; set; }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public ResearchConfig CreateCopy() => (ResearchConfig)MemberwiseClone();
         }
 
         /// <summary>
@@ -1361,6 +2037,12 @@ namespace Rebellion.Game
             public int SecondaryInjuryRange { get; set; }
 
             public int KillProbability { get; set; }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AssassinationConfig CreateCopy() => (AssassinationConfig)MemberwiseClone();
         }
 
         /// <summary>
@@ -1382,6 +2064,12 @@ namespace Rebellion.Game
             public int FastReplacementAmount { get; set; }
 
             public int NormalReplacementAmount { get; set; }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public RecoveryConfig CreateCopy() => (RecoveryConfig)MemberwiseClone();
         }
 
         /// <summary>
@@ -1393,6 +2081,19 @@ namespace Rebellion.Game
             public TickRangeConfig EscapeAttemptInterval { get; set; } = new TickRangeConfig();
 
             public Dictionary<int, int> EscapeTable { get; set; } = new Dictionary<int, int>();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public CaptiveConfig CreateCopy()
+            {
+                CaptiveConfig copy = (CaptiveConfig)MemberwiseClone();
+                copy.EscapeAttemptInterval = EscapeAttemptInterval?.CreateCopy();
+                copy.EscapeTable =
+                    EscapeTable == null ? null : new Dictionary<int, int>(EscapeTable);
+                return copy;
+            }
         }
 
         /// <summary>
@@ -1404,6 +2105,12 @@ namespace Rebellion.Game
             public int Minimum { get; set; }
 
             public int Maximum { get; set; }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public TickRangeConfig CreateCopy() => (TickRangeConfig)MemberwiseClone();
         }
 
         /// <summary>
@@ -1421,6 +2128,12 @@ namespace Rebellion.Game
             public float SlowTickIntervalSeconds { get; set; }
 
             public float VerySlowTickIntervalSeconds { get; set; }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public GameSpeedConfig CreateCopy() => (GameSpeedConfig)MemberwiseClone();
         }
 
         /// <summary>
@@ -1430,6 +2143,12 @@ namespace Rebellion.Game
         public class MessageConfig
         {
             public int RetentionTicks { get; set; }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public MessageConfig CreateCopy() => (MessageConfig)MemberwiseClone();
         }
 
         /// <summary>
@@ -1441,6 +2160,18 @@ namespace Rebellion.Game
             public RandomCountConfig CoreSectorBonus { get; set; } = new RandomCountConfig();
 
             public RandomCountConfig HeadquartersBonus { get; set; } = new RandomCountConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public EspionageConfig CreateCopy()
+            {
+                EspionageConfig copy = (EspionageConfig)MemberwiseClone();
+                copy.CoreSectorBonus = CoreSectorBonus?.CreateCopy();
+                copy.HeadquartersBonus = HeadquartersBonus?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -1452,6 +2183,12 @@ namespace Rebellion.Game
             public int Base { get; set; }
 
             public int Spread { get; set; }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public RandomCountConfig CreateCopy() => (RandomCountConfig)MemberwiseClone();
         }
 
         /// <summary>
@@ -1479,6 +2216,31 @@ namespace Rebellion.Game
             public Dictionary<int, int> Assassination { get; set; } = new Dictionary<int, int>();
 
             public Dictionary<int, int> Recruitment { get; set; } = new Dictionary<int, int>();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public AIMissionTablesConfig CreateCopy()
+            {
+                AIMissionTablesConfig copy = (AIMissionTablesConfig)MemberwiseClone();
+                copy.Reconnaissance =
+                    Reconnaissance == null ? null : new Dictionary<int, int>(Reconnaissance);
+                copy.Diplomacy = Diplomacy == null ? null : new Dictionary<int, int>(Diplomacy);
+                copy.SubdueUprising =
+                    SubdueUprising == null ? null : new Dictionary<int, int>(SubdueUprising);
+                copy.Espionage = Espionage == null ? null : new Dictionary<int, int>(Espionage);
+                copy.InciteUprising =
+                    InciteUprising == null ? null : new Dictionary<int, int>(InciteUprising);
+                copy.Rescue = Rescue == null ? null : new Dictionary<int, int>(Rescue);
+                copy.Sabotage = Sabotage == null ? null : new Dictionary<int, int>(Sabotage);
+                copy.Abduction = Abduction == null ? null : new Dictionary<int, int>(Abduction);
+                copy.Assassination =
+                    Assassination == null ? null : new Dictionary<int, int>(Assassination);
+                copy.Recruitment =
+                    Recruitment == null ? null : new Dictionary<int, int>(Recruitment);
+                return copy;
+            }
         }
 
         /// <summary>
@@ -1491,6 +2253,19 @@ namespace Rebellion.Game
 
             public MissionProbabilityTablesConfig Mission { get; set; } =
                 new MissionProbabilityTablesConfig();
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public ProbabilityTablesConfig CreateCopy()
+            {
+                ProbabilityTablesConfig copy = (ProbabilityTablesConfig)MemberwiseClone();
+                copy.UprisingStart =
+                    UprisingStart == null ? null : new Dictionary<int, int>(UprisingStart);
+                copy.Mission = Mission?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -1573,6 +2348,36 @@ namespace Rebellion.Game
 
                 return new ProbabilityTable(table).Lookup(score);
             }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public MissionProbabilityTablesConfig CreateCopy()
+            {
+                MissionProbabilityTablesConfig copy =
+                    (MissionProbabilityTablesConfig)MemberwiseClone();
+                copy.Abduction = Abduction == null ? null : new Dictionary<int, int>(Abduction);
+                copy.Assassination =
+                    Assassination == null ? null : new Dictionary<int, int>(Assassination);
+                copy.PlanetaryDecoy =
+                    PlanetaryDecoy == null ? null : new Dictionary<int, int>(PlanetaryDecoy);
+                copy.FleetDecoy = FleetDecoy == null ? null : new Dictionary<int, int>(FleetDecoy);
+                copy.Diplomacy = Diplomacy == null ? null : new Dictionary<int, int>(Diplomacy);
+                copy.Espionage = Espionage == null ? null : new Dictionary<int, int>(Espionage);
+                copy.Foil = Foil == null ? null : new Dictionary<int, int>(Foil);
+                copy.Evasion = Evasion == null ? null : new Dictionary<int, int>(Evasion);
+                copy.InciteUprising =
+                    InciteUprising == null ? null : new Dictionary<int, int>(InciteUprising);
+                copy.Recruitment =
+                    Recruitment == null ? null : new Dictionary<int, int>(Recruitment);
+                copy.Rescue = Rescue == null ? null : new Dictionary<int, int>(Rescue);
+                copy.Sabotage = Sabotage == null ? null : new Dictionary<int, int>(Sabotage);
+                copy.SubdueUprising =
+                    SubdueUprising == null ? null : new Dictionary<int, int>(SubdueUprising);
+                copy.TickRanges = TickRanges?.CreateCopy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -1584,6 +2389,12 @@ namespace Rebellion.Game
             public int Base { get; set; }
 
             public int Spread { get; set; }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public MissionTickConfig CreateCopy() => (MissionTickConfig)MemberwiseClone();
         }
 
         /// <summary>
@@ -1639,6 +2450,28 @@ namespace Rebellion.Game
                     "JediTraining" => JediTraining,
                     _ => null,
                 };
+            }
+
+            /// <summary>
+            /// Creates an independent snapshot of these settings.
+            /// </summary>
+            /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+            public MissionTickRangesConfig CreateCopy()
+            {
+                MissionTickRangesConfig copy = (MissionTickRangesConfig)MemberwiseClone();
+                copy.Abduction = Abduction?.CreateCopy();
+                copy.Assassination = Assassination?.CreateCopy();
+                copy.Diplomacy = Diplomacy?.CreateCopy();
+                copy.Espionage = Espionage?.CreateCopy();
+                copy.InciteUprising = InciteUprising?.CreateCopy();
+                copy.Reconnaissance = Reconnaissance?.CreateCopy();
+                copy.Recruitment = Recruitment?.CreateCopy();
+                copy.Rescue = Rescue?.CreateCopy();
+                copy.Sabotage = Sabotage?.CreateCopy();
+                copy.SubdueUprising = SubdueUprising?.CreateCopy();
+                copy.Research = Research?.CreateCopy();
+                copy.JediTraining = JediTraining?.CreateCopy();
+                return copy;
             }
         }
     }

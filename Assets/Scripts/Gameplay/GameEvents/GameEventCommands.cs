@@ -313,7 +313,7 @@ namespace Rebellion.Gameplay.GameEvents
         /// Installs the current event definitions while retaining activation and schedule history.
         /// Triggered completion follows the current activation limit; completed schedules stay closed.
         /// </summary>
-        /// <param name="definitions">The detached definitions selected for this campaign.</param>
+        /// <param name="definitions">The shared, read-only definitions selected for this campaign.</param>
         internal void InstallDefinitions(IReadOnlyCollection<GameEvent> definitions)
         {
             if (definitions == null)

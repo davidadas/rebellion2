@@ -25,6 +25,17 @@ namespace Rebellion.Game.Factions
         [PersistableCollectionItem(Name = "Name")]
         public List<string> Names { get; set; } = new List<string>();
         public int NextNameIndex { get; set; }
+
+        /// <summary>
+        /// Copies a naming pool without sharing its mutable name list.
+        /// </summary>
+        /// <returns>A naming pool with the same names and next-name position.</returns>
+        public FactionNamePool CreateCopy()
+        {
+            FactionNamePool copy = (FactionNamePool)MemberwiseClone();
+            copy.Names = Names?.ToList();
+            return copy;
+        }
     }
 
     /// <summary>
@@ -166,6 +177,38 @@ namespace Rebellion.Game.Factions
         /// Default constructor used for deserialization.
         /// </summary>
         public Faction() { }
+
+        /// <summary>
+        /// Instantiates this faction definition with independent settings, names, and runtime collections.
+        /// Campaign history is initialized when the generation pipeline seeds the new game.
+        /// </summary>
+        /// <returns>The faction instance owned by the new campaign.</returns>
+        public Faction CreateForNewGame()
+        {
+            Faction copy = (Faction)MemberwiseClone();
+            Faction initialState = new Faction();
+            copy._settings = _settings?.CreateCopy();
+            copy.DisallowedMissionTypeIDs = DisallowedMissionTypeIDs?.ToList();
+            copy.ShipNamePools = ShipNamePools?.Select(pool => pool.CreateCopy()).ToList();
+            copy._nextGenericShipNameNumbers = new Dictionary<string, int>(
+                _nextGenericShipNameNumbers
+            );
+            copy.AdvisorMessageNotifications = new Dictionary<MessageType, bool>(
+                AdvisorMessageNotifications
+            );
+            copy.PendingRawMaterialFacilityIDs = PendingRawMaterialFacilityIDs?.ToList();
+            copy.PendingRefinedMaterialFacilityIDs = PendingRefinedMaterialFacilityIDs?.ToList();
+            copy._ownedEntities = initialState._ownedEntities;
+            copy._messages = _messages.ToDictionary(
+                entry => entry.Key,
+                entry => entry.Value.ConvertAll(message => message.CreateCopy())
+            );
+            copy.ResearchState = initialState.ResearchState;
+            copy.ResearchCatalog = initialState.ResearchCatalog;
+            copy.ResearchQueue = initialState.ResearchQueue;
+            copy.Fog = initialState.Fog;
+            return copy;
+        }
 
         /// <summary>
         /// Reserves one raw material for a facility or queues its request in arrival order.

@@ -12,7 +12,6 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Generation;
-using Rebellion.Util.Reflection;
 
 namespace Rebellion.Tests.App
 {
@@ -199,9 +198,9 @@ namespace Rebellion.Tests.App
         {
             GameRoot game = CreateGameWithLegacyFactionSettings();
             Faction template = _contentPack.GameData.Factions[0];
-            FactionSettings configured = template.Settings.GetDeepCopy();
+            FactionSettings configured = template.Settings.CreateCopy();
             configured.GarrisonEfficiency++;
-            GameGenerationConfig config = _contentPack.GameData.GenerationConfig.GetDeepCopy();
+            GameGenerationConfig config = _contentPack.GameData.GenerationConfig.CreateCopy();
             config.FactionModifiers.Add(
                 new FactionModifierConfig { FactionID = template.InstanceID, Settings = configured }
             );

@@ -10,7 +10,6 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.GameEvents;
 using Rebellion.Gameplay;
 using Rebellion.Generation;
-using Rebellion.Util.Reflection;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -138,7 +137,7 @@ namespace Rebellion.Tests.App
                 summary.Difficulty = GameDifficulty.Hard;
                 summary.CustomSettings = new CustomGameSettings
                 {
-                    GenerationConfig = selected.GameData.GenerationConfig.GetDeepCopy(),
+                    GenerationConfig = selected.GameData.GenerationConfig.CreateCopy(),
                 };
                 summary.CustomSettings.GenerationConfig.DisabledEventCategories =
                     new List<GameEventCategory> { GameEventCategory.Story };

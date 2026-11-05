@@ -42,7 +42,7 @@ namespace Rebellion.Gameplay
         /// <summary>
         /// Creates a message factory backed by the supplied message definitions.
         /// </summary>
-        /// <param name="definitions">The message definitions used to select templates and images.</param>
+        /// <param name="definitions">Shared, read-only definitions used to select templates and images.</param>
         public MessageFactory(IEnumerable<MessageDefinition> definitions)
         {
             _definitions = definitions?.ToArray() ?? Array.Empty<MessageDefinition>();

@@ -66,6 +66,22 @@ namespace Rebellion.Game
         public CustomGameSettings() { }
 
         /// <summary>
+        /// Captures independent copies of the campaign's editable settings.
+        /// </summary>
+        /// <returns>A custom-game payload that owns every mutable rule override.</returns>
+        public CustomGameSettings CreateCopy()
+        {
+            return new CustomGameSettings
+            {
+                PlayerDifficultyModifiers = PlayerDifficultyModifiers?.CreateCopy(),
+                AIDifficultyModifiers = AIDifficultyModifiers?.CreateCopy(),
+                GenerationConfig = GenerationConfig?.CreateCopy(),
+                GarrisonRules = GarrisonRules?.CreateCopy(),
+                MovementRules = MovementRules?.CreateCopy(),
+            };
+        }
+
+        /// <summary>
         /// Applies persisted campaign-specific runtime rules to a detached game configuration.
         /// </summary>
         /// <param name="config">The runtime configuration receiving the overrides.</param>
@@ -126,6 +142,12 @@ namespace Rebellion.Game
         public int SupportDeficitPerRegiment { get; set; }
 
         public int UprisingMultiplier { get; set; }
+
+        /// <summary>
+        /// Captures the campaign's editable garrison rules.
+        /// </summary>
+        /// <returns>An independent copy of the rule values.</returns>
+        public GarrisonRuleSettings CreateCopy() => (GarrisonRuleSettings)MemberwiseClone();
     }
 
     /// <summary>
@@ -135,5 +157,11 @@ namespace Rebellion.Game
     public sealed class MovementRuleSettings
     {
         public int TravelSpeedPercent { get; set; }
+
+        /// <summary>
+        /// Captures the campaign's editable movement rules.
+        /// </summary>
+        /// <returns>An independent copy of the rule values.</returns>
+        public MovementRuleSettings CreateCopy() => (MovementRuleSettings)MemberwiseClone();
     }
 }
