@@ -254,6 +254,23 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler, IDr
     }
 
     /// <summary>
+    /// Gets a rendered card's center in scroll-content coordinates.
+    /// </summary>
+    /// <param name="itemIndex">The rendered unit-card index.</param>
+    /// <returns>The card center, or null when the card is not rendered.</returns>
+    internal Vector2? GetItemSelectionPoint(int itemIndex)
+    {
+        if (
+            itemIndex < 0
+            || itemIndex >= itemCards.Count
+            || !itemCards[itemIndex].gameObject.activeInHierarchy
+        )
+            return null;
+
+        return itemCards[itemIndex].GetSelectionBounds().center;
+    }
+
+    /// <summary>
     /// Gets the rendered cards intersecting a selection rectangle in scroll-content coordinates.
     /// </summary>
     /// <param name="start">The selection anchor.</param>

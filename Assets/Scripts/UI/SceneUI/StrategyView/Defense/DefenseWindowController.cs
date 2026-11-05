@@ -738,7 +738,7 @@ public sealed class DefenseWindowController
         if (hasPoint && modifiers.RangeSelect && !modifiers.MultiSelect)
         {
             session.SelectItemsInRectangle(
-                view.GetItemsInSelectionRectangle(session.SelectionAnchor ?? point, point)
+                view.GetItemsInSelectionRectangle(GetSelectionAnchor(view, session, point), point)
             );
         }
         else
@@ -757,6 +757,27 @@ public sealed class DefenseWindowController
             startItemDrag(session.Window, eventData);
             return;
         }
+    }
+
+    /// <summary>
+    /// Resolves the range anchor from the last gesture or a replacement card selection.
+    /// </summary>
+    /// <param name="view">The source Defense view.</param>
+    /// <param name="session">The current selection state.</param>
+    /// <param name="point">The current pointer position when no anchor is available.</param>
+    /// <returns>The range-selection start in scroll-content coordinates.</returns>
+    private static Vector2 GetSelectionAnchor(
+        DefenseWindowView view,
+        DefenseWindowSession session,
+        Vector2 point
+    )
+    {
+        if (session.SelectionAnchor is Vector2 anchor)
+            return anchor;
+
+        return session.SelectedItemIndexes.Count == 1
+            ? view.GetItemSelectionPoint(session.SelectedItemIndexes.Single()) ?? point
+            : point;
     }
 
     /// <summary>
@@ -881,7 +902,7 @@ public sealed class DefenseWindowController
         if (hasPoint && modifiers.RangeSelect && !modifiers.MultiSelect)
         {
             session.SelectItemsInRectangle(
-                view.GetItemsInSelectionRectangle(session.SelectionAnchor ?? point, point)
+                view.GetItemsInSelectionRectangle(GetSelectionAnchor(view, session, point), point)
             );
         }
         else if (!hasPoint || !modifiers.MultiSelect)

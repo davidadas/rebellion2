@@ -147,6 +147,7 @@ internal sealed class DefenseWindowSession
 
         selectedIndexes.Clear();
         selectedIndexes.Add(itemIndex);
+        SelectionAnchor = null;
         CaptureSelection(items);
         ClearTransientTargets();
         return true;
@@ -215,6 +216,7 @@ internal sealed class DefenseWindowSession
 
         selectedIndexes.Clear();
         selectedIndexes.Add(itemIndex);
+        SelectionAnchor = null;
         CaptureSelection(GetItems(ActiveTab));
     }
 
