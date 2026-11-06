@@ -126,7 +126,7 @@ namespace Rebellion.Util.Serialization
             }
 
             XmlDocument merged = (XmlDocument)defaults.CloneNode(true);
-            MergeElement(merged.DocumentElement, overlayRoot);
+            MergeElement(merged.DocumentElement, overlayRoot, _type);
             return Deserialize(merged);
         }
 
@@ -195,10 +195,57 @@ namespace Rebellion.Util.Serialization
         /// </summary>
         /// <param name="target">The target element to mutate.</param>
         /// <param name="overlay">The overlay element to apply.</param>
-        private static void MergeElement(XmlElement target, XmlElement overlay)
+        /// <param name="type">The declared type represented by the elements, when known.</param>
+        /// <param name="member">The containing member's polymorphic type declarations.</param>
+        private static void MergeElement(
+            XmlElement target,
+            XmlElement overlay,
+            Type type,
+            MemberInfo member = null
+        )
         {
-            MergeAttributes(target, overlay);
-            if (HasRepeatedChildNames(target) || HasRepeatedChildNames(overlay))
+            if (
+                type != null
+                && TypeHelper.HasAttribute<PersistableObjectAttribute>(type)
+                && (type.IsAbstract || type.IsInterface)
+            )
+                type = XmlDeserializer.ResolveActualType(
+                    type,
+                    overlay.Name,
+                    new PersistableAttributes
+                    {
+                        IncludeAttributes = member
+                            ?.GetCustomAttributes<PersistableIncludeAttribute>()
+                            .ToArray(),
+                    }
+                );
+
+            Dictionary<string, MemberInfo> members = new Dictionary<string, MemberInfo>();
+            Dictionary<string, MemberInfo> attributes = new Dictionary<string, MemberInfo>();
+            if (type != null && TypeHelper.HasAttribute<PersistableObjectAttribute>(type))
+            {
+                foreach (var entry in ReflectionHelper.GetElementMemberLookup(type))
+                    members.Add(entry.Key, entry.Value);
+                foreach (
+                    var entry in ReflectionHelper.GetPersistableAttributeMap(
+                        type,
+                        ReflectionHelper.OperationType.Read
+                    )
+                )
+                {
+                    attributes.Add(entry.Key, entry.Value);
+                    members.TryAdd(entry.Key, entry.Value);
+                }
+            }
+
+            ValidateLayeredMembers(target, members, attributes);
+            ValidateLayeredMembers(overlay, members, attributes);
+            MergeAttributes(target, overlay, members, attributes);
+            if (
+                (!HasChildElements(target) && !HasChildElements(overlay))
+                || HasRepeatedChildNames(target)
+                || HasRepeatedChildNames(overlay)
+            )
             {
                 ReplaceChildren(target, overlay);
                 return;
@@ -206,32 +253,104 @@ namespace Rebellion.Util.Serialization
 
             foreach (XmlElement overlayChild in ChildElements(overlay))
             {
-                XmlElement targetChild = FindChildElement(target, overlayChild.Name);
+                members.TryGetValue(overlayChild.Name, out MemberInfo childMember);
+                XmlElement targetChild = ChildElements(target)
+                    .FirstOrDefault(child =>
+                        child.Name == overlayChild.Name
+                        || (
+                            childMember != null
+                            && members.GetValueOrDefault(child.Name) == childMember
+                        )
+                    );
+                if (childMember != null)
+                    foreach (
+                        XmlAttribute attribute in target.Attributes.Cast<XmlAttribute>().ToArray()
+                    )
+                        if (attributes.GetValueOrDefault(attribute.Name) == childMember)
+                            target.RemoveAttributeNode(attribute);
+
                 if (targetChild == null)
                 {
                     target.AppendChild(target.OwnerDocument.ImportNode(overlayChild, true));
                 }
-                else if (HasChildElements(overlayChild) || HasChildElements(targetChild))
-                {
-                    MergeElement(targetChild, overlayChild);
-                }
                 else
                 {
-                    MergeAttributes(targetChild, overlayChild);
-                    ReplaceChildren(targetChild, overlayChild);
+                    Type childType =
+                        childMember != null ? ReflectionHelper.GetMemberType(childMember)
+                        : type != null
+                        && TypeHelper.IsEnumerable(type)
+                        && !TypeHelper.IsDictionary(type)
+                            ? XmlDeserializer.GetCollectionElementType(type)
+                        : null;
+                    MergeElement(targetChild, overlayChild, childType, childMember);
                 }
             }
         }
 
         /// <summary>
-        /// Applies an overlay element's attributes onto a target element by name.
+        /// Applies overlay attributes, replacing any other accepted representation of each member.
         /// </summary>
         /// <param name="target">The target element to mutate.</param>
         /// <param name="overlay">The overlay element supplying the attributes.</param>
-        private static void MergeAttributes(XmlElement target, XmlElement overlay)
+        /// <param name="members">The names accepted for members represented by the elements.</param>
+        /// <param name="attributes">The names accepted as XML attributes.</param>
+        private static void MergeAttributes(
+            XmlElement target,
+            XmlElement overlay,
+            Dictionary<string, MemberInfo> members,
+            Dictionary<string, MemberInfo> attributes
+        )
         {
             foreach (XmlAttribute attribute in overlay.Attributes)
+            {
+                if (attributes.TryGetValue(attribute.Name, out MemberInfo member))
+                {
+                    foreach (
+                        XmlAttribute existing in target.Attributes.Cast<XmlAttribute>().ToArray()
+                    )
+                        if (
+                            existing.Name != attribute.Name
+                            && attributes.GetValueOrDefault(existing.Name) == member
+                        )
+                            target.RemoveAttributeNode(existing);
+                    foreach (XmlElement child in ChildElements(target).ToArray())
+                        if (members.GetValueOrDefault(child.Name) == member)
+                            target.RemoveChild(child);
+                }
                 target.SetAttribute(attribute.Name, attribute.Value);
+            }
+        }
+
+        /// <summary>
+        /// Rejects multiple names for an aliased member within an individual input layer.
+        /// </summary>
+        /// <param name="element">The defaults or overlay element to validate.</param>
+        /// <param name="members">The accepted read names for its members.</param>
+        /// <param name="attributes">The names accepted as XML attributes.</param>
+        private static void ValidateLayeredMembers(
+            XmlElement element,
+            Dictionary<string, MemberInfo> members,
+            Dictionary<string, MemberInfo> attributes
+        )
+        {
+            HashSet<MemberInfo> supplied = new HashSet<MemberInfo>();
+            foreach (
+                MemberInfo member in element
+                    .Attributes.Cast<XmlAttribute>()
+                    .Select(attribute => attributes.GetValueOrDefault(attribute.Name))
+                    .Concat(
+                        ChildElements(element)
+                            .Select(child => members.GetValueOrDefault(child.Name))
+                    )
+            )
+                if (
+                    member != null
+                    && ReflectionHelper.HasReadAliases(member)
+                    && !supplied.Add(member)
+                )
+                    throw new InvalidOperationException(
+                        $"Member '{member.Name}' is provided more than once."
+                    );
         }
 
         /// <summary>
@@ -278,23 +397,6 @@ namespace Rebellion.Util.Serialization
             }
 
             return false;
-        }
-
-        /// <summary>
-        /// Finds the first child element with the requested name.
-        /// </summary>
-        /// <param name="element">The element to search.</param>
-        /// <param name="name">The child element name to match.</param>
-        /// <returns>The matching child element, or null when absent.</returns>
-        private static XmlElement FindChildElement(XmlElement element, string name)
-        {
-            foreach (XmlElement child in ChildElements(element))
-            {
-                if (string.Equals(child.Name, name, StringComparison.Ordinal))
-                    return child;
-            }
-
-            return null;
         }
 
         /// <summary>
@@ -857,7 +959,7 @@ namespace Rebellion.Util.Serialization
         /// </summary>
         /// <param name="type">The collection type.</param>
         /// <returns>The collection element type, or null when it cannot be resolved.</returns>
-        private static Type GetCollectionElementType(Type type)
+        internal static Type GetCollectionElementType(Type type)
         {
             if (type.IsArray)
                 return type.GetElementType();
@@ -1119,7 +1221,7 @@ namespace Rebellion.Util.Serialization
         /// <param name="actualTypeName">The name of the actual type from XML.</param>
         /// <param name="objAttributes">The persistable attributes.</param>
         /// <returns>The resolved actual type.</returns>
-        private static Type ResolveActualType(
+        internal static Type ResolveActualType(
             Type objType,
             string actualTypeName,
             PersistableAttributes objAttributes
@@ -1582,12 +1684,15 @@ namespace Rebellion.Util.Serialization
 
             Dictionary<string, MemberInfo> attributeMap = new Dictionary<string, MemberInfo>();
             List<MemberInfo> attributeMembers = new List<MemberInfo>();
+            HashSet<(Module, int)> declarations = new HashSet<(Module, int)>();
             Type currentType = classType;
 
             while (currentType != null)
             {
                 foreach (MemberInfo member in GetPersistableAttributes(currentType, operationType))
                 {
+                    if (!declarations.Add((member.Module, member.MetadataToken)))
+                        continue;
                     attributeMembers.Add(member);
                     PersistableAttributeAttribute attr = (PersistableAttributeAttribute)
                         Attribute.GetCustomAttribute(member, typeof(PersistableAttributeAttribute));
@@ -1603,7 +1708,7 @@ namespace Rebellion.Util.Serialization
             }
 
             if (operationType == OperationType.Read)
-                foreach (MemberInfo member in attributeMembers.Distinct())
+                foreach (MemberInfo member in attributeMembers)
                     AddReadAliases(attributeMap, member, GetReadAliases(member));
 
             _persistableAttributeMapCache[cacheKey] = attributeMap;
@@ -1658,14 +1763,28 @@ namespace Rebellion.Util.Serialization
                 AddElementName(lookup, member.Name, member);
             }
 
+            IDictionary<string, MemberInfo> attributes = GetPersistableAttributeMap(
+                classType,
+                OperationType.Read
+            );
             foreach (MemberInfo member in GetPersistableMembers(classType, OperationType.Read))
             {
+                ValidateReadAliases(attributes, member, GetReadAliases(member));
                 AddReadAliases(lookup, member, GetReadAliases(member));
                 foreach (
                     PersistableIncludeAttribute include in member.GetCustomAttributes<PersistableIncludeAttribute>()
                 )
+                {
+                    ValidateReadAliases(
+                        attributes,
+                        member,
+                        GetReadAliases(include.PersistableType)
+                    );
                     AddReadAliases(lookup, member, GetReadAliases(include.PersistableType));
+                }
             }
+            foreach (MemberInfo member in attributes.Values.Distinct())
+                ValidateReadAliases(lookup, member, GetReadAliases(member));
 
             _elementMemberLookupCache[classType] = lookup;
             return lookup;
@@ -1723,6 +1842,23 @@ namespace Rebellion.Util.Serialization
             IEnumerable<PersistableReadAliasAttribute> aliases
         )
         {
+            ValidateReadAliases(lookup, member, aliases);
+            foreach (PersistableReadAliasAttribute alias in aliases)
+                lookup[alias.Name] = member;
+        }
+
+        /// <summary>
+        /// Rejects aliases that identify a different member in a read-name lookup.
+        /// </summary>
+        /// <param name="lookup">The accepted names to check for conflicts.</param>
+        /// <param name="member">The member declaring the aliases.</param>
+        /// <param name="aliases">The additional XML names to validate.</param>
+        private static void ValidateReadAliases(
+            IDictionary<string, MemberInfo> lookup,
+            MemberInfo member,
+            IEnumerable<PersistableReadAliasAttribute> aliases
+        )
+        {
             foreach (PersistableReadAliasAttribute alias in aliases)
             {
                 if (
@@ -1732,7 +1868,6 @@ namespace Rebellion.Util.Serialization
                     throw new InvalidOperationException(
                         $"Read alias '{alias.Name}' on '{member.DeclaringType.Name}.{member.Name}' conflicts with '{existing.DeclaringType.Name}.{existing.Name}'."
                     );
-                lookup[alias.Name] = member;
             }
         }
 

@@ -382,6 +382,27 @@ namespace Rebellion.Tests.Util.Serialization
     }
 
     [PersistableObject]
+    public sealed class ReadAliasAttributeElementCollision
+    {
+        [PersistableMember(Name = "LegacyID")]
+        public string Other { get; set; }
+
+        [PersistableAttribute(Name = "CurrentID")]
+        [PersistableReadAlias("LegacyID")]
+        public string ID { get; set; }
+    }
+
+    [PersistableObject]
+    public sealed class ReadAliasElementAttributeCollision
+    {
+        [PersistableReadAlias("CurrentID")]
+        public string Other { get; set; }
+
+        [PersistableAttribute(Name = "CurrentID")]
+        public string ID { get; set; }
+    }
+
+    [PersistableObject]
     [PersistableReadAlias("AmbiguousReadAlias")]
     public sealed class ReadAliasFirstItem : ITestItem
     {
@@ -699,6 +720,142 @@ namespace Rebellion.Tests.Util.Serialization
 
             Assert.AreEqual(defaultsXml, defaults.OuterXml);
             Assert.AreEqual(overlayXml, overlay.OuterXml);
+        }
+
+        [TestCase("CurrentValue", "LegacyValue")]
+        [TestCase("LegacyValue", "CurrentValue")]
+        [TestCase("Value", "DeprecatedValue")]
+        public void Deserialize_OverlayMemberAlias_ReplacesSameMember(
+            string defaultName,
+            string overlayName
+        )
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ReadAliasItem));
+            XmlDocument defaults = LoadDocument(
+                $"<ReadAliasItem><{defaultName}>1</{defaultName}></ReadAliasItem>"
+            );
+            XmlDocument overlay = LoadDocument(
+                $"<ReadAliasItem><{overlayName}>2</{overlayName}></ReadAliasItem>"
+            );
+            string defaultsXml = defaults.OuterXml;
+            string overlayXml = overlay.OuterXml;
+
+            ReadAliasItem restored = (ReadAliasItem)serializer.Deserialize(defaults, overlay);
+
+            Assert.AreEqual(2, restored.Value);
+            Assert.AreEqual(defaultsXml, defaults.OuterXml);
+            Assert.AreEqual(overlayXml, overlay.OuterXml);
+        }
+
+        [TestCase("CurrentID", "LegacyID", false, false)]
+        [TestCase("LegacyID", "CurrentID", false, false)]
+        [TestCase("CurrentID", "DeprecatedID", false, true)]
+        [TestCase("LegacyID", "CurrentID", true, false)]
+        [TestCase("LegacyID", "DeprecatedID", true, true)]
+        public void Deserialize_OverlayAttributeAlias_ReplacesSameMember(
+            string defaultName,
+            string overlayName,
+            bool defaultAsElement,
+            bool overlayAsElement
+        )
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ReadAliasItem));
+            XmlDocument defaults = LoadDocument(
+                defaultAsElement
+                    ? $"<ReadAliasItem><{defaultName}>base</{defaultName}></ReadAliasItem>"
+                    : $"<ReadAliasItem {defaultName}=\"base\"/>"
+            );
+            XmlDocument overlay = LoadDocument(
+                overlayAsElement
+                    ? $"<ReadAliasItem><{overlayName}>override</{overlayName}></ReadAliasItem>"
+                    : $"<ReadAliasItem {overlayName}=\"override\"/>"
+            );
+
+            ReadAliasItem restored = (ReadAliasItem)serializer.Deserialize(defaults, overlay);
+
+            Assert.AreEqual("override", restored.ID);
+        }
+
+        [TestCase("ReadAliasItem", "ReadAliasItem")]
+        [TestCase("LegacyAliasItem", "DeprecatedAliasItem")]
+        public void Deserialize_OverlayNestedAlias_ReplacesSameMember(
+            string defaultName,
+            string overlayName
+        )
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ReadAliasIncludeContainer));
+            XmlDocument defaults = LoadDocument(
+                $"<ReadAliasIncludeContainer><{defaultName}><CurrentValue>1</CurrentValue></{defaultName}></ReadAliasIncludeContainer>"
+            );
+            XmlDocument overlay = LoadDocument(
+                $"<ReadAliasIncludeContainer><{overlayName}><LegacyValue>2</LegacyValue></{overlayName}></ReadAliasIncludeContainer>"
+            );
+
+            ReadAliasIncludeContainer restored = (ReadAliasIncludeContainer)
+                serializer.Deserialize(defaults, overlay);
+
+            Assert.AreEqual(2, ((ReadAliasItem)restored.Item).Value);
+        }
+
+        [Test]
+        public void Deserialize_OverlayUnknownAttribute_KeepsDefaultElement()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ReadAliasItem));
+            XmlDocument defaults = LoadDocument(
+                "<ReadAliasItem><CurrentValue>1</CurrentValue></ReadAliasItem>"
+            );
+            XmlDocument overlay = LoadDocument("<ReadAliasItem LegacyValue=\"ignored\"/>");
+
+            ReadAliasItem restored = (ReadAliasItem)serializer.Deserialize(defaults, overlay);
+
+            Assert.AreEqual(1, restored.Value);
+        }
+
+        [Test]
+        public void Deserialize_OverlayNestedAttributeAlias_ReplacesSameMember()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ReadAliasIncludeContainer));
+            XmlDocument defaults = LoadDocument(
+                "<ReadAliasIncludeContainer><ReadAliasItem CurrentID=\"base\"/></ReadAliasIncludeContainer>"
+            );
+            XmlDocument overlay = LoadDocument(
+                "<ReadAliasIncludeContainer><ReadAliasItem LegacyID=\"override\"/></ReadAliasIncludeContainer>"
+            );
+
+            ReadAliasIncludeContainer restored = (ReadAliasIncludeContainer)
+                serializer.Deserialize(defaults, overlay);
+
+            Assert.AreEqual("override", ((ReadAliasItem)restored.Item).ID);
+        }
+
+        [Test]
+        public void Deserialize_OverlayCollectionMemberAlias_ReplacesSameMember()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ReadAliasContainer));
+            XmlDocument defaults = LoadDocument(
+                "<ReadAliasContainer><Items><ReadAliasItem><CurrentValue>1</CurrentValue></ReadAliasItem></Items></ReadAliasContainer>"
+            );
+            XmlDocument overlay = LoadDocument(
+                "<ReadAliasContainer><Items><ReadAliasItem><LegacyValue>2</LegacyValue></ReadAliasItem></Items></ReadAliasContainer>"
+            );
+
+            ReadAliasContainer restored = (ReadAliasContainer)
+                serializer.Deserialize(defaults, overlay);
+
+            Assert.AreEqual(2, ((ReadAliasItem)restored.Items.Single()).Value);
+        }
+
+        [TestCase("<ReadAliasItem CurrentID=\"first\" LegacyID=\"second\"/>")]
+        [TestCase(
+            "<ReadAliasItem><CurrentValue>1</CurrentValue><LegacyValue>2</LegacyValue></ReadAliasItem>"
+        )]
+        public void Deserialize_OverlayDuplicateMemberAliases_Throws(string overlayXml)
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ReadAliasItem));
+
+            Assert.Throws<InvalidOperationException>(() =>
+                serializer.Deserialize(LoadDocument("<ReadAliasItem/>"), LoadDocument(overlayXml))
+            );
         }
 
         [Test]
@@ -2236,6 +2393,21 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(42, ((ReadAliasItem)item.Items.Single()).Value);
         }
 
+        [TestCase("CurrentID")]
+        [TestCase("LegacyID")]
+        [TestCase("DeprecatedID")]
+        public void Deserialize_InheritedPublicAttribute_ReadsValue(string name)
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ReadAliasDerivedItem));
+
+            ReadAliasDerivedItem restored = (ReadAliasDerivedItem)DeserializeFromString(
+                serializer,
+                $"<ReadAliasDerivedItem {name}=\"inherited\"/>"
+            );
+
+            Assert.AreEqual("inherited", restored.ID);
+        }
+
         [Test]
         public void Deserialize_ShadowedBaseAttributeAlias_ReadsInheritedField()
         {
@@ -2318,6 +2490,8 @@ namespace Rebellion.Tests.Util.Serialization
 
         [TestCase(typeof(ReadAliasMemberCollision))]
         [TestCase(typeof(ReadAliasAttributeCollision))]
+        [TestCase(typeof(ReadAliasAttributeElementCollision))]
+        [TestCase(typeof(ReadAliasElementAttributeCollision))]
         public void Deserialize_AliasConflictsWithCanonicalMember_Throws(Type type)
         {
             GameSerializer serializer = new GameSerializer(type);

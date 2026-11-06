@@ -594,10 +594,11 @@ namespace Rebellion.Game.FogOfWar
                 UpdatePlanetDetailState(snapshot, planet);
             snapshot.RevealedCategories = accumulatedCategories;
             if (
-                categories.HasFlag(
-                    PlanetIntelligenceCategory.CapitalShips
-                        | PlanetIntelligenceCategory.Starfighters
-                )
+                categories.HasFlag(PlanetIntelligenceCategory.Starfighters)
+                && (
+                    categories
+                    & (PlanetIntelligenceCategory.CapitalShips | PlanetIntelligenceCategory.Fleets)
+                ) != 0
             )
                 snapshot.FleetsObservedAtTick = currentTick;
             UpdateOfficerIntelligence(faction, planet, snapshot, categories, includeDescendants);

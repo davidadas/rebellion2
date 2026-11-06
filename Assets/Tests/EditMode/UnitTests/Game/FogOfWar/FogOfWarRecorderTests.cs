@@ -19,6 +19,30 @@ namespace Rebellion.Tests.Game.FogOfWar
         /// Verifies ordered refreshes retain identical snapshots after movement and removal.
         /// </summary>
         /// <param name="reverseOrder">Whether to observe the previous location first.</param>
+        [TestCase(PlanetIntelligenceCategory.Fleets | PlanetIntelligenceCategory.Starfighters, 20)]
+        [TestCase(
+            PlanetIntelligenceCategory.CapitalShips | PlanetIntelligenceCategory.Starfighters,
+            20
+        )]
+        [TestCase(PlanetIntelligenceCategory.Fleets, 10)]
+        [TestCase(PlanetIntelligenceCategory.CapitalShips, 10)]
+        [TestCase(PlanetIntelligenceCategory.Starfighters, 10)]
+        public void RecordIntelligenceSnapshot_OrbitalCategories_UpdatesCompleteFleetObservationTick(
+            PlanetIntelligenceCategory categories,
+            int expectedTick
+        )
+        {
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            recorder.RecordIntelligenceSnapshot(_alliance, _coruscant, _coreSector, 20, categories);
+
+            Assert.AreEqual(
+                expectedTick,
+                GetSnapshot(_coreSector, _coruscant).FleetsObservedAtTick
+            );
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void RecordPlanetSnapshots_ChangedLocations_MatchesIndividualObservations(
