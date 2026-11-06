@@ -927,6 +927,50 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void SaveAndLoadGame_GameWithScopedEventStates_PreservesTargetSchedules()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { PlayerFactionID = "FNALL1" },
+                EventRuntime = new GameEventRuntimeState
+                {
+                    States = new Dictionary<string, GameEventState>
+                    {
+                        {
+                            "INFORMANTS",
+                            new GameEventState
+                            {
+                                ScopedStates = new Dictionary<string, GameEventState>
+                                {
+                                    {
+                                        "CORUSCANT",
+                                        new GameEventState
+                                        {
+                                            IsInitialized = true,
+                                            NextEligibleTick = 731,
+                                            ActivationCount = 2,
+                                        }
+                                    },
+                                },
+                            }
+                        },
+                    },
+                },
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            GameEventState state = loadedGame.EventRuntime.States["INFORMANTS"].ScopedStates[
+                "CORUSCANT"
+            ];
+            Assert.IsTrue(state.IsInitialized);
+            Assert.AreEqual(731, state.NextEligibleTick);
+            Assert.AreEqual(2, state.ActivationCount);
+        }
+
+        [Test]
         public void SaveAndLoadGame_GameWithEventVariables_PreservesStoryState()
         {
             GameRoot game = new GameRoot

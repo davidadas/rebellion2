@@ -8,6 +8,7 @@ using System.Xml.Schema;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay.GameEvents;
 using Rebellion.Util.Serialization;
 
 /// <summary>
@@ -1018,10 +1019,12 @@ public sealed class ContentPackEditorProject
         using (XmlReader reader = XmlReader.Create(schema))
             schemas.Add(null, reader);
         using StringReader document = new StringReader("<GameEvents>\n" + text + "\n</GameEvents>");
-        new GameSerializer(
-            typeof(GameEvent[]),
-            new GameSerializerSettings { RootName = "GameEvents", Schemas = schemas }
-        ).Deserialize(document);
+        GameEvent[] definitions = (GameEvent[])
+            new GameSerializer(
+                typeof(GameEvent[]),
+                new GameSerializerSettings { RootName = "GameEvents", Schemas = schemas }
+            ).Deserialize(document);
+        GameEventCommands.ValidateDefinition(definitions.Single());
         string identity = replacement.Element("InstanceID")?.Value;
         if (
             GetCatalogs()

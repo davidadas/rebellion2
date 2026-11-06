@@ -80,20 +80,39 @@ namespace Rebellion.Gameplay
         /// <param name="resolvedResults">The already-processed results to extend in place.</param>
         public void ProcessMessageReactions(List<GameResult> resolvedResults)
         {
+            HashSet<MessageDeliveredResult> notifiedDeliveries = new();
             List<GameResult> pendingMessageResults = new List<GameResult>(resolvedResults);
             while (pendingMessageResults.Count > 0)
             {
+                NotifyMessageDeliveries(pendingMessageResults, notifiedDeliveries);
                 List<GameResult> deliveredResults = _getMessageObserver()
                     .ProcessResults(pendingMessageResults);
                 if (deliveredResults.Count == 0)
                     return;
                 List<GameResult> deliveryReactions = _getResults().Publish(deliveredResults);
                 resolvedResults.AddRange(deliveryReactions);
-                foreach (
-                    MessageDeliveredResult delivery in deliveredResults.OfType<MessageDeliveredResult>()
-                )
-                    MessageDelivered?.Invoke(delivery);
                 pendingMessageResults = deliveryReactions;
+            }
+        }
+
+        /// <summary>
+        /// Releases each newly settled message delivery to presentation exactly once.
+        /// </summary>
+        /// <param name="results">The settled result wave containing completed deliveries.</param>
+        /// <param name="notifiedDeliveries">Deliveries already released during this message boundary.</param>
+        private void NotifyMessageDeliveries(
+            IEnumerable<GameResult> results,
+            ISet<MessageDeliveredResult> notifiedDeliveries
+        )
+        {
+            foreach (
+                MessageDeliveredResult delivery in (
+                    results ?? Enumerable.Empty<GameResult>()
+                ).OfType<MessageDeliveredResult>()
+            )
+            {
+                if (notifiedDeliveries.Add(delivery))
+                    MessageDelivered?.Invoke(delivery);
             }
         }
 

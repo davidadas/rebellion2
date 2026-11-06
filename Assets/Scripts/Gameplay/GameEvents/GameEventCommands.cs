@@ -6,6 +6,7 @@ using Rebellion.Game.GameEvents;
 using Rebellion.Game.Results;
 using Rebellion.Game.Scripting;
 using Rebellion.Gameplay.Scripting;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Gameplay.GameEvents
@@ -56,62 +57,7 @@ namespace Rebellion.Gameplay.GameEvents
                     throw new InvalidOperationException(
                         $"Game event instance ID '{gameEvent.InstanceID}' is missing or duplicated."
                     );
-                if (gameEvent.MaximumActivations is <= 0)
-                    throw new InvalidOperationException(
-                        $"Event '{gameEvent.InstanceID}' MaximumActivations must be positive."
-                    );
-                if (
-                    (gameEvent.Triggers.Count > 0 ? 1 : 0) + (gameEvent.Schedule != null ? 1 : 0)
-                    != 1
-                )
-                    throw new InvalidOperationException(
-                        $"Event '{gameEvent.InstanceID}' requires exactly one schedule or trigger collection."
-                    );
-                ValidateSchedule(gameEvent);
-                if (
-                    gameEvent.MaximumActivations.HasValue
-                    && gameEvent.MaximumActivations != 1
-                    && gameEvent.Schedule is GameEventSchedule configuredSchedule
-                    && !IsRecurring(configuredSchedule)
-                )
-                    throw new InvalidOperationException(
-                        $"Event '{gameEvent.InstanceID}' cannot repeat with a one-shot schedule."
-                    );
-
-                Dictionary<string, Type> aliases = new(StringComparer.Ordinal);
-                Dictionary<string, Type> sharedTriggerBindings = null;
-                foreach (GameTrigger trigger in gameEvent.Triggers)
-                {
-                    Dictionary<string, Type> triggerBindings =
-                        GameBindingResolver.ValidateTriggerBindings(
-                            trigger,
-                            $"Event '{gameEvent.InstanceID}'"
-                        );
-                    if (sharedTriggerBindings == null)
-                        sharedTriggerBindings = triggerBindings;
-                    else if (!HaveSameBindings(sharedTriggerBindings, triggerBindings))
-                        throw new InvalidOperationException(
-                            $"Event '{gameEvent.InstanceID}' must expose the same trigger bindings and value types on every trigger path."
-                        );
-                }
-                foreach (
-                    KeyValuePair<string, Type> triggerBinding in sharedTriggerBindings
-                        ?? new Dictionary<string, Type>()
-                )
-                {
-                    if (!aliases.TryAdd(triggerBinding.Key, triggerBinding.Value))
-                    {
-                        throw new InvalidOperationException(
-                            $"Event '{gameEvent.InstanceID}' has duplicate binding alias '{triggerBinding.Key}'."
-                        );
-                    }
-                }
-
-                GameBindingResolver.ValidateBindings(
-                    gameEvent.Bindings,
-                    aliases,
-                    $"Event '{gameEvent.InstanceID}'"
-                );
+                ValidateDefinition(gameEvent);
             }
 
             foreach (GameEvent gameEvent in definitions)
@@ -136,6 +82,114 @@ namespace Rebellion.Gameplay.GameEvents
                         );
                 }
             }
+        }
+
+        /// <summary>
+        /// Validates one event's schedule, scope, trigger, and binding contracts without runtime state.
+        /// </summary>
+        /// <param name="gameEvent">The authored definition being loaded or edited.</param>
+        /// <exception cref="InvalidOperationException">Thrown when the definition has an invalid activation contract.</exception>
+        public static void ValidateDefinition(GameEvent gameEvent)
+        {
+            if (string.IsNullOrWhiteSpace(gameEvent.InstanceID))
+                throw new InvalidOperationException("Game event instance ID is required.");
+            if (gameEvent.MaximumActivations is <= 0)
+                throw new InvalidOperationException(
+                    $"Event '{gameEvent.InstanceID}' MaximumActivations must be positive."
+                );
+            if ((gameEvent.Triggers.Count > 0 ? 1 : 0) + (gameEvent.Schedule != null ? 1 : 0) != 1)
+                throw new InvalidOperationException(
+                    $"Event '{gameEvent.InstanceID}' requires exactly one schedule or trigger collection."
+                );
+            ValidateSchedule(gameEvent);
+            ValidateScope(gameEvent);
+            if (
+                gameEvent.MaximumActivations.HasValue
+                && gameEvent.MaximumActivations != 1
+                && gameEvent.Schedule is GameEventSchedule configuredSchedule
+                && !IsRecurring(configuredSchedule)
+            )
+                throw new InvalidOperationException(
+                    $"Event '{gameEvent.InstanceID}' cannot repeat with a one-shot schedule."
+                );
+
+            Dictionary<string, Type> aliases = new(StringComparer.Ordinal);
+            if (gameEvent.ForEach != null)
+                aliases.Add(gameEvent.ForEach.As, typeof(ISceneNode));
+            Dictionary<string, Type> sharedTriggerBindings = null;
+            foreach (GameTrigger trigger in gameEvent.Triggers)
+            {
+                Dictionary<string, Type> triggerBindings =
+                    GameBindingResolver.ValidateTriggerBindings(
+                        trigger,
+                        $"Event '{gameEvent.InstanceID}'"
+                    );
+                if (sharedTriggerBindings == null)
+                    sharedTriggerBindings = triggerBindings;
+                else if (!HaveSameBindings(sharedTriggerBindings, triggerBindings))
+                    throw new InvalidOperationException(
+                        $"Event '{gameEvent.InstanceID}' must expose the same trigger bindings and value types on every trigger path."
+                    );
+            }
+            foreach (
+                KeyValuePair<string, Type> triggerBinding in sharedTriggerBindings
+                    ?? new Dictionary<string, Type>()
+            )
+            {
+                if (!aliases.TryAdd(triggerBinding.Key, triggerBinding.Value))
+                {
+                    throw new InvalidOperationException(
+                        $"Event '{gameEvent.InstanceID}' has duplicate binding alias '{triggerBinding.Key}'."
+                    );
+                }
+            }
+
+            GameBindingResolver.ValidateBindings(
+                gameEvent.Bindings,
+                aliases,
+                $"Event '{gameEvent.InstanceID}'"
+            );
+        }
+
+        /// <summary>
+        /// Validates an optional per-target schedule scope.
+        /// </summary>
+        /// <param name="gameEvent">The event whose scope is validated.</param>
+        private static void ValidateScope(GameEvent gameEvent)
+        {
+            GameEventScope scope = gameEvent.ForEach;
+            if (scope == null)
+                return;
+            if (string.IsNullOrWhiteSpace(scope.As) || scope.Selectors.Count != 1)
+                throw new InvalidOperationException(
+                    $"Event '{gameEvent.InstanceID}' ForEach requires one selector and a binding alias."
+                );
+            if (gameEvent.Triggers.Count > 0)
+                throw new InvalidOperationException(
+                    $"Event '{gameEvent.InstanceID}' cannot combine ForEach with result triggers."
+                );
+            if (gameEvent.Schedule?.Every == null && gameEvent.Schedule?.RandomInterval == null)
+                throw new InvalidOperationException(
+                    $"Event '{gameEvent.InstanceID}' ForEach requires a recurring schedule."
+                );
+            bool supportsScope = scope.Selectors[0] switch
+            {
+                SelectPlanets => true,
+                SelectOfficers value => string.IsNullOrWhiteSpace(value.PlanetBinding),
+                SelectSpecialForces value => string.IsNullOrWhiteSpace(value.PlanetBinding),
+                SelectFleets value => string.IsNullOrWhiteSpace(value.PlanetBinding),
+                SelectMissions value => string.IsNullOrWhiteSpace(value.PlanetBinding),
+                SelectCapitalShips value => string.IsNullOrWhiteSpace(value.PlanetBinding),
+                SelectStarfighters value => string.IsNullOrWhiteSpace(value.PlanetBinding),
+                SelectRegiments value => string.IsNullOrWhiteSpace(value.PlanetBinding),
+                SelectBuildings value => string.IsNullOrWhiteSpace(value.PlanetBinding),
+                SelectManufacturingOrders value => string.IsNullOrWhiteSpace(value.PlanetBinding),
+                _ => false,
+            };
+            if (!supportsScope)
+                throw new InvalidOperationException(
+                    $"Event '{gameEvent.InstanceID}' ForEach requires a deterministic node selector without activation bindings."
+                );
         }
 
         /// <summary>
@@ -248,8 +302,10 @@ namespace Rebellion.Gameplay.GameEvents
                 if (HasResultTrigger(gameEvent))
                     continue;
 
-                if (TryActivateEvent(gameEvent, null, null, out List<GameResult> globalResults))
-                    allResults.AddRange(globalResults);
+                if (gameEvent.ForEach != null)
+                    allResults.AddRange(ProcessScopedEvent(gameEvent));
+                else if (TryActivateEvent(gameEvent, null, null, out List<GameResult> eventResults))
+                    allResults.AddRange(eventResults);
                 if (_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete)
                     eventsToRemove.Add(gameEvent);
             }
@@ -258,6 +314,168 @@ namespace Rebellion.Gameplay.GameEvents
                 _game.RemoveEvent(eventToRemove);
 
             return allResults;
+        }
+
+        /// <summary>
+        /// Applies a scheduled event independently to every currently selected scope target.
+        /// </summary>
+        /// <param name="gameEvent">The scoped event definition.</param>
+        /// <returns>Results produced by all targets that activated.</returns>
+        private List<GameResult> ProcessScopedEvent(GameEvent gameEvent)
+        {
+            GameEventState eventState = _game.EventRuntime.GetState(gameEvent.InstanceID);
+            if (HasReachedMaximumActivations(gameEvent, eventState))
+                return new List<GameResult>();
+            eventState.ScopedStates ??= new Dictionary<string, GameEventState>();
+            GameEventScope scope = gameEvent.ForEach;
+            HashSet<ISceneNode> currentTargets = SelectScopedTargets(scope);
+            List<ISceneNode> targets = currentTargets
+                .OrderBy(target => target.InstanceID, StringComparer.Ordinal)
+                .ToList();
+            RemoveAbsentScopedStates(eventState, currentTargets);
+            bool refreshTargets = false;
+            List<GameResult> results = new List<GameResult>();
+            foreach (ISceneNode target in targets)
+            {
+                if (!CanActivate(gameEvent, eventState))
+                    break;
+                if (refreshTargets)
+                {
+                    currentTargets = SelectScopedTargets(scope);
+                    RemoveAbsentScopedStates(eventState, currentTargets);
+                    refreshTargets = false;
+                }
+                if (!currentTargets.Contains(target))
+                    continue;
+                if (
+                    !eventState.ScopedStates.TryGetValue(
+                        target.InstanceID,
+                        out GameEventState targetState
+                    )
+                )
+                {
+                    targetState = new GameEventState();
+                    eventState.ScopedStates.Add(target.InstanceID, targetState);
+                }
+
+                GameEvaluationContext context = new GameEvaluationContext(
+                    gameEvent.InstanceID,
+                    sourceEventInstanceID: gameEvent.InstanceID,
+                    sourceKind: "Event"
+                );
+                context.Bind(scope.As, target);
+                if (
+                    TryActivateEvent(
+                        gameEvent,
+                        null,
+                        null,
+                        out List<GameResult> targetResults,
+                        targetState,
+                        context,
+                        initializeRelativeToCurrentTick: true
+                    )
+                )
+                {
+                    results.AddRange(targetResults);
+                    refreshTargets = true;
+                }
+            }
+            return results;
+        }
+
+        /// <summary>
+        /// Resolves the current membership of a validated, deterministic event scope.
+        /// </summary>
+        /// <param name="scope">The scope whose selector is evaluated.</param>
+        /// <returns>The distinct, identified scene nodes currently in the scope.</returns>
+        private HashSet<ISceneNode> SelectScopedTargets(GameEventScope scope) =>
+            scope
+                .Selectors.SelectMany(selector =>
+                    GameSelectorResolver.Select(selector, _game, _provider, null)
+                )
+                .Where(target => target != null && !string.IsNullOrWhiteSpace(target.InstanceID))
+                .ToHashSet();
+
+        /// <summary>
+        /// Cancels absent targets' pending timers while retaining permanent completion records.
+        /// </summary>
+        /// <param name="eventState">The event's aggregate and target-specific state.</param>
+        /// <param name="targets">The targets currently selected by the scope.</param>
+        private static void RemoveAbsentScopedStates(
+            GameEventState eventState,
+            IEnumerable<ISceneNode> targets
+        )
+        {
+            HashSet<string> targetIDs = targets
+                .Select(target => target.InstanceID)
+                .ToHashSet(StringComparer.Ordinal);
+            foreach (
+                string id in eventState
+                    .ScopedStates.Where(pair =>
+                        !pair.Value.IsComplete && !targetIDs.Contains(pair.Key)
+                    )
+                    .Select(pair => pair.Key)
+                    .ToArray()
+            )
+                eventState.ScopedStates.Remove(id);
+        }
+
+        /// <summary>
+        /// Synchronizes planet-scoped schedule state with completed ownership transitions.
+        /// </summary>
+        /// <param name="results">The ownership transitions to apply in result order.</param>
+        public void SynchronizeScopedTargets(IReadOnlyList<PlanetOwnershipChangedResult> results)
+        {
+            foreach (
+                PlanetOwnershipChangedResult result in results
+                    ?? Array.Empty<PlanetOwnershipChangedResult>()
+            )
+            {
+                if (result?.Planet == null || string.IsNullOrWhiteSpace(result.Planet.InstanceID))
+                    continue;
+
+                foreach (GameEvent gameEvent in _game.GetEventPool())
+                {
+                    if (
+                        gameEvent.ForEach?.Selectors.SingleOrDefault() is not SelectPlanets selector
+                    )
+                        continue;
+
+                    bool selectedBefore = GameSelectorResolver.Matches(
+                        selector,
+                        result.Planet,
+                        result.PreviousOwner?.InstanceID
+                    );
+                    bool selectedAfter = GameSelectorResolver.Matches(
+                        selector,
+                        result.Planet,
+                        result.NewOwner?.InstanceID
+                    );
+                    if (selectedBefore == selectedAfter)
+                        continue;
+
+                    GameEventState eventState = _game.EventRuntime.GetState(gameEvent.InstanceID);
+                    if (eventState.IsComplete)
+                        continue;
+                    eventState.ScopedStates ??= new Dictionary<string, GameEventState>();
+                    if (
+                        eventState.ScopedStates.TryGetValue(
+                            result.Planet.InstanceID,
+                            out GameEventState existingState
+                        ) && existingState.IsComplete
+                    )
+                        continue;
+                    if (!selectedAfter)
+                    {
+                        eventState.ScopedStates.Remove(result.Planet.InstanceID);
+                        continue;
+                    }
+
+                    GameEventState targetState = new GameEventState();
+                    eventState.ScopedStates[result.Planet.InstanceID] = targetState;
+                    InitializeSchedule(gameEvent, targetState, result.Tick);
+                }
+            }
         }
 
         /// <summary>
@@ -382,34 +600,50 @@ namespace Rebellion.Gameplay.GameEvents
         /// <param name="trigger">The trigger definition that matched the result, if any.</param>
         /// <param name="triggerResult">The simulation result that activated the event, if any.</param>
         /// <param name="results">Receives results produced by the event.</param>
+        /// <param name="stateOverride">Optional target-specific schedule state.</param>
+        /// <param name="contextOverride">Optional context containing a target-scope binding.</param>
+        /// <param name="initializeRelativeToCurrentTick">Whether a newly armed schedule starts from the current tick.</param>
         /// <returns>True when the event activated; otherwise false.</returns>
         private bool TryActivateEvent(
             GameEvent gameEvent,
             GameTrigger trigger,
             GameResult triggerResult,
-            out List<GameResult> results
+            out List<GameResult> results,
+            GameEventState stateOverride = null,
+            GameEvaluationContext contextOverride = null,
+            bool initializeRelativeToCurrentTick = false
         )
         {
-            GameEventState state = _game.EventRuntime.GetState(gameEvent.InstanceID);
-            if (!CanActivate(gameEvent, state))
+            GameEventState state =
+                stateOverride ?? _game.EventRuntime.GetState(gameEvent.InstanceID);
+            GameEventState eventState = _game.EventRuntime.GetState(gameEvent.InstanceID);
+            if (state.IsComplete || !CanActivate(gameEvent, eventState))
             {
                 results = new List<GameResult>();
                 return false;
             }
 
-            if (!InitializeSchedule(gameEvent, state))
+            if (
+                !InitializeSchedule(
+                    gameEvent,
+                    state,
+                    initializeRelativeToCurrentTick ? _game.CurrentTick : null
+                )
+            )
             {
                 results = new List<GameResult>();
                 return false;
             }
 
-            GameEvaluationContext context = new GameEvaluationContext(
-                gameEvent?.InstanceID,
-                triggerResult: triggerResult,
-                trigger: trigger,
-                sourceEventInstanceID: gameEvent?.InstanceID,
-                sourceKind: "Event"
-            );
+            GameEvaluationContext context =
+                contextOverride
+                ?? new GameEvaluationContext(
+                    gameEvent?.InstanceID,
+                    triggerResult: triggerResult,
+                    trigger: trigger,
+                    sourceEventInstanceID: gameEvent?.InstanceID,
+                    sourceKind: "Event"
+                );
             foreach (GameBinding binding in gameEvent.Bindings)
                 GameBindingResolver.Bind(binding, _game, _provider, context);
             if (ShouldCompleteSchedule(gameEvent, state, context))
@@ -433,14 +667,20 @@ namespace Rebellion.Gameplay.GameEvents
 
             state.ActivationCount++;
             state.LastActivationTick = _game.CurrentTick;
+            if (state != eventState)
+            {
+                eventState.ActivationCount++;
+                eventState.LastActivationTick = _game.CurrentTick;
+            }
             if (
                 gameEvent.Schedule is GameEventSchedule configuredSchedule
                 && !IsRecurring(configuredSchedule)
             )
                 state.IsComplete = true;
-            HasReachedMaximumActivations(gameEvent, state);
+            HasReachedMaximumActivations(gameEvent, eventState);
             results = _actions.Complete(execution);
-            bool isComplete = HasReachedMaximumActivations(gameEvent, state);
+            bool isComplete =
+                HasReachedMaximumActivations(gameEvent, eventState) || state.IsComplete;
             if (!isComplete)
             {
                 GetRepeatRange(gameEvent, out int minimum, out int maximum);
@@ -499,12 +739,17 @@ namespace Rebellion.Gameplay.GameEvents
         private static bool HasResultTrigger(GameEvent gameEvent) => gameEvent.Triggers.Count > 0;
 
         /// <summary>
-        /// Initializes an event's absolute first eligible tick from its authored schedule.
+        /// Initializes an event's first eligible tick from its authored schedule.
         /// </summary>
         /// <param name="gameEvent">The event definition.</param>
         /// <param name="state">The persistent runtime state to initialize.</param>
+        /// <param name="relativeTick">The tick from which an interval delay begins, when present.</param>
         /// <returns>True when the schedule is initialized or was already initialized; otherwise false.</returns>
-        private bool InitializeSchedule(GameEvent gameEvent, GameEventState state)
+        private bool InitializeSchedule(
+            GameEvent gameEvent,
+            GameEventState state,
+            int? relativeTick = null
+        )
         {
             if (state.IsInitialized)
                 return true;
@@ -550,7 +795,11 @@ namespace Rebellion.Gameplay.GameEvents
             }
 
             GetInitialRange(gameEvent, out int minimum, out int maximum);
-            state.NextEligibleTick = RollRange(minimum, maximum);
+            int initialDelay = RollRange(minimum, maximum);
+            state.NextEligibleTick =
+                relativeTick.HasValue && gameEvent.Schedule?.At == null
+                    ? checked(relativeTick.Value + initialDelay)
+                    : initialDelay;
             state.IsInitialized = true;
             return true;
         }

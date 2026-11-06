@@ -106,7 +106,8 @@ Activates when an uprising ends.
 
 ### IntelligenceRevealed
 
-Activates when intelligence is revealed to a faction.
+Activates when intelligence is revealed to a faction. Both forms of `RevealToFaction`
+activate this trigger. Category reports expose the observed planet in `Observations`.
 
 **Optional options**
 

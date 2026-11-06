@@ -196,7 +196,21 @@ Provides a faction with current intelligence about selected game objects.
 **Required options**
 
 - `FactionInstanceID` **[Required]:** The `InstanceID` of the faction receiving the intelligence.
-- `Targets` **[Required]:** The selectors identifying the game objects to reveal.
+- Intelligence source **[Required]:** Provide exactly one:
+  - `Targets`: Selectors identifying individual game objects to reveal.
+  - `Category`: One of the intelligence categories listed below, with exactly one
+    `PlanetInstanceID` or `PlanetBinding` identifying the planet to observe.
+
+**Optional options**
+
+- `PlanetInstanceID` **[Optional]:** The planet to observe when using `Category`; required when
+  `PlanetBinding` is omitted. Do not supply both planet references.
+- `PlanetBinding` **[Optional]:** A bound planet to observe when using `Category`; required when
+  `PlanetInstanceID` is omitted.
+- `IncludeDescendants` **[Optional]:** For officer, regiment, special-forces, and starfighter
+  categories, include units inside fleets, ships, and missions; defaults to `true`. Set `false`
+  to restrict individual unit-category reports to units directly stationed on the planet. Fleet
+  and capital-ship hierarchy reports retain their documented cargo behavior.
 
 ```xml
 <RevealToFaction FactionInstanceID="FNALL1">
@@ -218,6 +232,45 @@ and cargo hierarchy. Selecting one capital ship records that ship without unsele
 selecting a carried officer, regiment, special-forces unit, or starfighter records that subject and
 only the parent structure needed to locate it. Buildings, missions, and manufacturing orders are
 recorded individually.
+
+Category reports refresh one kind of planet intelligence while retaining unrelated remembered
+information. Omit `Targets` when using this form:
+
+```xml
+<RevealToFaction FactionInstanceID="FNALL1"
+                 PlanetInstanceID="CORUSCANT"
+                 Category="PlanetResources"/>
+```
+
+A scoped event can use its target binding instead of a literal planet ID:
+
+```xml
+<RevealToFaction FactionInstanceID="FNALL1"
+                 PlanetBinding="$planet"
+                 Category="Starfighters"
+                 IncludeDescendants="false"/>
+```
+
+**Category values**
+
+- `Planet`: Planet control, resources, uprising status, and headquarters status.
+- `PlanetControl`: Ownership and popular support.
+- `PlanetResources`: Energy capacity and raw-resource nodes.
+- `Fleets`: Complete fleet, ship, and cargo hierarchies.
+- `CapitalShips`: Capital ships, preserving unreported cargo.
+- `Starfighters`: Starfighters.
+- `GroundForces`: Regiments and special forces.
+- `Regiments`: Regiments only.
+- `SpecialForces`: Special-forces units only.
+- `Buildings`: All buildings, including planetary defenses and production facilities.
+- `PlanetaryDefenses`: Planetary defenses only.
+- `ProductionFacilities`: Production facilities only.
+- `Officers`: Officers.
+- `Missions`: Missions and their participants.
+- `Manufacturing`: Manufacturing queues.
+- `PlanetMilitaryProduction`: Planet details, capital ships and their combat cargo, stationed
+  starfighters and regiments, buildings, and manufacturing queues.
+- `All`: Every intelligence category.
 
 ### SendMessage
 

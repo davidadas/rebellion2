@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
@@ -1189,6 +1190,756 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             Assert.Zero(second.NumRawResourceNodes);
             Assert.AreEqual(30, _game.EventRuntime.GetState(gameEvent.InstanceID).NextEligibleTick);
             Assert.AreEqual(30, _game.EventRuntime.GetState(gameEvent.InstanceID).NextEligibleTick);
+        }
+
+        [TestCase(1)]
+        [TestCase(3)]
+        public void ProcessScheduledEvents_ScopedActivationLimit_CompletesAcrossAllTargets(
+            int maximum
+        )
+        {
+            (GameEvent gameEvent, _, _) = CreateScopedPlanetScenario();
+            gameEvent.MaximumActivations = maximum;
+
+            for (_game.CurrentTick = 0; _game.CurrentTick <= 30; _game.CurrentTick += 10)
+                _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(maximum, _game.EventRuntime.GetVariable("scoped-fired"));
+            Assert.AreEqual(
+                maximum,
+                _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount
+            );
+            Assert.IsTrue(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
+            Assert.IsFalse(_game.GetEventPool().Contains(gameEvent));
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_ScopedLimitReached_UsesTargetIdentityOrder()
+        {
+            (GameEvent gameEvent, Planet first, _) = CreateScopedPlanetScenario();
+            gameEvent.MaximumActivations = 1;
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            CollectionAssert.AreEqual(
+                new[] { first.InstanceID },
+                _game.EventRuntime.GetState(gameEvent.InstanceID).ScopedStates.Keys
+            );
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_CompletedTargetReenters_RemainsComplete()
+        {
+            (GameEvent gameEvent, Planet first, _) = CreateScopedPlanetScenario();
+            gameEvent.Schedule.Every.Until.Add(
+                new IsOwnedConditional
+                {
+                    PlanetBinding = "target",
+                    FactionInstanceID = first.OwnerInstanceID,
+                }
+            );
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+            GameEventState state = _game.EventRuntime.GetState(gameEvent.InstanceID).ScopedStates[
+                first.InstanceID
+            ];
+            first.OwnerInstanceID = null;
+            _game.CurrentTick = 1;
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+            first.OwnerInstanceID = "empire";
+            _game.CurrentTick = 2;
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreSame(
+                state,
+                _game.EventRuntime.GetState(gameEvent.InstanceID).ScopedStates[first.InstanceID]
+            );
+            Assert.IsTrue(state.IsComplete);
+            Assert.Zero(state.ActivationCount);
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_EmptyScope_WaitsForNewTargets()
+        {
+            (GameEvent gameEvent, Planet first, Planet second) = CreateScopedPlanetScenario();
+            first.OwnerInstanceID = null;
+            second.OwnerInstanceID = null;
+            gameEvent.Schedule.Every.InitialDelayTicks = 10;
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+            Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
+            first.OwnerInstanceID = "alliance";
+            _game.CurrentTick = 25;
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(
+                35,
+                _game
+                    .EventRuntime.GetState(gameEvent.InstanceID)
+                    .ScopedStates[first.InstanceID]
+                    .NextEligibleTick
+            );
+            Assert.Zero(_game.EventRuntime.GetVariable("scoped-fired"));
+            Assert.Contains(gameEvent, _game.GetEventPool());
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_AllCurrentTargetsComplete_KeepsEventForFutureTargets()
+        {
+            (GameEvent gameEvent, _, _) = CreateScopedPlanetScenario();
+            gameEvent.Schedule.Every.Until.Add(
+                new TickCountConditional
+                {
+                    Ticks = 0,
+                    Comparison = ComparisonOperator.GreaterThanOrEqual,
+                }
+            );
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.IsTrue(
+                _game
+                    .EventRuntime.GetState(gameEvent.InstanceID)
+                    .ScopedStates.Values.All(state => state.IsComplete)
+            );
+            Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
+            Assert.Contains(gameEvent, _game.GetEventPool());
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_EarlierTargetDisablesLaterTarget_SkipsLaterTarget()
+        {
+            (GameEvent gameEvent, _, Planet second) = CreateScopedPlanetScenario();
+            gameEvent.Actions.Insert(
+                0,
+                new SetNodeStateAction
+                {
+                    InstanceID = second.InstanceID,
+                    State = SceneNodeState.Inactive,
+                }
+            );
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(1, _game.EventRuntime.GetVariable("scoped-fired"));
+            Assert.IsFalse(
+                _game
+                    .EventRuntime.GetState(gameEvent.InstanceID)
+                    .ScopedStates.ContainsKey(second.InstanceID)
+            );
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_ScopedActivation_EnablesDependentEvent()
+        {
+            (GameEvent gameEvent, _, _) = CreateScopedPlanetScenario();
+            GameEvent dependent = new GameEvent
+            {
+                InstanceID = "dependent",
+                Schedule = new GameEventSchedule
+                {
+                    After = new AfterEvent
+                    {
+                        EventInstanceID = gameEvent.InstanceID,
+                        DelayTicks = 5,
+                    },
+                },
+                Conditionals = new List<GameConditional>
+                {
+                    new HasEventActivatedConditional { EventInstanceID = gameEvent.InstanceID },
+                },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "dependent-fired", Operand = 1 },
+                },
+            };
+            _game.GetEventPool().Add(dependent);
+            _system.ValidateEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+            _game.CurrentTick = 5;
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(1, _game.EventRuntime.GetVariable("dependent-fired"));
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_ScopedLimitReached_EnablesCompletionCondition()
+        {
+            (GameEvent gameEvent, _, _) = CreateScopedPlanetScenario();
+            gameEvent.MaximumActivations = 1;
+            _game
+                .GetEventPool()
+                .Add(
+                    new GameEvent
+                    {
+                        InstanceID = "on-complete",
+                        Schedule = new GameEventSchedule { Every = new EveryTicks { Ticks = 1 } },
+                        Conditionals = new List<GameConditional>
+                        {
+                            new IsEventCompleteConditional
+                            {
+                                EventInstanceID = gameEvent.InstanceID,
+                            },
+                        },
+                        Actions = new List<GameAction>
+                        {
+                            new SetEventVariableAction { Key = "completed", Operand = 1 },
+                        },
+                    }
+                );
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(1, _game.EventRuntime.GetVariable("completed"));
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_ScopedBindings_ResolveForEachTarget()
+        {
+            (GameEvent gameEvent, Planet first, Planet second) = CreateScopedPlanetScenario();
+            first.NumRawResourceNodes = 3;
+            second.NumRawResourceNodes = 7;
+            gameEvent.Bindings.Add(
+                new GameBinding
+                {
+                    As = "resources",
+                    Sources = new List<GameBindingSource>
+                    {
+                        new PlanetStatBindingSource
+                        {
+                            PlanetBinding = "target",
+                            Stat = PlanetStat.RawResourceNodes,
+                        },
+                    },
+                }
+            );
+            gameEvent.Actions = new List<GameAction>
+            {
+                new SetEventVariableAction
+                {
+                    Key = "total",
+                    Operation = EventVariableOperation.Add,
+                    OperandBinding = "resources",
+                },
+            };
+            _system.ValidateEvents(_game.GetEventPool());
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(10, _game.EventRuntime.GetVariable("total"));
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_ScopedConditionInitiallyFails_PreservesDueTick()
+        {
+            (GameEvent gameEvent, _, _) = CreateScopedPlanetScenario();
+            gameEvent.Conditionals.Add(
+                new TickCountConditional
+                {
+                    Ticks = 3,
+                    Comparison = ComparisonOperator.GreaterThanOrEqual,
+                }
+            );
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+            Assert.Zero(
+                _game
+                    .EventRuntime.GetState(gameEvent.InstanceID)
+                    .ScopedStates["first"]
+                    .NextEligibleTick
+            );
+            _game.CurrentTick = 3;
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(2, _game.EventRuntime.GetVariable("scoped-fired"));
+            Assert.AreEqual(
+                13,
+                _game
+                    .EventRuntime.GetState(gameEvent.InstanceID)
+                    .ScopedStates["first"]
+                    .NextEligibleTick
+            );
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_OfficerScope_TracksIndividualSchedules()
+        {
+            (GameEvent gameEvent, Planet first, _) = CreateScopedPlanetScenario();
+            Officer officer = new Officer
+            {
+                InstanceID = "officer",
+                OwnerInstanceID = first.OwnerInstanceID,
+            };
+            _game.AttachNode(officer, first);
+            gameEvent.ForEach.Selectors = new List<GameSelector>
+            {
+                new SelectOfficers { PlanetInstanceID = first.InstanceID },
+            };
+            _system.ValidateEvents(_game.GetEventPool());
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            CollectionAssert.AreEqual(
+                new[] { officer.InstanceID },
+                _game.EventRuntime.GetState(gameEvent.InstanceID).ScopedStates.Keys
+            );
+            Assert.AreEqual(1, _game.EventRuntime.GetVariable("scoped-fired"));
+        }
+
+        [TestCaseSource(nameof(UnsupportedScopeSelectors))]
+        public void ValidateEvents_UnsupportedScopeSelector_Throws(GameSelector selector)
+        {
+            (GameEvent gameEvent, _, _) = CreateScopedPlanetScenario();
+            gameEvent.ForEach.Selectors = new List<GameSelector> { selector };
+
+            Assert.Throws<InvalidOperationException>(() =>
+                _system.ValidateEvents(_game.GetEventPool())
+            );
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_OwnedPlanetScope_TracksIndependentSchedules()
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "alliance" });
+            _game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            _game.AttachNode(sector, _game.Galaxy);
+            Planet first = new Planet { InstanceID = "first", OwnerInstanceID = "alliance" };
+            Planet second = new Planet { InstanceID = "second", OwnerInstanceID = "empire" };
+            _game.AttachNode(first, sector);
+            _game.AttachNode(second, sector);
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "SCOPED",
+                ForEach = new GameEventScope
+                {
+                    As = "target",
+                    Selectors = new List<GameSelector> { new SelectPlanets { IsOwned = true } },
+                },
+                Schedule = new GameEventSchedule
+                {
+                    Every = new EveryTicks { Ticks = 20, InitialDelayTicks = 10 },
+                },
+                Actions = new List<GameAction>
+                {
+                    new ChangeRawResourceNodesAction { PlanetBinding = "target", Amount = 1 },
+                },
+            };
+            _game.GetEventPool().Add(gameEvent);
+
+            _game.CurrentTick = 100;
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            GameEventState eventState = _game.EventRuntime.GetState(gameEvent.InstanceID);
+            Assert.AreEqual(110, eventState.ScopedStates[first.InstanceID].NextEligibleTick);
+            Assert.AreEqual(110, eventState.ScopedStates[second.InstanceID].NextEligibleTick);
+
+            _game.CurrentTick = 110;
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(1, first.NumRawResourceNodes);
+            Assert.AreEqual(1, second.NumRawResourceNodes);
+            Assert.AreEqual(1, eventState.ScopedStates[first.InstanceID].ActivationCount);
+            Assert.AreEqual(1, eventState.ScopedStates[second.InstanceID].ActivationCount);
+            Assert.AreEqual(2, eventState.ActivationCount);
+            Assert.AreEqual(110, eventState.LastActivationTick);
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_OwnedPlanetScope_RearmsAfterNeutralInterval()
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "alliance" });
+            _game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            _game.AttachNode(sector, _game.Galaxy);
+            Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "alliance" };
+            _game.AttachNode(planet, sector);
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "SCOPED",
+                ForEach = new GameEventScope
+                {
+                    As = "target",
+                    Selectors = new List<GameSelector> { new SelectPlanets { IsOwned = true } },
+                },
+                Schedule = new GameEventSchedule
+                {
+                    Every = new EveryTicks { Ticks = 30, InitialDelayTicks = 30 },
+                },
+                Actions = new List<GameAction>
+                {
+                    new ChangeRawResourceNodesAction { PlanetBinding = "target", Amount = 1 },
+                },
+            };
+            _game.GetEventPool().Add(gameEvent);
+
+            _game.CurrentTick = 100;
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+            planet.OwnerInstanceID = null;
+            _game.CurrentTick = 110;
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            GameEventState eventState = _game.EventRuntime.GetState(gameEvent.InstanceID);
+            Assert.IsFalse(eventState.ScopedStates.ContainsKey(planet.InstanceID));
+
+            planet.OwnerInstanceID = "empire";
+            _game.CurrentTick = 120;
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(150, eventState.ScopedStates[planet.InstanceID].NextEligibleTick);
+            Assert.Zero(planet.NumRawResourceNodes);
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_OwnedPlanetScope_PreservesScheduleAcrossOwnerChange()
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "alliance" });
+            _game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            _game.AttachNode(sector, _game.Galaxy);
+            Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "alliance" };
+            _game.AttachNode(planet, sector);
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "SCOPED",
+                ForEach = new GameEventScope
+                {
+                    As = "target",
+                    Selectors = new List<GameSelector> { new SelectPlanets { IsOwned = true } },
+                },
+                Schedule = new GameEventSchedule
+                {
+                    Every = new EveryTicks { Ticks = 30, InitialDelayTicks = 30 },
+                },
+            };
+            _game.GetEventPool().Add(gameEvent);
+
+            _game.CurrentTick = 100;
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+            planet.OwnerInstanceID = "empire";
+            _game.CurrentTick = 110;
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            GameEventState state = _game.EventRuntime.GetState(gameEvent.InstanceID).ScopedStates[
+                planet.InstanceID
+            ];
+            Assert.AreEqual(130, state.NextEligibleTick);
+            Assert.Zero(state.ActivationCount);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ProcessTriggeredEvents_RevealForms_AppliesFiltersAndObservationBinding(
+            bool categoryReport
+        )
+        {
+            Faction recipient = new Faction { InstanceID = "recipient" };
+            _game.GetFactions().Add(recipient);
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            _game.AttachNode(sector, _game.Galaxy);
+            Planet planet = new Planet { InstanceID = "planet" };
+            _game.AttachNode(planet, sector);
+            var random = new FixedRNG();
+            GameEventCommands commands = new GameEventCommands(
+                _game,
+                random,
+                new GameActionCommands(
+                    _game,
+                    random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
+            );
+            RevealToFactionAction reveal = new RevealToFactionAction
+            {
+                FactionInstanceID = recipient.InstanceID,
+            };
+            if (categoryReport)
+            {
+                reveal.PlanetInstanceID = planet.InstanceID;
+                reveal.Category = PlanetIntelligenceCategory.PlanetResources;
+            }
+            else
+                reveal.Targets.Add(new SelectPlanets { InstanceID = planet.InstanceID });
+            _game
+                .GetEventPool()
+                .Add(
+                    new GameEvent
+                    {
+                        InstanceID = "source",
+                        Schedule = new GameEventSchedule { At = new AtTick { Tick = 0 } },
+                        Actions = new List<GameAction> { reveal },
+                    }
+                );
+            _game
+                .GetEventPool()
+                .Add(
+                    new GameEvent
+                    {
+                        InstanceID = "listener",
+                        MaximumActivations = 1,
+                        Triggers = new List<GameTrigger>
+                        {
+                            new IntelligenceRevealedTrigger
+                            {
+                                RecipientFactionInstanceID = recipient.InstanceID,
+                                ObservationInstanceID = planet.InstanceID,
+                                SourceEventInstanceID = "source",
+                                Bindings = new List<GameBinding>
+                                {
+                                    new GameBinding { Argument = "Recipient", As = "$recipient" },
+                                    new GameBinding
+                                    {
+                                        Argument = "Observations",
+                                        As = "$observations",
+                                    },
+                                },
+                            },
+                        },
+                        Bindings = new List<GameBinding>
+                        {
+                            new GameBinding
+                            {
+                                As = "$planet",
+                                Selectors = new List<GameSelector>
+                                {
+                                    new SelectBinding { Binding = "$observations" },
+                                },
+                            },
+                        },
+                        Actions = new List<GameAction>
+                        {
+                            new SendMessageAction
+                            {
+                                RecipientFactionInstanceID = recipient.InstanceID,
+                                LocationBinding = "$planet",
+                                MessageType = MessageType.Advice,
+                                Subject = "Intel received",
+                                Body = "Intel received",
+                            },
+                        },
+                    }
+                );
+            commands.ValidateEvents(_game.GetEventPool());
+
+            List<GameResult> reports = commands.ProcessScheduledEvents(_game.GetEventPool());
+            Assert.AreEqual(
+                1,
+                reports.Count,
+                string.Join(",", reports.Select(result => result.GetType().Name))
+            );
+            List<GameResult> reactions = commands.ProcessTriggeredEvents(reports);
+            Assert.AreEqual(
+                1,
+                _game.EventRuntime.GetState("listener").ActivationCount,
+                string.Join(",", reactions.Select(result => result.GetType().Name))
+            );
+
+            MessageDeliveredResult delivery = reactions.OfType<MessageDeliveredResult>().Single();
+            Assert.AreSame(recipient, delivery.Recipient);
+            Assert.AreEqual(planet.InstanceID, delivery.Message.EventLocationInstanceID);
+        }
+
+        [TestCaseSource(nameof(PlanetInformantOutcomeCases))]
+        public void ProcessScheduledEvents_PlanetInformantsOutcome_RevealsExpectedIntelligenceAndMessage(
+            string ownerInstanceID,
+            string recipientInstanceID,
+            int outcomeIndex,
+            PlanetIntelligenceCategory[] expectedCategories,
+            bool[] expectedDescendantSettings
+        )
+        {
+            SequenceRNG random = new SequenceRNG(intValues: new[] { 30, 0, outcomeIndex, 30 });
+            (
+                GameEventCommands commands,
+                GameEvent gameEvent,
+                Planet planet,
+                Faction _,
+                Faction recipient
+            ) = CreatePlanetInformantsScenario(ownerInstanceID, recipientInstanceID, 0, random);
+            _game.CurrentTick = 0;
+            Assert.IsEmpty(commands.ProcessScheduledEvents(_game.GetEventPool()));
+
+            _game.CurrentTick = 30;
+            List<GameResult> results = commands.ProcessScheduledEvents(_game.GetEventPool());
+
+            List<IntelligenceRevealedResult> intelligence = results
+                .OfType<IntelligenceRevealedResult>()
+                .ToList();
+            CollectionAssert.AreEqual(
+                expectedCategories,
+                intelligence.Select(result => result.Category)
+            );
+            CollectionAssert.AreEqual(
+                expectedDescendantSettings,
+                intelligence.Select(result => result.IncludeDescendants)
+            );
+            Assert.IsTrue(intelligence.All(result => result.Recipient == recipient));
+            Assert.IsTrue(intelligence.All(result => result.Observations.Single() == planet));
+            Assert.IsTrue(
+                intelligence.All(result => result.SourceEventInstanceID == gameEvent.InstanceID)
+            );
+
+            MessageDeliveredResult delivery = results.OfType<MessageDeliveredResult>().Single();
+            Assert.AreSame(recipient, delivery.Recipient);
+            Assert.AreEqual(gameEvent.InstanceID, delivery.SourceEventInstanceID);
+            Assert.AreEqual(MessageType.Advice, delivery.Message.Type);
+            Assert.AreEqual("Informants Provide Information", delivery.Message.Title);
+            Assert.AreEqual(
+                "Informants have provided us with information about Alderaan.",
+                delivery.Message.Body
+            );
+            Assert.AreEqual("informants", delivery.Message.BackgroundImageKey);
+            Assert.AreEqual(planet.InstanceID, delivery.Message.EventLocationInstanceID);
+            Assert.AreEqual(planet.InstanceID, delivery.Message.NavigationTargetInstanceID);
+            Assert.AreSame(delivery.Message, recipient.Messages[MessageType.Advice].Single());
+        }
+
+        [TestCase("FNALL1", "FNEMP1", 0)]
+        [TestCase("FNALL1", "FNEMP1", 1)]
+        [TestCase("FNALL1", "FNEMP1", 2)]
+        [TestCase("FNALL1", "FNEMP1", 3)]
+        [TestCase("FNALL1", "FNEMP1", 4)]
+        [TestCase("FNALL1", "FNEMP1", 5)]
+        [TestCase("FNALL1", "FNEMP1", 6)]
+        [TestCase("FNALL1", "FNEMP1", 7)]
+        [TestCase("FNEMP1", "FNALL1", 0)]
+        [TestCase("FNEMP1", "FNALL1", 1)]
+        [TestCase("FNEMP1", "FNALL1", 2)]
+        [TestCase("FNEMP1", "FNALL1", 3)]
+        [TestCase("FNEMP1", "FNALL1", 4)]
+        [TestCase("FNEMP1", "FNALL1", 5)]
+        [TestCase("FNEMP1", "FNALL1", 6)]
+        [TestCase("FNEMP1", "FNALL1", 7)]
+        public void ProcessScheduledEvents_InformantReport_UpdatesRecipientBeforeNotification(
+            string ownerInstanceID,
+            string recipientInstanceID,
+            int outcomeIndex
+        )
+        {
+            SequenceRNG random = new SequenceRNG(intValues: new[] { 30, 0, outcomeIndex, 30 });
+            (GameEventCommands commands, GameEvent _, Planet planet, Faction _, Faction recipient) =
+                CreatePlanetInformantsScenario(ownerInstanceID, recipientInstanceID, 0, random);
+            planet.IsColonized = true;
+            GameResultBus bus = new GameResultBus();
+            FogOfWarQueries queries = new FogOfWarQueries(_game);
+            using FogOfWarObserver observer = new FogOfWarObserver(
+                _game,
+                new FogOfWarCommands(_game),
+                queries,
+                new FogOfWarRecorder()
+            );
+            observer.Connect(bus);
+            MessageFactory factory = new MessageFactory(null);
+            MessageObserver messages = new MessageObserver(
+                _game,
+                factory,
+                new MessageCommands(_game, factory)
+            );
+            GameResultPipeline pipeline = new GameResultPipeline(() => bus, () => messages);
+            List<MessageDeliveredResult> notifications = new List<MessageDeliveredResult>();
+            pipeline.MessageDelivered += delivery =>
+            {
+                Planet knownPlanet = queries
+                    .BuildFactionView(recipient)
+                    .GetChildren<Planet>(recursive: true)
+                    .Single(candidate => candidate.InstanceID == planet.InstanceID);
+                Assert.AreEqual(ownerInstanceID, knownPlanet.OwnerInstanceID);
+                Assert.IsTrue(knownPlanet.IsColonized);
+                notifications.Add(delivery);
+            };
+            _game.CurrentTick = 1;
+            pipeline.ProcessResults(commands.ProcessScheduledEvents(_game.GetEventPool()));
+
+            _game.CurrentTick = 31;
+            pipeline.ProcessResults(commands.ProcessScheduledEvents(_game.GetEventPool()));
+
+            Assert.AreEqual(1, notifications.Count);
+            Assert.AreSame(recipient, notifications[0].Recipient);
+            Assert.AreEqual(
+                AdvisorNotificationPreset.SubjectReport,
+                notifications[0].AdvisorNotification.Preset
+            );
+            Assert.AreSame(
+                recipient.Messages[MessageType.Advice].Single(),
+                notifications[0].Message
+            );
+        }
+
+        [TestCase("FNALL1", "FNEMP1", 0, true)]
+        [TestCase("FNALL1", "FNEMP1", 100, false)]
+        [TestCase("FNEMP1", "FNALL1", 0, true)]
+        [TestCase("FNEMP1", "FNALL1", 100, false)]
+        public void ProcessScheduledEvents_PlanetInformantsSupportBoundary_LeaksOnlyAtZeroSupport(
+            string ownerInstanceID,
+            string recipientInstanceID,
+            int popularSupport,
+            bool expectsLeak
+        )
+        {
+            SequenceRNG random = new SequenceRNG(intValues: new[] { 30, 0, 0, 30 });
+            (
+                GameEventCommands commands,
+                GameEvent gameEvent,
+                Planet planet,
+                Faction _,
+                Faction recipient
+            ) = CreatePlanetInformantsScenario(
+                ownerInstanceID,
+                recipientInstanceID,
+                popularSupport,
+                random
+            );
+            _game.CurrentTick = 0;
+            commands.ProcessScheduledEvents(_game.GetEventPool());
+
+            _game.CurrentTick = 30;
+            List<GameResult> results = commands.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(
+                expectsLeak ? 1 : 0,
+                results.OfType<IntelligenceRevealedResult>().Count()
+            );
+            Assert.AreEqual(expectsLeak ? 1 : 0, results.OfType<MessageDeliveredResult>().Count());
+            Assert.AreEqual(expectsLeak ? 1 : 0, recipient.Messages[MessageType.Advice].Count);
+            GameEventState targetState = _game
+                .EventRuntime.GetState(gameEvent.InstanceID)
+                .ScopedStates[planet.InstanceID];
+            Assert.AreEqual(1, targetState.ActivationCount);
+            Assert.AreEqual(60, targetState.NextEligibleTick);
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_PlanetInformantsRecurringSchedule_RearmsTarget()
+        {
+            SequenceRNG random = new SequenceRNG(intValues: new[] { 30, 0, 0, 30, 0, 0, 30 });
+            (
+                GameEventCommands commands,
+                GameEvent gameEvent,
+                Planet planet,
+                Faction _,
+                Faction recipient
+            ) = CreatePlanetInformantsScenario("FNALL1", "FNEMP1", 0, random);
+            _game.CurrentTick = 0;
+            commands.ProcessScheduledEvents(_game.GetEventPool());
+
+            _game.CurrentTick = 30;
+            List<GameResult> first = commands.ProcessScheduledEvents(_game.GetEventPool());
+            _game.CurrentTick = 59;
+            List<GameResult> early = commands.ProcessScheduledEvents(_game.GetEventPool());
+            _game.CurrentTick = 60;
+            List<GameResult> second = commands.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(1, first.OfType<MessageDeliveredResult>().Count());
+            Assert.IsEmpty(early);
+            Assert.AreEqual(1, second.OfType<MessageDeliveredResult>().Count());
+            Assert.AreEqual(2, recipient.Messages[MessageType.Advice].Count);
+            GameEventState eventState = _game.EventRuntime.GetState(gameEvent.InstanceID);
+            GameEventState targetState = eventState.ScopedStates[planet.InstanceID];
+            Assert.AreEqual(2, targetState.ActivationCount);
+            Assert.AreEqual(90, targetState.NextEligibleTick);
+            Assert.AreEqual(2, eventState.ActivationCount);
+            Assert.Contains(gameEvent, _game.GetEventPool().ToList());
         }
 
         [Test]
@@ -2910,6 +3661,63 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         }
 
         /// <summary>
+        /// Creates two owned planets and a recurring event with independent target schedules.
+        /// </summary>
+        /// <returns>The registered event and its planets in target identity order.</returns>
+        private (GameEvent Event, Planet First, Planet Second) CreateScopedPlanetScenario()
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "alliance" });
+            _game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            PlanetSector sector = new PlanetSector { InstanceID = "scope-sector" };
+            _game.AttachNode(sector, _game.Galaxy);
+            Planet first = new Planet { InstanceID = "first", OwnerInstanceID = "alliance" };
+            Planet second = new Planet { InstanceID = "second", OwnerInstanceID = "empire" };
+            _game.AttachNode(second, sector);
+            _game.AttachNode(first, sector);
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "scoped",
+                ForEach = new GameEventScope
+                {
+                    As = "target",
+                    Selectors = new List<GameSelector> { new SelectPlanets { IsOwned = true } },
+                },
+                Schedule = new GameEventSchedule { Every = new EveryTicks { Ticks = 10 } },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction
+                    {
+                        Key = "scoped-fired",
+                        Operation = EventVariableOperation.Add,
+                        Operand = 1,
+                    },
+                },
+            };
+            _game.GetEventPool().Add(gameEvent);
+            return (gameEvent, first, second);
+        }
+
+        /// <summary>
+        /// Supplies scope selectors whose selection needs randomness or an activation binding.
+        /// </summary>
+        /// <returns>The unsupported scope selector definitions.</returns>
+        private static IEnumerable<GameSelector> UnsupportedScopeSelectors()
+        {
+            yield return new SelectRandom { Selectors = { new SelectPlanets() } };
+            yield return new SelectBinding { Binding = "target" };
+            yield return new SelectFirst { Selectors = { new SelectPlanets() } };
+            yield return new SelectOfficers { PlanetBinding = "target" };
+            yield return new SelectSpecialForces { PlanetBinding = "target" };
+            yield return new SelectFleets { PlanetBinding = "target" };
+            yield return new SelectMissions { PlanetBinding = "target" };
+            yield return new SelectCapitalShips { PlanetBinding = "target" };
+            yield return new SelectStarfighters { PlanetBinding = "target" };
+            yield return new SelectRegiments { PlanetBinding = "target" };
+            yield return new SelectBuildings { PlanetBinding = "target" };
+            yield return new SelectManufacturingOrders { PlanetBinding = "target" };
+        }
+
+        /// <summary>
         /// Fails after capture to exercise partial-mutation failure handling.
         /// </summary>
         private sealed class CaptureThenThrowRandom : IRandomNumberProvider
@@ -3007,6 +3815,132 @@ namespace Rebellion.Tests.Gameplay.GameEvents
                 new FogOfWarQueries(game),
                 new MovementQueries(game)
             );
+        }
+
+        /// <summary>
+        /// Enumerates every authored informant outcome for both ownership directions.
+        /// </summary>
+        /// <returns>The behavior cases for the actual planet-informants event.</returns>
+        private static IEnumerable<TestCaseData> PlanetInformantOutcomeCases()
+        {
+            (PlanetIntelligenceCategory[] Categories, bool[] Descendants)[] outcomes =
+            {
+                (new[] { PlanetIntelligenceCategory.PlanetControl }, new[] { true }),
+                (new[] { PlanetIntelligenceCategory.PlanetResources }, new[] { true }),
+                (
+                    new[]
+                    {
+                        PlanetIntelligenceCategory.Starfighters,
+                        PlanetIntelligenceCategory.Regiments,
+                        PlanetIntelligenceCategory.PlanetaryDefenses,
+                    },
+                    new[] { false, false, true }
+                ),
+                (
+                    new[]
+                    {
+                        PlanetIntelligenceCategory.Manufacturing,
+                        PlanetIntelligenceCategory.ProductionFacilities,
+                    },
+                    new[] { true, true }
+                ),
+                (new[] { PlanetIntelligenceCategory.Fleets }, new[] { true }),
+                (new[] { PlanetIntelligenceCategory.PlanetMilitaryProduction }, new[] { false }),
+                (
+                    new[]
+                    {
+                        PlanetIntelligenceCategory.Officers,
+                        PlanetIntelligenceCategory.SpecialForces,
+                    },
+                    new[] { false, false }
+                ),
+                (new[] { PlanetIntelligenceCategory.All }, new[] { false }),
+            };
+            foreach (
+                (string Owner, string Recipient) factions in new[]
+                {
+                    ("FNALL1", "FNEMP1"),
+                    ("FNEMP1", "FNALL1"),
+                }
+            )
+            {
+                for (int index = 0; index < outcomes.Length; index++)
+                {
+                    yield return new TestCaseData(
+                        factions.Owner,
+                        factions.Recipient,
+                        index,
+                        outcomes[index].Categories,
+                        outcomes[index].Descendants
+                    ).SetName(
+                        $"ProcessScheduledEvents_PlanetInformantsOutcome_{factions.Owner}_{index}"
+                    );
+                }
+            }
+        }
+
+        /// <summary>
+        /// Builds a minimal game around a deep copy of the authored planet-informants event.
+        /// </summary>
+        /// <param name="ownerInstanceID">The faction controlling the scoped planet.</param>
+        /// <param name="recipientInstanceID">The opposing faction receiving intelligence.</param>
+        /// <param name="popularSupport">The owning faction's popular support.</param>
+        /// <param name="random">The deterministic random source.</param>
+        /// <returns>The commands, event, planet, owner, and recipient for the scenario.</returns>
+        private (
+            GameEventCommands Commands,
+            GameEvent Event,
+            Planet Planet,
+            Faction Owner,
+            Faction Recipient
+        ) CreatePlanetInformantsScenario(
+            string ownerInstanceID,
+            string recipientInstanceID,
+            int popularSupport,
+            IRandomNumberProvider random
+        )
+        {
+            Faction owner = new Faction
+            {
+                InstanceID = ownerInstanceID,
+                DisplayName = ownerInstanceID,
+            };
+            Faction recipient = new Faction
+            {
+                InstanceID = recipientInstanceID,
+                DisplayName = recipientInstanceID,
+            };
+            _game.GetFactions().Add(owner);
+            _game.GetFactions().Add(recipient);
+            PlanetSector sector = new PlanetSector { InstanceID = "ALDERAAN_SECTOR" };
+            Planet planet = new Planet
+            {
+                InstanceID = "ALDERAAN",
+                DisplayName = "Alderaan",
+                OwnerInstanceID = owner.InstanceID,
+            };
+            planet.SetPopularSupport(owner.InstanceID, popularSupport);
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
+            GameEvent gameEvent = SerializationHelper.Deserialize<GameEvent>(
+                SerializationHelper.Serialize(
+                    TestContent.Data.GameEvents.Single(candidate =>
+                        candidate.InstanceID == "PLANET_INFORMANTS"
+                    )
+                )
+            );
+            _game.GetEventPool().Add(gameEvent);
+            _game.Random = random;
+            GameEventCommands commands = new GameEventCommands(
+                _game,
+                random,
+                new GameActionCommands(
+                    _game,
+                    random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
+            );
+            return (commands, gameEvent, planet, owner, recipient);
         }
 
         /// <summary>
