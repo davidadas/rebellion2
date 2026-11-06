@@ -59,6 +59,7 @@ internal sealed class CustomGameSettingsSession
     private readonly GarrisonRuleSettings garrisonDraft;
     private readonly MovementRuleSettings movementDefaults;
     private readonly MovementRuleSettings movementDraft;
+    private int? aiDecisionTickInterval;
     private string currentDifficultySection;
     private string currentGenerationSection;
 
@@ -118,6 +119,7 @@ internal sealed class CustomGameSettingsSession
         movementDraft =
             summaryDraft.CustomSettings?.MovementRules?.CreateCopy()
             ?? movementDefaults.CreateCopy();
+        aiDecisionTickInterval = summaryDraft.CustomSettings?.AIDecisionTickInterval;
         ReconcileFactionModifiers(generationDefaults, pack.GameData.Factions);
         ReconcileFactionModifiers(generationDraft, pack.GameData.Factions);
         eventCategories = pack
@@ -407,6 +409,7 @@ internal sealed class CustomGameSettingsSession
             GenerationConfig = generationDraft.CreateCopy(),
             GarrisonRules = garrisonDraft.CreateCopy(),
             MovementRules = movementDraft.CreateCopy(),
+            AIDecisionTickInterval = aiDecisionTickInterval,
         };
         return snapshot;
     }
@@ -659,6 +662,8 @@ internal sealed class CustomGameSettingsSession
         AddGarrisonRuleEntries();
         currentGenerationSection = "MOVEMENT";
         AddMovementRuleEntries();
+        currentGenerationSection = "AI behavior";
+        AddAIDecisionIntervalEntry();
         AddFactionModifierEntries(pack.GameData.Factions);
     }
 
@@ -1513,6 +1518,44 @@ internal sealed class CustomGameSettingsSession
                 Read = () => movementDraft.TravelSpeedPercent,
                 ReadDefault = () => movementDefaults.TravelSpeedPercent,
                 Write = value => movementDraft.TravelSpeedPercent = value,
+            }
+        );
+    }
+
+    /// <summary>
+    /// Adds the campaign's override for the interval between AI strategic decisions.
+    /// </summary>
+    private void AddAIDecisionIntervalEntry()
+    {
+        generationEntries.Add(
+            new GenerationEntry
+            {
+                Category = NewGameSettingsCategory.WorldGeneration,
+                Section = currentGenerationSection,
+                RowKey = "ai-decision-interval",
+                Key = "ai-decision-interval",
+                Label = "AI decision interval (ticks)",
+                Description =
+                    "Ticks between new AI assignments. Higher values slow decisions. Existing fleet orders continue every tick. Minimum: 1.",
+                Minimum = 1,
+                Maximum = int.MaxValue,
+                Read = () =>
+                    aiDecisionTickInterval
+                    ?? activePack.GameData.GameConfig.AI.GetDecisionTickInterval(
+                        summaryDraft.Difficulty
+                    ),
+                ReadDefault = () =>
+                    activePack.GameData.GameConfig.AI.GetDecisionTickInterval(
+                        summaryDraft.Difficulty
+                    ),
+                Write = value =>
+                    aiDecisionTickInterval =
+                        value
+                        == activePack.GameData.GameConfig.AI.GetDecisionTickInterval(
+                            summaryDraft.Difficulty
+                        )
+                            ? null
+                            : value,
             }
         );
     }

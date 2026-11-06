@@ -25,6 +25,9 @@ namespace Rebellion.Game
         [PersistableMember(Name = nameof(MovementRules))]
         private MovementRuleSettings _movementRules;
 
+        [PersistableMember(Name = nameof(AIDecisionTickInterval))]
+        private int? _aiDecisionTickInterval;
+
         [PersistableIgnore]
         public DifficultyModifiers PlayerDifficultyModifiers
         {
@@ -60,6 +63,13 @@ namespace Rebellion.Game
             set => _movementRules = value;
         }
 
+        [PersistableIgnore]
+        public int? AIDecisionTickInterval
+        {
+            get => _aiDecisionTickInterval;
+            set => _aiDecisionTickInterval = value;
+        }
+
         /// <summary>
         /// Creates an empty custom-game settings payload for population or deserialization.
         /// </summary>
@@ -78,6 +88,7 @@ namespace Rebellion.Game
                 GenerationConfig = GenerationConfig?.CreateCopy(),
                 GarrisonRules = GarrisonRules?.CreateCopy(),
                 MovementRules = MovementRules?.CreateCopy(),
+                AIDecisionTickInterval = AIDecisionTickInterval,
             };
         }
 
@@ -89,6 +100,9 @@ namespace Rebellion.Game
         {
             if (config == null)
                 throw new ArgumentNullException(nameof(config));
+
+            if (AIDecisionTickInterval is < 1)
+                throw new InvalidDataException("AI decision interval must be positive.");
 
             if (GarrisonRules != null)
             {

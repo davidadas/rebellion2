@@ -30,7 +30,8 @@ namespace Rebellion.AI.Planners
             if (context?.Game == null || context.Faction == null)
                 return proposals;
 
-            proposals.AddRange(PlanDefense(context));
+            if (context.IsDecisionTick)
+                proposals.AddRange(PlanDefense(context));
 
             HashSet<string> activeAttackTargetIds = GetActiveAttackTargetIds(context);
             HashSet<string> activeColonizationSystemIds = context
@@ -54,8 +55,14 @@ namespace Rebellion.AI.Planners
 
             foreach (Fleet fleet in context.Assessment.OwnedFleets)
             {
+                if (!context.IsDecisionTick && fleet.Order == null)
+                    continue;
+
                 if (fleet.RoleType == FleetRoleType.None)
                 {
+                    if (!context.IsDecisionTick)
+                        continue;
+
                     List<CapitalShip> transports = GetColonizationTransports(fleet)
                         .Take(colonizationSlots)
                         .ToList();
@@ -77,11 +84,13 @@ namespace Rebellion.AI.Planners
                 );
             }
 
-            AddAttackOrderProposals(context, activeAttackTargetIds, proposals);
-
-            AddCapitalShipTransferProposals(context, proposals);
-            AddPlanetRegimentTransferProposals(context, proposals);
-            AddOfficerCommandProposals(context, proposals);
+            if (context.IsDecisionTick)
+            {
+                AddAttackOrderProposals(context, activeAttackTargetIds, proposals);
+                AddCapitalShipTransferProposals(context, proposals);
+                AddPlanetRegimentTransferProposals(context, proposals);
+                AddOfficerCommandProposals(context, proposals);
+            }
 
             return proposals;
         }
@@ -419,7 +428,8 @@ namespace Rebellion.AI.Planners
             {
                 AIFleetAttackProposal alternative = null;
                 if (
-                    order?.OrderType == FleetOrderType.Attack
+                    context.IsDecisionTick
+                    && order?.OrderType == FleetOrderType.Attack
                     && order.TargetPlanetId == currentPlanet.InstanceID
                     && CanStartAttackOrder(context, fleet)
                     && context.Assessment.GetHostileFleets(currentPlanet).Count == 0
@@ -529,7 +539,8 @@ namespace Rebellion.AI.Planners
             {
                 AIFleetAttackProposal followOn = null;
                 if (
-                    currentPlanet?.InstanceID == targetPlanet.InstanceID
+                    context.IsDecisionTick
+                    && currentPlanet?.InstanceID == targetPlanet.InstanceID
                     && !context.Assessment.IsPriorityDefensePlanet(targetPlanet)
                     && context.StrategicPlan.GetPlanetDefenseStrength(targetPlanet) <= 0
                     && CanStartAttackOrder(context, fleet)
@@ -626,7 +637,7 @@ namespace Rebellion.AI.Planners
                 return;
             }
 
-            if (!CanRetargetAttackOrder(context, fleet))
+            if (!context.IsDecisionTick || !CanRetargetAttackOrder(context, fleet))
             {
                 proposals.Add(continuation);
                 return;
@@ -958,7 +969,7 @@ namespace Rebellion.AI.Planners
         )
         {
             Planet targetPlanet = context.Assessment.GetKnownPlanet(order.TargetPlanetId);
-            if (context.Assessment.IsFactionHeadquarters(targetPlanet))
+            if (context.IsDecisionTick && context.Assessment.IsFactionHeadquarters(targetPlanet))
                 return;
 
             if (

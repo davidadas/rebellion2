@@ -82,6 +82,39 @@ files. Copy the original file into the matching mod path, edit the copy, and lea
 `Content` file unchanged. The pack `game.xml` is the exception: it remains a sparse override merged
 over the application `game.xml`.
 
+The game editor exposes **Game rules > AI decisions** for changing the number of ticks between
+new AI assignments at each difficulty. The default intervals are 7 ticks on Easy, 5 on Normal
+(`Medium` in XML), and 1 on Hard. Existing fleet orders continue every tick, including combat and
+arrival checks; movement, construction, and ongoing missions also continue normally.
+
+For example, a pack's `game.xml` can configure the intervals. Include every difficulty when
+overriding this table, because lookup tables replace the inherited table:
+
+```xml
+<GameConfig>
+  <AI>
+    <DecisionTickIntervals>
+      <Entry>
+        <Key>Easy</Key>
+        <Value>7</Value>
+      </Entry>
+      <Entry>
+        <Key>Medium</Key>
+        <Value>5</Value>
+      </Entry>
+      <Entry>
+        <Key>Hard</Key>
+        <Value>1</Value>
+      </Entry>
+    </DecisionTickIntervals>
+  </AI>
+</GameConfig>
+```
+
+Custom games expose **World generation > AI behavior > AI decision interval (ticks)**. An edited
+value overrides the selected difficulty for that campaign and is retained in custom presets and
+saves. Use a positive whole number; 1 evaluates new assignments every tick.
+
 ### 4. Enable the mod
 
 Launch Rebellion 2 and open **Options > Mods**. A compatible definition appears by its

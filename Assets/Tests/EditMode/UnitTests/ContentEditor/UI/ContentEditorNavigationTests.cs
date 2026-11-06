@@ -34,7 +34,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
-        public void Render_RulesAndMissionPages_KeepAllNonAiRulesAccessible()
+        public void Render_RulesAndMissionPages_KeepAllEditableRulesAccessible()
         {
             ContentPackEditorProject project = ContentEditorTestData.CreateProject(directory);
             ContentEditorNavigation navigation = new ContentEditorNavigation();
@@ -45,7 +45,10 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .Where(catalog => catalog.Name == "Rules")
                 .SelectMany(catalog => catalog.Records)
                 .SelectMany(record => record.GetFields())
-                .Where(field => field.Group != "AI")
+                .Where(field =>
+                    field.Group != "AI"
+                    || ContentPackEditorFieldMetadata.IsAIDecisionInterval(field)
+                )
                 .ToArray();
             ContentPackEditorField[] projected = navigation
                 .GetRows(string.Empty)

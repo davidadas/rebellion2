@@ -260,6 +260,9 @@ internal static class ContentPackEditorFieldMetadata
     /// <returns>The help text, or an empty string for undocumented extensions.</returns>
     internal static string GetDescription(ContentPackEditorField field)
     {
+        if (IsAIDecisionInterval(field))
+            return "Ticks between new AI assignments. Higher values slow decisions. Existing fleet orders continue every tick. Minimum: 1.";
+
         if (field.Record.Kind == "GameGenerationConfig")
         {
             Type owner =
@@ -308,6 +311,9 @@ internal static class ContentPackEditorFieldMetadata
     /// <returns>The label to display.</returns>
     internal static string GetCaption(ContentPackEditorField field, string fallback)
     {
+        if (IsAIDecisionInterval(field))
+            return "Decision interval (ticks)";
+
         return field.MemberName switch
         {
             "GalaxySizes" => "Galaxy sizes (all if empty)",
@@ -570,6 +576,7 @@ internal static class ContentPackEditorFieldMetadata
     internal static string RuleCategory(ContentPackEditorField field) =>
         field.Group switch
         {
+            "AI" when IsAIDecisionInterval(field) => "AI decisions",
             "DifficultyModifiers" => "Difficulty",
             "ProbabilityTables" => field.SectionPath.Contains("Mission")
                 ? "Shared mission rules"
@@ -582,4 +589,18 @@ internal static class ContentPackEditorFieldMetadata
             "Uprising" => "Uprisings",
             _ => ContentPackEditorField.FormatName(field.Group),
         };
+
+    /// <summary>
+    /// Identifies difficulty-specific strategic decision intervals exposed by the rules editor.
+    /// </summary>
+    /// <param name="field">The authored rules field.</param>
+    /// <returns>Whether the field belongs to the decision-interval table.</returns>
+    internal static bool IsAIDecisionInterval(ContentPackEditorField field) =>
+        field.Group == "AI"
+        && field.MemberName == "Value"
+        && field
+            .XmlElement.Ancestors()
+            .Any(element =>
+                element.Name.LocalName == nameof(GameConfig.AIConfig.DecisionTickIntervals)
+            );
 }
