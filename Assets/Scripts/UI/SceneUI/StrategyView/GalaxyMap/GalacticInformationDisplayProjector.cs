@@ -7,6 +7,12 @@ using UnityEngine;
 /// </summary>
 public sealed class GalacticInformationDisplayProjector
 {
+    private const int _legendWidth = 244;
+    private const int _legendPadding = 10;
+    private const int _legendHeaderHeight = 32;
+    private const int _legendRowHeight = 22;
+    private const int _legendKeyHeadingHeight = 24;
+
     private readonly Func<UIContext> getUIContext;
 
     /// <summary>
@@ -67,40 +73,255 @@ public sealed class GalacticInformationDisplayProjector
     /// Projects one configured legend at its requested source-space position.
     /// </summary>
     /// <param name="filterMode">The filter whose legend artwork is requested.</param>
-    /// <param name="sourcePosition">The requested source-space legend position.</param>
-    /// <returns>The immutable legend presentation, or null when required art is unavailable.</returns>
+    /// <param name="sourcePosition">An optional initial position replacing the themed legend position.</param>
+    /// <returns>The immutable legend presentation, or null when the filter is unavailable.</returns>
     public GalacticInformationLegendRenderData ProjectLegend(
         GalacticInformationFilterMode filterMode,
-        Vector2Int sourcePosition
+        Vector2Int? sourcePosition = null
     )
     {
         UIContext context = GetRequiredContext();
-        GalacticInformationDisplayTheme theme = context
-            .GetPlayerFactionTheme()
-            ?.GalacticInformationDisplay;
-        GalacticInformationFilterTheme filter = theme?.GetFilter(filterMode);
-        Texture2D legendTexture = context.GetTexture(filter?.LegendImagePath);
-        Texture2D closeTexture = context.GetTexture(theme?.CloseUpImagePath);
-        SourcePointLayout closeInset = theme?.CloseSourceInset;
-        if (legendTexture == null || closeTexture == null || closeInset == null)
+        FactionTheme playerTheme = context.GetPlayerFactionTheme();
+        GalacticInformationDisplayTheme theme = playerTheme?.GalacticInformationDisplay;
+        GalacticInformationFilterTheme filter = GalacticInformationMarkerProjector.ResolveFilter(
+            playerTheme,
+            filterMode
+        );
+        if (filter == null)
             return null;
 
-        Vector2Int legendSize = UILayout.GetTextureSourceSize(legendTexture);
-        Vector2Int closeSize = UILayout.GetTextureSourceSize(closeTexture);
-        RectInt closeBounds = new RectInt(
-            legendSize.x - closeSize.x - closeInset.X,
-            closeInset.Y,
-            closeSize.x,
-            closeSize.y
-        );
+        Vector2Int position =
+            sourcePosition
+            ?? new Vector2Int(theme.LegendSourcePosition.X, theme.LegendSourcePosition.Y);
+
+        List<GalacticInformationLegendRowRenderData> rows = new();
+        AddLegendRanges(rows, filter, context);
+        int keyHeadingY = _legendHeaderHeight + rows.Count * _legendRowHeight + 4;
+        int keysY = keyHeadingY + _legendKeyHeadingHeight;
+        int keyCount = AddLegendKeys(rows, filter.Mode, keysY, context);
+        int height = keysY + ((keyCount + 1) / 2) * _legendRowHeight + _legendPadding;
+        Color textColor = theme.GetActiveFilterLabelColor();
+        RectInt closeBounds = new RectInt(_legendWidth - 25, 5, 20, 20);
         return new GalacticInformationLegendRenderData(
-            new RectInt(sourcePosition.x, sourcePosition.y, legendSize.x, legendSize.y),
-            legendTexture,
-            ProjectFrame(theme.Frame, legendSize.x, legendSize.y, context),
-            closeBounds,
-            closeTexture,
-            context.GetTexture(theme.ClosePressedImagePath)
+            new RectInt(position.x, position.y, _legendWidth, height),
+            new GalacticInformationTextRenderData(
+                filter.Label,
+                textColor,
+                new RectInt(_legendPadding, 7, closeBounds.x - _legendPadding - 8, 20)
+            ),
+            theme.GetBackgroundColor(),
+            new GalacticInformationTextRenderData(
+                "Marker colors",
+                textColor,
+                new RectInt(_legendPadding, keyHeadingY, _legendWidth - 2 * _legendPadding, 20)
+            ),
+            rows,
+            ProjectFrame(theme.Frame, _legendWidth, height, context),
+            closeBounds
         );
+    }
+
+    /// <summary>
+    /// Gets the compact legend control's position below the map display label.
+    /// </summary>
+    /// <returns>The control bounds within the strategy surface.</returns>
+    public RectInt GetLegendControlBounds()
+    {
+        SourceRectLayout label = GetRequiredPlayerTheme(
+            GetRequiredContext()
+        ).GalacticInformationDisplay.ActiveFilterLabelSourceLayout;
+        return new RectInt(label.X, label.Y + label.Height + 4, 22, 22);
+    }
+
+    /// <summary>
+    /// Returns whether a map display has a configured legend.
+    /// </summary>
+    /// <param name="mode">The selected map display.</param>
+    /// <returns>True when a selected filter is configured.</returns>
+    public bool HasLegend(GalacticInformationFilterMode mode) =>
+        GalacticInformationMarkerProjector.ResolveFilter(
+            GetRequiredPlayerTheme(GetRequiredContext()),
+            mode
+        ) != null;
+
+    /// <summary>
+    /// Adds reachable marker bands using the same ordered thresholds as map evaluation.
+    /// </summary>
+    /// <param name="rows">The legend rows receiving the range samples.</param>
+    /// <param name="filter">The filter supplying thresholds and labels.</param>
+    /// <param name="context">The presentation context supplying marker artwork.</param>
+    private static void AddLegendRanges(
+        List<GalacticInformationLegendRowRenderData> rows,
+        GalacticInformationFilterTheme filter,
+        UIContext context
+    )
+    {
+        bool binary =
+            filter.Mode
+            is GalacticInformationFilterMode.Uprisings
+                or GalacticInformationFilterMode.IdleShipyards
+                or GalacticInformationFilterMode.IdleTrainingFacilities
+                or GalacticInformationFilterMode.IdleConstructionYards
+                or GalacticInformationFilterMode.UnitShieldGenerators;
+        bool percentage = filter.Mode == GalacticInformationFilterMode.PopularSupport;
+        long minimum =
+            filter.Mode == GalacticInformationFilterMode.AvailableEnergy ? int.MinValue : 0;
+        long maximum =
+            binary ? 1
+            : percentage ? 100
+            : int.MaxValue;
+        long ceiling = (long)int.MaxValue + 1;
+        int[] thresholds = { filter.LowThreshold, filter.MediumThreshold, filter.HighThreshold };
+        PlanetIcons icons = context.GetPlayerFactionTheme().GalaxyBackground.PlanetIcons;
+        for (int index = 3; index >= 0; index--)
+        {
+            long lower = index == 0 ? int.MinValue : thresholds[index - 1];
+            long start = Math.Max(minimum, lower);
+            long end = Math.Min(maximum, ceiling - 1);
+            if (start <= end)
+            {
+                string label =
+                    binary && start == end
+                        ? start == 0
+                            ? $"No {filter.Label.ToLowerInvariant()}"
+                            : filter.Label
+                        : FormatLegendRange(start, end, percentage);
+                rows.Add(
+                    new GalacticInformationLegendRowRenderData(
+                        new RectInt(
+                            _legendPadding,
+                            _legendHeaderHeight + rows.Count * _legendRowHeight,
+                            _legendWidth - 2 * _legendPadding,
+                            _legendRowHeight
+                        ),
+                        context.GetTexture(
+                            GalacticInformationMarkerProjector.GetPlanetIconPath(icons, index)
+                        ),
+                        label
+                    )
+                );
+            }
+            ceiling = Math.Min(ceiling, lower);
+        }
+    }
+
+    /// <summary>
+    /// Formats one reachable numeric marker band.
+    /// </summary>
+    /// <param name="minimum">The inclusive lower bound.</param>
+    /// <param name="maximum">The inclusive upper bound.</param>
+    /// <param name="percentage">Whether values represent popular-support percentages.</param>
+    /// <returns>The visible range label.</returns>
+    private static string FormatLegendRange(long minimum, long maximum, bool percentage)
+    {
+        string suffix = percentage ? "%" : string.Empty;
+        if (minimum == int.MinValue)
+            return $"Below {maximum + 1}{suffix}";
+        if (maximum == int.MaxValue)
+            return $"{minimum}+";
+        return minimum == maximum ? $"{minimum}{suffix}" : $"{minimum}–{maximum}{suffix}";
+    }
+
+    /// <summary>
+    /// Adds faction and exploration marker keys without inspecting live planet state.
+    /// </summary>
+    /// <param name="rows">The legend rows receiving marker keys.</param>
+    /// <param name="mode">The selected map display.</param>
+    /// <param name="top">The first key row's vertical position.</param>
+    /// <param name="context">The context supplying presentation-safe faction identities.</param>
+    /// <returns>The number of marker keys added.</returns>
+    private static int AddLegendKeys(
+        List<GalacticInformationLegendRowRenderData> rows,
+        GalacticInformationFilterMode mode,
+        int top,
+        UIContext context
+    )
+    {
+        int count = 0;
+        foreach (var faction in context.GetFactionPresentations())
+            AddLegendKey(
+                rows,
+                ref count,
+                top,
+                faction.GetDisplayName(),
+                context.GetTexture(
+                    GalacticInformationMarkerProjector.GetPlanetIconPath(
+                        context.GetTheme(faction.InstanceID)?.GalaxyBackground?.PlanetIcons,
+                        2
+                    )
+                )
+            );
+        AddLegendKey(
+            rows,
+            ref count,
+            top,
+            "Neutral",
+            context.GetTexture(
+                GalacticInformationMarkerProjector.GetPlanetIconPath(
+                    context.GetTheme(null)?.GalaxyBackground?.PlanetIcons,
+                    2
+                )
+            )
+        );
+        AddLegendKey(
+            rows,
+            ref count,
+            top,
+            "Unexplored",
+            context.GetTexture(
+                context.GetPlayerFactionTheme()?.GalaxyBackground?.UnexploredPlanetIconPath
+            )
+        );
+        if (
+            mode
+            is GalacticInformationFilterMode.IdleFleets
+                or GalacticInformationFilterMode.FleetsEnroute
+                or GalacticInformationFilterMode.FleetWaypoints
+                or GalacticInformationFilterMode.IdlePersonnel
+                or GalacticInformationFilterMode.ActivePersonnel
+        )
+            AddLegendKey(
+                rows,
+                ref count,
+                top,
+                "Mixed presence",
+                context.GetTexture(
+                    context.GetPlayerFactionTheme()?.GalaxyBackground?.PlanetIcons?.Mixed
+                )
+            );
+        return count;
+    }
+
+    /// <summary>
+    /// Places one marker-color key in the compact two-column list.
+    /// </summary>
+    /// <param name="rows">The rows receiving the key.</param>
+    /// <param name="count">The number of keys already placed.</param>
+    /// <param name="top">The first key row's vertical position.</param>
+    /// <param name="label">The key's label.</param>
+    /// <param name="texture">The actual map marker artwork.</param>
+    private static void AddLegendKey(
+        List<GalacticInformationLegendRowRenderData> rows,
+        ref int count,
+        int top,
+        string label,
+        Texture2D texture
+    )
+    {
+        int width = (_legendWidth - 2 * _legendPadding) / 2;
+        rows.Add(
+            new GalacticInformationLegendRowRenderData(
+                new RectInt(
+                    _legendPadding + (count % 2) * width,
+                    top + (count / 2) * _legendRowHeight,
+                    width,
+                    _legendRowHeight
+                ),
+                texture,
+                label
+            )
+        );
+        count++;
     }
 
     /// <summary>

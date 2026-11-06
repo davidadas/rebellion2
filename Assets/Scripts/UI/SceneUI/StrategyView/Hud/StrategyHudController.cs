@@ -31,13 +31,15 @@ public sealed class StrategyHudController : IContextMenuReceiver
     /// <param name="playSfx">Plays a strategy sound-effect path.</param>
     /// <param name="playSfxInstance">Plays an independently stoppable advisor response.</param>
     /// <param name="getAudioDuration">Gets the duration of a loaded advisor response.</param>
+    /// <param name="canShowMapLegend">Returns whether the current map display has an available legend.</param>
     public StrategyHudController(
         Func<Faction> getPlayerFaction,
         Func<FactionTheme> getPlayerTheme,
         Func<string, Texture2D> getTexture,
         Action<string> playSfx,
         Func<string, AudioPlaybackHandle> playSfxInstance = null,
-        Func<string, float> getAudioDuration = null
+        Func<string, float> getAudioDuration = null,
+        Func<bool> canShowMapLegend = null
     )
     {
         if (getPlayerFaction == null)
@@ -52,7 +54,8 @@ public sealed class StrategyHudController : IContextMenuReceiver
             getTexture,
             playSfx,
             playSfxInstance: playSfxInstance,
-            getAudioDuration: getAudioDuration
+            getAudioDuration: getAudioDuration,
+            canShowMapLegend: canShowMapLegend
         );
     }
 
