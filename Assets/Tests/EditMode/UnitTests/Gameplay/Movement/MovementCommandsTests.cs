@@ -2468,7 +2468,7 @@ namespace Rebellion.Tests.Gameplay
             };
             game.AttachNode(mission, destination);
 
-            movement.SendToMission(officer, mission);
+            movement.SendToMission(new IMissionParticipant[] { officer }, mission);
 
             Assert.IsNotNull(officer.Movement);
             Assert.AreSame(mission, officer.GetParent());
@@ -3310,7 +3310,7 @@ namespace Rebellion.Tests.Gameplay
             StubMission mission = new StubMission("empire", destination.InstanceID);
             game.AttachNode(mission, destination);
 
-            movement.SendToMission(officer, mission);
+            movement.SendToMission(new IMissionParticipant[] { officer }, mission);
 
             Assert.AreEqual(ship.InstanceID, officer.MissionReturnParentInstanceID);
             Assert.AreEqual(origin.InstanceID, officer.MissionReturnLocationInstanceID);
@@ -3369,7 +3369,7 @@ namespace Rebellion.Tests.Gameplay
             game.MoveNode(officer, ship);
             StubMission mission = new StubMission("empire", destination.InstanceID);
             game.AttachNode(mission, destination);
-            movement.SendToMission(officer, mission);
+            movement.SendToMission(new IMissionParticipant[] { officer }, mission);
             officer.Movement = null;
             game.MoveNode(fleet, destination);
 
@@ -3397,7 +3397,7 @@ namespace Rebellion.Tests.Gameplay
             ) = BuildScene();
             StubMission mission = new StubMission("empire", destination.InstanceID);
             game.AttachNode(mission, destination);
-            movement.SendToMission(officer, mission);
+            movement.SendToMission(new IMissionParticipant[] { officer }, mission);
             officer.Movement = null;
             officer.MissionReturnParentInstanceID = "missing-parent";
             officer.MissionReturnLocationInstanceID = "missing-location";
@@ -3420,7 +3420,7 @@ namespace Rebellion.Tests.Gameplay
                 BuildScene();
             StubMission mission = new StubMission("empire", destination.InstanceID);
             game.AttachNode(mission, destination);
-            movement.SendToMission(officer, mission);
+            movement.SendToMission(new IMissionParticipant[] { officer }, mission);
             officer.Movement = null;
             officer.OwnerInstanceID = null;
             officer.MissionReturnParentInstanceID = "missing-parent";
@@ -3449,7 +3449,7 @@ namespace Rebellion.Tests.Gameplay
             ) = BuildScene();
             StubMission mission = new StubMission("empire", destination.InstanceID);
             game.AttachNode(mission, destination);
-            movement.SendToMission(officer, mission);
+            movement.SendToMission(new IMissionParticipant[] { officer }, mission);
             officer.Movement = null;
             origin.OwnerInstanceID = "rebels";
             Planet fallback = new Planet
@@ -3495,7 +3495,7 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(ship, fleet);
             StubMission mission = new StubMission("empire", destination.InstanceID);
             game.AttachNode(mission, destination);
-            movement.SendToMission(officer, mission);
+            movement.SendToMission(new IMissionParticipant[] { officer }, mission);
             officer.Movement = null;
             officer.MissionReturnParentInstanceID = "missing-parent";
             officer.MissionReturnLocationInstanceID = "missing-location";
@@ -3525,7 +3525,7 @@ namespace Rebellion.Tests.Gameplay
             destination.OwnerInstanceID = "rebels";
             StubMission mission = new StubMission("empire", destination.InstanceID);
             game.AttachNode(mission, destination);
-            movement.SendToMission(officer, mission);
+            movement.SendToMission(new IMissionParticipant[] { officer }, mission);
             officer.Movement = null;
             officer.MissionReturnParentInstanceID = "missing-parent";
             officer.MissionReturnLocationInstanceID = "missing-location";
@@ -3556,7 +3556,7 @@ namespace Rebellion.Tests.Gameplay
             ) = BuildScene(config);
             StubMission mission = new StubMission("empire", destination.InstanceID);
             game.AttachNode(mission, destination);
-            movement.SendToMission(escort, mission);
+            movement.SendToMission(new IMissionParticipant[] { escort }, mission);
             escort.Movement = null;
             Officer passenger = EntityFactory.CreateOfficer("passenger", "rebels");
             passenger.IsCaptured = true;
@@ -3896,7 +3896,7 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(escort, missionPlanet);
             StubMission mission = new StubMission("empire", missionPlanet.InstanceID);
             game.AttachNode(mission, missionPlanet);
-            movement.SendToMission(escort, mission);
+            movement.SendToMission(new IMissionParticipant[] { escort }, mission);
             escort.Movement = null;
 
             Officer captive = EntityFactory.CreateOfficer("captive", "rebels");
@@ -3950,7 +3950,7 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(escort, returnPlanet);
             StubMission mission = new StubMission("empire", missionPlanet.InstanceID);
             game.AttachNode(mission, missionPlanet);
-            movement.SendToMission(escort, mission);
+            movement.SendToMission(new IMissionParticipant[] { escort }, mission);
             escort.Movement = null;
 
             Officer captive = EntityFactory.CreateOfficer("captive", "rebels");
@@ -4035,8 +4035,8 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(secondOfficer, secondOrigin);
             StubMission mission = new StubMission("empire", destination.InstanceID);
             game.AttachNode(mission, destination);
-            movement.SendToMission(firstOfficer, mission);
-            movement.SendToMission(secondOfficer, mission);
+            movement.SendToMission(new IMissionParticipant[] { firstOfficer }, mission);
+            movement.SendToMission(new IMissionParticipant[] { secondOfficer }, mission);
             firstOfficer.Movement = null;
             secondOfficer.Movement = null;
 
