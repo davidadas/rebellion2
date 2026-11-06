@@ -28,6 +28,7 @@ namespace Rebellion.Gameplay
         private readonly MovementQueries _queries;
         private readonly IRandomNumberProvider _movementRandom;
         private readonly BlockadeTransitionResolver _blockadeTransitionResolver;
+        private readonly JediCommands _jediCommands;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
         /// <summary>
@@ -46,6 +47,7 @@ namespace Rebellion.Gameplay
         /// <param name="random">The random source used for movement consequences.</param>
         /// <param name="personnelCommands">The personnel lifecycle operations.</param>
         /// <param name="blockadeTransitionResolver">Resolves blockade changes around movement mutations.</param>
+        /// <param name="jediCommands">The Force progression operations.</param>
         public MovementCommands(
             GameRoot game,
             FogOfWarCommands fogOfWar,
@@ -54,7 +56,8 @@ namespace Rebellion.Gameplay
             MovementQueries queries,
             IRandomNumberProvider random = null,
             PersonnelCommands personnelCommands = null,
-            BlockadeTransitionResolver blockadeTransitionResolver = null
+            BlockadeTransitionResolver blockadeTransitionResolver = null,
+            JediCommands jediCommands = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
@@ -69,6 +72,7 @@ namespace Rebellion.Gameplay
                 personnelCommands ?? new PersonnelCommands(game, new PersonnelQueries(game));
             _blockadeTransitionResolver =
                 blockadeTransitionResolver ?? new BlockadeTransitionResolver(game);
+            _jediCommands = jediCommands ?? new JediCommands(game, _movementRandom);
         }
 
         /// <summary>
@@ -362,26 +366,39 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Records a participant's current container and planet before sending it to a mission.
+        /// Records return locations and sends participants departing the same planet as a group.
         /// </summary>
-        /// <param name="participant">The participant departing for the mission.</param>
-        /// <param name="mission">The mission that will contain the participant.</param>
-        internal void SendToMission(IMissionParticipant participant, Mission mission)
+        /// <param name="participants">The participants departing for the mission.</param>
+        /// <param name="mission">The mission that will contain the participants.</param>
+        internal void SendToMission(
+            IReadOnlyList<IMissionParticipant> participants,
+            Mission mission
+        )
         {
-            if (participant == null)
-                throw new ArgumentNullException(nameof(participant));
+            if (participants == null)
+                throw new ArgumentNullException(nameof(participants));
             if (mission == null)
                 throw new ArgumentNullException(nameof(mission));
 
-            participant.MissionReturnParentInstanceID = participant.GetParent()?.InstanceID;
-            participant.MissionReturnLocationInstanceID = participant
-                .GetParentOfType<Planet>()
-                ?.InstanceID;
-            RequestMove(participant, mission);
+            foreach (IMissionParticipant participant in participants)
+            {
+                participant.MissionReturnParentInstanceID = participant.GetParent()?.InstanceID;
+                participant.MissionReturnLocationInstanceID = participant
+                    .GetParentOfType<Planet>()
+                    ?.InstanceID;
+            }
+
+            foreach (
+                var group in participants.GroupBy(participant =>
+                    participant.GetParentOfType<Planet>()
+                )
+            )
+                RequestMove(group.Cast<IMovable>().ToList(), mission);
         }
 
         /// <summary>
-        /// Returns mission participants and passengers in destination-specific movement groups.
+        /// Returns mission participants and passengers together when they share a physical route,
+        /// preserving each unit's resolved destination container.
         /// </summary>
         /// <param name="participants">The mission participants that are free to return.</param>
         /// <param name="additionalPassengers">Additional units that must travel with the first return group.</param>
@@ -468,23 +485,33 @@ namespace Rebellion.Gameplay
             if (firstReturnDestination != null)
                 returnLocation = MovementQueries.RequireDestinationPlanet(firstReturnDestination);
 
-            foreach (KeyValuePair<ContainerNode, List<IMovable>> returnGroup in returnGroups)
-            {
-                List<IMovable> returningGroup = returnGroup.Value;
-                if (returningGroup.Count == 0)
-                    continue;
-
-                string movementGroupID = Guid.NewGuid().ToString("N");
-                int groupTransitTicks = CalculateGroupTransitTicks(
-                    returningGroup,
-                    Enumerable.Repeat(returnGroup.Key, returningGroup.Count).ToList()
+            var travelGroups = returnGroups
+                .SelectMany(group =>
+                    group.Value.Select(unit => (Unit: unit, Destination: group.Key))
+                )
+                .GroupBy(move =>
+                    (
+                        Origin: move.Unit.GetParentOfType<Planet>(),
+                        Position: move.Unit.Movement?.CurrentPosition
+                            ?? move.Unit.GetParentOfType<Planet>().GetPosition(),
+                        Destination: MovementQueries.RequireDestinationPlanet(move.Destination)
+                    )
                 );
+            foreach (var travelGroup in travelGroups)
+            {
+                List<IMovable> returningGroup = travelGroup.Select(move => move.Unit).ToList();
+                List<ContainerNode> destinations = travelGroup
+                    .Select(move => move.Destination)
+                    .ToList();
+                string movementGroupID = Guid.NewGuid().ToString("N");
+                int groupTransitTicks = CalculateGroupTransitTicks(returningGroup, destinations);
                 List<IMovable> immediatePersonnel = new List<IMovable>();
-                foreach (IMovable unit in returningGroup)
+                foreach (var move in travelGroup)
                 {
+                    IMovable unit = move.Unit;
                     bool accepted = ExecuteReturnMove(
                         unit,
-                        returnGroup.Key,
+                        move.Destination,
                         results,
                         movementGroupID,
                         groupTransitTicks
@@ -493,8 +520,7 @@ namespace Rebellion.Gameplay
                         accepted
                         && unit.Movement == null
                         && IsFreePersonnel(unit)
-                        && unit.GetParentOfType<Planet>()
-                            == MovementQueries.RequireDestinationPlanet(returnGroup.Key)
+                        && unit.GetParentOfType<Planet>() == travelGroup.Key.Destination
                     )
                         immediatePersonnel.Add(unit);
                 }
@@ -502,7 +528,7 @@ namespace Rebellion.Gameplay
                 if (immediatePersonnel.Count > 0)
                     ResolvePersonnelEncounters(
                         immediatePersonnel,
-                        MovementQueries.RequireDestinationPlanet(returnGroup.Key),
+                        travelGroup.Key.Destination,
                         results
                     );
             }
@@ -1215,18 +1241,26 @@ namespace Rebellion.Gameplay
             foreach (GameResult injuryResult in injuryResults)
                 results.Add(injuryResult);
 
+            if (evaded)
+            {
+                ForceExperienceResult growth = _jediCommands.ApplyCaptureEvasionGrowth(officer);
+                if (growth != null)
+                    results.Add(growth);
+            }
             if (killed)
             {
                 _personnelCommands.KillOfficer(officer);
                 return;
             }
             if (evaded)
+            {
                 return;
+            }
 
             ISceneNode capturingUnit = encounter.Commander ?? encounter.Detector;
             MovementState interruptedMovement = officer.Movement;
             officer.Movement = null;
-            if (!officer.TryCapture(capturingUnit.GetOwnerInstanceID()))
+            if (!officer.TryCapture(capturingUnit.GetOwnerInstanceID(), _game, _movementRandom))
             {
                 officer.Movement = interruptedMovement;
                 return;

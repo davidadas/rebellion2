@@ -134,6 +134,12 @@ namespace Rebellion.Game.Scripting
         [PersistableAttribute]
         public string RecipientFactionInstanceID { get; set; }
 
+        /// <summary>
+        /// Gets or sets the binding containing the receiving faction's instance ID.
+        /// </summary>
+        [PersistableAttribute]
+        public string RecipientFactionBinding { get; set; }
+
         [PersistableAttribute]
         public string SubjectInstanceID { get; set; }
 
@@ -142,6 +148,9 @@ namespace Rebellion.Game.Scripting
 
         [PersistableAttribute]
         public string RelatedSubjectInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string RelatedSubjectBinding { get; set; }
 
         [PersistableAttribute]
         public bool ShowSubjectImage { get; set; }
@@ -156,11 +165,23 @@ namespace Rebellion.Game.Scripting
         public MessageType MessageType { get; set; } = MessageType.Advice;
         public string Subject { get; set; }
         public string Body { get; set; }
+        public List<MessageBodySection> BodySections { get; set; } = new();
         public MessageBackgroundImage BackgroundImage { get; set; }
         public MessageImage OverlayImage { get; set; }
         public MessageAudio BackgroundAudio { get; set; }
         public MessageOfficerVoice OfficerVoice { get; set; }
         public AdvisorNotification AdvisorNotification { get; set; }
+    }
+
+    /// <summary>
+    /// Appends authored message text when all its conditions match the current activation.
+    /// Sections are evaluated in authored order after the message's opening body text.
+    /// </summary>
+    [PersistableObject(Name = "Section")]
+    public sealed class MessageBodySection
+    {
+        public List<GameConditional> Conditionals { get; set; } = new();
+        public string Text { get; set; }
     }
 
     #endregion

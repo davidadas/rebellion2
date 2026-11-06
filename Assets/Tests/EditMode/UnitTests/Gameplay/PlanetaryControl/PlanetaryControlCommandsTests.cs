@@ -1535,9 +1535,7 @@ namespace Rebellion.Tests.Gameplay
         {
             GameResultBus bus = new GameResultBus();
             MovementQueries movementQueries = new MovementQueries(_game);
-            new CaptiveObserver(_game, _movementSystem, movementQueries, new FixedRNG(0)).Connect(
-                bus
-            );
+            new CaptiveObserver(_game, _movementSystem, movementQueries).Connect(bus);
             new PlanetaryControlObserver(
                 _game,
                 commands,

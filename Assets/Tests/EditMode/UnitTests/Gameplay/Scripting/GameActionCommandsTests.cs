@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -14,6 +15,7 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Gameplay.Scripting;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Serialization;
 using UnityEngine;
 
 namespace Rebellion.Tests.Gameplay.Scripting
@@ -241,7 +243,102 @@ namespace Rebellion.Tests.Gameplay.Scripting
                 action.Execute(game)
             );
 
-            Assert.AreEqual("SendMessage requires RecipientFactionInstanceID.", exception.Message);
+            Assert.AreEqual(
+                "SendMessage requires a recipient faction instance ID or binding.",
+                exception.Message
+            );
+        }
+
+        [Test]
+        public void Execute_SendMessageBoundRecipientAndSubjects_ResolvesTriggerReferences()
+        {
+            GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);
+            Officer first = EntityFactory.CreateOfficer("first", "rebels");
+            first.DisplayName = "First officer";
+            Officer second = EntityFactory.CreateOfficer("second", "empire");
+            second.DisplayName = "Second officer";
+            game.AttachNode(first, rebelPlanet);
+            game.AttachNode(second, empirePlanet);
+            DuelCompletedTrigger trigger = new()
+            {
+                Bindings = new()
+                {
+                    new GameBinding { Argument = "FirstOfficer", As = "$subject" },
+                    new GameBinding { Argument = "SecondOfficer", As = "$related" },
+                    new GameBinding
+                    {
+                        Argument = "SecondOfficerOwnerInstanceID",
+                        As = "$recipient",
+                    },
+                },
+            };
+            GameEvaluationContext evaluation = new(
+                "report",
+                new DuelResult { EncounteredOfficer = first, OpposingOfficer = second },
+                trigger
+            );
+            SendMessageAction action = new()
+            {
+                RecipientFactionBinding = "$recipient",
+                SubjectBinding = "$subject",
+                RelatedSubjectBinding = "$related",
+                Subject = "{subject} encounters {relatedSubject}",
+            };
+
+            MessageDeliveredResult delivered = ExecuteMessage(game, action, evaluation);
+
+            Assert.AreEqual("empire", delivered.Recipient.InstanceID);
+            Assert.AreEqual("First officer encounters Second officer", delivered.Message.Title);
+        }
+
+        [TestCase(false, false, "Opening. Escaped.")]
+        [TestCase(false, true, "Opening. Injured.")]
+        [TestCase(true, false, "Opening. Captured.")]
+        [TestCase(true, true, "Opening. Captured.")]
+        public void Execute_SendMessageSectionsFromXml_AppendsOnlyMatchingText(
+            bool captured,
+            bool injured,
+            string expectedBody
+        )
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer officer = EntityFactory.CreateOfficer("officer", "rebels");
+            officer.IsCaptured = captured;
+            officer.InjuryPoints = injured ? 10 : 0;
+            game.AttachNode(officer, rebelPlanet);
+            const string xml =
+                "<SendMessage RecipientFactionInstanceID=\"rebels\" SubjectInstanceID=\"officer\">"
+                + "<Subject>Report</Subject><Body>Opening.</Body><BodySections>"
+                + "<Section><Conditionals><IsCaptured OfficerInstanceID=\"officer\"/></Conditionals><Text> Captured.</Text></Section>"
+                + "<Section><Conditionals><Not><IsCaptured OfficerInstanceID=\"officer\"/></Not><IsInjured OfficerInstanceID=\"officer\"/></Conditionals><Text> Injured.</Text></Section>"
+                + "<Section><Conditionals><Not><IsCaptured OfficerInstanceID=\"officer\"/><IsInjured OfficerInstanceID=\"officer\"/></Not></Conditionals><Text> Escaped.</Text></Section>"
+                + "</BodySections></SendMessage>";
+            SendMessageAction action = (SendMessageAction)
+                new GameSerializer(typeof(SendMessageAction)).Deserialize(new StringReader(xml));
+
+            MessageDeliveredResult delivered = ExecuteMessage(game, action);
+
+            Assert.AreEqual(expectedBody, delivered.Message.Body);
+        }
+
+        [Test]
+        public void Execute_SendMessageSeveralMatchingSections_PreservesAuthoredOrder()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            SendMessageAction action = new()
+            {
+                RecipientFactionInstanceID = "rebels",
+                Body = "Opening.",
+                BodySections = new()
+                {
+                    new MessageBodySection { Text = " First." },
+                    new MessageBodySection { Text = " Second." },
+                },
+            };
+
+            MessageDeliveredResult delivered = ExecuteMessage(game, action);
+
+            Assert.AreEqual("Opening. First. Second.", delivered.Message.Body);
         }
 
         [Test]
@@ -418,6 +515,7 @@ namespace Rebellion.Tests.Gameplay.Scripting
             officer.IsCaptured = true;
             officer.CaptorInstanceID = "empire";
             officer.CanEscape = false;
+            officer.NextEscapeAttemptTick = 100;
             game.AttachNode(officer, planet);
             officer.IsEnabled = false;
             SetCaptureStatusAction action = new SetCaptureStatusAction
@@ -430,7 +528,8 @@ namespace Rebellion.Tests.Gameplay.Scripting
 
             Assert.IsFalse(officer.IsCaptured);
             Assert.IsNull(officer.CaptorInstanceID);
-            Assert.IsTrue(officer.CanEscape);
+            Assert.IsFalse(officer.CanEscape);
+            Assert.AreEqual(0, officer.NextEscapeAttemptTick);
         }
 
         [Test]
@@ -547,8 +646,37 @@ namespace Rebellion.Tests.Gameplay.Scripting
 
             List<GameResult> results = action.Execute(game);
 
-            Assert.IsEmpty(results);
+            ForceExperienceResult growth = results.OfType<ForceExperienceResult>().Single();
+            Assert.AreEqual(40, growth.PreviousForceRank);
+            Assert.AreEqual(50, growth.CurrentForceRank);
             Assert.AreEqual(50, luke.ForceValue);
+        }
+
+        [TestCase(-32768, 13108)]
+        [TestCase(-50, -80)]
+        [TestCase(-1, -1)]
+        [TestCase(0, 0)]
+        [TestCase(1, 1)]
+        [TestCase(32767, -13109)]
+        public void Execute_IncreaseForceRankPercentageBoundary_PreservesSignedArithmetic(
+            int initialForce,
+            int expectedForce
+        )
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer officer = EntityFactory.CreateOfficer("officer", "rebels");
+            officer.ForceValue = initialForce;
+            game.AttachNode(officer, rebelPlanet);
+            IncreaseForceRankAction action = new IncreaseForceRankAction
+            {
+                OfficerInstanceID = officer.InstanceID,
+                PercentOfEffective = 60,
+            };
+
+            List<GameResult> results = action.Execute(game);
+
+            Assert.AreEqual(expectedForce, officer.ForceValue);
+            Assert.AreEqual(initialForce == expectedForce ? 0 : 1, results.Count);
         }
 
         [Test]
@@ -639,6 +767,80 @@ namespace Rebellion.Tests.Gameplay.Scripting
             eligibility.Execute(game, new FixedRandomProvider(new[] { 0.5 }));
 
             Assert.AreEqual(13, leia.ForceValue);
+        }
+
+        [TestCase(5)]
+        [TestCase(25)]
+        [TestCase(-1)]
+        public void Execute_SetForceEligibleExistingExperience_PreservesValueWithoutRandomRoll(
+            int forceValue
+        )
+        {
+            GameRoot game = BuildGame(out _, out Planet planet);
+            Officer officer = EntityFactory.CreateOfficer("student", "rebels");
+            officer.IsForceSensitive = true;
+            officer.IsForceEligible = false;
+            officer.ForceValue = forceValue;
+            officer.JediLevel = 10;
+            game.AttachNode(officer, planet);
+
+            new SetForceEligibleAction { OfficerInstanceID = officer.InstanceID }.Execute(
+                game,
+                new ThrowingRNG()
+            );
+
+            Assert.IsTrue(officer.IsForceEligible);
+            Assert.AreEqual(forceValue, officer.ForceValue);
+        }
+
+        [TestCase(0)]
+        [TestCase(int.MinValue)]
+        [TestCase(int.MaxValue)]
+        public void Execute_SetForceEligibleWithNonpositiveRandomBound_InitializesValueWithoutRandomRoll(
+            int variance
+        )
+        {
+            GameRoot game = BuildGame(out _, out Planet planet);
+            Officer officer = EntityFactory.CreateOfficer("student", "rebels");
+            officer.IsForceSensitive = true;
+            officer.IsForceEligible = false;
+            officer.ForceValue = 0;
+            officer.JediLevel = 10;
+            officer.JediLevelVariance = variance;
+            game.AttachNode(officer, planet);
+
+            new SetForceEligibleAction { OfficerInstanceID = officer.InstanceID }.Execute(
+                game,
+                new ThrowingRNG()
+            );
+
+            Assert.AreEqual(10, officer.ForceValue);
+        }
+
+        [TestCase(-5, 0.0, 10)]
+        [TestCase(-5, 0.99, 5)]
+        [TestCase(5, 0.99, 15)]
+        public void Execute_SetForceEligibleWithSignedVariance_AppliesInclusiveOffset(
+            int variance,
+            double roll,
+            int expectedForce
+        )
+        {
+            GameRoot game = BuildGame(out _, out Planet planet);
+            Officer officer = EntityFactory.CreateOfficer("student", "rebels");
+            officer.IsForceSensitive = true;
+            officer.IsForceEligible = false;
+            officer.ForceValue = 0;
+            officer.JediLevel = 10;
+            officer.JediLevelVariance = variance;
+            game.AttachNode(officer, planet);
+
+            new SetForceEligibleAction { OfficerInstanceID = officer.InstanceID }.Execute(
+                game,
+                new FixedRandomProvider(new[] { roll })
+            );
+
+            Assert.AreEqual(expectedForce, officer.ForceValue);
         }
 
         [Test]
@@ -995,6 +1197,31 @@ namespace Rebellion.Tests.Gameplay.Scripting
                 new GameActionCommands(context.Game, context.Random)
             );
             Assert.AreEqual(40, officer.GetEffectiveRating(SkillRating.Leadership));
+        }
+
+        /// <summary>
+        /// Executes an authored message through the shared message delivery operations.
+        /// </summary>
+        /// <param name="game">The game receiving the message.</param>
+        /// <param name="action">The authored message to execute.</param>
+        /// <param name="evaluation">The optional trigger bindings.</param>
+        /// <returns>The delivered message and its receiving faction.</returns>
+        private static MessageDeliveredResult ExecuteMessage(
+            GameRoot game,
+            SendMessageAction action,
+            GameEvaluationContext evaluation = null
+        )
+        {
+            MessageFactory factory = new(Array.Empty<MessageDefinition>());
+            GameActionCommands commands = new(
+                game,
+                game.Random,
+                messageCommands: new MessageCommands(game, factory)
+            );
+            return commands
+                .Execute(new[] { action }, evaluation)
+                .OfType<MessageDeliveredResult>()
+                .Single();
         }
 
         /// <summary>

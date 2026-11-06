@@ -23,7 +23,19 @@ namespace Rebellion.Game.Units
     public class Fleet : ContainerNode, IMovable
     {
         // Movement Info.
-        public MovementState Movement { get; set; }
+        public MovementState Movement
+        {
+            get => _movement;
+            set
+            {
+                if (ReferenceEquals(_movement, value))
+                    return;
+                _movement = value;
+                OnAvailabilityChanged();
+            }
+        }
+
+        private MovementState _movement;
 
         public FleetRoleType RoleType { get; set; } = FleetRoleType.None;
 

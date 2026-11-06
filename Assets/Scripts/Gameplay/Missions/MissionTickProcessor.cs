@@ -110,7 +110,7 @@ namespace Rebellion.Gameplay
             }
             if (killedParticipants != null)
             {
-                _resolver.RemoveKilledParticipants(mission, killedParticipants, results);
+                _resolver.RemoveUnavailableParticipants(mission, killedParticipants, results);
                 if (mission.GetParent() == null)
                     return CompleteStep(mission, results);
             }
@@ -150,6 +150,8 @@ namespace Rebellion.Gameplay
                     results,
                     out foilingFactionInstanceID
                 );
+                if (mission.GetParent() == null)
+                    return CompleteStep(mission, results);
             }
             if (wasDetected)
             {
@@ -184,6 +186,8 @@ namespace Rebellion.Gameplay
                     results,
                     out foilingFactionInstanceID
                 );
+                if (mission.GetParent() == null)
+                    return CompleteStep(mission, results);
             }
             if (wasDetected)
             {

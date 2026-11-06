@@ -25,6 +25,19 @@ namespace Rebellion.Game.Factions
         [PersistableCollectionItem(Name = "Name")]
         public List<string> Names { get; set; } = new List<string>();
         public int NextNameIndex { get; set; }
+
+        /// <summary>
+        /// Copies a naming pool without sharing its mutable name list.
+        /// </summary>
+        /// <returns>A naming pool with the same names and next-name position.</returns>
+        public FactionNamePool CreateCopy() =>
+            new FactionNamePool
+            {
+                NamePoolID = NamePoolID,
+                FallbackNamePoolID = FallbackNamePoolID,
+                Names = Names?.ToList(),
+                NextNameIndex = NextNameIndex,
+            };
     }
 
     /// <summary>
@@ -166,6 +179,44 @@ namespace Rebellion.Game.Factions
         /// Default constructor used for deserialization.
         /// </summary>
         public Faction() { }
+
+        /// <summary>
+        /// Transfers authored identity, rules, naming pools, and starting messages.
+        /// Runtime ownership, research, and intelligence collections belong to the destination.
+        /// </summary>
+        /// <param name="copy">The newly constructed faction receiving the authored state.</param>
+        internal void CopyDefinitionTo(Faction copy)
+        {
+            base.CopyStateTo(copy);
+            copy._settings = _settings?.CreateCopy();
+            copy._nextFleetNumber = _nextFleetNumber;
+            copy._nextGenericShipNameNumbers = new Dictionary<string, int>(
+                _nextGenericShipNameNumbers
+            );
+            copy.HQInstanceID = HQInstanceID;
+            copy.HeadquartersUnitInstanceID = HeadquartersUnitInstanceID;
+            copy.HasLostHeadquarters = HasLostHeadquarters;
+            copy.GarrisonTroopTypeID = GarrisonTroopTypeID;
+            copy.DisallowedMissionTypeIDs = DisallowedMissionTypeIDs?.ToList();
+            copy.ShipNamePools = ShipNamePools?.Select(pool => pool.CreateCopy()).ToList();
+            copy.AdvisorMessageNotificationsEnabled = AdvisorMessageNotificationsEnabled;
+            copy.AdvisorMessageNotifications = new Dictionary<MessageType, bool>(
+                AdvisorMessageNotifications
+            );
+            copy.TranslateCounterpart = TranslateCounterpart;
+            copy.AgentAdvice = AgentAdvice;
+            copy.ManageGarrisons = ManageGarrisons;
+            copy.ManageProduction = ManageProduction;
+            copy.ManageNaming = ManageNaming;
+            copy._rawMaterialStockpile = _rawMaterialStockpile;
+            copy._refinedMaterialStockpile = _refinedMaterialStockpile;
+            copy.PendingRawMaterialFacilityIDs = PendingRawMaterialFacilityIDs?.ToList();
+            copy.PendingRefinedMaterialFacilityIDs = PendingRefinedMaterialFacilityIDs?.ToList();
+            copy._messages = _messages.ToDictionary(
+                entry => entry.Key,
+                entry => entry.Value.ConvertAll(message => message.CreateCopy())
+            );
+        }
 
         /// <summary>
         /// Reserves one raw material for a facility or queues its request in arrival order.

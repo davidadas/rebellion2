@@ -826,7 +826,10 @@ namespace Rebellion.Tests.Gameplay
                     ? new ISceneNode[] { groundRegiment, groundFighter }
                     : new ISceneNode[] { ship, carriedFighter };
 
-            CollectionAssert.AreEqual(expected, queries.GetDetectors(mission, planet, phase));
+            CollectionAssert.AreEqual(
+                expected,
+                queries.GetDetectors(mission, planet, phase, out _)
+            );
             CollectionAssert.AreEqual(
                 expected,
                 assessment.GetMissionDetectors(mission, planet, phase, objective)

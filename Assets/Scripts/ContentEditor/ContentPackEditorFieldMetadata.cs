@@ -208,7 +208,7 @@ internal static class ContentPackEditorFieldMetadata
         ["IsKnownJedi"] = "Whether the character's Force abilities have been revealed.",
         ["IsJediTrainer"] = "Whether this character can train other Force users.",
         ["GrowsForceOnMission"] =
-            "Allows eligible missions to increase this character's Force abilities.",
+            "Allows a successful capture evasion during a linked officer encounter to increase this character's Force abilities.",
         ["JediLevel"] = "The character's starting Force rating.",
         ["JediProbability"] =
             "The percentage chance that the character starts with Force abilities.",
@@ -329,6 +329,8 @@ internal static class ContentPackEditorFieldMetadata
             "FactionID" or "FactionInstanceID" => "Faction",
             "OwnerInstanceID" => "Owner",
             "IsMain" => "Main character",
+            "GrowsForceOnMission" => "Grows Force after evasion",
+            "ForceGrowthPerMission" => "Force growth per evasion",
             "IsRecruitable" => "Recruitable",
             "IsKnownJedi" => "Known Force user",
             "IsJediTrainer" => "Can train Force users",
@@ -526,7 +528,6 @@ internal static class ContentPackEditorFieldMetadata
             || field.Group == "Jedi"
                 && field.MemberName
                     is "TrainingCatchUpPercent"
-                        or "ForceGrowthPerMission"
                         or "MissionParticipantEncounterMinimum"
                         or "MissionDefenderEncounterMinimum"
             || field.Group == "DifficultyModifiers"

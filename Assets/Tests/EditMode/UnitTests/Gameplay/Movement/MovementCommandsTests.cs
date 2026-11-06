@@ -2468,7 +2468,7 @@ namespace Rebellion.Tests.Gameplay
             };
             game.AttachNode(mission, destination);
 
-            movement.SendToMission(officer, mission);
+            movement.SendToMission(new IMissionParticipant[] { officer }, mission);
 
             Assert.IsNotNull(officer.Movement);
             Assert.AreSame(mission, officer.GetParent());
@@ -3310,7 +3310,7 @@ namespace Rebellion.Tests.Gameplay
             StubMission mission = new StubMission("empire", destination.InstanceID);
             game.AttachNode(mission, destination);
 
-            movement.SendToMission(officer, mission);
+            movement.SendToMission(new IMissionParticipant[] { officer }, mission);
 
             Assert.AreEqual(ship.InstanceID, officer.MissionReturnParentInstanceID);
             Assert.AreEqual(origin.InstanceID, officer.MissionReturnLocationInstanceID);
@@ -3369,7 +3369,7 @@ namespace Rebellion.Tests.Gameplay
             game.MoveNode(officer, ship);
             StubMission mission = new StubMission("empire", destination.InstanceID);
             game.AttachNode(mission, destination);
-            movement.SendToMission(officer, mission);
+            movement.SendToMission(new IMissionParticipant[] { officer }, mission);
             officer.Movement = null;
             game.MoveNode(fleet, destination);
 
@@ -3397,7 +3397,7 @@ namespace Rebellion.Tests.Gameplay
             ) = BuildScene();
             StubMission mission = new StubMission("empire", destination.InstanceID);
             game.AttachNode(mission, destination);
-            movement.SendToMission(officer, mission);
+            movement.SendToMission(new IMissionParticipant[] { officer }, mission);
             officer.Movement = null;
             officer.MissionReturnParentInstanceID = "missing-parent";
             officer.MissionReturnLocationInstanceID = "missing-location";
@@ -3420,7 +3420,7 @@ namespace Rebellion.Tests.Gameplay
                 BuildScene();
             StubMission mission = new StubMission("empire", destination.InstanceID);
             game.AttachNode(mission, destination);
-            movement.SendToMission(officer, mission);
+            movement.SendToMission(new IMissionParticipant[] { officer }, mission);
             officer.Movement = null;
             officer.OwnerInstanceID = null;
             officer.MissionReturnParentInstanceID = "missing-parent";
@@ -3449,7 +3449,7 @@ namespace Rebellion.Tests.Gameplay
             ) = BuildScene();
             StubMission mission = new StubMission("empire", destination.InstanceID);
             game.AttachNode(mission, destination);
-            movement.SendToMission(officer, mission);
+            movement.SendToMission(new IMissionParticipant[] { officer }, mission);
             officer.Movement = null;
             origin.OwnerInstanceID = "rebels";
             Planet fallback = new Planet
@@ -3495,7 +3495,7 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(ship, fleet);
             StubMission mission = new StubMission("empire", destination.InstanceID);
             game.AttachNode(mission, destination);
-            movement.SendToMission(officer, mission);
+            movement.SendToMission(new IMissionParticipant[] { officer }, mission);
             officer.Movement = null;
             officer.MissionReturnParentInstanceID = "missing-parent";
             officer.MissionReturnLocationInstanceID = "missing-location";
@@ -3525,7 +3525,7 @@ namespace Rebellion.Tests.Gameplay
             destination.OwnerInstanceID = "rebels";
             StubMission mission = new StubMission("empire", destination.InstanceID);
             game.AttachNode(mission, destination);
-            movement.SendToMission(officer, mission);
+            movement.SendToMission(new IMissionParticipant[] { officer }, mission);
             officer.Movement = null;
             officer.MissionReturnParentInstanceID = "missing-parent";
             officer.MissionReturnLocationInstanceID = "missing-location";
@@ -3556,7 +3556,7 @@ namespace Rebellion.Tests.Gameplay
             ) = BuildScene(config);
             StubMission mission = new StubMission("empire", destination.InstanceID);
             game.AttachNode(mission, destination);
-            movement.SendToMission(escort, mission);
+            movement.SendToMission(new IMissionParticipant[] { escort }, mission);
             escort.Movement = null;
             Officer passenger = EntityFactory.CreateOfficer("passenger", "rebels");
             passenger.IsCaptured = true;
@@ -3647,6 +3647,44 @@ namespace Rebellion.Tests.Gameplay
             );
         }
 
+        [Test]
+        public void ProcessTick_ReturningOfficerEvadesButDies_GainsForceExperience()
+        {
+            (GameRoot game, Planet missionPlanet, Planet returnPlanet, MovementCommands movement) =
+                BuildBlockadeScene(new FixedRNG(0));
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 100);
+            game.Config.Assassination.KillProbability = 100;
+            game.Config.Jedi.ForceGrowthPerMission = 1;
+            Starfighter detector = AddPersonnelTransitDetector(game, missionPlanet);
+            Fleet hostileFleet = detector.GetParentOfType<Fleet>();
+            Officer officer = EntityFactory.CreateOfficer("returning-officer", "empire");
+            officer.IsMain = false;
+            officer.GrowsForceOnMission = true;
+            officer.IsForceEligible = true;
+            officer.ForceValue = 10;
+            officer.MissionReturnParentInstanceID = returnPlanet.InstanceID;
+            officer.MissionReturnLocationInstanceID = returnPlanet.InstanceID;
+            game.AttachNode(officer, missionPlanet);
+
+            movement.ReturnFromMission(
+                new IMissionParticipant[] { officer },
+                Array.Empty<IMovable>(),
+                out _,
+                new List<GameResult>()
+            );
+            game.MoveNode(hostileFleet, returnPlanet);
+            officer.Movement.TicksElapsed = officer.Movement.TransitTicks - 1;
+
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            Assert.IsTrue(officer.IsKilled);
+            ForceExperienceResult growth = results.OfType<ForceExperienceResult>().Single();
+            Assert.AreSame(officer, growth.Officer);
+            Assert.AreEqual(11, officer.ForceValue);
+        }
+
         [TestCase(1)]
         [TestCase(1000)]
         public void ProcessTick_ReturnFleetChangesDestination_ResolvesArrivalEncounterOnce(
@@ -3678,11 +3716,15 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(carrier, fleet);
             Officer officer = EntityFactory.CreateOfficer("returning-officer", "empire");
             officer.IsMain = true;
+            officer.GrowsForceOnMission = true;
+            officer.IsForceEligible = true;
+            officer.ForceValue = 10;
             officer.MissionReturnParentInstanceID = carrier.InstanceID;
             officer.MissionReturnLocationInstanceID = returnPlanet.InstanceID;
+            game.Config.Jedi.ForceGrowthPerMission = 1;
             game.AttachNode(officer, missionPlanet);
             Officer captive = EntityFactory.CreateOfficer("returning-captive", "rebels");
-            Assert.IsTrue(captive.TryCapture("empire"));
+            Assert.IsTrue(captive.TryCapture("empire", game, game.Random));
             game.AttachNode(captive, missionPlanet);
             movement.ReturnFromMission(
                 new IMissionParticipant[] { officer },
@@ -3728,6 +3770,11 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreSame(carrier, captive.GetParent());
             Assert.AreEqual(fleetHyperdrive == 1000, fleet.Movement != null);
             Assert.IsFalse(officer.IsCaptured);
+            ForceExperienceResult growth = results.OfType<ForceExperienceResult>().Single();
+            Assert.AreSame(officer, growth.Officer);
+            Assert.AreEqual(10, growth.PreviousForceRank);
+            Assert.AreEqual(11, growth.CurrentForceRank);
+            Assert.AreEqual(11, officer.ForceValue);
             Assert.IsTrue(captive.IsCaptured);
             Assert.Zero(captive.InjuryPoints);
             for (int tick = 0; tick < 3; tick++)
@@ -3896,7 +3943,7 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(escort, missionPlanet);
             StubMission mission = new StubMission("empire", missionPlanet.InstanceID);
             game.AttachNode(mission, missionPlanet);
-            movement.SendToMission(escort, mission);
+            movement.SendToMission(new IMissionParticipant[] { escort }, mission);
             escort.Movement = null;
 
             Officer captive = EntityFactory.CreateOfficer("captive", "rebels");
@@ -3950,7 +3997,7 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(escort, returnPlanet);
             StubMission mission = new StubMission("empire", missionPlanet.InstanceID);
             game.AttachNode(mission, missionPlanet);
-            movement.SendToMission(escort, mission);
+            movement.SendToMission(new IMissionParticipant[] { escort }, mission);
             escort.Movement = null;
 
             Officer captive = EntityFactory.CreateOfficer("captive", "rebels");
@@ -4035,8 +4082,8 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(secondOfficer, secondOrigin);
             StubMission mission = new StubMission("empire", destination.InstanceID);
             game.AttachNode(mission, destination);
-            movement.SendToMission(firstOfficer, mission);
-            movement.SendToMission(secondOfficer, mission);
+            movement.SendToMission(new IMissionParticipant[] { firstOfficer }, mission);
+            movement.SendToMission(new IMissionParticipant[] { secondOfficer }, mission);
             firstOfficer.Movement = null;
             secondOfficer.Movement = null;
 

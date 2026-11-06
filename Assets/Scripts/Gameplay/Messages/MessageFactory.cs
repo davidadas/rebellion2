@@ -42,7 +42,7 @@ namespace Rebellion.Gameplay
         /// <summary>
         /// Creates a message factory backed by the supplied message definitions.
         /// </summary>
-        /// <param name="definitions">The message definitions used to select templates and images.</param>
+        /// <param name="definitions">Shared, read-only definitions used to select templates and images.</param>
         public MessageFactory(IEnumerable<MessageDefinition> definitions)
         {
             _definitions = definitions?.ToArray() ?? Array.Empty<MessageDefinition>();
@@ -139,7 +139,7 @@ namespace Rebellion.Gameplay
             );
             AddTraitorDiscoveryMessages(batch.OfType<TraitorDiscoveredResult>(), game, deliveries);
             AddForceMessages(
-                batch.OfType<ForceExperienceResult>(),
+                batch.OfType<ForceProgressionResult>(),
                 forceDiscoveryResults,
                 game,
                 deliveries
@@ -543,7 +543,7 @@ namespace Rebellion.Gameplay
         /// <returns>The force growth message, or null when no matching definition exists.</returns>
         private MessageDelivery CreateForceGrowth(
             Faction faction,
-            ForceExperienceResult result,
+            ForceProgressionResult result,
             GameRoot game
         )
         {
@@ -560,7 +560,7 @@ namespace Rebellion.Gameplay
                             {
                                 "rank",
                                 GetForceRankText(
-                                    GetCurrentForceRank(result),
+                                    result.CurrentForceRank,
                                     result.Officer.IsForceSensitive,
                                     game
                                 )
@@ -603,7 +603,7 @@ namespace Rebellion.Gameplay
 
             return WithEventLocation(
                 CreateMessage(
-                    GetDefinition(resultType),
+                    GetDefinition(resultType, gameObjectTypeId: result.Officer.TypeID),
                     faction,
                     new Dictionary<string, string>
                     {
@@ -906,14 +906,14 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Adds force growth messages for rank changes not already covered by discovery messages.
+        /// Adds Force progression messages for initialized ranks not covered by discovery messages.
         /// </summary>
         /// <param name="experienceResults">The force experience results to process.</param>
         /// <param name="discoveryResults">The force discovery results in the current batch.</param>
         /// <param name="game">The game state used to resolve recipient factions and rank labels.</param>
         /// <param name="deliveries">The delivery list to append messages to.</param>
         private void AddForceMessages(
-            IEnumerable<ForceExperienceResult> experienceResults,
+            IEnumerable<ForceProgressionResult> experienceResults,
             IEnumerable<ForceDiscoveryResult> discoveryResults,
             GameRoot game,
             List<MessageDelivery> deliveries
@@ -938,12 +938,12 @@ namespace Rebellion.Gameplay
                 AddDelivery(deliveries, faction, CreateForceUserDiscovered(faction, result, game));
             }
 
-            foreach (ForceExperienceResult result in experienceResults)
+            foreach (ForceProgressionResult result in experienceResults)
             {
                 if (discoveredOfficerIDs.Contains(result.Officer?.InstanceID ?? string.Empty))
                     continue;
 
-                if (!ShouldCreateForceGrowthMessage(result, game))
+                if (!ShouldCreateForceGrowthMessage(result))
                     continue;
 
                 Faction faction = GetOwnerFaction(game, result.Officer);
@@ -1646,66 +1646,15 @@ namespace Rebellion.Gameplay
         /// Checks whether a force experience result should produce a rank-change message.
         /// </summary>
         /// <param name="result">The force experience result.</param>
-        /// <param name="game">The game state containing Jedi rank configuration.</param>
-        /// <returns>True when the displayed rank changes; otherwise false.</returns>
-        private static bool ShouldCreateForceGrowthMessage(
-            ForceExperienceResult result,
-            GameRoot game
-        )
+        /// <returns>True when one nonzero effective rank changes to another; otherwise false.</returns>
+        private static bool ShouldCreateForceGrowthMessage(ForceProgressionResult result)
         {
             if (result?.Officer == null)
                 return false;
 
-            string previousRank = GetForceRankText(
-                GetPreviousForceRank(result),
-                result.Officer.IsForceSensitive,
-                game
-            );
-            string currentRank = GetForceRankText(
-                GetCurrentForceRank(result),
-                result.Officer.IsForceSensitive,
-                game
-            );
-            return previousRank != currentRank;
-        }
-
-        /// <summary>
-        /// Gets the previous force rank for a force experience result.
-        /// </summary>
-        /// <param name="result">The force experience result.</param>
-        /// <returns>The previous force rank.</returns>
-        private static int GetPreviousForceRank(ForceExperienceResult result)
-        {
-            if (HasRecordedForceRank(result))
-                return result.PreviousForceRank;
-
-            return Math.Max(
-                0,
-                (result.Officer?.ForceRank ?? 0) - Math.Max(0, result.ExperienceGained)
-            );
-        }
-
-        /// <summary>
-        /// Gets the current force rank for a force experience result.
-        /// </summary>
-        /// <param name="result">The force experience result.</param>
-        /// <returns>The current force rank.</returns>
-        private static int GetCurrentForceRank(ForceExperienceResult result)
-        {
-            if (HasRecordedForceRank(result))
-                return result.CurrentForceRank;
-
-            return result.Officer?.ForceRank ?? 0;
-        }
-
-        /// <summary>
-        /// Checks whether a force experience result recorded explicit rank values.
-        /// </summary>
-        /// <param name="result">The force experience result.</param>
-        /// <returns>True when explicit rank values are present; otherwise false.</returns>
-        private static bool HasRecordedForceRank(ForceExperienceResult result)
-        {
-            return result.PreviousForceRank != 0 || result.CurrentForceRank != 0;
+            int previousRank = result.PreviousForceRank;
+            int currentRank = result.CurrentForceRank;
+            return previousRank != 0 && currentRank != 0 && previousRank != currentRank;
         }
 
         /// <summary>

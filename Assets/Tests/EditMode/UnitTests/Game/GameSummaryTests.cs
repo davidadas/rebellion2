@@ -1,12 +1,75 @@
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Util.Reflection;
 
 namespace Rebellion.Tests.Game
 {
     [TestFixture]
     public class GameSummaryTests
     {
+        [Test]
+        public void CreateCopy_EditingLaunchArrays_DoesNotChangeSource()
+        {
+            GameSummary source = new GameSummary
+            {
+                Seed = 12345,
+                StartingFactionIDs = new[] { "faction" },
+                ModIDs = new[] { "mod" },
+                ModVersions = new[] { "1" },
+            };
+            string before = SerializationHelper.Serialize(source);
+            GameSummary copy = source.CreateCopy();
+
+            copy.StartingFactionIDs[0] = "other";
+            copy.ModIDs[0] = "other";
+            copy.ModVersions[0] = "2";
+
+            Assert.AreEqual(before, SerializationHelper.Serialize(source));
+            Assert.AreEqual(12345, copy.Seed);
+        }
+
+        [Test]
+        public void CreateCopy_EditingCustomRules_DoesNotChangeSource()
+        {
+            GameSummary source = new GameSummary
+            {
+                CustomSettings = new CustomGameSettings
+                {
+                    PlayerDifficultyModifiers = new DifficultyModifiers
+                    {
+                        ManufacturingSpeedPercent = 115,
+                    },
+                    AIDifficultyModifiers = new DifficultyModifiers
+                    {
+                        ManufacturingSpeedPercent = 120,
+                    },
+                    GenerationConfig = TestContent.Data.GenerationConfig.CreateCopy(),
+                    GarrisonRules = new GarrisonRuleSettings
+                    {
+                        SupportThreshold = 50,
+                        SupportDeficitPerRegiment = 5,
+                        UprisingMultiplier = 2,
+                    },
+                    MovementRules = new MovementRuleSettings { TravelSpeedPercent = 100 },
+                },
+            };
+            string before = SerializationHelper.Serialize(source);
+            GameSummary copy = source.CreateCopy();
+
+            copy.CustomSettings.PlayerDifficultyModifiers.ManufacturingSpeedPercent = 200;
+            copy.CustomSettings.AIDifficultyModifiers.ManufacturingSpeedPercent = 200;
+            copy.CustomSettings.GarrisonRules.SupportThreshold = 75;
+            copy.CustomSettings.MovementRules.TravelSpeedPercent = 200;
+            copy.CustomSettings.GenerationConfig.DisabledEventCategories.Clear();
+            copy.CustomSettings
+                .GenerationConfig
+                .GalaxyClassification
+                .FactionSetups[0]
+                .NumStartingOfficers
+                .Small += 1;
+
+            Assert.AreEqual(before, SerializationHelper.Serialize(source));
+        }
+
         [Test]
         public void Constructor_DefaultConstruction_InitializesWithDefaults()
         {
@@ -89,7 +152,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void SerializeAndDeserialize_PopulatedSetup_MaintainsState()
         {
-            GameGenerationConfig generationConfig = TestContent.Data.GenerationConfig.GetDeepCopy();
+            GameGenerationConfig generationConfig = TestContent.Data.GenerationConfig.CreateCopy();
             generationConfig.FacilityGeneration.CoreMineMultiplier = 17;
             GameSummary summary = new GameSummary
             {

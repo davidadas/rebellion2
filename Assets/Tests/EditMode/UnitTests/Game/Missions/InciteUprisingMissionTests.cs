@@ -682,7 +682,8 @@ namespace Rebellion.Tests.Game.Missions
                     game,
                     new PlanetaryControlQueries(game),
                     new FogOfWarQueries(game)
-                )
+                ),
+                new JediCommands(game, rng)
             );
         }
     }

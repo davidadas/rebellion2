@@ -8,6 +8,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
@@ -40,6 +41,208 @@ namespace Rebellion.Tests.Gameplay.GameEvents
                 eventRandom,
                 new GameActionCommands(_game, eventRandom)
             );
+        }
+
+        [Test]
+        public void InstallDefinitions_UpdatedAction_ExecutesCurrentDefinition()
+        {
+            _game.GetEventPool().Add(new GameEvent { InstanceID = "retired" });
+            GameEvent current = new GameEvent
+            {
+                InstanceID = "current",
+                Triggers = new List<GameTrigger> { new UnitCreatedTrigger() },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "value", Operand = 2 },
+                },
+            };
+
+            _system.InstallDefinitions(new[] { current });
+            _system.ProcessTriggeredEvents(new[] { new GameObjectCreatedResult() });
+
+            Assert.AreEqual(2, _game.EventRuntime.GetVariable("value"));
+            CollectionAssert.AreEqual(new[] { current }, _game.GetEventPool());
+        }
+
+        [Test]
+        public void InstallDefinitions_RemovedTriggerLimit_ReopensListenerWithActivationHistory()
+        {
+            GameEventState state = _game.EventRuntime.GetState("listener");
+            state.ActivationCount = 1;
+            state.LastActivationTick = 17;
+            state.IsComplete = true;
+            GameEvent current = new GameEvent
+            {
+                InstanceID = "listener",
+                Triggers = new List<GameTrigger> { new UnitCreatedTrigger() },
+            };
+
+            _system.InstallDefinitions(new[] { current });
+
+            Assert.IsFalse(state.IsComplete);
+            Assert.AreEqual(1, state.ActivationCount);
+            Assert.AreEqual(17, state.LastActivationTick);
+            Assert.Contains(current, _game.GetEventPool());
+        }
+
+        [Test]
+        public void InstallDefinitions_TriggeredLimitReached_KeepsListenerCompleted()
+        {
+            GameEventState state = _game.EventRuntime.GetState("listener");
+            state.ActivationCount = 1;
+            GameEvent current = new GameEvent
+            {
+                InstanceID = "listener",
+                MaximumActivations = 1,
+                Triggers = new List<GameTrigger> { new UnitCreatedTrigger() },
+            };
+
+            _system.InstallDefinitions(new[] { current });
+
+            Assert.IsTrue(state.IsComplete);
+            Assert.IsEmpty(_game.GetEventPool());
+        }
+
+        [Test]
+        public void InstallDefinitions_CompletedRecurringSchedule_PreservesTerminalHistory()
+        {
+            _game.EventRuntime.GetState("schedule").IsComplete = true;
+            GameEvent current = new GameEvent
+            {
+                InstanceID = "schedule",
+                Schedule = new GameEventSchedule { Every = new EveryTicks { Ticks = 1 } },
+            };
+
+            _system.InstallDefinitions(new[] { current });
+
+            Assert.IsTrue(_game.EventRuntime.GetState("schedule").IsComplete);
+            Assert.IsEmpty(_game.GetEventPool());
+        }
+
+        [Test]
+        public void InstallDefinitions_InvalidCurrentDefinition_ThrowsBeforeReplacingPool()
+        {
+            GameEvent previous = new GameEvent { InstanceID = "previous" };
+            _game.GetEventPool().Add(previous);
+            GameEvent invalid = new GameEvent { InstanceID = "invalid", MaximumActivations = 0 };
+
+            Assert.Throws<InvalidOperationException>(() =>
+                _system.InstallDefinitions(new[] { invalid })
+            );
+
+            CollectionAssert.AreEqual(new[] { previous }, _game.GetEventPool());
+        }
+
+        [TestCase(50, 80)]
+        [TestCase(0, 0)]
+        [TestCase(1, 1)]
+        [TestCase(-50, -80)]
+        [TestCase(32767, -13109)]
+        public void ProcessScheduledEvents_TrainingVisit_AppliesOneCompletedTrainingIncrease(
+            int initialForce,
+            int expectedForce
+        )
+        {
+            _game = TestGame.Create(TestContent.Data.GameConfig);
+            _game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "FNALL1" };
+            Officer luke = new Officer
+            {
+                InstanceID = "LUKE_SKYWALKER",
+                OwnerInstanceID = "FNALL1",
+                ForceValue = initialForce,
+                IsForceSensitive = true,
+                IsForceEligible = true,
+            };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
+            _game.AttachNode(luke, planet);
+            _game
+                .GetEventPool()
+                .AddRange(
+                    TestContent.Data.GameEvents.Where(gameEvent =>
+                        gameEvent.InstanceID is "LUKE_VISITS_YODA" or "LUKE_LEAVES_DAGOBAH"
+                    )
+                );
+            FixedRandomProvider random = new FixedRandomProvider(new[] { 0.5 });
+            _system = new GameEventCommands(
+                _game,
+                random,
+                new GameActionCommands(
+                    _game,
+                    random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
+            );
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+            Assert.AreEqual(350, _game.EventRuntime.GetState("LUKE_VISITS_YODA").NextEligibleTick);
+            for (int tick = 1; tick <= 1200; tick++)
+            {
+                _game.CurrentTick = tick;
+                _system.ProcessScheduledEvents(_game.GetEventPool());
+            }
+
+            Assert.AreEqual(expectedForce, luke.ForceValue);
+            Assert.IsTrue(luke.IsActive());
+            Assert.AreEqual(1, _game.EventRuntime.GetState("LUKE_VISITS_YODA").ActivationCount);
+            Assert.AreEqual(1, _game.EventRuntime.GetState("LUKE_LEAVES_DAGOBAH").ActivationCount);
+        }
+
+        [TestCase(99, false)]
+        [TestCase(100, true)]
+        public void ProcessScheduledEvents_FinalBattle_DisablesEscapeForDefeatedOfficers(
+            int forceRank,
+            bool lukeWins
+        )
+        {
+            _game = TestGame.Create(TestContent.Data.GameConfig);
+            _game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
+            _game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
+            PlanetSector sector = new() { InstanceID = "sector" };
+            Planet planet = new()
+            {
+                InstanceID = "planet",
+                OwnerInstanceID = "FNEMP1",
+                IsColonized = true,
+            };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
+            Officer luke = EntityFactory.CreateOfficer("LUKE_SKYWALKER", "FNALL1");
+            luke.ForceValue = forceRank;
+            luke.TryCapture("FNEMP1", _game, _game.Random);
+            Officer vader = EntityFactory.CreateOfficer("DARTH_VADER", "FNEMP1");
+            Officer emperor = EntityFactory.CreateOfficer("EMPEROR_PALPATINE", "FNEMP1");
+            _game.AttachNode(luke, planet);
+            _game.AttachNode(vader, planet);
+            _game.AttachNode(emperor, planet);
+            string eventID = lukeWins ? "LUKE_WINS_FINAL_BATTLE" : "LUKE_LOSES_FINAL_BATTLE";
+            _game
+                .GetEventPool()
+                .Add(TestContent.Data.GameEvents.Single(item => item.InstanceID == eventID));
+            _game.EventRuntime.GetState("VADER_REACHES_LUKE").ActivationCount = 1;
+            GameEventCommands commands = new(
+                _game,
+                _game.Random,
+                new GameActionCommands(
+                    _game,
+                    _game.Random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
+            );
+
+            commands.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(1, _game.EventRuntime.GetState(eventID).ActivationCount);
+            Officer[] defeated = lukeWins ? new[] { vader, emperor } : new[] { luke };
+            foreach (Officer officer in defeated)
+            {
+                Assert.IsTrue(officer.IsCaptured, officer.InstanceID);
+                Assert.IsFalse(officer.CanEscape, officer.InstanceID);
+                Assert.AreEqual(0, officer.NextEscapeAttemptTick, officer.InstanceID);
+            }
+            Assert.AreEqual(!lukeWins, luke.IsCaptured);
         }
 
         [Test]
@@ -253,13 +456,18 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         {
             (GameRoot game, GameEvent gameEvent, Officer encountered, Officer opposing) =
                 CreateDeferredDuelEvent();
-            GameEventCommands executor = new GameEventCommands(
+            GameEventCommands executor = null;
+            executor = new GameEventCommands(
                 game,
                 game.Random,
                 new GameActionCommands(
                     game,
                     game.Random,
-                    duelCommands: new DuelCommands(game, new CaptureThenThrowRandom()),
+                    duelCommands: new DuelCommands(
+                        game,
+                        new CaptureThenThrowRandom(),
+                        encounter => executor.ProcessTriggeredEvents(new[] { encounter })
+                    ),
                     messageCommands: new MessageCommands(game, new MessageFactory(null))
                 )
             );
@@ -306,13 +514,18 @@ namespace Rebellion.Tests.Gameplay.GameEvents
                     },
                 },
             };
-            GameEventCommands executor = new GameEventCommands(
+            GameEventCommands executor = null;
+            executor = new GameEventCommands(
                 game,
                 game.Random,
                 new GameActionCommands(
                     game,
                     game.Random,
-                    duelCommands: new DuelCommands(game, new ThrowingRNG())
+                    duelCommands: new DuelCommands(
+                        game,
+                        new ThrowingRNG(),
+                        encounter => executor.ProcessTriggeredEvents(new[] { encounter })
+                    )
                 )
             );
 
@@ -1187,6 +1400,670 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
+        [TestCase("LUKE_ENCOUNTERS_VADER", "LUKE_SKYWALKER", "DARTH_VADER", false, 63)]
+        [TestCase("LUKE_ENCOUNTERS_VADER", "LUKE_SKYWALKER", "DARTH_VADER", true, 63)]
+        [TestCase("LUKE_ENCOUNTERS_PALPATINE", "LUKE_SKYWALKER", "EMPEROR_PALPATINE", false, 56)]
+        [TestCase("LUKE_ENCOUNTERS_PALPATINE", "LUKE_SKYWALKER", "EMPEROR_PALPATINE", true, 56)]
+        [TestCase("LEIA_ENCOUNTERS_VADER", "LEIA_ORGANA", "DARTH_VADER", false, 56)]
+        [TestCase("LEIA_ENCOUNTERS_VADER", "LEIA_ORGANA", "DARTH_VADER", true, 56)]
+        [TestCase("LEIA_ENCOUNTERS_PALPATINE", "LEIA_ORGANA", "EMPEROR_PALPATINE", false, 56)]
+        [TestCase("LEIA_ENCOUNTERS_PALPATINE", "LEIA_ORGANA", "EMPEROR_PALPATINE", true, 56)]
+        public void ProcessTriggeredEvents_RepeatedNamedConfrontations_AwardGrowthInEitherOrder(
+            string eventID,
+            string growingOfficerID,
+            string opponentID,
+            bool reverseOrder,
+            int expectedForceRank
+        )
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
+            _game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "FNALL1" };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
+            Officer growingOfficer = EntityFactory.CreateOfficer(growingOfficerID, "FNALL1");
+            growingOfficer.ForceValue = 20;
+            growingOfficer.IsForceEligible = true;
+            _game.AttachNode(growingOfficer, planet);
+            Officer opponent = EntityFactory.CreateOfficer(opponentID, "FNEMP1");
+            opponent.ForceValue = 120;
+            opponent.IsCaptured = true;
+            _game.AttachNode(opponent, planet);
+            opponent.IsCaptured = false;
+            _game
+                .GetEventPool()
+                .Add(
+                    TestContent.Data.GameEvents.Single(gameEvent => gameEvent.InstanceID == eventID)
+                );
+            FixedRNG random = new FixedRNG(0.0);
+            GameEventCommands commands = new GameEventCommands(
+                _game,
+                random,
+                new GameActionCommands(
+                    _game,
+                    random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
+            );
+            DuelResult encounter = new DuelResult
+            {
+                EncounteredOfficer = reverseOrder ? opponent : growingOfficer,
+                OpposingOfficer = reverseOrder ? growingOfficer : opponent,
+                ImagePath = "encounter-image",
+                AudioPath = "encounter-audio",
+            };
+
+            commands.ProcessTriggeredEvents(new[] { encounter });
+            commands.ProcessTriggeredEvents(new[] { encounter });
+
+            Assert.AreEqual(expectedForceRank, growingOfficer.ForceRank);
+            Assert.AreEqual(2, _game.EventRuntime.GetState(eventID).ActivationCount);
+        }
+
+        [TestCase("LUKE_ENCOUNTERS_VADER", "LUKE_SKYWALKER", "DARTH_VADER")]
+        [TestCase("LUKE_ENCOUNTERS_PALPATINE", "LUKE_SKYWALKER", "EMPEROR_PALPATINE")]
+        [TestCase("LEIA_ENCOUNTERS_VADER", "LEIA_ORGANA", "DARTH_VADER")]
+        [TestCase("LEIA_ENCOUNTERS_PALPATINE", "LEIA_ORGANA", "EMPEROR_PALPATINE")]
+        public void ProcessTriggeredEvents_NamedEncounter_DeliversBothOfficersStatesToBothFactions(
+            string eventID,
+            string firstOfficerID,
+            string secondOfficerID
+        )
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
+            _game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
+            PlanetSector sector = new() { InstanceID = "sector" };
+            Planet planet = new() { InstanceID = "planet", OwnerInstanceID = "FNALL1" };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
+            Officer first = EntityFactory.CreateOfficer(firstOfficerID, "FNALL1");
+            first.DisplayName = "First officer";
+            first.InjuryPoints = 10;
+            _game.AttachNode(first, planet);
+            first.IsCaptured = true;
+            Officer second = EntityFactory.CreateOfficer(secondOfficerID, "FNEMP1");
+            second.DisplayName = "Second officer";
+            second.InjuryPoints = 15;
+            second.IsCaptured = true;
+            _game.AttachNode(second, planet);
+            second.IsCaptured = false;
+            _game
+                .GetEventPool()
+                .Add(TestContent.Data.GameEvents.Single(item => item.InstanceID == eventID));
+            _game.EventRuntime.GetState(eventID).ActivationCount = 1;
+            GameEventCommands commands = new(
+                _game,
+                _game.Random,
+                new GameActionCommands(
+                    _game,
+                    _game.Random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
+            );
+
+            MessageDeliveredResult[] delivered = commands
+                .ProcessTriggeredEvents(
+                    new[]
+                    {
+                        new DuelResult
+                        {
+                            EncounteredOfficer = second,
+                            OpposingOfficer = first,
+                            ImagePath = "encounter-image",
+                            AudioPath = "encounter-audio",
+                        },
+                    }
+                )
+                .OfType<MessageDeliveredResult>()
+                .ToArray();
+
+            CollectionAssert.AreEquivalent(
+                new[] { "FNALL1", "FNEMP1" },
+                delivered.Select(result => result.Recipient.InstanceID)
+            );
+            foreach (MessageDeliveredResult result in delivered)
+                Assert.AreEqual(
+                    "First officer has fought Second officer.  First officer was captured.  Second officer was injured.  ",
+                    result.Message.Body
+                );
+        }
+
+        [TestCase("LUKE_ENCOUNTERS_VADER", "LUKE_SKYWALKER", "DARTH_VADER", 0, false)]
+        [TestCase("LUKE_ENCOUNTERS_VADER", "LUKE_SKYWALKER", "DARTH_VADER", 1, false)]
+        [TestCase("LUKE_ENCOUNTERS_VADER", "LUKE_SKYWALKER", "DARTH_VADER", 1, true)]
+        [TestCase("LUKE_ENCOUNTERS_PALPATINE", "LUKE_SKYWALKER", "EMPEROR_PALPATINE", 1, false)]
+        [TestCase("LUKE_ENCOUNTERS_PALPATINE", "LUKE_SKYWALKER", "EMPEROR_PALPATINE", 1, true)]
+        [TestCase("LEIA_ENCOUNTERS_VADER", "LEIA_ORGANA", "DARTH_VADER", 1, false)]
+        [TestCase("LEIA_ENCOUNTERS_PALPATINE", "LEIA_ORGANA", "EMPEROR_PALPATINE", 1, false)]
+        public void ProcessTriggeredEvents_NamedEncounter_IdentifiesEachRecipientsOwnOfficer(
+            string eventID,
+            string firstOfficerID,
+            string secondOfficerID,
+            int previousEncounters,
+            bool completedTraining
+        )
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
+            _game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
+            PlanetSector sector = new() { InstanceID = "sector" };
+            Planet planet = new() { InstanceID = "planet", OwnerInstanceID = "FNALL1" };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
+            Officer first = EntityFactory.CreateOfficer(firstOfficerID, "FNALL1");
+            first.TypeID = "first-type";
+            _game.AttachNode(first, planet);
+            Officer second = EntityFactory.CreateOfficer(secondOfficerID, "FNEMP1");
+            second.TypeID = "second-type";
+            second.IsCaptured = true;
+            _game.AttachNode(second, planet);
+            second.IsCaptured = false;
+            _game
+                .GetEventPool()
+                .Add(TestContent.Data.GameEvents.Single(item => item.InstanceID == eventID));
+            _game.EventRuntime.GetState(eventID).ActivationCount = previousEncounters;
+            _game.EventRuntime.GetState("LUKE_LEAVES_DAGOBAH").ActivationCount = completedTraining
+                ? 1
+                : 0;
+            GameEventCommands commands = new(
+                _game,
+                _game.Random,
+                new GameActionCommands(
+                    _game,
+                    _game.Random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
+            );
+
+            MessageDeliveredResult[] delivered = commands
+                .ProcessTriggeredEvents(
+                    new[]
+                    {
+                        new DuelResult { EncounteredOfficer = first, OpposingOfficer = second },
+                    }
+                )
+                .OfType<MessageDeliveredResult>()
+                .ToArray();
+
+            Assert.AreEqual(2, delivered.Length);
+            foreach (MessageDeliveredResult result in delivered)
+            {
+                Officer reporter = result.Recipient.InstanceID == "FNALL1" ? first : second;
+                Assert.AreEqual(reporter.InstanceID, result.Message.NavigationTargetInstanceID);
+                Assert.AreEqual(reporter.TypeID, result.AdvisorSubjectTypeID);
+            }
+        }
+
+        [TestCase(false, 1)]
+        [TestCase(true, 0)]
+        public void ProcessTriggeredEvents_LaterVaderEncounter_DoesNotRepeatFirstEncounterInjury(
+            bool capturedOnFirstEncounter,
+            int expectedInjury
+        )
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
+            _game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "FNALL1" };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
+            Officer luke = EntityFactory.CreateOfficer("LUKE_SKYWALKER", "FNALL1");
+            luke.ForceValue = 79;
+            _game.AttachNode(luke, planet);
+            luke.IsCaptured = capturedOnFirstEncounter;
+            Officer vader = EntityFactory.CreateOfficer("DARTH_VADER", "FNEMP1");
+            vader.ForceValue = 120;
+            vader.IsCaptured = true;
+            _game.AttachNode(vader, planet);
+            vader.IsCaptured = false;
+            _game
+                .GetEventPool()
+                .Add(
+                    TestContent.Data.GameEvents.Single(gameEvent =>
+                        gameEvent.InstanceID == "LUKE_ENCOUNTERS_VADER"
+                    )
+                );
+            FixedRNG random = new FixedRNG(0.0);
+            GameEventCommands commands = new GameEventCommands(
+                _game,
+                random,
+                new GameActionCommands(
+                    _game,
+                    random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
+            );
+            DuelResult encounter = new DuelResult
+            {
+                EncounteredOfficer = luke,
+                OpposingOfficer = vader,
+                ImagePath = "encounter-image",
+                AudioPath = "encounter-audio",
+            };
+
+            commands.ProcessTriggeredEvents(new[] { encounter });
+            luke.IsCaptured = false;
+            luke.ForceValue = 79;
+            commands.ProcessTriggeredEvents(new[] { encounter });
+
+            Assert.AreEqual(expectedInjury, luke.InjuryPoints);
+            Assert.AreEqual(89, luke.ForceRank);
+        }
+
+        [TestCase(1, false)]
+        [TestCase(1, true)]
+        [TestCase(40, false)]
+        [TestCase(40, true)]
+        [TestCase(60, false)]
+        [TestCase(60, true)]
+        [TestCase(100, false)]
+        [TestCase(100, true)]
+        public void ProcessTriggeredEvents_FirstVaderEncounter_ReportsHeritageAtAnyForceRank(
+            int forceRank,
+            bool reverseOrder
+        )
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
+            _game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "FNALL1" };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
+            Officer luke = EntityFactory.CreateOfficer("LUKE_SKYWALKER", "FNALL1");
+            luke.ForceValue = forceRank;
+            _game.AttachNode(luke, planet);
+            Officer vader = EntityFactory.CreateOfficer("DARTH_VADER", "FNEMP1");
+            vader.ForceValue = 120;
+            vader.IsCaptured = true;
+            _game.AttachNode(vader, planet);
+            vader.IsCaptured = false;
+            _game
+                .GetEventPool()
+                .AddRange(
+                    TestContent.Data.GameEvents.Where(gameEvent =>
+                        gameEvent.InstanceID == "LUKE_ENCOUNTERS_VADER"
+                    )
+                );
+            FixedRNG random = new FixedRNG(0);
+            GameEventCommands commands = new GameEventCommands(
+                _game,
+                random,
+                new GameActionCommands(
+                    _game,
+                    random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
+            );
+            DuelResult encounter = new DuelResult
+            {
+                EncounteredOfficer = reverseOrder ? vader : luke,
+                OpposingOfficer = reverseOrder ? luke : vader,
+                ImagePath = "encounter-image",
+                AudioPath = "encounter-audio",
+            };
+
+            MessageDeliveredResult first = commands
+                .ProcessTriggeredEvents(new[] { encounter })
+                .OfType<MessageDeliveredResult>()
+                .Single(result => result.Recipient.InstanceID == "FNALL1");
+            MessageDeliveredResult later = commands
+                .ProcessTriggeredEvents(new[] { encounter })
+                .OfType<MessageDeliveredResult>()
+                .Single(result => result.Recipient.InstanceID == "FNALL1");
+
+            Assert.AreEqual("Luke Discovers His Heritage", first.Message.Title);
+            Assert.AreEqual("LUKE_SKYWALKER Confronts DARTH_VADER", later.Message.Title);
+            Assert.AreEqual("LUKE_ENCOUNTERS_VADER", first.SourceEventInstanceID);
+            Assert.AreEqual("LUKE_ENCOUNTERS_VADER", later.SourceEventInstanceID);
+            Assert.AreEqual(
+                2,
+                _game.EventRuntime.GetState("LUKE_ENCOUNTERS_VADER").ActivationCount
+            );
+        }
+
+        [TestCase(false, false, "ground")]
+        [TestCase(true, false, "ground")]
+        [TestCase(true, true, "ground")]
+        [TestCase(true, true, "ship")]
+        [TestCase(true, true, "mission")]
+        public void ProcessTriggeredEvents_CapturedHeritage_RequiresSharedMissionToEmperorsPhysicalLocation(
+            bool assigned,
+            bool sameDestination,
+            string emperorLocation
+        )
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
+            _game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
+            PlanetSector sector = new() { InstanceID = "sector" };
+            Planet planet = new() { InstanceID = "planet", OwnerInstanceID = "FNALL1" };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
+            Officer luke = EntityFactory.CreateOfficer("LUKE_SKYWALKER", "FNALL1");
+            Officer vader = EntityFactory.CreateOfficer("DARTH_VADER", "FNEMP1");
+            vader.IsCaptured = true;
+            _game.AttachNode(luke, planet);
+            _game.AttachNode(vader, planet);
+            luke.IsCaptured = true;
+            vader.IsCaptured = false;
+            Planet emperorPlanet = planet;
+            if (!sameDestination)
+            {
+                emperorPlanet = new Planet
+                {
+                    InstanceID = "emperor-planet",
+                    OwnerInstanceID = "FNEMP1",
+                };
+                _game.AttachNode(emperorPlanet, sector);
+            }
+            ISceneNode emperorParent = emperorPlanet;
+            if (emperorLocation == "ship")
+            {
+                Fleet fleet = EntityFactory.CreateFleet("emperor-fleet", "FNEMP1");
+                CapitalShip ship = new CapitalShip
+                {
+                    InstanceID = "emperor-ship",
+                    OwnerInstanceID = "FNEMP1",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                };
+                _game.AttachNode(fleet, emperorPlanet);
+                _game.AttachNode(ship, fleet);
+                emperorParent = ship;
+            }
+            else if (emperorLocation == "mission")
+            {
+                StubMission assignment = new("FNEMP1", emperorPlanet.InstanceID)
+                {
+                    InstanceID = "emperor-mission",
+                };
+                _game.AttachNode(assignment, emperorPlanet);
+                emperorParent = assignment;
+            }
+            Officer emperor = EntityFactory.CreateOfficer("EMPEROR_PALPATINE", "FNEMP1");
+            emperor.IsCaptured = emperorParent.OwnerInstanceID != emperor.OwnerInstanceID;
+            _game.AttachNode(emperor, emperorParent);
+            emperor.IsCaptured = false;
+            if (assigned)
+            {
+                StubMission mission = new("FNEMP1", planet.InstanceID) { InstanceID = "escort" };
+                _game.AttachNode(mission, planet);
+                _game.MoveNode(luke, mission);
+                _game.MoveNode(vader, mission);
+            }
+            _game
+                .GetEventPool()
+                .Add(
+                    TestContent.Data.GameEvents.Single(item =>
+                        item.InstanceID == "LUKE_ENCOUNTERS_VADER"
+                    )
+                );
+            GameEventCommands commands = new(
+                _game,
+                _game.Random,
+                new GameActionCommands(
+                    _game,
+                    _game.Random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
+            );
+
+            MessageDeliveredResult[] delivered = commands
+                .ProcessTriggeredEvents(
+                    new[]
+                    {
+                        new DuelResult
+                        {
+                            EncounteredOfficer = luke,
+                            OpposingOfficer = vader,
+                            Location = planet,
+                        },
+                    }
+                )
+                .OfType<MessageDeliveredResult>()
+                .ToArray();
+
+            CollectionAssert.AreEquivalent(
+                new[] { "FNALL1", "FNEMP1" },
+                delivered.Select(result => result.Recipient.InstanceID)
+            );
+            foreach (MessageDeliveredResult result in delivered)
+                Assert.AreEqual(
+                    assigned && sameDestination && emperorLocation == "ground",
+                    result.Message.Body.Contains("taken to the Emperor")
+                );
+        }
+
+        [TestCase("minor", "other", false, 2)]
+        [TestCase("minor", "other", true, 2)]
+        [TestCase("LUKE_SKYWALKER", "DARTH_VADER", false, 0)]
+        [TestCase("LUKE_SKYWALKER", "DARTH_VADER", true, 0)]
+        [TestCase("LEIA_ORGANA", "EMPEROR_PALPATINE", false, 0)]
+        [TestCase("LEIA_ORGANA", "EMPEROR_PALPATINE", true, 0)]
+        public void ProcessTriggeredEvents_GenericEncounter_ReportsOnlyUnnamedPairsToBothOwners(
+            string firstID,
+            string secondID,
+            bool reverse,
+            int expectedCount
+        )
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
+            _game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
+            PlanetSector sector = new() { InstanceID = "sector" };
+            Planet planet = new() { InstanceID = "planet", OwnerInstanceID = "FNALL1" };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
+            Officer first = EntityFactory.CreateOfficer(firstID, "FNALL1");
+            Officer second = EntityFactory.CreateOfficer(secondID, "FNEMP1");
+            second.IsCaptured = true;
+            _game.AttachNode(first, planet);
+            _game.AttachNode(second, planet);
+            second.IsCaptured = false;
+            _game
+                .GetEventPool()
+                .Add(
+                    TestContent.Data.GameEvents.Single(item =>
+                        item.InstanceID == "FORCE_ENCOUNTER_REPORT"
+                    )
+                );
+            GameEventCommands commands = new(
+                _game,
+                _game.Random,
+                new GameActionCommands(
+                    _game,
+                    _game.Random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
+            );
+
+            MessageDeliveredResult[] delivered = commands
+                .ProcessTriggeredEvents(
+                    new[]
+                    {
+                        new DuelResult
+                        {
+                            EncounteredOfficer = reverse ? second : first,
+                            OpposingOfficer = reverse ? first : second,
+                        },
+                    }
+                )
+                .OfType<MessageDeliveredResult>()
+                .ToArray();
+
+            Assert.AreEqual(expectedCount, delivered.Length);
+            foreach (MessageDeliveredResult result in delivered)
+            {
+                string ownID = result.Recipient.InstanceID == "FNALL1" ? firstID : secondID;
+                string otherID = result.Recipient.InstanceID == "FNALL1" ? secondID : firstID;
+                Assert.AreEqual($"{ownID} Detects Enemy", result.Message.Title);
+                Assert.AreEqual(
+                    $"{ownID} has detected {otherID} because of a disturbance in the Force.",
+                    result.Message.Body
+                );
+            }
+        }
+
+        [TestCase(79, false, 1)]
+        [TestCase(80, false, 0)]
+        [TestCase(79, true, 0)]
+        public void ProcessTriggeredEvents_FirstVaderEncounter_InjuresFreeOfficerBelowThreshold(
+            int forceRank,
+            bool captured,
+            int expectedInjury
+        )
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
+            _game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "FNALL1" };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
+            Officer luke = EntityFactory.CreateOfficer("LUKE_SKYWALKER", "FNALL1");
+            luke.ForceValue = forceRank;
+            _game.AttachNode(luke, planet);
+            luke.IsCaptured = captured;
+            Officer vader = EntityFactory.CreateOfficer("DARTH_VADER", "FNEMP1");
+            vader.ForceValue = 120;
+            vader.IsCaptured = true;
+            _game.AttachNode(vader, planet);
+            vader.IsCaptured = false;
+            _game
+                .GetEventPool()
+                .Add(
+                    TestContent.Data.GameEvents.Single(gameEvent =>
+                        gameEvent.InstanceID == "LUKE_ENCOUNTERS_VADER"
+                    )
+                );
+            FixedRNG random = new FixedRNG(0.0);
+            GameEventCommands commands = new GameEventCommands(
+                _game,
+                random,
+                new GameActionCommands(
+                    _game,
+                    random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
+            );
+
+            commands.ProcessTriggeredEvents(
+                new[]
+                {
+                    new DuelResult
+                    {
+                        EncounteredOfficer = luke,
+                        OpposingOfficer = vader,
+                        SourceEventInstanceID = "LUKE_ENCOUNTERS_VADER",
+                        ImagePath = "encounter-image",
+                        AudioPath = "encounter-audio",
+                    },
+                }
+            );
+
+            Assert.AreEqual(expectedInjury, luke.InjuryPoints);
+        }
+
+        [TestCase(
+            "LEIA_ENCOUNTERS_VADER",
+            "LEIA_ENCOUNTERS_VADER",
+            "DARTH_VADER",
+            false,
+            false,
+            10
+        )]
+        [TestCase("LEIA_ENCOUNTERS_VADER", "LEIA_ENCOUNTERS_VADER", "DARTH_VADER", true, false, 28)]
+        [TestCase("LEIA_ENCOUNTERS_VADER", "LEIA_ENCOUNTERS_VADER", "DARTH_VADER", false, true, 10)]
+        [TestCase("LEIA_ENCOUNTERS_VADER", "LEIA_ENCOUNTERS_VADER", "DARTH_VADER", true, true, 10)]
+        [TestCase(
+            "LEIA_ENCOUNTERS_PALPATINE",
+            "LEIA_ENCOUNTERS_PALPATINE",
+            "EMPEROR_PALPATINE",
+            false,
+            false,
+            10
+        )]
+        [TestCase(
+            "LEIA_ENCOUNTERS_PALPATINE",
+            "LEIA_ENCOUNTERS_PALPATINE",
+            "EMPEROR_PALPATINE",
+            true,
+            false,
+            28
+        )]
+        [TestCase(
+            "LEIA_ENCOUNTERS_PALPATINE",
+            "LEIA_ENCOUNTERS_PALPATINE",
+            "EMPEROR_PALPATINE",
+            false,
+            true,
+            10
+        )]
+        [TestCase(
+            "LEIA_ENCOUNTERS_PALPATINE",
+            "LEIA_ENCOUNTERS_PALPATINE",
+            "EMPEROR_PALPATINE",
+            true,
+            true,
+            10
+        )]
+        public void ProcessTriggeredEvents_AuthoredLeiaEncounter_AppliesGrowthOnlyWhenEligibleAndFree(
+            string effectID,
+            string sourceID,
+            string opponentID,
+            bool eligible,
+            bool captured,
+            int expectedForce
+        )
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
+            _game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "FNALL1" };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
+            Officer leia = EntityFactory.CreateOfficer("LEIA_ORGANA", "FNALL1");
+            leia.ForceValue = 10;
+            leia.IsForceEligible = eligible;
+            Officer opponent = EntityFactory.CreateOfficer(opponentID, "FNEMP1");
+            opponent.ForceValue = 100;
+            _game.AttachNode(leia, planet);
+            leia.IsCaptured = captured;
+            leia.CaptorInstanceID = captured ? "FNEMP1" : null;
+            opponent.IsCaptured = true;
+            _game.AttachNode(opponent, planet);
+            opponent.IsCaptured = false;
+            _game
+                .GetEventPool()
+                .Add(
+                    TestContent.Data.GameEvents.Single(gameEvent =>
+                        gameEvent.InstanceID == effectID
+                    )
+                );
+            GameEventCommands commands = new GameEventCommands(
+                _game,
+                _game.Random,
+                new GameActionCommands(
+                    _game,
+                    _game.Random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
+            );
+
+            commands.ProcessTriggeredEvents(
+                new[]
+                {
+                    new DuelResult
+                    {
+                        EncounteredOfficer = leia,
+                        OpposingOfficer = opponent,
+                        SourceEventInstanceID = sourceID,
+                        ImagePath = "encounter-image",
+                        AudioPath = "encounter-audio",
+                    },
+                }
+            );
+
+            Assert.AreEqual(expectedForce, leia.ForceValue);
+            Assert.AreEqual(1, _game.EventRuntime.GetState(effectID).ActivationCount);
+        }
+
         [Test]
         public void ProcessTriggeredEvents_StableTriggerId_ActivatesWithoutClrTypeName()
         {
@@ -1539,28 +2416,42 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             {
                 Participants = new List<IMissionParticipant> { vader },
             };
+            game.GetEventPool()
+                .Add(
+                    new GameEvent
+                    {
+                        InstanceID = "completed-duel",
+                        Triggers = new List<GameTrigger>
+                        {
+                            new DuelCompletedTrigger
+                            {
+                                FirstOfficerInstanceID = "vader",
+                                SecondOfficerInstanceID = "luke",
+                            },
+                        },
+                        Actions = new List<GameAction>
+                        {
+                            new SetEventVariableAction { Key = "correct-order", Operand = 1 },
+                        },
+                    }
+                );
             TriggerDuelAction action = new TriggerDuelAction
             {
                 FirstOfficerInstanceID = "luke",
                 SecondOfficerInstanceID = "vader",
-                AudioPath = "encounter-voice",
             };
-            DuelResult result = RunAuthoredAction(
-                    game,
-                    action,
-                    triggerResult: completion,
-                    trigger: new MissionCompletedTrigger()
-                )
-                .OfType<DuelResult>()
-                .Single();
+            RunAuthoredAction(
+                game,
+                action,
+                triggerResult: completion,
+                trigger: new MissionCompletedTrigger()
+            );
 
-            Assert.AreSame(vader, result.EncounteredOfficer);
-            Assert.AreSame(luke, result.OpposingOfficer);
-            Assert.AreEqual("encounter-voice", result.AudioPath);
+            Assert.AreEqual(1, game.EventRuntime.GetVariable("correct-order"));
         }
 
         [Test]
-        public void ProcessScheduledEvents_DuelValidOfficers_ProducesDuelOutcome()
+        public void ProcessScheduledEvents_DuelValidOfficers_AppliesAuthoredCompletionEffect()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out _);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -1571,15 +2462,121 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             game.AttachNode(luke, empirePlanet);
             luke.IsCaptured = false;
             game.AttachNode(vader, empirePlanet);
+            game.GetEventPool()
+                .Add(
+                    new GameEvent
+                    {
+                        InstanceID = "completed-duel",
+                        Triggers = new List<GameTrigger>
+                        {
+                            new DuelCompletedTrigger
+                            {
+                                FirstOfficerInstanceID = luke.InstanceID,
+                                SecondOfficerInstanceID = vader.InstanceID,
+                            },
+                        },
+                        Actions = new List<GameAction>
+                        {
+                            new SetEventVariableAction { Key = "duel-completed", Operand = 1 },
+                        },
+                    }
+                );
             TriggerDuelAction action = new TriggerDuelAction
             {
                 FirstOfficerInstanceID = luke.InstanceID,
                 SecondOfficerInstanceID = vader.InstanceID,
             };
 
-            List<GameResult> results = RunAuthoredAction(game, action);
+            RunAuthoredAction(game, action);
 
-            Assert.AreEqual(1, results.OfType<DuelResult>().Count());
+            Assert.AreEqual(1, game.EventRuntime.GetVariable("duel-completed"));
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_DuelCompletion_SeesCommittedInitiatingEvent()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            Officer first = EntityFactory.CreateOfficer("first", "empire");
+            Officer second = EntityFactory.CreateOfficer("second", "rebels");
+            game.AttachNode(first, planet);
+            second.IsCaptured = true;
+            game.AttachNode(second, planet);
+            second.IsCaptured = false;
+            game.GetEventPool()
+                .Add(
+                    new GameEvent
+                    {
+                        InstanceID = "completion",
+                        Triggers = new List<GameTrigger> { new DuelCompletedTrigger() },
+                        Conditionals = new List<GameConditional>
+                        {
+                            new HasEventActivatedConditional
+                            {
+                                EventInstanceID = "authored-action",
+                            },
+                        },
+                        Actions = new List<GameAction>
+                        {
+                            new SetEventVariableAction { Key = "completed", Operand = 1 },
+                        },
+                    }
+                );
+
+            RunAuthoredAction(
+                game,
+                new TriggerDuelAction
+                {
+                    FirstOfficerInstanceID = first.InstanceID,
+                    SecondOfficerInstanceID = second.InstanceID,
+                }
+            );
+
+            Assert.AreEqual(1, game.EventRuntime.GetVariable("completed"));
+        }
+
+        [Test]
+        public void ProcessTriggeredEvents_DuelCompletion_SeesCompletedInitiatingEvent()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            Officer first = EntityFactory.CreateOfficer("first", "empire");
+            Officer second = EntityFactory.CreateOfficer("second", "rebels");
+            game.AttachNode(first, planet);
+            second.IsCaptured = true;
+            game.AttachNode(second, planet);
+            second.IsCaptured = false;
+            game.GetEventPool()
+                .Add(
+                    new GameEvent
+                    {
+                        InstanceID = "completion",
+                        Triggers = new List<GameTrigger> { new DuelCompletedTrigger() },
+                        Conditionals = new List<GameConditional>
+                        {
+                            new IsEventCompleteConditional { EventInstanceID = "authored-action" },
+                        },
+                        Actions = new List<GameAction>
+                        {
+                            new SetEventVariableAction { Key = "completed", Operand = 1 },
+                        },
+                    }
+                );
+
+            RunAuthoredAction(
+                game,
+                new TriggerDuelAction
+                {
+                    FirstOfficerInstanceID = first.InstanceID,
+                    SecondOfficerInstanceID = second.InstanceID,
+                },
+                triggerResult: new MissionCompletedResult
+                {
+                    Participants = new List<IMissionParticipant> { first },
+                },
+                trigger: new MissionCompletedTrigger(),
+                maximumActivations: 1
+            );
+
+            Assert.AreEqual(1, game.EventRuntime.GetVariable("completed"));
         }
 
         [Test]
@@ -1945,6 +2942,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         /// <param name="unitFactory">The templates used by spawning actions.</param>
         /// <param name="triggerResult">The fact activating a triggered event, when applicable.</param>
         /// <param name="trigger">The trigger and its binding definitions, when applicable.</param>
+        /// <param name="maximumActivations">The initiating event's optional activation limit.</param>
         /// <returns>The facts produced by the completed activation.</returns>
         private static List<GameResult> RunAuthoredAction(
             GameRoot game,
@@ -1952,7 +2950,8 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             IRandomNumberProvider random = null,
             UnitFactory unitFactory = null,
             GameResult triggerResult = null,
-            GameTrigger trigger = null
+            GameTrigger trigger = null,
+            int? maximumActivations = null
         )
         {
             random ??= new FixedRNG(0.99);
@@ -1962,7 +2961,8 @@ namespace Rebellion.Tests.Gameplay.GameEvents
                 new PlanetaryControlQueries(game),
                 new FogOfWarQueries(game)
             );
-            GameEventCommands executor = new GameEventCommands(
+            GameEventCommands executor = null;
+            executor = new GameEventCommands(
                 game,
                 random,
                 new GameActionCommands(
@@ -1971,7 +2971,11 @@ namespace Rebellion.Tests.Gameplay.GameEvents
                     unitFactory,
                     movement,
                     control,
-                    new DuelCommands(game, random),
+                    new DuelCommands(
+                        game,
+                        random,
+                        encounter => executor.ProcessTriggeredEvents(new[] { encounter })
+                    ),
                     new MessageCommands(game, new MessageFactory(null))
                 )
             );
@@ -1979,6 +2983,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             {
                 InstanceID = "authored-action",
                 Actions = new List<GameAction> { action },
+                MaximumActivations = maximumActivations,
             };
             if (trigger != null)
                 gameEvent.Triggers.Add(trigger);

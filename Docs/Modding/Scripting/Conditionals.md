@@ -257,10 +257,18 @@ a fleet, ship, or mission should not count as a match.
 **Required options**
 
 - `UnitInstanceID` **[Required]:** The `InstanceID` of the child unit to evaluate.
-- `ParentInstanceID` **[Required]:** The `InstanceID` required as its immediate parent.
+- `ParentInstanceID`: The `InstanceID` required as its immediate parent.
+- `ParentBinding`: An existing scene-node binding required as its immediate parent. Specify this
+  instead of `ParentInstanceID` to compare with a location supplied by a trigger or selector.
 
 ```xml
 <HasParent UnitInstanceID="EMPEROR_PALPATINE" ParentInstanceID="CORUSCANT"/>
+```
+
+For a trigger exposing its location as `$location`:
+
+```xml
+<HasParent UnitInstanceID="EMPEROR_PALPATINE" ParentBinding="$location"/>
 ```
 
 ### ShareParent

@@ -7,6 +7,70 @@ namespace Rebellion.Tests.Game.Messages
     public class StatusMessageTests
     {
         [Test]
+        public void CreateCopy_ExplicitEmptyIdentifier_PreservesStoredIdentity()
+        {
+            StatusMessage source = new StatusMessage { InstanceID = string.Empty };
+
+            Message copy = source.CreateCopy();
+
+            Assert.AreEqual(string.Empty, copy.InstanceID);
+        }
+
+        [Test]
+        public void CreateCopy_ReadMessage_PreservesIndependentAcknowledgementState()
+        {
+            StatusMessage source = new StatusMessage
+            {
+                Read = true,
+                NotificationAcknowledged = false,
+            };
+            Message copy = source.CreateCopy();
+
+            copy.Read = false;
+
+            Assert.IsFalse(copy.NotificationAcknowledged);
+            Assert.IsTrue(source.Read);
+        }
+
+        [Test]
+        public void CreateCopy_MessagePresentation_PreservesStoredValues()
+        {
+            StatusMessage source = new StatusMessage(MessageType.Advice, "Advice", "Details")
+            {
+                InstanceID = "message",
+                TypeID = "type",
+                DisplayName = "Display name",
+                DisplayStatus = "Status",
+                DisplayImagePath = "display",
+                SmallDisplayImagePath = "small",
+                InTransitImagePath = "transit",
+                InTransitSmallImagePath = "transit-small",
+                DamagedImagePath = "damaged",
+                DamagedSmallImagePath = "damaged-small",
+                CapturedOverlayImagePath = "captured",
+                InjuredImagePath = "injured",
+                Description = "Description",
+                BackgroundImageKey = "advice",
+                OverlayImagePath = "overlay",
+                BackgroundAudioPath = "audio",
+                OfficerVoicePath = "voice",
+                MessageImagePath = "message-image",
+                EventLocationInstanceID = "location",
+                NavigationTargetInstanceID = "target",
+                NavigationSecondaryTargetInstanceID = "secondary",
+                MissionInstanceID = "mission",
+                MissionContinuationPending = true,
+                CreatedTick = 25,
+                NotificationAcknowledged = true,
+            };
+            string before = SerializationHelper.Serialize(source);
+
+            Message copy = source.CreateCopy();
+
+            Assert.AreEqual(before, SerializationHelper.Serialize(copy));
+        }
+
+        [Test]
         public void Constructor_WithTypeAndBody_InitializesMessage()
         {
             StatusMessage message = new StatusMessage(

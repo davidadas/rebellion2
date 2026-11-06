@@ -11,7 +11,6 @@ using Rebellion.Gameplay.GameEvents;
 using Rebellion.SceneGraph;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Random;
-using Rebellion.Util.Reflection;
 
 namespace Rebellion.Gameplay
 {
@@ -78,7 +77,7 @@ namespace Rebellion.Gameplay
             Game = game;
             if (Game.Config == null)
             {
-                GameConfig config = _gameData.GameConfig.GetDeepCopy();
+                GameConfig config = _gameData.GameConfig.CreateCopy();
                 Game.Summary?.CustomSettings?.ApplyRuntimeRules(config);
                 Game.SetConfig(config);
             }
@@ -152,9 +151,7 @@ namespace Rebellion.Gameplay
         /// </summary>
         private void InitializeComponents()
         {
-            MessageFactory messageFactory = new MessageFactory(
-                _gameData.MessageDefinitions.GetDeepCopy()
-            );
+            MessageFactory messageFactory = new MessageFactory(_gameData.MessageDefinitions);
             GameResultBus resultBus = new GameResultBus();
             _serviceScope = GameServiceRegistration.Create(
                 Game,
@@ -241,8 +238,14 @@ namespace Rebellion.Gameplay
         /// </summary>
         private void RebuildDerivedState()
         {
+            GameEventCommands.InstallDefinitions(
+                _gameData.CreateGameEvents(
+                    Game.Summary?.CustomSettings?.GenerationConfig ?? _gameData.GenerationConfig
+                )
+            );
             GetService<HeadquartersObserver>().ReconcileState();
-            _gameData.BindOfficerTraits(GetPersistedOfficers());
+            _gameData.BindOfficerDefinitions(GetPersistedOfficers());
+            GetService<JediCommands>().ReconcileDiscoveryState();
 
             IManufacturable[] templates = CopyTemplates(_gameData.Buildings)
                 .Cast<IManufacturable>()
