@@ -197,6 +197,7 @@ namespace Rebellion.Game.Messages
         public string TargetJoinedTemplate { get; set; }
         public string TargetNeutralTemplate { get; set; }
         public bool ShowSubjectImage { get; set; }
+        public MessageImage OverlayImage { get; set; }
         public MessageBackgroundImage BackgroundImage { get; set; }
         public Dictionary<string, string> ImagePaths { get; set; } =
             new Dictionary<string, string>();

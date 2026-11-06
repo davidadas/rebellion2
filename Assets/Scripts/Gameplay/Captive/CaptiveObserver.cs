@@ -8,7 +8,6 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Logging;
-using Rebellion.Util.Random;
 
 namespace Rebellion.Gameplay
 {
@@ -20,8 +19,6 @@ namespace Rebellion.Gameplay
         private readonly GameRoot _game;
         private readonly MovementCommands _movement;
         private readonly MovementQueries _movementQueries;
-        private readonly IRandomNumberProvider _random;
-        private readonly GameConfig.TickRangeConfig _escapeAttemptInterval;
         private IDisposable[] _subscriptions;
 
         /// <summary>
@@ -30,20 +27,16 @@ namespace Rebellion.Gameplay
         /// <param name="game">The authoritative game used to resolve officer ownership.</param>
         /// <param name="movement">The movement operations used to transfer captives.</param>
         /// <param name="movementQueries">The movement destination rules.</param>
-        /// <param name="random">The random provider used to schedule escape attempts.</param>
         public CaptiveObserver(
             GameRoot game,
             MovementCommands movement,
-            MovementQueries movementQueries,
-            IRandomNumberProvider random
+            MovementQueries movementQueries
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _movement = movement ?? throw new ArgumentNullException(nameof(movement));
             _movementQueries =
                 movementQueries ?? throw new ArgumentNullException(nameof(movementQueries));
-            _random = random ?? throw new ArgumentNullException(nameof(random));
-            _escapeAttemptInterval = game.Config.Captive.EscapeAttemptInterval;
         }
 
         /// <summary>
@@ -194,8 +187,6 @@ namespace Rebellion.Gameplay
             }
 
             AddCustodyObservations(officer, tick, reactions);
-            if (officer.CanEscape && officer.NextEscapeAttemptTick <= 0)
-                ScheduleEscapeAttempt(officer);
         }
 
         /// <summary>
@@ -282,19 +273,6 @@ namespace Rebellion.Gameplay
                 new[] { resolvedDestination },
                 sourceEventInstanceID: null,
                 results
-            );
-        }
-
-        /// <summary>
-        /// Schedules the next escape attempt for a newly established captive.
-        /// </summary>
-        /// <param name="officer">The captive officer.</param>
-        private void ScheduleEscapeAttempt(Officer officer)
-        {
-            int minimum = Math.Max(0, _escapeAttemptInterval?.Minimum ?? 0);
-            int maximum = Math.Max(minimum, _escapeAttemptInterval?.Maximum ?? minimum);
-            officer.NextEscapeAttemptTick = checked(
-                _game.CurrentTick + _random.NextInt(minimum, maximum + 1)
             );
         }
 

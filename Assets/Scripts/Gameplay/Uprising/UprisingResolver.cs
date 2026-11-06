@@ -21,7 +21,7 @@ namespace Rebellion.Gameplay
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
         private readonly PlanetaryControlCommands _planetaryControl;
-        private readonly DuelCommands _duelCommands;
+        private readonly DuelResolver _duelResolver;
         private readonly Dictionary<Planet, int> _garrisonSurplusByPlanet =
             new Dictionary<Planet, int>();
 
@@ -31,16 +31,22 @@ namespace Rebellion.Gameplay
         /// <param name="game">The game instance.</param>
         /// <param name="provider">Random number provider for uprising rolls.</param>
         /// <param name="planetaryControl">Planetary control operations for ownership changes.</param>
+        /// <param name="jediCommands">The session-owned Force progression operations.</param>
         public UprisingResolver(
             GameRoot game,
             IRandomNumberProvider provider,
-            PlanetaryControlCommands planetaryControl
+            PlanetaryControlCommands planetaryControl,
+            JediCommands jediCommands
         )
         {
             _game = game;
             _provider = provider;
             _planetaryControl = planetaryControl;
-            _duelCommands = new DuelCommands(game, provider);
+            _duelResolver = new DuelResolver(
+                game,
+                provider,
+                jediCommands ?? throw new ArgumentNullException(nameof(jediCommands))
+            );
             InitializeGarrisonSurplus();
         }
 
@@ -988,7 +994,7 @@ namespace Rebellion.Gameplay
                 return;
 
             Officer target = candidates[_provider.NextInt(0, candidates.Count)];
-            results.AddRange(_duelCommands.InjureOfficer(target));
+            results.AddRange(_duelResolver.InjureOfficer(target));
         }
 
         /// <summary>
@@ -1068,9 +1074,7 @@ namespace Rebellion.Gameplay
         /// <param name="results">The result collection receiving the state change.</param>
         private void FreeOfficer(Officer officer, Planet planet, List<GameResult> results)
         {
-            officer.IsCaptured = false;
-            officer.CaptorInstanceID = null;
-            officer.CanEscape = false;
+            officer.ReleaseFromCaptivity();
 
             results.Add(
                 new OfficerCaptureStateResult

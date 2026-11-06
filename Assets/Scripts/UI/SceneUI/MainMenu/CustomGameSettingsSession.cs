@@ -6,7 +6,6 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Units;
-using Rebellion.Util.Reflection;
 
 /// <summary>
 /// Owns one custom-game configuration draft and its default/override relationships.
@@ -96,7 +95,7 @@ internal sealed class CustomGameSettingsSession
             throw new ArgumentNullException(nameof(summary));
 
         summaryDefaults = GameLaunchContext.CreateDefaultSummary(pack);
-        summaryDraft = summary.GetDeepCopy();
+        summaryDraft = summary.CreateCopy();
         summaryDefaults.Seed = summaryDraft.Seed;
         summaryDraft.StartingFactionIDs = summaryDefaults.StartingFactionIDs.ToArray();
         summaryDraft.PackID = summaryDefaults.PackID;
@@ -106,19 +105,19 @@ internal sealed class CustomGameSettingsSession
         summaryDraft.ModVersions = summaryDefaults.ModVersions.ToArray();
         if (!summaryDraft.StartingFactionIDs.Contains(summaryDraft.PlayerFactionID))
             summaryDraft.PlayerFactionID = summaryDefaults.PlayerFactionID;
-        generationDefaults = pack.GameData.GenerationConfig.GetDeepCopy();
+        generationDefaults = pack.GameData.GenerationConfig.CreateCopy();
         generationDraft =
-            summaryDraft.CustomSettings?.GenerationConfig?.GetDeepCopy()
-            ?? pack.GameData.GenerationConfig.GetDeepCopy();
+            summaryDraft.CustomSettings?.GenerationConfig?.CreateCopy()
+            ?? pack.GameData.GenerationConfig.CreateCopy();
         facilityChanceEditor = new FacilityGenerationChanceEditor(pack.GameData.Buildings);
         garrisonDefaults = CreateGarrisonRules(pack.GameData.GameConfig.AI.Garrison);
         garrisonDraft =
-            summaryDraft.CustomSettings?.GarrisonRules?.GetDeepCopy()
-            ?? garrisonDefaults.GetDeepCopy();
+            summaryDraft.CustomSettings?.GarrisonRules?.CreateCopy()
+            ?? garrisonDefaults.CreateCopy();
         movementDefaults = new MovementRuleSettings { TravelSpeedPercent = 100 };
         movementDraft =
-            summaryDraft.CustomSettings?.MovementRules?.GetDeepCopy()
-            ?? movementDefaults.GetDeepCopy();
+            summaryDraft.CustomSettings?.MovementRules?.CreateCopy()
+            ?? movementDefaults.CreateCopy();
         ReconcileFactionModifiers(generationDefaults, pack.GameData.Factions);
         ReconcileFactionModifiers(generationDraft, pack.GameData.Factions);
         eventCategories = pack
@@ -400,14 +399,14 @@ internal sealed class CustomGameSettingsSession
     /// <returns>A detached launch summary.</returns>
     internal GameSummary CreateSummarySnapshot()
     {
-        GameSummary snapshot = summaryDraft.GetDeepCopy();
+        GameSummary snapshot = summaryDraft.CreateCopy();
         snapshot.CustomSettings = new CustomGameSettings
         {
             PlayerDifficultyModifiers = CreateModifiers(playerDraft),
             AIDifficultyModifiers = aiCustomized.Count == 0 ? null : CreateModifiers(aiDraft),
-            GenerationConfig = generationDraft.GetDeepCopy(),
-            GarrisonRules = garrisonDraft.GetDeepCopy(),
-            MovementRules = movementDraft.GetDeepCopy(),
+            GenerationConfig = generationDraft.CreateCopy(),
+            GarrisonRules = garrisonDraft.CreateCopy(),
+            MovementRules = movementDraft.CreateCopy(),
         };
         return snapshot;
     }
@@ -629,7 +628,7 @@ internal sealed class CustomGameSettingsSession
                 return new FactionModifierConfig
                 {
                     FactionID = faction.InstanceID,
-                    Settings = (current?.Settings ?? faction.Settings).GetDeepCopy(),
+                    Settings = (current?.Settings ?? faction.Settings).CreateCopy(),
                 };
             })
             .ToList();

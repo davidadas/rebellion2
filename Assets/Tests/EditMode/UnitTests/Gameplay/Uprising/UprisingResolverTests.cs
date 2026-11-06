@@ -368,6 +368,9 @@ namespace Rebellion.Tests.Gameplay
                 InstanceID = "o1",
                 OwnerInstanceID = "empire",
                 IsCaptured = true,
+                CaptorInstanceID = "rebels",
+                CanEscape = true,
+                NextEscapeAttemptTick = 10,
             };
             game.AttachNode(captive, planet);
 
@@ -377,6 +380,9 @@ namespace Rebellion.Tests.Gameplay
                 captive.IsCaptured,
                 "Captured officer should be freed by uprising case 4"
             );
+            Assert.IsNull(captive.CaptorInstanceID);
+            Assert.IsFalse(captive.CanEscape);
+            Assert.Zero(captive.NextEscapeAttemptTick);
             Assert.IsTrue(
                 results.OfType<OfficerCaptureStateResult>().Any(r => !r.IsCaptured),
                 "Should emit OfficerCaptureStateResult with IsCaptured=false"
@@ -700,7 +706,8 @@ namespace Rebellion.Tests.Gameplay
             UprisingResolver uprisingSystem = new UprisingResolver(
                 game,
                 new StubRNG(),
-                planetaryControl
+                planetaryControl,
+                new JediCommands(game, new StubRNG())
             );
             new UprisingTickProcessor(uprisingSystem).ProcessTick(game);
 
@@ -778,7 +785,8 @@ namespace Rebellion.Tests.Gameplay
             UprisingResolver uprisingSystem = new UprisingResolver(
                 game,
                 new StubRNG(),
-                planetaryControl
+                planetaryControl,
+                new JediCommands(game, new StubRNG())
             );
             new UprisingTickProcessor(uprisingSystem).ProcessTick(game);
 
@@ -835,7 +843,8 @@ namespace Rebellion.Tests.Gameplay
             UprisingResolver uprisingSystem = new UprisingResolver(
                 game,
                 new StubRNG(),
-                planetaryControl
+                planetaryControl,
+                new JediCommands(game, new StubRNG())
             );
             new UprisingTickProcessor(uprisingSystem).ProcessTick(game);
 
@@ -1092,7 +1101,8 @@ namespace Rebellion.Tests.Gameplay
             UprisingResolver uprisingSystem = new UprisingResolver(
                 game,
                 rng ?? new StubRNG(),
-                planetaryControl
+                planetaryControl,
+                new JediCommands(game, rng ?? new StubRNG())
             );
             return (game, planet, uprisingSystem);
         }

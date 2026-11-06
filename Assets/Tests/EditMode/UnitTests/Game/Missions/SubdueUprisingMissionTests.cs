@@ -510,7 +510,12 @@ namespace Rebellion.Tests.Game.Missions
                 new PlanetaryControlQueries(game),
                 new FogOfWarQueries(game)
             );
-            UprisingResolver uprising = new UprisingResolver(game, rng, control);
+            UprisingResolver uprising = new UprisingResolver(
+                game,
+                rng,
+                control,
+                new JediCommands(game, rng)
+            );
             return TestSystems.CreateMissionCommands(game, rng, movement, uprising);
         }
 
@@ -619,7 +624,8 @@ namespace Rebellion.Tests.Game.Missions
                     game,
                     new PlanetaryControlQueries(game),
                     new FogOfWarQueries(game)
-                )
+                ),
+                new JediCommands(game, rng)
             );
         }
     }

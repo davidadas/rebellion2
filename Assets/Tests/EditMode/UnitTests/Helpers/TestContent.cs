@@ -45,12 +45,12 @@ internal static class TestContent
     }
 
     /// <summary>
-    /// Creates game manager.
+    /// Creates a session using the scenario's fixture events and the pack's other definitions.
     /// </summary>
     /// <param name="game">The game.</param>
     /// <returns>The created game manager.</returns>
     internal static GameSession CreateGameSession(GameRoot game)
     {
-        return new GameSession(game, Data);
+        return new GameSession(game, TestGameData.WithGameEvents(Data, game.GetEventPool()));
     }
 }

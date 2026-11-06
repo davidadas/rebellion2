@@ -882,6 +882,16 @@ namespace Rebellion.Gameplay.Scripting
                 "SecondOfficerInstanceID",
                 result => result.OpposingOfficer?.InstanceID
             );
+            Add<DuelResult, string>(
+                arguments,
+                "FirstOfficerOwnerInstanceID",
+                result => result.EncounteredOfficer?.OwnerInstanceID
+            );
+            Add<DuelResult, string>(
+                arguments,
+                "SecondOfficerOwnerInstanceID",
+                result => result.OpposingOfficer?.OwnerInstanceID
+            );
             Add<DuelResult, Planet>(arguments, "Location", result => result.Location);
             Add<DuelResult, bool>(
                 arguments,

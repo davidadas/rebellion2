@@ -446,6 +446,35 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void HandleResults_DelayedOwnershipChange_PreservesCaptureTickAndUsesCurrentEscapeClock()
+        {
+            _game.CurrentTick = 50;
+            _game.Config.Captive.EscapeAttemptInterval.Minimum = 4;
+            _game.Config.Captive.EscapeAttemptInterval.Maximum = 4;
+            AddBlockadingFleet(_empirePlanet, "blockading");
+            Officer officer = EntityFactory.CreateOfficer("displaced", _empire.InstanceID);
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _game.AttachNode(officer, _targetPlanet);
+            _game.ChangeOwnership(_targetPlanet, _rebels.InstanceID);
+
+            List<GameResult> results = _observer.HandleResults(
+                new[]
+                {
+                    new PlanetOwnershipChangedResult
+                    {
+                        Planet = _targetPlanet,
+                        PreviousOwner = _empire,
+                        NewOwner = _rebels,
+                        Tick = 4,
+                    },
+                }
+            );
+
+            Assert.AreEqual(4, results.OfType<OfficerCaptureStateResult>().Single().Tick);
+            Assert.AreEqual(54, officer.NextEscapeAttemptTick);
+        }
+
+        [Test]
         public void HandleResults_BlockadedOwnershipChange_ResolvesEvacuationAgainstPriorBlockade()
         {
             _game.Config.Blockade.EvacuationLossPercent = 100;
