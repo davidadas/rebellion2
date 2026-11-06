@@ -180,43 +180,52 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(GetField<Image>("supportBarFillImage").gameObject.activeSelf);
         }
 
-        [Test]
-        public void Render_SelectedIcon_UsesTightVisiblePixelHitBounds()
+        [TestCase(PlanetIcon.Facility, "facilityImage", false)]
+        [TestCase(PlanetIcon.Facility, "facilityImage", true)]
+        [TestCase(PlanetIcon.Defense, "defenseImage", false)]
+        [TestCase(PlanetIcon.Defense, "defenseImage", true)]
+        public void Render_PaddedIcon_UsesFullAuthoredHitBounds(
+            PlanetIcon icon,
+            string imageField,
+            bool selected
+        )
         {
-            RawImage facilityImage = GetField<RawImage>("facilityImage");
-            RectInt authoredBounds = GetSourceRect(facilityImage.transform);
-            RectInt contentBounds = new RectInt(6, 4, 12, 16);
+            RawImage image = GetField<RawImage>(imageField);
+            RectInt authoredBounds = GetSourceRect(image.transform);
+            Texture2D texture = selected ? _pressedTexture : _normalTexture;
+            texture.SetPixels32(new Color32[texture.width * texture.height]);
+            for (int x = 6; x < 18; x++)
+            for (int y = 4; y < 20; y++)
+                texture.SetPixel(x, y, Color.white);
+            texture.Apply();
             PlanetSectorPlanetRenderData data = CreateData(
-                selectedIcon: PlanetIcon.Facility,
-                getTextureContentBounds: texture =>
-                    texture == _pressedTexture
-                        ? contentBounds
-                        : new RectInt(0, 0, texture.width, texture.height)
+                selectedIcon: selected ? icon : PlanetIcon.None,
+                showDefense: true
             );
 
             _view.Render(data, new Vector2Int(200, 150));
 
-            bool found = _view.TryGetIconHitBounds(PlanetIcon.Facility, out RectInt hitBounds);
+            bool found = _view.TryGetIconHitBounds(icon, out RectInt hitBounds);
 
             Assert.IsTrue(found);
-            Assert.AreEqual(
-                new RectInt(authoredBounds.x + 6, authoredBounds.y + 3, 15, 12),
-                hitBounds
+            Assert.AreEqual(authoredBounds, hitBounds);
+            Assert.AreEqual(authoredBounds, GetSourceRect(image.transform));
+            Assert.AreEqual(new Rect(0f, 0f, 1f, 1f), image.uvRect);
+            PlanetIcon pressedIcon = PlanetIcon.None;
+            _view.Pressed += (_, element, _) => pressedIcon = element.Icon;
+            PointerEventData eventData = CreatePointerEvent(
+                image.gameObject,
+                PointerEventData.InputButton.Left,
+                1
             );
-            Assert.AreEqual(authoredBounds, GetSourceRect(facilityImage.transform));
-            Assert.AreEqual(new Rect(0f, 0f, 1f, 1f), facilityImage.uvRect);
-            MethodInfo getSourceIcon = typeof(PlanetSectorPlanetView).GetMethod(
-                "GetSourceIcon",
-                BindingFlags.Instance | BindingFlags.NonPublic
+            eventData.position = RectTransformUtility.WorldToScreenPoint(
+                null,
+                _view.transform.TransformPoint(authoredBounds.x + 1, -authoredBounds.y - 1, 0)
             );
-            Assert.AreEqual(
-                PlanetIcon.None,
-                getSourceIcon.Invoke(_view, new object[] { authoredBounds.x, authoredBounds.y })
-            );
-            Assert.AreEqual(
-                PlanetIcon.Facility,
-                getSourceIcon.Invoke(_view, new object[] { hitBounds.x, hitBounds.y })
-            );
+
+            _view.OnPointerDown(eventData);
+
+            Assert.AreEqual(icon, pressedIcon);
         }
 
         [Test]
@@ -311,7 +320,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             PointerEventData eventData = CreatePointerEvent(
                 fleetImage.gameObject,
                 PointerEventData.InputButton.Left,
-                2
+                1
             );
             int hoveredCount = 0;
             int hoverClearedCount = 0;
@@ -467,7 +476,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// <param name="rawBar">The raw bar.</param>
         /// <param name="supportBar">The support bar.</param>
         /// <param name="galacticInformationTexture">The active filter marker texture.</param>
-        /// <param name="getTextureContentBounds">The optional visible-pixel bounds resolver.</param>
+        /// <param name="showDefense">Whether to show a defense icon.</param>
         /// <returns>The created data.</returns>
         private PlanetSectorPlanetRenderData CreateData(
             PlanetIcon selectedIcon = PlanetIcon.None,
@@ -476,7 +485,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             PlanetSectorBarRenderData rawBar = null,
             PlanetSectorBarRenderData supportBar = null,
             Texture2D galacticInformationTexture = null,
-            Func<Texture2D, RectInt> getTextureContentBounds = null
+            bool showDefense = false
         )
         {
             return new PlanetSectorPlanetRenderData(
@@ -486,8 +495,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 _uprisingTexture,
                 _normalTexture,
                 _pressedTexture,
-                null,
-                null,
+                showDefense ? _normalTexture : null,
+                showDefense ? _pressedTexture : null,
                 _normalTexture,
                 _pressedTexture,
                 _normalTexture,
@@ -500,8 +509,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 energyBar ?? CreateSegmentedBar(true, 4, 2),
                 rawBar ?? CreateSegmentedBar(true, 4, 2),
                 supportBar ?? CreateContinuousBar(true, 0.5f),
-                galacticInformationTexture,
-                getTextureContentBounds
+                galacticInformationTexture
             );
         }
 

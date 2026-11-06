@@ -249,7 +249,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             PointerEventData eventData = CreatePointerEvent(
                 fleetImage.gameObject,
                 PointerEventData.InputButton.Left,
-                2
+                1
             );
             int hoveredCount = 0;
             int hoverClearedCount = 0;

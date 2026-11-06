@@ -284,7 +284,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
-        public void PointerEvents_RenderedCluster_EmitHoverExitAndDoubleClickRequests()
+        public void PointerEvents_RenderedCluster_EmitHoverExitAndClickRequests()
         {
             _view.Render(CreateCluster("sector-1", "Corellian", true, null));
             PlanetSectorClusterView hoveredView = null;
@@ -293,14 +293,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             PointerEventData openedEvent = null;
             _view.Hovered += view => hoveredView = view;
             _view.HoverCleared += view => exitedView = view;
-            _view.OpenRequested += (view, eventData) =>
+            _view.Clicked += (view, eventData) =>
             {
                 openedView = view;
                 openedEvent = eventData;
             };
             PointerEventData eventData = CreatePointerEvent(new Vector2(25f, 25f));
             eventData.button = PointerEventData.InputButton.Left;
-            eventData.clickCount = 2;
+            eventData.clickCount = 1;
 
             _view.OnPointerEnter(eventData);
             _view.OnPointerExit(eventData);
@@ -313,12 +313,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
-        public void PointerEvents_UnrenderedOrSingleClick_DoNotEmitOpenOrHoverRequests()
+        public void PointerEvents_UnrenderedOrUnsupportedButton_DoNotEmitClickOrHoverRequests()
         {
             int hoverCount = 0;
             int openCount = 0;
             _view.Hovered += _ => hoverCount++;
-            _view.OpenRequested += (_, _) => openCount++;
+            _view.Clicked += (_, _) => openCount++;
             PointerEventData eventData = CreatePointerEvent(new Vector2(25f, 25f));
             eventData.button = PointerEventData.InputButton.Right;
             eventData.clickCount = 2;
@@ -326,8 +326,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             _view.OnPointerEnter(eventData);
             _view.OnPointerClick(eventData);
             _view.Render(CreateCluster("sector-1", "Corellian", true, null));
-            eventData.button = PointerEventData.InputButton.Left;
-            eventData.clickCount = 1;
+            eventData.button = PointerEventData.InputButton.Right;
             _view.OnPointerClick(eventData);
 
             Assert.AreEqual(0, hoverCount);

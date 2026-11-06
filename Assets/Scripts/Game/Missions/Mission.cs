@@ -163,11 +163,7 @@ namespace Rebellion.Game.Missions
                 _leadership ??= new Dictionary<Mission, int>();
                 if (!_leadership.TryGetValue(mission, out int average))
                 {
-                    IReadOnlyList<IMissionParticipant> participants = mission.GetMainParticipants();
-                    int total = 0;
-                    for (int index = 0; index < participants.Count; index++)
-                        total += participants[index].GetEffectiveRating(SkillRating.Leadership);
-                    average = participants.Count == 0 ? 0 : total / participants.Count;
+                    average = mission.GetAverageLeadership();
                     _leadership.Add(mission, average);
                 }
                 return average;
@@ -534,6 +530,36 @@ namespace Rebellion.Game.Missions
             includeDisabled
                 ? _decoyParticipants
                 : _decoyParticipants.Where(participant => participant.IsActive()).ToList();
+
+        /// <summary>
+        /// Returns the average leadership of the active primary and decoy teams.
+        /// </summary>
+        /// <param name="mainParticipants">An optional proposed primary team replacing the stored team.</param>
+        /// <returns>The integer average leadership, or zero when both teams are empty.</returns>
+        internal int GetAverageLeadership(
+            IReadOnlyList<IMissionParticipant> mainParticipants = null
+        )
+        {
+            IReadOnlyList<IMissionParticipant> main = mainParticipants ?? _mainParticipants;
+            int total = 0;
+            int count = 0;
+            for (int index = 0; index < main.Count; index++)
+            {
+                IMissionParticipant participant = main[index];
+                if (mainParticipants == null && !participant.IsActive())
+                    continue;
+                total += participant.GetEffectiveRating(SkillRating.Leadership);
+                count++;
+            }
+            foreach (IMissionParticipant participant in _decoyParticipants)
+            {
+                if (!participant.IsActive())
+                    continue;
+                total += participant.GetEffectiveRating(SkillRating.Leadership);
+                count++;
+            }
+            return count == 0 ? 0 : total / count;
+        }
 
         /// <summary>
         /// Returns whether any mission participant is still travelling to the mission.

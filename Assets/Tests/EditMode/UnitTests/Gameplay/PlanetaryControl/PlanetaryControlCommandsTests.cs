@@ -585,6 +585,7 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void TransferPlanet_PlanetWithEnemyRegiments_EvictsEnemyRegiments()
         {
+            _empirePlanet.SetFullPopularSupport(_empire.InstanceID);
             _game.ChangeOwnership(_targetPlanet, "empire");
             _targetPlanet.EnergyCapacity = 1;
             Regiment regiment = EntityFactory.CreateRegiment("reg1", "empire");

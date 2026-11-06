@@ -10,7 +10,7 @@ using Rebellion.Util.Random;
 namespace Rebellion.Gameplay
 {
     /// <summary>
-    /// Resolves asymmetric encounters between linked opposing officers.
+    /// Resolves officer encounters and combat-based injuries.
     /// </summary>
     internal sealed class DuelResolver
     {
@@ -37,6 +37,26 @@ namespace Rebellion.Gameplay
             _captureAvoidance = new ProbabilityTable(
                 _game.Config.DuelResolution.CombatCaptureAvoidance
             );
+        }
+
+        /// <summary>
+        /// Rolls an officer's combat-based injury and resolves survival after positive damage.
+        /// </summary>
+        /// <param name="officer">The officer exposed to injury.</param>
+        /// <returns>The resulting injury and death notifications.</returns>
+        internal List<GameResult> InjureOfficer(Officer officer)
+        {
+            GameConfig.DuelResolutionConfig config = _game.Config.DuelResolution;
+            int injury = TryRollInjury(
+                Math.Max(
+                    config.MinimumInjuryChance,
+                    config.CaptureEvasionInjuryBaseChance
+                        - officer.GetEffectiveRating(SkillRating.Combat)
+                )
+            );
+            List<GameResult> results = new List<GameResult>();
+            ApplyInjury(officer, injury, null, null, results);
+            return results;
         }
 
         /// <summary>

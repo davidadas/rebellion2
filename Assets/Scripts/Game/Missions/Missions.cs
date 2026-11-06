@@ -1438,11 +1438,7 @@ namespace Rebellion.Game.Missions
                 else if (mission is SubdueUprisingMission)
                     adjustment -= state.GetAverageLeadership(mission) / divisor;
             }
-            int total = 0;
-            for (int index = 0; index < participants.Count; index++)
-                total += participants[index].GetEffectiveRating(SkillRating.Leadership);
-            int average = participants.Count == 0 ? 0 : total / participants.Count;
-            return adjustment + average / divisor;
+            return adjustment + proposed.GetAverageLeadership(participants) / divisor;
         }
     }
 

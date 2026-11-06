@@ -2651,6 +2651,73 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ProcessTick_FirstFacilityArrives_EstablishesPopulationAndSupport()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            destination.IsColonized = false;
+            destination.EnergyCapacity = 1;
+            destination.PopularSupport.Clear();
+            Building building = new Building
+            {
+                InstanceID = "incoming-facility",
+                OwnerInstanceID = destination.OwnerInstanceID,
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            game.AttachNode(building, destination);
+            building.ManufacturingStatus = ManufacturingStatus.Complete;
+            building.Movement = new MovementState
+            {
+                TransitTicks = 1,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            new MovementTickProcessor(movement).ProcessTick(game);
+
+            Assert.IsTrue(destination.IsPopulated());
+            Assert.AreEqual(100, destination.GetPopularSupport(destination.OwnerInstanceID));
+        }
+
+        [Test]
+        public void ProcessTick_FacilityArrivesAtPopulatedPlanet_PreservesSupport()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            destination.EnergyCapacity = 1;
+            destination.SetPopularSupport(destination.OwnerInstanceID, 60);
+            Building building = new Building
+            {
+                InstanceID = "incoming-facility",
+                OwnerInstanceID = destination.OwnerInstanceID,
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = new MovementState
+                {
+                    TransitTicks = 1,
+                    OriginPosition = origin.GetPosition(),
+                    CurrentPosition = origin.GetPosition(),
+                },
+            };
+            game.AttachNode(building, destination);
+
+            new MovementTickProcessor(movement).ProcessTick(game);
+
+            Assert.AreEqual(60, destination.GetPopularSupport(destination.OwnerInstanceID));
+        }
+
+        [Test]
         public void RequestMove_RegimentFromFleetAtNeutralUncolonizedPlanet_ClaimsImmediately()
         {
             (
@@ -2668,7 +2735,7 @@ namespace Rebellion.Tests.Gameplay
             movement.RequestMove(regiment, destination);
 
             Assert.AreEqual("empire", destination.GetOwnerInstanceID());
-            Assert.AreEqual(100, destination.GetPopularSupport("empire"));
+            Assert.AreEqual(0, destination.GetPopularSupport("empire"));
             Assert.AreEqual(destination, regiment.GetParent());
             PlanetOwnershipChangedResult ownershipChange = movement
                 .TakePendingResults()

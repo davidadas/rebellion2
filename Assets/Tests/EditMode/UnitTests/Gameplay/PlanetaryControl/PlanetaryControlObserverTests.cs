@@ -666,6 +666,35 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void HandleResults_GarrisonRemoval_DoesNotShiftUncolonizedNeighbourSupport()
+        {
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.SetFullPopularSupport(_empire.InstanceID);
+            _empirePlanet.IsColonized = false;
+            _empirePlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _empire.InstanceID, 20 },
+                { _rebels.InstanceID, 80 },
+            };
+
+            _observer.HandleResults(
+                new[]
+                {
+                    new PlanetOwnershipChangedResult
+                    {
+                        Planet = _targetPlanet,
+                        PreviousOwner = _rebels,
+                        NewOwner = _empire,
+                        Reason = PlanetOwnershipChangeReason.GarrisonRemoved,
+                    },
+                }
+            );
+
+            Assert.AreEqual(20, _empirePlanet.GetPopularSupport(_empire.InstanceID));
+            Assert.AreEqual(_empire.InstanceID, _empirePlanet.OwnerInstanceID);
+        }
+
+        [Test]
         public void Connect_PopularSupportTransfer_ShiftsSectorSupport()
         {
             _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
