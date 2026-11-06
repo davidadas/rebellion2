@@ -235,7 +235,7 @@ namespace Rebellion.Tests.Gameplay.Scripting
         }
 
         [Test]
-        public void Execute_RevealToFactionPlanetCategory_EmitsPlanetIntelligenceResult()
+        public void Execute_RevealToFactionPlanetCategory_EmitsCategoryObservation()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             RevealToFactionAction action = new RevealToFactionAction
@@ -248,11 +248,11 @@ namespace Rebellion.Tests.Gameplay.Scripting
 
             List<GameResult> results = action.Execute(game);
 
-            PlanetIntelligenceRevealedResult intelligence = results
-                .OfType<PlanetIntelligenceRevealedResult>()
+            IntelligenceRevealedResult intelligence = results
+                .OfType<IntelligenceRevealedResult>()
                 .Single();
             Assert.AreEqual("rebels", intelligence.Recipient.InstanceID);
-            Assert.AreSame(planet, intelligence.Planet);
+            Assert.AreSame(planet, intelligence.Observations.Single());
             Assert.AreEqual(PlanetIntelligenceCategory.PlanetResources, intelligence.Category);
             Assert.IsFalse(intelligence.IncludeDescendants);
         }

@@ -176,10 +176,10 @@ namespace Rebellion.Gameplay.Scripting
                         "Category-based RevealToFaction could not resolve its planet."
                     );
                 context.Record(
-                    new PlanetIntelligenceRevealedResult
+                    new IntelligenceRevealedResult
                     {
                         Recipient = recipient,
-                        Planet = planet,
+                        Observations = new List<ISceneNode> { planet },
                         Category = action.Category,
                         IncludeDescendants = action.IncludeDescendants,
                         Tick = context.Game.CurrentTick,

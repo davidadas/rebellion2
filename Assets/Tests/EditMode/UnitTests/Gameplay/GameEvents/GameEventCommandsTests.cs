@@ -1628,6 +1628,118 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             Assert.Zero(state.ActivationCount);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ProcessTriggeredEvents_RevealForms_AppliesFiltersAndObservationBinding(
+            bool categoryReport
+        )
+        {
+            Faction recipient = new Faction { InstanceID = "recipient" };
+            _game.GetFactions().Add(recipient);
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            _game.AttachNode(sector, _game.Galaxy);
+            Planet planet = new Planet { InstanceID = "planet" };
+            _game.AttachNode(planet, sector);
+            var random = new FixedRNG();
+            GameEventCommands commands = new GameEventCommands(
+                _game,
+                random,
+                new GameActionCommands(
+                    _game,
+                    random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
+            );
+            RevealToFactionAction reveal = new RevealToFactionAction
+            {
+                FactionInstanceID = recipient.InstanceID,
+            };
+            if (categoryReport)
+            {
+                reveal.PlanetInstanceID = planet.InstanceID;
+                reveal.Category = PlanetIntelligenceCategory.PlanetResources;
+            }
+            else
+                reveal.Targets.Add(new SelectPlanets { InstanceID = planet.InstanceID });
+            _game
+                .GetEventPool()
+                .Add(
+                    new GameEvent
+                    {
+                        InstanceID = "source",
+                        Schedule = new GameEventSchedule { At = new AtTick { Tick = 0 } },
+                        Actions = new List<GameAction> { reveal },
+                    }
+                );
+            _game
+                .GetEventPool()
+                .Add(
+                    new GameEvent
+                    {
+                        InstanceID = "listener",
+                        MaximumActivations = 1,
+                        Triggers = new List<GameTrigger>
+                        {
+                            new IntelligenceRevealedTrigger
+                            {
+                                RecipientFactionInstanceID = recipient.InstanceID,
+                                ObservationInstanceID = planet.InstanceID,
+                                SourceEventInstanceID = "source",
+                                Bindings = new List<GameBinding>
+                                {
+                                    new GameBinding { Argument = "Recipient", As = "$recipient" },
+                                    new GameBinding
+                                    {
+                                        Argument = "Observations",
+                                        As = "$observations",
+                                    },
+                                },
+                            },
+                        },
+                        Bindings = new List<GameBinding>
+                        {
+                            new GameBinding
+                            {
+                                As = "$planet",
+                                Selectors = new List<GameSelector>
+                                {
+                                    new SelectBinding { Binding = "$observations" },
+                                },
+                            },
+                        },
+                        Actions = new List<GameAction>
+                        {
+                            new SendMessageAction
+                            {
+                                RecipientFactionInstanceID = recipient.InstanceID,
+                                LocationBinding = "$planet",
+                                MessageType = MessageType.Advice,
+                                Subject = "Intel received",
+                                Body = "Intel received",
+                            },
+                        },
+                    }
+                );
+            commands.ValidateEvents(_game.GetEventPool());
+
+            List<GameResult> reports = commands.ProcessScheduledEvents(_game.GetEventPool());
+            Assert.AreEqual(
+                1,
+                reports.Count,
+                string.Join(",", reports.Select(result => result.GetType().Name))
+            );
+            List<GameResult> reactions = commands.ProcessTriggeredEvents(reports);
+            Assert.AreEqual(
+                1,
+                _game.EventRuntime.GetState("listener").ActivationCount,
+                string.Join(",", reactions.Select(result => result.GetType().Name))
+            );
+
+            MessageDeliveredResult delivery = reactions.OfType<MessageDeliveredResult>().Single();
+            Assert.AreSame(recipient, delivery.Recipient);
+            Assert.AreEqual(planet.InstanceID, delivery.Message.EventLocationInstanceID);
+        }
+
         [TestCaseSource(nameof(PlanetInformantOutcomeCases))]
         public void ProcessScheduledEvents_PlanetInformantsOutcome_RevealsExpectedIntelligenceAndMessage(
             string ownerInstanceID,
@@ -1651,8 +1763,8 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             _game.CurrentTick = 30;
             List<GameResult> results = commands.ProcessScheduledEvents(_game.GetEventPool());
 
-            List<PlanetIntelligenceRevealedResult> intelligence = results
-                .OfType<PlanetIntelligenceRevealedResult>()
+            List<IntelligenceRevealedResult> intelligence = results
+                .OfType<IntelligenceRevealedResult>()
                 .ToList();
             CollectionAssert.AreEqual(
                 expectedCategories,
@@ -1663,7 +1775,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
                 intelligence.Select(result => result.IncludeDescendants)
             );
             Assert.IsTrue(intelligence.All(result => result.Recipient == recipient));
-            Assert.IsTrue(intelligence.All(result => result.Planet == planet));
+            Assert.IsTrue(intelligence.All(result => result.Observations.Single() == planet));
             Assert.IsTrue(
                 intelligence.All(result => result.SourceEventInstanceID == gameEvent.InstanceID)
             );
@@ -1786,7 +1898,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
 
             Assert.AreEqual(
                 expectsLeak ? 1 : 0,
-                results.OfType<PlanetIntelligenceRevealedResult>().Count()
+                results.OfType<IntelligenceRevealedResult>().Count()
             );
             Assert.AreEqual(expectsLeak ? 1 : 0, results.OfType<MessageDeliveredResult>().Count());
             Assert.AreEqual(expectsLeak ? 1 : 0, recipient.Messages[MessageType.Advice].Count);

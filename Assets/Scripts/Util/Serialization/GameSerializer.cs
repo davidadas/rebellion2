@@ -118,7 +118,13 @@ namespace Rebellion.Util.Serialization
             XmlElement overlayRoot =
                 overlay?.DocumentElement
                 ?? throw new InvalidDataException("An overlay document root element is required.");
-            if (!string.Equals(defaultsRoot.Name, overlayRoot.Name, StringComparison.Ordinal))
+            if (
+                !string.Equals(defaultsRoot.Name, overlayRoot.Name, StringComparison.Ordinal)
+                && !(
+                    ReflectionHelper.MatchesPersistableName(_type, defaultsRoot.Name)
+                    && ReflectionHelper.MatchesPersistableName(_type, overlayRoot.Name)
+                )
+            )
             {
                 throw new InvalidDataException(
                     $"Overlay root '{overlayRoot.Name}' does not match defaults root '{defaultsRoot.Name}'."
@@ -209,16 +215,33 @@ namespace Rebellion.Util.Serialization
                 && TypeHelper.HasAttribute<PersistableObjectAttribute>(type)
                 && (type.IsAbstract || type.IsInterface)
             )
-                type = XmlDeserializer.ResolveActualType(
+            {
+                PersistableAttributes memberAttributes = new PersistableAttributes
+                {
+                    IncludeAttributes = member
+                        ?.GetCustomAttributes<PersistableIncludeAttribute>()
+                        .ToArray(),
+                };
+                Type overlayType = XmlDeserializer.ResolveActualType(
                     type,
                     overlay.Name,
-                    new PersistableAttributes
-                    {
-                        IncludeAttributes = member
-                            ?.GetCustomAttributes<PersistableIncludeAttribute>()
-                            .ToArray(),
-                    }
+                    memberAttributes
                 );
+                Type targetType = XmlDeserializer.ResolveActualType(
+                    type,
+                    target.Name,
+                    memberAttributes
+                );
+                if (targetType != overlayType)
+                {
+                    target.ParentNode.ReplaceChild(
+                        target.OwnerDocument.ImportNode(overlay, true),
+                        target
+                    );
+                    return;
+                }
+                type = overlayType;
+            }
 
             Dictionary<string, MemberInfo> members = new Dictionary<string, MemberInfo>();
             Dictionary<string, MemberInfo> attributes = new Dictionary<string, MemberInfo>();
@@ -243,6 +266,7 @@ namespace Rebellion.Util.Serialization
             MergeAttributes(target, overlay, members, attributes);
             if (
                 (!HasChildElements(target) && !HasChildElements(overlay))
+                || (type != null && TypeHelper.IsEnumerable(type) && !TypeHelper.IsDictionary(type))
                 || HasRepeatedChildNames(target)
                 || HasRepeatedChildNames(overlay)
             )
@@ -276,12 +300,7 @@ namespace Rebellion.Util.Serialization
                 else
                 {
                     Type childType =
-                        childMember != null ? ReflectionHelper.GetMemberType(childMember)
-                        : type != null
-                        && TypeHelper.IsEnumerable(type)
-                        && !TypeHelper.IsDictionary(type)
-                            ? XmlDeserializer.GetCollectionElementType(type)
-                        : null;
+                        childMember != null ? ReflectionHelper.GetMemberType(childMember) : null;
                     MergeElement(targetChild, overlayChild, childType, childMember);
                 }
             }
@@ -959,7 +978,7 @@ namespace Rebellion.Util.Serialization
         /// </summary>
         /// <param name="type">The collection type.</param>
         /// <returns>The collection element type, or null when it cannot be resolved.</returns>
-        internal static Type GetCollectionElementType(Type type)
+        private static Type GetCollectionElementType(Type type)
         {
             if (type.IsArray)
                 return type.GetElementType();

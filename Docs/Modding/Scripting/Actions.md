@@ -262,7 +262,7 @@ A scoped event can use its target binding instead of a literal planet ID:
 - `GroundForces`: Regiments and special forces.
 - `Regiments`: Regiments only.
 - `SpecialForces`: Special-forces units only.
-- `Buildings`: Planetary defenses and production facilities.
+- `Buildings`: All buildings, including planetary defenses and production facilities.
 - `PlanetaryDefenses`: Planetary defenses only.
 - `ProductionFacilities`: Production facilities only.
 - `Officers`: Officers.

@@ -309,6 +309,14 @@ namespace Rebellion.Tests.Util.Serialization
     public sealed class ReadAliasDerivedItem : ReadAliasItem { }
 
     [PersistableObject]
+    public sealed class ReadAliasSwitchContainer
+    {
+        [PersistableInclude(typeof(SimpleItem))]
+        [PersistableInclude(typeof(ReadAliasItem))]
+        public ITestItem Item { get; set; }
+    }
+
+    [PersistableObject]
     public sealed class ReadAliasContainer
     {
         public List<ITestItem> Items { get; set; } = new List<ITestItem>();
@@ -690,6 +698,75 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("only", restored.Items[0].Name);
         }
 
+        [TestCase(1, 0)]
+        [TestCase(1, 1)]
+        [TestCase(1, 2)]
+        [TestCase(2, 0)]
+        [TestCase(2, 1)]
+        [TestCase(2, 2)]
+        public void Deserialize_OverlayCollectionSize_ReplacesAllItems(
+            int defaultCount,
+            int overlayCount
+        )
+        {
+            GameSerializer serializer = new GameSerializer(typeof(NestedItem));
+            string initial = string.Concat(
+                Enumerable
+                    .Range(0, defaultCount)
+                    .Select(_ => "<SimpleItem><Name>base</Name><Value>1</Value></SimpleItem>")
+            );
+            string replacement = string.Concat(
+                Enumerable
+                    .Range(0, overlayCount)
+                    .Select(index => $"<SimpleItem><Value>{index + 2}</Value></SimpleItem>")
+            );
+            XmlDocument defaults = LoadDocument(
+                $"<NestedItem><Identifier>base</Identifier><Items>{initial}</Items></NestedItem>"
+            );
+            XmlDocument overlay = LoadDocument(
+                $"<NestedItem><Items>{replacement}</Items></NestedItem>"
+            );
+
+            NestedItem restored = (NestedItem)serializer.Deserialize(defaults, overlay);
+
+            Assert.AreEqual("base", restored.Identifier);
+            CollectionAssert.AreEqual(
+                Enumerable.Range(2, overlayCount),
+                restored.Items.Select(item => item.Value)
+            );
+            Assert.IsTrue(restored.Items.All(item => item.Name == null));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Deserialize_OverlayCollectionTypeChange_ReplacesAllItems(bool reverse)
+        {
+            GameSerializer serializer = new GameSerializer(typeof(InterfaceCollection));
+            string initial = reverse
+                ? "<ReadAliasItem><Name>base</Name><CurrentValue>1</CurrentValue></ReadAliasItem>"
+                : "<SimpleItem><Name>base</Name><Value>1</Value></SimpleItem>";
+            string replacement = reverse
+                ? "<SimpleItem><Value>2</Value></SimpleItem>"
+                : "<LegacyAliasItem><CurrentValue>2</CurrentValue></LegacyAliasItem>";
+
+            InterfaceCollection restored = (InterfaceCollection)
+                serializer.Deserialize(
+                    LoadDocument(
+                        $"<InterfaceCollection><Items>{initial}</Items></InterfaceCollection>"
+                    ),
+                    LoadDocument(
+                        $"<InterfaceCollection><Items>{replacement}</Items></InterfaceCollection>"
+                    )
+                );
+
+            Assert.AreEqual(1, restored.Items.Count);
+            Assert.IsInstanceOf(
+                reverse ? typeof(SimpleItem) : typeof(ReadAliasItem),
+                restored.Items.Single()
+            );
+            Assert.IsNull(restored.Items.Single().Name);
+        }
+
         [Test]
         public void Deserialize_OverlayAttribute_ReplacesDefaultAttribute()
         {
@@ -720,6 +797,69 @@ namespace Rebellion.Tests.Util.Serialization
 
             Assert.AreEqual(defaultsXml, defaults.OuterXml);
             Assert.AreEqual(overlayXml, overlay.OuterXml);
+        }
+
+        [TestCase(false, "ReadAliasItem")]
+        [TestCase(true, "ReadAliasItem")]
+        [TestCase(false, "LegacyAliasItem")]
+        [TestCase(true, "LegacyAliasItem")]
+        public void Deserialize_OverlayIncludedTypeChange_ReplacesConcreteType(
+            bool reverse,
+            string aliasName
+        )
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ReadAliasSwitchContainer));
+            string initial = reverse
+                ? $"<{aliasName}><Name>base</Name><CurrentValue>1</CurrentValue></{aliasName}>"
+                : "<SimpleItem><Name>base</Name><Value>1</Value></SimpleItem>";
+            string replacement = reverse
+                ? "<SimpleItem><Value>2</Value></SimpleItem>"
+                : $"<{aliasName}><CurrentValue>2</CurrentValue></{aliasName}>";
+            XmlDocument defaults = LoadDocument(
+                $"<ReadAliasSwitchContainer>{initial}</ReadAliasSwitchContainer>"
+            );
+            XmlDocument overlay = LoadDocument(
+                $"<ReadAliasSwitchContainer>{replacement}</ReadAliasSwitchContainer>"
+            );
+            string defaultsXml = defaults.OuterXml;
+            string overlayXml = overlay.OuterXml;
+
+            ReadAliasSwitchContainer restored = (ReadAliasSwitchContainer)
+                serializer.Deserialize(defaults, overlay);
+
+            Assert.IsInstanceOf(
+                reverse ? typeof(SimpleItem) : typeof(ReadAliasItem),
+                restored.Item
+            );
+            Assert.AreEqual(
+                2,
+                reverse ? ((SimpleItem)restored.Item).Value : ((ReadAliasItem)restored.Item).Value
+            );
+            Assert.IsNull(restored.Item.Name);
+            Assert.AreEqual(defaultsXml, defaults.OuterXml);
+            Assert.AreEqual(overlayXml, overlay.OuterXml);
+        }
+
+        [TestCase("CurrentAliasItem", "LegacyAliasItem")]
+        [TestCase("LegacyAliasItem", "CurrentAliasItem")]
+        [TestCase("ReadAliasItem", "DeprecatedAliasItem")]
+        public void Deserialize_OverlayRootAlias_MergesSameType(
+            string defaultName,
+            string overlayName
+        )
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ReadAliasItem));
+            XmlDocument defaults = LoadDocument(
+                $"<{defaultName}><Name>base</Name><CurrentValue>1</CurrentValue></{defaultName}>"
+            );
+            XmlDocument overlay = LoadDocument(
+                $"<{overlayName}><LegacyValue>2</LegacyValue></{overlayName}>"
+            );
+
+            ReadAliasItem restored = (ReadAliasItem)serializer.Deserialize(defaults, overlay);
+
+            Assert.AreEqual("base", restored.Name);
+            Assert.AreEqual(2, restored.Value);
         }
 
         [TestCase("CurrentValue", "LegacyValue")]
@@ -785,7 +925,7 @@ namespace Rebellion.Tests.Util.Serialization
         {
             GameSerializer serializer = new GameSerializer(typeof(ReadAliasIncludeContainer));
             XmlDocument defaults = LoadDocument(
-                $"<ReadAliasIncludeContainer><{defaultName}><CurrentValue>1</CurrentValue></{defaultName}></ReadAliasIncludeContainer>"
+                $"<ReadAliasIncludeContainer><{defaultName}><Name>base</Name><CurrentValue>1</CurrentValue></{defaultName}></ReadAliasIncludeContainer>"
             );
             XmlDocument overlay = LoadDocument(
                 $"<ReadAliasIncludeContainer><{overlayName}><LegacyValue>2</LegacyValue></{overlayName}></ReadAliasIncludeContainer>"
@@ -795,6 +935,7 @@ namespace Rebellion.Tests.Util.Serialization
                 serializer.Deserialize(defaults, overlay);
 
             Assert.AreEqual(2, ((ReadAliasItem)restored.Item).Value);
+            Assert.AreEqual("base", restored.Item.Name);
         }
 
         [Test]

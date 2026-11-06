@@ -204,15 +204,6 @@ namespace Rebellion.Game.Results
     {
         public Faction Recipient { get; set; }
         public List<ISceneNode> Observations { get; set; } = new List<ISceneNode>();
-    }
-
-    /// <summary>
-    /// Current intelligence in one category was supplied to a faction for a planet.
-    /// </summary>
-    public class PlanetIntelligenceRevealedResult : GameResult
-    {
-        public Faction Recipient { get; set; }
-        public Planet Planet { get; set; }
         public PlanetIntelligenceCategory Category { get; set; }
         public bool IncludeDescendants { get; set; } = true;
     }

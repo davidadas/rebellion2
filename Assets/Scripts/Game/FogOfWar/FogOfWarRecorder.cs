@@ -157,6 +157,11 @@ namespace Rebellion.Game.FogOfWar
                 return true;
             }
 
+            CapitalShip carrier =
+                observation as CapitalShip ?? observation.GetParentOfType<CapitalShip>();
+            if (carrier != null)
+                ReparentRememberedCarrier(faction, snapshot, carrier);
+
             IEnumerable<ISceneNode> descendants = observation switch
             {
                 Fleet fleet => fleet.GetChildren<ISceneNode>(
@@ -174,11 +179,14 @@ namespace Rebellion.Game.FogOfWar
                 if (string.IsNullOrEmpty(observed.InstanceID))
                     continue;
 
-                RemoveEntityFromSnapshotState(faction, observed.InstanceID);
+                if (observed is not CapitalShip || observation is Fleet)
+                    RemoveEntityFromSnapshotState(faction, observed.InstanceID);
                 InvalidateEntityFromOtherSnapshots(faction, observed.InstanceID, planet.InstanceID);
             }
 
             RecordEntityObservation(snapshot, observation);
+            foreach (string entityID in GetSnapshotEntityIDs(snapshot))
+                InvalidateEntityFromOtherSnapshots(faction, entityID, planet.InstanceID);
             return true;
         }
 
@@ -192,11 +200,7 @@ namespace Rebellion.Game.FogOfWar
             switch (observation)
             {
                 case Officer officer:
-                    RecordCarriedUnitSnapshot(
-                        snapshot,
-                        officer,
-                        CopyEntityForObservation(officer, snapshot.TickCaptured)
-                    );
+                    RecordUnitIntelligence(snapshot, officer);
                     break;
                 case Fleet fleet:
                     Upsert(snapshot.Fleets, CopyFleetForObservation(fleet, snapshot.TickCaptured));
@@ -205,25 +209,13 @@ namespace Rebellion.Game.FogOfWar
                     AddCapitalShipObservation(snapshot, capitalShip);
                     break;
                 case Regiment regiment:
-                    RecordCarriedUnitSnapshot(
-                        snapshot,
-                        regiment,
-                        CopyEntityForObservation(regiment, snapshot.TickCaptured)
-                    );
+                    RecordUnitIntelligence(snapshot, regiment);
                     break;
                 case SpecialForces specialForces:
-                    RecordCarriedUnitSnapshot(
-                        snapshot,
-                        specialForces,
-                        CopyEntityForObservation(specialForces, snapshot.TickCaptured)
-                    );
+                    RecordUnitIntelligence(snapshot, specialForces);
                     break;
                 case Starfighter starfighter:
-                    RecordCarriedUnitSnapshot(
-                        snapshot,
-                        starfighter,
-                        CopyEntityForObservation(starfighter, snapshot.TickCaptured)
-                    );
+                    RecordUnitIntelligence(snapshot, starfighter);
                     break;
                 case Building building:
                     Upsert(
@@ -335,8 +327,18 @@ namespace Rebellion.Game.FogOfWar
                 return;
 
             Fleet fleet = GetOrCreatePartialFleetSnapshot(snapshot, sourceFleet);
+            CapitalShip remembered = fleet
+                .GetChildren<CapitalShip>()
+                .FirstOrDefault(ship => ship.InstanceID == capitalShip.InstanceID);
             CapitalShip copy = CopyEntityForObservation(capitalShip, snapshot.TickCaptured);
             RemoveUnobservedCargo(copy);
+            if (remembered != null)
+            {
+                PreserveShipChildren(copy, remembered.GetChildren<Officer>());
+                PreserveShipChildren(copy, remembered.GetChildren<Regiment>());
+                PreserveShipChildren(copy, remembered.GetChildren<SpecialForces>());
+                PreserveShipChildren(copy, remembered.GetChildren<Starfighter>());
+            }
             UpsertChild(fleet, copy);
             copy.SetParent(fleet);
         }

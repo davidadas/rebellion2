@@ -520,13 +520,13 @@ namespace Rebellion.Tests.Gameplay
             _coruscant.AllocatedEnergy = 5;
 
             _observer.HandleResults(
-                new List<PlanetIntelligenceRevealedResult>
+                new List<IntelligenceRevealedResult>
                 {
-                    new PlanetIntelligenceRevealedResult
+                    new IntelligenceRevealedResult
                     {
                         Tick = 42,
                         Recipient = _alliance,
-                        Planet = _coruscant,
+                        Observations = new List<ISceneNode> { _coruscant },
                         Category = PlanetIntelligenceCategory.PlanetResources,
                     },
                 }
