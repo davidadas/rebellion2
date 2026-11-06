@@ -19,6 +19,7 @@ Selects active, non-destroyed planets.
 - `InstanceID` **[Optional]:** The `InstanceID` of the planet to select.
 - `IncludeInactive` **[Optional]:** Include inactive retained planets; defaults to `false`.
 - `OwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must currently own the planet.
+- `IsOwned` **[Optional]:** `true` requires an owner; `false` requires a neutral planet. Omission accepts both.
 - `SectorType` **[Optional]:** Require `Core` or `OuterRim`.
 
 ```xml

@@ -104,17 +104,20 @@ namespace Rebellion.Game.FogOfWar
             if (game == null || faction == null || observations == null)
                 return;
 
+            bool recordedAny = false;
             foreach (ISceneNode observation in observations.Where(node => node != null).Distinct())
             {
                 if (observation is PlanetSector selectedSector)
                 {
                     foreach (Planet planet in selectedSector.GetChildren<Planet>())
-                        RecordObservation(game, faction, planet, currentTick);
+                        recordedAny |= RecordObservation(game, faction, planet, currentTick);
                     continue;
                 }
 
-                RecordObservation(game, faction, observation, currentTick);
+                recordedAny |= RecordObservation(game, faction, observation, currentTick);
             }
+            if (recordedAny)
+                RemoveUnrepresentedEntityLocations(faction);
         }
 
         /// <summary>
@@ -124,7 +127,8 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="faction">The faction.</param>
         /// <param name="observation">The observation.</param>
         /// <param name="currentTick">The current tick.</param>
-        private void RecordObservation(
+        /// <returns>True when the object has a containing planet and its observation was recorded.</returns>
+        private bool RecordObservation(
             GameRoot game,
             Faction faction,
             ISceneNode observation,
@@ -134,7 +138,7 @@ namespace Rebellion.Game.FogOfWar
             Planet planet = GetContainingOrProducingPlanet(game, observation);
             PlanetSector sector = planet?.GetParentOfType<PlanetSector>();
             if (planet == null || sector == null)
-                return;
+                return false;
 
             PlanetSnapshot snapshot = GetOrCreateObservedPlanetSnapshot(
                 faction,
@@ -145,25 +149,37 @@ namespace Rebellion.Game.FogOfWar
             if (observation is Planet)
             {
                 UpdatePlanetState(snapshot, planet, currentTick);
-                return;
+                return true;
             }
 
             if (RecordManufacturingObservation(snapshot, planet, observation))
             {
-                return;
+                return true;
             }
 
-            if (!string.IsNullOrEmpty(observation.InstanceID))
+            IEnumerable<ISceneNode> descendants = observation switch
             {
-                RemoveEntityFromSnapshotState(faction, observation.InstanceID);
-                InvalidateEntityFromOtherSnapshots(
-                    faction,
-                    observation.InstanceID,
-                    planet.InstanceID
-                );
+                Fleet fleet => fleet.GetChildren<ISceneNode>(
+                    includeDisabled: true,
+                    recursive: true
+                ),
+                Mission mission => mission.GetChildren<ISceneNode>(
+                    includeDisabled: true,
+                    recursive: true
+                ),
+                _ => Enumerable.Empty<ISceneNode>(),
+            };
+            foreach (ISceneNode observed in descendants.Prepend(observation))
+            {
+                if (string.IsNullOrEmpty(observed.InstanceID))
+                    continue;
+
+                RemoveEntityFromSnapshotState(faction, observed.InstanceID);
+                InvalidateEntityFromOtherSnapshots(faction, observed.InstanceID, planet.InstanceID);
             }
 
             RecordEntityObservation(snapshot, observation);
+            return true;
         }
 
         /// <summary>

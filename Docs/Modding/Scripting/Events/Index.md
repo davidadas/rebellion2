@@ -60,6 +60,9 @@ A complete event uses the following high-level shape. Most events only need some
 <GameEvent MaximumActivations="3">
   <InstanceID>UNIQUE_EVENT_ID</InstanceID>
 
+  <!-- Recurring scheduled events may scope their schedule to selected targets. -->
+  <!-- <ForEach As="$planet"><From>...</From></ForEach> -->
+
   <!-- Scheduled events put bindings before their schedule. -->
   <Bindings>...</Bindings>
   <Schedule>...</Schedule>
@@ -109,8 +112,16 @@ Reaching the limit permanently completes the event and stops every target's sche
 
 ### ForEach
 
-Optionally gives every selected scene node its own recurring schedule. Place `ForEach` immediately
-after `InstanceID`, before optional `Bindings` and the required `Schedule`:
+Runs a recurring schedule independently for every selected scene node. Place `ForEach` immediately
+after `InstanceID`, before optional `Bindings` and the required `Schedule`.
+
+**Required options**
+
+- `As` **[Required]:** The exact, unique binding name assigned to the current target. Ordinary
+  event bindings, conditionals, and actions may consume it.
+- `From` **[Required]:** Exactly one deterministic [selector](../Selectors.md): `SelectPlanets`,
+  `SelectOfficers`, `SelectSpecialForces`, `SelectFleets`, `SelectMissions`, `SelectCapitalShips`,
+  `SelectStarfighters`, `SelectRegiments`, `SelectBuildings`, or `SelectManufacturingOrders`.
 
 ```xml
 <GameEvent>
@@ -124,23 +135,21 @@ after `InstanceID`, before optional `Bindings` and the required `Schedule`:
     <RandomInterval MinimumTicks="30" MaximumTicks="1000"/>
   </Schedule>
   <Actions>
-    <!-- Use $planet in bindings, conditionals, and actions. -->
+    <RevealToFaction FactionInstanceID="FNALL1" PlanetBinding="$planet" Category="PlanetControl"/>
   </Actions>
 </GameEvent>
 ```
 
-`As` names the current target using the same binding rules as `Bind`. `From` contains exactly one
-direct planet, officer, special-forces, fleet, mission, capital-ship, starfighter, regiment, building,
-or manufacturing-order selector. Selection must be deterministic and independent of activation
-bindings: `SelectRandom`, `SelectBinding`, composite selectors, and selectors with `PlanetBinding`
-are rejected. Use literal selector filters here; ordinary event bindings and actions can still
-perform random selection after the target is bound.
+`As` follows the same naming rules as [`Bind`](../Bindings.md). Scope selection must be independent
+of activation bindings: `SelectRandom`, `SelectBinding`, composite selectors, and selectors with
+`PlanetBinding` are rejected. Use literal filters in `From`; ordinary event bindings and actions
+may still perform random selection after the target is bound.
 
 Only `Every` and `RandomInterval` are supported; `ForEach` cannot accompany `Triggers` or a one-shot
 schedule. Each target's first delay starts when it enters the scope, rather than at campaign tick
 zero. A target that leaves loses its pending timer; returning starts a fresh delay. A change that
 keeps it selected, such as changing between owners with `IsOwned="true"`, preserves the timer.
-Ownership-transition results also update planet membership between scheduled passes.
+Planet ownership changes update scope membership between scheduled passes.
 
 Targets are discovered at the start of each scheduled pass and processed in ordinal `InstanceID`
 order. After an activation changes game state, remaining targets are checked against the selector

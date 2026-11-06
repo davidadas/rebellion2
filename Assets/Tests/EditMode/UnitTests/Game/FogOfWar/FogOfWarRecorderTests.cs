@@ -15,6 +15,247 @@ namespace Rebellion.Tests.Game.FogOfWar
     [TestFixture]
     public class FogOfWarRecorderTests : FogOfWarTestBase
     {
+        [TestCase("officer", false)]
+        [TestCase("regiment", false)]
+        [TestCase("special forces", false)]
+        [TestCase("starfighter", false)]
+        [TestCase("officer", true)]
+        [TestCase("regiment", true)]
+        [TestCase("special forces", true)]
+        [TestCase("starfighter", true)]
+        public void RecordSelectedObservations_EmbarkingUnit_KeepsOneKnownLocation(
+            string unitKind,
+            bool changesPlanet
+        )
+        {
+            ISceneNode unit = CreateUnit(unitKind, "UNIT");
+            _game.AttachNode(unit, _coruscant);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordSelectedObservations(_game, _alliance, new[] { unit }, 10);
+            Planet destination = changesPlanet ? _tatooine : _coruscant;
+            Fleet fleet = CreateFleet("FLEET", _empire);
+            _game.AttachNode(fleet, destination);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "SHIP");
+            ship.RegimentCapacity = ship.StarfighterCapacity = 1;
+            _game.MoveNode(unit, ship);
+
+            recorder.RecordSelectedObservations(_game, _alliance, new[] { fleet }, 20);
+
+            ISceneNode[] known = _alliance
+                .Fog.Snapshots.Values.SelectMany(sector => sector.Planets.Values)
+                .SelectMany(snapshot => FindSnapshotEntities(snapshot, unit.InstanceID))
+                .ToArray();
+            Assert.AreEqual(1, known.Length);
+            Assert.AreEqual(
+                ship.InstanceID,
+                known.Single().GetParentOfType<CapitalShip>().InstanceID
+            );
+            Assert.AreEqual(
+                destination.InstanceID,
+                _alliance.Fog.EntityLastSeenAt[unit.InstanceID]
+            );
+        }
+
+        [TestCase("officer")]
+        [TestCase("regiment")]
+        [TestCase("special forces")]
+        [TestCase("starfighter")]
+        public void RecordSelectedObservations_DisembarkingUnit_KeepsOneKnownLocation(
+            string unitKind
+        )
+        {
+            Fleet fleet = CreateFleet("FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "SHIP");
+            ship.RegimentCapacity = ship.StarfighterCapacity = 1;
+            ISceneNode unit = CreateUnit(unitKind, "UNIT");
+            _game.AttachNode(unit, ship);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordSelectedObservations(_game, _alliance, new[] { fleet }, 10);
+            _game.MoveNode(unit, _coruscant);
+
+            recorder.RecordSelectedObservations(_game, _alliance, new[] { unit }, 20);
+
+            ISceneNode[] known = FindSnapshotEntities(
+                GetSnapshot(_coreSector, _coruscant),
+                unit.InstanceID
+            );
+            Assert.AreEqual(1, known.Length);
+            Assert.IsNull(known.Single().GetParentOfType<CapitalShip>());
+            Assert.AreEqual(_coruscant.InstanceID, _alliance.Fog.EntityLastSeenAt[unit.InstanceID]);
+        }
+
+        [TestCase("officer")]
+        [TestCase("special forces")]
+        public void RecordSelectedObservations_LeavingMission_KeepsOneKnownLocation(string unitKind)
+        {
+            Mission mission = CreateMission("MISSION", _empire, _coruscant);
+            _game.AttachNode(mission, _coruscant);
+            ISceneNode unit = CreateUnit(unitKind, "UNIT");
+            _game.AttachNode(unit, mission);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordSelectedObservations(_game, _alliance, new[] { mission }, 10);
+            _game.MoveNode(unit, _coruscant);
+
+            recorder.RecordSelectedObservations(_game, _alliance, new[] { unit }, 20);
+
+            ISceneNode[] known = FindSnapshotEntities(
+                GetSnapshot(_coreSector, _coruscant),
+                unit.InstanceID
+            );
+            Assert.AreEqual(1, known.Length);
+            Assert.IsNull(known.Single().GetParentOfType<Mission>());
+            Assert.AreEqual(_coruscant.InstanceID, _alliance.Fog.EntityLastSeenAt[unit.InstanceID]);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void RecordSelectedObservations_AbsentContainerParticipant_RemovesObsoleteLocation(
+            bool isMission
+        )
+        {
+            ContainerNode container;
+            if (isMission)
+            {
+                Mission mission = CreateMission("CONTAINER", _empire, _coruscant);
+                _game.AttachNode(mission, _coruscant);
+                container = mission;
+            }
+            else
+            {
+                Fleet fleet = CreateFleet("CONTAINER", _empire);
+                _game.AttachNode(fleet, _coruscant);
+                container = AddCapitalShip(fleet, _empire, "SHIP");
+            }
+            Officer officer = CreateOfficer("OFFICER", _empire);
+            _game.AttachNode(officer, container);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+            _game.MoveNode(officer, _coruscant);
+            ISceneNode observation = isMission ? container : container.GetParentOfType<Fleet>();
+
+            recorder.RecordSelectedObservations(_game, _alliance, new[] { observation }, 20);
+
+            Assert.IsEmpty(
+                FindSnapshotEntities(GetSnapshot(_coreSector, _coruscant), officer.InstanceID)
+            );
+            Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(officer.InstanceID));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void RecordSelectedObservations_NoValidObservations_PreservesLocationIndex(
+            bool detachedEntity
+        )
+        {
+            _alliance.Fog.EntityLastSeenAt["REMEMBERED"] = "UNKNOWN_PLANET";
+            ISceneNode[] observations = detachedEntity
+                ? new ISceneNode[] { CreateOfficer("DETACHED", _empire) }
+                : System.Array.Empty<ISceneNode>();
+
+            new FogOfWarRecorder().RecordSelectedObservations(_game, _alliance, observations, 20);
+
+            Assert.AreEqual("UNKNOWN_PLANET", _alliance.Fog.EntityLastSeenAt["REMEMBERED"]);
+        }
+
+        [TestCase(PlanetIntelligenceCategory.CapitalShips)]
+        [TestCase(PlanetIntelligenceCategory.PlanetMilitaryProduction)]
+        [TestCase(PlanetIntelligenceCategory.Starfighters)]
+        [TestCase(PlanetIntelligenceCategory.Regiments)]
+        public void RecordIntelligenceSnapshot_FleetChangesPlanet_PreservesUnreportedPersonnelAndLocations(
+            PlanetIntelligenceCategory category
+        )
+        {
+            Fleet fleet = CreateFleet("FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "SHIP");
+            ship.RegimentCapacity = ship.StarfighterCapacity = 1;
+            ISceneNode officer = CreateUnit("officer", "KNOWN_OFFICER");
+            ISceneNode agent = CreateUnit("special forces", "KNOWN_AGENT");
+            _game.AttachNode(officer, ship);
+            _game.AttachNode(agent, ship);
+            _game.AttachNode(CreateUnit("regiment", "REGIMENT"), ship);
+            _game.AttachNode(CreateUnit("starfighter", "FIGHTER"), ship);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+            _game.MoveNode(fleet, _tatooine);
+            _game.MoveNode(officer, _coruscant);
+            _game.MoveNode(agent, _coruscant);
+            _game.AttachNode(CreateOfficer("UNKNOWN_OFFICER", _empire), ship);
+
+            recorder.RecordIntelligenceSnapshot(_alliance, _tatooine, _outerRim, 20, category);
+
+            PlanetSnapshot destination = GetSnapshot(_outerRim, _tatooine);
+            foreach (string id in new[] { "KNOWN_OFFICER", "KNOWN_AGENT" })
+            {
+                Assert.AreEqual(1, FindSnapshotEntities(destination, id).Length);
+                Assert.IsEmpty(FindSnapshotEntities(GetSnapshot(_coreSector, _coruscant), id));
+                Assert.AreEqual(_tatooine.InstanceID, _alliance.Fog.EntityLastSeenAt[id]);
+            }
+            Assert.IsEmpty(FindSnapshotEntities(destination, "UNKNOWN_OFFICER"));
+        }
+
+        [Test]
+        public void RecordIntelligenceSnapshot_SavedCompositeState_PreservesIndependentReportsAndLocations()
+        {
+            Fleet fleet = CreateFleet("FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "SHIP");
+            _game.AttachNode(CreateOfficer("OFFICER", _empire), ship);
+            _game.AttachNode(CreateUnit("special forces", "AGENT"), ship);
+            Mission mission = CreateMission("MISSION", _empire, _coruscant);
+            _game.AttachNode(mission, _coruscant);
+            _game.AttachNode(CreateOfficer("PARTICIPANT", _empire), mission);
+            AddQueuedBuilding(_coruscant, _empire, "ORDER", 25);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+            _game.MoveNode(fleet, _tatooine);
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _tatooine,
+                _outerRim,
+                20,
+                PlanetIntelligenceCategory.CapitalShips
+            );
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                30,
+                PlanetIntelligenceCategory.PlanetResources
+            );
+
+            FogState restored = SerializationHelper.Deserialize<FogState>(
+                SerializationHelper.Serialize(_alliance.Fog)
+            );
+            _alliance.Fog.Snapshots = restored.Snapshots;
+            _alliance.Fog.EntityLastSeenAt = restored.EntityLastSeenAt;
+            _alliance.Fog.PlanetToSector = restored.PlanetToSector;
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                40,
+                PlanetIntelligenceCategory.ProductionFacilities
+            );
+
+            PlanetSnapshot origin = GetSnapshot(_coreSector, _coruscant);
+            PlanetSnapshot destination = GetSnapshot(_outerRim, _tatooine);
+            Assert.AreEqual(10, origin.FullyObservedAtTick);
+            Assert.AreEqual(10, origin.FleetsObservedAtTick);
+            Assert.AreEqual(40, origin.TickCaptured);
+            Assert.IsTrue(origin.HasIntelligence(PlanetIntelligenceCategory.Missions));
+            Assert.AreEqual(
+                "PARTICIPANT",
+                origin.Missions.Single().GetChildren<Officer>().Single().InstanceID
+            );
+            AssertQueuedIntelligence(origin, "ORDER", 25);
+            Assert.AreEqual(1, FindSnapshotEntities(destination, "OFFICER").Length);
+            Assert.AreEqual(1, FindSnapshotEntities(destination, "AGENT").Length);
+            Assert.AreEqual(_tatooine.InstanceID, _alliance.Fog.EntityLastSeenAt["OFFICER"]);
+            Assert.AreEqual(_tatooine.InstanceID, _alliance.Fog.EntityLastSeenAt["AGENT"]);
+        }
+
         /// <summary>
         /// Verifies ordered refreshes retain identical snapshots after movement and removal.
         /// </summary>
