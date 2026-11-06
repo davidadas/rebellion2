@@ -33,8 +33,8 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(captured, encountered.IsCaptured);
             Assert.AreEqual(
-                !captured,
-                results.OfType<DuelResult>().Single().EncounteredOfficerEvadedCapture
+                captured,
+                results.OfType<DuelResult>().Single().EncounteredOfficerCaptured
             );
             Assert.AreEqual(10, encountered.InjuryPoints);
             Assert.AreEqual(1, results.OfType<OfficerInjuredResult>().Count());
@@ -152,7 +152,6 @@ namespace Rebellion.Tests.Gameplay
                 results.OfType<OfficerKilledResult>().Single().ParentAtDeath
             );
             Assert.IsFalse(results.OfType<DuelResult>().Single().EncounteredOfficerCaptured);
-            Assert.IsFalse(results.OfType<DuelResult>().Single().EncounteredOfficerEvadedCapture);
         }
 
         [Test]
@@ -300,7 +299,6 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreSame(opposing, capture.LinkedOfficer);
             Assert.AreEqual("event", capture.SourceEventInstanceID);
             Assert.IsTrue(results.OfType<DuelResult>().Single().EncounteredOfficerCaptured);
-            Assert.IsFalse(results.OfType<DuelResult>().Single().EncounteredOfficerEvadedCapture);
         }
 
         [Test]

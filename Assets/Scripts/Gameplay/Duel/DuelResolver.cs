@@ -149,7 +149,6 @@ namespace Rebellion.Gameplay
                         EncounteredOfficer = encountered,
                         OpposingOfficer = opposing,
                         Location = location,
-                        EncounteredOfficerEvadedCapture = evadedCapture,
                         EncounteredOfficerCaptured = captured && !encountered.IsKilled,
                         EncounteredOfficerInjury = encounteredInjury,
                         OpposingOfficerInjury = opposingInjury,
