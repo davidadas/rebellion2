@@ -26,7 +26,6 @@ namespace Rebellion.Gameplay
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
         private readonly MovementCommands _movementManager;
-        private readonly MovementQueries _movementQueries;
         private readonly UprisingResolver _uprisingSystem;
         private readonly MissionBetrayalResolver _betrayalResolver;
         private readonly PersonnelCommands _personnelCommands;
@@ -47,7 +46,6 @@ namespace Rebellion.Gameplay
         /// <param name="provider">The random number provider for mission resolution.</param>
         /// <param name="movementManager">The movement system used for participant travel.</param>
         /// <param name="uprisingSystem">The uprising system used by uprising missions.</param>
-        /// <param name="movementQueries">The mission-return destination rules.</param>
         /// <param name="queries">The mission eligibility and probability queries.</param>
         /// <param name="duelCommands">The synchronous officer encounter operations.</param>
         /// <param name="betrayalResolver">The mission-betrayal resolver.</param>
@@ -59,7 +57,6 @@ namespace Rebellion.Gameplay
             MovementCommands movementManager,
             UprisingResolver uprisingSystem,
             MissionQueries queries,
-            MovementQueries movementQueries,
             DuelCommands duelCommands,
             MissionBetrayalResolver betrayalResolver = null,
             PersonnelCommands personnelCommands = null,
@@ -76,7 +73,6 @@ namespace Rebellion.Gameplay
                 personnelCommands ?? new PersonnelCommands(game, new PersonnelQueries(game));
             _jediCommands = jediCommands ?? new JediCommands(game, provider);
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
-            _movementQueries = movementQueries;
             _duelCommands = duelCommands ?? throw new ArgumentNullException(nameof(duelCommands));
             _forceEncounters = new MissionForceEncounterSelector(game.Config.Jedi, provider);
         }
@@ -639,19 +635,26 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Returns whether a participant may remain at the planet where its mission ended.
+        /// Returns whether a stationary participant may remain at its friendly mission planet.
         /// </summary>
         /// <param name="participant">The participant whose destination is being resolved.</param>
         /// <param name="missionPlanet">The planet where the mission ended.</param>
-        /// <returns>True when the mission planet is intact, friendly, and can accept the participant.</returns>
+        /// <returns>True when the participant has arrived and the intact friendly planet can accept it.</returns>
         private bool CanRemainAtMissionLocation(IMovable participant, Planet missionPlanet)
         {
-            return _movementQueries.CanUseSafeRelocationDestination(
-                participant,
-                missionPlanet,
-                missionPlanet,
-                allowOriginPlanet: true
-            );
+            if (
+                participant == null
+                || missionPlanet?.IsDestroyed != false
+                || participant.GetTransitMovement() != null
+                || participant.GetParentOfType<Planet>() != missionPlanet
+            )
+                return false;
+
+            string ownerInstanceID = MovementQueries.GetMovementControlOwner(participant);
+            return !string.IsNullOrEmpty(ownerInstanceID)
+                && missionPlanet.GetOwnerInstanceID() == ownerInstanceID
+                && (missionPlanet.IsColonized || participant is Officer { IsCaptured: false })
+                && missionPlanet.CanAcceptChild(participant);
         }
 
         /// <summary>
