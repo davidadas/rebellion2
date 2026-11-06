@@ -234,10 +234,7 @@ namespace Rebellion.Tests.App
                     "The main-menu planet rig survived the scene transition."
                 );
                 Assert.That(
-                    Object.FindObjectsByType<LoadingScreenView>(
-                        FindObjectsInactive.Include,
-                        FindObjectsSortMode.None
-                    ),
+                    Object.FindObjectsByType<LoadingScreenView>(FindObjectsInactive.Include),
                     Has.Length.EqualTo(1)
                 );
             }
