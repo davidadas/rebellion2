@@ -12,6 +12,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Gameplay
@@ -19,6 +20,148 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class MovementCommandsTests
     {
+        [TestCase(false, false)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(true, true)]
+        public void TryRequestMove_UnavailableMove_LogsRejectionReason(
+            bool selection,
+            bool inTransit
+        )
+        {
+            (_, _, Planet destination, Officer officer, MovementCommands movement) = BuildScene();
+            destination.OwnerInstanceID = "rebels";
+            if (inTransit)
+                officer.Movement = new MovementState { TransitTicks = 1 };
+
+            List<string> warnings = CaptureWarnings(() =>
+                Assert.IsFalse(
+                    selection
+                        ? movement.TryRequestMove(
+                            new ISceneNode[] { officer },
+                            destination,
+                            "empire"
+                        )
+                        : movement.TryRequestMove(officer, destination)
+                )
+            );
+
+            Assert.That(warnings, Has.Count.EqualTo(1));
+            StringAssert.Contains(
+                inTransit ? "already in transit" : "cannot accept",
+                warnings.Single()
+            );
+            StringAssert.Contains(officer.GetDisplayName(), warnings.Single());
+        }
+
+        [Test]
+        public void TryRequestMove_FirstDestinationRejected_DoesNotLogWarnings()
+        {
+            (GameRoot game, _, Planet destination, Officer officer, MovementCommands movement) =
+                BuildScene();
+            Planet rejected = new()
+            {
+                InstanceID = "rejected",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+            };
+            game.AttachNode(rejected, destination.GetParent());
+
+            List<string> warnings = CaptureWarnings(() =>
+                Assert.IsTrue(
+                    movement.TryRequestMove(
+                        new List<IMovable> { officer },
+                        new ContainerNode[] { rejected, destination },
+                        null,
+                        new List<GameResult>()
+                    )
+                )
+            );
+
+            Assert.IsEmpty(warnings);
+        }
+
+        [Test]
+        public void TryRequestMove_AllDestinationsRejected_LogsOneFinalRejection()
+        {
+            (GameRoot game, _, Planet destination, Officer officer, MovementCommands movement) =
+                BuildScene();
+            destination.OwnerInstanceID = "rebels";
+            Planet rejected = new()
+            {
+                InstanceID = "rejected",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+            };
+            game.AttachNode(rejected, destination.GetParent());
+
+            List<string> warnings = CaptureWarnings(() =>
+                Assert.IsFalse(
+                    movement.TryRequestMove(
+                        new List<IMovable> { officer },
+                        new ContainerNode[] { rejected, destination },
+                        null,
+                        new List<GameResult>()
+                    )
+                )
+            );
+
+            Assert.That(warnings, Has.Count.EqualTo(1));
+            StringAssert.Contains("cannot accept", warnings.Single());
+        }
+
+        [Test]
+        public void TryPlaceUnits_FirstDestinationRejected_DoesNotLogWarnings()
+        {
+            (GameRoot game, _, Planet destination, Officer officer, MovementCommands movement) =
+                BuildScene();
+            Planet rejected = new()
+            {
+                InstanceID = "rejected",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+            };
+            game.AttachNode(rejected, destination.GetParent());
+
+            List<string> warnings = CaptureWarnings(() =>
+                Assert.IsTrue(
+                    movement.TryPlaceUnits(
+                        new List<IMovable> { officer },
+                        new ContainerNode[] { rejected, destination }
+                    )
+                )
+            );
+
+            Assert.IsEmpty(warnings);
+        }
+
+        [Test]
+        public void TryPlaceUnits_AllDestinationsRejected_LogsOneFinalRejection()
+        {
+            (GameRoot game, _, Planet destination, Officer officer, MovementCommands movement) =
+                BuildScene();
+            destination.OwnerInstanceID = "rebels";
+            Planet rejected = new()
+            {
+                InstanceID = "rejected",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+            };
+            game.AttachNode(rejected, destination.GetParent());
+
+            List<string> warnings = CaptureWarnings(() =>
+                Assert.IsFalse(
+                    movement.TryPlaceUnits(
+                        new List<IMovable> { officer },
+                        new ContainerNode[] { rejected, destination }
+                    )
+                )
+            );
+
+            Assert.That(warnings, Has.Count.EqualTo(1));
+            StringAssert.Contains("cannot accept", warnings.Single());
+        }
+
         [TestCase(typeof(Building))]
         [TestCase(typeof(Regiment))]
         [TestCase(typeof(SpecialForces))]
@@ -5960,6 +6103,34 @@ namespace Rebellion.Tests.Gameplay
                 destination.VisitingFactionIDs.Count,
                 "Repeat arrivals must not duplicate visitor entries"
             );
+        }
+
+        /// <summary>
+        /// Captures warning messages emitted by the supplied operation.
+        /// </summary>
+        /// <param name="action">The operation exercised with warnings enabled.</param>
+        /// <returns>The warning messages emitted while the operation runs.</returns>
+        private static List<string> CaptureWarnings(Action action)
+        {
+            List<string> warnings = new();
+            GameLogger.LogLevel originalLevel = GameLogger.MinimumLevel;
+            GameLogger.SetMinimumLevel(GameLogger.LogLevel.Warning);
+            UnityEngine.Application.LogCallback handler = (message, _, type) =>
+            {
+                if (type == UnityEngine.LogType.Warning)
+                    warnings.Add(message);
+            };
+            UnityEngine.Application.logMessageReceived += handler;
+            try
+            {
+                action();
+            }
+            finally
+            {
+                UnityEngine.Application.logMessageReceived -= handler;
+                GameLogger.SetMinimumLevel(originalLevel);
+            }
+            return warnings;
         }
 
         /// <summary>

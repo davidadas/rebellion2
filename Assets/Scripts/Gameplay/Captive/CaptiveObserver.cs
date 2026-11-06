@@ -248,7 +248,8 @@ namespace Rebellion.Gameplay
                 !_movementQueries.TryResolveAcceptedDestination(
                     officer,
                     destination,
-                    out ContainerNode resolvedDestination
+                    out ContainerNode resolvedDestination,
+                    out _
                 )
                 || resolvedDestination.GetOwnerInstanceID() != officer.CaptorInstanceID
             )
