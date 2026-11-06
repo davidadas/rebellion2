@@ -748,6 +748,7 @@ public static class StrategyViewPrefabBuilder
             activeFilterLabelLayout.Height
         );
         activeFilterLabel.gameObject.SetActive(false);
+        UIRaycastArea legendTrigger = CreateGalacticInformationLegendTrigger(galaxyMap.transform);
 
         GameObject bookmarks = CreateLayer("Bookmarks", root.transform);
         RectTransform bookmarksRect = bookmarks.GetComponent<RectTransform>();
@@ -955,6 +956,7 @@ public static class StrategyViewPrefabBuilder
             galacticInformationDisplayPrefab
         );
         AssignReference(controller, "galacticInformationLegend", galacticInformationLegend);
+        AssignReference(controller, "galacticInformationLegendTrigger", legendTrigger);
         AssignReference(windowsView, "modelessWindowLayer", modelessWindowLayer);
         AssignReference(windowsView, "idleBarLayer", idleBar.transform as RectTransform);
         AssignReference(windowsView, "modalWindowLayer", modalWindowLayer);
@@ -7447,7 +7449,7 @@ public static class StrategyViewPrefabBuilder
     )
     {
         GalacticInformationDisplayTheme theme = PreviewTheme?.GalacticInformationDisplay;
-        if (theme?.LegendSourcePosition == null || theme.CloseSourceInset == null)
+        if (theme?.LegendSourcePosition == null)
             throw new MissingReferenceException(
                 "Preview GalacticInformationDisplay legend layout is missing."
             );
@@ -7464,21 +7466,121 @@ public static class StrategyViewPrefabBuilder
             0,
             0
         );
-        RawImage legend = CreateRawImage("LegendImage", root.transform, null, 0, 0, 0, 0);
+        RectTransform backgroundRect = CreateChildLayer("BackgroundImage", root.transform);
+        Image background = backgroundRect.gameObject.AddComponent<Image>();
+        background.color = theme.GetBackgroundColor();
+        background.raycastTarget = true;
+        TextMeshProUGUI title = CreateTextLabel("TitleTextField", root.transform);
+        title.fontSize = 16;
+        title.fontStyle = FontStyles.Bold;
+        title.enableAutoSizing = true;
+        title.fontSizeMin = 11;
+        title.fontSizeMax = 16;
+        title.textWrappingMode = TextWrappingModes.NoWrap;
+        title.alignment = TextAlignmentOptions.MidlineLeft;
+        title.raycastTarget = false;
+        TextMeshProUGUI keyHeading = CreateTextLabel("KeyHeadingTextField", root.transform);
+        keyHeading.fontSize = 11;
+        keyHeading.fontStyle = FontStyles.Bold;
+        keyHeading.alignment = TextAlignmentOptions.MidlineLeft;
+        keyHeading.raycastTarget = false;
+        RectTransform rowsRoot = CreateChildLayer("LegendRows", root.transform);
+        GalacticInformationLegendRowView rowTemplate = CreateGalacticInformationLegendRowTemplate(
+            rowsRoot
+        );
         GalacticInformationFrameView frame = CreateGalacticInformationFrameView(root.transform);
-        RawImage close = CreateRawImage("CloseImage", root.transform, null, 0, 0, 0, 0);
+        TextMeshProUGUI close = CreateTextLabel("CloseTextField", root.transform);
+        close.text = "×";
+        close.fontSize = 18;
+        close.alignment = TextAlignmentOptions.Center;
+        close.raycastTarget = false;
         UIRaycastArea closeHitArea = CreateHudButtonView(
             "CloseHitArea",
             root.transform,
             new SourceRectLayout()
         );
 
-        AssignReference(view, "legendImage", legend);
+        AssignReference(view, "backgroundImage", background);
+        AssignReference(view, "titleTextField", title);
+        AssignReference(view, "keyHeadingTextField", keyHeading);
+        AssignReference(view, "rowsRoot", rowsRoot);
+        AssignReference(view, "rowTemplate", rowTemplate);
         AssignReference(view, "frameView", frame);
-        AssignReference(view, "closeImage", close);
+        AssignReference(view, "closeTextField", close);
         AssignReference(view, "closeHitArea", closeHitArea);
         root.SetActive(false);
         return view;
+    }
+
+    /// <summary>
+    /// Authors a reusable native-text row for map marker samples and labels.
+    /// </summary>
+    /// <param name="parent">The legend row host.</param>
+    /// <returns>The inactive row template.</returns>
+    private static GalacticInformationLegendRowView CreateGalacticInformationLegendRowTemplate(
+        Transform parent
+    )
+    {
+        GameObject root = CreateLayer("LegendRowTemplate", parent);
+        root.SetActive(false);
+        GalacticInformationLegendRowView view = EnableRuntimeComponent(
+            root.AddComponent<GalacticInformationLegendRowView>()
+        );
+        RawImage marker = CreateRawImage("MarkerImage", root.transform, null, 0, 0, 22, 22);
+        marker.raycastTarget = false;
+        TextMeshProUGUI label = CreateTextLabel("LabelTextField", root.transform);
+        label.fontSize = 14;
+        label.color = Color.white;
+        label.enableAutoSizing = true;
+        label.fontSizeMin = 11;
+        label.fontSizeMax = 14;
+        label.textWrappingMode = TextWrappingModes.NoWrap;
+        label.alignment = TextAlignmentOptions.MidlineLeft;
+        label.raycastTarget = false;
+        AssignReference(view, "markerImage", marker);
+        AssignReference(view, "labelTextField", label);
+        return view;
+    }
+
+    /// <summary>
+    /// Authors the small map-legend control beside the selected display label.
+    /// </summary>
+    /// <param name="parent">The galaxy map host.</param>
+    /// <returns>The initially hidden legend control.</returns>
+    private static UIRaycastArea CreateGalacticInformationLegendTrigger(Transform parent)
+    {
+        UIRaycastArea area = CreateHudButtonView(
+            "GalacticInformationLegendTrigger",
+            parent,
+            new SourceRectLayout()
+        );
+        RectTransform backgroundRect = CreateChildLayer("Background", area.transform);
+        SetSourceRect(backgroundRect, 0, 0, 22, 22);
+        Image background = backgroundRect.gameObject.AddComponent<Image>();
+        background.raycastTarget = false;
+        Outline outline = backgroundRect.gameObject.AddComponent<Outline>();
+        outline.effectColor = new Color(0.7f, 0.7f, 0.7f, 0.8f);
+        outline.effectDistance = new Vector2(1, -1);
+        Button button = area.gameObject.AddComponent<Button>();
+        button.targetGraphic = background;
+        ColorBlock colors = button.colors;
+        colors.normalColor = new Color32(24, 24, 24, 235);
+        colors.highlightedColor = new Color32(65, 65, 65, 255);
+        colors.pressedColor = new Color32(100, 100, 100, 255);
+        colors.selectedColor = colors.normalColor;
+        colors.fadeDuration = 0.08f;
+        button.colors = colors;
+        button.navigation = new Navigation { mode = Navigation.Mode.None };
+        TextMeshProUGUI label = CreateTextLabel("LegendLabel", area.transform);
+        SetSourceRect(label.rectTransform, 0, 0, 22, 22);
+        label.text = "?";
+        label.color = Color.white;
+        label.fontSize = 16;
+        label.fontStyle = FontStyles.Bold;
+        label.alignment = TextAlignmentOptions.Center;
+        label.raycastTarget = false;
+        area.gameObject.SetActive(false);
+        return area;
     }
 
     /// <summary>

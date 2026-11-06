@@ -66,6 +66,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                     "Build Troops",
                     "Build Facilities",
                     "Galaxy Overview",
+                    "Map Legend",
                     "Objectives",
                     "Manage Garrisons",
                     "Manage Production",
@@ -96,6 +97,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 StrategyAdvisorController.BuildCommandMenu(null);
 
             Assert.IsTrue(commandMenu.All(command => !command.Enabled));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void BuildCommandMenu_MapLegend_UsesCurrentDisplayAvailability(bool available)
+        {
+            StrategyMenuCommand command = StrategyAdvisorController
+                .BuildCommandMenu(new Faction(), available)
+                .Single(item => item.Action == StrategyMenuAction.AdvisorMapLegend);
+
+            Assert.AreEqual(available, command.Enabled);
         }
 
         [Test]

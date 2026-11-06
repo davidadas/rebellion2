@@ -321,45 +321,75 @@ public sealed class GalacticInformationFrameRenderData
 }
 
 /// <summary>
+/// Defines a marker sample and its label within a map legend.
+/// </summary>
+public sealed class GalacticInformationLegendRowRenderData
+{
+    public RectInt Bounds { get; }
+
+    public Texture2D Texture { get; }
+
+    public string Label { get; }
+
+    /// <summary>
+    /// Creates one marker-key row.
+    /// </summary>
+    /// <param name="bounds">The row bounds within the legend.</param>
+    /// <param name="texture">The map marker sample.</param>
+    /// <param name="label">The marker's meaning.</param>
+    public GalacticInformationLegendRowRenderData(RectInt bounds, Texture2D texture, string label)
+    {
+        Bounds = bounds;
+        Texture = texture;
+        Label = label ?? string.Empty;
+    }
+}
+
+/// <summary>
 /// Defines resolved presentation for the retained galactic-information legend.
 /// </summary>
 public sealed class GalacticInformationLegendRenderData
 {
     public RectInt Bounds { get; }
 
-    public Texture2D Texture { get; }
+    public GalacticInformationTextRenderData Title { get; }
+
+    public Color BackgroundColor { get; }
+
+    public GalacticInformationTextRenderData KeyHeading { get; }
+
+    public IReadOnlyList<GalacticInformationLegendRowRenderData> Rows { get; }
 
     public GalacticInformationFrameRenderData Frame { get; }
 
     public RectInt CloseBounds { get; }
 
-    public Texture2D CloseTexture { get; }
-
-    public Texture2D ClosePressedTexture { get; }
-
     /// <summary>
     /// Creates immutable legend presentation data.
     /// </summary>
     /// <param name="bounds">The source-space legend bounds.</param>
-    /// <param name="texture">The resolved legend texture.</param>
+    /// <param name="title">The selected map display's title.</param>
+    /// <param name="backgroundColor">The legend's themed background color.</param>
+    /// <param name="keyHeading">The marker-color section heading.</param>
+    /// <param name="rows">The range and faction marker rows.</param>
     /// <param name="frame">The legend frame presentation.</param>
     /// <param name="closeBounds">The source-space close-control bounds.</param>
-    /// <param name="closeTexture">The resolved idle close texture.</param>
-    /// <param name="closePressedTexture">The resolved pressed close texture.</param>
     public GalacticInformationLegendRenderData(
         RectInt bounds,
-        Texture2D texture,
+        GalacticInformationTextRenderData title,
+        Color backgroundColor,
+        GalacticInformationTextRenderData keyHeading,
+        IReadOnlyList<GalacticInformationLegendRowRenderData> rows,
         GalacticInformationFrameRenderData frame,
-        RectInt closeBounds,
-        Texture2D closeTexture,
-        Texture2D closePressedTexture
+        RectInt closeBounds
     )
     {
         Bounds = bounds;
-        Texture = texture;
+        Title = title;
+        BackgroundColor = backgroundColor;
+        KeyHeading = keyHeading;
+        Rows = GalaxyMapRenderData.Copy(rows);
         Frame = frame;
         CloseBounds = closeBounds;
-        CloseTexture = closeTexture;
-        ClosePressedTexture = closePressedTexture;
     }
 }

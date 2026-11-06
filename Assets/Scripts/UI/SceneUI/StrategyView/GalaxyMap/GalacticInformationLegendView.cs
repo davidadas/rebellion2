@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -9,13 +11,25 @@ using UnityEngine.UI;
 public sealed class GalacticInformationLegendView : MonoBehaviour, IBeginDragHandler, IDragHandler
 {
     [SerializeField]
-    private RawImage legendImage;
+    private Image backgroundImage;
+
+    [SerializeField]
+    private TextMeshProUGUI titleTextField;
+
+    [SerializeField]
+    private TextMeshProUGUI keyHeadingTextField;
+
+    [SerializeField]
+    private RectTransform rowsRoot;
+
+    [SerializeField]
+    private GalacticInformationLegendRowView rowTemplate;
 
     [SerializeField]
     private GalacticInformationFrameView frameView;
 
     [SerializeField]
-    private RawImage closeImage;
+    private TextMeshProUGUI closeTextField;
 
     [SerializeField]
     private UIRaycastArea closeHitArea;
@@ -26,6 +40,9 @@ public sealed class GalacticInformationLegendView : MonoBehaviour, IBeginDragHan
     private bool eventsBound;
     private bool hasSavedSourcePosition;
     private GalacticInformationLegendRenderData renderData;
+    private readonly List<GalacticInformationLegendRowView> rows = new();
+
+    public bool Visible => gameObject.activeSelf;
 
     /// <summary>
     /// Raised when the retained legend's close control is selected.
@@ -87,28 +104,61 @@ public sealed class GalacticInformationLegendView : MonoBehaviour, IBeginDragHan
             data.Bounds.width,
             data.Bounds.height
         );
-        legendImage.texture = data.Texture;
-        legendImage.enabled = data.Texture != null;
-        legendImage.raycastTarget = true;
+        backgroundImage.color = data.BackgroundColor;
+        backgroundImage.raycastTarget = true;
         UILayout.SetSourceRect(
-            legendImage.rectTransform,
+            backgroundImage.rectTransform,
             0,
             0,
             data.Bounds.width,
             data.Bounds.height
         );
+        UILayout.SetSourceRect(rowsRoot, 0, 0, data.Bounds.width, data.Bounds.height);
+        RenderText(titleTextField, data.Title);
+        RenderText(keyHeadingTextField, data.KeyHeading);
+        for (int index = 0; index < data.Rows.Count; index++)
+        {
+            if (index == rows.Count)
+            {
+                GalacticInformationLegendRowView row = Instantiate(rowTemplate, rowsRoot);
+                row.name = $"LegendRow-{index}";
+                rows.Add(row);
+            }
+            rows[index].Render(data.Rows[index]);
+        }
+        for (int index = data.Rows.Count; index < rows.Count; index++)
+            rows[index].gameObject.SetActive(false);
         frameView.Render(data.Frame);
         closeHitArea.Render(data.CloseBounds);
         UILayout.SetSourceRect(
-            closeImage.rectTransform,
+            closeTextField.rectTransform,
             data.CloseBounds.x,
             data.CloseBounds.y,
             data.CloseBounds.width,
             data.CloseBounds.height
         );
         closePressed = false;
-        RenderCloseImage();
-        gameObject.SetActive(data.Texture != null);
+        RenderCloseControl();
+        gameObject.SetActive(true);
+        transform.SetAsLastSibling();
+    }
+
+    /// <summary>
+    /// Applies one native text field's projected contents, color, and bounds.
+    /// </summary>
+    /// <param name="field">The authored text field.</param>
+    /// <param name="data">The projected text presentation.</param>
+    private static void RenderText(TextMeshProUGUI field, GalacticInformationTextRenderData data)
+    {
+        UILayout.SetTextContent(field, data.Text);
+        field.color = data.Color;
+        UILayout.SetSourceRect(
+            field.rectTransform,
+            data.Bounds.x,
+            data.Bounds.y,
+            data.Bounds.width,
+            data.Bounds.height
+        );
     }
 
     /// <summary>
@@ -192,7 +242,7 @@ public sealed class GalacticInformationLegendView : MonoBehaviour, IBeginDragHan
     private void HandleClosePressed(UIRaycastArea area, PointerEventData eventData)
     {
         closePressed = true;
-        RenderCloseImage();
+        RenderCloseControl();
     }
 
     /// <summary>
@@ -203,7 +253,7 @@ public sealed class GalacticInformationLegendView : MonoBehaviour, IBeginDragHan
     private void HandleCloseReleased(UIRaycastArea area, PointerEventData eventData)
     {
         closePressed = false;
-        RenderCloseImage();
+        RenderCloseControl();
     }
 
     /// <summary>
@@ -217,16 +267,12 @@ public sealed class GalacticInformationLegendView : MonoBehaviour, IBeginDragHan
     }
 
     /// <summary>
-    /// Applies the current close-control state from immutable resolved textures.
+    /// Applies the native close control's pressed state.
     /// </summary>
-    private void RenderCloseImage()
+    private void RenderCloseControl()
     {
-        Texture2D texture = closePressed
-            ? renderData?.ClosePressedTexture
-            : renderData?.CloseTexture;
-        closeImage.texture = texture;
-        closeImage.enabled = texture != null;
-        closeImage.raycastTarget = false;
+        closeTextField.color = closePressed ? renderData.Title.Color : Color.white;
+        closeTextField.raycastTarget = false;
     }
 
     /// <summary>
@@ -281,9 +327,16 @@ public sealed class GalacticInformationLegendView : MonoBehaviour, IBeginDragHan
     /// </summary>
     private void VerifyReferences()
     {
-        if (legendImage == null || frameView == null)
+        if (
+            backgroundImage == null
+            || frameView == null
+            || titleTextField == null
+            || keyHeadingTextField == null
+            || rowsRoot == null
+            || rowTemplate == null
+        )
             throw new MissingReferenceException($"{name}/Legend panel is incomplete.");
-        if (closeImage == null || closeHitArea == null)
+        if (closeTextField == null || closeHitArea == null)
             throw new MissingReferenceException($"{name}/Close control is missing.");
     }
 }
