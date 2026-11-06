@@ -217,6 +217,42 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
+        public void Render_LongDestinationName_EllipsizesBeforeDestinationLink()
+        {
+            _view.Render(
+                CreateRenderData(
+                    FacilityWindowTab.Manufacturing,
+                    new[]
+                    {
+                        new ManufacturingLaneCardRenderData(
+                            _texture,
+                            _texture,
+                            0,
+                            1,
+                            "Title",
+                            "Empty",
+                            "Current",
+                            "Count",
+                            "Destination: An exceptionally long renamed destination fleet",
+                            "Facilities",
+                            true
+                        ),
+                    },
+                    Array.Empty<FacilityInventoryItemRenderData>()
+                )
+            );
+            ManufacturingLaneCardView card = FindCard("ShipyardsManufacturingLaneCard");
+            TextMeshProUGUI destination = FindCardText(card, "DestinationTextField");
+            RawImage link = card.GetComponentsInChildren<RawImage>(true)
+                .Single(image => image.name == "DestinationLinkImage");
+            RectInt destinationRect = UILayout.GetSourceRect(destination.rectTransform);
+            RectInt linkRect = UILayout.GetSourceRect(link.rectTransform);
+
+            Assert.AreEqual(TextOverflowModes.Ellipsis, destination.overflowMode);
+            Assert.LessOrEqual(destinationRect.xMax, linkRect.x);
+        }
+
+        [Test]
         public void Render_IdleManufacturingLane_HidesDestinationLink()
         {
             _view.Render(

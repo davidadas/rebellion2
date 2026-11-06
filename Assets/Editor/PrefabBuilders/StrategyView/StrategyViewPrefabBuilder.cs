@@ -5948,6 +5948,7 @@ public static class StrategyViewPrefabBuilder
         destination.color = Color.white;
         destination.fontSize = 11;
         destination.alignment = TextAlignmentOptions.TopLeft;
+        destination.overflowMode = TextOverflowModes.Ellipsis;
         SetSourceRect(destination.rectTransform, 60, cardY + 58, 150, 16);
 
         RawImage destinationLink = CreateRawImage(
