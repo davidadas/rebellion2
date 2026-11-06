@@ -23,6 +23,157 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class MissionCommandsTests
     {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void InitiateMission_OfficersSharingTravelTrait_DepartAndArriveTogether(
+            bool traitOnDecoy
+        )
+        {
+            var (game, context, officer, decoy, movement, missions) = BuildTravelMissionScene();
+            Planet home = officer.GetParentOfType<Planet>();
+            MovementQueries queries = new MovementQueries(game);
+            int normalTicks = queries.CalculateTransitTicks(
+                officer,
+                home,
+                (Planet)context.Location
+            );
+            BindTravelTrait(traitOnDecoy ? decoy : officer);
+            int expectedTicks = queries.CalculateTransitTicks(
+                traitOnDecoy ? decoy : officer,
+                home,
+                (Planet)context.Location
+            );
+
+            Assert.IsTrue(missions.InitiateMission(context));
+
+            Assert.Less(expectedTicks, normalTicks);
+            Assert.AreEqual(expectedTicks, officer.Movement.TransitTicks);
+            Assert.AreEqual(expectedTicks, decoy.Movement.TransitTicks);
+            Assert.AreEqual(officer.Movement.MovementGroupID, decoy.Movement.MovementGroupID);
+            Assert.AreEqual(home.InstanceID, officer.MissionReturnParentInstanceID);
+            Assert.AreEqual(home.InstanceID, decoy.MissionReturnParentInstanceID);
+            for (int tick = 0; tick < expectedTicks - 1; tick++)
+                new MovementTickProcessor(movement).ProcessTick(game);
+            Assert.IsNotNull(officer.Movement);
+            Assert.IsNotNull(decoy.Movement);
+            new MovementTickProcessor(movement).ProcessTick(game);
+            Assert.IsNull(officer.Movement);
+            Assert.IsNull(decoy.Movement);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ProcessTick_SuccessfulSabotageWithSharedTravel_ReturnsOfficersTogether(
+            bool separateContainers
+        )
+        {
+            var (game, context, officer, decoy, movement, missions) = BuildTravelMissionScene();
+            Planet home = officer.GetParentOfType<Planet>();
+            if (separateContainers)
+            {
+                Fleet fleet = EntityFactory.CreateFleet("home-fleet", "empire");
+                CapitalShip ship = new CapitalShip
+                {
+                    InstanceID = "home-ship",
+                    OwnerInstanceID = "empire",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                };
+                game.AttachNode(fleet, home);
+                game.AttachNode(ship, fleet);
+                game.MoveNode(decoy, ship);
+            }
+            var decoyHome = decoy.GetParent();
+            BindTravelTrait(officer);
+            int expectedTicks = new MovementQueries(game).CalculateTransitTicks(
+                officer,
+                home,
+                (Planet)context.Location
+            );
+            Assert.IsTrue(missions.InitiateMission(context));
+            Mission mission = game.GetSceneNodesByType<Mission>().Single();
+            officer.Movement = null;
+            decoy.Movement = null;
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            List<GameResult> results = missions.ProcessMissionTick(game);
+
+            Assert.AreEqual(
+                MissionOutcome.Success,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+            Assert.AreSame(home, officer.GetParent());
+            Assert.AreSame(decoyHome, decoy.GetParent());
+            Assert.AreEqual(expectedTicks, officer.Movement.TransitTicks);
+            Assert.AreEqual(expectedTicks, decoy.Movement.TransitTicks);
+            Assert.AreEqual(officer.Movement.MovementGroupID, decoy.Movement.MovementGroupID);
+            for (int tick = 0; tick < expectedTicks; tick++)
+                new MovementTickProcessor(movement).ProcessTick(game);
+            Assert.IsNull(officer.Movement);
+            Assert.IsNull(decoy.Movement);
+        }
+
+        [Test]
+        public void InitiateMission_OfficersDepartingDifferentPlanets_DoesNotShareTravelTrait()
+        {
+            var (game, context, officer, decoy, _, missions) = BuildTravelMissionScene();
+            Planet home = officer.GetParentOfType<Planet>();
+            Planet otherHome = new Planet
+            {
+                InstanceID = "other-home",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 100,
+            };
+            game.AttachNode(otherHome, home.GetParent());
+            game.MoveNode(decoy, otherHome);
+            BindTravelTrait(officer);
+            int expectedDecoyTicks = new MovementQueries(game).CalculateTransitTicks(
+                decoy,
+                otherHome,
+                (Planet)context.Location
+            );
+
+            Assert.IsTrue(missions.InitiateMission(context));
+
+            Assert.AreEqual(expectedDecoyTicks, decoy.Movement.TransitTicks);
+            Assert.AreNotEqual(officer.Movement.MovementGroupID, decoy.Movement.MovementGroupID);
+            Assert.AreEqual(home.InstanceID, officer.MissionReturnLocationInstanceID);
+            Assert.AreEqual(otherHome.InstanceID, decoy.MissionReturnLocationInstanceID);
+        }
+
+        [Test]
+        public void AbortMission_ParticipantsAtDifferentTransitPositions_ReturnIndependently()
+        {
+            var (game, context, officer, decoy, _, missions) = BuildTravelMissionScene();
+            Planet home = officer.GetParentOfType<Planet>();
+            BindTravelTrait(officer);
+            Assert.IsTrue(missions.InitiateMission(context));
+            Mission mission = game.GetSceneNodesByType<Mission>().Single();
+            officer.Movement.CurrentPosition = new System.Drawing.Point(100, 0);
+            decoy.Movement.CurrentPosition = new System.Drawing.Point(40, 0);
+            MovementQueries queries = new MovementQueries(game);
+            int expectedOfficerTicks = queries.CalculateTransitTicks(
+                officer,
+                officer.Movement.CurrentPosition,
+                (Planet)context.Location,
+                home
+            );
+            int expectedDecoyTicks = queries.CalculateTransitTicks(
+                decoy,
+                decoy.Movement.CurrentPosition,
+                (Planet)context.Location,
+                home
+            );
+
+            Assert.IsTrue(missions.AbortMission(mission.InstanceID));
+
+            Assert.AreEqual(expectedOfficerTicks, officer.Movement.TransitTicks);
+            Assert.AreEqual(expectedDecoyTicks, decoy.Movement.TransitTicks);
+            Assert.AreNotEqual(officer.Movement.MovementGroupID, decoy.Movement.MovementGroupID);
+        }
+
         [Test]
         public void InitiateMission_DecoyKilledAtDeparture_RemovesDecoyFromMission()
         {
@@ -3286,6 +3437,12 @@ namespace Rebellion.Tests.Gameplay
             mission.AddDecoyParticipant(remainingDecoy);
             game.AttachNode(escapedDecoy, mission);
             game.AttachNode(remainingDecoy, mission);
+            BindTravelTrait(spy);
+            int expectedReturnTicks = new MovementQueries(game).CalculateTransitTicks(
+                escapedDecoy,
+                planet,
+                game.GetSceneNodeByInstanceID<Planet>("empire-home")
+            );
 
             MissionCommands system = TestSystems.CreateMissionCommands(
                 game,
@@ -3297,6 +3454,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual("empire-home", escapedDecoy.GetParent()?.InstanceID);
             Assert.IsNotNull(escapedDecoy.Movement);
+            Assert.AreEqual(expectedReturnTicks, escapedDecoy.Movement.TransitTicks);
             Assert.AreSame(mission, remainingDecoy.GetParent());
             Assert.AreEqual(1, mission.CurrentProgress);
         }
@@ -5360,6 +5518,72 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.IsFalse(created);
             Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
+        }
+
+        /// <summary>
+        /// Builds a sabotage mission with an officer and decoy departing the same friendly planet.
+        /// </summary>
+        /// <returns>The mission request, its participants, and their command systems.</returns>
+        private (
+            GameRoot game,
+            MissionContext context,
+            Officer officer,
+            Officer decoy,
+            MovementCommands movement,
+            MissionCommands missions
+        ) BuildTravelMissionScene()
+        {
+            var (game, home, officer, movement) = BuildScene(factionOwnsPlanet: true);
+            game.Config.Movement.DistanceDivisor = 1;
+            game.Config.Movement.DefaultPersonnelHyperdrive = 100;
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+            Planet target = new Planet
+            {
+                InstanceID = "target-planet",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 200,
+                PositionY = 0,
+            };
+            game.AttachNode(target, home.GetParent());
+            Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
+            game.AttachNode(decoy, home);
+            Regiment victim = EntityFactory.CreateRegiment("victim", "rebels");
+            victim.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(victim, target);
+            SetDecoyTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
+            MissionContext context = CreateContext(
+                SabotageMission.MissionTypeID,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant> { decoy },
+                target,
+                selectedTarget: victim
+            );
+            MissionCommands missions = TestSystems.CreateMissionCommands(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
+            return (game, context, officer, decoy, movement, missions);
+        }
+
+        /// <summary>
+        /// Gives an officer a trait that halves travel time for accompanying officers.
+        /// </summary>
+        /// <param name="officer">The officer sharing the travel modifier.</param>
+        private static void BindTravelTrait(Officer officer)
+        {
+            OfficerTraitDefinition trait = new OfficerTraitDefinition
+            {
+                ID = "travel",
+                PersonnelTravelTimePercent = 50,
+                SharesPersonnelTravelTimeModifier = true,
+            };
+            officer.Traits.Add(trait.ID);
+            officer.BindTraitDefinitions(
+                new Dictionary<string, OfficerTraitDefinition> { [trait.ID] = trait }
+            );
         }
 
         // Builds a game with one planet and one officer whose recorded mission return location

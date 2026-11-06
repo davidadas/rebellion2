@@ -366,26 +366,39 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Records a participant's current container and planet before sending it to a mission.
+        /// Records return locations and sends participants departing the same planet as a group.
         /// </summary>
-        /// <param name="participant">The participant departing for the mission.</param>
-        /// <param name="mission">The mission that will contain the participant.</param>
-        internal void SendToMission(IMissionParticipant participant, Mission mission)
+        /// <param name="participants">The participants departing for the mission.</param>
+        /// <param name="mission">The mission that will contain the participants.</param>
+        internal void SendToMission(
+            IReadOnlyList<IMissionParticipant> participants,
+            Mission mission
+        )
         {
-            if (participant == null)
-                throw new ArgumentNullException(nameof(participant));
+            if (participants == null)
+                throw new ArgumentNullException(nameof(participants));
             if (mission == null)
                 throw new ArgumentNullException(nameof(mission));
 
-            participant.MissionReturnParentInstanceID = participant.GetParent()?.InstanceID;
-            participant.MissionReturnLocationInstanceID = participant
-                .GetParentOfType<Planet>()
-                ?.InstanceID;
-            RequestMove(participant, mission);
+            foreach (IMissionParticipant participant in participants)
+            {
+                participant.MissionReturnParentInstanceID = participant.GetParent()?.InstanceID;
+                participant.MissionReturnLocationInstanceID = participant
+                    .GetParentOfType<Planet>()
+                    ?.InstanceID;
+            }
+
+            foreach (
+                var group in participants.GroupBy(participant =>
+                    participant.GetParentOfType<Planet>()
+                )
+            )
+                RequestMove(group.Cast<IMovable>().ToList(), mission);
         }
 
         /// <summary>
-        /// Returns mission participants and passengers in destination-specific movement groups.
+        /// Returns mission participants and passengers together when they share a physical route,
+        /// preserving each unit's resolved destination container.
         /// </summary>
         /// <param name="participants">The mission participants that are free to return.</param>
         /// <param name="additionalPassengers">Additional units that must travel with the first return group.</param>
@@ -472,23 +485,33 @@ namespace Rebellion.Gameplay
             if (firstReturnDestination != null)
                 returnLocation = MovementQueries.RequireDestinationPlanet(firstReturnDestination);
 
-            foreach (KeyValuePair<ContainerNode, List<IMovable>> returnGroup in returnGroups)
-            {
-                List<IMovable> returningGroup = returnGroup.Value;
-                if (returningGroup.Count == 0)
-                    continue;
-
-                string movementGroupID = Guid.NewGuid().ToString("N");
-                int groupTransitTicks = CalculateGroupTransitTicks(
-                    returningGroup,
-                    Enumerable.Repeat(returnGroup.Key, returningGroup.Count).ToList()
+            var travelGroups = returnGroups
+                .SelectMany(group =>
+                    group.Value.Select(unit => (Unit: unit, Destination: group.Key))
+                )
+                .GroupBy(move =>
+                    (
+                        Origin: move.Unit.GetParentOfType<Planet>(),
+                        Position: move.Unit.Movement?.CurrentPosition
+                            ?? move.Unit.GetParentOfType<Planet>().GetPosition(),
+                        Destination: MovementQueries.RequireDestinationPlanet(move.Destination)
+                    )
                 );
+            foreach (var travelGroup in travelGroups)
+            {
+                List<IMovable> returningGroup = travelGroup.Select(move => move.Unit).ToList();
+                List<ContainerNode> destinations = travelGroup
+                    .Select(move => move.Destination)
+                    .ToList();
+                string movementGroupID = Guid.NewGuid().ToString("N");
+                int groupTransitTicks = CalculateGroupTransitTicks(returningGroup, destinations);
                 List<IMovable> immediatePersonnel = new List<IMovable>();
-                foreach (IMovable unit in returningGroup)
+                foreach (var move in travelGroup)
                 {
+                    IMovable unit = move.Unit;
                     bool accepted = ExecuteReturnMove(
                         unit,
-                        returnGroup.Key,
+                        move.Destination,
                         results,
                         movementGroupID,
                         groupTransitTicks
@@ -497,8 +520,7 @@ namespace Rebellion.Gameplay
                         accepted
                         && unit.Movement == null
                         && IsFreePersonnel(unit)
-                        && unit.GetParentOfType<Planet>()
-                            == MovementQueries.RequireDestinationPlanet(returnGroup.Key)
+                        && unit.GetParentOfType<Planet>() == travelGroup.Key.Destination
                     )
                         immediatePersonnel.Add(unit);
                 }
@@ -506,7 +528,7 @@ namespace Rebellion.Gameplay
                 if (immediatePersonnel.Count > 0)
                     ResolvePersonnelEncounters(
                         immediatePersonnel,
-                        MovementQueries.RequireDestinationPlanet(returnGroup.Key),
+                        travelGroup.Key.Destination,
                         results
                     );
             }
