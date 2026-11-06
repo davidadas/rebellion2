@@ -21,6 +21,7 @@ namespace Rebellion.Gameplay
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
         private readonly PlanetaryControlCommands _planetaryControl;
+        private readonly DuelCommands _duelCommands;
         private readonly Dictionary<Planet, int> _garrisonSurplusByPlanet =
             new Dictionary<Planet, int>();
 
@@ -39,6 +40,7 @@ namespace Rebellion.Gameplay
             _game = game;
             _provider = provider;
             _planetaryControl = planetaryControl;
+            _duelCommands = new DuelCommands(game, provider);
             InitializeGarrisonSurplus();
         }
 
@@ -807,15 +809,8 @@ namespace Rebellion.Gameplay
             int adjustment = 0;
             foreach (Mission mission in GetActiveUprisingMissions(planet))
             {
-                int averageLeadership =
-                    mission.GetMainParticipants().Count == 0
-                        ? 0
-                        : mission
-                            .GetMainParticipants()
-                            .Sum(participant =>
-                                participant.GetEffectiveRating(SkillRating.Leadership)
-                            ) / mission.GetMainParticipants().Count;
-                int missionAdjustment = averageLeadership / config.MissionLeadershipDivisor;
+                int missionAdjustment =
+                    mission.GetAverageLeadership() / config.MissionLeadershipDivisor;
 
                 if (mission is InciteUprisingMission)
                     adjustment += missionAdjustment;
@@ -877,7 +872,7 @@ namespace Rebellion.Gameplay
                     DestroyRandomRegiment(planet, controllerInstanceId, results);
                     return;
                 case 3:
-                    CaptureRandomOfficer(planet, controllerInstanceId, results);
+                    InjureRandomOfficer(planet, controllerInstanceId, results);
                     return;
                 case 4:
                     FreeRandomCapturedOfficer(planet, controllerInstanceId, results);
@@ -973,12 +968,12 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Captures a random uncaptured controller-owned officer on the planet.
+        /// Rolls combat-based injury for a random uncaptured controller-owned officer.
         /// </summary>
         /// <param name="planet">The planet experiencing the uprising.</param>
         /// <param name="controllerInstanceId">The controlling faction's instance ID.</param>
         /// <param name="results">Result list to append events to.</param>
-        private void CaptureRandomOfficer(
+        private void InjureRandomOfficer(
             Planet planet,
             string controllerInstanceId,
             List<GameResult> results
@@ -993,8 +988,7 @@ namespace Rebellion.Gameplay
                 return;
 
             Officer target = candidates[_provider.NextInt(0, candidates.Count)];
-            Faction opposingFaction = FindLeadingOpposingFaction(planet, controllerInstanceId);
-            SetOfficerCaptureState(target, planet, true, opposingFaction?.InstanceID, results);
+            results.AddRange(_duelCommands.InjureOfficer(target));
         }
 
         /// <summary>
@@ -1018,7 +1012,7 @@ namespace Rebellion.Gameplay
                 return;
 
             Officer target = candidates[_provider.NextInt(0, candidates.Count)];
-            SetOfficerCaptureState(target, planet, false, null, results);
+            FreeOfficer(target, planet, results);
         }
 
         /// <summary>
@@ -1039,7 +1033,7 @@ namespace Rebellion.Gameplay
                 isCaptured: true
             );
             foreach (Officer target in captured)
-                SetOfficerCaptureState(target, planet, false, null, results);
+                FreeOfficer(target, planet, results);
         }
 
         /// <summary>
@@ -1048,7 +1042,7 @@ namespace Rebellion.Gameplay
         /// <param name="planet">The planet whose officers are inspected.</param>
         /// <param name="controllerInstanceId">The controlling faction identifier.</param>
         /// <param name="isCaptured">The required capture state.</param>
-        /// <returns>The officers eligible for an uprising capture-state incident.</returns>
+        /// <returns>The officers eligible for an uprising incident.</returns>
         private static List<Officer> GetIncidentOfficers(
             Planet planet,
             string controllerInstanceId,
@@ -1067,39 +1061,22 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Applies and records one officer capture-state transition.
+        /// Releases an officer and records the capture-state transition.
         /// </summary>
         /// <param name="officer">The officer whose state changes.</param>
         /// <param name="planet">The planet where the incident occurs.</param>
-        /// <param name="isCaptured">The new capture state.</param>
-        /// <param name="captorInstanceId">The capturing faction identifier when captured.</param>
         /// <param name="results">The result collection receiving the state change.</param>
-        private void SetOfficerCaptureState(
-            Officer officer,
-            Planet planet,
-            bool isCaptured,
-            string captorInstanceId,
-            List<GameResult> results
-        )
+        private void FreeOfficer(Officer officer, Planet planet, List<GameResult> results)
         {
-            if (isCaptured)
-            {
-                if (!officer.TryCapture(captorInstanceId))
-                    return;
-            }
-            else
-            {
-                officer.IsCaptured = false;
-                officer.CaptorInstanceID = null;
-                officer.CanEscape = false;
-            }
+            officer.IsCaptured = false;
+            officer.CaptorInstanceID = null;
+            officer.CanEscape = false;
 
             results.Add(
                 new OfficerCaptureStateResult
                 {
                     TargetOfficer = officer,
-                    IsCaptured = isCaptured,
-                    ParentAtCapture = isCaptured ? officer.GetParent() : null,
+                    IsCaptured = false,
                     Context = planet,
                     Tick = _game.CurrentTick,
                 }
