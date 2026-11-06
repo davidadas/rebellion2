@@ -104,6 +104,7 @@ namespace Rebellion.Gameplay
                     waypointPlanetIds,
                     ownerInstanceId,
                     out _,
+                    out _,
                     out _
                 );
         }
@@ -708,15 +709,18 @@ namespace Rebellion.Gameplay
         /// <param name="ownerInstanceId">The faction authorized to command the ships.</param>
         /// <param name="capitalShips">Receives the registered controlled capital ships.</param>
         /// <param name="destinations">Receives the registered destination planets.</param>
+        /// <param name="rejectionReason">The movement eligibility rejection reason, when provided.</param>
         /// <returns>True when the complete route is valid.</returns>
         internal bool TryResolveCapitalShipWaypointRoute(
             IReadOnlyList<ISceneNode> items,
             IReadOnlyList<string> waypointPlanetIds,
             string ownerInstanceId,
             out List<CapitalShip> capitalShips,
-            out List<Planet> destinations
+            out List<Planet> destinations,
+            out string rejectionReason
         )
         {
+            rejectionReason = null;
             capitalShips = new List<CapitalShip>();
             destinations = new List<Planet>();
             if (
@@ -724,7 +728,7 @@ namespace Rebellion.Gameplay
                     items,
                     ownerInstanceId,
                     out List<ISceneNode> liveItems,
-                    out _
+                    out rejectionReason
                 )
                 || liveItems.Any(item => item is not CapitalShip)
                 || !TryResolveWaypointDestinations(waypointPlanetIds, out destinations)

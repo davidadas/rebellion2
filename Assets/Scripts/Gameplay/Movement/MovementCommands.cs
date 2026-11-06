@@ -169,7 +169,34 @@ namespace Rebellion.Gameplay
         /// <returns>True when the movement request was accepted.</returns>
         internal bool TryRequestMove(IMovable unit, ContainerNode destination)
         {
-            return TryRequestMove(unit, destination, sourceEventInstanceID: null);
+            bool accepted = TryRequestMove(unit, destination, out string rejectionReason);
+            if (!accepted && rejectionReason != null)
+                GameLogger.Warning($"RequestMove rejected: {rejectionReason}");
+            return accepted;
+        }
+
+        /// <summary>
+        /// Moves one unit to the first accepting destination and reports only the final rejection.
+        /// </summary>
+        /// <param name="unit">The unit receiving the move order.</param>
+        /// <param name="destinations">Candidate destinations in preference order.</param>
+        /// <returns>True when a destination accepts the movement request.</returns>
+        internal bool TryRequestMove(IMovable unit, IEnumerable<ContainerNode> destinations)
+        {
+            if (unit == null)
+                throw new ArgumentNullException(nameof(unit));
+            if (destinations == null)
+                throw new ArgumentNullException(nameof(destinations));
+
+            string rejectionReason = null;
+            foreach (ContainerNode destination in destinations)
+            {
+                if (TryRequestMove(unit, destination, out rejectionReason))
+                    return true;
+            }
+            if (rejectionReason != null)
+                GameLogger.Warning($"RequestMove rejected: {rejectionReason}");
+            return false;
         }
 
         /// <summary>
@@ -214,12 +241,12 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="unit">The unit to move.</param>
         /// <param name="destination">The movement destination.</param>
-        /// <param name="sourceEventInstanceID">The originating event identifier.</param>
+        /// <param name="rejectionReason">The validation failure, or null when the request is accepted.</param>
         /// <returns>True when the operation succeeds; otherwise false.</returns>
         private bool TryRequestMove(
             IMovable unit,
             ContainerNode destination,
-            string sourceEventInstanceID
+            out string rejectionReason
         )
         {
             if (unit == null)
@@ -229,15 +256,12 @@ namespace Rebellion.Gameplay
 
             destination = _queries.ResolveLiveContainer(destination);
 
-            if (!_queries.CanReceiveMoveOrder(unit, out string rejectionReason))
-            {
-                GameLogger.Warning($"RequestMove rejected: {rejectionReason}");
+            if (!_queries.CanReceiveMoveOrder(unit, out rejectionReason))
                 return false;
-            }
 
             if (MovementQueries.IsManufacturingDestinationChange(unit))
             {
-                return TryRetargetManufacturingDestination(unit, destination);
+                return TryRetargetManufacturingDestination(unit, destination, out rejectionReason);
             }
 
             if (unit is Officer { IsCaptured: true })
@@ -247,9 +271,8 @@ namespace Rebellion.Gameplay
                     destination as Planet ?? destination.GetParentOfType<Planet>();
                 if (originPlanet != destinationPlanet)
                 {
-                    GameLogger.Warning(
-                        $"RequestMove rejected: {unit.GetDisplayName()} is captured and cannot be ordered to move."
-                    );
+                    rejectionReason =
+                        $"{unit.GetDisplayName()} is captured and cannot be ordered to move.";
                     return false;
                 }
             }
@@ -257,21 +280,12 @@ namespace Rebellion.Gameplay
             Planet requestedPlanet = MovementQueries.RequireDestinationPlanet(destination);
             if (MovementQueries.IsBlockedFromDestinationByBlockade(unit, requestedPlanet))
             {
-                GameLogger.Warning(
-                    $"RequestMove rejected: {unit.GetDisplayName()} cannot enter the enemy blockade at {requestedPlanet.GetDisplayName()}."
-                );
+                rejectionReason =
+                    $"{unit.GetDisplayName()} cannot enter the enemy blockade at {requestedPlanet.GetDisplayName()}.";
                 return false;
             }
 
-            bool moved = ExecuteMove(
-                unit,
-                destination,
-                _pendingResults,
-                out rejectionReason,
-                sourceEventInstanceID: sourceEventInstanceID
-            );
-            if (!moved && rejectionReason != null)
-                GameLogger.Warning($"RequestMove rejected: {rejectionReason}");
+            bool moved = ExecuteMove(unit, destination, _pendingResults, out rejectionReason);
             if (moved && unit is Fleet fleet)
                 fleet.Waypoints.Clear();
             return moved;
@@ -746,7 +760,8 @@ namespace Rebellion.Gameplay
                     waypointPlanetIds,
                     ownerInstanceId,
                     out List<CapitalShip> capitalShips,
-                    out List<Planet> capitalShipDestinations
+                    out List<Planet> capitalShipDestinations,
+                    out string capitalShipRejectionReason
                 )
             )
             {
@@ -780,7 +795,11 @@ namespace Rebellion.Gameplay
                     out List<Planet> destinations
                 )
             )
+            {
+                if (capitalShipRejectionReason != null)
+                    GameLogger.Warning($"RequestMove rejected: {capitalShipRejectionReason}");
                 return false;
+            }
 
             bool startsFirstLeg = fleets[0].Movement == null;
             foreach (Fleet fleet in fleets)
@@ -946,15 +965,19 @@ namespace Rebellion.Gameplay
                 ContainerNode resolvedDestination = destinations[index];
                 if (MovementQueries.IsManufacturingDestinationChange(unit))
                     ApplyManufacturingDestination(unit, resolvedDestination);
-                else
-                    ExecuteAcceptedMove(
+                else if (
+                    !ExecuteAcceptedMove(
                         unit,
                         resolvedDestination,
                         results,
+                        out string moveRejectionReason,
                         movementGroupID,
                         sourceEventInstanceID,
                         groupTransitTicks
-                    );
+                    )
+                    && moveRejectionReason != null
+                )
+                    GameLogger.Warning($"RequestMove rejected: {moveRejectionReason}");
             }
 
             return true;
@@ -2068,6 +2091,7 @@ namespace Rebellion.Gameplay
                 unit,
                 resolvedDestination,
                 results,
+                out rejectionReason,
                 movementGroupID,
                 sourceEventInstanceID,
                 transitTicksOverride,
@@ -2103,14 +2127,18 @@ namespace Rebellion.Gameplay
             )
                 return false;
 
-            return ExecuteAcceptedMove(
+            bool accepted = ExecuteAcceptedMove(
                 unit,
                 resolvedDestination,
                 results,
+                out string rejectionReason,
                 movementGroupID,
                 transitTicksOverride: transitTicks,
                 resolveEncounterOnArrival: true
             );
+            if (!accepted && rejectionReason != null)
+                GameLogger.Warning($"RequestMove rejected: {rejectionReason}");
+            return accepted;
         }
 
         /// <summary>
@@ -2119,6 +2147,7 @@ namespace Rebellion.Gameplay
         /// <param name="unit">The unit receiving the movement order.</param>
         /// <param name="destination">The accepted destination.</param>
         /// <param name="results">The collection receiving movement results.</param>
+        /// <param name="rejectionReason">The reason execution cannot start, or null when accepted.</param>
         /// <param name="movementGroupID">The shared movement order identifier.</param>
         /// <param name="sourceEventInstanceID">The event that requested the movement, if any.</param>
         /// <param name="transitTicksOverride">The common group duration, when applicable.</param>
@@ -2132,6 +2161,7 @@ namespace Rebellion.Gameplay
             IMovable unit,
             ContainerNode destination,
             ICollection<GameResult> results,
+            out string rejectionReason,
             string movementGroupID,
             string sourceEventInstanceID = null,
             int? transitTicksOverride = null,
@@ -2139,14 +2169,14 @@ namespace Rebellion.Gameplay
             bool resolveEncounterOnArrival = false
         )
         {
+            rejectionReason = null;
             Planet destinationPlanet = MovementQueries.RequireDestinationPlanet(destination);
 
             Planet originPlanet = unit.GetParentOfType<Planet>();
             if (originPlanet == null)
             {
-                GameLogger.Warning(
-                    $"RequestMove rejected: {unit.GetDisplayName()} is not at a planet location and cannot move."
-                );
+                rejectionReason =
+                    $"{unit.GetDisplayName()} is not at a planet location and cannot move.";
                 return false;
             }
 
@@ -2327,21 +2357,23 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="unit">The item being manufactured.</param>
         /// <param name="destination">The requested destination.</param>
+        /// <param name="rejectionReason">The reason the delivery destination is rejected, or null when accepted.</param>
         /// <returns>True when the destination change was accepted.</returns>
-        private bool TryRetargetManufacturingDestination(IMovable unit, ContainerNode destination)
+        private bool TryRetargetManufacturingDestination(
+            IMovable unit,
+            ContainerNode destination,
+            out string rejectionReason
+        )
         {
             if (
                 !_queries.TryResolveAcceptedDestination(
                     unit,
                     destination,
                     out ContainerNode resolvedDestination,
-                    out string rejectionReason
+                    out rejectionReason
                 )
             )
-            {
-                GameLogger.Warning($"RequestMove rejected: {rejectionReason}");
                 return false;
-            }
 
             ApplyManufacturingDestination(unit, resolvedDestination);
             return true;
