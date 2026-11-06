@@ -1004,15 +1004,15 @@ public sealed class FleetWindowController
 
         if (eventData?.button == PointerEventData.InputButton.Left)
         {
+            SelectionModifierState modifiers =
+                session.SelectionClick.Complete(item.InstanceID, eventData.pointerId)
+                ?? getSelectionModifiers();
             bool targetSelected = TrySelectTarget(session, item);
             endItemDrag(eventData);
-            if (
-                targetSelected
-                || SelectableListSelection.HasSelectionModifier(getSelectionModifiers())
-            )
+            if (targetSelected || modifiers.HasAnyModifier)
                 return;
 
-            session.SelectFleetListItem(item);
+            session.SelectFleetListItem(item, modifiers);
             RenderWindow(view, session.Window, session.Window.ActiveWindow);
             renderSelectionRoutes();
         }
@@ -1075,8 +1075,12 @@ public sealed class FleetWindowController
         if (eventData == null)
             return;
 
+        SelectionModifierState modifiers = getSelectionModifiers();
         if (eventData.button == PointerEventData.InputButton.Left)
+        {
             session.Window.RequestFocus();
+            session.SelectionClick.Capture(item.InstanceID, eventData.pointerId, modifiers);
+        }
         if (
             targetingController.IsTargeting
             && eventData.button == PointerEventData.InputButton.Left
@@ -1084,12 +1088,9 @@ public sealed class FleetWindowController
             return;
         if (eventData.button != PointerEventData.InputButton.Right)
         {
-            if (
-                eventData.button == PointerEventData.InputButton.Left
-                && SelectableListSelection.HasSelectionModifier(getSelectionModifiers())
-            )
+            if (eventData.button == PointerEventData.InputButton.Left && modifiers.HasAnyModifier)
             {
-                session.SelectFleetListItem(item);
+                session.SelectFleetListItem(item, modifiers);
                 markDirty();
             }
             return;
@@ -1180,8 +1181,12 @@ public sealed class FleetWindowController
         if (eventData == null)
             return;
 
+        SelectionModifierState modifiers = getSelectionModifiers();
         if (eventData.button == PointerEventData.InputButton.Left)
+        {
             session.Window.RequestFocus();
+            session.SelectionClick.Capture(item.InstanceID, eventData.pointerId, modifiers);
+        }
         if (
             targetingController.IsTargeting
             && eventData.button == PointerEventData.InputButton.Left
@@ -1198,10 +1203,8 @@ public sealed class FleetWindowController
         if (eventData.button != PointerEventData.InputButton.Left)
             return;
 
-        bool canStartDrag = session.PrepareDragSelection(item);
-        bool hasSelectionModifier = SelectableListSelection.HasSelectionModifier(
-            getSelectionModifiers()
-        );
+        bool canStartDrag = session.PrepareDragSelection(item, modifiers);
+        bool hasSelectionModifier = modifiers.HasAnyModifier;
         if (hasSelectionModifier || item is not Fleet)
             RenderSelection(view, session, item);
         bool containsDragSource =
@@ -1235,12 +1238,15 @@ public sealed class FleetWindowController
         if (eventData?.button != PointerEventData.InputButton.Left)
             return;
 
+        SelectionModifierState modifiers =
+            session.SelectionClick.Complete(item.InstanceID, eventData.pointerId)
+            ?? getSelectionModifiers();
         bool targetSelected = TrySelectTarget(session, item);
         endItemDrag(eventData);
-        if (targetSelected || SelectableListSelection.HasSelectionModifier(getSelectionModifiers()))
+        if (targetSelected || modifiers.HasAnyModifier)
             return;
 
-        session.SelectItem(item);
+        session.SelectItem(item, modifiers);
         RenderSelection(view, session, item);
     }
 

@@ -194,6 +194,57 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreSame(_officer, target.Item);
         }
 
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        public void ItemClick_ModifierReleasedBeforeMouseUp_PreservesSelection(
+            bool control,
+            bool shift
+        )
+        {
+            DefenseWindowView view = OpenSelectionGrid();
+            PressCard(view, 0);
+            _selectionModifiers = new SelectionModifierState(control, shift);
+            PointerEventData pointer = PressCard(view, 2);
+            int[] expected = shift ? new[] { 0, 1, 2 } : new[] { 0, 2 };
+            CollectionAssert.AreEquivalent(expected, _controller.GetSelectedItems(view));
+
+            _selectionModifiers = default;
+            view.GetComponentsInChildren<StrategyUnitCardView>()
+                .Single(card => card.Index == 2)
+                .GetComponent<UIPointerGestureRelay>()
+                .OnPointerClick(pointer);
+
+            CollectionAssert.AreEquivalent(expected, _controller.GetSelectedItems(view));
+        }
+
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        public void ItemClick_ModifierPressedAfterMouseDown_UsesUnmodifiedSelection(
+            bool control,
+            bool shift
+        )
+        {
+            DefenseWindowView view = OpenSelectionGrid();
+            PressCard(view, 0);
+            _selectionModifiers = new SelectionModifierState(true, false);
+            PointerEventData pointer = PressCard(view, 2);
+            view.GetComponentsInChildren<StrategyUnitCardView>()
+                .Single(card => card.Index == 2)
+                .GetComponent<UIPointerGestureRelay>()
+                .OnPointerClick(pointer);
+            _selectionModifiers = default;
+            pointer = PressCard(view, 0);
+            CollectionAssert.AreEquivalent(new[] { 0, 2 }, _controller.GetSelectedItems(view));
+
+            _selectionModifiers = new SelectionModifierState(control, shift);
+            view.GetComponentsInChildren<StrategyUnitCardView>()
+                .Single(card => card.Index == 0)
+                .GetComponent<UIPointerGestureRelay>()
+                .OnPointerClick(pointer);
+
+            CollectionAssert.AreEquivalent(new[] { 0 }, _controller.GetSelectedItems(view));
+        }
+
         [TestCase(false, false)]
         [TestCase(false, true)]
         [TestCase(true, false)]
@@ -626,7 +677,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         /// <param name="view">The source Defense window.</param>
         /// <param name="index">The officer card to press.</param>
         /// <param name="button">The mouse button used for the gesture.</param>
-        private static void PressCard(
+        /// <returns>The pointer event used for the press.</returns>
+        private static PointerEventData PressCard(
             DefenseWindowView view,
             int index,
             PointerEventData.InputButton button = PointerEventData.InputButton.Left
@@ -644,6 +696,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 pointerCurrentRaycast = new RaycastResult { gameObject = card.gameObject },
             };
             card.GetComponent<UIPointerGestureRelay>().OnPointerDown(eventData);
+            return eventData;
         }
 
         /// <summary>
