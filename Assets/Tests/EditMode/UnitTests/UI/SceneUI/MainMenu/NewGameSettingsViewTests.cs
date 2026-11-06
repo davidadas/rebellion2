@@ -111,6 +111,69 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void Apply_EditedAIDecisionInterval_PreservesOverrideAfterSerialization()
+        {
+            GameSummary applied = null;
+            view.StartRequested += (_, launchSummary) => applied = launchSummary;
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            Input("ai-decision-interval", "World").onEndEdit.Invoke("17");
+            ApplyButton().onClick.Invoke();
+            GameSummary restored = SerializationHelper.Deserialize<GameSummary>(
+                SerializationHelper.Serialize(applied)
+            );
+            view.Initialize(TestContent.Pack, restored);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            Assert.AreEqual(17, restored.CustomSettings.AIDecisionTickInterval);
+            Assert.AreEqual("17", Input("ai-decision-interval", "World").text);
+        }
+
+        [TestCase("0")]
+        [TestCase("-1")]
+        [TestCase("1.5")]
+        public void EditGenerationValue_InvalidAIDecisionInterval_KeepsPreviousValue(string value)
+        {
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+            TMP_InputField input = Input("ai-decision-interval", "World");
+            string original = input.text;
+
+            input.onEndEdit.Invoke(value);
+
+            Assert.AreEqual(original, Input("ai-decision-interval", "World").text);
+        }
+
+        [Test]
+        public void CycleDifficulty_AIDecisionInterval_FollowsProfileUntilOverridden()
+        {
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+            StepSetupChoice("difficulty", 1);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+            Assert.AreEqual(
+                TestContent
+                    .Data.GameConfig.AI.GetDecisionTickInterval(GameDifficulty.Medium)
+                    .ToString(CultureInfo.InvariantCulture),
+                Input("ai-decision-interval", "World").text
+            );
+            Input("ai-decision-interval", "World").onEndEdit.Invoke("17");
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+            StepSetupChoice("difficulty", 1);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            Assert.AreEqual("17", Input("ai-decision-interval", "World").text);
+            view.RestoreDefaults();
+            Assert.AreEqual(
+                TestContent
+                    .Data.GameConfig.AI.GetDecisionTickInterval(GameDifficulty.Hard)
+                    .ToString(CultureInfo.InvariantCulture),
+                Input("ai-decision-interval", "World").text
+            );
+        }
+
+        [Test]
         public void Initialize_NullSummary_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => view.Initialize(TestContent.Pack, null));

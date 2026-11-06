@@ -94,6 +94,8 @@ namespace Rebellion.Game
         {
             public int TickInterval { get; set; }
 
+            public Dictionary<GameDifficulty, int> DecisionTickIntervals { get; set; } = new();
+
             public bool EnablePlanetaryAssaults { get; set; }
 
             public int DiplomacyMinimumSkill { get; set; }
@@ -123,6 +125,21 @@ namespace Rebellion.Game
                 new AIFleetDeploymentConfig();
 
             /// <summary>
+            /// Returns the number of AI updates between strategic decisions for one difficulty.
+            /// </summary>
+            /// <param name="difficulty">The selected difficulty.</param>
+            /// <returns>A positive interval, defaulting to every update when unspecified.</returns>
+            public int GetDecisionTickInterval(GameDifficulty difficulty)
+            {
+                if (
+                    DecisionTickIntervals != null
+                    && DecisionTickIntervals.TryGetValue(difficulty, out int interval)
+                )
+                    return System.Math.Max(1, interval);
+                return 1;
+            }
+
+            /// <summary>
             /// Creates an independent snapshot of these settings.
             /// </summary>
             /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
@@ -130,6 +147,10 @@ namespace Rebellion.Game
                 new AIConfig
                 {
                     TickInterval = TickInterval,
+                    DecisionTickIntervals = DecisionTickIntervals?.ToDictionary(
+                        pair => pair.Key,
+                        pair => pair.Value
+                    ),
                     EnablePlanetaryAssaults = EnablePlanetaryAssaults,
                     DiplomacyMinimumSkill = DiplomacyMinimumSkill,
                     RecruitmentMinimumLeadership = RecruitmentMinimumLeadership,

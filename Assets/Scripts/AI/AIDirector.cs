@@ -33,6 +33,7 @@ namespace Rebellion.AI
         private readonly BombardmentCommands _bombardment;
         private readonly PlanetaryAssaultCommands _planetaryAssault;
         private readonly IReadOnlyList<IAITurnPhase> _turnPhases;
+        private readonly IReadOnlyList<IAITurnPhase> _fleetTurnPhases;
 
         /// <summary>
         /// Raised immediately before one named unit of faction-turn work begins.
@@ -137,6 +138,22 @@ namespace Rebellion.AI
                 new AISelectionPhase(continueSelection: true),
                 new AIExecutionPhase(results),
             };
+            _fleetTurnPhases = new List<IAITurnPhase>
+            {
+                new AIDemandGenerationPhase(
+                    new IAIDemandGenerator[] { new AIAttackDemandGenerator() }
+                ),
+                new AIPlanningPhase(
+                    new IAIProposalPlanner[]
+                    {
+                        new AIOrbitalEngagementPlanner(),
+                        new AIFleetPlanner(),
+                    }
+                ),
+                new AIScoringPhase(),
+                new AISelectionPhase(),
+                new AIExecutionPhase(results),
+            };
         }
 
         /// <summary>
@@ -162,11 +179,24 @@ namespace Rebellion.AI
             if (tickInterval <= 0 || _game.CurrentTick % tickInterval != 0)
                 yield break;
 
+            int decisionInterval =
+                _game.Summary.CustomSettings?.AIDecisionTickInterval
+                ?? _game.Config.AI.GetDecisionTickInterval(_game.Summary.Difficulty);
+            bool isDecisionTick =
+                (_game.CurrentTick / tickInterval - 1) % Math.Max(1, decisionInterval) == 0;
+
             foreach (Faction faction in _game.GetFactions().Where(_game.IsFactionAIControlled))
             {
                 GalaxyMap factionView = _fogOfWar.BuildFactionView(faction);
                 FactionTurnStarted?.Invoke(faction);
-                foreach (object step in ProcessFactionIncrementally(faction, factionView, results))
+                foreach (
+                    object step in ProcessFactionIncrementally(
+                        faction,
+                        factionView,
+                        results,
+                        isDecisionTick
+                    )
+                )
                     yield return step;
                 FactionTurnCompleted?.Invoke(faction);
             }
@@ -192,11 +222,13 @@ namespace Rebellion.AI
         /// <param name="faction">The faction to process.</param>
         /// <param name="factionView">The faction-visible galaxy state for this turn.</param>
         /// <param name="results">The result list populated when processing completes.</param>
+        /// <param name="isDecisionTick">Whether to evaluate new strategic assignments.</param>
         /// <returns>A sequence containing one step per completed phase.</returns>
         internal IEnumerable<object> ProcessFactionIncrementally(
             Faction faction,
             GalaxyMap factionView,
-            ICollection<GameResult> results
+            ICollection<GameResult> results,
+            bool isDecisionTick = true
         )
         {
             const string assessmentStep = "Assessment";
@@ -232,6 +264,7 @@ namespace Rebellion.AI
                         _missionEncounterCache
                     )
                 );
+                context.IsDecisionTick = isDecisionTick;
             }
             finally
             {
@@ -239,7 +272,7 @@ namespace Rebellion.AI
             }
             yield return null;
 
-            foreach (IAITurnPhase phase in _turnPhases)
+            foreach (IAITurnPhase phase in isDecisionTick ? _turnPhases : _fleetTurnPhases)
             {
                 string stepName = phase.GetType().Name;
                 FactionTurnStepStarted?.Invoke(faction, stepName);
