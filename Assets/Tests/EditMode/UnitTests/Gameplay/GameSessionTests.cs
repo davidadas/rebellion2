@@ -767,7 +767,9 @@ namespace Rebellion.Tests.Gameplay
             _game.AttachNode(carrier, fleet);
             _game.AttachNode(officer, carrier);
             _game.AttachNode(mission, _planet);
-            _session.GetService<MovementCommands>().SendToMission(officer, mission);
+            _session
+                .GetService<MovementCommands>()
+                .SendToMission(new IMissionParticipant[] { officer }, mission);
             DestroyUnitsAction action = new DestroyUnitsAction
             {
                 PlanetInstanceID = _planet.InstanceID,

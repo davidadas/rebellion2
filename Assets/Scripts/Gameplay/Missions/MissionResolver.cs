@@ -1056,11 +1056,13 @@ namespace Rebellion.Gameplay
         /// <param name="mission">The mission to begin.</param>
         private void BeginMissionTravel(Mission mission)
         {
-            foreach (IMissionParticipant participant in mission.GetAllParticipants())
-            {
-                if (participant.GetParent() != mission)
-                    _movementManager.SendToMission(participant, mission);
-            }
+            _movementManager.SendToMission(
+                mission
+                    .GetAllParticipants()
+                    .Where(participant => participant.GetParent() != mission)
+                    .ToList(),
+                mission
+            );
 
             mission.Initiate(RollMissionDuration(mission));
         }
