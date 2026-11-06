@@ -23,6 +23,134 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class MissionCommandsTests
     {
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void AbortMission_DiplomatAtNewlyOwnedPlanet_RemainsAtMissionPlanet(
+            bool blockaded,
+            bool hasDetectionBlocker
+        )
+        {
+            var (game, home, officer, movement) = BuildScene(factionOwnsPlanet: true);
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+            Planet target = new Planet
+            {
+                InstanceID = "diplomacy-target",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+                EnergyCapacity = 5,
+                PopularSupport = new Dictionary<string, int> { { "empire", 50 }, { "rebels", 50 } },
+            };
+            game.AttachNode(target, home.GetParent());
+            target.AddVisitor("empire");
+            MissionCommands missions = TestSystems.CreateMissionCommands(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+            Assert.IsTrue(
+                missions.InitiateMission(
+                    CreateContext(DiplomacyMission.MissionTypeID, officer, target)
+                )
+            );
+            Mission mission = game.GetSceneNodesByType<Mission>().Single();
+            int outboundTicks = officer.Movement.TransitTicks;
+            for (int tick = 0; tick < outboundTicks; tick++)
+                new MovementTickProcessor(movement).ProcessTick(game);
+            Assert.IsNull(officer.Movement);
+            Assert.AreSame(mission, officer.GetParent());
+            target.OwnerInstanceID = "empire";
+            target.PopularSupport["empire"] = 65;
+            target.PopularSupport["rebels"] = 35;
+            if (hasDetectionBlocker)
+            {
+                game.AttachNode(
+                    new Building
+                    {
+                        InstanceID = "detection-blocker",
+                        OwnerInstanceID = "empire",
+                        IsDetectionBlocker = true,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    target
+                );
+            }
+            if (blockaded)
+            {
+                Fleet fleet = EntityFactory.CreateFleet("blockading-fleet", "rebels");
+                CapitalShip ship = new CapitalShip
+                {
+                    InstanceID = "blockading-ship",
+                    OwnerInstanceID = "rebels",
+                    DetectionRating = 100,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                };
+                game.AttachNode(fleet, target);
+                game.AttachNode(ship, fleet);
+            }
+            Assert.AreEqual(blockaded, target.IsBlockadedFor("empire"));
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 0 } });
+            List<GameResult> results = new List<GameResult>();
+            missions.ResultsProduced += results.AddRange;
+
+            Assert.IsTrue(missions.AbortMission(mission.InstanceID));
+
+            Assert.IsNull(mission.GetParent());
+            Assert.AreSame(target, officer.GetParent());
+            Assert.IsNull(officer.Movement);
+            Assert.IsEmpty(results.OfType<GameObjectEnrouteResult>());
+        }
+
+        [Test]
+        public void AbortMission_DiplomatStillTravelingToFriendlyPlanet_ReturnsTowardOrigin()
+        {
+            var (game, home, officer, movement) = BuildScene(factionOwnsPlanet: true);
+            Planet target = new Planet
+            {
+                InstanceID = "diplomacy-target",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int> { { "empire", 50 } },
+            };
+            game.AttachNode(target, home.GetParent());
+            target.AddVisitor("empire");
+            MissionCommands missions = TestSystems.CreateMissionCommands(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+            Assert.IsTrue(
+                missions.InitiateMission(
+                    CreateContext(DiplomacyMission.MissionTypeID, officer, target)
+                )
+            );
+            Mission mission = game.GetSceneNodesByType<Mission>().Single();
+            int outboundTicks = officer.Movement.TransitTicks;
+            Assert.Greater(outboundTicks, 1);
+            for (int tick = 0; tick < outboundTicks / 2; tick++)
+                new MovementTickProcessor(movement).ProcessTick(game);
+            var position = officer.Movement.CurrentPosition;
+            int expectedReturnTicks = new MovementQueries(game).CalculateTransitTicks(
+                officer,
+                position,
+                target,
+                home
+            );
+
+            Assert.IsTrue(missions.AbortMission(mission.InstanceID));
+
+            Assert.IsNull(mission.GetParent());
+            Assert.AreSame(home, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
+            Assert.AreEqual(position, officer.Movement.CurrentPosition);
+            Assert.AreEqual(expectedReturnTicks, officer.Movement.TransitTicks);
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void InitiateMission_OfficersSharingTravelTrait_DepartAndArriveTogether(

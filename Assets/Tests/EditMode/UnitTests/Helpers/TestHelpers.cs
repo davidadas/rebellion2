@@ -747,7 +747,6 @@ public static class TestSystems
             movement,
             uprising,
             queries,
-            new MovementQueries(game),
             duels,
             new MissionBetrayalResolver(game, provider),
             personnelCommands
