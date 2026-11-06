@@ -63,6 +63,8 @@ internal sealed class FleetWindowSession
 
     public Fleet SelectedFleet => selectedFleet;
 
+    public SelectionClick SelectionClick { get; } = new();
+
     public UIWindow Window { get; }
 
     /// <summary>
@@ -385,8 +387,9 @@ internal sealed class FleetWindowSession
     /// Applies selection rules for the start of a fleet or detail drag gesture.
     /// </summary>
     /// <param name="target">The pressed fleet or detail item.</param>
+    /// <param name="modifiers">The captured click modifiers, or null to read the current bindings.</param>
     /// <returns>True when the target belongs to a current selectable collection.</returns>
-    public bool PrepareDragSelection(ISceneNode target)
+    public bool PrepareDragSelection(ISceneNode target, SelectionModifierState? modifiers = null)
     {
         if (target is Fleet)
         {
@@ -399,7 +402,8 @@ internal sealed class FleetWindowSession
                 selectedFleetListItems,
                 fleetListIndex,
                 fleetListItems,
-                selectedFleetListNodes
+                selectedFleetListNodes,
+                modifiers ?? getSelectionModifiers()
             );
             EnforceFleetListFactionSelection();
             SynchronizeFleetSelection();
@@ -414,7 +418,13 @@ internal sealed class FleetWindowSession
         if (!TrySetDetailInteractionTarget(itemIndex))
             return false;
 
-        PrepareDragSelection(selectedDetailItems, itemIndex, detailItems, selectedDetailNodes);
+        PrepareDragSelection(
+            selectedDetailItems,
+            itemIndex,
+            detailItems,
+            selectedDetailNodes,
+            modifiers ?? getSelectionModifiers()
+        );
         SelectRequiredItems();
         return true;
     }
@@ -423,11 +433,12 @@ internal sealed class FleetWindowSession
     /// Applies final selection rules after a fleet or detail click release.
     /// </summary>
     /// <param name="target">The released fleet or detail item.</param>
+    /// <param name="modifiers">The captured click modifiers, or null to read the current bindings.</param>
     /// <returns>True when the target belongs to a current selectable collection.</returns>
-    public bool SelectItem(ISceneNode target)
+    public bool SelectItem(ISceneNode target, SelectionModifierState? modifiers = null)
     {
         if (target is Fleet)
-            return SelectFleetListItem(target);
+            return SelectFleetListItem(target, modifiers);
 
         int itemIndex = FindNodeIndex(detailItems, target);
         if (!TrySetDetailInteractionTarget(itemIndex))
@@ -437,7 +448,7 @@ internal sealed class FleetWindowSession
             selectedDetailItems,
             itemIndex,
             detailItems.Count,
-            getSelectionModifiers()
+            modifiers ?? getSelectionModifiers()
         );
         CaptureSelection(selectedDetailItems, detailItems, selectedDetailNodes);
         SelectRequiredItems();
@@ -448,8 +459,9 @@ internal sealed class FleetWindowSession
     /// Applies final selection rules to a fleet or expanded capital-ship row.
     /// </summary>
     /// <param name="target">The released fleet-list item.</param>
+    /// <param name="modifiers">The captured click modifiers, or null to read the current bindings.</param>
     /// <returns>True when the item belongs to the current flattened fleet list.</returns>
-    public bool SelectFleetListItem(ISceneNode target)
+    public bool SelectFleetListItem(ISceneNode target, SelectionModifierState? modifiers = null)
     {
         if ((target is Fleet or CapitalShip) && FindNodeIndex(fleetListItems, target) >= 0)
         {
@@ -461,7 +473,7 @@ internal sealed class FleetWindowSession
                 selectedFleetListItems,
                 fleetListIndex,
                 fleetListItems.Count,
-                getSelectionModifiers()
+                modifiers ?? getSelectionModifiers()
             );
             CaptureSelection(selectedFleetListItems, fleetListItems, selectedFleetListNodes);
             EnforceFleetListFactionSelection();
@@ -1066,11 +1078,13 @@ internal sealed class FleetWindowSession
     /// <param name="pressedIndex">The pressed visual index.</param>
     /// <param name="items">The current ordered items.</param>
     /// <param name="selectedNodes">The identity-backed selection.</param>
+    /// <param name="modifiers">The modifiers captured for the press.</param>
     private void PrepareDragSelection<T>(
         HashSet<int> selectedIndexes,
         int pressedIndex,
         IReadOnlyList<T> items,
-        HashSet<ISceneNode> selectedNodes
+        HashSet<ISceneNode> selectedNodes,
+        SelectionModifierState modifiers
     )
         where T : class, ISceneNode
     {
@@ -1078,7 +1092,7 @@ internal sealed class FleetWindowSession
             selectedIndexes,
             pressedIndex,
             items.Count,
-            getSelectionModifiers()
+            modifiers
         );
         CaptureSelection(selectedIndexes, items, selectedNodes);
     }

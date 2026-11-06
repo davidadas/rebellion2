@@ -1082,7 +1082,9 @@ namespace Rebellion.AI
             )
                 return int.MaxValue;
 
-            return Math.Max(0, _game.CurrentTick - snapshot.TickCaptured);
+            return snapshot.FullyObservedAtTick < 0
+                ? int.MaxValue
+                : Math.Max(0, _game.CurrentTick - snapshot.FullyObservedAtTick);
         }
 
         /// <summary>
@@ -1104,10 +1106,10 @@ namespace Rebellion.AI
                 !_faction.Fog.PlanetToSector.TryGetValue(planet.InstanceID, out string sectorId)
                 || !_faction.Fog.Snapshots.TryGetValue(sectorId, out PlanetSectorSnapshot sector)
                 || !sector.Planets.TryGetValue(planet.InstanceID, out PlanetSnapshot snapshot)
-                || snapshot.OrbitalTickCaptured < 0
+                || snapshot.FleetsObservedAtTick < 0
             )
                 return int.MaxValue;
-            return Math.Max(0, _game.CurrentTick - snapshot.OrbitalTickCaptured);
+            return Math.Max(0, _game.CurrentTick - snapshot.FleetsObservedAtTick);
         }
 
         /// <summary>
@@ -1177,7 +1179,7 @@ namespace Rebellion.AI
                     planet.InstanceID,
                     out PlanetSnapshot snapshot
                 )
-                && snapshot.RevealedCategories.HasFlag(categories);
+                && snapshot.HasIntelligence(categories);
         }
 
         /// <summary>

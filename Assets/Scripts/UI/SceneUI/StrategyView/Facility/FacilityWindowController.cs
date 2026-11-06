@@ -1068,11 +1068,20 @@ public sealed class FacilityWindowController
             eventData == null
             || !TryGetSession(view, out FacilityWindowSession session)
             || session.ActiveTab == FacilityWindowTab.Manufacturing
-            || targetingController.IsTargeting
-                && eventData.button == PointerEventData.InputButton.Left
         )
             return;
 
+        SelectionModifierState modifiers = getSelectionModifiers();
+        if (eventData.button == PointerEventData.InputButton.Left)
+        {
+            session.SelectionClick.Capture(
+                session.GetInventoryBuilding(itemIndex)?.InstanceID,
+                eventData.pointerId,
+                modifiers
+            );
+            if (targetingController.IsTargeting)
+                return;
+        }
         session.CaptureBuildingContext(itemIndex);
         if (eventData.button == PointerEventData.InputButton.Right)
         {
@@ -1082,7 +1091,7 @@ public sealed class FacilityWindowController
         else if (eventData.button == PointerEventData.InputButton.Left)
         {
             session.Window.RequestFocus();
-            session.SelectBuildingForDrag(itemIndex, view.InventoryColumnCount);
+            session.SelectBuildingForDrag(itemIndex, view.InventoryColumnCount, modifiers);
             if (
                 session.IsBuildingSelected(itemIndex)
                 && session.CanDragSelectedBuildings()
@@ -1112,12 +1121,16 @@ public sealed class FacilityWindowController
         )
             return;
 
-        bool targetSelected = TrySelectTarget(view, session.GetInventoryBuilding(itemIndex));
+        Building building = session.GetInventoryBuilding(itemIndex);
+        SelectionModifierState modifiers =
+            session.SelectionClick.Complete(building?.InstanceID, eventData.pointerId)
+            ?? getSelectionModifiers();
+        bool targetSelected = TrySelectTarget(view, building);
         endItemDrag(eventData);
-        if (targetSelected || SelectableListSelection.HasSelectionModifier(getSelectionModifiers()))
+        if (targetSelected || modifiers.HasAnyModifier)
             return;
 
-        session.SelectBuilding(itemIndex);
+        session.SelectBuilding(itemIndex, modifiers);
         markDirty();
     }
 

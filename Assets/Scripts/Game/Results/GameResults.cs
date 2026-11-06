@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
@@ -203,6 +204,8 @@ namespace Rebellion.Game.Results
     {
         public Faction Recipient { get; set; }
         public List<ISceneNode> Observations { get; set; } = new List<ISceneNode>();
+        public PlanetIntelligenceCategory Category { get; set; }
+        public bool IncludeDescendants { get; set; } = true;
     }
 
     /// <summary>

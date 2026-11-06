@@ -32,6 +32,8 @@ internal sealed class FacilityWindowSession
 
     public IReadOnlyCollection<int> SelectedCards => selectedCards;
 
+    public SelectionClick SelectionClick { get; } = new();
+
     public UIWindow Window { get; }
 
     /// <summary>
@@ -250,7 +252,8 @@ internal sealed class FacilityWindowSession
     /// Applies normal selection rules to one inventory building.
     /// </summary>
     /// <param name="itemIndex">The selected display index.</param>
-    public void SelectBuilding(int itemIndex)
+    /// <param name="modifiers">The captured click modifiers, or null to read the current bindings.</param>
+    public void SelectBuilding(int itemIndex, SelectionModifierState? modifiers = null)
     {
         IReadOnlyList<Building> items = GetItems(ActiveTab);
         if (
@@ -265,7 +268,7 @@ internal sealed class FacilityWindowSession
             selectedIndexes,
             itemIndex,
             items.Count,
-            getSelectionModifiers()
+            modifiers ?? getSelectionModifiers()
         );
         StoreSelectedBuildings(items, selectedIndexes);
     }
@@ -275,7 +278,12 @@ internal sealed class FacilityWindowSession
     /// </summary>
     /// <param name="itemIndex">The pressed display index.</param>
     /// <param name="itemsPerRow">The number of inventory items in each visual row.</param>
-    public void SelectBuildingForDrag(int itemIndex, int itemsPerRow = 1)
+    /// <param name="modifiers">The captured click modifiers, or null to read the current bindings.</param>
+    public void SelectBuildingForDrag(
+        int itemIndex,
+        int itemsPerRow = 1,
+        SelectionModifierState? modifiers = null
+    )
     {
         IReadOnlyList<Building> items = GetItems(ActiveTab);
         if (
@@ -290,7 +298,7 @@ internal sealed class FacilityWindowSession
             selectedIndexes,
             itemIndex,
             items.Count,
-            getSelectionModifiers(),
+            modifiers ?? getSelectionModifiers(),
             itemsPerRow
         );
         StoreSelectedBuildings(items, selectedIndexes);

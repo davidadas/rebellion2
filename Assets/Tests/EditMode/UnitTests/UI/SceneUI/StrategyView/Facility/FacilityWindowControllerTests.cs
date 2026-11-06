@@ -384,8 +384,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual(1, _dragEndCount);
         }
 
-        [Test]
-        public void InventoryItemPress_MultiSelectRemovesPressedBuilding_DoesNotStartDrag()
+        [TestCase(false)]
+        [TestCase(true)]
+        public void InventoryItemClick_ControlRemoval_PreservesDeselection(
+            bool releaseControlBeforeMouseUp
+        )
         {
             Building secondBuilding = new Building
             {
@@ -418,6 +421,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 ),
             };
             items[1].GetComponent<UIPointerGestureRelay>().OnPointerDown(additionPointer);
+            items[1].GetComponent<UIPointerGestureRelay>().OnPointerClick(additionPointer);
             _dragStartWindow = null;
             Assert.IsTrue(items[0].TryGetDragImage(out _, out RectTransform firstImageTransform));
             PointerEventData removalPointer = new PointerEventData(null)
@@ -430,6 +434,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             };
 
             items[0].GetComponent<UIPointerGestureRelay>().OnPointerDown(removalPointer);
+            if (releaseControlBeforeMouseUp)
+                _selectionModifiers = default;
+            items[0].GetComponent<UIPointerGestureRelay>().OnPointerClick(removalPointer);
 
             Assert.IsNull(_dragStartWindow);
             CollectionAssert.AreEqual(

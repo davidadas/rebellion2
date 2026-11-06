@@ -48,6 +48,22 @@ namespace Rebellion.Tests.Gameplay.Scripting
         }
 
         [Test]
+        public void SelectPlanets_IsOwned_ReturnsOnlyOwnedPlanets()
+        {
+            GameRoot game = BuildSelectionGame(out Planet owned);
+            owned.OwnerInstanceID = "alliance";
+            Planet neutral = new Planet { InstanceID = "neutral" };
+            game.AttachNode(neutral, owned.GetParent());
+
+            Planet[] selected = GameSelectorResolver
+                .Select(new SelectPlanets { IsOwned = true }, game, new StubRNG(), null)
+                .Cast<Planet>()
+                .ToArray();
+
+            CollectionAssert.AreEqual(new[] { owned }, selected);
+        }
+
+        [Test]
         public void Select_RandomCandidatesOutOfOrder_RollsInIdentityOrderBeforeEnumeration()
         {
             GameRoot game = BuildSelectionGame(out Planet first);

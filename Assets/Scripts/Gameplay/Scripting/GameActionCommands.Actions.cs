@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
@@ -153,6 +154,40 @@ namespace Rebellion.Gameplay.Scripting
         private static void Execute(RevealToFactionAction action, GameActionContext context)
         {
             Faction recipient = context.Game.GetFactionByOwnerInstanceID(action.FactionInstanceID);
+            bool revealsCategory = action.Category != PlanetIntelligenceCategory.None;
+            bool revealsTargets = action.Targets.Count > 0;
+            if (revealsCategory == revealsTargets)
+                throw new InvalidOperationException(
+                    "RevealToFaction requires exactly one intelligence category or target collection."
+                );
+            if (revealsCategory)
+            {
+                bool hasPlanetID = !string.IsNullOrWhiteSpace(action.PlanetInstanceID);
+                bool hasPlanetBinding = !string.IsNullOrWhiteSpace(action.PlanetBinding);
+                if (hasPlanetID == hasPlanetBinding)
+                    throw new InvalidOperationException(
+                        "Category-based RevealToFaction requires exactly one PlanetInstanceID or PlanetBinding."
+                    );
+                Planet planet = hasPlanetBinding
+                    ? context.Evaluation?.GetBindingReference<Planet>(action.PlanetBinding)
+                    : context.Game.GetSceneNodeByInstanceID<Planet>(action.PlanetInstanceID);
+                if (planet == null)
+                    throw new InvalidOperationException(
+                        "Category-based RevealToFaction could not resolve its planet."
+                    );
+                context.Record(
+                    new IntelligenceRevealedResult
+                    {
+                        Recipient = recipient,
+                        Observations = new List<ISceneNode> { planet },
+                        Category = action.Category,
+                        IncludeDescendants = action.IncludeDescendants,
+                        Tick = context.Game.CurrentTick,
+                    }
+                );
+                return;
+            }
+
             List<ISceneNode> observations = action
                 .Targets.SelectMany(selector =>
                     GameSelectorResolver.Select(

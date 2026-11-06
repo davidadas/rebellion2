@@ -505,6 +505,46 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void HandleResults_PlanetResources_RefreshesResourcesAndBasicStatus()
+        {
+            _coruscant.OwnerInstanceID = _alliance.InstanceID;
+            new FogOfWarRecorder().RecordPlanetOwnershipSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                20
+            );
+            _coruscant.OwnerInstanceID = _empire.InstanceID;
+            _coruscant.NumRawResourceNodes = 8;
+            _coruscant.EnergyCapacity = 12;
+            _coruscant.AllocatedEnergy = 5;
+
+            _observer.HandleResults(
+                new List<IntelligenceRevealedResult>
+                {
+                    new IntelligenceRevealedResult
+                    {
+                        Tick = 42,
+                        Recipient = _alliance,
+                        Observations = new List<ISceneNode> { _coruscant },
+                        Category = PlanetIntelligenceCategory.PlanetResources,
+                    },
+                }
+            );
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"];
+            Assert.AreEqual(42, snapshot.TickCaptured);
+            Assert.AreEqual(8, snapshot.NumRawResourceNodes);
+            Assert.AreEqual(12, snapshot.EnergyCapacity);
+            Assert.Zero(snapshot.AllocatedEnergy);
+            Assert.AreEqual(_empire.InstanceID, snapshot.OwnerInstanceID);
+            Assert.AreEqual(
+                PlanetIntelligenceCategory.PlanetResources,
+                snapshot.RevealedCategories
+            );
+        }
+
+        [Test]
         public void HandleResults_SelectedCapitalShip_RevealsPartialFleetWithoutSiblingsOrCargo()
         {
             Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);

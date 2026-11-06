@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Util.Serialization;
+using Intel = Rebellion.Game.FogOfWar.PlanetIntelligenceCategory;
 
 namespace Rebellion.Game.FogOfWar
 {
@@ -17,7 +18,32 @@ namespace Rebellion.Game.FogOfWar
         Buildings = 1 << 4,
         Officers = 1 << 5,
         Missions = 1 << 6,
-        All = Planet | CapitalShips | Starfighters | GroundForces | Buildings | Officers | Missions,
+        Manufacturing = 1 << 7,
+        PlanetControl = 1 << 8,
+        PlanetResources = 1 << 9,
+        Regiments = 1 << 10,
+        SpecialForces = 1 << 11,
+        PlanetaryDefenses = 1 << 12,
+        ProductionFacilities = 1 << 13,
+        Fleets = 1 << 14,
+        PlanetMilitaryProduction =
+            Planet | CapitalShips | Starfighters | Buildings | Manufacturing | Regiments,
+        All =
+            Planet
+            | CapitalShips
+            | Starfighters
+            | GroundForces
+            | Buildings
+            | Officers
+            | Missions
+            | Manufacturing
+            | PlanetControl
+            | PlanetResources
+            | Regiments
+            | SpecialForces
+            | PlanetaryDefenses
+            | ProductionFacilities
+            | Fleets,
     }
 
     /// <summary>
@@ -30,8 +56,13 @@ namespace Rebellion.Game.FogOfWar
         [PersistableMember(Name = nameof(TickCaptured))]
         private int _tickCaptured;
 
-        [PersistableMember(Name = nameof(OrbitalTickCaptured))]
-        private int _orbitalTickCaptured = -1;
+        [PersistableMember(Name = nameof(FullyObservedAtTick))]
+        [PersistableReadAlias("FullObservationTick", Deprecated = true)]
+        private int? _fullyObservedAtTick;
+
+        [PersistableMember(Name = nameof(FleetsObservedAtTick))]
+        [PersistableReadAlias("OrbitalTickCaptured", Deprecated = true)]
+        private int _fleetsObservedAtTick = -1;
 
         [PersistableMember(Name = nameof(OwnerInstanceID))]
         private string _ownerInstanceId;
@@ -102,13 +133,24 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
-        /// Gets or sets the last complete orbital observation tick, or minus one when unknown.
+        /// Gets or sets the tick of the last planet-wide observation, or -1 when none is known.
+        /// Snapshots without this field retain their saved observation time.
         /// </summary>
         [PersistableIgnore]
-        public int OrbitalTickCaptured
+        public int FullyObservedAtTick
         {
-            get => _orbitalTickCaptured;
-            set => _orbitalTickCaptured = value;
+            get => _fullyObservedAtTick ?? _tickCaptured;
+            set => _fullyObservedAtTick = value;
+        }
+
+        /// <summary>
+        /// Gets or sets the tick when the complete fleet presence was last observed, or -1 when unknown.
+        /// </summary>
+        [PersistableIgnore]
+        public int FleetsObservedAtTick
+        {
+            get => _fleetsObservedAtTick;
+            set => _fleetsObservedAtTick = value;
         }
 
         [PersistableIgnore]
@@ -258,6 +300,31 @@ namespace Rebellion.Game.FogOfWar
             _starfighters = new List<Starfighter>();
             _missions = new List<Mission>();
             _manufacturingQueueItems = new List<IManufacturable>();
+        }
+
+        /// <summary>
+        /// Checks whether recorded intelligence covers every requested category.
+        /// </summary>
+        /// <param name="categories">The required categories.</param>
+        /// <returns>True when all required information is known.</returns>
+        public bool HasIntelligence(Intel categories) =>
+            ExpandCategories(RevealedCategories).HasFlag(categories);
+
+        /// <summary>
+        /// Expands category coverage without changing stored values.
+        /// </summary>
+        /// <param name="categories">The categories to interpret.</param>
+        /// <returns>The categories and the information they cover.</returns>
+        internal static Intel ExpandCategories(Intel categories)
+        {
+            const Intel troops = Intel.Regiments | Intel.SpecialForces;
+            if (categories.HasFlag(Intel.GroundForces) || categories.HasFlag(troops))
+                categories |= Intel.GroundForces | troops;
+            if (categories.HasFlag(Intel.Buildings))
+                categories |= Intel.PlanetaryDefenses | Intel.ProductionFacilities;
+            if (categories.HasFlag(Intel.Planet))
+                categories |= Intel.PlanetControl | Intel.PlanetResources;
+            return categories;
         }
     }
 }

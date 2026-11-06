@@ -15,7 +15,7 @@ namespace Rebellion.Game.GameEvents
     }
 
     /// <summary>
-    /// Persists the activation history for one authored event definition.
+    /// Persists aggregate event history or one target's independent schedule history.
     /// </summary>
     [PersistableObject]
     public sealed class GameEventState
@@ -25,6 +25,25 @@ namespace Rebellion.Game.GameEvents
         public int ActivationCount { get; set; }
         public int LastActivationTick { get; set; } = -1;
         public bool IsComplete { get; set; }
+        public Dictionary<string, GameEventState> ScopedStates { get; set; } =
+            new Dictionary<string, GameEventState>();
+    }
+
+    /// <summary>
+    /// Gives each deterministically selected scene node an independent recurring schedule.
+    /// </summary>
+    /// <remarks>
+    /// The target alias is bound before ordinary event bindings. Target schedules share the
+    /// event's activation limit and aggregate history; target completion remains permanent.
+    /// </remarks>
+    [PersistableObject(Name = "ForEach")]
+    public sealed class GameEventScope
+    {
+        [PersistableAttribute]
+        public string As { get; set; }
+
+        [PersistableMember(Name = "From")]
+        public List<GameSelector> Selectors { get; set; } = new List<GameSelector>();
     }
 
     /// <summary>
@@ -46,6 +65,7 @@ namespace Rebellion.Game.GameEvents
 
         public List<GameBinding> Bindings { get; set; } = new List<GameBinding>();
         public List<GameTrigger> Triggers { get; set; } = new List<GameTrigger>();
+        public GameEventScope ForEach { get; set; }
         public GameEventSchedule Schedule { get; set; }
         public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
         public List<GameAction> Actions { get; set; } = new List<GameAction>();

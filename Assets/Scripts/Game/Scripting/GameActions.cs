@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
 using Rebellion.Util.Serialization;
@@ -118,6 +119,18 @@ namespace Rebellion.Game.Scripting
     {
         [PersistableAttribute]
         public string FactionInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string PlanetInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string PlanetBinding { get; set; }
+
+        [PersistableAttribute]
+        public PlanetIntelligenceCategory Category { get; set; }
+
+        [PersistableAttribute]
+        public bool IncludeDescendants { get; set; } = true;
 
         [PersistableMember(Name = "Targets")]
         public List<GameSelector> Targets { get; set; } = new List<GameSelector>();
