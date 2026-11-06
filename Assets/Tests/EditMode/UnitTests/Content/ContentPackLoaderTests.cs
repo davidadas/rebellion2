@@ -403,6 +403,76 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void CreatePackResolver_MalformedRequiredDefinition_ReportsPathAndReadFailure()
+        {
+            string contentRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+            string packRoot = WritePackDefinition(contentRoot, "Base", "base", null);
+            string definitionPath = Path.Combine(packRoot, "pack.xml");
+            File.WriteAllText(definitionPath, "<ContentPack>");
+            try
+            {
+                InvalidOperationException readFailure = Assert.Throws<InvalidOperationException>(
+                    () =>
+                        ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(
+                            definitionPath
+                        )
+                );
+
+                InvalidDataException failure = Assert.Throws<InvalidDataException>(() =>
+                    ContentPackLoader.CreatePackResolver(contentRoot, "base")
+                );
+
+                StringAssert.Contains(definitionPath, failure.Message);
+                StringAssert.Contains(readFailure.GetBaseException().Message, failure.Message);
+            }
+            finally
+            {
+                Directory.Delete(contentRoot, true);
+            }
+        }
+
+        [TestCase("BASE")]
+        [TestCase(" base ")]
+        public void CreatePackResolver_MismatchedIdentity_ReportsDeclaredIdentity(string declaredID)
+        {
+            string contentRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+            string packRoot = WritePackDefinition(contentRoot, "Base", declaredID, null);
+            try
+            {
+                InvalidDataException failure = Assert.Throws<InvalidDataException>(() =>
+                    ContentPackLoader.CreatePackResolver(contentRoot, "base")
+                );
+
+                StringAssert.Contains($"declares '{declaredID}'", failure.Message);
+                StringAssert.Contains(Path.Combine(packRoot, "pack.xml"), failure.Message);
+            }
+            finally
+            {
+                Directory.Delete(contentRoot, true);
+            }
+        }
+
+        [Test]
+        public void CreatePackResolver_MissingDefinition_ReportsContentRoot()
+        {
+            string contentRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+            string packRoot = WritePackDefinition(contentRoot, "Base", "base", null);
+            File.Delete(Path.Combine(packRoot, "pack.xml"));
+            try
+            {
+                InvalidDataException failure = Assert.Throws<InvalidDataException>(() =>
+                    ContentPackLoader.CreatePackResolver(contentRoot, "base")
+                );
+
+                StringAssert.Contains(contentRoot, failure.Message);
+            }
+            finally
+            {
+                Directory.Delete(contentRoot, true);
+            }
+        }
+
+        [Test]
         public void DiscoverModResolver_DerivedPackMissingFile_UsesBasePackFile()
         {
             string contentRoot = CreateDerivedPackFixture(
