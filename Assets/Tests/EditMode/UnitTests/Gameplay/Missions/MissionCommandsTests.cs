@@ -6183,7 +6183,12 @@ namespace Rebellion.Tests.Gameplay
                 new PlanetaryControlQueries(game),
                 new FogOfWarQueries(game)
             );
-            UprisingResolver uprising = new UprisingResolver(game, rng, control);
+            UprisingResolver uprising = new UprisingResolver(
+                game,
+                rng,
+                control,
+                new JediCommands(game, rng)
+            );
             MissionCommands missionSystem = TestSystems.CreateMissionCommands(
                 game,
                 rng,

@@ -22,6 +22,7 @@ namespace Rebellion.Gameplay
         /// <param name="context">The location where the capture occurred.</param>
         /// <param name="game">The current game and capture clock.</param>
         /// <param name="random">The simulation random stream used to arm the escape timer.</param>
+        /// <param name="tick">The tick when the capture occurred.</param>
         /// <param name="canEscape">Whether the officer may attempt to escape.</param>
         /// <returns>The capture-state change, or null when the officer cannot be captured.</returns>
         internal static OfficerCaptureStateResult Capture(
@@ -31,6 +32,7 @@ namespace Rebellion.Gameplay
             Planet context,
             GameRoot game,
             IRandomNumberProvider random,
+            int tick,
             bool canEscape = true
         )
         {
@@ -49,7 +51,7 @@ namespace Rebellion.Gameplay
                 ParentAtCapture = officer.GetParent(),
                 CapturingUnit = capturingUnit,
                 Context = context,
-                Tick = game.CurrentTick,
+                Tick = tick,
             };
         }
 

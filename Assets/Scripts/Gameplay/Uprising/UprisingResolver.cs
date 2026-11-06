@@ -31,16 +31,22 @@ namespace Rebellion.Gameplay
         /// <param name="game">The game instance.</param>
         /// <param name="provider">Random number provider for uprising rolls.</param>
         /// <param name="planetaryControl">Planetary control operations for ownership changes.</param>
+        /// <param name="jediCommands">The session-owned Force progression operations.</param>
         public UprisingResolver(
             GameRoot game,
             IRandomNumberProvider provider,
-            PlanetaryControlCommands planetaryControl
+            PlanetaryControlCommands planetaryControl,
+            JediCommands jediCommands
         )
         {
             _game = game;
             _provider = provider;
             _planetaryControl = planetaryControl;
-            _duelResolver = new DuelResolver(game, provider);
+            _duelResolver = new DuelResolver(
+                game,
+                provider,
+                jediCommands ?? throw new ArgumentNullException(nameof(jediCommands))
+            );
             InitializeGarrisonSurplus();
         }
 

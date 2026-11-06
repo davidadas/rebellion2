@@ -76,6 +76,7 @@ namespace Rebellion.Gameplay
                 context,
                 _game,
                 _provider,
+                _game.CurrentTick,
                 canEscape
             );
             if (result == null)

@@ -2535,6 +2535,51 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         }
 
         [Test]
+        public void ProcessTriggeredEvents_DuelCompletion_SeesCompletedInitiatingEvent()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            Officer first = EntityFactory.CreateOfficer("first", "empire");
+            Officer second = EntityFactory.CreateOfficer("second", "rebels");
+            game.AttachNode(first, planet);
+            second.IsCaptured = true;
+            game.AttachNode(second, planet);
+            second.IsCaptured = false;
+            game.GetEventPool()
+                .Add(
+                    new GameEvent
+                    {
+                        InstanceID = "completion",
+                        Triggers = new List<GameTrigger> { new DuelCompletedTrigger() },
+                        Conditionals = new List<GameConditional>
+                        {
+                            new IsEventCompleteConditional { EventInstanceID = "authored-action" },
+                        },
+                        Actions = new List<GameAction>
+                        {
+                            new SetEventVariableAction { Key = "completed", Operand = 1 },
+                        },
+                    }
+                );
+
+            RunAuthoredAction(
+                game,
+                new TriggerDuelAction
+                {
+                    FirstOfficerInstanceID = first.InstanceID,
+                    SecondOfficerInstanceID = second.InstanceID,
+                },
+                triggerResult: new MissionCompletedResult
+                {
+                    Participants = new List<IMissionParticipant> { first },
+                },
+                trigger: new MissionCompletedTrigger(),
+                maximumActivations: 1
+            );
+
+            Assert.AreEqual(1, game.EventRuntime.GetVariable("completed"));
+        }
+
+        [Test]
         public void ProcessScheduledEvents_SendMessageExplicitRecipient_EmitsResolvedResult()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
@@ -2897,6 +2942,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         /// <param name="unitFactory">The templates used by spawning actions.</param>
         /// <param name="triggerResult">The fact activating a triggered event, when applicable.</param>
         /// <param name="trigger">The trigger and its binding definitions, when applicable.</param>
+        /// <param name="maximumActivations">The initiating event's optional activation limit.</param>
         /// <returns>The facts produced by the completed activation.</returns>
         private static List<GameResult> RunAuthoredAction(
             GameRoot game,
@@ -2904,7 +2950,8 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             IRandomNumberProvider random = null,
             UnitFactory unitFactory = null,
             GameResult triggerResult = null,
-            GameTrigger trigger = null
+            GameTrigger trigger = null,
+            int? maximumActivations = null
         )
         {
             random ??= new FixedRNG(0.99);
@@ -2936,6 +2983,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             {
                 InstanceID = "authored-action",
                 Actions = new List<GameAction> { action },
+                MaximumActivations = maximumActivations,
             };
             if (trigger != null)
                 gameEvent.Triggers.Add(trigger);

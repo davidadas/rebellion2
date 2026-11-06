@@ -46,6 +46,7 @@ Officers are unique authored characters. Add each officer as an `Officer` entry 
 | Field | Purpose |
 | --- | --- |
 | `InstanceID` | Stable identity used by events, missions, saves, and starting-officer rules. |
+| `RosterOrder` | Stable order used for trainer selection and encounter candidates. |
 | `OwnerInstanceID` | Faction that owns the officer when the definition is loaded. |
 | `IsMain` | Marks a principal character. |
 | `IsRecruitable` | Allows the officer to enter play through recruitment. |
@@ -64,9 +65,10 @@ from zero through a positive variance, or from a negative variance through zero.
 value. `LoyaltyVariance` is ignored when `CanBetray` is `false` because that officer's loyalty is
 fixed.
 
-`CanHeal` allows an injured officer to recover. `FastHeal` selects the faster recovery amount from
-game configuration. Capture, injury, death, movement, and mission-return fields are runtime state
-and should not be initialized in the officer catalog.
+Injured officers recover while free, living, outside missions and transit, and at a location owned
+by their faction. An effective Force rank at or above `Jedi.FastHealThreshold` selects the faster
+configured recovery amount. Capture, injury, death, movement, and mission-return fields are runtime
+state and should not be initialized in the officer catalog.
 
 After a resolved battle establishes one controlling faction, every officer whose `CanBetray` value
 is `true` receives the same global loyalty reaction. Officers owned by the controlling faction get

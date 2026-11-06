@@ -706,7 +706,8 @@ namespace Rebellion.Tests.Gameplay
             UprisingResolver uprisingSystem = new UprisingResolver(
                 game,
                 new StubRNG(),
-                planetaryControl
+                planetaryControl,
+                new JediCommands(game, new StubRNG())
             );
             new UprisingTickProcessor(uprisingSystem).ProcessTick(game);
 
@@ -784,7 +785,8 @@ namespace Rebellion.Tests.Gameplay
             UprisingResolver uprisingSystem = new UprisingResolver(
                 game,
                 new StubRNG(),
-                planetaryControl
+                planetaryControl,
+                new JediCommands(game, new StubRNG())
             );
             new UprisingTickProcessor(uprisingSystem).ProcessTick(game);
 
@@ -841,7 +843,8 @@ namespace Rebellion.Tests.Gameplay
             UprisingResolver uprisingSystem = new UprisingResolver(
                 game,
                 new StubRNG(),
-                planetaryControl
+                planetaryControl,
+                new JediCommands(game, new StubRNG())
             );
             new UprisingTickProcessor(uprisingSystem).ProcessTick(game);
 
@@ -1098,7 +1101,8 @@ namespace Rebellion.Tests.Gameplay
             UprisingResolver uprisingSystem = new UprisingResolver(
                 game,
                 rng ?? new StubRNG(),
-                planetaryControl
+                planetaryControl,
+                new JediCommands(game, rng ?? new StubRNG())
             );
             return (game, planet, uprisingSystem);
         }

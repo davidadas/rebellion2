@@ -706,7 +706,12 @@ public static class TestSystems
             new PlanetaryControlQueries(game),
             new FogOfWarQueries(game)
         );
-        UprisingResolver uprising = new UprisingResolver(game, provider, control);
+        UprisingResolver uprising = new UprisingResolver(
+            game,
+            provider,
+            control,
+            new JediCommands(game, provider)
+        );
         return CreateMissionCommands(game, provider, movement, uprising);
     }
 

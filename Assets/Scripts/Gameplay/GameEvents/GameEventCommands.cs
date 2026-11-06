@@ -438,6 +438,7 @@ namespace Rebellion.Gameplay.GameEvents
                 && !IsRecurring(configuredSchedule)
             )
                 state.IsComplete = true;
+            HasReachedMaximumActivations(gameEvent, state);
             results = _actions.Complete(execution);
             bool isComplete = HasReachedMaximumActivations(gameEvent, state);
             if (!isComplete)

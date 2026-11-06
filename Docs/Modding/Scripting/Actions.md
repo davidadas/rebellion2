@@ -221,11 +221,13 @@ recorded individually.
 
 ### SendMessage
 
-Delivers a strategy message to an explicitly identified faction.
+Delivers a strategy message to a faction identified directly or through a binding.
 
 **Required options**
 
-- `RecipientFactionInstanceID` **[Required]:** The `InstanceID` of the faction receiving the message.
+- Recipient **[Required]:** Provide `RecipientFactionInstanceID` or `RecipientFactionBinding`.
+  The binding must contain the receiving faction's instance ID and takes precedence when both
+  are provided.
 
 **Optional options**
 
@@ -233,11 +235,15 @@ Delivers a strategy message to an explicitly identified faction.
 - `SubjectBinding` **[Optional]:** A binding that resolves the message subject; takes precedence over `SubjectInstanceID`.
 - `ShowSubjectImage` **[Optional]:** Whether to use the subject officer's current message image as the overlay; defaults to `false`. Only officer subjects currently provide a subject image, and an explicit `OverlayImage` takes precedence.
 - `RelatedSubjectInstanceID` **[Optional]:** The `InstanceID` of a secondary subject associated with the message.
+- `RelatedSubjectBinding` **[Optional]:** A scene-node binding for the secondary subject; takes precedence over `RelatedSubjectInstanceID`.
 - `LocationInstanceID` **[Optional]:** The `InstanceID` of the message location; `LocationBinding` takes precedence when both are provided.
 - `LocationBinding` **[Optional]:** A binding that resolves the message location; takes precedence over `LocationInstanceID`.
 - `Type` **[Optional]:** The message category: `PopularSupport`, `Fleet`, `Mission`, `Resource`, `Manufacturing`, `Defense`, `Conflict`, `Chat`, or `Advice`; defaults to `Advice`.
 - `Subject` **[Optional]:** The message title; supports context tokens such as `{subject}` and `{location}`.
 - `Body` **[Optional]:** The message body; supports context tokens such as `{subject}` and `{location}`.
+- `BodySections` **[Optional]:** Ordered `Section` entries containing `Text` and optional `Conditionals`.
+  Each section whose conditions all pass appends its text after `Body`. Include any spaces or
+  newlines in the authored text; sections add no separators automatically.
 - `BackgroundImage` **[Optional]:** The message background, supplied by exactly one `Key`, `Path`, or string-valued `Binding`.
 - `OverlayImage` **[Optional]:** The `Path` to an explicit message overlay; takes precedence over the image selected by `ShowSubjectImage`.
 - `BackgroundAudio` **[Optional]:** The message background audio, supplied by exactly one `Path` or string-valued `Binding`.

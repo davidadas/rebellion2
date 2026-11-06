@@ -601,7 +601,8 @@ namespace Rebellion.Gameplay
                         capturingUnit: null,
                         change.Planet,
                         _game,
-                        _game.Random
+                        _game.Random,
+                        change.Tick
                     );
                     if (capture != null)
                         results.Add(capture);
