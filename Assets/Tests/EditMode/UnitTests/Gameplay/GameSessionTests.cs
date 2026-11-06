@@ -1017,7 +1017,6 @@ namespace Rebellion.Tests.Gameplay
             officer.TypeID = typeID;
             officer.IsJediTrainer = !trainer;
             officer.GrowsForceOnMission = !template.GrowsForceOnMission;
-            officer.ForceGrowthRequiresEligibility = !template.ForceGrowthRequiresEligibility;
             officer.JediProbability = -1;
             officer.JediLevel = -1;
             officer.JediLevelVariance = -1;
@@ -1042,10 +1041,6 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(template.RosterOrder, officer.RosterOrder);
             Assert.AreEqual(template.IsKnownJedi, officer.IsKnownJedi);
             Assert.AreEqual(template.GrowsForceOnMission, officer.GrowsForceOnMission);
-            Assert.AreEqual(
-                template.ForceGrowthRequiresEligibility,
-                officer.ForceGrowthRequiresEligibility
-            );
             CollectionAssert.AreEqual(
                 template.ForceDiscoveryConditionals,
                 officer.ForceDiscoveryConditionals
@@ -1078,7 +1073,6 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.IsTrue(officer.IsJediTrainer);
             Assert.IsTrue(officer.GrowsForceOnMission);
-            Assert.IsFalse(officer.ForceGrowthRequiresEligibility.Value);
         }
 
         [Test]

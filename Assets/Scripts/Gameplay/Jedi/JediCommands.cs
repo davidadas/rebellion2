@@ -53,11 +53,7 @@ namespace Rebellion.Gameplay
         )
         {
             int growth = _game.Config.Jedi.ForceGrowthPerMission;
-            if (
-                growth <= 0
-                || officer?.GrowsForceOnMission != true
-                || (officer.ForceGrowthRequiresEligibility != false && !officer.IsForceEligible)
-            )
+            if (growth <= 0 || officer?.GrowsForceOnMission != true || !officer.IsForceEligible)
                 return null;
 
             int previousForceRank = officer.ForceRank;

@@ -779,7 +779,6 @@ namespace Rebellion.Tests.Game.Units
             originalOfficer.IsForceSensitive = true;
             originalOfficer.IsForceEligible = true;
             originalOfficer.ForceValue = 75;
-            originalOfficer.ForceGrowthRequiresEligibility = true;
             originalOfficer.ForceTrainingAdjustment = 10;
             originalOfficer.NextForceDiscoveryTick = 713;
             originalOfficer.ForceDiscoveryOrder = 4294967300L;
@@ -798,7 +797,6 @@ namespace Rebellion.Tests.Game.Units
             StringAssert.Contains("<Loyalty>75</Loyalty>", xml);
             Assert.AreEqual(713, deserializedOfficer.NextForceDiscoveryTick);
             Assert.AreEqual(4294967300L, deserializedOfficer.ForceDiscoveryOrder);
-            Assert.AreEqual(true, deserializedOfficer.ForceGrowthRequiresEligibility);
             CollectionAssert.AreEqual(originalOfficer.Traits, deserializedOfficer.Traits);
             Assert.AreEqual(1, deserializedOfficer.TraitGrants.Count);
             Assert.AreEqual("leadership", deserializedOfficer.TraitGrants[0].TraitID);

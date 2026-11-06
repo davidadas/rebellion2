@@ -360,12 +360,6 @@ namespace Rebellion.Game.Units
         public bool GrowsForceOnMission { get; set; }
 
         /// <summary>
-        /// Gets or sets whether capture-evasion growth requires Force eligibility.
-        /// An unset value requires eligibility.
-        /// </summary>
-        public bool? ForceGrowthRequiresEligibility { get; set; }
-
-        /// <summary>
         /// Gets or sets additional discovery requirements evaluated with the scanning officer
         /// available in the <c>$discoverer</c> binding.
         /// </summary>
@@ -663,7 +657,6 @@ namespace Rebellion.Game.Units
             copy.JediLevelVariance = JediLevelVariance;
             copy.IsJediTrainer = IsJediTrainer;
             copy.GrowsForceOnMission = GrowsForceOnMission;
-            copy.ForceGrowthRequiresEligibility = ForceGrowthRequiresEligibility;
             copy.ForceDiscoveryConditionals = new List<GameConditional>(ForceDiscoveryConditionals);
             copy.IsKnownJedi = IsKnownJedi;
             copy.IsForceSensitive = IsForceSensitive;

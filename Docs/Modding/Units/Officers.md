@@ -84,8 +84,7 @@ shift by themselves.
 | `IsKnownJedi` | Whether the officer's Force ability begins publicly known. |
 | `IsJediTrainer` | Whether the officer may lead Force training and discover Force abilities after meeting the configured rank thresholds. |
 | `ForceDiscoveryConditionals` | Additional scripting conditions required for discovery. `$discoverer` contains the scanning officer. |
-| `GrowsForceOnMission` | Whether successfully evading capture may advance Force ability. |
-| `ForceGrowthRequiresEligibility` | Whether capture-evasion growth requires Force eligibility. An unset saved value inherits the active officer template; without an authored override, eligibility is required. |
+| `GrowsForceOnMission` | Whether successfully evading capture may advance Force ability after that ability has been discovered. |
 | `CurrentRank` | Initial command rank: `None`, `Commander`, `General`, or `Admiral`. |
 | `AllowedRanks` | Command ranks this officer may hold. Each item is an `OfficerRank` value. |
 

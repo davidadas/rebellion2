@@ -255,7 +255,6 @@ public sealed class GameDataCatalog
                 officer.IsKnownJedi = template.IsKnownJedi;
                 officer.IsJediTrainer = template.IsJediTrainer;
                 officer.GrowsForceOnMission = template.GrowsForceOnMission;
-                officer.ForceGrowthRequiresEligibility = template.ForceGrowthRequiresEligibility;
                 officer.ForceDiscoveryConditionals = new(template.ForceDiscoveryConditionals);
             }
         }

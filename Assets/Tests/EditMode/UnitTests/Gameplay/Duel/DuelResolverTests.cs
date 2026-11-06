@@ -102,13 +102,10 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual("encounter", growth.SourceEventInstanceID);
         }
 
-        [TestCase(false, false, 11)]
-        [TestCase(false, true, 10)]
-        [TestCase(true, false, 11)]
-        [TestCase(true, true, 11)]
-        public void Resolve_OfficerEvadesCapture_AppliesConfiguredEligibilityRequirement(
+        [TestCase(false, 0)]
+        [TestCase(true, 11)]
+        public void Resolve_OfficerEvadesCapture_RequiresDiscoveredForceAbility(
             bool forceEligible,
-            bool requiresEligibility,
             int expectedForce
         )
         {
@@ -116,51 +113,13 @@ namespace Rebellion.Tests.Gameplay
             encountered.IsMain = true;
             opposing.IsMain = true;
             encountered.GrowsForceOnMission = true;
+            encountered.IsForceSensitive = true;
             encountered.IsForceEligible = forceEligible;
-            encountered.ForceGrowthRequiresEligibility = requiresEligibility;
-            encountered.ForceValue = 10;
+            encountered.ForceValue = forceEligible ? 10 : 0;
             DuelResolver commands = new DuelResolver(
                 game,
                 new SequenceRNG(intValues: new[] { 0, 0, 9, 0, 99 })
             );
-
-            List<GameResult> results = commands.Resolve(encountered, opposing);
-
-            Assert.AreEqual(
-                expectedForce == 10 ? 0 : 1,
-                results.OfType<ForceExperienceResult>().Count()
-            );
-            Assert.AreEqual(expectedForce, encountered.ForceValue);
-        }
-
-        [TestCase("OFAL003", false, 11)]
-        [TestCase("OFAL003", true, 11)]
-        [TestCase("OFAL002", false, 10)]
-        [TestCase("OFAL002", true, 11)]
-        [TestCase("unconfigured", false, 10)]
-        public void Resolve_SavedOfficerWithoutGrowthPolicy_InheritsAuthoredRequirement(
-            string typeID,
-            bool forceEligible,
-            int expectedForce
-        )
-        {
-            (GameRoot game, Officer encountered, Officer opposing) = BuildEncounter();
-            encountered.IsMain = true;
-            opposing.IsMain = true;
-            encountered.TypeID = typeID;
-            encountered.GrowsForceOnMission = true;
-            encountered.IsForceEligible = forceEligible;
-            encountered.ForceGrowthRequiresEligibility = null;
-            encountered.ForceValue = 10;
-            SequenceRNG random = new SequenceRNG(intValues: new[] { 0, 0, 9, 0, 99 });
-            GameDataCatalog catalog = TestGameData.Create(
-                game.Config,
-                officerTraits: TestContent.Data.OfficerTraits,
-                officers: TestContent.Data.Officers
-            );
-            catalog.BindOfficerDefinitions(new[] { encountered });
-            JediCommands growth = new JediCommands(game, random);
-            DuelResolver commands = new DuelResolver(game, random, growth);
 
             commands.Resolve(encountered, opposing);
 
