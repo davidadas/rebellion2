@@ -828,7 +828,7 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
-        /// Moves a remembered ship into its observed fleet without refreshing unreported cargo.
+        /// Relocates a remembered fleet and any transferred carrier without refreshing unreported contents.
         /// </summary>
         /// <param name="faction">The faction whose remembered locations are consulted.</param>
         /// <param name="snapshot">The destination snapshot.</param>
@@ -842,6 +842,33 @@ namespace Rebellion.Game.FogOfWar
             Fleet sourceFleet = source.GetParentOfType<Fleet>();
             if (sourceFleet == null || string.IsNullOrEmpty(source.InstanceID))
                 return;
+
+            PlanetSnapshot fleetSnapshot = GetRememberedSnapshot(faction, sourceFleet.InstanceID);
+            Fleet rememberedFleet = fleetSnapshot?.Fleets.FirstOrDefault(fleet =>
+                fleet.InstanceID == sourceFleet.InstanceID
+            );
+            if (rememberedFleet != null && fleetSnapshot != snapshot)
+            {
+                Fleet destinationFleet = GetOrCreatePartialFleetSnapshot(snapshot, sourceFleet);
+                HashSet<string> existingShipIDs = destinationFleet
+                    .GetChildren<CapitalShip>(includeDisabled: true)
+                    .Select(ship => ship.InstanceID)
+                    .ToHashSet(StringComparer.Ordinal);
+                foreach (
+                    CapitalShip ship in rememberedFleet
+                        .GetChildren<CapitalShip>(includeDisabled: true)
+                        .ToArray()
+                )
+                {
+                    rememberedFleet.RemoveChild(ship);
+                    if (!existingShipIDs.Add(ship.InstanceID))
+                        continue;
+                    destinationFleet.AddChild(ship);
+                    ship.SetParent(destinationFleet);
+                }
+                fleetSnapshot.Fleets.Remove(rememberedFleet);
+            }
+
             Fleet currentFleet = snapshot.Fleets.FirstOrDefault(fleet =>
                 fleet.InstanceID == sourceFleet.InstanceID
             );
@@ -851,24 +878,8 @@ namespace Rebellion.Game.FogOfWar
                     .Any(ship => ship.InstanceID == source.InstanceID) == true
             )
                 return;
-            if (
-                !faction.Fog.EntityLastSeenAt.TryGetValue(
-                    source.InstanceID,
-                    out string previousPlanetID
-                )
-                || !faction.Fog.PlanetToSector.TryGetValue(
-                    previousPlanetID,
-                    out string previousSectorID
-                )
-                || !faction.Fog.Snapshots.TryGetValue(
-                    previousSectorID,
-                    out PlanetSectorSnapshot sector
-                )
-                || !sector.Planets.TryGetValue(
-                    previousPlanetID,
-                    out PlanetSnapshot previousSnapshot
-                )
-            )
+            PlanetSnapshot previousSnapshot = GetRememberedSnapshot(faction, source.InstanceID);
+            if (previousSnapshot == null)
                 return;
 
             foreach (Fleet previousFleet in previousSnapshot.Fleets)
@@ -887,6 +898,26 @@ namespace Rebellion.Game.FogOfWar
                 remembered.SetParent(destinationFleet);
                 return;
             }
+        }
+
+        /// <summary>
+        /// Looks up an entity's remembered planet without reading its current scene-graph location.
+        /// </summary>
+        /// <param name="faction">The faction whose remembered locations are consulted.</param>
+        /// <param name="entityID">The entity whose last-known planet is requested.</param>
+        /// <returns>The remembered planet snapshot, or null when its location is unknown.</returns>
+        private static PlanetSnapshot GetRememberedSnapshot(Faction faction, string entityID)
+        {
+            if (
+                string.IsNullOrEmpty(entityID)
+                || !faction.Fog.EntityLastSeenAt.TryGetValue(entityID, out string planetID)
+                || !faction.Fog.PlanetToSector.TryGetValue(planetID, out string sectorID)
+                || !faction.Fog.Snapshots.TryGetValue(sectorID, out PlanetSectorSnapshot sector)
+                || !sector.Planets.TryGetValue(planetID, out PlanetSnapshot snapshot)
+            )
+                return null;
+
+            return snapshot;
         }
 
         /// <summary>

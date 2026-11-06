@@ -380,6 +380,125 @@ namespace Rebellion.Tests.Game.FogOfWar
             );
         }
 
+        [TestCase("ship", true)]
+        [TestCase("officer", true)]
+        [TestCase("special forces", true)]
+        [TestCase("regiment", true)]
+        [TestCase("starfighter", true)]
+        [TestCase("ship", false)]
+        [TestCase("officer", false)]
+        [TestCase("special forces", false)]
+        [TestCase("regiment", false)]
+        [TestCase("starfighter", false)]
+        public void RecordSelectedObservations_MovedFleet_PreservesUnreportedSiblingShips(
+            string subjectKind,
+            bool knownCarrier
+        )
+        {
+            var scenario = CreateMovedFleetScenario(subjectKind, knownCarrier);
+
+            scenario.Recorder.RecordSelectedObservations(
+                _game,
+                _alliance,
+                new[] { scenario.Subject },
+                20
+            );
+
+            AssertRememberedSiblings(scenario.Fleet, scenario.Sibling, scenario.Cargo);
+        }
+
+        [TestCase("officer", true)]
+        [TestCase("special forces", true)]
+        [TestCase("regiment", true)]
+        [TestCase("starfighter", true)]
+        [TestCase("officer", false)]
+        [TestCase("special forces", false)]
+        [TestCase("regiment", false)]
+        [TestCase("starfighter", false)]
+        public void RecordIntelligenceSnapshot_MovedFleet_PreservesUnreportedSiblingShips(
+            string subjectKind,
+            bool knownCarrier
+        )
+        {
+            var scenario = CreateMovedFleetScenario(subjectKind, knownCarrier);
+            PlanetIntelligenceCategory category = subjectKind switch
+            {
+                "officer" => PlanetIntelligenceCategory.Officers,
+                "special forces" => PlanetIntelligenceCategory.SpecialForces,
+                "regiment" => PlanetIntelligenceCategory.Regiments,
+                "starfighter" => PlanetIntelligenceCategory.Starfighters,
+                _ => throw new AssertionException("Unsupported report subject"),
+            };
+
+            scenario.Recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _tatooine,
+                _outerRim,
+                20,
+                category
+            );
+
+            AssertRememberedSiblings(scenario.Fleet, scenario.Sibling, scenario.Cargo);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void RecordSelectedObservations_TransferredCarrier_PreservesBothFleetHistories(
+            bool targetMoves
+        )
+        {
+            Fleet original = CreateFleet("ORIGINAL_FLEET", _empire);
+            _game.AttachNode(original, _coruscant);
+            CapitalShip carrier = AddCapitalShip(original, _empire, "CARRIER");
+            Officer subject = CreateOfficer("SUBJECT", _empire);
+            _game.AttachNode(subject, carrier);
+            CapitalShip originalSibling = AddCapitalShip(original, _empire, "ORIGINAL_SIBLING");
+            _game.AttachNode(CreateOfficer("ORIGINAL_CARGO", _empire), originalSibling);
+            Fleet target = CreateFleet("TARGET_FLEET", _empire);
+            Planet oldTargetPlanet = targetMoves ? _hoth : _tatooine;
+            _game.AttachNode(target, oldTargetPlanet);
+            CapitalShip targetSibling = AddCapitalShip(target, _empire, "TARGET_SIBLING");
+            _game.AttachNode(CreateOfficer("TARGET_CARGO", _empire), targetSibling);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+            recorder.RecordEspionageSnapshot(_alliance, oldTargetPlanet, _outerRim, 10);
+            if (targetMoves)
+                _game.MoveNode(target, _tatooine);
+            _game.MoveNode(carrier, target);
+
+            recorder.RecordSelectedObservations(_game, _alliance, new[] { subject }, 20);
+
+            PlanetSnapshot origin = GetSnapshot(_coreSector, _coruscant);
+            PlanetSnapshot destination = GetSnapshot(_outerRim, _tatooine);
+            Assert.AreEqual(
+                original.InstanceID,
+                FindSnapshotEntities(origin, originalSibling.InstanceID)
+                    .Single()
+                    .GetParentOfType<Fleet>()
+                    .InstanceID
+            );
+            Assert.AreEqual(
+                target.InstanceID,
+                FindSnapshotEntities(destination, carrier.InstanceID)
+                    .Single()
+                    .GetParentOfType<Fleet>()
+                    .InstanceID
+            );
+            Assert.AreEqual(
+                target.InstanceID,
+                FindSnapshotEntities(destination, targetSibling.InstanceID)
+                    .Single()
+                    .GetParentOfType<Fleet>()
+                    .InstanceID
+            );
+            Assert.AreEqual(
+                _coruscant.InstanceID,
+                _alliance.Fog.EntityLastSeenAt["ORIGINAL_CARGO"]
+            );
+            Assert.AreEqual(_tatooine.InstanceID, _alliance.Fog.EntityLastSeenAt["TARGET_CARGO"]);
+            Assert.IsEmpty(FindSnapshotEntities(destination, originalSibling.InstanceID));
+        }
+
         /// <summary>
         /// Verifies ordered refreshes retain identical snapshots after movement and removal.
         /// </summary>
@@ -1995,6 +2114,95 @@ namespace Rebellion.Tests.Game.FogOfWar
                     .Select(unit => unit.InstanceID)
                     .ToArray()
             );
+        }
+
+        /// <summary>
+        /// Creates stale knowledge of several ships before observing one carrier at a new fleet location.
+        /// </summary>
+        /// <param name="subjectKind">The ship or carried unit included in the new report.</param>
+        /// <param name="knownCarrier">Whether the observed carrier was previously known.</param>
+        /// <returns>The recorder, observation, moved fleet, and unreported sibling hierarchy.</returns>
+        private (
+            FogOfWarRecorder Recorder,
+            ISceneNode Subject,
+            Fleet Fleet,
+            CapitalShip Sibling,
+            ISceneNode Cargo
+        ) CreateMovedFleetScenario(string subjectKind, bool knownCarrier)
+        {
+            Fleet fleet = CreateFleet("FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip carrier = null;
+            ISceneNode subject = null;
+            if (knownCarrier)
+            {
+                carrier = AddCapitalShip(fleet, _empire, "CARRIER");
+                carrier.RegimentCapacity = carrier.StarfighterCapacity = 1;
+                subject = subjectKind == "ship" ? carrier : CreateUnit(subjectKind, "SUBJECT");
+                if (subject != carrier)
+                    _game.AttachNode(subject, carrier);
+            }
+            CapitalShip sibling = AddCapitalShip(fleet, _empire, "SIBLING");
+            sibling.DisplayName = "Known sibling";
+            string cargoKind = subjectKind == "officer" ? "special forces" : "officer";
+            ISceneNode cargo = CreateUnit(cargoKind, "SIBLING_CARGO");
+            cargo.DisplayName = "Known cargo";
+            _game.AttachNode(cargo, sibling);
+            AddCapitalShip(fleet, _empire, "OTHER_SIBLING");
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+            if (!knownCarrier)
+            {
+                carrier = AddCapitalShip(fleet, _empire, "CARRIER");
+                carrier.RegimentCapacity = carrier.StarfighterCapacity = 1;
+                subject = subjectKind == "ship" ? carrier : CreateUnit(subjectKind, "SUBJECT");
+                if (subject != carrier)
+                    _game.AttachNode(subject, carrier);
+            }
+            _game.MoveNode(fleet, _tatooine);
+            Fleet unobservedParent = CreateFleet("UNOBSERVED_PARENT", _empire);
+            _game.AttachNode(unobservedParent, _coruscant);
+            _game.MoveNode(sibling, unobservedParent);
+            sibling.DisplayName = "Unobserved sibling";
+            cargo.DisplayName = "Unobserved cargo";
+            AddCapitalShip(fleet, _empire, "UNKNOWN_SHIP");
+            return (recorder, subject, fleet, sibling, cargo);
+        }
+
+        /// <summary>
+        /// Verifies a partial report carries forward the remembered fleet without refreshing siblings.
+        /// </summary>
+        /// <param name="fleet">The fleet whose location was observed.</param>
+        /// <param name="sibling">The unreported ship whose last-known parent is retained.</param>
+        /// <param name="cargo">The unreported cargo whose remembered state is retained.</param>
+        private void AssertRememberedSiblings(Fleet fleet, CapitalShip sibling, ISceneNode cargo)
+        {
+            PlanetSnapshot destination = GetSnapshot(_outerRim, _tatooine);
+            ISceneNode knownSibling = FindSnapshotEntities(destination, sibling.InstanceID)
+                .Single();
+            ISceneNode knownCargo = FindSnapshotEntities(destination, cargo.InstanceID).Single();
+            Assert.AreEqual("Known sibling", knownSibling.DisplayName);
+            Assert.AreEqual("Known cargo", knownCargo.DisplayName);
+            Assert.AreEqual(fleet.InstanceID, knownSibling.GetParentOfType<Fleet>().InstanceID);
+            Assert.AreEqual(
+                sibling.InstanceID,
+                knownCargo.GetParentOfType<CapitalShip>().InstanceID
+            );
+            Assert.AreEqual(1, FindSnapshotEntities(destination, "OTHER_SIBLING").Length);
+            Assert.IsEmpty(FindSnapshotEntities(destination, "UNKNOWN_SHIP"));
+            foreach (
+                string id in new[]
+                {
+                    fleet.InstanceID,
+                    sibling.InstanceID,
+                    cargo.InstanceID,
+                    "OTHER_SIBLING",
+                }
+            )
+            {
+                Assert.AreEqual(_tatooine.InstanceID, _alliance.Fog.EntityLastSeenAt[id]);
+                Assert.IsEmpty(FindSnapshotEntities(GetSnapshot(_coreSector, _coruscant), id));
+            }
         }
 
         /// <summary>
