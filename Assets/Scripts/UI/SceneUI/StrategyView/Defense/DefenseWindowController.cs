@@ -712,10 +712,14 @@ public sealed class DefenseWindowController
         if (!TryGetSession(view, out DefenseWindowSession session) || eventData == null)
             return;
 
-        if (!session.TryGetItem(itemIndex, out _))
+        if (!session.TryGetItem(itemIndex, out ISceneNode pressedItem))
             return;
+        SelectionModifierState modifiers = getSelectionModifiers();
         if (eventData.button == PointerEventData.InputButton.Left)
+        {
             session.Window.RequestFocus();
+            session.SelectionClick.Capture(pressedItem.InstanceID, eventData.pointerId, modifiers);
+        }
         if (
             targetingController.IsTargeting
             && eventData.button == PointerEventData.InputButton.Left
@@ -733,7 +737,6 @@ public sealed class DefenseWindowController
         if (eventData.button != PointerEventData.InputButton.Left)
             return;
 
-        SelectionModifierState modifiers = getSelectionModifiers();
         bool hasPoint = view.TryGetSelectionPoint(eventData, out Vector2 point);
         if (hasPoint && modifiers.RangeSelect && !modifiers.MultiSelect)
         {
@@ -743,7 +746,7 @@ public sealed class DefenseWindowController
         }
         else
         {
-            session.SelectItemForDrag(itemIndex, view.ItemColumnCount);
+            session.SelectItemForDrag(itemIndex, view.ItemColumnCount, modifiers);
         }
         if (hasPoint)
             session.SelectionAnchor = point;
@@ -813,7 +816,11 @@ public sealed class DefenseWindowController
         )
             return;
 
-        if (!session.TryGetItem(itemIndex, out ISceneNode item))
+        bool hasItem = session.TryGetItem(itemIndex, out ISceneNode item);
+        SelectionModifierState modifiers =
+            session.SelectionClick.Complete(item?.InstanceID, eventData.pointerId)
+            ?? getSelectionModifiers();
+        if (!hasItem)
         {
             endItemDrag(eventData);
             return;
@@ -823,11 +830,11 @@ public sealed class DefenseWindowController
         endItemDrag(eventData);
         if (targetSelected)
             return;
-        if (SelectableListSelection.HasSelectionModifier(getSelectionModifiers()))
+        if (modifiers.HasAnyModifier)
             return;
 
         session.PrepareItemSelection(itemIndex);
-        session.SelectItem(itemIndex, view.ItemColumnCount);
+        session.SelectItem(itemIndex, view.ItemColumnCount, modifiers);
         RenderSelection(view, session);
     }
 
