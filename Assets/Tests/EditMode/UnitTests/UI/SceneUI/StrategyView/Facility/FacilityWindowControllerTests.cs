@@ -595,6 +595,55 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
+        public void ManufacturingItemRequest_ActiveShip_RoutesItemAndWindowPosition()
+        {
+            FacilityWindowView view = OpenWindow(out UIWindow window);
+            GameFleet fleet = new GameFleet
+            {
+                InstanceID = "destination-fleet",
+                OwnerInstanceID = _playerFactionId,
+            };
+            _game.AttachNode(fleet, _planet.Planet);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "manufactured-ship",
+                OwnerInstanceID = _playerFactionId,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            _game.AttachNode(ship, fleet);
+            _planet.Planet.ManufacturingQueue[ManufacturingType.Ship] = new List<IManufacturable>
+            {
+                ship,
+            };
+            ManufacturingLaneCardView card =
+                view.GetComponentsInChildren<ManufacturingLaneCardView>(true)
+                    .Single(item => item.name == "ShipyardsManufacturingLaneCard");
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            card.RequestCurrentItem();
+
+            Assert.AreEqual(_planet.Planet.InstanceID, _facilityActions.DestinationPlanetId);
+            Assert.AreEqual(ship.InstanceID, _facilityActions.ManufacturedItemId);
+            Assert.AreEqual(window.X, _facilityActions.DestinationSourceX);
+            Assert.AreEqual(window.Y, _facilityActions.DestinationSourceY);
+        }
+
+        [Test]
+        public void ManufacturingItemRequest_IdleLane_DoesNotRoute()
+        {
+            FacilityWindowView view = OpenWindow(out _);
+            ManufacturingLaneCardView card =
+                view.GetComponentsInChildren<ManufacturingLaneCardView>(true)
+                    .Single(item => item.name == "ShipyardsManufacturingLaneCard");
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            card.RequestCurrentItem();
+
+            Assert.IsNull(_facilityActions.ManufacturedItemId);
+            Assert.IsNull(_facilityActions.DestinationPlanetId);
+        }
+
+        [Test]
         public void OnContextMenuCommandSelected_ManufacturingStopConfirmed_ResetsDestinationToProducerPlanet()
         {
             FacilityWindowView view = OpenWindow(out UIWindow window);
@@ -805,12 +854,40 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         {
             private Action _onStopConstructionConfirmed;
 
+            public string ManufacturedItemId { get; private set; }
+
+            public string DestinationPlanetId { get; private set; }
+
+            public int DestinationSourceX { get; private set; }
+
+            public int DestinationSourceY { get; private set; }
+
             /// <summary>
             /// Checks whether the retire condition is met.
             /// </summary>
             /// <param name="items">The items.</param>
             /// <returns>True when the retire condition is met; otherwise false.</returns>
             public bool CanRetire(IReadOnlyList<ISceneNode> items) => false;
+
+            /// <summary>
+            /// Records a manufactured-item navigation request.
+            /// </summary>
+            /// <param name="destinationPlanetId">The containing planet identifier.</param>
+            /// <param name="manufacturedItemId">The manufactured item identifier.</param>
+            /// <param name="sourceX">The source horizontal coordinate.</param>
+            /// <param name="sourceY">The source vertical coordinate.</param>
+            public void OpenFacilityManufacturedItem(
+                string destinationPlanetId,
+                string manufacturedItemId,
+                int sourceX,
+                int sourceY
+            )
+            {
+                DestinationPlanetId = destinationPlanetId;
+                ManufacturedItemId = manufacturedItemId;
+                DestinationSourceX = sourceX;
+                DestinationSourceY = sourceY;
+            }
 
             /// <summary>
             /// Opens facility status.

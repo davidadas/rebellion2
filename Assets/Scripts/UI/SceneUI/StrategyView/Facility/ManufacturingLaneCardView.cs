@@ -8,7 +8,7 @@ using UnityEngine.UI;
 /// Renders one authored manufacturing lane and reports pointer interaction.
 /// </summary>
 [RequireComponent(typeof(UIPointerGestureRelay))]
-public sealed class ManufacturingLaneCardView : MonoBehaviour
+public sealed class ManufacturingLaneCardView : MonoBehaviour, IContentInitializable
 {
     [SerializeField]
     private RawImage hitAreaImage;
@@ -38,11 +38,28 @@ public sealed class ManufacturingLaneCardView : MonoBehaviour
     private TextMeshProUGUI destinationTextField;
 
     [SerializeField]
+    private RawImage destinationLinkImage;
+
+    [SerializeField]
+    private RawImagePressVisual destinationLinkPressVisual;
+
+    [SerializeField]
+    private Button destinationLinkButton;
+
+    [SerializeField]
+    private Texture2D destinationLinkUpTexture;
+
+    [SerializeField]
+    private Texture2D destinationLinkDownTexture;
+
+    [SerializeField]
     private TextMeshProUGUI facilityCountTextField;
 
     private bool templateLayoutCaptured;
     private RectTransform entitySlotRoot;
     private RectInt entitySlotRect;
+    private RectInt destinationLinkRect;
+    private RectInt destinationTextRect;
     private UIPointerGestureRelay pointerGestures;
     private RectInt progressFillRect;
 
@@ -61,7 +78,28 @@ public sealed class ManufacturingLaneCardView : MonoBehaviour
     /// </summary>
     public event Action<ManufacturingLaneCardView, PointerEventData> Dropped;
 
+    /// <summary>
+    /// Occurs when navigation to the item under construction is requested.
+    /// </summary>
+    public event Action<ManufacturingLaneCardView> CurrentItemRequested;
+
     public int Index { get; private set; }
+
+    /// <summary>
+    /// Restores destination-link textures from installation content.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    public void InitializeContent(IContentAssetSource contentAssets)
+    {
+        destinationLinkUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_open_location_button"
+        );
+        destinationLinkDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_open_location_button_pressed"
+        );
+    }
 
     /// <summary>
     /// Assigns this card's manufacturing lane index.
@@ -105,6 +143,7 @@ public sealed class ManufacturingLaneCardView : MonoBehaviour
             SetText(emptyTextField, data.EmptyText, Color.white);
 
         SetText(destinationTextField, data.DestinationText, Color.white);
+        RenderDestinationLink(data.CanOpenCurrentItem);
         SetText(facilityCountTextField, data.FacilityCount, Color.white);
         SetProgress(data.ManufacturingProgress, data.ManufacturingCost);
         gameObject.SetActive(true);
@@ -121,6 +160,7 @@ public sealed class ManufacturingLaneCardView : MonoBehaviour
         pointerGestures.Dropped += HandleDropped;
         pointerGestures.Pressed += HandlePressed;
         pointerGestures.Released += HandleReleased;
+        destinationLinkButton.onClick.AddListener(RequestCurrentItem);
     }
 
     /// <summary>
@@ -128,12 +168,23 @@ public sealed class ManufacturingLaneCardView : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
-        if (pointerGestures == null)
-            return;
+        if (pointerGestures != null)
+        {
+            pointerGestures.Dropped -= HandleDropped;
+            pointerGestures.Pressed -= HandlePressed;
+            pointerGestures.Released -= HandleReleased;
+        }
 
-        pointerGestures.Dropped -= HandleDropped;
-        pointerGestures.Pressed -= HandlePressed;
-        pointerGestures.Released -= HandleReleased;
+        if (destinationLinkButton != null)
+            destinationLinkButton.onClick.RemoveListener(RequestCurrentItem);
+    }
+
+    /// <summary>
+    /// Emits a semantic request to open the item under construction.
+    /// </summary>
+    internal void RequestCurrentItem()
+    {
+        CurrentItemRequested?.Invoke(this);
     }
 
     /// <summary>
@@ -207,7 +258,60 @@ public sealed class ManufacturingLaneCardView : MonoBehaviour
                 ? UILayout.GetSourceRect(entitySlotRoot)
                 : UILayout.GetSourceRect(entityImage.rectTransform);
         progressFillRect = UILayout.GetSourceRect(progressFillImage.rectTransform);
+        destinationTextRect = UILayout.GetSourceRect(destinationTextField.rectTransform);
+        destinationLinkRect = UILayout.GetSourceRect(destinationLinkImage.rectTransform);
         templateLayoutCaptured = true;
+    }
+
+    /// <summary>
+    /// Places the bare destination-link glyph directly after the destination label.
+    /// </summary>
+    /// <param name="visible">Whether a destination is available.</param>
+    private void RenderDestinationLink(bool visible)
+    {
+        UILayout.SetSourceRect(
+            destinationTextField.rectTransform,
+            destinationTextRect.x,
+            destinationTextRect.y,
+            destinationTextRect.width,
+            destinationTextRect.height
+        );
+        if (!visible)
+        {
+            destinationLinkImage.gameObject.SetActive(false);
+            return;
+        }
+
+        int preferredTextWidth = Mathf.CeilToInt(
+            destinationTextField.GetPreferredValues(destinationTextField.text).x
+        );
+        int linkX = Mathf.Min(
+            destinationTextRect.x + preferredTextWidth + 2,
+            destinationTextRect.xMax - destinationLinkRect.width
+        );
+        int textWidth = Mathf.Max(0, linkX - destinationTextRect.x - 2);
+        UILayout.SetSourceRect(
+            destinationTextField.rectTransform,
+            destinationTextRect.x,
+            destinationTextRect.y,
+            textWidth,
+            destinationTextRect.height
+        );
+        UILayout.SetImage(
+            destinationLinkImage,
+            destinationLinkUpTexture,
+            linkX,
+            destinationLinkRect.y,
+            destinationLinkRect.width,
+            destinationLinkRect.height
+        );
+        destinationLinkImage.rectTransform.anchoredPosition += new Vector2(0f, -1f);
+        destinationLinkImage.raycastTarget = true;
+        destinationLinkPressVisual.SetInteractiveTextures(
+            destinationLinkUpTexture,
+            destinationLinkDownTexture
+        );
+        destinationLinkButton.interactable = true;
     }
 
     /// <summary>
@@ -233,6 +337,12 @@ public sealed class ManufacturingLaneCardView : MonoBehaviour
             throw new MissingReferenceException($"{name}/EmptyTextField is missing.");
         if (destinationTextField == null)
             throw new MissingReferenceException($"{name}/DestinationTextField is missing.");
+        if (destinationLinkImage == null)
+            throw new MissingReferenceException($"{name}/DestinationLinkImage is missing.");
+        if (destinationLinkPressVisual == null)
+            throw new MissingReferenceException($"{name}/DestinationLinkPressVisual is missing.");
+        if (destinationLinkButton == null)
+            throw new MissingReferenceException($"{name}/DestinationLinkButton is missing.");
         if (facilityCountTextField == null)
             throw new MissingReferenceException($"{name}/FacilityCountTextField is missing.");
     }

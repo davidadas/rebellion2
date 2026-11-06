@@ -11,15 +11,25 @@ public sealed class StatusWindowRowRenderData
 
     public string Right { get; }
 
+    public bool OpensManufacturingSource { get; }
+
     /// <summary>
     /// Creates one status detail row.
     /// </summary>
     /// <param name="left">The left-column text.</param>
     /// <param name="right">The right-column text.</param>
-    public StatusWindowRowRenderData(string left, string right)
+    /// <param name="opensManufacturingSource">
+    /// Whether the row links to the represented manufacturing source.
+    /// </param>
+    public StatusWindowRowRenderData(
+        string left,
+        string right,
+        bool opensManufacturingSource = false
+    )
     {
         Left = left ?? string.Empty;
         Right = right ?? string.Empty;
+        OpensManufacturingSource = opensManufacturingSource;
     }
 }
 

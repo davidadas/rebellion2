@@ -1031,7 +1031,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         }
 
         [Test]
-        public void Build_CapitalShipUnderConstruction_ReturnsOriginalCompletionDayLabel()
+        public void Build_CapitalShipUnderConstruction_ReturnsLinkedProducerAndCompletionDay()
         {
             _game.AttachNode(
                 new Building
@@ -1066,14 +1066,37 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
 
             StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, ship));
 
-            Assert.AreEqual(
-                "Under Construction",
-                info.Rows.Single(row => row.Left == "Status:").Right
-            );
+            StrategyStatusRow status = info.Rows.Single(row => row.Left == "Status:");
+            Assert.AreEqual("Under Construction", status.Right);
+            Assert.IsFalse(status.OpensManufacturingSource);
+            StrategyStatusRow productionLocation = info.Rows.Single(row => row.Left == "Producer:");
+            Assert.AreEqual("Corellia", productionLocation.Right);
+            Assert.IsTrue(productionLocation.OpensManufacturingSource);
             Assert.AreEqual(
                 "Day 130",
                 info.Rows.Single(row => row.Left == "ETA Destination:").Right
             );
+        }
+
+        [Test]
+        public void Build_CapitalShipUnderConstructionAtOpponentPlanet_DoesNotLinkProducer()
+        {
+            _planet.OwnerInstanceID = _opponentId;
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "queued-ship",
+                DisplayName = "Queued Ship",
+                OwnerInstanceID = _ownerId,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                ProducerPlanetID = _planet.InstanceID,
+            };
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, ship));
+
+            StrategyStatusRow status = info.Rows.Single(row => row.Left == "Status:");
+            Assert.AreEqual("Under Construction", status.Right);
+            Assert.IsFalse(status.OpensManufacturingSource);
+            Assert.IsFalse(info.Rows.Any(row => row.Left == "Producer:"));
         }
 
         [Test]
