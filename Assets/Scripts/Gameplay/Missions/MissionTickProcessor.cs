@@ -7,7 +7,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.Gameplay
 {
@@ -34,10 +33,6 @@ namespace Rebellion.Gameplay
         /// <returns>The mission results produced during the tick.</returns>
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
-            using var measurement = PerformanceLogger.Measure(
-                "Game system tick",
-                subjectType: typeof(MissionTickProcessor)
-            );
             List<GameResult> results = new List<GameResult>();
             foreach (
                 (
@@ -101,12 +96,6 @@ namespace Rebellion.Gameplay
         {
             if (mission == null || mission.GetParent() == null)
                 return new List<GameResult>();
-
-            using var measurement = PerformanceLogger.Measure(
-                "Mission advancement",
-                mission.OwnerInstanceID,
-                subjectType: mission.GetType()
-            );
             List<GameResult> results = new List<GameResult>();
             List<Officer> killedParticipants = null;
             foreach (IMissionParticipant participant in mission.GetMainParticipants(true))
@@ -121,7 +110,7 @@ namespace Rebellion.Gameplay
             }
             if (killedParticipants != null)
             {
-                _resolver.RemoveKilledParticipants(mission, killedParticipants, results);
+                _resolver.RemoveUnavailableParticipants(mission, killedParticipants, results);
                 if (mission.GetParent() == null)
                     return CompleteStep(mission, results);
             }
@@ -161,6 +150,8 @@ namespace Rebellion.Gameplay
                     results,
                     out foilingFactionInstanceID
                 );
+                if (mission.GetParent() == null)
+                    return CompleteStep(mission, results);
             }
             if (wasDetected)
             {
@@ -195,6 +186,8 @@ namespace Rebellion.Gameplay
                     results,
                     out foilingFactionInstanceID
                 );
+                if (mission.GetParent() == null)
+                    return CompleteStep(mission, results);
             }
             if (wasDetected)
             {
@@ -301,11 +294,6 @@ namespace Rebellion.Gameplay
         {
             foreach (Faction faction in game.GetFactions())
             {
-                using var factionMeasurement = PerformanceLogger.Measure(
-                    "Faction system tick",
-                    faction?.PeekInstanceID(),
-                    subjectType: typeof(MissionTickProcessor)
-                );
                 bool hadCandidates =
                     recruitmentAvailabilityBefore != null
                     && recruitmentAvailabilityBefore.TryGetValue(faction.InstanceID, out bool had)

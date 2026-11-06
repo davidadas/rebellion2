@@ -194,6 +194,101 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreSame(_officer, target.Item);
         }
 
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void SelectTarget_FollowedByRangeSelection_SelectsIntermediateCards(
+            bool hasPreviousClick,
+            bool clickBackground
+        )
+        {
+            DefenseWindowView view = OpenSelectionGrid();
+            if (hasPreviousClick)
+                PressCard(view, 5);
+
+            Assert.IsTrue(_controller.SelectTarget(view, _officer));
+            SelectRange(view, clickBackground);
+
+            CollectionAssert.AreEquivalent(
+                Enumerable.Range(0, clickBackground ? 6 : 3),
+                _controller.GetSelectedItems(view)
+            );
+        }
+
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void ItemPressed_ContextSelectionThenRangeSelection_SelectsIntermediateCards(
+            bool hasPreviousClick,
+            bool clickBackground
+        )
+        {
+            DefenseWindowView view = OpenSelectionGrid();
+            if (hasPreviousClick)
+                PressCard(view, 5);
+
+            PressCard(view, 0, PointerEventData.InputButton.Right);
+            SelectRange(view, clickBackground);
+
+            CollectionAssert.AreEquivalent(
+                Enumerable.Range(0, clickBackground ? 6 : 3),
+                _controller.GetSelectedItems(view)
+            );
+        }
+
+        [Test]
+        public void HandleSurfaceClicked_RangeSelectionOnEmptyGridSpace_SelectsIntersectingCards()
+        {
+            for (int index = 1; index < 6; index++)
+            {
+                _planet.Planet.AddTestChild(
+                    new Officer
+                    {
+                        InstanceID = $"officer-{index}",
+                        OwnerInstanceID = _playerFactionId,
+                        DisplayImagePath = "entity",
+                    }
+                );
+            }
+            DefenseWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window, true);
+            Canvas.ForceUpdateCanvases();
+            StrategyUnitCardView firstCard = view.GetComponentsInChildren<StrategyUnitCardView>()
+                .Single(card => card.Index == 0);
+            UIComponentTestHelper.InvokeLifecycle(firstCard, "Awake");
+            RectTransform firstCardRect = (RectTransform)firstCard.transform;
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                position = RectTransformUtility.WorldToScreenPoint(
+                    null,
+                    firstCardRect.TransformPoint(30, -35, 0)
+                ),
+                pointerCurrentRaycast = new RaycastResult { gameObject = firstCard.gameObject },
+            };
+            firstCard.GetComponent<UIPointerGestureRelay>().OnPointerDown(eventData);
+            _selectionModifiers = new SelectionModifierState(false, true);
+            ScrollAreaView scroll = view.GetComponentInChildren<ScrollAreaView>();
+            eventData.position = RectTransformUtility.WorldToScreenPoint(
+                null,
+                scroll.ContentRoot.TransformPoint(210, -100, 0)
+            );
+            eventData.pointerCurrentRaycast = new RaycastResult
+            {
+                gameObject = scroll.ViewportRoot.gameObject,
+            };
+
+            view.OnPointerClick(eventData);
+
+            CollectionAssert.AreEquivalent(
+                Enumerable.Range(0, 6),
+                _controller.GetSelectedItems(view)
+            );
+        }
+
         [Test]
         public void ItemPress_ModifiedPortraitSelection_RendersSelectionBeforeStartingDrag()
         {
@@ -495,6 +590,91 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             UIComponentTestHelper.InvokeLifecycle(view, "OnDestroy");
 
             Assert.IsNull(_controller.GetPlanet(view));
+        }
+
+        /// <summary>
+        /// Opens a rendered personnel grid containing six selectable officers.
+        /// </summary>
+        /// <returns>The initialized Defense window.</returns>
+        private DefenseWindowView OpenSelectionGrid()
+        {
+            for (int index = 1; index < 6; index++)
+            {
+                _planet.Planet.AddTestChild(
+                    new Officer
+                    {
+                        InstanceID = $"officer-{index}",
+                        OwnerInstanceID = _playerFactionId,
+                        DisplayImagePath = "entity",
+                    }
+                );
+            }
+            DefenseWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window, true);
+            Canvas.ForceUpdateCanvases();
+            foreach (
+                StrategyUnitCardView card in view.GetComponentsInChildren<StrategyUnitCardView>()
+            )
+                UIComponentTestHelper.InvokeLifecycle(card, "Awake");
+            return view;
+        }
+
+        /// <summary>
+        /// Presses an officer card through its pointer gesture relay.
+        /// </summary>
+        /// <param name="view">The source Defense window.</param>
+        /// <param name="index">The officer card to press.</param>
+        /// <param name="button">The mouse button used for the gesture.</param>
+        private static void PressCard(
+            DefenseWindowView view,
+            int index,
+            PointerEventData.InputButton button = PointerEventData.InputButton.Left
+        )
+        {
+            StrategyUnitCardView card = view.GetComponentsInChildren<StrategyUnitCardView>()
+                .Single(item => item.Index == index);
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = button,
+                position = RectTransformUtility.WorldToScreenPoint(
+                    null,
+                    card.transform.TransformPoint(30, -35, 0)
+                ),
+                pointerCurrentRaycast = new RaycastResult { gameObject = card.gameObject },
+            };
+            card.GetComponent<UIPointerGestureRelay>().OnPointerDown(eventData);
+        }
+
+        /// <summary>
+        /// Extends selection through an officer card or empty grid space.
+        /// </summary>
+        /// <param name="view">The source Defense window.</param>
+        /// <param name="clickBackground">Whether the gesture ends on empty grid space.</param>
+        private void SelectRange(DefenseWindowView view, bool clickBackground)
+        {
+            _selectionModifiers = new SelectionModifierState(false, true);
+            if (!clickBackground)
+            {
+                PressCard(view, 2);
+                return;
+            }
+
+            ScrollAreaView scroll = view.GetComponentInChildren<ScrollAreaView>();
+            view.OnPointerClick(
+                new PointerEventData(null)
+                {
+                    button = PointerEventData.InputButton.Left,
+                    position = RectTransformUtility.WorldToScreenPoint(
+                        null,
+                        scroll.ContentRoot.TransformPoint(210, -100, 0)
+                    ),
+                    pointerCurrentRaycast = new RaycastResult
+                    {
+                        gameObject = scroll.ViewportRoot.gameObject,
+                    },
+                }
+            );
         }
 
         /// <summary>

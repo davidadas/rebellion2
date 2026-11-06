@@ -168,6 +168,55 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         }
 
         [Test]
+        public void OpenFromAdvisor_StarfighterDestinationShip_QueuesOnShip()
+        {
+            Starfighter template = new Starfighter
+            {
+                TypeID = "fighter",
+                DisplayName = "Fighter",
+                ManufacturingFactionInstanceIDs = new List<string> { _playerFactionId },
+            };
+            _session.Game.GetFactions().Single().RebuildResearchCatalog(new[] { template });
+            _session.Game.AttachNode(
+                new Building
+                {
+                    InstanceID = "shipyard",
+                    OwnerInstanceID = _playerFactionId,
+                    BuildingType = BuildingType.Shipyard,
+                    ProductionType = ManufacturingType.Ship,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    ProcessRate = 1,
+                },
+                _planet.Planet
+            );
+            Rebellion.Game.Units.Fleet fleet = EntityFactory.CreateFleet(
+                "destination-fleet",
+                _playerFactionId
+            );
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "destination-ship",
+                OwnerInstanceID = _playerFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 1,
+            };
+            _session.Game.AttachNode(fleet, _planet.Planet);
+            _session.Game.AttachNode(ship, fleet);
+
+            _controller.OpenFromAdvisor(_planet, _planet, FacilityWindowTab.Shipyards, ship);
+            UIWindow window = _windowManager.Windows.Single();
+            _windowManager.TryGetWindowView(window, out ConstructionWindowView view);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            view.RequestStart();
+
+            Starfighter queued =
+                _planet.Planet.GetManufacturingQueue()[ManufacturingType.Ship].Single()
+                as Starfighter;
+            Assert.IsNotNull(queued);
+            Assert.AreSame(ship, queued.GetParent());
+        }
+
+        [Test]
         public void OpenFromAdvisor_DifferentTab_ReplacesExistingWindow()
         {
             _controller.OpenFromAdvisor(_planet, _planet, FacilityWindowTab.Shipyards);

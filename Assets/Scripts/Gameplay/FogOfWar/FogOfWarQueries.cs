@@ -8,7 +8,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.Gameplay
 {
@@ -78,10 +77,6 @@ namespace Rebellion.Gameplay
         /// <returns>A galaxy map filtered by the faction's fog of war state.</returns>
         public GalaxyMap BuildFactionView(Faction faction)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(BuildFactionView),
-                subjectType: typeof(FogOfWarQueries)
-            );
             GalaxyMap factionView = new GalaxyMap();
 
             foreach (PlanetSector masterSector in _game.Galaxy.GetChildren<PlanetSector>())
@@ -190,10 +185,6 @@ namespace Rebellion.Gameplay
         /// <param name="snapshot">The latest intelligence snapshot, if any.</param>
         private static void AddObservedMissions(Planet viewPlanet, PlanetSnapshot snapshot)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddObservedMissions),
-                subjectType: typeof(FogOfWarQueries)
-            );
             if (snapshot == null)
                 return;
 
@@ -217,10 +208,6 @@ namespace Rebellion.Gameplay
         /// <param name="viewPlanet">The faction-view planet receiving detached children.</param>
         private static void AttachDetachedChildrenToView(Planet viewPlanet)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AttachDetachedChildrenToView),
-                subjectType: typeof(FogOfWarQueries)
-            );
             foreach (ISceneNode child in viewPlanet.GetChildren())
             {
                 if (child.GetParent() == null)
@@ -253,10 +240,6 @@ namespace Rebellion.Gameplay
             Faction faction
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(MergeFactionControlledUnits),
-                subjectType: typeof(FogOfWarQueries)
-            );
             string factionId = faction.InstanceID;
             IReadOnlyList<ISceneNode> viewChildren = viewPlanet.GetChildren(includeDisabled: true);
             IEnumerable<Officer> controlledOfficers = masterChildren
@@ -379,10 +362,6 @@ namespace Rebellion.Gameplay
         /// <returns>A blank planet view with empty entity lists.</returns>
         private Planet BlankPlanetView(Planet masterPlanet)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(BlankPlanetView),
-                subjectType: typeof(FogOfWarQueries)
-            );
             Planet viewPlanet = (Planet)masterPlanet.CreateCopy();
             viewPlanet.SetChildren(
                 Enumerable.Empty<Fleet>(),
@@ -420,10 +399,6 @@ namespace Rebellion.Gameplay
             ref IReadOnlyList<ISceneNode> activeMasterChildren
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ApplyRealTimeView),
-                subjectType: typeof(FogOfWarQueries)
-            );
             activeMasterChildren ??= masterPlanet.GetChildren();
             viewPlanet.OwnerInstanceID = masterPlanet.OwnerInstanceID;
             viewPlanet.PopularSupport = new Dictionary<string, int>(masterPlanet.PopularSupport);
@@ -503,10 +478,6 @@ namespace Rebellion.Gameplay
             PlanetSnapshot planetSnapshot
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ApplySnapshotView),
-                subjectType: typeof(FogOfWarQueries)
-            );
             viewPlanet.OwnerInstanceID = planetSnapshot.OwnerInstanceID;
             viewPlanet.IsColonized = planetSnapshot.IsColonized;
             viewPlanet.IsInUprising =

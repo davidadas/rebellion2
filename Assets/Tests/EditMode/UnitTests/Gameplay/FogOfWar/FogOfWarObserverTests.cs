@@ -1034,7 +1034,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ProcessResults_SuccessfulAssault_RevealsOnlyLandedRegimentsToDefender()
+        public void ProcessResults_SuccessfulAssault_RetainsAttackingFleetAndLandedRegimentsForDefender()
         {
             Fleet fleet = CreateFleet("ATTACKERS", _alliance);
             _game.AttachNode(fleet, _coruscant);
@@ -1064,6 +1064,7 @@ namespace Rebellion.Tests.Gameplay
                     new PlanetaryAssaultResult
                     {
                         Planet = _coruscant,
+                        AttackingFleets = new List<Fleet> { fleet },
                         AttackerOwnerInstanceID = _alliance.InstanceID,
                         DefenderOwnerInstanceID = _empire.InstanceID,
                         Success = true,
@@ -1081,9 +1082,14 @@ namespace Rebellion.Tests.Gameplay
                 new[] { first.InstanceID, second.InstanceID },
                 snapshot.Regiments.Select(regiment => regiment.InstanceID)
             );
-            Assert.IsEmpty(snapshot.Fleets);
-            Assert.IsFalse(_empire.Fog.EntityLastSeenAt.ContainsKey(retained.InstanceID));
-
+            Assert.AreEqual(fleet.InstanceID, snapshot.Fleets.Single().InstanceID);
+            CollectionAssert.AreEqual(
+                new[] { retained.InstanceID },
+                snapshot
+                    .Fleets.Single()
+                    .GetChildren<Regiment>(recursive: true)
+                    .Select(regiment => regiment.InstanceID)
+            );
             Planet viewPlanet = new FogOfWarQueries(_game)
                 .BuildFactionView(_empire)
                 .GetChildren<PlanetSector>()
@@ -1094,7 +1100,7 @@ namespace Rebellion.Tests.Gameplay
                 new[] { first.InstanceID, second.InstanceID },
                 viewPlanet.GetChildren<Regiment>().Select(regiment => regiment.InstanceID)
             );
-            Assert.IsEmpty(viewPlanet.GetChildren<Fleet>());
+            Assert.AreEqual(fleet.InstanceID, viewPlanet.GetChildren<Fleet>().Single().InstanceID);
         }
 
         [Test]

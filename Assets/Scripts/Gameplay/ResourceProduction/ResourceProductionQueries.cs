@@ -5,7 +5,6 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Util.Logging;
 using Rebellion.Util.Mathematics;
 
 namespace Rebellion.Gameplay
@@ -35,10 +34,6 @@ namespace Rebellion.Gameplay
         /// <returns>The current resource economy summary.</returns>
         public ResourceEconomySummary GetSummary(Faction faction)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetSummary),
-                subjectType: typeof(ResourceProductionQueries)
-            );
             return GetSummary(faction, Array.Empty<Building>());
         }
 
@@ -53,10 +48,6 @@ namespace Rebellion.Gameplay
             IReadOnlyCollection<Building> excludedFacilities
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetSummary),
-                subjectType: typeof(ResourceProductionQueries)
-            );
             if (faction == null)
                 return ResourceEconomySummary.Empty;
 
@@ -182,10 +173,6 @@ namespace Rebellion.Gameplay
             double RefinedOutputPerTick
         ) GetOperatingEconomy(Faction faction, IReadOnlyCollection<Building> excludedFacilities)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetOperatingEconomy),
-                subjectType: typeof(ResourceProductionQueries)
-            );
             if (faction == null)
                 return (0, 0, 0);
             HashSet<string> excluded = (excludedFacilities ?? Array.Empty<Building>())
@@ -211,10 +198,6 @@ namespace Rebellion.Gameplay
         /// <returns>A projection scope that must be captured again after game-state changes.</returns>
         public OperatingEconomyProjection CaptureOperatingEconomy(Faction faction)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CaptureOperatingEconomy),
-                subjectType: typeof(ResourceProductionQueries)
-            );
             return new OperatingEconomyProjection(
                 this,
                 faction ?? throw new ArgumentNullException(nameof(faction))
@@ -230,10 +213,6 @@ namespace Rebellion.Gameplay
             Faction faction
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CaptureResourcePlanets),
-                subjectType: typeof(ResourceProductionQueries)
-            );
             return faction
                 .GetOwnedUnitsByType<Planet>()
                 .Where(planet => !planet.IsResourceProductionSuspended())
@@ -276,10 +255,6 @@ namespace Rebellion.Gameplay
             int maintenanceCapacity
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CalculateOperatingEconomy),
-                subjectType: typeof(ResourceProductionQueries)
-            );
             return (
                 maintenanceCapacity - maintenanceDemand,
                 excluded.Count == 0
@@ -312,10 +287,6 @@ namespace Rebellion.Gameplay
             ISet<string> excluded
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CalculateMaintenanceCosts),
-                subjectType: typeof(ResourceProductionQueries)
-            );
             int capitalShips = 0;
             int starfighters = 0;
             int regiments = 0;
@@ -509,10 +480,6 @@ namespace Rebellion.Gameplay
             Building facility
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CalculateSteadyCycleDuration),
-                subjectType: typeof(ResourceProductionQueries)
-            );
             return CalculateSteadyCycleDuration(
                 game,
                 faction,
@@ -536,10 +503,6 @@ namespace Rebellion.Gameplay
             int maintenanceAllocation
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CalculateSteadyCycleDuration),
-                subjectType: typeof(ResourceProductionQueries)
-            );
             GameConfig.ProductionConfig config = game.Config.Production;
             int facilityCapacity = CalculateMaintenanceCapacityPerFacility(game, faction);
             int scaledCapacity = Math.Max(
@@ -614,10 +577,6 @@ namespace Rebellion.Gameplay
             BuildingType buildingType
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CalculateOutputPerTick),
-                subjectType: typeof(ResourceProductionQueries)
-            );
             DifficultyModifiers modifier = _game.GetDifficultyModifier(faction);
             int outputPercent =
                 buildingType == BuildingType.Mine
@@ -651,10 +610,6 @@ namespace Rebellion.Gameplay
             int maintenanceDemand
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CalculateProjectedOutputPerTick),
-                subjectType: typeof(ResourceProductionQueries)
-            );
             if (facilities.Count == 0)
                 return 0;
 
@@ -699,10 +654,6 @@ namespace Rebellion.Gameplay
             Faction faction
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CalculateMaintenanceAllocations),
-                subjectType: typeof(ResourceProductionQueries)
-            );
             int facilityCapacity = CalculateMaintenanceCapacityPerFacility(game, faction);
             List<int> allocations = facilities
                 .Select(facility =>
@@ -750,10 +701,6 @@ namespace Rebellion.Gameplay
             int totalCapacity
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(IncreaseMaintenanceAllocations),
-                subjectType: typeof(ResourceProductionQueries)
-            );
             int currentAllocation = IntegerMath.SaturateToInt(
                 allocations.Sum(allocation => (long)allocation)
             );
@@ -798,10 +745,6 @@ namespace Rebellion.Gameplay
             int totalCapacity
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(DecreaseMaintenanceAllocations),
-                subjectType: typeof(ResourceProductionQueries)
-            );
             bool changed;
             do
             {
@@ -859,10 +802,6 @@ namespace Rebellion.Gameplay
         /// <returns>The effective headroom, or zero when the game or faction is absent.</returns>
         internal static int CalculateMaintenanceHeadroom(GameRoot game, Faction faction)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CalculateMaintenanceHeadroom),
-                subjectType: typeof(ResourceProductionQueries)
-            );
             if (game == null || faction == null)
                 return 0;
 
@@ -878,10 +817,6 @@ namespace Rebellion.Gameplay
         /// <returns>The effective maintenance capacity.</returns>
         internal static int CalculateMaintenanceCapacity(GameRoot game, Faction faction)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CalculateMaintenanceCapacity),
-                subjectType: typeof(ResourceProductionQueries)
-            );
             if (game == null || faction == null)
                 return 0;
 
@@ -904,10 +839,6 @@ namespace Rebellion.Gameplay
             ISet<string> excluded
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CalculateMaintenanceCapacity),
-                subjectType: typeof(ResourceProductionQueries)
-            );
             if (excluded.Count == 0)
                 return CalculateMaintenanceCapacity(game, faction);
             return CalculateMaintenanceCapacity(
@@ -933,10 +864,6 @@ namespace Rebellion.Gameplay
             int facilityCapacity
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CalculateMaintenanceCapacity),
-                subjectType: typeof(ResourceProductionQueries)
-            );
             int mines = 0;
             int refineries = 0;
             foreach (var entry in planets)
@@ -1010,10 +937,6 @@ namespace Rebellion.Gameplay
             /// <param name="faction">The faction whose economy is captured.</param>
             internal OperatingEconomyProjection(ResourceProductionQueries queries, Faction faction)
             {
-                using var performanceMeasurement = PerformanceLogger.Measure(
-                    "Constructor",
-                    subjectType: typeof(ResourceProductionQueries.OperatingEconomyProjection)
-                );
                 _queries = queries;
                 _faction = faction;
                 _planets = CaptureResourcePlanets(faction);
@@ -1045,10 +968,6 @@ namespace Rebellion.Gameplay
                 double RefinedOutputPerTick
             ) GetOperatingEconomy(IReadOnlyCollection<Building> excludedFacilities)
             {
-                using var performanceMeasurement = PerformanceLogger.Measure(
-                    nameof(GetOperatingEconomy),
-                    subjectType: typeof(ResourceProductionQueries.OperatingEconomyProjection)
-                );
                 HashSet<string> excluded = GetExcludedFacilityIds(excludedFacilities);
                 int maintenance = GetRemainingMaintenance(excluded);
                 List<Building> mines = new();
@@ -1092,10 +1011,6 @@ namespace Rebellion.Gameplay
             /// <returns>The exact maintenance capacity remaining after committed upkeep.</returns>
             public int GetMaintenanceHeadroom(IReadOnlyCollection<Building> excludedFacilities)
             {
-                using var performanceMeasurement = PerformanceLogger.Measure(
-                    nameof(GetMaintenanceHeadroom),
-                    subjectType: typeof(ResourceProductionQueries.OperatingEconomyProjection)
-                );
                 HashSet<string> excluded = GetExcludedFacilityIds(excludedFacilities);
                 int maintenance = GetRemainingMaintenance(excluded);
                 int capacity = GetMaintenanceCapacity(excluded);
@@ -1111,10 +1026,6 @@ namespace Rebellion.Gameplay
                 IReadOnlyCollection<Building> excludedFacilities
             )
             {
-                using var performanceMeasurement = PerformanceLogger.Measure(
-                    nameof(GetExcludedFacilityIds),
-                    subjectType: typeof(ResourceProductionQueries.OperatingEconomyProjection)
-                );
                 return (excludedFacilities ?? Array.Empty<Building>())
                     .Where(building =>
                         building != null && building.GetOwnerInstanceID() == _faction.InstanceID
@@ -1130,10 +1041,6 @@ namespace Rebellion.Gameplay
             /// <returns>The remaining committed maintenance cost.</returns>
             private int GetRemainingMaintenance(HashSet<string> excluded)
             {
-                using var performanceMeasurement = PerformanceLogger.Measure(
-                    nameof(GetRemainingMaintenance),
-                    subjectType: typeof(ResourceProductionQueries.OperatingEconomyProjection)
-                );
                 int maintenance = _committedMaintenance;
                 foreach (string id in excluded)
                     if (_buildingMaintenance.TryGetValue(id, out int cost))
@@ -1148,10 +1055,6 @@ namespace Rebellion.Gameplay
             /// <returns>The maintenance capacity available to the alternative.</returns>
             private int GetMaintenanceCapacity(HashSet<string> excluded)
             {
-                using var performanceMeasurement = PerformanceLogger.Measure(
-                    nameof(GetMaintenanceCapacity),
-                    subjectType: typeof(ResourceProductionQueries.OperatingEconomyProjection)
-                );
                 return excluded.Count == 0
                     ? _maintenanceCapacity
                     : CalculateMaintenanceCapacity(

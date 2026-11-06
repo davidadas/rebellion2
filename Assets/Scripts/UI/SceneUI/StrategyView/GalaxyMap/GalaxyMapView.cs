@@ -50,9 +50,9 @@ public sealed class GalaxyMapView : MonoBehaviour
     public event Action<string> SectorHovered;
 
     /// <summary>
-    /// Raised when a rendered sector cluster is double-clicked.
+    /// Raised when a rendered sector cluster is clicked.
     /// </summary>
-    public event Action<string, int, int> SectorOpenRequested;
+    public event Action<string, int, int, int> SectorClicked;
 
     public RectTransform Background => background;
 
@@ -297,7 +297,7 @@ public sealed class GalaxyMapView : MonoBehaviour
         clusterView.name = key;
         clusterView.HoverCleared += HandleClusterHoverCleared;
         clusterView.Hovered += HandleClusterHovered;
-        clusterView.OpenRequested += HandleClusterOpenRequested;
+        clusterView.Clicked += HandleClusterClicked;
         clusterViews.Add(key, clusterView);
         return clusterView;
     }
@@ -322,11 +322,11 @@ public sealed class GalaxyMapView : MonoBehaviour
     }
 
     /// <summary>
-    /// Converts a child cluster double-click to a semantic sector-open request.
+    /// Converts a child cluster click to a semantic map interaction.
     /// </summary>
-    /// <param name="clusterView">The requested cluster view.</param>
+    /// <param name="clusterView">The clicked cluster view.</param>
     /// <param name="eventData">The originating pointer event.</param>
-    private void HandleClusterOpenRequested(
+    private void HandleClusterClicked(
         PlanetSectorClusterView clusterView,
         PointerEventData eventData
     )
@@ -339,7 +339,7 @@ public sealed class GalaxyMapView : MonoBehaviour
             return;
         }
 
-        SectorOpenRequested?.Invoke(clusterView.SectorInstanceId, sourceX, sourceY);
+        SectorClicked?.Invoke(clusterView.SectorInstanceId, sourceX, sourceY, eventData.clickCount);
     }
 
     /// <summary>
@@ -353,7 +353,7 @@ public sealed class GalaxyMapView : MonoBehaviour
 
         clusterView.HoverCleared -= HandleClusterHoverCleared;
         clusterView.Hovered -= HandleClusterHovered;
-        clusterView.OpenRequested -= HandleClusterOpenRequested;
+        clusterView.Clicked -= HandleClusterClicked;
     }
 
     /// <summary>

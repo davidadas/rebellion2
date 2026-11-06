@@ -11,7 +11,6 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -23,7 +22,7 @@ namespace Rebellion.Tests.Gameplay
         {
             (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
                 BuildScene();
-            CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
+            CaptiveObserver system = CreateObserver(game, movement);
 
             HandleResults(
                 game,
@@ -39,7 +38,7 @@ namespace Rebellion.Tests.Gameplay
         {
             (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
                 BuildScene();
-            CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
+            CaptiveObserver system = CreateObserver(game, movement);
             HandleResults(game, system, new[] { CaptureResult(captive, planet, 4) });
 
             HandleResults(game, system, new[] { CaptureResult(captive, planet, 9) });
@@ -53,7 +52,7 @@ namespace Rebellion.Tests.Gameplay
             (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
                 BuildScene();
             captive.NextEscapeAttemptTick = 0;
-            CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
+            CaptiveObserver system = CreateObserver(game, movement);
 
             HandleResults(
                 game,
@@ -76,7 +75,7 @@ namespace Rebellion.Tests.Gameplay
             (GameRoot game, _, Officer captive, MovementCommands movement) = BuildScene();
             captive.OwnerInstanceID = "missing";
             captive.IsCaptured = false;
-            CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
+            CaptiveObserver system = CreateObserver(game, movement);
 
             Assert.DoesNotThrow(() =>
                 HandleResults(
@@ -99,7 +98,7 @@ namespace Rebellion.Tests.Gameplay
         {
             (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
                 BuildScene();
-            CaptiveObserver system = CreateObserver(game, new ThrowingRNG(), movement);
+            CaptiveObserver system = CreateObserver(game, movement);
 
             Assert.IsEmpty(
                 HandleResults(game, system, (IReadOnlyList<OfficerCaptureStateResult>)null)
@@ -112,7 +111,7 @@ namespace Rebellion.Tests.Gameplay
             (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
                 BuildScene();
             game.CurrentTick = 20;
-            CaptiveObserver system = CreateObserver(game, new ThrowingRNG(), movement);
+            CaptiveObserver system = CreateObserver(game, movement);
 
             List<GameResult> results = HandleResults(
                 game,
@@ -136,7 +135,7 @@ namespace Rebellion.Tests.Gameplay
         {
             (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
                 BuildScene();
-            CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
+            CaptiveObserver system = CreateObserver(game, movement);
 
             HandleResults(game, system, new[] { CaptureResult(captive, planet) });
 
@@ -170,8 +169,7 @@ namespace Rebellion.Tests.Gameplay
             CaptiveObserver observer = new CaptiveObserver(
                 game,
                 movement,
-                new MovementQueries(game),
-                new FixedRNG(0.0)
+                new MovementQueries(game)
             );
 
             HandleResults(game, observer, new[] { CaptureResult(captive, previousPlanet, 2) });
@@ -207,7 +205,7 @@ namespace Rebellion.Tests.Gameplay
             };
             game.AttachNode(mission, planet);
             game.MoveNode(captive, mission);
-            CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
+            CaptiveObserver system = CreateObserver(game, movement);
 
             HandleResults(game, system, new[] { CaptureResult(captive, planet) });
 
@@ -227,7 +225,7 @@ namespace Rebellion.Tests.Gameplay
                 MovementCommands movement
             ) = BuildFleetCustodyScene();
             game.MoveNode(captive, capturePlanet);
-            CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
+            CaptiveObserver system = CreateObserver(game, movement);
 
             HandleResults(
                 game,
@@ -276,7 +274,7 @@ namespace Rebellion.Tests.Gameplay
                 BuildScene();
             Planet capturePlanet = game.GetSceneNodeByInstanceID<Planet>("emp_planet");
             game.MoveNode(captive, capturePlanet);
-            CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
+            CaptiveObserver system = CreateObserver(game, movement);
 
             HandleResults(game, system, new[] { CaptureResult(captive, capturePlanet) });
 
@@ -306,7 +304,7 @@ namespace Rebellion.Tests.Gameplay
             game.MoveNode(captive, capturePlanet);
             capturePlanet.OwnerInstanceID = captive.CaptorInstanceID;
             capturePlanet.IsColonized = false;
-            CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
+            CaptiveObserver system = CreateObserver(game, movement);
 
             HandleResults(game, system, new[] { CaptureResult(captive, capturePlanet) });
 
@@ -329,7 +327,7 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(mission, capturePlanet);
             game.AttachNode(escort, mission);
             game.MoveNode(captive, capturePlanet);
-            CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
+            CaptiveObserver system = CreateObserver(game, movement);
 
             List<GameResult> results = HandleResults(
                 game,
@@ -369,7 +367,7 @@ namespace Rebellion.Tests.Gameplay
             };
             game.MoveNode(captive, destination);
             captive.Movement = establishedMovement;
-            CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
+            CaptiveObserver system = CreateObserver(game, movement);
 
             HandleResults(game, system, new[] { CaptureResult(captive, capturePlanet) });
 
@@ -390,7 +388,7 @@ namespace Rebellion.Tests.Gameplay
             Planet capturePlanet = game.GetSceneNodeByInstanceID<Planet>("emp_planet");
             game.MoveNode(captive, capturePlanet);
             captive.IsEnabled = false;
-            CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
+            CaptiveObserver system = CreateObserver(game, movement);
 
             HandleResults(game, system, new[] { CaptureResult(captive, capturePlanet) });
 
@@ -420,7 +418,7 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(mission, capturePlanet);
             game.AttachNode(escort, mission);
             game.CurrentTick = 11;
-            CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
+            CaptiveObserver system = CreateObserver(game, movement);
             HandleResults(
                 game,
                 system,
@@ -447,7 +445,7 @@ namespace Rebellion.Tests.Gameplay
             (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
                 BuildScene();
             Faction owner = game.GetFactionByOwnerInstanceID(captive.OwnerInstanceID);
-            CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
+            CaptiveObserver system = CreateObserver(game, movement);
 
             List<GameResult> results = HandleResults(
                 game,
@@ -542,16 +540,11 @@ namespace Rebellion.Tests.Gameplay
         /// Creates the custody listener and its operation dependencies.
         /// </summary>
         /// <param name="game">The game.</param>
-        /// <param name="provider">The provider.</param>
         /// <param name="movement">The movement.</param>
         /// <returns>The custody listener for the test game.</returns>
-        private static CaptiveObserver CreateObserver(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            MovementCommands movement
-        )
+        private static CaptiveObserver CreateObserver(GameRoot game, MovementCommands movement)
         {
-            return new CaptiveObserver(game, movement, new MovementQueries(game), provider);
+            return new CaptiveObserver(game, movement, new MovementQueries(game));
         }
 
         /// <summary>

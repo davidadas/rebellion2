@@ -10,7 +10,6 @@ using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
 using OfficerRating = Rebellion.Game.Units.SkillRating;
 
@@ -86,20 +85,8 @@ namespace Rebellion.AI.Planners
         /// <returns>Mission proposals generated for this faction.</returns>
         public List<AIProposal> Plan(AITurnContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(Plan),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             List<AIProposal> proposals = new();
-            foreach (
-                object step in PerformanceLogger.MeasureSteps(
-                    PlanIncrementally(context, proposals),
-                    "PlanIncrementally",
-                    context?.Faction?.PeekInstanceID(),
-                    subjectType: typeof(AIMissionPlanner)
-                )
-            ) { }
+            foreach (object step in PlanIncrementally(context, proposals)) { }
             return proposals;
         }
 
@@ -137,33 +124,12 @@ namespace Rebellion.AI.Planners
             _officerTargetCandidates = null;
             _recruitmentCandidates = null;
             _sabotageCandidates = null;
-            foreach (
-                object step in PerformanceLogger.MeasureSteps(
-                    CreateMissionProposals(context, proposals),
-                    "CreateMissionProposals",
-                    context?.Faction?.PeekInstanceID(),
-                    subjectType: typeof(AIMissionPlanner)
-                )
-            )
+            foreach (object step in CreateMissionProposals(context, proposals))
                 yield return step;
 
-            foreach (
-                object step in PerformanceLogger.MeasureSteps(
-                    CreateMissionWaitingProposals(context, proposals),
-                    "CreateMissionWaitingProposals",
-                    context?.Faction?.PeekInstanceID(),
-                    subjectType: typeof(AIMissionPlanner)
-                )
-            )
+            foreach (object step in CreateMissionWaitingProposals(context, proposals))
                 yield return step;
-            foreach (
-                object step in PerformanceLogger.MeasureSteps(
-                    CreateMissionStagingProposals(context, proposals),
-                    "CreateMissionStagingProposals",
-                    context?.Faction?.PeekInstanceID(),
-                    subjectType: typeof(AIMissionPlanner)
-                )
-            )
+            foreach (object step in CreateMissionStagingProposals(context, proposals))
                 yield return step;
         }
 
@@ -236,11 +202,6 @@ namespace Rebellion.AI.Planners
             int missionCount
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(FindMissionStagingDestination),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             List<(AIMissionStagingProposal Proposal, double Ticks)> candidates = new();
             long? directTicks = null;
             foreach (Planet planet in context.Assessment.OwnedPlanets)
@@ -278,11 +239,6 @@ namespace Rebellion.AI.Planners
         /// <returns>The number of worthwhile objectives sharing the mission's target planet.</returns>
         private int GetSabotageMissionCount(AITurnContext context, AIMissionProposal mission)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetSabotageMissionCount),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             Planet planet = mission.TargetPlanet;
             IManufacturable selectedTarget = mission.SelectedTarget as IManufacturable;
             var key = (planet, selectedTarget);
@@ -434,11 +390,6 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         internal static void AssignSpecialForcesIntent(AITurnContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AssignSpecialForcesIntent),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             if (context?.Assessment == null)
                 return;
 
@@ -494,11 +445,6 @@ namespace Rebellion.AI.Planners
             SpecialForcesIntent intent
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(SetSpecialForcesIntent),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             foreach (SpecialForces unit in units)
                 context.SetSpecialForcesIntent(unit, intent);
         }
@@ -600,14 +546,7 @@ namespace Rebellion.AI.Planners
                 yield return participant;
             }
 
-            foreach (
-                object step in PerformanceLogger.MeasureSteps(
-                    AddSabotageProposals(context, proposals),
-                    "AddSabotageProposals",
-                    context?.Faction?.PeekInstanceID(),
-                    subjectType: typeof(AIMissionPlanner)
-                )
-            )
+            foreach (object step in AddSabotageProposals(context, proposals))
                 yield return step;
         }
 
@@ -623,11 +562,6 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddReconnaissanceProposals),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             if (!participant.CanPerformMission(MissionTypeIDs.Reconnaissance))
                 return;
 
@@ -655,11 +589,6 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddRecruitmentProposals),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             if (participant != GetPreferredRecruiter(context))
                 return false;
 
@@ -688,11 +617,6 @@ namespace Rebellion.AI.Planners
         /// <returns>The preferred recruiter, or null when no main officer qualifies.</returns>
         private Officer GetPreferredRecruiter(AITurnContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetPreferredRecruiter),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             return _preferredRecruiter ??= context
                 .Assessment.AvailableMissionParticipants.OfType<Officer>()
                 .Where(officer => officer.IsMain)
@@ -718,11 +642,6 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddSubdueUprisingProposals),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             if (!participant.CanPerformMission(MissionTypeIDs.SubdueUprising))
                 return;
 
@@ -753,11 +672,6 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddDiplomacyProposals),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             if (
                 participant.GetEffectiveRating(OfficerRating.Diplomacy)
                 < context.Game.Config.AI.DiplomacyMinimumSkill
@@ -787,11 +701,6 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddResearchProposals),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             foreach (Planet planet in GetResearchCandidatePlanets(context, officer))
             {
                 foreach (
@@ -823,11 +732,6 @@ namespace Rebellion.AI.Planners
         /// <param name="proposals">The proposal collection to update.</param>
         private void AddJediTrainingProposals(AITurnContext context, List<AIProposal> proposals)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddJediTrainingProposals),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             int maximumStudents = context
                 .Game
                 .Config
@@ -883,11 +787,6 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddRescueProposals),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             if (
                 participant is not SpecialForces
                 || !participant.CanPerformMission(MissionTypeIDs.Rescue)
@@ -934,11 +833,6 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddEspionageProposals),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             if (!participant.CanPerformMission(MissionTypeIDs.Espionage))
                 return;
 
@@ -979,11 +873,6 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddInciteUprisingProposals),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             if (!participant.CanPerformMission(MissionTypeIDs.InciteUprising))
                 return;
 
@@ -1120,11 +1009,6 @@ namespace Rebellion.AI.Planners
             Planet departure = null
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddSabotageTeamProposals),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             AIMissionProposal team = new(
                 new[] { leader },
                 MissionTypeIDs.Sabotage,
@@ -1199,11 +1083,6 @@ namespace Rebellion.AI.Planners
             Mission mission
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AssembleSabotageTeam),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             AIMissionProposal team = new(new[] { leader }, MissionTypeIDs.Sabotage, planet);
             GameConfig.AIMissionPlanningConfig config = context.Game.Config.AI.MissionPlanning;
             int maximumSize = Math.Max(1, config.MaximumSabotageTeamSize);
@@ -1280,11 +1159,6 @@ namespace Rebellion.AI.Planners
             Planet departure
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(RetainSabotageTeam),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             AIMissionProposal team = new(
                 template.MainParticipants,
                 MissionTypeIDs.Sabotage,
@@ -1329,11 +1203,6 @@ namespace Rebellion.AI.Planners
             Planet departure
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ProtectSabotageTeam),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             GameConfig.AIMissionPlanningConfig config = context.Game.Config.AI.MissionPlanning;
             int remainingSlots = Math.Max(0, config.MaximumSabotageTeamSize - mains.Count);
             int maximumDecoys =
@@ -1449,11 +1318,6 @@ namespace Rebellion.AI.Planners
             Planet departure = null
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(EvaluateSabotageTeam),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             if (departure != null)
             {
                 MissionOdds future = context.Assessment.GetMissionOddsAfterArrival(
@@ -1488,11 +1352,6 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddOfficerTargetMissionProposals),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             var targets = GetOfficerTargetCandidates(context);
             if (
                 !participant.CanPerformMission(MissionTypeIDs.Abduction)
@@ -1570,11 +1429,6 @@ namespace Rebellion.AI.Planners
             AIMissionProposal proposal
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddInterceptionStagingProposal),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             if (
                 !proposal.CanSelect(context)
                 || !context.Assessment.TryGetOfficerMissionWindow(
@@ -1615,11 +1469,6 @@ namespace Rebellion.AI.Planners
             AIMissionProposal proposal
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(TryAddProposal),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             if (proposal == null)
                 return;
             if (
@@ -1654,11 +1503,6 @@ namespace Rebellion.AI.Planners
             Officer targetOfficer = null
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(TryAddMissionProposal),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             TryAddProposal(
                 context,
                 proposals,
@@ -1695,11 +1539,6 @@ namespace Rebellion.AI.Planners
         /// <returns>Candidate planets in strategic-priority order.</returns>
         private IEnumerable<Planet> GetDiplomacyCandidatePlanets(AITurnContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetDiplomacyCandidatePlanets),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             return _diplomacyCandidates ??= context
                 .Assessment.KnownColonizedPlanets.Where(planet =>
                     (
@@ -1724,11 +1563,6 @@ namespace Rebellion.AI.Planners
             IMissionParticipant participant
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetReconnaissanceCandidatePlanets),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             Planet origin = participant.GetParentOfType<Planet>();
             if (origin == null)
                 return Enumerable.Empty<Planet>();
@@ -1752,11 +1586,6 @@ namespace Rebellion.AI.Planners
             Officer officer
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetResearchCandidatePlanets),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             return context
                 .Assessment.OwnedPlanets.Where(planet =>
                     HasAvailableResearchDiscipline(context, officer, planet)
@@ -1776,11 +1605,6 @@ namespace Rebellion.AI.Planners
         /// <returns>Candidate planets ordered by intelligence age and value.</returns>
         private IEnumerable<Planet> GetEspionageCandidatePlanets(AITurnContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetEspionageCandidatePlanets),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             if (_espionageCandidates != null)
                 return _espionageCandidates;
 
@@ -1806,11 +1630,6 @@ namespace Rebellion.AI.Planners
         /// <returns>Candidate planets ordered by campaign relevance and target value.</returns>
         private IEnumerable<Planet> GetSabotageCandidatePlanets(AITurnContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetSabotageCandidatePlanets),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             return _sabotageCandidates ??= context
                 .Assessment.EnemyPlanets.Where(planet => GetSabotageTargets(context, planet).Any())
                 .Shuffle(context.Random)
@@ -1835,11 +1654,6 @@ namespace Rebellion.AI.Planners
             Planet planet
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetSabotageTargets),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             if (_sabotageTargets.TryGetValue(planet.InstanceID, out List<IManufacturable> targets))
                 return targets;
 
@@ -1867,11 +1681,6 @@ namespace Rebellion.AI.Planners
             IManufacturable target
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetSabotageTargetValue),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             var key = (planet, target);
             if (!_sabotageTargetValues.TryGetValue(key, out double value))
             {
@@ -1894,11 +1703,6 @@ namespace Rebellion.AI.Planners
             Planet planet
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetEligibleSabotageTargets),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             List<IManufacturable> eligible = planet
                 .GetChildren<IManufacturable>()
                 .Concat(
@@ -1961,11 +1765,6 @@ namespace Rebellion.AI.Planners
             AITurnContext context
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetOfficerTargetCandidates),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             return _officerTargetCandidates ??= context
                 .Assessment.TargetableEnemyOfficerMissionTargets.Where(candidate =>
                     !HasActiveOfficerTargetMission(candidate.TargetOfficer.InstanceID)
@@ -2003,11 +1802,6 @@ namespace Rebellion.AI.Planners
         /// <returns>Enemy planets within the configured intelligence age.</returns>
         private IEnumerable<Planet> GetFreshEnemyPlanets(AITurnContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetFreshEnemyPlanets),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             if (_freshEnemyPlanets != null)
                 return _freshEnemyPlanets;
 
@@ -2033,11 +1827,6 @@ namespace Rebellion.AI.Planners
         /// <returns>Candidate planets ordered by popular support.</returns>
         private IEnumerable<Planet> GetRecruitmentCandidatePlanets(AITurnContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetRecruitmentCandidatePlanets),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             return _recruitmentCandidates ??= context
                 .Assessment.OwnedPlanets.Where(planet => planet.IsColonized && !planet.IsDestroyed)
                 .OrderBy(planet => context.Assessment.GetFactionPopularSupport(planet))
@@ -2086,11 +1875,6 @@ namespace Rebellion.AI.Planners
             Planet planet
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(HasAvailableResearchDiscipline),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             return GetAvailableResearchDisciplines(context, officer, planet).Any();
         }
 
@@ -2107,11 +1891,6 @@ namespace Rebellion.AI.Planners
             Planet planet
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetAvailableResearchDisciplineCount),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             return GetAvailableResearchDisciplines(context, officer, planet).Count();
         }
 
@@ -2128,11 +1907,6 @@ namespace Rebellion.AI.Planners
             Planet planet
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetStrongestResearchRating),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             return GetAvailableResearchDisciplines(context, officer, planet)
                 .Select(officer.GetBaseRating)
                 .DefaultIfEmpty()
@@ -2222,11 +1996,6 @@ namespace Rebellion.AI.Planners
         /// <returns>The calculated value.</returns>
         private double GetDiplomacyCandidatePriority(AITurnContext context, Planet planet)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetDiplomacyCandidatePriority),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionPlanner)
-            );
             return AIMissionProposalScorer.GetDiplomacyTargetValue(context, planet);
         }
     }

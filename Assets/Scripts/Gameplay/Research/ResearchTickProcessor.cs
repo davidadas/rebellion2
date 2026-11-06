@@ -6,7 +6,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Gameplay
@@ -56,10 +55,6 @@ namespace Rebellion.Gameplay
         /// <returns>Any primary research results generated this tick.</returns>
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
-            using var measurement = PerformanceLogger.Measure(
-                "Game system tick",
-                subjectType: typeof(ResearchTickProcessor)
-            );
             List<GameResult> results = new List<GameResult>();
             if (game.CurrentTick <= 0)
                 return results;
@@ -68,11 +63,6 @@ namespace Rebellion.Gameplay
 
             foreach (Faction faction in game.GetFactions())
             {
-                using var factionMeasurement = PerformanceLogger.Measure(
-                    "Faction system tick",
-                    faction?.PeekInstanceID(),
-                    subjectType: typeof(ResearchTickProcessor)
-                );
                 FactionResearchState state = faction.ResearchState;
                 if (game.CurrentTick < state.NextRefreshTick)
                     continue;

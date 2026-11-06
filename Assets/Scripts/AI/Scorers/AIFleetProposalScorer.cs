@@ -7,7 +7,6 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Scorers
 {
@@ -45,11 +44,6 @@ namespace Rebellion.AI.Scorers
         /// <returns>The fleet proposal score.</returns>
         public double Score(AITurnContext context, AIProposal proposal)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(Score),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             if (context?.Game == null || context.Faction == null)
                 return 0;
 
@@ -113,11 +107,6 @@ namespace Rebellion.AI.Scorers
             )? targetRequirements
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(Score),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             if (context?.Game == null || context.Faction == null)
                 return 0;
 
@@ -135,11 +124,6 @@ namespace Rebellion.AI.Scorers
             AIOfficerCommandProposal proposal
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreOfficerCommand),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             AIAttackDemand demand = context.GetAttackDemand(proposal.TargetPlanet, proposal.Fleet);
             if (demand == null)
                 return 0;
@@ -300,11 +284,6 @@ namespace Rebellion.AI.Scorers
             double bombardment
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetCommandReadiness),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             bool hasGroundDefenders =
                 context.Assessment.GetDefendingRegimentCount(demand.TargetPlanet) > 0;
             bool canBombard = hasGroundDefenders && bombardment > demand.ShieldStrength;
@@ -339,11 +318,6 @@ namespace Rebellion.AI.Scorers
             AIColonizationCampaignProposal proposal
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreColonizationCampaign),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             GameConfig.AIColonizationUtilityConfig utility = context
                 .Game
                 .Config
@@ -394,11 +368,6 @@ namespace Rebellion.AI.Scorers
         /// <returns>The defense score.</returns>
         private double ScoreDefense(AITurnContext context, AIFleetDefenseProposal proposal)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreDefense),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             GameConfig.AIDefenseUtilityConfig utility = context
                 .Game
                 .Config
@@ -459,11 +428,6 @@ namespace Rebellion.AI.Scorers
         /// <returns>The existing attack's score, or zero when no staged attack would be displaced.</returns>
         private double ScoreDefenseOpportunityCost(AITurnContext context, Fleet fleet)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreDefenseOpportunityCost),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             FleetOrder order = fleet?.Order;
             if (
                 order?.OrderType != FleetOrderType.Attack
@@ -493,11 +457,6 @@ namespace Rebellion.AI.Scorers
         /// <returns>The target utility.</returns>
         internal static double ScoreDefenseTarget(AITurnContext context, Planet targetPlanet)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreDefenseTarget),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             GameConfig.AIDefenseAllocationUtilityConfig utility = context
                 .Game
                 .Config
@@ -542,11 +501,6 @@ namespace Rebellion.AI.Scorers
             Planet targetPlanet
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreDefenseAssignment),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             GameConfig.AIDefenseAllocationUtilityConfig utility = context
                 .Game
                 .Config
@@ -578,11 +532,6 @@ namespace Rebellion.AI.Scorers
             Planet targetPlanet
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreDefenseTravelEfficiency),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             Planet currentPlanet = context.Assessment.GetFleetPlanet(fleet);
             if (currentPlanet == null || targetPlanet == null)
                 return 0;
@@ -603,11 +552,6 @@ namespace Rebellion.AI.Scorers
             Planet targetPlanet
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreDefenseForceEfficiency),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             int fleetStrength = context.Assessment.GetFleetCombatValue(fleet);
             int requiredStrength = context.StrategicPlan.GetDefenseStrength(targetPlanet);
             return AIUtility.Fulfillment(requiredStrength, fleetStrength);
@@ -647,11 +591,6 @@ namespace Rebellion.AI.Scorers
         /// <returns>The engagement score.</returns>
         private double ScoreEngagement(AITurnContext context, AIOrbitalEngagementProposal proposal)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreEngagement),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             Fleet fleet = proposal.Fleet;
             Planet target = proposal.TargetPlanet;
             bool existingOrder = fleet?.Order?.OrderType == FleetOrderType.Engage;
@@ -698,11 +637,6 @@ namespace Rebellion.AI.Scorers
             bool existingOrder
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreAttack),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             if (!CanScoreAttack(context, fleet, targetPlanet))
                 return 0;
 
@@ -739,11 +673,6 @@ namespace Rebellion.AI.Scorers
             double value
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ApplyTravelOpportunityCost),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             GameConfig.AIConsiderationConfig consideration = context
                 .Game
                 .Config
@@ -781,11 +710,6 @@ namespace Rebellion.AI.Scorers
         /// <returns>The minimum arrival duration plus one action tick, or the maximum integer.</returns>
         private int FindReadyAttackActionTicks(AITurnContext context, Fleet fleet)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(FindReadyAttackActionTicks),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             int nearest = int.MaxValue;
             foreach (Planet target in context.Assessment.EnemyPlanets)
             {
@@ -840,11 +764,6 @@ namespace Rebellion.AI.Scorers
             bool includeBombardmentAction = false
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetAttackUtility),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             AIAssessment assessment = context.Assessment;
             GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
             GameConfig.AIAttackUtilityConfig utility = config.AttackUtility;
@@ -918,11 +837,6 @@ namespace Rebellion.AI.Scorers
             double actionReadiness
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetAttackSelectionValue),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             double value = GetSelectionValue(score);
             GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
             if (
@@ -957,11 +871,6 @@ namespace Rebellion.AI.Scorers
             double readiness = 1
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ApplyIntelAgeRisk),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             return score
                 * (
                     1
@@ -987,11 +896,6 @@ namespace Rebellion.AI.Scorers
             double readiness
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreIntelAgeRisk),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             int age = context.Assessment.GetPlanetIntelAge(targetPlanet);
             int orbitalAge = Math.Max(
                 age,
@@ -1026,11 +930,6 @@ namespace Rebellion.AI.Scorers
         /// <returns>The highest score an attack proposal for the target can attain.</returns>
         internal double GetNewAttackScoreUpperBound(AITurnContext context, Planet targetPlanet)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetNewAttackScoreUpperBound),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             if (context?.Game == null || targetPlanet == null)
                 return 0;
 
@@ -1049,11 +948,6 @@ namespace Rebellion.AI.Scorers
             Planet targetPlanet
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(IsExposedSectorBombardmentTarget),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             AIAssessment assessment = context.Assessment;
             double minimumOwnedPresence =
                 context.Game.Config.AI.FleetDeployment.ExposedSectorMinimumOwnedPresencePercent
@@ -1082,11 +976,6 @@ namespace Rebellion.AI.Scorers
             bool existingOrder
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreColonization),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             if (!CanScoreColonization(context, fleet, targetPlanet, existingOrder))
                 return 0;
 
@@ -1151,11 +1040,6 @@ namespace Rebellion.AI.Scorers
             )? targetRequirements
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreUnitTransfer),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             if (!CanScoreUnitTransfer(context, proposal))
                 return 0;
 
@@ -1241,11 +1125,6 @@ namespace Rebellion.AI.Scorers
             )? targetRequirements
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreRegimentTransfer),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             AIAssessment assessment = context.Assessment;
             GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
             GameConfig.AIAttackUtilityConfig utility = config.AttackUtility;
@@ -1392,11 +1271,6 @@ namespace Rebellion.AI.Scorers
             GameConfig.AIFleetDeploymentConfig config
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(EvaluateAttackReadiness),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             AIAssessment assessment = context.Assessment;
             AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
             var required = context.GetAttackRegimentRequirements(targetPlanet, fleet, false);
@@ -1457,11 +1331,6 @@ namespace Rebellion.AI.Scorers
             CapitalShip capitalShip
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreTransferReadinessGain),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             if (targetFleet?.Order?.OrderType == FleetOrderType.Defend)
             {
                 int requiredDefense = context.StrategicPlan.GetDefenseStrength(targetPlanet);
@@ -1497,11 +1366,6 @@ namespace Rebellion.AI.Scorers
             CapitalShip capitalShip
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreProjectedReadiness),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             AIAssessment assessment = context.Assessment;
             AIAttackDemand demand = context.GetAttackDemand(targetPlanet, targetFleet);
             int additionalBombardment = assessment.GetProjectedCapitalShipBombardmentStrength(
@@ -1575,11 +1439,6 @@ namespace Rebellion.AI.Scorers
             Planet targetPlanet
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreCaptureViability),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             AIAssessment assessment = context.Assessment;
             AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
             var required = context.GetAttackRegimentRequirements(targetPlanet, fleet, false);
@@ -1635,11 +1494,6 @@ namespace Rebellion.AI.Scorers
             Planet targetPlanet
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreAttackTravelEfficiency),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             Planet currentPlanet = context.Assessment.GetFleetPlanet(fleet);
             if (currentPlanet == null || targetPlanet == null)
                 return 0;
@@ -1735,11 +1589,6 @@ namespace Rebellion.AI.Scorers
             Planet targetPlanet
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreExpectedLossRisk),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             AIAssessment assessment = context.Assessment;
             List<double> risks = new List<double>();
             int orbitalDefense = Math.Max(
@@ -1794,11 +1643,6 @@ namespace Rebellion.AI.Scorers
         /// <returns>The opportunity cost score.</returns>
         private double ScoreOpportunityCost(AITurnContext context, Fleet fleet)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreOpportunityCost),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             AIAssessment assessment = context.Assessment;
             Planet currentPlanet = assessment.GetFleetPlanet(fleet);
             if (
@@ -1848,11 +1692,6 @@ namespace Rebellion.AI.Scorers
         /// <returns>True if the attack can be scored.</returns>
         private bool CanScoreAttack(AITurnContext context, Fleet fleet, Planet targetPlanet)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CanScoreAttack),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             if (
                 fleet == null
                 || targetPlanet == null
@@ -1881,11 +1720,6 @@ namespace Rebellion.AI.Scorers
         /// <returns>True when the fleet can win the projected orbital combat.</returns>
         private bool CanScoreEngagement(AITurnContext context, Fleet fleet, Planet targetPlanet)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CanScoreEngagement),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             if (
                 fleet?.RoleType != FleetRoleType.Battle
                 || targetPlanet == null
@@ -1912,11 +1746,6 @@ namespace Rebellion.AI.Scorers
             bool existingOrder
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CanScoreColonization),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             return fleet != null
                 && targetPlanet != null
                 && (fleet.RoleType == FleetRoleType.Colonization || existingOrder)
@@ -1934,11 +1763,6 @@ namespace Rebellion.AI.Scorers
         /// <returns>True if the proposal can be scored.</returns>
         private bool CanScoreUnitTransfer(AITurnContext context, AITransferUnitProposal proposal)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CanScoreUnitTransfer),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProposalScorer)
-            );
             if (
                 proposal == null
                 || proposal.SourceContainer == null

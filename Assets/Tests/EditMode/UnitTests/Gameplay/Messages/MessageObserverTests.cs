@@ -16,6 +16,42 @@ namespace Rebellion.Tests.Gameplay
     public class MessageObserverTests
     {
         [Test]
+        public void ProcessResults_ConsequenceWithReportContext_DoesNotDeliverSeparateMessage()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            Faction faction = new() { InstanceID = "faction" };
+            game.GetFactions().Add(faction);
+            Fleet fleet = new() { InstanceID = "fleet", OwnerInstanceID = faction.InstanceID };
+            MessageObserver observer = CreateObserver(
+                game,
+                new[]
+                {
+                    new MessageDefinition
+                    {
+                        ResultType = MessageResultType.FleetArrived,
+                        MessageType = MessageType.Fleet,
+                        Subject = "Arrived",
+                    },
+                }
+            );
+
+            Assert.IsEmpty(
+                observer.ProcessResults(
+                    new[]
+                    {
+                        new UnitArrivedResult
+                        {
+                            Unit = fleet,
+                            Destination = new Planet { InstanceID = "planet" },
+                            ReportContext = new DuelResult(),
+                        },
+                    }
+                )
+            );
+            Assert.IsTrue(faction.Messages.Values.All(messages => messages.Count == 0));
+        }
+
+        [Test]
         public void ProcessResults_LaterTemplateFails_DoesNotDeliverEarlierMessage()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());

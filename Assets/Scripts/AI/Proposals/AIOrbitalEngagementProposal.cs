@@ -250,7 +250,7 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Returns whether the fleet can capture the planet or launch a useful military bombardment.
+        /// Returns whether the fleet can capture the planet directly or after military bombardment.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="targetPlanet">The known target.</param>
@@ -277,7 +277,7 @@ namespace Rebellion.AI.Proposals
                 && context.Assessment.GetFleetBombardmentStrength(Fleet)
                     >= demand.BombardmentStrength
                 && (
-                    CanBombardMilitaryTargets(context, targetPlanet)
+                    context.CanUseMilitaryBombardment(Fleet, targetPlanet)
                     || context.Assessment.GetPlanetaryAssaultSuccessPercent(Fleet, targetPlanet)
                         >= context
                             .Game
@@ -286,21 +286,6 @@ namespace Rebellion.AI.Proposals
                             .FleetDeployment
                             .MinimumPlanetaryAssaultSuccessPercent
                 );
-        }
-
-        /// <summary>
-        /// Returns whether the fleet can immediately bombard hostile military targets.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="targetPlanet">The known target.</param>
-        /// <returns>True when hostile targets are exposed.</returns>
-        private bool CanBombardMilitaryTargets(AITurnContext context, Planet targetPlanet)
-        {
-            return Fleet != null
-                && targetPlanet != null
-                && context.Assessment.GetFleetBombardmentStrength(Fleet)
-                    > context.Assessment.GetBombardmentShieldStrength(targetPlanet)
-                && context.Assessment.HasBombardmentTargets(targetPlanet);
         }
     }
 }

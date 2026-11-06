@@ -5,7 +5,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.Gameplay
 {
@@ -26,10 +25,6 @@ namespace Rebellion.Gameplay
         /// <returns>Results emitted when a unit fully recovers.</returns>
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
-            using var measurement = PerformanceLogger.Measure(
-                "Game system tick",
-                subjectType: typeof(RecoveryTickProcessor)
-            );
             List<GameResult> results = new List<GameResult>();
             GameConfig.RecoveryConfig config = game.Config.Recovery;
 
@@ -58,9 +53,7 @@ namespace Rebellion.Gameplay
                 if (!officer.CanHeal())
                     continue;
 
-                int amount = officer.HealsFast(game.Config.Jedi.FastHealThreshold)
-                    ? config.FastHealAmount
-                    : config.NormalHealAmount;
+                int amount = officer.HealsFast() ? config.FastHealAmount : config.NormalHealAmount;
                 officer.Heal(amount);
 
                 if (officer.InjuryPoints == 0)
@@ -69,6 +62,7 @@ namespace Rebellion.Gameplay
                         new OfficerInjuredResult
                         {
                             Officer = officer,
+                            ParentAtInjury = officer.GetParent(),
                             Severity = 0,
                             Tick = game.CurrentTick,
                         }

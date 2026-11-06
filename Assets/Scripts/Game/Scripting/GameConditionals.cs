@@ -389,6 +389,9 @@ namespace Rebellion.Game.Scripting
 
         [PersistableAttribute]
         public string ParentInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string ParentBinding { get; set; }
     }
     #endregion
 }

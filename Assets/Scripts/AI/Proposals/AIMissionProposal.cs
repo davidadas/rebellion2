@@ -6,7 +6,6 @@ using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Proposals
 {
@@ -130,10 +129,6 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if this mission proposal may be selected.</returns>
         public override bool CanSelect(AITurnContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CanSelect),
-                subjectType: typeof(AIMissionProposal)
-            );
             if (!IsStillValid())
                 return false;
 
@@ -171,10 +166,6 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if this mission can still be created.</returns>
         public override bool CanExecute(AITurnContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CanExecute),
-                subjectType: typeof(AIMissionProposal)
-            );
             if (context?.Missions == null || !CanSelect(context))
                 return false;
             if (
@@ -281,10 +272,6 @@ namespace Rebellion.AI.Proposals
         /// <returns>The slowest participant's outbound travel duration.</returns>
         internal long EstimateOutboundTravelTicks(AITurnContext context, Planet departure = null)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(EstimateOutboundTravelTicks),
-                subjectType: typeof(AIMissionProposal)
-            );
             if (Participants.Count == 0)
                 return Enumerable.Empty<int>().Max();
 
@@ -313,10 +300,6 @@ namespace Rebellion.AI.Proposals
         /// <returns>The time until every surviving participant could return.</returns>
         internal long EstimateReturnTravelTicks(AITurnContext context, Planet departure = null)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(EstimateReturnTravelTicks),
-                subjectType: typeof(AIMissionProposal)
-            );
             if (departure != null)
                 return EstimateGroupReturnTravelTicks(context, Participants, departure);
 
@@ -388,10 +371,6 @@ namespace Rebellion.AI.Proposals
             long preparationTicks = 0
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(TryGetInterceptionTiming),
-                subjectType: typeof(AIMissionProposal)
-            );
             waitingTicks = 0;
             confidence = 0;
             if (

@@ -341,8 +341,7 @@ internal sealed class PlanetSectorWindowProjector
             showPlanetDetails
                 ? CreateSupportBar(uiContext, planet, popularSupport)
                 : CreateHiddenBar(),
-            galacticInformationTexture,
-            uiContext.GetTextureContentBounds
+            galacticInformationTexture
         );
     }
 

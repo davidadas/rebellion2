@@ -10,7 +10,6 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.Gameplay
 {
@@ -92,7 +91,6 @@ namespace Rebellion.Gameplay
         /// <returns>No reactions; snapshots are updated directly.</returns>
         public List<GameResult> HandleResults(IReadOnlyList<IntelligenceRevealedResult> results)
         {
-            using var measurement = PerformanceLogger.Measure("Fog revealed intelligence");
             foreach (IntelligenceRevealedResult result in results)
                 _commands.ObserveEntities(result.Recipient, result.Observations, result.Tick);
 
@@ -126,7 +124,6 @@ namespace Rebellion.Gameplay
         /// <param name="results">The game results to process.</param>
         public void ProcessResults(IReadOnlyList<GameResult> results)
         {
-            using var measurement = PerformanceLogger.Measure("Fog result processing");
             if (results == null)
                 return;
 
@@ -190,17 +187,17 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Records the attacking regiments observed landing after a successful planetary assault.
+        /// Records the attacking fleet and landed regiments observed during a successful planetary assault.
         /// </summary>
         /// <param name="result">The completed planetary assault.</param>
         private void RecordAssaultLanding(PlanetaryAssaultResult result)
         {
-            if (result?.Success != true || result.LandedRegiments.Count == 0)
+            if (result?.Success != true)
                 return;
 
             _commands.ObserveEntities(
                 FindFaction(result.DefenderOwnerInstanceID),
-                result.LandedRegiments,
+                result.AttackingFleets.Cast<ISceneNode>().Concat(result.LandedRegiments),
                 result.Tick
             );
         }
@@ -210,7 +207,6 @@ namespace Rebellion.Gameplay
         /// </summary>
         internal void ReconcileKnowledge()
         {
-            using var measurement = PerformanceLogger.Measure("Fog knowledge reconciliation");
             RefreshVisibleKnowledge();
             foreach (Faction faction in _game.GetFactions())
                 _recorder.ReconcileEntityLocations(faction);
@@ -221,13 +217,8 @@ namespace Rebellion.Gameplay
         /// </summary>
         internal void RefreshVisibleKnowledge()
         {
-            using var measurement = PerformanceLogger.Measure("Fog visible knowledge refresh");
             foreach (Faction faction in _game.GetFactions())
             {
-                using var factionMeasurement = PerformanceLogger.Measure(
-                    "Faction fog refresh",
-                    faction?.PeekInstanceID()
-                );
                 _commands.ObservePlanets(
                     faction,
                     _game
@@ -244,7 +235,6 @@ namespace Rebellion.Gameplay
         /// <param name="result">The destruction result to process.</param>
         private void RecordKnownDestruction(GameObjectDestroyedResult result)
         {
-            using var measurement = PerformanceLogger.Measure("Fog destruction update");
             if (result?.DestroyedObject == null)
                 return;
 
@@ -270,7 +260,6 @@ namespace Rebellion.Gameplay
         /// <param name="result">The officer death result.</param>
         private void RecordKnownOfficerDeath(OfficerKilledResult result)
         {
-            using var measurement = PerformanceLogger.Measure("Fog officer death update");
             if (result?.TargetOfficer == null)
                 return;
 
@@ -298,7 +287,6 @@ namespace Rebellion.Gameplay
             IEnumerable<CombatUnitSnapshot> units
         )
         {
-            using var measurement = PerformanceLogger.Measure("Fog combat loss update");
             List<Faction> informedFactions = new[]
             {
                 FindFaction(attackerFactionId),
@@ -395,7 +383,6 @@ namespace Rebellion.Gameplay
         /// <param name="result">The ownership change being observed.</param>
         private void RecordOwnershipChange(PlanetOwnershipChangedResult result)
         {
-            using var measurement = PerformanceLogger.Measure("Fog ownership update");
             if (result?.Planet == null)
                 return;
 

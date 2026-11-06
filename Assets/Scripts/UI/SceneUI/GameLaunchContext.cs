@@ -1,6 +1,5 @@
 using System;
 using Rebellion.Game;
-using Rebellion.Util.Reflection;
 
 /// <summary>
 /// Carries new-game and load-game selections between menu and strategy scenes.
@@ -50,7 +49,7 @@ public static class GameLaunchContext
     /// <param name="summary">The complete custom-game configuration.</param>
     internal static void ApplyCustomGameSummary(GameSummary summary)
     {
-        Summary = (summary ?? throw new ArgumentNullException(nameof(summary))).GetDeepCopy();
+        Summary = (summary ?? throw new ArgumentNullException(nameof(summary))).CreateCopy();
         SaveFileName = null;
         IsLoadGame = false;
         PlayIntroCutscene = false;

@@ -7,7 +7,6 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay.GameEvents;
-using Rebellion.SceneGraph;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Logging;
 
@@ -27,9 +26,6 @@ namespace Rebellion.Gameplay
             Processing,
             AwaitingCombatDecision,
         }
-
-        private static readonly Func<string, IDisposable> _sceneGraphMeasurementFactory =
-            MeasureSceneGraphOperation;
 
         private readonly Func<IEnumerable<GameResult>, bool, List<GameResult>> _processResults;
         private readonly Action<List<GameResult>> _processMessages;
@@ -72,14 +68,6 @@ namespace Rebellion.Gameplay
 
         public event Action CombatDecisionRequired;
         internal event Action CombatResumed;
-
-        /// <summary>
-        /// Adapts scene-node operation measurements to the active performance recorder.
-        /// </summary>
-        /// <param name="operation">The scene-node operation being measured.</param>
-        /// <returns>The enabled recorder's disposable measurement.</returns>
-        private static IDisposable MeasureSceneGraphOperation(string operation) =>
-            PerformanceLogger.Measure(operation, subjectType: typeof(BaseSceneNode));
 
         /// <summary>
         /// Creates tick scheduling with the existing result-release boundaries.
@@ -188,23 +176,9 @@ namespace Rebellion.Gameplay
 
             _tickInProgress = true;
             _tickState = TickExecutionState.Processing;
-            bool ownsPerformanceSegment = PerformanceLogger.BeginTick(_game.CurrentTick + 1);
-            Func<string, IDisposable> previousSceneGraphMeasurementFactory = null;
             try
             {
-                if (ownsPerformanceSegment)
-                {
-                    previousSceneGraphMeasurementFactory =
-                        BaseSceneNode.PerformanceMeasurementFactory;
-                    BaseSceneNode.PerformanceMeasurementFactory = _sceneGraphMeasurementFactory;
-                }
-
-                foreach (
-                    object step in PerformanceLogger.MeasureSteps(
-                        ProcessTickCore(),
-                        "Game tick active work"
-                    )
-                )
+                foreach (object step in ProcessTickCore())
                     yield return step;
             }
             finally
@@ -212,16 +186,6 @@ namespace Rebellion.Gameplay
                 _tickInProgress = false;
                 if (_tickState == TickExecutionState.Processing)
                     _tickState = TickExecutionState.Idle;
-                if (ownsPerformanceSegment)
-                {
-                    BaseSceneNode.PerformanceMeasurementFactory =
-                        previousSceneGraphMeasurementFactory;
-                    PerformanceLogger.EndTick(
-                        _tickState == TickExecutionState.AwaitingCombatDecision
-                            ? "Awaiting combat decision"
-                            : "Tick segment ended"
-                    );
-                }
             }
         }
 
@@ -239,9 +203,8 @@ namespace Rebellion.Gameplay
             ProcessResults(_resourceProduction.ProcessTick(_game));
             List<GameResult> manufacturingResults = new List<GameResult>();
             foreach (
-                IReadOnlyList<GameResult> manufacturingStep in PerformanceLogger.MeasureSteps(
-                    _manufacturing.ProcessTickIncrementally(_game),
-                    "Manufacturing processing"
+                IReadOnlyList<GameResult> manufacturingStep in _manufacturing.ProcessTickIncrementally(
+                    _game
                 )
             )
             {
@@ -252,13 +215,7 @@ namespace Rebellion.Gameplay
                 if (progress == null)
                     continue;
 
-                Action<Planet> progressCallbacks = TickProgressed;
-                if (progressCallbacks != null)
-                    InvokeMeasured(
-                        progressCallbacks,
-                        progress.Context as Planet,
-                        "Manufacturing progress callback"
-                    );
+                TickProgressed?.Invoke(progress.Context as Planet);
                 yield return null;
             }
             ProcessResults(manufacturingResults);
@@ -302,12 +259,7 @@ namespace Rebellion.Gameplay
 
             _processMessages(movementPhaseResults);
 
-            foreach (
-                object step in PerformanceLogger.MeasureSteps(
-                    ProcessRemainingTickPhases(),
-                    "Remaining tick active work"
-                )
-            )
+            foreach (object step in ProcessRemainingTickPhases())
                 yield return step;
         }
 
@@ -321,12 +273,7 @@ namespace Rebellion.Gameplay
             ProcessResults(_gameEvents.ProcessTick(_game));
             _naming.ProcessTick(_game);
             List<GameResult> aiResults = new List<GameResult>();
-            foreach (
-                object step in PerformanceLogger.MeasureSteps(
-                    _aiDirector.ProcessTickIncrementally(aiResults),
-                    "AI tick active work"
-                )
-            )
+            foreach (object step in _aiDirector.ProcessTickIncrementally(aiResults))
                 yield return step;
             ProcessResults(aiResults);
             ProcessDeferredBlockadeResults();
@@ -339,7 +286,7 @@ namespace Rebellion.Gameplay
             ProcessResults(_victory.ProcessTick(_game));
             _fogOfWarObserver.RefreshVisibleKnowledge();
             _tickState = TickExecutionState.Idle;
-            InvokeMeasured(TickCompleted, "Tick completed callback");
+            TickCompleted?.Invoke();
         }
 
         /// <summary>
@@ -347,7 +294,6 @@ namespace Rebellion.Gameplay
         /// </summary>
         private void ProcessMissionPhase()
         {
-            using var measurement = PerformanceLogger.Measure("Mission phase");
             List<GameResult> orderedResults = new List<GameResult>();
             List<GameResult> reactionResults = new List<GameResult>();
             List<GameResult> deferredResults = new List<GameResult>();
@@ -355,10 +301,7 @@ namespace Rebellion.Gameplay
                 (
                     IReadOnlyList<GameResult> Results,
                     bool RequiresImmediateSettlement
-                ) batch in PerformanceLogger.MeasureSteps(
-                    _missions.ProcessTickIncrementally(_game),
-                    "Mission processing"
-                )
+                ) batch in _missions.ProcessTickIncrementally(_game)
             )
             {
                 List<GameResult> sourceResults = batch
@@ -398,34 +341,8 @@ namespace Rebellion.Gameplay
         /// <returns>The space combat result generated by the encounter, when present.</returns>
         public SpaceCombatResult ResolveCombat(bool autoResolve)
         {
-            bool ownsPerformanceSegment = PerformanceLogger.BeginTick(_game.CurrentTick);
-            Func<string, IDisposable> previousSceneGraphMeasurementFactory = null;
-            try
-            {
-                if (ownsPerformanceSegment)
-                {
-                    previousSceneGraphMeasurementFactory =
-                        BaseSceneNode.PerformanceMeasurementFactory;
-                    BaseSceneNode.PerformanceMeasurementFactory = _sceneGraphMeasurementFactory;
-                }
-
-                using var measurement = PerformanceLogger.Measure("Combat resolution");
-                List<GameResult> combatResults = _spaceCombatCommands.ResolvePending(autoResolve);
-                return CompleteCombatResolution(combatResults);
-            }
-            finally
-            {
-                if (ownsPerformanceSegment)
-                {
-                    BaseSceneNode.PerformanceMeasurementFactory =
-                        previousSceneGraphMeasurementFactory;
-                    PerformanceLogger.EndTick(
-                        _tickState == TickExecutionState.AwaitingCombatDecision
-                            ? "Awaiting combat decision"
-                            : "Combat segment ended"
-                    );
-                }
-            }
+            List<GameResult> combatResults = _spaceCombatCommands.ResolvePending(autoResolve);
+            return CompleteCombatResolution(combatResults);
         }
 
         /// <summary>
@@ -435,39 +352,13 @@ namespace Rebellion.Gameplay
         /// <returns>The resulting space-combat summary, or null when retreat is unavailable.</returns>
         public SpaceCombatResult ResolveCombatRetreat(string retreatingFactionInstanceId)
         {
-            bool ownsPerformanceSegment = PerformanceLogger.BeginTick(_game.CurrentTick);
-            Func<string, IDisposable> previousSceneGraphMeasurementFactory = null;
-            try
-            {
-                if (ownsPerformanceSegment)
-                {
-                    previousSceneGraphMeasurementFactory =
-                        BaseSceneNode.PerformanceMeasurementFactory;
-                    BaseSceneNode.PerformanceMeasurementFactory = _sceneGraphMeasurementFactory;
-                }
+            List<GameResult> combatResults = _spaceCombatCommands.ResolvePendingRetreat(
+                retreatingFactionInstanceId
+            );
+            if (combatResults == null)
+                return null;
 
-                using var measurement = PerformanceLogger.Measure("Combat retreat resolution");
-                List<GameResult> combatResults = _spaceCombatCommands.ResolvePendingRetreat(
-                    retreatingFactionInstanceId
-                );
-                if (combatResults == null)
-                    return null;
-
-                return CompleteCombatResolution(combatResults);
-            }
-            finally
-            {
-                if (ownsPerformanceSegment)
-                {
-                    BaseSceneNode.PerformanceMeasurementFactory =
-                        previousSceneGraphMeasurementFactory;
-                    PerformanceLogger.EndTick(
-                        _tickState == TickExecutionState.AwaitingCombatDecision
-                            ? "Awaiting combat decision"
-                            : "Combat segment ended"
-                    );
-                }
-            }
+            return CompleteCombatResolution(combatResults);
         }
 
         /// <summary>
@@ -477,7 +368,6 @@ namespace Rebellion.Gameplay
         /// <returns>The space-combat result in the routed batch, when present.</returns>
         private SpaceCombatResult CompleteCombatResolution(List<GameResult> combatResults)
         {
-            using var measurement = PerformanceLogger.Measure("Combat result settlement");
             _tickInProgress = true;
             _tickState = TickExecutionState.Processing;
             try
@@ -511,9 +401,7 @@ namespace Rebellion.Gameplay
                 }
 
                 _processMessages(TakeDeferredMessageResults());
-                IEnumerator remainingTick = PerformanceLogger
-                    .MeasureSteps(ProcessRemainingTickPhases(), "Remaining tick active work")
-                    .GetEnumerator();
+                IEnumerator remainingTick = ProcessRemainingTickPhases().GetEnumerator();
                 try
                 {
                     while (remainingTick.MoveNext()) { }
@@ -523,7 +411,7 @@ namespace Rebellion.Gameplay
                     (remainingTick as IDisposable)?.Dispose();
                 }
 
-                InvokeMeasured(CombatResumed, "Combat resumed callback");
+                CombatResumed?.Invoke();
                 return completedCombat;
             }
             finally
@@ -540,7 +428,6 @@ namespace Rebellion.Gameplay
         /// </summary>
         internal void ReconcileLoadedState()
         {
-            using var measurement = PerformanceLogger.Measure("Loaded combat reconciliation");
             List<BlockadeChangedResult> blockadeTransitions = new List<BlockadeChangedResult>();
             List<GameResult> combatResults = ProcessMovementPhaseResults(
                 _spaceCombat.ProcessTick(_game),
@@ -567,7 +454,6 @@ namespace Rebellion.Gameplay
             ICollection<BlockadeChangedResult> blockadeTransitions
         )
         {
-            using var measurement = PerformanceLogger.Measure("Waypoint continuations");
             if (_spaceCombatCommands.HasPendingDecision)
                 return new List<GameResult>();
 
@@ -589,7 +475,6 @@ namespace Rebellion.Gameplay
             ICollection<BlockadeChangedResult> blockadeTransitions
         )
         {
-            using var measurement = PerformanceLogger.Measure("Movement result settlement");
             if (blockadeTransitions == null)
                 throw new ArgumentNullException(nameof(blockadeTransitions));
 
@@ -617,7 +502,6 @@ namespace Rebellion.Gameplay
             IReadOnlyCollection<BlockadeChangedResult> blockadeTransitions
         )
         {
-            using var measurement = PerformanceLogger.Measure("Blockade transitions");
             if (blockadeTransitions == null || blockadeTransitions.Count == 0)
                 return new List<GameResult>();
 
@@ -662,7 +546,6 @@ namespace Rebellion.Gameplay
         /// </summary>
         private void ProcessDeferredBlockadeResults()
         {
-            using var measurement = PerformanceLogger.Measure("Deferred blockade transitions");
             if (_deferredBlockadeResults.Count == 0)
                 return;
 
@@ -690,7 +573,7 @@ namespace Rebellion.Gameplay
         private void BeginPendingCombatDecision()
         {
             _tickState = TickExecutionState.AwaitingCombatDecision;
-            InvokeMeasured(CombatDecisionRequired, "Combat decision callback");
+            CombatDecisionRequired?.Invoke();
         }
 
         /// <summary>
@@ -719,58 +602,6 @@ namespace Rebellion.Gameplay
             }
 
             return results;
-        }
-
-        /// <summary>
-        /// Invokes a callback snapshot in order with optional timing for each handler.
-        /// </summary>
-        /// <param name="callbacks">The current multicast callback snapshot.</param>
-        /// <param name="operation">The operation identifying these callbacks.</param>
-        private static void InvokeMeasured(Action callbacks, string operation)
-        {
-            if (!PerformanceLogger.IsEnabled)
-            {
-                callbacks?.Invoke();
-                return;
-            }
-
-            if (callbacks == null)
-                return;
-            foreach (Action callback in callbacks.GetInvocationList())
-            {
-                using var measurement = PerformanceLogger.Measure(
-                    operation,
-                    subjectType: callback.Method.DeclaringType
-                );
-                callback();
-            }
-        }
-
-        /// <summary>
-        /// Invokes a callback snapshot with the existing argument and optional timing for each handler.
-        /// </summary>
-        /// <typeparam name="T">The callback argument type.</typeparam>
-        /// <param name="callbacks">The current multicast callback snapshot.</param>
-        /// <param name="value">The existing callback argument.</param>
-        /// <param name="operation">The operation identifying these callbacks.</param>
-        private static void InvokeMeasured<T>(Action<T> callbacks, T value, string operation)
-        {
-            if (!PerformanceLogger.IsEnabled)
-            {
-                callbacks?.Invoke(value);
-                return;
-            }
-
-            if (callbacks == null)
-                return;
-            foreach (Action<T> callback in callbacks.GetInvocationList())
-            {
-                using var measurement = PerformanceLogger.Measure(
-                    operation,
-                    subjectType: callback.Method.DeclaringType
-                );
-                callback(value);
-            }
         }
 
         /// <summary>

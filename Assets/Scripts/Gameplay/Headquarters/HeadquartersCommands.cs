@@ -59,22 +59,30 @@ namespace Rebellion.Gameplay
             IReadOnlyList<ISceneNode> accompanyingUnits
         )
         {
-            if (!_queries.CanRelocate(headquarters, destination) || accompanyingUnits == null)
+            if (
+                accompanyingUnits == null
+                || !_queries.TryResolveRelocation(
+                    headquarters,
+                    destination,
+                    out Building liveHeadquarters,
+                    out Planet liveDestination
+                )
+            )
                 return false;
 
-            Planet origin = headquarters.GetParentOfType<Planet>();
-            List<ISceneNode> relocationGroup = new List<ISceneNode> { headquarters };
+            Planet origin = liveHeadquarters.GetParentOfType<Planet>();
+            List<ISceneNode> relocationGroup = new List<ISceneNode> { liveHeadquarters };
             relocationGroup.AddRange(accompanyingUnits);
             bool moved = _movement.TryRequestMove(
                 relocationGroup,
-                destination,
-                headquarters.OwnerInstanceID
+                liveDestination,
+                liveHeadquarters.OwnerInstanceID
             );
-            if (!moved || headquarters.Movement == null)
+            if (!moved || liveHeadquarters.Movement == null)
                 return false;
 
             origin.IsHeadquarters = false;
-            Faction faction = _game.GetFactionByOwnerInstanceID(headquarters.OwnerInstanceID);
+            Faction faction = _game.GetFactionByOwnerInstanceID(liveHeadquarters.OwnerInstanceID);
             faction.HQInstanceID = null;
             return true;
         }

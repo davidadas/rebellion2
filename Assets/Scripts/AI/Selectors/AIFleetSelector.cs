@@ -3,7 +3,6 @@ using Rebellion.AI.Demands;
 using Rebellion.AI.Proposals;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Selectors
 {
@@ -31,11 +30,6 @@ namespace Rebellion.AI.Selectors
         /// <returns>True when the proposal is valid and nonconflicting.</returns>
         internal bool TrySelect(AITurnContext context, AIProposal proposal)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(TrySelect),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetSelector)
-            );
             List<AISelectionReservation> reservations = GetReservations(proposal);
             bool resourcesAvailable = proposal is AITransferUnitProposal resourceTransfer
                 ? _state.CanReserveTransferResources(resourceTransfer, reservations)

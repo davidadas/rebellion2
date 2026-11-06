@@ -288,6 +288,7 @@ namespace Rebellion.Tests.Gameplay
                 PositionY = 100,
             };
             _game.AttachNode(sourcePlanet, blockadedPlanet.GetParent());
+            sourcePlanet.SetFullPopularSupport(empireId);
             Regiment regiment = EntityFactory.CreateRegiment(
                 "TRANSIENT_INBOUND_REGIMENT",
                 empireId
@@ -439,6 +440,10 @@ namespace Rebellion.Tests.Gameplay
             _game.AttachNode(origin, sector);
             _game.AttachNode(blockadedPlanet, sector);
             _game.AttachNode(nextPlanet, sector);
+
+            origin.SetFullPopularSupport(allianceId);
+            blockadedPlanet.SetFullPopularSupport(empireId);
+            nextPlanet.SetFullPopularSupport(allianceId);
 
             Fleet fleet = AttachOperationalFleet(origin, allianceId, "TRANSIENT_FLEET");
             MovementCommands movement = _session.GetService<MovementCommands>();

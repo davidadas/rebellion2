@@ -33,6 +33,7 @@ public interface IGalaxyMapActions
 public sealed class GalaxyMapController
 {
     private readonly GalaxyMapProjector projector;
+    private readonly Func<bool> getQuickOpenMapItems;
     private readonly ReadOnlyCollection<GalaxyMapSector> readOnlySectors;
     private readonly List<GalaxyMapSector> sectors = new List<GalaxyMapSector>();
     private readonly Dictionary<string, GalaxyMapPlanet> planetsByInstanceId = new Dictionary<
@@ -62,9 +63,11 @@ public sealed class GalaxyMapController
     /// Creates a galaxy-map controller backed by the current strategy UI context.
     /// </summary>
     /// <param name="getUIContext">Returns the current strategy UI context.</param>
-    public GalaxyMapController(Func<UIContext> getUIContext)
+    /// <param name="getQuickOpenMapItems">Returns whether map items open on their first click.</param>
+    public GalaxyMapController(Func<UIContext> getUIContext, Func<bool> getQuickOpenMapItems = null)
     {
         projector = new GalaxyMapProjector(getUIContext);
+        this.getQuickOpenMapItems = getQuickOpenMapItems ?? (() => false);
         readOnlySectors = sectors.AsReadOnly();
     }
 
@@ -95,7 +98,7 @@ public sealed class GalaxyMapController
         view.Destroyed += HandleViewDestroyed;
         view.SectorHoverCleared += HandleSectorHoverCleared;
         view.SectorHovered += HandleSectorHovered;
-        view.SectorOpenRequested += HandleSectorOpenRequested;
+        view.SectorClicked += HandleSectorClicked;
     }
 
     /// <summary>
@@ -334,15 +337,22 @@ public sealed class GalaxyMapController
     }
 
     /// <summary>
-    /// Routes a cluster open request to the strategy screen.
+    /// Routes an eligible cluster click to the strategy screen.
     /// </summary>
     /// <param name="sectorInstanceId">The requested planet-sector identifier.</param>
     /// <param name="sourceX">The source-space horizontal pointer coordinate.</param>
     /// <param name="sourceY">The source-space vertical pointer coordinate.</param>
-    private void HandleSectorOpenRequested(string sectorInstanceId, int sourceX, int sourceY)
+    /// <param name="clickCount">The consecutive pointer click count.</param>
+    private void HandleSectorClicked(
+        string sectorInstanceId,
+        int sourceX,
+        int sourceY,
+        int clickCount
+    )
     {
         if (
-            !string.IsNullOrEmpty(sectorInstanceId)
+            clickCount >= (getQuickOpenMapItems() ? 1 : 2)
+            && !string.IsNullOrEmpty(sectorInstanceId)
             && sectorsByInstanceId.TryGetValue(sectorInstanceId, out GalaxyMapSector sector)
         )
             actions.OpenPlanetSectorWindow(sector.PlanetSector, sourceX, sourceY);
@@ -433,7 +443,7 @@ public sealed class GalaxyMapController
         view.Destroyed -= HandleViewDestroyed;
         view.SectorHoverCleared -= HandleSectorHoverCleared;
         view.SectorHovered -= HandleSectorHovered;
-        view.SectorOpenRequested -= HandleSectorOpenRequested;
+        view.SectorClicked -= HandleSectorClicked;
         view = null;
     }
 

@@ -7,7 +7,6 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Random;
 
 namespace Rebellion.Gameplay
 {
@@ -25,44 +24,6 @@ namespace Rebellion.Gameplay
         /// Raised when an immediate mission operation produces results.
         /// </summary>
         public event Action<IReadOnlyList<GameResult>> ResultsProduced;
-
-        /// <summary>
-        /// Creates mission commands with their creation and resolution dependencies.
-        /// </summary>
-        /// <param name="game">The active game state.</param>
-        /// <param name="provider">The random number provider for mission resolution.</param>
-        /// <param name="movementManager">The movement system used for participant travel.</param>
-        /// <param name="uprisingSystem">The uprising system used by uprising missions.</param>
-        /// <param name="queries">The mission eligibility and probability queries.</param>
-        /// <param name="movementQueries">The mission-return destination rules.</param>
-        /// <param name="betrayalResolver">The mission-betrayal resolver.</param>
-        /// <param name="personnelCommands">The personnel operations.</param>
-        public MissionCommands(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            MovementCommands movementManager,
-            UprisingResolver uprisingSystem,
-            MissionQueries queries,
-            MovementQueries movementQueries,
-            MissionBetrayalResolver betrayalResolver = null,
-            PersonnelCommands personnelCommands = null
-        )
-        {
-            _game = game ?? throw new ArgumentNullException(nameof(game));
-            _queries = queries ?? throw new ArgumentNullException(nameof(queries));
-            _personnelCommands =
-                personnelCommands ?? new PersonnelCommands(game, new PersonnelQueries(game));
-            _resolver = new MissionResolver(
-                game,
-                provider,
-                movementManager,
-                uprisingSystem,
-                queries,
-                movementQueries,
-                betrayalResolver,
-                _personnelCommands
-            );
-        }
 
         /// <summary>
         /// Creates mission commands around the registered mission resolver.

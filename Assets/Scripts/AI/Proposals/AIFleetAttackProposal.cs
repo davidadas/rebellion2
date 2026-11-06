@@ -186,6 +186,7 @@ namespace Rebellion.AI.Proposals
                 ) > BombardmentQueries.GetBombardmentShieldStrength(liveTarget);
             bool shouldBombardMilitaryTargets =
                 canDamageMilitaryTargets
+                && context.CanUseMilitaryBombardment(Fleet, liveTarget)
                 && BombardmentQueries.HasActiveMilitaryTargets(
                     liveTarget,
                     liveTarget.GetOwnerInstanceID()

@@ -265,6 +265,18 @@ namespace Rebellion.Game.Units
         [PersistableMember(Name = nameof(Loyalty))]
         private int _loyalty;
 
+        [PersistableMember(Name = nameof(ForceValue))]
+        private int _forceValue;
+
+        [PersistableMember(Name = nameof(ForceTrainingAdjustment))]
+        private int _forceTrainingAdjustment;
+
+        [PersistableIgnore]
+        private GameConfig.JediConfig _forceRules;
+
+        [PersistableIgnore]
+        private GameRoot _forceGame;
+
         public string EncyclopediaImagePath { get; set; }
         public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; }
         public string EncyclopediaDescription { get; set; }
@@ -277,14 +289,43 @@ namespace Rebellion.Game.Units
         // Officer Info.
         public bool IsMain { get; set; }
 
+        /// <summary>
+        /// Gets or sets the authored roster order used to choose a trainer and break equal training scores.
+        /// </summary>
+        public int RosterOrder { get; set; }
+
         public bool IsRecruitable { get; set; }
         public List<string> RecruitingFactionInstanceIDs { get; set; }
 
-        public bool IsCaptured { get; set; }
+        public bool IsCaptured
+        {
+            get => _isCaptured;
+            set
+            {
+                if (_isCaptured == value)
+                    return;
+                _isCaptured = value;
+                RefreshForceDiscoveryState();
+            }
+        }
+
+        private bool _isCaptured;
         public string CaptorInstanceID { get; set; }
         public bool CanEscape { get; set; }
         public int NextEscapeAttemptTick { get; set; }
-        public bool IsKilled { get; set; }
+        public bool IsKilled
+        {
+            get => _isKilled;
+            set
+            {
+                if (_isKilled == value)
+                    return;
+                _isKilled = value;
+                RefreshForceDiscoveryState();
+            }
+        }
+
+        private bool _isKilled;
 
         /// <summary>
         /// Gets whether this officer's loyalty can change and permit betrayal.
@@ -303,21 +344,94 @@ namespace Rebellion.Game.Units
         public int JediProbability { get; set; }
         public int JediLevel { get; set; }
         public int JediLevelVariance { get; set; }
-        public bool IsJediTrainer { get; set; }
+        public bool IsJediTrainer
+        {
+            get => _isJediTrainer;
+            set
+            {
+                if (_isJediTrainer == value)
+                    return;
+                _isJediTrainer = value;
+                RefreshForceDiscoveryState();
+            }
+        }
+
+        private bool _isJediTrainer;
         public bool GrowsForceOnMission { get; set; }
+
+        /// <summary>
+        /// Gets or sets additional discovery requirements evaluated with the scanning officer
+        /// available in the <c>$discoverer</c> binding.
+        /// </summary>
+        public List<GameConditional> ForceDiscoveryConditionals { get; set; } =
+            new List<GameConditional>();
 
         [PersistableIgnore]
         public bool IsKnownJedi { get; set; }
 
         public bool IsForceSensitive { get; set; }
         public bool IsForceEligible { get; set; }
-        public int ForceValue { get; set; }
-        public int ForceTrainingAdjustment { get; set; }
+
+        /// <summary>
+        /// Gets or sets the stored signed 16-bit Force experience value.
+        /// </summary>
+        [PersistableIgnore]
+        public int ForceValue
+        {
+            get => unchecked((short)_forceValue);
+            set
+            {
+                int stored = unchecked((short)value);
+                if (ForceValue == stored)
+                    return;
+                _forceValue = stored;
+                RefreshForceDiscoveryState();
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the stored signed 16-bit Force training adjustment.
+        /// </summary>
+        [PersistableIgnore]
+        public int ForceTrainingAdjustment
+        {
+            get => unchecked((short)_forceTrainingAdjustment);
+            set
+            {
+                int stored = unchecked((short)value);
+                if (ForceTrainingAdjustment == stored)
+                    return;
+                _forceTrainingAdjustment = stored;
+                RefreshForceDiscoveryState();
+            }
+        }
 
         [PersistableIgnore]
-        public int ForceRank => ForceValue + ForceTrainingAdjustment;
+        public int ForceRank => unchecked((short)(ForceValue + ForceTrainingAdjustment));
 
-        public bool IsDiscoveringForceUser { get; set; }
+        [PersistableIgnore]
+        public bool IsDiscoveringForceUser => _isDiscoveringForceUser;
+
+        [PersistableMember(Name = nameof(IsDiscoveringForceUser))]
+        private bool _isDiscoveringForceUser;
+
+        /// <summary>
+        /// Gets or sets the next campaign tick when an enabled discovery scan may run.
+        /// </summary>
+        [PersistableIgnore]
+        public int NextForceDiscoveryTick
+        {
+            get => _nextForceDiscoveryTick ?? 0;
+            set => _nextForceDiscoveryTick = value;
+        }
+
+        [PersistableMember(Name = nameof(NextForceDiscoveryTick))]
+        private int? _nextForceDiscoveryTick;
+
+        /// <summary>
+        /// Gets or sets the saved insertion order used when discovery scans share a due tick.
+        /// </summary>
+        public long ForceDiscoveryOrder { get; set; }
 
         // Rank Info.
         public OfficerRank[] AllowedRanks { get; set; }
@@ -353,7 +467,19 @@ namespace Rebellion.Game.Units
         public int ShipResearchVariance { get; set; }
 
         // Movement Info.
-        public MovementState Movement { get; set; }
+        public MovementState Movement
+        {
+            get => _movement;
+            set
+            {
+                if (ReferenceEquals(_movement, value))
+                    return;
+                _movement = value;
+                OnAvailabilityChanged();
+            }
+        }
+
+        private MovementState _movement;
         public bool IsRetired { get; set; }
         public string MissionReturnParentInstanceID { get; set; }
         public string MissionReturnLocationInstanceID { get; set; }
@@ -515,6 +641,7 @@ namespace Rebellion.Game.Units
             copy.TroopResearch = TroopResearch;
             copy.FacilityResearch = FacilityResearch;
             copy.IsMain = IsMain;
+            copy.RosterOrder = RosterOrder;
             copy.IsRecruitable = IsRecruitable;
             copy.RecruitingFactionInstanceIDs = new List<string>(RecruitingFactionInstanceIDs);
             copy.IsCaptured = IsCaptured;
@@ -530,12 +657,16 @@ namespace Rebellion.Game.Units
             copy.JediLevelVariance = JediLevelVariance;
             copy.IsJediTrainer = IsJediTrainer;
             copy.GrowsForceOnMission = GrowsForceOnMission;
+            copy.ForceDiscoveryConditionals = new List<GameConditional>(ForceDiscoveryConditionals);
             copy.IsKnownJedi = IsKnownJedi;
             copy.IsForceSensitive = IsForceSensitive;
             copy.IsForceEligible = IsForceEligible;
-            copy.ForceValue = ForceValue;
-            copy.ForceTrainingAdjustment = ForceTrainingAdjustment;
-            copy.IsDiscoveringForceUser = IsDiscoveringForceUser;
+            copy._forceValue = _forceValue;
+            copy._forceTrainingAdjustment = _forceTrainingAdjustment;
+            copy._forceRules = _forceRules;
+            copy._isDiscoveringForceUser = _isDiscoveringForceUser;
+            copy._nextForceDiscoveryTick = _nextForceDiscoveryTick;
+            copy.ForceDiscoveryOrder = ForceDiscoveryOrder;
             copy.AllowedRanks = AllowedRanks?.ToArray();
             copy.CurrentRank = CurrentRank;
             copy.InitialParentTypeID = InitialParentTypeID;
@@ -574,6 +705,82 @@ namespace Rebellion.Game.Units
         {
             _traitDefinitions =
                 traitDefinitions ?? throw new ArgumentNullException(nameof(traitDefinitions));
+        }
+
+        /// <summary>
+        /// Connects Force discovery and healing to the rules injected into the owning game.
+        /// Binding does not change the officer's saved Force values.
+        /// </summary>
+        /// <param name="rules">The current game's Force rules.</param>
+        /// <param name="game">The authoritative game owning the officer and its discovery clock.</param>
+        internal void BindForceRules(GameConfig.JediConfig rules, GameRoot game)
+        {
+            _forceRules = rules ?? throw new ArgumentNullException(nameof(rules));
+            _forceGame = game ?? throw new ArgumentNullException(nameof(game));
+        }
+
+        /// <summary>
+        /// Disconnects live discovery scheduling when this officer leaves the game registry.
+        /// Keeps the configured rules available for healing queries.
+        /// </summary>
+        internal void UnbindForceRuntime()
+        {
+            _forceGame = null;
+        }
+
+        /// <summary>
+        /// Reconciles discovery eligibility and restores a missing deadline after registration.
+        /// </summary>
+        internal void ReconcileForceDiscoveryState()
+        {
+            if (_forceGame != null && _isDiscoveringForceUser && !_nextForceDiscoveryTick.HasValue)
+                NextForceDiscoveryTick = unchecked(_forceGame.CurrentTick + 1);
+            RefreshForceDiscoveryState();
+        }
+
+        /// <summary>
+        /// Refreshes discovery after this officer changes physical containment or assignment.
+        /// </summary>
+        protected override void OnHierarchyChanged()
+        {
+            base.OnHierarchyChanged();
+            RefreshForceDiscoveryState();
+        }
+
+        /// <summary>
+        /// Refreshes discovery after an active or transit state changes in the containing subtree.
+        /// </summary>
+        protected override void OnAvailabilityChanged()
+        {
+            base.OnAvailabilityChanged();
+            RefreshForceDiscoveryState();
+        }
+
+        /// <summary>
+        /// Updates retained discovery eligibility and arms a newly enabled scanner for the next tick.
+        /// Availability changes evaluate the current rank even when it is zero.
+        /// </summary>
+        private void RefreshForceDiscoveryState()
+        {
+            if (_forceGame == null)
+                return;
+
+            bool shouldDiscover =
+                IsJediTrainer
+                && ForceRank >= _forceRules.DiscoveringForceUserThreshold
+                && !IsCaptured
+                && !IsKilled
+                && !IsOnMission()
+                && ((IMovable)this).GetTransitMovement() == null
+                && IsActive();
+            if (_isDiscoveringForceUser == shouldDiscover)
+                return;
+
+            _isDiscoveringForceUser = shouldDiscover;
+            NextForceDiscoveryTick = shouldDiscover ? unchecked(_forceGame.CurrentTick + 1) : 0;
+            ForceDiscoveryOrder = shouldDiscover ? _forceGame.AllocateForceDiscoveryOrder() : 0;
+            if (shouldDiscover)
+                _forceGame.RecordForceDiscoveryStarted(this);
         }
 
         /// <summary>
@@ -715,14 +922,14 @@ namespace Rebellion.Game.Units
         /// <returns>The rating value after officer-specific modifiers.</returns>
         public int GetEffectiveRating(SkillRating rating)
         {
-            int baseRating = GetBaseRating(rating);
-            int officerRating = rating switch
+            switch (rating)
             {
-                SkillRating.Diplomacy => ApplyForceRatingBonus(baseRating),
-                SkillRating.Espionage => ApplyForceRatingBonus(baseRating),
-                SkillRating.Combat => Math.Max(0, ApplyForceRatingBonus(baseRating) - InjuryPoints),
-                _ => baseRating,
-            };
+                case SkillRating.Diplomacy:
+                case SkillRating.Espionage:
+                case SkillRating.Combat:
+                    return CalculateForceRating(rating);
+            }
+            int officerRating = GetBaseRating(rating);
 
             if (rating == SkillRating.Leadership)
             {
@@ -834,9 +1041,16 @@ namespace Rebellion.Game.Units
         /// Attempts to place this officer in the custody of another faction.
         /// </summary>
         /// <param name="captorInstanceId">The instance ID of the capturing faction.</param>
+        /// <param name="game">The game whose clock and captive rules govern the transition.</param>
+        /// <param name="random">The simulation random stream used to arm the escape timer.</param>
         /// <param name="canEscape">Whether the officer can attempt to escape captivity.</param>
         /// <returns>True when the officer was captured; otherwise false.</returns>
-        internal bool TryCapture(string captorInstanceId, bool canEscape = true)
+        internal bool TryCapture(
+            string captorInstanceId,
+            GameRoot game,
+            IRandomNumberProvider random,
+            bool canEscape = true
+        )
         {
             if (((IMovable)this).GetTransitMovement() != null)
             {
@@ -846,10 +1060,55 @@ namespace Rebellion.Game.Units
                 return false;
             }
 
+            bool captureStateChanged = !IsCaptured;
             IsCaptured = true;
             CaptorInstanceID = captorInstanceId;
+            if (captureStateChanged && !CanEscape)
+            {
+                CanEscape = true;
+                ScheduleEscapeAttempt(game, random, game.CurrentTick);
+            }
+            bool escapeStateChanged = CanEscape != canEscape;
             CanEscape = canEscape;
+            if (escapeStateChanged)
+            {
+                if (canEscape)
+                    ScheduleEscapeAttempt(game, random, game.CurrentTick);
+                else
+                    NextEscapeAttemptTick = 0;
+            }
             return true;
+        }
+
+        /// <summary>
+        /// Arms this officer's next escape attempt before subsequent operations consume randomness.
+        /// Fixed intervals do not advance the simulation random stream.
+        /// </summary>
+        /// <param name="game">The game whose clock and captive rules determine the due tick.</param>
+        /// <param name="random">The simulation random stream.</param>
+        /// <param name="previousTick">The capture tick or the preceding attempt's due tick.</param>
+        internal void ScheduleEscapeAttempt(
+            GameRoot game,
+            IRandomNumberProvider random,
+            int previousTick
+        )
+        {
+            GameConfig.TickRangeConfig interval = game.Config.Captive.EscapeAttemptInterval;
+            int minimum = Math.Max(0, interval.Minimum);
+            int maximum = Math.Max(minimum, interval.Maximum);
+            int delay = maximum > minimum ? random.NextInt(minimum, maximum + 1) : minimum;
+            NextEscapeAttemptTick = IsCaptured && CanEscape ? checked(previousTick + delay) : 0;
+        }
+
+        /// <summary>
+        /// Clears custody and disables the escape timer when this officer is released.
+        /// </summary>
+        internal void ReleaseFromCaptivity()
+        {
+            IsCaptured = false;
+            CaptorInstanceID = null;
+            CanEscape = false;
+            NextEscapeAttemptTick = 0;
         }
 
         /// <summary>
@@ -883,13 +1142,17 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Returns whether the officer qualifies for the accelerated Force-user healing rate.
+        /// Returns whether the current Force rank meets the configured fast-healing threshold.
         /// </summary>
-        /// <param name="minimumForceRank">The minimum Force rank required for fast healing.</param>
-        /// <returns>True when the officer is Force-sensitive and meets the rank threshold; otherwise, false.</returns>
-        public bool HealsFast(int minimumForceRank)
+        /// <returns>True when the current rank meets the configured threshold.</returns>
+        public bool HealsFast()
         {
-            return IsForceSensitive && ForceRank >= minimumForceRank;
+            GameConfig.JediConfig rules =
+                _forceRules
+                ?? throw new InvalidOperationException(
+                    "Force rules are not configured for this officer."
+                );
+            return ForceRank >= rules.FastHealThreshold;
         }
 
         /// <summary>
@@ -903,6 +1166,22 @@ namespace Rebellion.Game.Units
                 && !IsCaptured
                 && !IsKilled
                 && !IsOnMission();
+        }
+
+        /// <summary>
+        /// Initializes a revealed Force rating only while its stored experience is zero.
+        /// </summary>
+        /// <param name="provider">The random number provider used for the inclusive template variance.</param>
+        internal void InitializeForceValue(IRandomNumberProvider provider)
+        {
+            if (ForceValue == 0 && IsForceSensitive && IsForceEligible)
+            {
+                int upperBound = unchecked(
+                    JediLevelVariance < 0 ? 1 - JediLevelVariance : JediLevelVariance + 1
+                );
+                int variance = upperBound > 1 ? provider.NextInt(0, upperBound) : 0;
+                ForceValue = JediLevel + (JediLevelVariance < 0 ? -variance : variance);
+            }
         }
 
         /// <summary>
@@ -948,6 +1227,19 @@ namespace Rebellion.Game.Units
         private int ApplyForceRatingBonus(int baseRating)
         {
             return baseRating + (baseRating * ForceRank) / _ratingPercentScale;
+        }
+
+        /// <summary>
+        /// Calculates the current signed rating after Force and injury modifiers.
+        /// </summary>
+        /// <param name="rating">The diplomacy, espionage, or combat rating to calculate.</param>
+        /// <returns>The signed sixteen-bit Force-adjusted rating.</returns>
+        private int CalculateForceRating(SkillRating rating)
+        {
+            int enhanced = ApplyForceRatingBonus(GetBaseRating(rating));
+            if (rating == SkillRating.Combat)
+                enhanced = Math.Max(0, enhanced - InjuryPoints);
+            return unchecked((short)enhanced);
         }
 
         /// <summary>

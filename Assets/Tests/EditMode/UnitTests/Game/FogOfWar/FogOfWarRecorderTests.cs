@@ -34,6 +34,10 @@ namespace Rebellion.Tests.Game.FogOfWar
             _game.AttachNode(movingUnit, _tatooine);
             Regiment removedUnit = CreateRegiment("REMOVED", _empire);
             _game.AttachNode(removedUnit, _coruscant);
+            Fleet movingFleet = CreateFleet("MOVING_FLEET", _empire);
+            _game.AttachNode(movingFleet, _tatooine);
+            CapitalShip movingShip = AddCapitalShip(movingFleet, _empire, "MOVING_SHIP");
+            _game.AttachNode(CreateOfficer("CARRIED_OFFICER", _empire), movingShip);
             foreach (var planet in planets)
             {
                 var sector = planet.GetParentOfType<Rebellion.Game.Galaxy.PlanetSector>();
@@ -41,6 +45,7 @@ namespace Rebellion.Tests.Game.FogOfWar
                 recorder.RecordEspionageSnapshot(batchedFaction, planet, sector, 10);
             }
             _game.MoveNode(movingUnit, _coruscant);
+            _game.MoveNode(movingFleet, _coruscant);
             _game.DeleteNode(removedUnit);
             _alliance.Fog.EntityLastSeenAt["ABSENT"] = _coruscant.InstanceID;
             batchedFaction.Fog.EntityLastSeenAt["ABSENT"] = _coruscant.InstanceID;
@@ -60,6 +65,99 @@ namespace Rebellion.Tests.Game.FogOfWar
             serializer.Serialize(expected, _alliance.Fog);
             serializer.Serialize(actual, batchedFaction.Fog);
             Assert.AreEqual(expected.ToString(), actual.ToString());
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void RecordPlanetSnapshots_NoValidObservations_PreservesLocationIndex(
+            bool includesDetachedPlanet
+        )
+        {
+            _alliance.Fog.EntityLastSeenAt["REMEMBERED"] = "UNKNOWN_PLANET";
+            Planet[] planets = includesDetachedPlanet
+                ? new[] { new Planet { InstanceID = "DETACHED" } }
+                : new Planet[0];
+
+            new FogOfWarRecorder().RecordPlanetSnapshots(_alliance, planets, 20);
+
+            Assert.AreEqual("UNKNOWN_PLANET", _alliance.Fog.EntityLastSeenAt["REMEMBERED"]);
+        }
+
+        [TestCase(PlanetIntelligenceCategory.Officers, false)]
+        [TestCase(PlanetIntelligenceCategory.Regiments, false)]
+        [TestCase(PlanetIntelligenceCategory.SpecialForces, false)]
+        [TestCase(PlanetIntelligenceCategory.Starfighters, false)]
+        [TestCase(PlanetIntelligenceCategory.Officers, true)]
+        [TestCase(PlanetIntelligenceCategory.Regiments, true)]
+        [TestCase(PlanetIntelligenceCategory.SpecialForces, true)]
+        [TestCase(PlanetIntelligenceCategory.Starfighters, true)]
+        public void RecordIntelligenceSnapshot_CarrierChangesFleet_KeepsOneCarrierPlacement(
+            PlanetIntelligenceCategory category,
+            bool changesPlanet
+        )
+        {
+            ObserveCarrierAfterFleetChange(category, changesPlanet);
+
+            string[] carrierFleets = _alliance
+                .Fog.Snapshots.Values.SelectMany(sector => sector.Planets.Values)
+                .SelectMany(snapshot => FindSnapshotEntities(snapshot, "CARRIER"))
+                .Select(ship => ship.GetParent().InstanceID)
+                .ToArray();
+
+            CollectionAssert.AreEqual(new[] { "FLEET_B" }, carrierFleets);
+        }
+
+        [TestCase(PlanetIntelligenceCategory.Officers, false)]
+        [TestCase(PlanetIntelligenceCategory.Regiments, false)]
+        [TestCase(PlanetIntelligenceCategory.SpecialForces, false)]
+        [TestCase(PlanetIntelligenceCategory.Starfighters, false)]
+        [TestCase(PlanetIntelligenceCategory.Officers, true)]
+        [TestCase(PlanetIntelligenceCategory.Regiments, true)]
+        [TestCase(PlanetIntelligenceCategory.SpecialForces, true)]
+        [TestCase(PlanetIntelligenceCategory.Starfighters, true)]
+        public void RecordIntelligenceSnapshot_CarrierChangesFleet_PreservesUnreportedCargo(
+            PlanetIntelligenceCategory category,
+            bool changesPlanet
+        )
+        {
+            (PlanetSnapshot snapshot, string[] rememberedIDs) = ObserveCarrierAfterFleetChange(
+                category,
+                changesPlanet
+            );
+            CapitalShip rememberedShip = snapshot
+                .Fleets.SelectMany(fleet => fleet.GetChildren<CapitalShip>())
+                .Single(ship => ship.InstanceID == "CARRIER");
+
+            CollectionAssert.AreEquivalent(
+                rememberedIDs,
+                rememberedShip
+                    .GetChildren<ISceneNode>()
+                    .Where(unit => unit.InstanceID != "REPORTED")
+                    .Select(unit => unit.InstanceID)
+            );
+        }
+
+        [TestCase(PlanetIntelligenceCategory.Officers, false)]
+        [TestCase(PlanetIntelligenceCategory.Regiments, false)]
+        [TestCase(PlanetIntelligenceCategory.SpecialForces, false)]
+        [TestCase(PlanetIntelligenceCategory.Starfighters, false)]
+        [TestCase(PlanetIntelligenceCategory.Officers, true)]
+        [TestCase(PlanetIntelligenceCategory.Regiments, true)]
+        [TestCase(PlanetIntelligenceCategory.SpecialForces, true)]
+        [TestCase(PlanetIntelligenceCategory.Starfighters, true)]
+        public void RecordIntelligenceSnapshot_CarrierChangesFleet_ReplacesReportedCargo(
+            PlanetIntelligenceCategory category,
+            bool changesPlanet
+        )
+        {
+            (PlanetSnapshot snapshot, _) = ObserveCarrierAfterFleetChange(category, changesPlanet);
+
+            CollectionAssert.AreEqual(
+                new[] { "REPORTED" },
+                FindSnapshotEntities(snapshot, "REPLACED")
+                    .Concat(FindSnapshotEntities(snapshot, "REPORTED"))
+                    .Select(unit => unit.InstanceID)
+            );
         }
 
         [Test]
@@ -1439,6 +1537,75 @@ namespace Rebellion.Tests.Game.FogOfWar
             Assert.AreEqual(_empire.InstanceID, snapshot.OwnerInstanceID);
             Assert.AreEqual(_empire.InstanceID, snapshot.Buildings.Single().OwnerInstanceID);
             Assert.AreEqual(knownBuilding.InstanceID, snapshot.Buildings.Single().InstanceID);
+        }
+
+        /// <summary>
+        /// Observes one cargo family after its carrier changes fleets, retaining older knowledge of other cargo.
+        /// </summary>
+        /// <param name="category">The cargo family revealed by the later report.</param>
+        /// <param name="changesPlanet">Whether the new fleet is on a different planet.</param>
+        /// <returns>The destination snapshot and the identifiers of cargo outside the later report.</returns>
+        private (PlanetSnapshot Snapshot, string[] RememberedIDs) ObserveCarrierAfterFleetChange(
+            PlanetIntelligenceCategory category,
+            bool changesPlanet
+        )
+        {
+            string reportedKind = category switch
+            {
+                PlanetIntelligenceCategory.Officers => "officer",
+                PlanetIntelligenceCategory.Regiments => "regiment",
+                PlanetIntelligenceCategory.SpecialForces => "special forces",
+                PlanetIntelligenceCategory.Starfighters => "starfighter",
+                _ => throw new AssertionException($"Unexpected cargo category: {category}"),
+            };
+            Fleet origin = CreateFleet("FLEET_A", _empire);
+            _game.AttachNode(origin, _coruscant);
+            CapitalShip ship = AddCapitalShip(origin, _empire, "CARRIER");
+            ship.RegimentCapacity = 4;
+            ship.StarfighterCapacity = 4;
+            ISceneNode[] knownCargo = new[]
+            {
+                "officer",
+                "regiment",
+                "special forces",
+                "starfighter",
+            }
+                .Select(kind =>
+                    CreateUnit(kind, kind == reportedKind ? "REPLACED" : "KNOWN_" + kind)
+                )
+                .ToArray();
+            foreach (ISceneNode unit in knownCargo)
+                _game.AttachNode(unit, ship);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            Planet destination = changesPlanet ? _tatooine : _coruscant;
+            Fleet target = CreateFleet("FLEET_B", _empire);
+            _game.AttachNode(target, destination);
+            _game.MoveNode(ship, target);
+            foreach (ISceneNode unit in knownCargo)
+                _game.DeleteNode(unit);
+            _game.AttachNode(CreateUnit(reportedKind, "REPORTED"), ship);
+            _game.AttachNode(
+                CreateUnit(reportedKind == "officer" ? "regiment" : "officer", "UNREPORTED"),
+                ship
+            );
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                destination,
+                destination.GetParentOfType<PlanetSector>(),
+                20,
+                category,
+                includeDescendants: true
+            );
+
+            return (
+                GetSnapshot(destination.GetParentOfType<PlanetSector>(), destination),
+                knownCargo
+                    .Where(unit => unit.InstanceID != "REPLACED")
+                    .Select(unit => unit.InstanceID)
+                    .ToArray()
+            );
         }
 
         /// <summary>

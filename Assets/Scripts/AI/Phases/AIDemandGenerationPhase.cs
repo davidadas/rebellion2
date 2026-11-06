@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Demands;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Phases
 {
@@ -48,11 +47,6 @@ namespace Rebellion.AI.Phases
         /// <param name="context">The current AI turn context.</param>
         public void Execute(AITurnContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(Execute),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIDemandGenerationPhase)
-            );
             foreach (object _ in ExecuteIncrementally(context)) { }
         }
 
@@ -68,14 +62,7 @@ namespace Rebellion.AI.Phases
 
             foreach (IAIDemandGenerator generator in _generators)
             {
-                using (
-                    PerformanceLogger.Measure(
-                        "Demand generator",
-                        context.Faction?.PeekInstanceID(),
-                        subjectType: generator.GetType()
-                    )
-                )
-                    generator.Generate(context);
+                generator.Generate(context);
                 yield return generator;
             }
         }
