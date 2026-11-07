@@ -6,10 +6,23 @@ using Rebellion.Game.Results;
 namespace Rebellion.Gameplay
 {
     /// <summary>
+    /// Distinguishes general command groups from deployed fighter categories.
+    /// </summary>
+    public enum TacticalCombatGroupKind
+    {
+        Command,
+        Fighter,
+    }
+
+    /// <summary>
     /// Owns the orders, navigation points, target lists, and formation of a tactical group.
     /// </summary>
     public sealed class TacticalCombatGroup
     {
+        private static readonly Comparer<TacticalCombatUnit> _memberComparer =
+            Comparer<TacticalCombatUnit>.Create(CompareMembers);
+        private readonly List<TacticalCombatUnit> _members = new();
+        private readonly List<TacticalCombatUnit> _requestedMembers = new();
         private readonly List<TacticalCombatUnit> _targets = new();
         private readonly List<TacticalCombatUnit> _firingTargets = new();
         private readonly List<Vector3> _waypoints = new();
@@ -28,7 +41,10 @@ namespace Rebellion.Gameplay
         public bool CloseAttack { get; private set; }
         public bool ActiveCloseAttack { get; private set; }
         public event Action<TacticalCombatGroup, bool> AttackModeRequested;
-        public bool IsFighterGroup { get; }
+        public TacticalCombatGroupKind Kind { get; }
+        public bool IsFighterGroup => Kind == TacticalCombatGroupKind.Fighter;
+        public int FighterCategory { get; internal set; } = 4;
+        public TacticalCombatFormationKind RequestedFormation { get; private set; }
         public bool IsAutomated { get; internal set; }
         public bool HasWaypoints => _waypoints.Count != 0;
         public TacticalCombatUnit PrimaryTarget => _targets.Count > 0 ? _targets[0] : null;
@@ -36,7 +52,10 @@ namespace Rebellion.Gameplay
         public IReadOnlyList<TacticalCombatUnit> Targets { get; }
         public IReadOnlyList<TacticalCombatUnit> RequestedTargets { get; }
         public IReadOnlyList<Vector3> RequestedWaypoints { get; }
-        public IReadOnlyList<TacticalCombatUnit> Members => Formation.Members;
+        public IReadOnlyList<TacticalCombatUnit> Members { get; }
+        public IReadOnlyList<TacticalCombatUnit> RequestedMembers { get; }
+        public TacticalCombatUnit PrimaryMember { get; private set; }
+        public TacticalCombatUnit RequestedLeader { get; private set; }
         public event Action<TacticalCombatUnit> HyperspaceRequested;
         public event Action<TacticalCombatGroup, TacticalCombatUnit> TargetRemoved;
         public event Action<TacticalCombatGroup> NavigationCompleted;
@@ -52,19 +71,83 @@ namespace Rebellion.Gameplay
             IReadOnlyList<TacticalCombatUnit> units,
             Vector3 sideLane
         )
+            : this(
+                id,
+                ValidateMembers(units),
+                sideLane,
+                units[0].IsFighter
+                    ? TacticalCombatGroupKind.Fighter
+                    : TacticalCombatGroupKind.Command
+            )
+        {
+            foreach (TacticalCombatUnit unit in units)
+            {
+                AddRequestedMember(unit);
+                AddMember(unit);
+            }
+        }
+
+        /// <summary>
+        /// Creates a requested group whose first member joins the active roster at command dispatch.
+        /// </summary>
+        /// <param name="id">The battle-local group identifier.</param>
+        /// <param name="first">The requested leader.</param>
+        /// <param name="sideLane">The side's forward direction.</param>
+        internal TacticalCombatGroup(int id, TacticalCombatUnit first, Vector3 sideLane)
+            : this(id, first, sideLane, TacticalCombatGroupKind.Command) { }
+
+        /// <summary>
+        /// Creates a group's marker and requested leader without assigning applied ownership.
+        /// </summary>
+        /// <param name="id">The battle-local group identifier.</param>
+        /// <param name="first">The requested leader.</param>
+        /// <param name="sideLane">The side's forward direction.</param>
+        /// <param name="kind">The command or deployed fighter group kind.</param>
+        private TacticalCombatGroup(
+            int id,
+            TacticalCombatUnit first,
+            Vector3 sideLane,
+            TacticalCombatGroupKind kind
+        )
+        {
+            ID = id;
+            Side = first.Side;
+            SideLane = sideLane;
+            Kind = kind;
+            Formation = new TacticalCombatFormation(
+                IsFighterGroup
+                    ? TacticalCombatFormationKind.Direct
+                    : TacticalCombatFormationKind.Line,
+                new[] { first },
+                sideLane
+            );
+            RequestedLeader = first;
+            RequestedFormation = Formation.Kind;
+            Members = _members.AsReadOnly();
+            RequestedMembers = _requestedMembers.AsReadOnly();
+            ComputedTargets = _firingTargets.AsReadOnly();
+            Targets = _targets.AsReadOnly();
+            RequestedTargets = _requestedTargets.AsReadOnly();
+            RequestedWaypoints = _requestedWaypoints.AsReadOnly();
+            AddRequestedMember(first);
+        }
+
+        /// <summary>
+        /// Validates a deployment roster before changing any member's ownership.
+        /// </summary>
+        /// <param name="units">The initial members.</param>
+        /// <returns>The first member supplying the group's side and category.</returns>
+        private static TacticalCombatUnit ValidateMembers(IReadOnlyList<TacticalCombatUnit> units)
         {
             if (units == null || units.Count == 0)
                 throw new ArgumentException(
                     "A tactical group requires at least one unit.",
                     nameof(units)
                 );
-            ID = id;
-            Side = units[0].Side;
-            SideLane = sideLane;
-            IsFighterGroup = units[0].IsFighter;
+            TacticalCombatUnit first = units[0];
             for (int index = 0; index < units.Count; index++)
             {
-                if (units[index].Side != Side || units[index].IsFighter != IsFighterGroup)
+                if (units[index].Side != first.Side || units[index].IsFighter != first.IsFighter)
                     throw new ArgumentException(
                         "A tactical group must contain one side and unit category.",
                         nameof(units)
@@ -76,20 +159,81 @@ namespace Rebellion.Gameplay
                             nameof(units)
                         );
             }
-            foreach (TacticalCombatUnit unit in units)
-                unit.GroupID = id;
-            Formation = new TacticalCombatFormation(
-                IsFighterGroup
-                    ? TacticalCombatFormationKind.Direct
-                    : TacticalCombatFormationKind.Line,
-                units,
-                sideLane
-            );
-            ComputedTargets = _firingTargets.AsReadOnly();
-            Targets = _targets.AsReadOnly();
-            RequestedTargets = _requestedTargets.AsReadOnly();
-            RequestedWaypoints = _requestedWaypoints.AsReadOnly();
+            return first;
         }
+
+        /// <summary>
+        /// Adds requested ownership without changing the movement and firing roster.
+        /// </summary>
+        /// <param name="unit">The requested member.</param>
+        internal void AddRequestedMember(TacticalCombatUnit unit)
+        {
+            if (!_requestedMembers.Contains(unit))
+            {
+                int index = _requestedMembers.BinarySearch(unit, _memberComparer);
+                _requestedMembers.Insert(index < 0 ? ~index : index, unit);
+            }
+            unit.RequestedGroupID = ID;
+        }
+
+        /// <summary>
+        /// Releases requested ownership while retaining the active formation until dispatch.
+        /// </summary>
+        /// <param name="unit">The member being reassigned.</param>
+        internal void RemoveRequestedMember(TacticalCombatUnit unit)
+        {
+            _requestedMembers.Remove(unit);
+            if (ReferenceEquals(RequestedLeader, unit))
+                RequestedLeader = _requestedMembers.Count > 0 ? _requestedMembers[0] : null;
+            if (unit.RequestedGroupID == ID)
+                unit.RequestedGroupID = null;
+        }
+
+        /// <summary>
+        /// Applies a queued membership addition to the movement and firing roster.
+        /// </summary>
+        /// <param name="unit">The joining member.</param>
+        internal void AddMember(TacticalCombatUnit unit)
+        {
+            if (!_members.Contains(unit))
+            {
+                int index = _members.BinarySearch(unit, _memberComparer);
+                _members.Insert(index < 0 ? ~index : index, unit);
+            }
+            PrimaryMember ??= unit;
+            Formation.AddMember(unit);
+            unit.GroupID = ID;
+        }
+
+        /// <summary>
+        /// Removes applied ownership without overwriting a later requested reassignment.
+        /// </summary>
+        /// <param name="unit">The departing member.</param>
+        internal void RemoveMember(TacticalCombatUnit unit)
+        {
+            _members.Remove(unit);
+            if (ReferenceEquals(PrimaryMember, unit))
+                PrimaryMember = _members.Count > 0 ? _members[0] : null;
+            Formation.RemoveMember(unit);
+            if (unit.GroupID == ID)
+                unit.GroupID = null;
+        }
+
+        /// <summary>
+        /// Orders member traversal by unsigned battle registration identity.
+        /// </summary>
+        /// <param name="first">The first member.</param>
+        /// <param name="second">The second member.</param>
+        /// <returns>The registry ordering.</returns>
+        private static int CompareMembers(TacticalCombatUnit first, TacticalCombatUnit second) =>
+            ((uint)first.Index).CompareTo((uint)second.Index);
+
+        /// <summary>
+        /// Rebuilds the active marker around its designated leader before adding the remaining roster.
+        /// </summary>
+        /// <param name="formation">The due marker layout.</param>
+        internal void ApplyFormation(TacticalCombatFormationKind formation) =>
+            Formation.SetKind(formation, PrimaryMember, Members);
 
         /// <summary>
         /// Changes the group's tactical behavior and clears the lists owned by that order.
@@ -148,14 +292,14 @@ namespace Rebellion.Gameplay
             )
                 _targets.Clear();
             if (order == TacticalCombatOrder.HoldFire && !IsFighterGroup)
-                Formation.SetKind(TacticalCombatFormationKind.Surround);
+                ApplyFormation(TacticalCombatFormationKind.Surround);
             RebuildFiringTargets(null);
         }
 
         /// <summary>
         /// Replaces or extends the group's designated target list.
         /// </summary>
-        /// <param name="target">The opposing target.</param>
+        /// <param name="target">The designated unit.</param>
         /// <param name="append">Whether to append instead of replace.</param>
         public void SetTarget(TacticalCombatUnit target, bool append = false)
         {
@@ -166,16 +310,12 @@ namespace Rebellion.Gameplay
         /// <summary>
         /// Updates the requested target list before its delayed command takes effect.
         /// </summary>
-        /// <param name="target">The opposing target.</param>
+        /// <param name="target">The designated unit.</param>
         /// <param name="append">Whether to extend the requested list.</param>
         internal void RequestTarget(TacticalCombatUnit target, bool append)
         {
             if (target == null)
                 throw new ArgumentNullException(nameof(target));
-            if (target.Side == Side)
-                throw new InvalidOperationException(
-                    "An attack target must belong to the opposing side."
-                );
             if (!append)
                 _requestedTargets.Clear();
             if (!_requestedTargets.Contains(target))
@@ -269,8 +409,19 @@ namespace Rebellion.Gameplay
         public void SetAttackMode(bool closeAttack)
         {
             CloseAttack = closeAttack;
+            if (!IsFighterGroup)
+                RequestedFormation = closeAttack
+                    ? TacticalCombatFormationKind.Surround
+                    : TacticalCombatFormationKind.Line;
             AttackModeRequested?.Invoke(this, closeAttack);
         }
+
+        /// <summary>
+        /// Updates the requested layout before the active marker is rebuilt by command dispatch.
+        /// </summary>
+        /// <param name="formation">The requested command-group layout.</param>
+        internal void RequestFormation(TacticalCombatFormationKind formation) =>
+            RequestedFormation = formation;
 
         /// <summary>
         /// Applies the due engagement mode and its associated capital-ship formation.
@@ -280,7 +431,7 @@ namespace Rebellion.Gameplay
         {
             ActiveCloseAttack = closeAttack;
             if (!IsFighterGroup)
-                Formation.SetKind(
+                ApplyFormation(
                     closeAttack
                         ? TacticalCombatFormationKind.Surround
                         : TacticalCombatFormationKind.Line
@@ -484,7 +635,7 @@ namespace Rebellion.Gameplay
             {
                 if (heading == Vector3.Zero)
                     return Formation.Heading;
-                return TacticalCombatGeometry.NormalizeFighterHeading(heading);
+                return TacticalCombatGeometry.NormalizeWithStoredScale(heading);
             }
             else
             {
@@ -556,7 +707,7 @@ namespace Rebellion.Gameplay
                 delta = SideLane * -5;
             }
             else
-                heading = TacticalCombatGeometry.Normalize(delta);
+                heading = TacticalCombatGeometry.NormalizeWithStoredScale(delta);
             float distance = TacticalCombatGeometry.GetLength(delta);
             double buffered = (double)distance + 2;
             if (buffered >= Engagement.MinimumRange && buffered <= Engagement.MaximumRange)
@@ -569,7 +720,8 @@ namespace Rebellion.Gameplay
                 if (distance < Engagement.MinimumRange)
                 {
                     if (
-                        groups?.TryGetValue(target.GroupID, out TacticalCombatGroup opposing)
+                        target.GroupID is int targetGroupID
+                        && groups?.TryGetValue(targetGroupID, out TacticalCombatGroup opposing)
                             == true
                         && opposing.PrimaryTarget != null
                         && ContainsMember(opposing.PrimaryTarget)
@@ -583,7 +735,7 @@ namespace Rebellion.Gameplay
                 if (!CloseAttack && IsAutomated && Members.Count >= 8)
                     SetAttackMode(true);
             }
-            Vector3 direction = TacticalCombatGeometry.Normalize(delta);
+            Vector3 direction = TacticalCombatGeometry.NormalizeWithStoredScale(delta);
             float scalar;
             if (ActiveCloseAttack)
                 scalar = Engagement.MovementDistance;

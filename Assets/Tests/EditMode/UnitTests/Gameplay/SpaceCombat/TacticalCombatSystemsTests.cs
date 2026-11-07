@@ -51,6 +51,57 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ScaleByHull_PartialHull_MultipliesBeforeDividing()
+        {
+            TacticalCombatSystems systems = CreateSystems(currentHull: 631);
+
+            float scaled = systems.ScaleByHull(BitConverter.Int32BitsToSingle(0x42122223));
+
+            Assert.AreEqual(0x41b86b98, BitConverter.SingleToInt32Bits(scaled));
+        }
+
+        [TestCase(8, 88)]
+        [TestCase(0, 96)]
+        [TestCase(-8, 104)]
+        public void ApplyHullLoss_LivingUnit_ClearsShieldsAndAppliesLoss(
+            float loss,
+            float expectedHull
+        )
+        {
+            TacticalCombatSystems systems = new(false, 96, 96, 12, 0, 0, 0, 0, 0, 0, 0);
+
+            systems.ApplyHullLoss(loss);
+
+            Assert.AreEqual(expectedHull, systems.Hull);
+            Assert.AreEqual(0, systems.Shields);
+        }
+
+        [TestCase(0)]
+        [TestCase(-1)]
+        public void ApplyHullLoss_NonpositiveEntry_RemainsDeadWithoutChangingShields(
+            float entryHull
+        )
+        {
+            TacticalCombatSystems systems = new(false, 96, entryHull, 12, 0, 0, 0, 0, 0, 0, 0);
+
+            systems.ApplyHullLoss(-8);
+
+            Assert.AreEqual(0, systems.Hull);
+            Assert.AreEqual(12, systems.Shields);
+        }
+
+        [Test]
+        public void ApplyHullLoss_FatalLoss_ClearsHullAndShields()
+        {
+            TacticalCombatSystems systems = new(false, 96, 96, 12, 0, 0, 0, 0, 0, 0, 0);
+
+            systems.ApplyHullLoss(1000);
+
+            Assert.AreEqual(0, systems.Hull);
+            Assert.AreEqual(0, systems.Shields);
+        }
+
+        [Test]
         public void ApplyComponentEvent_FourEngineHits_DisablesMovement()
         {
             TacticalCombatSystems systems = CreateSystems();

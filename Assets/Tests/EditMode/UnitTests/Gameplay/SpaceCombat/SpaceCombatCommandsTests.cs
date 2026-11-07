@@ -3899,6 +3899,110 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void BeginTacticalCombat_SixteenMatchingFighters_SplitsLeadingHalvesInBucketOrder()
+        {
+            (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
+                CreateTacticalEncounter();
+            Planet planet = attacker.GetParentOfType<Planet>();
+            for (int index = 1; index <= 16; index++)
+            {
+                Starfighter fighter = new()
+                {
+                    InstanceID = $"split-fighter-{index}",
+                    TypeID = "SFEM01",
+                    OwnerInstanceID = attacker.OwnerInstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                    SublightSpeed = 9,
+                    Agility = 5,
+                    LaserCannon = 5,
+                    LaserRange = 12,
+                };
+                game.AttachNode(fighter, planet);
+            }
+
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+
+            TacticalCombatGroup[] groups = battle
+                .Groups.Where(group => group.Side == battle.PlayerSide && group.IsFighterGroup)
+                .OrderBy(group => group.ID)
+                .ToArray();
+            string[][] expected =
+            {
+                new[]
+                {
+                    "split-fighter-13",
+                    "split-fighter-14",
+                    "split-fighter-15",
+                    "split-fighter-16",
+                },
+                new[]
+                {
+                    "split-fighter-5",
+                    "split-fighter-6",
+                    "split-fighter-7",
+                    "split-fighter-8",
+                },
+                new[]
+                {
+                    "split-fighter-9",
+                    "split-fighter-10",
+                    "split-fighter-11",
+                    "split-fighter-12",
+                },
+                new[]
+                {
+                    "split-fighter-1",
+                    "split-fighter-2",
+                    "split-fighter-3",
+                    "split-fighter-4",
+                },
+            };
+            Assert.AreEqual(expected.Length, groups.Length);
+            for (int index = 0; index < expected.Length; index++)
+                CollectionAssert.AreEqual(
+                    expected[index],
+                    groups[index].Members.Select(unit => unit.InstanceID),
+                    $"Fighter bucket {index}"
+                );
+        }
+
+        [Test]
+        public void CancelTacticalPreparation_UnstartedEncounter_AllowsPreparingPendingEncounterAgain()
+        {
+            (_, SpaceCombatCommands commands, _) = CreateTacticalEncounter();
+            TacticalCombatSession prepared = commands.BeginTacticalCombat();
+
+            commands.CancelTacticalPreparation(prepared);
+
+            Assert.IsTrue(commands.HasPendingDecision);
+            TacticalCombatSession retried = commands.BeginTacticalCombat();
+            Assert.AreNotSame(prepared, retried);
+            CollectionAssert.AreEqual(
+                prepared.Units.Select(unit => unit.InstanceID),
+                retried.Units.Select(unit => unit.InstanceID)
+            );
+        }
+
+        [Test]
+        public void CancelTacticalPreparation_StartedEncounter_PreservesActiveEncounter()
+        {
+            (_, SpaceCombatCommands commands, _) = CreateTacticalEncounter();
+            TacticalCombatSession prepared = commands.BeginTacticalCombat();
+            for (int frame = 0; frame < 300 && prepared.SystemTime == 3; frame++)
+                prepared.Advance(50);
+            Assert.Greater(prepared.SystemTime, 3);
+
+            Assert.Throws<InvalidOperationException>(() =>
+                commands.CancelTacticalPreparation(prepared)
+            );
+
+            Assert.IsTrue(commands.HasPendingDecision);
+            Assert.Throws<InvalidOperationException>(() => commands.BeginTacticalCombat());
+        }
+
+        [Test]
         public void CompleteTacticalCombat_UnfinishedEncounter_PreservesPendingDecision()
         {
             (_, SpaceCombatCommands commands, _) = CreateTacticalEncounter();
@@ -4005,6 +4109,53 @@ namespace Rebellion.Tests.Gameplay
                 result
                     .Events.OfType<GameObjectDestroyedResult>()
                     .Any(item => ReferenceEquals(item.DestroyedObject, stranded))
+            );
+        }
+
+        [Test]
+        public void CompleteTacticalCombat_DriveRepairedDuringBattle_MovesRepairedSurvivorWithFleet()
+        {
+            (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
+                CreateTacticalEncounter();
+            (Planet destination, _) = CreatePlanet(game, "repair-withdrawal-home", "FNEMP1");
+            Fleet fleet = attacker.GetParentOfType<Fleet>();
+            CapitalShip companion = (CapitalShip)attacker.CreateCopy();
+            companion.InstanceID = "mobile-companion";
+            game.AttachNode(companion, fleet);
+            attacker.SystemDamage.PrimaryHyperdrive = 1;
+            attacker.SystemDamage.BackupHyperdrive = 1;
+            foreach (CapitalShip ship in fleet.GetChildren<CapitalShip>())
+            {
+                ship.DamageControl = 0;
+                foreach (int[] battery in ship.PrimaryWeapons.Values)
+                    for (int arc = 0; arc < 4; arc++)
+                        battery[arc] = 0;
+            }
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+            Assert.IsTrue(battle.CanWithdraw(battle.PlayerSide));
+            Assert.AreEqual(0, attacker.GetOperationalHyperdrive());
+            TacticalCombatUnit repaired = battle.GetUnit(attacker.InstanceID);
+            repaired.Systems.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, true);
+            repaired.Systems.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, true);
+            Assert.IsTrue(repaired.Systems.HasHyperdrive);
+            Assert.IsTrue(battle.BeginWithdrawal(battle.PlayerSide));
+            for (int frame = 0; frame < 6000 && !battle.IsComplete; frame++)
+                battle.Advance(50);
+            Assert.IsTrue(battle.IsComplete);
+            Assert.AreEqual(0, attacker.GetOperationalHyperdrive());
+
+            SpaceCombatResult result = commands
+                .CompleteTacticalCombat(battle)
+                .OfType<SpaceCombatResult>()
+                .Single();
+
+            Assert.AreSame(fleet, attacker.GetParentOfType<Fleet>());
+            Assert.AreSame(fleet, companion.GetParentOfType<Fleet>());
+            Assert.AreSame(destination, fleet.GetParentOfType<Planet>());
+            Assert.IsNotNull(fleet.Movement);
+            CollectionAssert.AreEquivalent(
+                new ISceneNode[] { attacker, companion },
+                result.WithdrawnUnits
             );
         }
 

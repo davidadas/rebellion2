@@ -18,6 +18,8 @@ namespace Rebellion.Gameplay
         private readonly List<TacticalCombatUnit> _units;
         private readonly List<TacticalCombatGroup> _groups;
         private readonly Dictionary<int, TacticalCombatGroup> _groupsByID = new();
+        private readonly TacticalCombatGroup[,] _objectGroups = new TacticalCombatGroup[2, 8];
+        private readonly TacticalCombatGroup[,] _fighterGroups = new TacticalCombatGroup[2, 4];
         private readonly Dictionary<string, TacticalCombatUnit> _unitsByID = new(
             StringComparer.Ordinal
         );
@@ -46,6 +48,8 @@ namespace Rebellion.Gameplay
         private float _elapsedInTick;
         private float _completionMilliseconds;
         private bool _completionStarted;
+        private bool _userPaused;
+        private int _moviePauses;
         private readonly SpaceCombatSideOutcome[] _outcomes = new SpaceCombatSideOutcome[2];
 
         public IReadOnlyList<TacticalCombatUnit> Units { get; }
@@ -57,7 +61,13 @@ namespace Rebellion.Gameplay
         public int SystemTime { get; private set; } = 3;
         public bool IsComplete { get; private set; }
         public CombatSide Winner { get; private set; } = CombatSide.Draw;
-        public bool IsPaused { get; set; }
+        public bool IsPaused
+        {
+            get => _userPaused || _moviePauses > 0;
+            set => _userPaused = value;
+        }
+        public TacticalCombatMovieRequest PendingAttackRunMovie { get; private set; }
+        public TacticalCombatSceneryRandom SceneryRandom { get; }
         public TacticalCombatBattleStation BattleStation { get; }
         public Rebellion.Game.SpaceCombat.TacticalCombatDefinition Definition { get; }
         public Rebellion.Game.SpaceCombat.TacticalCombatEnvironmentDefinition Environment { get; }
@@ -70,8 +80,11 @@ namespace Rebellion.Gameplay
         public event Action<TacticalCombatUnit> FighterRecovered;
         public event Action<TacticalCombatGroup> RecoveryUnavailable;
         public event Action Completed;
+        public event Action GroupCategoryChanged;
+        public bool IsDirectControlEnabled => !GetSide(PlayerSide).IsAutomated;
         public event Action<TacticalCombatUnit, TacticalCombatUnit> SuperlaserFired;
         public event Action<TacticalCombatAttackRun> AttackRunChanged;
+        public event Action<TacticalCombatMovieRequest> AttackRunMovieRequested;
 
         /// <summary>
         /// Creates an encounter from its ordered units, groups, and captured side state.
@@ -85,6 +98,8 @@ namespace Rebellion.Gameplay
         /// <param name="random">The encounter's random-number stream.</param>
         /// <param name="definition">The shared tactical presentation definitions.</param>
         /// <param name="environment">The planet-specific tactical scenery and texture palette.</param>
+        /// <param name="sceneryRandom">The encounter-owned scenery stream, when presentation is available.</param>
+        /// <param name="presentationClock">An optional unscaled millisecond clock for encounter replay.</param>
         public TacticalCombatSession(
             IReadOnlyList<TacticalCombatUnit> units,
             IReadOnlyList<TacticalCombatGroup> groups,
@@ -94,7 +109,9 @@ namespace Rebellion.Gameplay
             float battleDepth,
             IRandomNumberProvider random,
             Rebellion.Game.SpaceCombat.TacticalCombatDefinition definition = null,
-            Rebellion.Game.SpaceCombat.TacticalCombatEnvironmentDefinition environment = null
+            Rebellion.Game.SpaceCombat.TacticalCombatEnvironmentDefinition environment = null,
+            TacticalCombatSceneryRandom sceneryRandom = null,
+            Func<uint> presentationClock = null
         )
         {
             this._units = new(units ?? throw new ArgumentNullException(nameof(units)));
@@ -111,12 +128,20 @@ namespace Rebellion.Gameplay
                 );
             Definition = definition;
             Environment = environment;
+            SceneryRandom = sceneryRandom;
             PlayerSide = playerSide;
             BattleDepth = battleDepth;
             Navigation = new TacticalCombatNavigation(battleDepth);
+            string playerFactionID = definition
+                ?.Factions.Find(faction => faction.FactionIndex == GetSide(playerSide).FactionIndex)
+                ?.FactionInstanceID;
             Audio = new TacticalCombatAudio(
                 definition?.Sounds ?? new List<TacticalCombatSoundDefinition>(),
-                random
+                random,
+                definition?.Notifications,
+                playerFactionID,
+                () => IsPaused,
+                presentationClock
             );
             Units = this._units.AsReadOnly();
             Groups = this._groups.AsReadOnly();
@@ -139,6 +164,7 @@ namespace Rebellion.Gameplay
                                 && facility.Movement == null
                                 && facility.ProtectedUnitTypeIDs?.Contains(unit.TypeID) == true;
                     BattleStation = new TacticalCombatBattleStation(unit, protectedByFacility);
+                    BattleStation.ChargeCompleted += NotifyStationCharged;
                     Vector3 lane = GetSide(unit.Side).Forward;
                     unit.Position = new Vector3(
                         lane.Z * battleDepth * 0.5f,
@@ -164,8 +190,18 @@ namespace Rebellion.Gameplay
                     && _carriers.TryGetValue(unit.CarrierID, out TacticalCombatCarrier carrier)
                 )
                     carrier.AddDocked(unit);
+            int[] objectCategories = new int[2];
             foreach (TacticalCombatGroup group in this._groups)
+            {
                 RegisterGroup(group);
+                if (group.IsFighterGroup)
+                {
+                    if (group.FighterCategory is >= 0 and < 4)
+                        _fighterGroups[(int)group.Side, group.FighterCategory] = group;
+                }
+                else if (objectCategories[(int)group.Side] < 8)
+                    _objectGroups[(int)group.Side, objectCategories[(int)group.Side]++] = group;
+            }
             foreach (TacticalCombatUnit unit in this._units)
                 _nextGroupID[(int)unit.Side] = Math.Max(_nextGroupID[(int)unit.Side], unit.Index);
             foreach (TacticalCombatGroup group in this._groups)
@@ -190,6 +226,83 @@ namespace Rebellion.Gameplay
         public TacticalCombatSide GetSide(CombatSide side) => _sides[(int)side];
 
         /// <summary>
+        /// Gets the requested command group currently occupying an object category.
+        /// </summary>
+        /// <param name="side">The category's owning side.</param>
+        /// <param name="category">The zero-based category from zero through seven.</param>
+        /// <returns>The current owner, or null for an empty category.</returns>
+        public TacticalCombatGroup GetObjectGroup(CombatSide side, int category) =>
+            _objectGroups[(int)side, category];
+
+        /// <summary>
+        /// Gets the deployed fighter group currently occupying a fighter category.
+        /// </summary>
+        /// <param name="side">The category's owning side.</param>
+        /// <param name="category">The zero-based category from zero through three.</param>
+        /// <returns>The current owner, or null for an empty category.</returns>
+        public TacticalCombatGroup GetFighterGroup(CombatSide side, int category) =>
+            _fighterGroups[(int)side, category];
+
+        /// <summary>
+        /// Assigns a requested command group to a reusable object category.
+        /// </summary>
+        /// <param name="side">The category's owning side.</param>
+        /// <param name="category">The zero-based category from zero through seven.</param>
+        /// <param name="group">The new owner, or null to clear the category.</param>
+        public void SetObjectGroup(CombatSide side, int category, TacticalCombatGroup group)
+        {
+            if (group != null)
+            {
+                ValidateGroup(group);
+                if (group.Side != side || group.IsFighterGroup)
+                    throw new ArgumentException(
+                        "An object category requires a command group of the same side.",
+                        nameof(group)
+                    );
+            }
+            _objectGroups[(int)side, category] = group;
+            GroupCategoryChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// Changes a side's command authority while retaining its current applied group orders.
+        /// </summary>
+        /// <param name="side">The controlled side.</param>
+        /// <param name="automated">Whether tactical automation should issue its orders.</param>
+        public void SetAutomated(CombatSide side, bool automated)
+        {
+            GetSide(side).IsAutomated = automated;
+            foreach (TacticalCombatGroup group in _groupsByID.Values)
+                if (group.Side == side)
+                    group.IsAutomated = automated;
+        }
+
+        /// <summary>
+        /// Clears category ownership only when it still names the group being removed.
+        /// </summary>
+        /// <param name="group">The previous category owner.</param>
+        private void ClearGroupCategories(TacticalCombatGroup group)
+        {
+            bool changed = false;
+            for (int category = 0; category < 8; category++)
+                if (ReferenceEquals(_objectGroups[(int)group.Side, category], group))
+                {
+                    _objectGroups[(int)group.Side, category] = null;
+                    changed = true;
+                    break;
+                }
+            for (int category = 0; category < 4; category++)
+                if (ReferenceEquals(_fighterGroups[(int)group.Side, category], group))
+                {
+                    _fighterGroups[(int)group.Side, category] = null;
+                    changed = true;
+                    break;
+                }
+            if (changed)
+                GroupCategoryChanged?.Invoke();
+        }
+
+        /// <summary>
         /// Gets a tactical unit by its campaign instance identifier.
         /// </summary>
         /// <param name="instanceID">The campaign unit identifier.</param>
@@ -205,12 +318,26 @@ namespace Rebellion.Gameplay
         /// <param name="unit">The group's member.</param>
         /// <returns>The member's group, or null after removal.</returns>
         public TacticalCombatGroup GetGroup(TacticalCombatUnit unit) =>
-            _groupsByID.TryGetValue(unit.GroupID, out TacticalCombatGroup group) ? group : null;
+            unit.GroupID is int groupID
+            && _groupsByID.TryGetValue(groupID, out TacticalCombatGroup group)
+                ? group
+                : null;
 
         /// <summary>
-        /// Creates a group from selected members, releasing their previous formations and empty groups.
+        /// Gets the latest requested owner before queued membership changes apply.
         /// </summary>
-        /// <param name="members">The ordered members of one side and unit category.</param>
+        /// <param name="unit">The selected unit.</param>
+        /// <returns>The requested group, or null after requested removal.</returns>
+        public TacticalCombatGroup GetRequestedGroup(TacticalCombatUnit unit) =>
+            unit.RequestedGroupID is int groupID
+            && _groupsByID.TryGetValue(groupID, out TacticalCombatGroup group)
+                ? group
+                : null;
+
+        /// <summary>
+        /// Requests an ordered group while retaining prior applied ownership until command dispatch.
+        /// </summary>
+        /// <param name="members">The ordered members of one side.</param>
         /// <returns>The newly registered tactical group.</returns>
         public TacticalCombatGroup CreateGroup(IReadOnlyList<TacticalCombatUnit> members)
         {
@@ -223,12 +350,11 @@ namespace Rebellion.Gameplay
             foreach (TacticalCombatUnit member in members)
                 if (
                     member.Side != side
-                    || member.IsFighter != members[0].IsFighter
                     || !_unitsByID.TryGetValue(member.InstanceID, out TacticalCombatUnit registered)
                     || !ReferenceEquals(member, registered)
                 )
                     throw new ArgumentException(
-                        "A tactical group requires registered members of one side and category.",
+                        "A tactical group requires registered members of one side.",
                         nameof(members)
                     );
             if (new HashSet<TacticalCombatUnit>(members).Count != members.Count)
@@ -236,37 +362,83 @@ namespace Rebellion.Gameplay
                     "A tactical group cannot repeat a member.",
                     nameof(members)
                 );
-            List<TacticalCombatUnit> orderedMembers = new(members);
-            orderedMembers.Sort((first, second) => first.Index.CompareTo(second.Index));
-            foreach (TacticalCombatUnit member in orderedMembers)
-                GetGroup(member)?.Formation.RemoveMember(member);
-            for (int index = _groups.Count - 1; index >= 0; index--)
-                if (_groups[index].Members.Count == 0)
-                {
-                    _groups[index].HyperspaceRequested -= RequestHyperspace;
-                    _groups[index].OrderRequested -= RequestOrder;
-                    _groups[index].AttackModeRequested -= QueueAttackMode;
-                    _pendingManeuvers.Remove(_groups[index]);
-                    _pendingAttackOrders.Remove(_groups[index]);
-                    _groupsByID.Remove(_groups[index].ID);
-                    _groups.RemoveAt(index);
-                }
+            TacticalCombatUnit first = members[0];
+            RequestMemberRemoval(first);
             TacticalCombatGroup group = new(
                 ++_nextGroupID[(int)side],
-                orderedMembers,
+                first,
                 GetSide(side).Forward
             );
-            _groups.Add(group);
-            _groups.Sort((first, second) => first.ID.CompareTo(second.ID));
             RegisterGroup(group);
+            QueueCommand(new Command(CommandKind.CreateGroup, first, group: group));
+            for (int index = 1; index < members.Count; index++)
+                AddGroupMember(group, members[index]);
             return group;
+        }
+
+        /// <summary>
+        /// Requests a member transfer while preserving its current formation until dispatch.
+        /// </summary>
+        /// <param name="group">The requested destination group.</param>
+        /// <param name="unit">The transferring unit.</param>
+        public void AddGroupMember(TacticalCombatGroup group, TacticalCombatUnit unit)
+        {
+            ValidateGroup(group);
+            if (
+                unit == null
+                || unit.Side != group.Side
+                || !_unitsByID.TryGetValue(unit.InstanceID, out TacticalCombatUnit registered)
+                || !ReferenceEquals(registered, unit)
+            )
+                throw new ArgumentException(
+                    "A member must belong to this encounter and side.",
+                    nameof(unit)
+                );
+            RequestMemberRemoval(unit);
+            group.AddRequestedMember(unit);
+            QueueCommand(new Command(CommandKind.AddGroupMember, unit, group: group));
+        }
+
+        /// <summary>
+        /// Requests removal from one group without changing a later requested owner.
+        /// </summary>
+        /// <param name="group">The group losing the member.</param>
+        /// <param name="unit">The requested member to remove.</param>
+        public void RemoveGroupMember(TacticalCombatGroup group, TacticalCombatUnit unit)
+        {
+            ValidateGroup(group);
+            if (
+                unit == null
+                || !_unitsByID.TryGetValue(unit.InstanceID, out TacticalCombatUnit registered)
+                || !ReferenceEquals(registered, unit)
+            )
+                throw new ArgumentException(
+                    "The member does not belong to this encounter.",
+                    nameof(unit)
+                );
+            group.RemoveRequestedMember(unit);
+            if (group.RequestedMembers.Count == 0)
+                ClearGroupCategories(group);
+            QueueCommand(new Command(CommandKind.RemoveGroupMember, unit, group: group));
+        }
+
+        /// <summary>
+        /// Removes requested membership and queues the corresponding active-roster removal.
+        /// </summary>
+        /// <param name="unit">The member leaving its requested group.</param>
+        private void RequestMemberRemoval(TacticalCombatUnit unit)
+        {
+            TacticalCombatGroup previous = GetRequestedGroup(unit);
+            if (previous == null)
+                return;
+            RemoveGroupMember(previous, unit);
         }
 
         /// <summary>
         /// Queues a designated target command for a registered group.
         /// </summary>
         /// <param name="group">The attacking group.</param>
-        /// <param name="target">The opposing target.</param>
+        /// <param name="target">The designated encounter unit.</param>
         /// <param name="append">Whether to append to the existing target list.</param>
         public void SetTarget(
             TacticalCombatGroup group,
@@ -275,9 +447,13 @@ namespace Rebellion.Gameplay
         )
         {
             ValidateGroup(group);
-            if (target == null || target.Side == group.Side)
+            if (
+                target == null
+                || !_unitsByID.TryGetValue(target.InstanceID, out TacticalCombatUnit registered)
+                || !ReferenceEquals(target, registered)
+            )
                 throw new ArgumentException(
-                    "A target must belong to the opposing side.",
+                    "The target does not belong to this encounter.",
                     nameof(target)
                 );
             group.RequestTarget(target, append);
@@ -326,7 +502,6 @@ namespace Rebellion.Gameplay
                 BattleStation?.CanReceiveAttackRun != true
                 || BattleStation.Unit.Side == side
                 || GetSide(side).FactionIndex != 0
-                || ActiveAttackRun?.IsInProgress == true
                 || GetSide(side).IsWithdrawing
             )
                 return false;
@@ -436,6 +611,11 @@ namespace Rebellion.Gameplay
                 foreach (TacticalCombatUnit unit in group.Members)
                     ReleaseRecovery(unit);
             group.ApplyOrder(order);
+            if (
+                group.IsFighterGroup
+                && order is TacticalCombatOrder.Recover or TacticalCombatOrder.AttackBattleStation
+            )
+                ClearGroupCategories(group);
             _pendingManeuvers.Remove(group);
             _pendingAttackOrders.Remove(group);
             if (
@@ -460,6 +640,7 @@ namespace Rebellion.Gameplay
                     () => GetSide(group.Side).GetCommandBudget(true)
                 );
                 run.StateChangeRequested += RequestAttackRunState;
+                run.MovieRequested += RequestAttackRunMovie;
                 run.UnitDestroyed += Destroy;
                 run.UnitParticipationChanged += _spatial.Update;
                 group.AttackRun = run;
@@ -479,15 +660,51 @@ namespace Rebellion.Gameplay
         ) => QueueCommand(new Command(CommandKind.AttackRun, null, run: run, runState: state));
 
         /// <summary>
+        /// Applies the station outcome before beginning its modal movie pause.
+        /// </summary>
+        /// <param name="run">The attack whose conclusion is launching a movie.</param>
+        private void RequestAttackRunMovie(TacticalCombatAttackRun run)
+        {
+            if (run.State == TacticalCombatAttackRunState.Succeeded && BattleStation != null)
+                Destroy(BattleStation.Unit);
+            _moviePauses++;
+            TacticalCombatMovieRequest request = new(run, CompleteAttackRunMovie);
+            PendingAttackRunMovie = request;
+            bool notificationsEnabled = Audio.Notifications.Enabled;
+            Audio.Notifications.Enabled = false;
+            try
+            {
+                AttackRunMovieRequested?.Invoke(request);
+            }
+            finally
+            {
+                Audio.Notifications.Enabled = notificationsEnabled;
+            }
+        }
+
+        /// <summary>
+        /// Releases only the pause owned by the movie that completed or was cancelled.
+        /// </summary>
+        /// <param name="request">The completed movie's ownership token.</param>
+        private void CompleteAttackRunMovie(TacticalCombatMovieRequest request)
+        {
+            _moviePauses = Math.Max(0, _moviePauses - 1);
+            if (ReferenceEquals(PendingAttackRunMovie, request))
+                PendingAttackRunMovie = null;
+        }
+
+        /// <summary>
         /// Advances one presentation frame without tying movement to whole-second weapon updates.
         /// </summary>
         /// <param name="elapsedMilliseconds">The elapsed unpaused frame duration.</param>
         public void Advance(float elapsedMilliseconds)
         {
-            Audio.Advance(elapsedMilliseconds);
-            if (IsPaused || IsComplete || elapsedMilliseconds <= 0)
+            Audio.Update();
+            if (IsComplete || elapsedMilliseconds <= 0)
                 return;
             _elapsedInTick += elapsedMilliseconds;
+            if (IsPaused)
+                return;
             if (_elapsedInTick >= 1000)
             {
                 _elapsedInTick %= 1000;
@@ -533,12 +750,72 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Removes both ownership lanes when a unit stops participating in the battle.
+        /// </summary>
+        /// <param name="unit">The destroyed, departing, or recovering member.</param>
+        private void RemoveFromGroup(TacticalCombatUnit unit)
+        {
+            TacticalCombatGroup requested = GetRequestedGroup(unit);
+            requested?.RemoveRequestedMember(unit);
+            TacticalCombatGroup applied = GetGroup(unit);
+            if (applied != null)
+                RemoveAppliedMember(applied, unit);
+            if (requested?.Members.Count == 0 && requested.RequestedMembers.Count == 0)
+                DeregisterGroup(requested);
+        }
+
+        /// <summary>
+        /// Applies membership removal and deletes the group after its final active member leaves.
+        /// </summary>
+        /// <param name="group">The previous applied owner.</param>
+        /// <param name="unit">The departing member.</param>
+        private void RemoveAppliedMember(TacticalCombatGroup group, TacticalCombatUnit unit)
+        {
+            group.RemoveMember(unit);
+            if (group.Members.Count == 0)
+                DeregisterGroup(group);
+        }
+
+        /// <summary>
+        /// Releases a group's registry, requested ownership, and lifecycle subscriptions.
+        /// </summary>
+        /// <param name="group">The group whose active roster is empty.</param>
+        private void DeregisterGroup(TacticalCombatGroup group)
+        {
+            ClearGroupCategories(group);
+            while (group.RequestedMembers.Count != 0)
+                group.RemoveRequestedMember(group.RequestedMembers[0]);
+            group.HyperspaceRequested -= RequestHyperspace;
+            group.OrderRequested -= RequestOrder;
+            group.AttackModeRequested -= QueueAttackMode;
+            if (group.AttackRun != null)
+            {
+                group.AttackRun.StateChangeRequested -= RequestAttackRunState;
+                group.AttackRun.MovieRequested -= RequestAttackRunMovie;
+                group.AttackRun.UnitDestroyed -= Destroy;
+                group.AttackRun.UnitParticipationChanged -= _spatial.Update;
+            }
+            _pendingManeuvers.Remove(group);
+            _pendingAttackOrders.Remove(group);
+            _completedAttackOrders.Remove(group);
+            _groupsByID.Remove(group.ID);
+            _groups.Remove(group);
+        }
+
+        /// <summary>
         /// Queues a behavior requested by a registered group's label change.
         /// </summary>
         /// <param name="group">The requesting group.</param>
         /// <param name="order">The requested behavior.</param>
-        private void RequestOrder(TacticalCombatGroup group, TacticalCombatOrder order) =>
+        private void RequestOrder(TacticalCombatGroup group, TacticalCombatOrder order)
+        {
+            if (
+                group.IsFighterGroup
+                && order is TacticalCombatOrder.Recover or TacticalCombatOrder.AttackBattleStation
+            )
+                ClearGroupCategories(group);
             QueueCommand(new Command(CommandKind.Order, null, group: group, value: (int)order));
+        }
 
         /// <summary>
         /// Queues a requested attack-mode change through the battle command stream.
@@ -571,6 +848,7 @@ namespace Rebellion.Gameplay
                     "A selectable formation requires a capital-ship group.",
                     nameof(group)
                 );
+            group.RequestFormation(formation);
             QueueCommand(
                 new Command(CommandKind.Formation, null, group: group, value: (int)formation)
             );
@@ -867,6 +1145,11 @@ namespace Rebellion.Gameplay
             {
                 if (unit.Status == TacticalCombatUnitStatus.EnteringHyperspace)
                 {
+                    if (
+                        unit.HyperspaceMilliseconds == 0
+                        || float.IsNaN(unit.HyperspaceMilliseconds)
+                    )
+                        Audio.EnqueueNotification(unit.IsFighter ? 29 : 31);
                     unit.HyperspaceMilliseconds += elapsedMilliseconds;
                     if (unit.HyperspaceMilliseconds >= 4000)
                     {
@@ -1030,6 +1313,16 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Announces a station charge crossing to the faction whose tactical advisor reports it.
+        /// The station calls this before storing the completed charge.
+        /// </summary>
+        private void NotifyStationCharged()
+        {
+            if (GetSide(PlayerSide).FactionIndex == 1)
+                Audio.EnqueueNotification(275);
+        }
+
+        /// <summary>
         /// Selects the firing sound from the firing unit's weapon and authored faction.
         /// </summary>
         /// <param name="shot">The queued discharge.</param>
@@ -1059,6 +1352,28 @@ namespace Rebellion.Gameplay
             TacticalCombatUnit target = command.Target;
             switch (command.Kind)
             {
+                case CommandKind.CreateGroup:
+                case CommandKind.AddGroupMember:
+                case CommandKind.RemoveGroupMember:
+                    if (
+                        _groupsByID.TryGetValue(command.Group.ID, out TacticalCombatGroup owner)
+                        && ReferenceEquals(owner, command.Group)
+                    )
+                    {
+                        if (command.Kind == CommandKind.RemoveGroupMember)
+                            RemoveAppliedMember(owner, source);
+                        else
+                        {
+                            owner.AddMember(source);
+                            if (command.Kind == CommandKind.CreateGroup)
+                            {
+                                owner.Formation.SetPosition(source.Position);
+                                _groups.Add(owner);
+                                _groups.Sort((first, second) => first.ID.CompareTo(second.ID));
+                            }
+                        }
+                    }
+                    break;
                 case CommandKind.Order:
                 case CommandKind.AttackMode:
                 case CommandKind.Formation:
@@ -1074,7 +1389,7 @@ namespace Rebellion.Gameplay
                         else if (command.Kind == CommandKind.AttackMode)
                             commanded.ApplyAttackMode(command.Value != 0);
                         else if (command.Kind == CommandKind.Formation)
-                            commanded.Formation.SetKind((TacticalCombatFormationKind)command.Value);
+                            commanded.ApplyFormation((TacticalCombatFormationKind)command.Value);
                         else if (command.Kind == CommandKind.Waypoint)
                             commanded.ApplyWaypoint(command.Position, command.Append);
                         else
@@ -1085,17 +1400,25 @@ namespace Rebellion.Gameplay
                     if (target.IsTargetable)
                     {
                         Audio.Enqueue(TacticalCombatSound.Superlaser);
-                        SuperlaserFired?.Invoke(source, target);
+                        if (GetSide(PlayerSide).FactionIndex == 0)
+                            Audio.EnqueueNotification(145);
                     }
+                    SuperlaserFired?.Invoke(source, target);
                     break;
                 case CommandKind.AttackRun:
-                    command.Run.ApplyState(command.RunState);
                     if (
-                        command.RunState == TacticalCombatAttackRunState.Succeeded
-                        && BattleStation != null
+                        _groupsByID.TryGetValue(
+                            command.Run.Group.ID,
+                            out TacticalCombatGroup attacking
+                        )
+                        && ReferenceEquals(attacking, command.Run.Group)
+                        && ReferenceEquals(attacking.AttackRun, command.Run)
+                        && attacking.ActiveOrder == TacticalCombatOrder.AttackBattleStation
                     )
-                        Destroy(BattleStation.Unit);
-                    AttackRunChanged?.Invoke(command.Run);
+                    {
+                        command.Run.ApplyState(command.RunState);
+                        AttackRunChanged?.Invoke(command.Run);
+                    }
                     break;
                 case CommandKind.Target:
                 case CommandKind.RemoveTarget:
@@ -1195,7 +1518,7 @@ namespace Rebellion.Gameplay
                     if (target.IsTargetable && _carriers[source.InstanceID].Recover(target))
                     {
                         _recoveries[target].State = 4;
-                        GetGroup(target)?.Formation.RemoveMember(target);
+                        RemoveFromGroup(target);
                         _spatial.Update(target);
                         FighterRecovered?.Invoke(target);
                     }
@@ -1233,7 +1556,7 @@ namespace Rebellion.Gameplay
                     {
                         source.Status = TacticalCombatUnitStatus.Withdrawn;
                         _departed.Add(source);
-                        GetGroup(source)?.Formation.RemoveMember(source);
+                        RemoveFromGroup(source);
                         _spatial.Update(source);
                         UnitWithdrawn?.Invoke(source);
                     }
@@ -1263,7 +1586,7 @@ namespace Rebellion.Gameplay
             unit.Systems.Destroy();
             unit.Status = TacticalCombatUnitStatus.Destroyed;
             unit.TractorTargetID = null;
-            GetGroup(unit)?.Formation.RemoveMember(unit);
+            RemoveFromGroup(unit);
             _spatial.Update(unit);
             if (_carriers.TryGetValue(unit.InstanceID, out TacticalCombatCarrier carrier))
             {
@@ -1495,6 +1818,9 @@ namespace Rebellion.Gameplay
         /// </summary>
         private enum CommandKind
         {
+            CreateGroup,
+            AddGroupMember,
+            RemoveGroupMember,
             Order,
             AttackMode,
             Formation,

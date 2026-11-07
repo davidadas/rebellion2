@@ -13,6 +13,7 @@ namespace Rebellion.Gameplay
         public bool IsOperational =>
             Unit.Systems.IsAlive && Unit.Status == TacticalCombatUnitStatus.Active;
         public bool CanReceiveAttackRun => IsOperational && !HasPlanetaryProtection;
+        public event Action ChargeCompleted;
 
         /// <summary>
         /// Captures the station and its protecting planetary facilities at battle entry.
@@ -33,13 +34,12 @@ namespace Rebellion.Gameplay
         /// <param name="elapsedMilliseconds">The elapsed system interval.</param>
         public void Advance(float elapsedMilliseconds)
         {
-            if (IsOperational)
-                Charge = Math.Min(
-                    (float)(
-                        (double)Charge + (float)((double)elapsedMilliseconds * 0.33333334f * 0.001f)
-                    ),
-                    100
-                );
+            if (!IsOperational)
+                return;
+            float increment = (float)((double)elapsedMilliseconds * 0.33333334f * 0.001f);
+            if (Charge < 100 && (double)Charge + increment >= 100)
+                ChargeCompleted?.Invoke();
+            Charge = Math.Min((float)((double)Charge + increment), 100);
         }
 
         /// <summary>

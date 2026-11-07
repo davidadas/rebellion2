@@ -121,6 +121,9 @@ namespace Rebellion.Gameplay
             result.Tick = _game.CurrentTick;
             result.AttackingUnits = _tacticalAttackingUnits;
             result.DefendingUnits = _tacticalDefendingUnits;
+            bool wasBlockaded = planet.IsBlockaded();
+            List<GameResult> events = ApplyFighterResults(result);
+            events.AddRange(ApplyShipResults(result, attackers, defenders));
             HashSet<ISceneNode> departures = result.WithdrawnUnits.ToHashSet();
             SpaceCombatWithdrawalPlan attackerPlan = _queries.GetTacticalWithdrawalPlan(
                 attackers,
@@ -138,12 +141,14 @@ namespace Rebellion.Gameplay
             );
             result.AttackerRetreatPlanetInstanceID = attackerPlan.GetRetreatPlanetInstanceID();
             result.DefenderRetreatPlanetInstanceID = defenderPlan.GetRetreatPlanetInstanceID();
-            result.Events = ApplyCombatResult(
+            CompleteFighterWithdrawal(attackerPlan);
+            CompleteFighterWithdrawal(defenderPlan);
+            result.Events = CompleteCombatResult(
                 result,
-                attackers,
-                defenders,
                 attackerPlan,
-                defenderPlan
+                defenderPlan,
+                wasBlockaded,
+                events
             );
             IEnumerable<ISceneNode> damaged = result
                 .ShipDamage.Where(damage =>
@@ -1092,6 +1097,26 @@ namespace Rebellion.Gameplay
         )
         {
             bool wasBlockaded = result.Planet.IsBlockaded();
+            List<GameResult> events = ApplyFighterResults(result);
+            CompleteFighterWithdrawal(attackerWithdrawalPlan);
+            CompleteFighterWithdrawal(defenderWithdrawalPlan);
+            events.AddRange(ApplyShipResults(result, attackerFleets, defenderFleets));
+            return CompleteCombatResult(
+                result,
+                attackerWithdrawalPlan,
+                defenderWithdrawalPlan,
+                wasBlockaded,
+                events
+            );
+        }
+
+        /// <summary>
+        /// Commits fighter counts and final carrier assignments before departure destinations are applied.
+        /// </summary>
+        /// <param name="result">The combat result containing fighter losses and recovery assignments.</param>
+        /// <returns>The fighter destruction events.</returns>
+        private List<GameResult> ApplyFighterResults(SpaceCombatResult result)
+        {
             List<GameResult> events = ApplyFighterSquadronLosses(
                 result.FighterLosses,
                 result.Planet
@@ -1108,10 +1133,44 @@ namespace Rebellion.Gameplay
                         recovery.Fighter,
                         recovery.Carrier ?? (ContainerNode)result.Planet
                     );
-            CompleteFighterWithdrawal(attackerWithdrawalPlan);
-            CompleteFighterWithdrawal(defenderWithdrawalPlan);
-            events.AddRange(ApplyShipDamage(result.ShipDamage, result.Planet));
+            return events;
+        }
+
+        /// <summary>
+        /// Commits capital-ship hull and component state and removes fleets left without survivors.
+        /// </summary>
+        /// <param name="result">The combat result containing final ship damage.</param>
+        /// <param name="attackerFleets">The attacking fleets to clean up.</param>
+        /// <param name="defenderFleets">The defending fleets to clean up.</param>
+        /// <returns>The ship damage and destruction events.</returns>
+        private List<GameResult> ApplyShipResults(
+            SpaceCombatResult result,
+            IReadOnlyList<Fleet> attackerFleets,
+            IReadOnlyList<Fleet> defenderFleets
+        )
+        {
+            List<GameResult> events = ApplyShipDamage(result.ShipDamage, result.Planet);
             RemoveEmptyFleets(attackerFleets, defenderFleets);
+            return events;
+        }
+
+        /// <summary>
+        /// Applies fleet departures and blockade transitions, then records destroyed-unit outcomes.
+        /// </summary>
+        /// <param name="result">The combat result receiving final unit outcomes.</param>
+        /// <param name="attackerWithdrawalPlan">The attacking side's reserved withdrawal.</param>
+        /// <param name="defenderWithdrawalPlan">The defending side's reserved withdrawal.</param>
+        /// <param name="wasBlockaded">Whether the combat planet was blockaded before unit results were committed.</param>
+        /// <param name="events">The committed unit events receiving departure and blockade events.</param>
+        /// <returns>The complete combat event collection.</returns>
+        private List<GameResult> CompleteCombatResult(
+            SpaceCombatResult result,
+            SpaceCombatWithdrawalPlan attackerWithdrawalPlan,
+            SpaceCombatWithdrawalPlan defenderWithdrawalPlan,
+            bool wasBlockaded,
+            List<GameResult> events
+        )
+        {
             BlockadeChangedResult blockade = _blockadeTransitionResolver.Resolve(
                 result.Planet,
                 wasBlockaded

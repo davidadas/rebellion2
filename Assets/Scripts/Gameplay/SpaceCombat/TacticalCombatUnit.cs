@@ -61,13 +61,16 @@ namespace Rebellion.Gameplay
         public float TractorRestraint { get; internal set; }
         public float CommandBudget { get; internal set; }
         public float MaximumTurnRate { get; internal set; }
-        public int GroupID { get; internal set; }
+        public int? GroupID { get; internal set; }
+        public int? RequestedGroupID { get; internal set; }
         public int Index { get; }
         public string TractorTargetID { get; internal set; }
         public Vector3 DesiredMovement { get; internal set; }
         public Vector3 DesiredHeading { get; internal set; }
         public float TurnRate { get; internal set; }
         public bool HasCollision { get; internal set; }
+        internal float CollisionRecoveryTime { get; set; }
+        internal int CollisionRecoveryPhase { get; set; }
         public float Proximity =>
             (float)(
                 TacticalCombatGeometry.GetLength(Velocity) * 0.5

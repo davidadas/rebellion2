@@ -9,7 +9,6 @@ using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Random;
 
 namespace Rebellion.Gameplay
 {
@@ -20,7 +19,8 @@ namespace Rebellion.Gameplay
     {
         private readonly GameRoot _game;
         private readonly SpaceCombatQueries _queries;
-        private readonly Func<IRandomNumberProvider> _createRandom;
+        private readonly Func<TacticalCombatRandom> _createRandom;
+        private readonly Func<DateTimeOffset> _localClock;
         private readonly TacticalCombatDefinition _definition;
         private readonly Dictionary<string, TacticalCombatUnitDefinition> _definitions;
         private readonly Dictionary<string, TacticalCombatFactionDefinition> _factions;
@@ -32,17 +32,20 @@ namespace Rebellion.Gameplay
         /// <param name="catalog">The selected content catalog.</param>
         /// <param name="queries">The campaign encounter and departure queries.</param>
         /// <param name="createRandom">An optional replay stream factory; live battles capture the entry clock.</param>
+        /// <param name="localClock">The platform's local clock, acquired only when scenery first needs a random position.</param>
         public TacticalCombatFactory(
             GameRoot game,
             GameDataCatalog catalog,
             SpaceCombatQueries queries,
-            Func<IRandomNumberProvider> createRandom = null
+            Func<TacticalCombatRandom> createRandom = null,
+            Func<DateTimeOffset> localClock = null
         )
         {
             this._game = game ?? throw new ArgumentNullException(nameof(game));
             _createRandom =
                 createRandom
                 ?? (() => new TacticalCombatRandom(unchecked((uint)Environment.TickCount)));
+            _localClock = localClock ?? (() => DateTimeOffset.Now);
             this._queries = queries ?? throw new ArgumentNullException(nameof(queries));
             _definition =
                 catalog?.TacticalCombat ?? throw new ArgumentNullException(nameof(catalog));
@@ -304,6 +307,7 @@ namespace Rebellion.Gameplay
                 );
             }
             groups.Sort(CompareGroupRegistration);
+            TacticalCombatRandom random = _createRandom();
             return new TacticalCombatSession(
                 units,
                 groups,
@@ -311,10 +315,14 @@ namespace Rebellion.Gameplay
                 sides[1],
                 playerSide,
                 depth,
-                _createRandom(),
+                random,
                 _definition,
                 _definition.Environments.FirstOrDefault(environment =>
                     environment.PlanetIconPath == planet.PlanetIconPath
+                ),
+                new TacticalCombatSceneryRandom(
+                    random,
+                    () => TacticalCombatRandom.GetCalendarSeed(_localClock())
                 )
             );
         }

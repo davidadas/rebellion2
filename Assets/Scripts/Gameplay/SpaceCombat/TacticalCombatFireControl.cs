@@ -257,14 +257,10 @@ namespace Rebellion.Gameplay
                 || distance > unit.Weapons.GetRange(weapon)
             )
                 return;
-            float unscaled = unit.Weapons.GetOpportunityDamage(arc, weapon, 1);
+            float unscaled = unit.Weapons.GetOpportunityDamage(arc, weapon);
             if (unscaled <= _scores[(int)arc, (int)weapon])
                 return;
-            _scores[(int)arc, (int)weapon] = unit.Weapons.GetOpportunityDamage(
-                arc,
-                weapon,
-                unit.Systems.HullFraction
-            );
+            _scores[(int)arc, (int)weapon] = unit.Systems.ScaleByHull(unscaled);
             _targets[(int)arc, (int)weapon] = candidate;
         }
 

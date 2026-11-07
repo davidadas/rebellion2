@@ -8,7 +8,6 @@ using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
-using Rebellion.Util.Random;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -82,6 +81,18 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             Assert.GreaterOrEqual(
                 view.Renderer.GetComponentsInChildren<MeshRenderer>(true).Length,
                 8
+            );
+            Assert.AreEqual(
+                new Vector3(200, -7, -5),
+                view.Renderer.GetComponentsInChildren<Transform>(true)
+                    .Single(item => item.name == "Planet")
+                    .localPosition
+            );
+            Assert.AreEqual(
+                new Vector3(-200, 9, -16),
+                view.Renderer.GetComponentsInChildren<Transform>(true)
+                    .Single(item => item.name == "CSEM015")
+                    .localPosition
             );
             Texture2D expectedPaletteTexture = assets.GetTexture(
                 encounter
@@ -192,6 +203,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                     unit.Side == CombatSide.Attacker ? Vector3N.UnitZ : -Vector3N.UnitZ
                 ))
                 .ToList();
+            TacticalCombatRandom random = new(42);
             return new TacticalCombatSession(
                 units,
                 groups,
@@ -199,9 +211,10 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 CreateSide(CombatSide.Defender),
                 CombatSide.Attacker,
                 100,
-                new SystemRandomProvider(42),
+                random,
                 catalog.TacticalCombat,
-                catalog.TacticalCombat.Environments[1]
+                catalog.TacticalCombat.Environments[1],
+                new TacticalCombatSceneryRandom(random, () => 1)
             );
         }
 

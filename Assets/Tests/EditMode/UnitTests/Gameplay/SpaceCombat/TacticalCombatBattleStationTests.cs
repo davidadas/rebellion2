@@ -51,6 +51,36 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsFalse(CreateStation(underConstruction: true).TryFire());
         }
 
+        [Test]
+        public void Advance_ChargeCrossing_NotifiesBeforeStoringCompletedCharge()
+        {
+            TacticalCombatBattleStation station = CreateStation();
+            station.TryFire();
+            float observedCharge = -1;
+            bool couldFireInCallback = true;
+            station.ChargeCompleted += () =>
+            {
+                observedCharge = station.Charge;
+                couldFireInCallback = station.TryFire();
+            };
+            station.Advance(300000);
+            Assert.AreEqual(0, observedCharge);
+            Assert.IsFalse(couldFireInCallback);
+            Assert.AreEqual(100, station.Charge);
+        }
+
+        [Test]
+        public void Advance_AlreadyCharged_DoesNotRepeatCompletionNotification()
+        {
+            TacticalCombatBattleStation station = CreateStation();
+            station.TryFire();
+            int notifications = 0;
+            station.ChargeCompleted += () => notifications++;
+            station.Advance(300000);
+            station.Advance(300000);
+            Assert.AreEqual(1, notifications);
+        }
+
         /// <summary>
         /// Creates a station with known operational and protection state.
         /// </summary>

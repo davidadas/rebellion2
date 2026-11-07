@@ -144,23 +144,17 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Calculates a hull-scaled opportunity shot while scanning nearby targets.
+        /// Calculates an opportunity shot's complete attack strength while scanning nearby targets.
         /// </summary>
         /// <param name="arc">The firing battery.</param>
         /// <param name="weapon">The battery weapon.</param>
-        /// <param name="hullFraction">The firing unit's remaining hull fraction.</param>
-        /// <returns>The opportunity-shot attack strength.</returns>
-        public float GetOpportunityDamage(
-            TacticalWeaponArc arc,
-            TacticalWeaponType weapon,
-            float hullFraction
-        )
+        /// <returns>The opportunity-shot attack strength before hull scaling.</returns>
+        public float GetOpportunityDamage(TacticalWeaponArc arc, TacticalWeaponType weapon)
         {
             if (weapon == TacticalWeaponType.IonCannon)
                 return 0;
             float targetScale = weapon == TacticalWeaponType.Turbolaser ? 0.5f : 1;
-            float strength = (float)((double)_shotScale * targetScale * GetStrength(arc, weapon));
-            return (float)((double)strength * hullFraction);
+            return (float)((double)_shotScale * targetScale * GetStrength(arc, weapon));
         }
 
         /// <summary>

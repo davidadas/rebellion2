@@ -1,42 +1,48 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Gameplay
 {
     /// <summary>
-    /// Selects combat sound variants from the battle stream and bounds simultaneous playback.
-    /// Scheduling uses elapsed presentation time without accessing an audio device or campaign graph.
+    /// Routes typed combat sounds and authored notifications through the encounter's shared scheduler.
+    /// Playback handles remain owned by that scheduler instead of a separate duration-based sound queue.
     /// </summary>
-    public sealed class TacticalCombatAudio
+    public sealed class TacticalCombatAudio : IDisposable
     {
-        private const int _concurrentSounds = 5;
-        private const double _pendingLifetimeMilliseconds = 225;
-        private readonly Dictionary<
-            TacticalCombatSound,
-            TacticalCombatSoundDefinition
-        > _definitions = new();
-        private readonly List<double> _activeUntil = new(_concurrentSounds);
-        private readonly Queue<Pending> _pending = new();
-        private readonly IRandomNumberProvider _random;
-        private double _elapsedMilliseconds;
-        public event Action<TacticalCombatSoundClip> SoundRequested;
+        private readonly HashSet<int> _authoredMessages;
+        public TacticalCombatNotifications Notifications { get; }
+        public IReadOnlyList<TacticalCombatSoundClip> Clips { get; }
+        public Func<
+            TacticalCombatSoundClip,
+            bool,
+            ITacticalCombatNotificationPlayback
+        > Playback { get; set; }
 
         /// <summary>
-        /// Captures authored sounds while sharing the encounter's random-number stream.
+        /// Captures sound and selected-faction notification banks on the shared battle random stream.
         /// </summary>
-        /// <param name="definitions">The sound variants and durations supplied by content.</param>
-        /// <param name="random">The encounter's random-number stream.</param>
+        /// <param name="definitions">Typed combat sound variants.</param>
+        /// <param name="random">The shared battle random-number stream.</param>
+        /// <param name="notifications">Shared and faction-specific notification banks.</param>
+        /// <param name="factionInstanceID">The faction whose spoken notification bank is selected.</param>
+        /// <param name="isPaused">Whether the tactical simulation is currently paused.</param>
+        /// <param name="clock">An optional unscaled millisecond clock for replay.</param>
         public TacticalCombatAudio(
             IReadOnlyList<TacticalCombatSoundDefinition> definitions,
-            IRandomNumberProvider random
+            IRandomNumberProvider random,
+            IReadOnlyList<TacticalCombatNotificationDefinition> notifications = null,
+            string factionInstanceID = null,
+            Func<bool> isPaused = null,
+            Func<uint> clock = null
         )
         {
-            _random = random ?? throw new ArgumentNullException(nameof(random));
             if (definitions == null)
                 throw new ArgumentNullException(nameof(definitions));
+            Dictionary<int, TacticalCombatNotificationDefinition> messages = new();
             foreach (TacticalCombatSoundDefinition definition in definitions)
             {
                 if (definition.Variants.Count == 0)
@@ -44,97 +50,122 @@ namespace Rebellion.Gameplay
                         "A tactical sound requires at least one variant."
                     );
                 foreach (TacticalCombatSoundClip clip in definition.Variants)
-                    if (
-                        string.IsNullOrWhiteSpace(clip.Path)
-                        || !(clip.DurationMilliseconds > 0)
-                        || float.IsInfinity(clip.DurationMilliseconds)
-                    )
+                    if (clip == null || string.IsNullOrWhiteSpace(clip.Path))
                         throw new InvalidDataException(
-                            "A tactical sound requires an addressed clip with a finite positive duration."
+                            "A tactical sound requires an addressed clip."
                         );
-                _definitions.Add(definition.Kind, definition);
+                int messageID = GetMessageID(definition.Kind);
+                messages.Add(
+                    messageID,
+                    new TacticalCombatNotificationDefinition
+                    {
+                        MessageID = messageID,
+                        Variants = definition.Variants,
+                    }
+                );
             }
+            if (notifications != null)
+            {
+                HashSet<int> selected = new();
+                foreach (TacticalCombatNotificationDefinition definition in notifications)
+                {
+                    if (
+                        !string.IsNullOrEmpty(definition.FactionInstanceID)
+                        && definition.FactionInstanceID != factionInstanceID
+                    )
+                        continue;
+                    if (!selected.Add(definition.MessageID))
+                        throw new InvalidDataException(
+                            "The selected notification bank contains duplicate message IDs."
+                        );
+                    messages[definition.MessageID] = definition;
+                }
+            }
+            _authoredMessages = messages.Keys.ToHashSet();
+            Clips = Array.AsReadOnly(
+                messages.Values.SelectMany(message => message.Variants).ToArray()
+            );
+            Notifications = new TacticalCombatNotifications(
+                messages.Values.ToArray(),
+                random,
+                clock ?? (() => unchecked((uint)Environment.TickCount)),
+                isPaused ?? (() => false),
+                Play
+            );
         }
 
         /// <summary>
-        /// Selects a sound before checking playback capacity and retains blocked requests briefly.
+        /// Requests an authored typed combat sound as a one-shot notification.
         /// </summary>
-        /// <param name="sound">The combat event requesting sound.</param>
+        /// <param name="sound">The weapon or unit event requesting sound.</param>
         public void Enqueue(TacticalCombatSound sound)
         {
-            if (!_definitions.TryGetValue(sound, out TacticalCombatSoundDefinition definition))
-                return;
-            UpdateQueues();
-            if (!TryStart(definition))
-                _pending.Enqueue(new Pending(definition, _elapsedMilliseconds));
+            EnqueueNotification(GetMessageID(sound));
         }
 
         /// <summary>
-        /// Advances playback and pending requests even while tactical movement is paused.
+        /// Requests an authored notification through the selected content bank's shared scheduler.
         /// </summary>
-        /// <param name="elapsedMilliseconds">The unscaled presentation interval.</param>
-        public void Advance(float elapsedMilliseconds)
+        /// <param name="messageID">The addressed notification.</param>
+        /// <param name="loop">Whether playback repeats until its queue handle is stopped.</param>
+        /// <returns>The queue handle, or zero when the selected content bank omits this message.</returns>
+        public uint EnqueueNotification(int messageID, bool loop = false) =>
+            _authoredMessages.Contains(messageID) ? Notifications.Enqueue(messageID, loop) : 0;
+
+        /// <summary>
+        /// Refreshes owned playbacks and pending notifications using unscaled presentation time.
+        /// </summary>
+        public void Update() => Notifications.Update();
+
+        /// <summary>
+        /// Stops the encounter's active notification playbacks and discards pending requests.
+        /// </summary>
+        public void Dispose()
         {
-            if (elapsedMilliseconds > 0)
-                _elapsedMilliseconds += elapsedMilliseconds;
-            UpdateQueues();
+            Notifications.Dispose();
+            Playback = null;
         }
 
         /// <summary>
-        /// Expires completed sounds and retries pending requests in insertion order.
+        /// Starts a playback through the presentation owner's provider.
         /// </summary>
-        private void UpdateQueues()
+        /// <param name="clip">The already selected playback variant.</param>
+        /// <param name="loop">Whether the queue handle must be stopped explicitly.</param>
+        /// <returns>The owned playback, or null when audio playback is unavailable.</returns>
+        private ITacticalCombatNotificationPlayback Play(TacticalCombatSoundClip clip, bool loop)
         {
-            for (int index = _activeUntil.Count - 1; index >= 0; index--)
-                if (_elapsedMilliseconds >= _activeUntil[index])
-                    _activeUntil.RemoveAt(index);
-            while (_pending.Count > 0)
+            return Playback?.Invoke(clip, loop);
+        }
+
+        /// <summary>
+        /// Resolves a typed weapon or unit sound to its addressed notification record.
+        /// </summary>
+        /// <param name="sound">The typed combat sound.</param>
+        /// <returns>The notification message ID.</returns>
+        private static int GetMessageID(TacticalCombatSound sound) =>
+            sound switch
             {
-                Pending pending = _pending.Peek();
-                if (_elapsedMilliseconds - pending.Created > _pendingLifetimeMilliseconds)
-                    _pending.Dequeue();
-                else if (_activeUntil.Count < _concurrentSounds)
-                {
-                    _pending.Dequeue();
-                    TryStart(pending.Definition);
-                }
-                else
-                    break;
-            }
-        }
-
-        /// <summary>
-        /// Draws a variant before applying the simultaneous-playback limit.
-        /// </summary>
-        /// <param name="definition">The requested sound's authored variants.</param>
-        /// <returns>Whether playback started.</returns>
-        private bool TryStart(TacticalCombatSoundDefinition definition)
-        {
-            int index =
-                definition.Variants.Count > 1 ? _random.NextInt(0, definition.Variants.Count) : 0;
-            if (_activeUntil.Count >= _concurrentSounds)
-                return false;
-            TacticalCombatSoundClip clip = definition.Variants[index];
-            _activeUntil.Add(_elapsedMilliseconds + clip.DurationMilliseconds);
-            SoundRequested?.Invoke(clip);
-            return true;
-        }
-
-        private readonly struct Pending
-        {
-            public TacticalCombatSoundDefinition Definition { get; }
-            public double Created { get; }
-
-            /// <summary>
-            /// Captures a blocked sound's definition and expiry origin.
-            /// </summary>
-            /// <param name="definition">The requested sound.</param>
-            /// <param name="created">The request time in presentation milliseconds.</param>
-            public Pending(TacticalCombatSoundDefinition definition, double created)
-            {
-                Definition = definition;
-                Created = created;
-            }
-        }
+                TacticalCombatSound.CapitalLaser => 0,
+                TacticalCombatSound.HeavyWeapon => 1,
+                TacticalCombatSound.CapitalIon => 2,
+                TacticalCombatSound.AllianceFighterLaser => 3,
+                TacticalCombatSound.EmpireFighterLaser => 4,
+                TacticalCombatSound.FighterIon => 5,
+                TacticalCombatSound.TractorEngaged => 6,
+                TacticalCombatSound.TractorReleased => 7,
+                TacticalCombatSound.TargetLocked => 8,
+                TacticalCombatSound.SmallExplosion => 9,
+                TacticalCombatSound.MediumExplosion => 10,
+                TacticalCombatSound.LargeExplosion => 11,
+                TacticalCombatSound.HeavyShieldHit => 12,
+                TacticalCombatSound.LaserShieldHit => 13,
+                TacticalCombatSound.IonShieldHit => 14,
+                TacticalCombatSound.HeavyHullHit => 17,
+                TacticalCombatSound.LaserHullHit => 18,
+                TacticalCombatSound.IonHullHit => 19,
+                TacticalCombatSound.Superlaser => 20,
+                TacticalCombatSound.FighterLaunch => 27,
+                _ => throw new ArgumentOutOfRangeException(nameof(sound)),
+            };
     }
 }

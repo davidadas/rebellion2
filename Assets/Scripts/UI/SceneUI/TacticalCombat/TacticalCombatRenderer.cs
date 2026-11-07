@@ -33,12 +33,10 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
     private readonly Dictionary<string, Texture2D> _environmentTextures = new(
         StringComparer.Ordinal
     );
-    private readonly System.Random _sceneryRandom = new();
-    private float _field = 0.2f;
-    private Vector3 _focus;
+    private TacticalCombatSceneryRandom _sceneryRandom;
+    private TacticalCombatCameraState _cameraState;
+    private float _field => _cameraState.Field;
     private float _distance;
-    private float _yaw;
-    private float _pitch = 30;
     public Camera Camera => _battleCamera;
     public RenderTexture Target => _renderTarget;
 
@@ -59,7 +57,16 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
     {
         if (_battleCamera == null || _modelRoot == null || _fighterShader == null)
             throw new MissingReferenceException($"{name} is missing battle rendering references.");
+        _sceneryRandom =
+            session.SceneryRandom
+            ?? throw new InvalidOperationException(
+                "The tactical encounter has no scenery random stream."
+            );
         _distance = session.BattleDepth * 1.7f;
+        _cameraState = new TacticalCombatCameraState(
+            _distance,
+            session.GetSide(session.PlayerSide).FactionIndex
+        );
         _effects = new TacticalCombatEffects(_modelRoot, _fighterShader, session.BattleDepth);
         _impacts = new TacticalCombatImpactEffects(
             _modelRoot,
@@ -73,13 +80,10 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
             _fighterShader,
             session.Navigation
         );
-        _field = 0.2f;
         UpdateFieldOfView();
         PrepareEnvironment(session, assets);
         _battleCamera.farClipPlane = _distance * 2.5f;
         _battleCamera.nearClipPlane = 1;
-        _yaw = session.GetSide(session.PlayerSide).FactionIndex == 0 ? -30 : 150;
-        _focus = _modelRoot.position;
         foreach (TacticalCombatUnit unit in session.Units)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -256,22 +260,14 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
     }
 
     /// <summary>
-    /// Places background scenery independently of the campaign's simulation random stream.
+    /// Places background scenery using the encounter-owned sequence and shared battle seed boundary.
     /// </summary>
     /// <param name="depth">The battle's deployment span.</param>
     /// <param name="horizontal">The horizontal position in multiples of the span.</param>
     /// <param name="spread">The vertical and depth spread in multiples of the span.</param>
     /// <returns>The encounter-local scenery position.</returns>
-    private Vector3 GetSceneryPosition(float depth, float horizontal, float spread)
-    {
-        float range = depth * spread;
-        int width = (int)(range * 2);
-        return new Vector3(
-            depth * horizontal,
-            _sceneryRandom.Next(Math.Max(width, 1)) - range,
-            _sceneryRandom.Next(Math.Max(width, 1)) - range
-        );
-    }
+    private Vector3 GetSceneryPosition(float depth, float horizontal, float spread) =>
+        ToUnity(_sceneryRandom.NextPosition(depth, horizontal, spread));
 
     /// <summary>
     /// Converts the viewport's near-plane half extent into the camera's vertical angle.
@@ -403,6 +399,7 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
     /// </summary>
     public void RenderUnits()
     {
+        UpdateCamera();
         if (_planet != null)
             _planet.rotation = _battleCamera.transform.rotation;
         foreach (Visual visual in _visuals)
@@ -516,47 +513,49 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
     }
 
     /// <summary>
-    /// Orbits around the current focus while keeping the camera outside its clipping limits.
+    /// Applies one semantic camera operation independently of simulation pause.
     /// </summary>
-    /// <param name="delta">The pointer displacement in screen pixels.</param>
-    public void Orbit(Vector2 delta)
+    /// <param name="command">The requested primary-camera operation.</param>
+    public void ApplyCameraCommand(TacticalCombatCameraCommand command)
     {
-        _yaw += delta.x * 0.25f;
-        _pitch = Mathf.Clamp(_pitch - delta.y * 0.25f, -85, 85);
-        UpdateCamera();
-    }
-
-    /// <summary>
-    /// Pans the camera focus in the current screen plane.
-    /// </summary>
-    /// <param name="delta">The pointer displacement in screen pixels.</param>
-    public void Pan(Vector2 delta)
-    {
-        _focus -=
-            (_battleCamera.transform.right * delta.x + _battleCamera.transform.up * delta.y)
-            * (_distance / Mathf.Max(_battleCamera.pixelHeight, 1));
-        UpdateCamera();
-    }
-
-    /// <summary>
-    /// Changes the viewport field without affecting tactical movement.
-    /// </summary>
-    /// <param name="steps">The signed wheel displacement.</param>
-    public void Zoom(float steps)
-    {
-        float factor = steps >= 0 ? Mathf.Pow(0.9f, steps) : Mathf.Pow(1.1f, -steps);
-        _field = Mathf.Clamp(_field * factor, 0.005f, 1.5f);
+        _cameraState.Apply(command);
         UpdateFieldOfView();
         UpdateCamera();
     }
 
     /// <summary>
-    /// Centers the view on a selected battle position.
+    /// Changes the viewport field by discrete wheel steps without affecting tactical movement.
     /// </summary>
-    /// <param name="position">The encounter-local focus position.</param>
-    public void Focus(Vector3N position)
+    /// <param name="steps">The signed count of wheel steps.</param>
+    public void Zoom(float steps)
     {
-        _focus = _modelRoot.TransformPoint(ToUnity(position));
+        TacticalCombatCameraCommand command =
+            steps >= 0 ? TacticalCombatCameraCommand.ZoomIn : TacticalCombatCameraCommand.ZoomOut;
+        for (int index = 0; index < Mathf.RoundToInt(Mathf.Abs(steps)); index++)
+            ApplyCameraCommand(command);
+    }
+
+    /// <summary>
+    /// Tracks the selected participant's live render position without translating the camera orbit.
+    /// </summary>
+    /// <param name="unit">The selected participant, or null to clear tracking.</param>
+    public void Focus(TacticalCombatUnit unit)
+    {
+        if (unit == null)
+            _cameraState.Track(null);
+        else
+        {
+            Vector3? stationPosition = null;
+            foreach (Visual visual in _visuals)
+                if (ReferenceEquals(visual.Unit, unit))
+                {
+                    stationPosition = visual.StationPosition;
+                    break;
+                }
+            _cameraState.Track(() =>
+                _modelRoot.TransformPoint(stationPosition ?? ToUnity(unit.Position))
+            );
+        }
         UpdateCamera();
     }
 
@@ -573,11 +572,8 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
     /// </summary>
     private void UpdateCamera()
     {
-        Quaternion rotation = Quaternion.Euler(_pitch, _yaw, 0);
-        _battleCamera.transform.SetPositionAndRotation(
-            _focus - rotation * Vector3.forward * _distance,
-            rotation
-        );
+        _cameraState.GetPose(_modelRoot.position, out Vector3 position, out Quaternion rotation);
+        _battleCamera.transform.SetPositionAndRotation(position, rotation);
     }
 
     /// <summary>

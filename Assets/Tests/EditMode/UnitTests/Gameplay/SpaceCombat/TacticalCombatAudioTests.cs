@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game.SpaceCombat;
@@ -13,8 +14,8 @@ namespace Rebellion.Tests.Gameplay
         public void Enqueue_SingleVariant_DoesNotDrawFromBattleStream()
         {
             SystemRandomProvider random = new(42);
-            TacticalCombatAudio audio = CreateAudio(random, 1, 100);
-            audio.Enqueue(TacticalCombatSound.CapitalLaser);
+            Harness harness = new(random, 1, 100);
+            harness.Audio.Enqueue(TacticalCombatSound.CapitalLaser);
             Assert.AreEqual(0, random.CallCount);
         }
 
@@ -22,41 +23,38 @@ namespace Rebellion.Tests.Gameplay
         public void Enqueue_FullPlaybackCapacity_SelectsVariantBeforeDeferring()
         {
             SystemRandomProvider random = new(42);
-            TacticalCombatAudio audio = CreateAudio(random, 4, 100);
-            int played = 0;
-            audio.SoundRequested += _ => played++;
+            Harness harness = new(random, 4, 100);
             for (int index = 0; index < 6; index++)
-                audio.Enqueue(TacticalCombatSound.CapitalLaser);
-            Assert.AreEqual(5, played);
+                harness.Audio.Enqueue(TacticalCombatSound.CapitalLaser);
+            Assert.AreEqual(5, harness.Playbacks.Count);
             Assert.AreEqual(6, random.CallCount);
         }
 
         [Test]
-        public void Advance_PlaybackCapacityAvailable_ReselectsPendingVariant()
+        public void Update_PlaybackCapacityAvailable_ReselectsPendingVariant()
         {
             SystemRandomProvider random = new(42);
-            TacticalCombatAudio audio = CreateAudio(random, 4, 100);
-            int played = 0;
-            audio.SoundRequested += _ => played++;
+            Harness harness = new(random, 4, 100);
             for (int index = 0; index < 6; index++)
-                audio.Enqueue(TacticalCombatSound.CapitalLaser);
-            audio.Advance(100);
-            Assert.AreEqual(6, played);
+                harness.Audio.Enqueue(TacticalCombatSound.CapitalLaser);
+            harness.Now = 100;
+            harness.Audio.Update();
+            Assert.AreEqual(6, harness.Playbacks.Count);
             Assert.AreEqual(7, random.CallCount);
         }
 
         [Test]
-        public void Advance_PendingSoundExpired_DropsRequestWithoutAnotherDraw()
+        public void Update_PendingSoundExpired_DropsRequestWithoutAnotherDraw()
         {
             SystemRandomProvider random = new(42);
-            TacticalCombatAudio audio = CreateAudio(random, 4, 1000);
-            int played = 0;
-            audio.SoundRequested += _ => played++;
+            Harness harness = new(random, 4, 1000);
             for (int index = 0; index < 6; index++)
-                audio.Enqueue(TacticalCombatSound.CapitalLaser);
-            audio.Advance(226);
-            audio.Advance(1000);
-            Assert.AreEqual(5, played);
+                harness.Audio.Enqueue(TacticalCombatSound.CapitalLaser);
+            harness.Now = 226;
+            harness.Audio.Update();
+            harness.Now = 1000;
+            harness.Audio.Update();
+            Assert.AreEqual(5, harness.Playbacks.Count);
             Assert.AreEqual(6, random.CallCount);
         }
 
@@ -64,8 +62,8 @@ namespace Rebellion.Tests.Gameplay
         public void Enqueue_UnauthoredSound_DoesNotChangeBattleStream()
         {
             SystemRandomProvider random = new(42);
-            TacticalCombatAudio audio = CreateAudio(random, 4, 100);
-            audio.Enqueue(TacticalCombatSound.SmallExplosion);
+            Harness harness = new(random, 4, 100);
+            harness.Audio.Enqueue(TacticalCombatSound.SmallExplosion);
             Assert.AreEqual(0, random.CallCount);
         }
 
@@ -73,47 +71,185 @@ namespace Rebellion.Tests.Gameplay
         public void Enqueue_ReadySound_UsesOneOfItsAuthoredVariants()
         {
             SystemRandomProvider random = new(42);
-            TacticalCombatAudio audio = CreateAudio(random, 4, 100);
+            Harness harness = new(random, 4, 100);
             TacticalCombatSoundClip selected = null;
-            audio.SoundRequested += clip => selected = clip;
-            audio.Enqueue(TacticalCombatSound.CapitalLaser);
+            harness.Audio.Playback = (clip, _) =>
+            {
+                selected = clip;
+                return null;
+            };
+            harness.Audio.Enqueue(TacticalCombatSound.CapitalLaser);
             Assert.IsNotNull(selected);
             StringAssert.StartsWith("clip-", selected.Path);
         }
 
-        /// <summary>
-        /// Creates an isolated sound queue with one authored sound and synthetic clip durations.
-        /// </summary>
-        /// <param name="random">The shared random-number provider.</param>
-        /// <param name="count">The number of authored variants.</param>
-        /// <param name="duration">Each clip's duration in milliseconds.</param>
-        /// <returns>The queue under test.</returns>
-        private static TacticalCombatAudio CreateAudio(
-            IRandomNumberProvider random,
-            int count,
-            float duration
+        [TestCase(TacticalCombatSound.HeavyHullHit, 17)]
+        [TestCase(TacticalCombatSound.LaserHullHit, 18)]
+        [TestCase(TacticalCombatSound.IonHullHit, 19)]
+        [TestCase(TacticalCombatSound.Superlaser, 20)]
+        [TestCase(TacticalCombatSound.FighterLaunch, 27)]
+        public void Enqueue_TypedSound_SelectsItsAddressedNotification(
+            TacticalCombatSound sound,
+            int messageID
         )
         {
-            List<TacticalCombatSoundClip> clips = new();
-            for (int index = 0; index < count; index++)
-                clips.Add(
-                    new TacticalCombatSoundClip
-                    {
-                        Path = "clip-" + index,
-                        DurationMilliseconds = duration,
-                    }
-                );
-            return new TacticalCombatAudio(
+            TacticalCombatAudio audio = new(
+                Array.Empty<TacticalCombatSoundDefinition>(),
+                new SystemRandomProvider(42),
+                new[] { CreateMessage(messageID, null, "addressed") }
+            );
+            string selected = null;
+            audio.Playback = (clip, _) =>
+            {
+                selected = clip.Path;
+                return null;
+            };
+            audio.Enqueue(sound);
+            Assert.AreEqual("addressed", selected);
+        }
+
+        [Test]
+        public void Constructor_FactionBanks_SelectsOnlyThePlayerFaction()
+        {
+            TacticalCombatAudio audio = new(
+                Array.Empty<TacticalCombatSoundDefinition>(),
+                new SystemRandomProvider(42),
                 new[]
                 {
-                    new TacticalCombatSoundDefinition
-                    {
-                        Kind = TacticalCombatSound.CapitalLaser,
-                        Variants = clips,
-                    },
+                    CreateMessage(32, "FNALL1", "alliance"),
+                    CreateMessage(32, "FNEMP1", "empire"),
                 },
-                random
+                "FNEMP1"
             );
+            string selected = null;
+            audio.Playback = (clip, _) =>
+            {
+                selected = clip.Path;
+                return null;
+            };
+            audio.Notifications.Enqueue(32);
+            Assert.AreEqual("empire", selected);
+        }
+
+        [Test]
+        public void Update_PlaybackUnavailable_DoesNotReserveSyntheticDuration()
+        {
+            TacticalCombatAudio audio = new(
+                Array.Empty<TacticalCombatSoundDefinition>(),
+                new SystemRandomProvider(42),
+                new[] { CreateMessage(32, null, "voice") }
+            );
+            int requested = 0;
+            audio.Playback = (_, _) =>
+            {
+                requested++;
+                return null;
+            };
+            audio.Notifications.Enqueue(32);
+            audio.Notifications.Enqueue(32);
+            Assert.AreEqual(2, requested);
+        }
+
+        /// <summary>
+        /// Creates one addressed notification bank for an optional faction.
+        /// </summary>
+        /// <param name="messageID">The addressed message.</param>
+        /// <param name="faction">The selected faction, or null for shared sounds.</param>
+        /// <param name="path">The synthetic clip address.</param>
+        /// <returns>The authored message record.</returns>
+        private static TacticalCombatNotificationDefinition CreateMessage(
+            int messageID,
+            string faction,
+            string path
+        ) =>
+            new()
+            {
+                MessageID = messageID,
+                FactionInstanceID = faction,
+                Variants = new() { new() { Path = path } },
+            };
+
+        private sealed class Harness
+        {
+            private readonly float _duration;
+            public uint Now { get; set; }
+            public TacticalCombatAudio Audio { get; }
+            public List<Playback> Playbacks { get; } = new();
+
+            /// <summary>
+            /// Creates an authored effect bank with a controlled clock and actual owned playback states.
+            /// </summary>
+            /// <param name="random">The shared random-number provider.</param>
+            /// <param name="count">The number of ordered clip variants.</param>
+            /// <param name="duration">The duration reported by each synthetic playback.</param>
+            public Harness(IRandomNumberProvider random, int count, float duration)
+            {
+                _duration = duration;
+                List<TacticalCombatSoundClip> clips = new();
+                for (int index = 0; index < count; index++)
+                    clips.Add(new() { Path = "clip-" + index });
+                Audio = new TacticalCombatAudio(
+                    new[]
+                    {
+                        new TacticalCombatSoundDefinition
+                        {
+                            Kind = TacticalCombatSound.CapitalLaser,
+                            Variants = clips,
+                        },
+                    },
+                    random,
+                    clock: () => Now
+                )
+                {
+                    Playback = Play,
+                };
+            }
+
+            /// <summary>
+            /// Starts and retains the playback returned to the scheduler.
+            /// </summary>
+            /// <param name="clip">The selected clip.</param>
+            /// <param name="loop">Whether the playback repeats.</param>
+            /// <returns>The owned playback state.</returns>
+            private ITacticalCombatNotificationPlayback Play(
+                TacticalCombatSoundClip clip,
+                bool loop
+            )
+            {
+                Playback playback = new(_duration, loop, () => Now);
+                Playbacks.Add(playback);
+                return playback;
+            }
+        }
+
+        private sealed class Playback : ITacticalCombatNotificationPlayback
+        {
+            private readonly float _duration;
+            private readonly bool _loop;
+            private readonly Func<uint> _clock;
+            private readonly uint _started;
+            private bool _stopped;
+            public bool IsPlaying =>
+                !_stopped && (_loop || unchecked(_clock() - _started) < _duration);
+
+            /// <summary>
+            /// Captures a playback's controlled start clock and duration.
+            /// </summary>
+            /// <param name="duration">The clip duration in milliseconds.</param>
+            /// <param name="loop">Whether the clip repeats until stopped.</param>
+            /// <param name="clock">The controlled unscaled clock.</param>
+            public Playback(float duration, bool loop, Func<uint> clock)
+            {
+                _duration = duration;
+                _loop = loop;
+                _clock = clock;
+                _started = clock();
+            }
+
+            /// <summary>
+            /// Stops this owned playback.
+            /// </summary>
+            public void Stop() => _stopped = true;
         }
     }
 }

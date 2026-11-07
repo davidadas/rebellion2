@@ -122,7 +122,7 @@ namespace Rebellion.Gameplay
         public bool IsAlive => Hull > 0;
         public bool HasHyperdrive =>
             _componentDamage[(int)TacticalShipSystem.Hyperdrive] < _hyperdriveCount;
-        public float HullFraction => Hull / MaximumHull;
+        public float HullFraction => ScaleByHull(1);
         public event Action<TacticalSystemEvent> SystemEventRequested;
         public event Action<TacticalCombatSound> SoundRequested;
 
@@ -231,6 +231,13 @@ namespace Rebellion.Gameplay
         {
             return _componentDamage[(int)system];
         }
+
+        /// <summary>
+        /// Scales a value by the remaining hull, rounding after the multiplication and division.
+        /// </summary>
+        /// <param name="value">The complete unit's value.</param>
+        /// <returns>The hull-scaled value.</returns>
+        public float ScaleByHull(float value) => (float)((double)Hull * value / MaximumHull);
 
         /// <summary>
         /// Gets the weapon recharge available for one second.
@@ -470,10 +477,20 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Removes hull directly during a staged fighter attack sequence.
+        /// Removes hull directly and clears a living unit's shields during a staged attack sequence.
         /// </summary>
         /// <param name="loss">The hull loss, independent of shields.</param>
-        public void ApplyHullLoss(float loss) => Hull = Math.Max(Hull - loss, 0);
+        public void ApplyHullLoss(float loss)
+        {
+            if (!IsAlive)
+            {
+                Hull = 0;
+                return;
+            }
+            double remaining = (double)Hull - loss;
+            Shields = 0;
+            Hull = remaining > 0 ? (float)remaining : 0;
+        }
 
         /// <summary>
         /// Restores the pools captured when a staged fighter attack began.
@@ -494,7 +511,7 @@ namespace Rebellion.Gameplay
         /// <returns>The nonnegative remaining budget.</returns>
         private float GetDamagedBudget(float budget, uint damage)
         {
-            float scaled = (float)((double)Hull * budget / MaximumHull);
+            float scaled = ScaleByHull(budget);
             double remaining = scaled - (double)budget * 0.25f * damage;
             return remaining > 0 ? (float)remaining : 0;
         }

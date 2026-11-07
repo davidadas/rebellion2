@@ -32,6 +32,9 @@ public enum TacticalCombatControl
     NavigationRing2,
     NavigationRing3,
     NavigationRing4,
+    SaveCamera,
+    RestoreCamera,
+    FocusCamera,
 }
 
 /// <summary>

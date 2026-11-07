@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -21,11 +22,11 @@ public sealed class TacticalCombatController : IDisposable
     private readonly Action<TacticalCombatSession> _complete;
     private readonly CancellationTokenSource _cancellation;
     private readonly CancellationToken _lifetime;
-    private readonly HashSet<TacticalCombatUnit> _selected = new();
+    private readonly List<TacticalCombatUnit> _selected = new();
     private readonly List<TacticalCombatGroup> _selectedGroups = new();
     private readonly StringBuilder _selectionText = new();
-    private readonly List<AudioPlaybackHandle> _audioPlaybacks = new();
     private ContentAssets _assets;
+    private TacticalCombatCutsceneController _cutscenes;
     private Vector2 _pressPoint;
     private PointerEventData.InputButton? _gesture;
     private bool _dragged;
@@ -61,7 +62,7 @@ public sealed class TacticalCombatController : IDisposable
         view.PointerDragged += HandleDrag;
         view.ZoomRequested += HandleZoom;
         session.ShotFired += HandleShot;
-        session.Audio.SoundRequested += HandleSound;
+        session.Audio.Playback = PlayNotification;
         session.ShotApplied += HandleImpact;
         session.SuperlaserFired += HandleSuperlaser;
         session.UnitDestroyed += HandleDestroyed;
@@ -84,10 +85,29 @@ public sealed class TacticalCombatController : IDisposable
     public async Task PrepareAsync(ContentModelCache models, ContentAssets assets)
     {
         _assets = assets;
+        if (_session.BattleStation != null)
+        {
+            if (
+                string.IsNullOrWhiteSpace(_session.Definition?.AttackRunSuccessMoviePath)
+                || string.IsNullOrWhiteSpace(_session.Definition?.AttackRunFailureMoviePath)
+            )
+                throw new InvalidDataException(
+                    "Tactical combat requires success and failure movie addresses for battle-station attacks."
+                );
+            _ = assets.GetVideoUrl(_session.Definition.AttackRunSuccessMoviePath);
+            _ = assets.GetVideoUrl(_session.Definition.AttackRunFailureMoviePath);
+            _cutscenes = new TacticalCombatCutsceneController(
+                _session,
+                PlayAttackRunMovie,
+                SetMoviePresentation,
+                ReportMovieError,
+                PostMovieCompletion
+            );
+        }
         await Task.WhenAll(
-            (_session.Definition?.Sounds ?? new List<TacticalCombatSoundDefinition>())
-                .SelectMany(sound => sound.Variants)
-                .Select(clip => clip.Path)
+            _session
+                .Audio.Clips.Select(clip => clip.Path)
+                .Where(path => !string.IsNullOrWhiteSpace(path))
                 .Distinct(StringComparer.Ordinal)
                 .Select(assets.LoadAudioAsync)
         );
@@ -108,8 +128,11 @@ public sealed class TacticalCombatController : IDisposable
     {
         if (_disposed || !_ready)
             return;
-        ReadKeyboard();
+        if (_session.PendingAttackRunMovie == null)
+            ReadKeyboard();
         _session.Advance(elapsedSeconds * 1000);
+        if (_session.PendingAttackRunMovie != null)
+            return;
         Vector2Int size = _view.PixelSize;
         _view.Renderer.Resize(size.x, size.y);
         _view.SetViewportTexture(_view.Renderer.Target);
@@ -133,12 +156,27 @@ public sealed class TacticalCombatController : IDisposable
         Keyboard keyboard = Keyboard.current;
         if (keyboard == null)
             return;
-        if (keyboard.spaceKey.wasPressedThisFrame || keyboard.escapeKey.wasPressedThisFrame)
-            HandleControl(TacticalCombatControl.Pause);
-        if (keyboard.gKey.wasPressedThisFrame)
-            HandleControl(TacticalCombatControl.Group);
-        if (keyboard.fKey.wasPressedThisFrame && _selected.Count > 0)
-            _view.Renderer.Focus(_selected.First().Position);
+        foreach (UnityEngine.InputSystem.Controls.KeyControl key in keyboard.allKeys)
+            if (
+                key.wasPressedThisFrame
+                && TacticalCombatKeyboard.TryGetCameraCommand(
+                    key.keyCode,
+                    out TacticalCombatCameraCommand command
+                )
+            )
+                ApplyCameraCommand(command);
+    }
+
+    /// <summary>
+    /// Routes primary-camera controls while retaining the selected participant's live focus.
+    /// </summary>
+    /// <param name="command">The requested camera operation.</param>
+    private void ApplyCameraCommand(TacticalCombatCameraCommand command)
+    {
+        if (command == TacticalCombatCameraCommand.Focus)
+            _view.Renderer.Focus(_selected.Count == 0 ? null : _selected[0]);
+        else
+            _view.Renderer.ApplyCameraCommand(command);
     }
 
     /// <summary>
@@ -164,7 +202,7 @@ public sealed class TacticalCombatController : IDisposable
     /// <param name="eventData">The viewport pointer event.</param>
     private void HandlePointerDown(PointerEventData eventData)
     {
-        if (!_ready || _session.IsComplete)
+        if (!_ready || _session.IsComplete || _session.PendingAttackRunMovie != null)
             return;
         _gesture = eventData.button;
         _pressPoint = GetViewportPoint(eventData);
@@ -172,7 +210,7 @@ public sealed class TacticalCombatController : IDisposable
     }
 
     /// <summary>
-    /// Updates a selection rectangle, camera pan, or camera orbit.
+    /// Updates the active selection rectangle.
     /// </summary>
     /// <param name="eventData">The active gesture.</param>
     private void HandleDrag(PointerEventData eventData)
@@ -185,10 +223,6 @@ public sealed class TacticalCombatController : IDisposable
                 _pressPoint,
                 GetViewportPoint(eventData)
             );
-        else if (_gesture == PointerEventData.InputButton.Middle)
-            _view.Renderer.Pan(eventData.delta);
-        else
-            _view.Renderer.Orbit(eventData.delta);
     }
 
     /// <summary>
@@ -223,8 +257,18 @@ public sealed class TacticalCombatController : IDisposable
         {
             _view.Renderer.TryPick(point, out TacticalCombatUnit unit, out _);
             if (unit?.Side == _session.PlayerSide)
-                foreach (TacticalCombatUnit member in _session.GetGroup(unit).Members)
-                    _selected.Add(member);
+            {
+                TacticalCombatGroup group = _session.GetRequestedGroup(unit);
+                if (group == null)
+                {
+                    if (!_selected.Contains(unit))
+                        _selected.Add(unit);
+                }
+                else
+                    foreach (TacticalCombatUnit member in group.RequestedMembers)
+                        if (!_selected.Contains(member))
+                            _selected.Add(member);
+            }
             return;
         }
         Rect area = GetRectangle(_pressPoint, point);
@@ -237,7 +281,8 @@ public sealed class TacticalCombatController : IDisposable
                 && projected.z > 0
                 && area.Contains(projected)
             )
-                _selected.Add(unit);
+                if (!_selected.Contains(unit))
+                    _selected.Add(unit);
         }
     }
 
@@ -291,6 +336,8 @@ public sealed class TacticalCombatController : IDisposable
     /// <param name="control">The requested control.</param>
     private void HandleControl(TacticalCombatControl control)
     {
+        if (_session.PendingAttackRunMovie != null)
+            return;
         if (!_ready || _disposed || _completing)
             return;
         if (control == TacticalCombatControl.Continue)
@@ -307,6 +354,23 @@ public sealed class TacticalCombatController : IDisposable
         if (control == TacticalCombatControl.Pause)
         {
             _session.IsPaused = !_session.IsPaused;
+            return;
+        }
+        if (
+            control
+            is TacticalCombatControl.SaveCamera
+                or TacticalCombatControl.RestoreCamera
+                or TacticalCombatControl.FocusCamera
+        )
+        {
+            ApplyCameraCommand(
+                control switch
+                {
+                    TacticalCombatControl.SaveCamera => TacticalCombatCameraCommand.Save,
+                    TacticalCombatControl.RestoreCamera => TacticalCombatCameraCommand.Restore,
+                    _ => TacticalCombatCameraCommand.Focus,
+                }
+            );
             return;
         }
         if (
@@ -387,34 +451,29 @@ public sealed class TacticalCombatController : IDisposable
     }
 
     /// <summary>
-    /// Collects each selected formation once in encounter registration order.
+    /// Collects requested group identities in selection order, including pending membership changes.
     /// </summary>
     private void CollectSelectedGroups()
     {
         _selectedGroups.Clear();
-        foreach (TacticalCombatGroup group in _session.Groups)
-            if (group.Side == _session.PlayerSide && group.Members.Any(_selected.Contains))
+        foreach (TacticalCombatUnit unit in _selected)
+        {
+            TacticalCombatGroup group = _session.GetRequestedGroup(unit);
+            if (group != null && !_selectedGroups.Contains(group))
                 _selectedGroups.Add(group);
+        }
     }
 
     /// <summary>
-    /// Creates independent capital-ship and fighter formations from the selected active units.
+    /// Creates a command group from the selected active participants in selection order.
     /// </summary>
     private void RegroupSelection()
     {
-        foreach (bool fighters in new[] { false, true })
-        {
-            List<TacticalCombatUnit> members = _session
-                .Units.Where(unit =>
-                    _selected.Contains(unit)
-                    && unit.IsEngaged
-                    && unit.IsFighter == fighters
-                    && !unit.IsBattleStation
-                )
-                .ToList();
-            if (members.Count > 0)
-                _session.CreateGroup(members);
-        }
+        List<TacticalCombatUnit> members = _selected
+            .Where(unit => unit.IsEngaged && !unit.IsBattleStation)
+            .ToList();
+        if (members.Count > 0)
+            _session.CreateGroup(members);
     }
 
     /// <summary>
@@ -492,7 +551,7 @@ public sealed class TacticalCombatController : IDisposable
         }
         _view.SetSelection(
             _selectionText.Length == 0
-                ? "Select a group. Right-click a target or navigation point. Shift toggles queued orders.\nShow navigation rings to issue movement orders. Middle-drag pans; right-drag orbits; scroll zooms. F focuses; G groups."
+                ? "Select a group. Right-click a target or navigation point. Shift toggles queued orders.\nArrows rotate the camera; Page Up and Page Down zoom. Home saves the view; End restores it; Enter tracks the selection."
                 : _selectionText.ToString()
         );
     }
@@ -502,10 +561,13 @@ public sealed class TacticalCombatController : IDisposable
     /// </summary>
     private void RefreshControls()
     {
-        bool active = _ready && !_session.IsComplete;
+        bool active = _ready && !_session.IsComplete && _session.PendingAttackRunMovie == null;
         foreach (TacticalCombatControl control in Enum.GetValues(typeof(TacticalCombatControl)))
             _view.SetControlEnabled(control, active && _selected.Count > 0);
         _view.SetControlEnabled(TacticalCombatControl.Pause, active);
+        _view.SetControlEnabled(TacticalCombatControl.SaveCamera, active);
+        _view.SetControlEnabled(TacticalCombatControl.RestoreCamera, active);
+        _view.SetControlEnabled(TacticalCombatControl.FocusCamera, active);
         for (
             TacticalCombatControl control = TacticalCombatControl.NavigationRing1;
             control <= TacticalCombatControl.NavigationRing4;
@@ -542,19 +604,23 @@ public sealed class TacticalCombatController : IDisposable
     }
 
     /// <summary>
-    /// Plays an already selected combat sound through the application's audio ownership boundary.
+    /// Starts an owned notification playback using its authored loop setting.
     /// </summary>
-    /// <param name="clip">The sound chosen by the battle's bounded audio queue.</param>
-    private void HandleSound(TacticalCombatSoundClip clip)
+    /// <param name="clip">The selected notification variant.</param>
+    /// <param name="loop">Whether the scheduler owns a repeating playback.</param>
+    /// <returns>The playback's actual activity and cancellation boundary.</returns>
+    private ITacticalCombatNotificationPlayback PlayNotification(
+        TacticalCombatSoundClip clip,
+        bool loop
+    )
     {
         if (_disposed || AudioManager.Instance == null)
-            return;
-        _audioPlaybacks.RemoveAll(playback => !playback.IsActive);
+            return null;
         AudioPlaybackHandle playback = AudioManager.Instance.PlaySfxInstance(
-            _assets.GetPreloadedAudio(clip.Path)
+            _assets.GetPreloadedAudio(clip.Path),
+            loop
         );
-        if (playback != null)
-            _audioPlaybacks.Add(playback);
+        return playback == null ? null : new NotificationPlayback(playback);
     }
 
     /// <summary>
@@ -628,6 +694,50 @@ public sealed class TacticalCombatController : IDisposable
             $"{unit.DisplayName}: {(change.IsRepair ? "component repaired" : "systems damaged")}.";
 
     /// <summary>
+    /// Begins the outcome movie with its own cancellable playback and restricted skip controls.
+    /// </summary>
+    /// <param name="path">The authored outcome video address.</param>
+    /// <param name="completed">Acknowledges the battle's movie pause after playback.</param>
+    /// <returns>Ownership that cancels only this movie.</returns>
+    private IDisposable PlayAttackRunMovie(string path, Action completed)
+    {
+        return AppBootstrap
+            .Instance.GetCutsceneManager()
+            .PlayOwned(path, completed, CutsceneSkipInput.EscapeOrPrimaryPointer);
+    }
+
+    /// <summary>
+    /// Transfers visibility and pointer focus between battle presentation and full-screen video.
+    /// </summary>
+    /// <param name="active">Whether the movie owns presentation.</param>
+    private void SetMoviePresentation(bool active)
+    {
+        _gesture = null;
+        _view.gameObject.SetActive(!active);
+    }
+
+    /// <summary>
+    /// Posts a failed movie's acknowledgement after the current battle command returns.
+    /// </summary>
+    /// <param name="completed">Releases the failed movie's simulation and presentation ownership.</param>
+    private async void PostMovieCompletion(Action completed)
+    {
+        await Task.Yield();
+        if (!_disposed)
+            completed();
+    }
+
+    /// <summary>
+    /// Reports a video that could not start before its deferred completion acknowledgement.
+    /// </summary>
+    /// <param name="exception">The playback failure.</param>
+    private void ReportMovieError(Exception exception)
+    {
+        _notice = "The attack movie could not be played.";
+        Debug.LogException(exception);
+    }
+
+    /// <summary>
     /// Displays the current battle-station attack phase.
     /// </summary>
     /// <param name="run">The staged fighter attack.</param>
@@ -655,6 +765,31 @@ public sealed class TacticalCombatController : IDisposable
         );
 
     /// <summary>
+    /// Adapts one application-owned playback to the notification scheduler's live status.
+    /// </summary>
+    private sealed class NotificationPlayback : ITacticalCombatNotificationPlayback
+    {
+        private readonly AudioPlaybackHandle playback;
+        public bool IsPlaying =>
+            playback.IsActive
+            && (playback.Paused || AudioListener.pause || playback.Source?.isPlaying == true);
+
+        /// <summary>
+        /// Captures the independently controllable sound source.
+        /// </summary>
+        /// <param name="playback">The application's ownership handle.</param>
+        public NotificationPlayback(AudioPlaybackHandle playback)
+        {
+            this.playback = playback;
+        }
+
+        /// <summary>
+        /// Stops only the source owned by this notification.
+        /// </summary>
+        public void Stop() => playback.Stop();
+    }
+
+    /// <summary>
     /// Cancels pending preparation, removes subscriptions, and destroys the owned authored screen.
     /// </summary>
     public void Dispose()
@@ -662,6 +797,8 @@ public sealed class TacticalCombatController : IDisposable
         if (_disposed)
             return;
         _disposed = true;
+        _cutscenes?.Dispose();
+        _cutscenes = null;
         _cancellation.Cancel();
         _cancellation.Dispose();
         _view.ControlRequested -= HandleControl;
@@ -670,10 +807,8 @@ public sealed class TacticalCombatController : IDisposable
         _view.PointerDragged -= HandleDrag;
         _view.ZoomRequested -= HandleZoom;
         _session.ShotFired -= HandleShot;
-        _session.Audio.SoundRequested -= HandleSound;
-        foreach (AudioPlaybackHandle playback in _audioPlaybacks)
-            playback.Stop();
-        _audioPlaybacks.Clear();
+        _session.Audio.Playback = null;
+        _session.Audio.Dispose();
         _session.ShotApplied -= HandleImpact;
         _session.SuperlaserFired -= HandleSuperlaser;
         _session.UnitDestroyed -= HandleDestroyed;

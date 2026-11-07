@@ -17,6 +17,20 @@ namespace Rebellion.Gameplay
         public TacticalCombatRandom(uint seed) => _state = seed;
 
         /// <summary>
+        /// Replaces the shared battle state before scenery selects its local sequence.
+        /// </summary>
+        /// <param name="seed">The captured calendar seed, including its unsigned failure representation.</param>
+        public void Reseed(uint seed) => _state = seed;
+
+        /// <summary>
+        /// Converts a captured local clock to the signed calendar seed supported by battle initialization.
+        /// </summary>
+        /// <param name="clock">The local calendar fields and their effective UTC offset.</param>
+        /// <returns>The wrapped epoch seconds, or minus one for an unsupported local year.</returns>
+        public static int GetCalendarSeed(DateTimeOffset clock) =>
+            clock.Year < 1970 || clock.Year > 2038 ? -1 : unchecked((int)clock.ToUnixTimeSeconds());
+
+        /// <summary>
         /// Returns the next normalized tactical roll.
         /// </summary>
         /// <returns>A value in the half-open interval from zero to one.</returns>

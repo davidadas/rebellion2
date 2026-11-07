@@ -19,6 +19,8 @@ namespace Rebellion.Gameplay
     /// </summary>
     public sealed class TacticalCombatFormation
     {
+        private static readonly Comparer<TacticalCombatUnit> _memberComparer =
+            Comparer<TacticalCombatUnit>.Create(CompareMembers);
         private readonly Dictionary<TacticalCombatUnit, Member> _members = new();
         private readonly List<TacticalCombatUnit> _memberOrder = new();
         private readonly Vector3 _initialHeading;
@@ -77,7 +79,8 @@ namespace Rebellion.Gameplay
             if (_currentCount == 1)
                 Position = unit.Position;
             _members.Add(unit, new Member { Offset = ComputeOffset(unit) });
-            _memberOrder.Add(unit);
+            int index = _memberOrder.BinarySearch(unit, _memberComparer);
+            _memberOrder.Insert(index < 0 ? ~index : index, unit);
         }
 
         /// <summary>
@@ -98,10 +101,13 @@ namespace Rebellion.Gameplay
         /// <param name="kind">The requested layout.</param>
         public void SetKind(TacticalCombatFormationKind kind)
         {
-            if (Kind == kind)
-                return;
             Kind = kind;
             Heading = _initialHeading;
+            Velocity = Vector3.Zero;
+            MovementSpeed = 0;
+            TurnRate = 0;
+            _lastMovement = Vector3.Zero;
+            _previousPosition = Vector3.Zero;
             _spacingFloor = 12;
             _surroundScale = 12.5f;
             _maximumCount = 0;
@@ -120,7 +126,41 @@ namespace Rebellion.Gameplay
             }
             if (_memberOrder.Count > 0)
                 Position = _memberOrder[0].Position;
+            _memberOrder.Sort(_memberComparer);
         }
+
+        /// <summary>
+        /// Rebuilds a marker with the designated leader first and the remaining registry-ordered roster.
+        /// </summary>
+        /// <param name="kind">The requested layout.</param>
+        /// <param name="leader">The active group's designated leader.</param>
+        /// <param name="units">The complete active roster in registry order.</param>
+        public void SetKind(
+            TacticalCombatFormationKind kind,
+            TacticalCombatUnit leader,
+            IReadOnlyList<TacticalCombatUnit> units
+        )
+        {
+            List<TacticalCombatUnit> ordered = new(units.Count);
+            if (leader != null)
+                ordered.Add(leader);
+            foreach (TacticalCombatUnit unit in units)
+                if (!ReferenceEquals(unit, leader))
+                    ordered.Add(unit);
+            _memberOrder.Clear();
+            _memberOrder.AddRange(ordered);
+            _members.Clear();
+            SetKind(kind);
+        }
+
+        /// <summary>
+        /// Orders marker traversal independently of the order used to assign formation offsets.
+        /// </summary>
+        /// <param name="first">The first marker member.</param>
+        /// <param name="second">The second marker member.</param>
+        /// <returns>The unsigned battle registration ordering.</returns>
+        private static int CompareMembers(TacticalCombatUnit first, TacticalCombatUnit second) =>
+            ((uint)first.Index).CompareTo((uint)second.Index);
 
         /// <summary>
         /// Refreshes movement limits and long-lived collision recovery once per system update.
@@ -147,12 +187,13 @@ namespace Rebellion.Gameplay
                     unit.HasCollision
                     && Velocity == Vector3.Zero
                     && StableUpdates >= 5
-                    && systemTime - member.RecoveryTime > 12
+                    && systemTime - unit.CollisionRecoveryTime > 12
                 )
                 {
-                    member.RecoveryTime = systemTime;
-                    member.RecoveryPhase = (member.RecoveryPhase + unit.Index + 1) & 3;
-                    member.Recovery = member.RecoveryPhase switch
+                    unit.CollisionRecoveryTime = systemTime;
+                    unit.CollisionRecoveryPhase =
+                        (unit.CollisionRecoveryPhase + unit.Index + 1) & 3;
+                    member.Recovery = unit.CollisionRecoveryPhase switch
                     {
                         0 => new Vector3(20, 0, 0),
                         1 => new Vector3(-20, 10, 5),
@@ -161,7 +202,7 @@ namespace Rebellion.Gameplay
                     };
                     member.HasRecovery = true;
                 }
-                else if (!unit.HasCollision && systemTime - member.RecoveryTime > 12)
+                else if (!unit.HasCollision && systemTime - unit.CollisionRecoveryTime > 12)
                     member.HasRecovery = false;
             }
             MovementSpeed = movement == float.MaxValue ? 0 : movement;
@@ -200,7 +241,7 @@ namespace Rebellion.Gameplay
         /// <param name="point">The requested point.</param>
         /// <param name="elapsedMilliseconds">The continuous movement interval.</param>
         /// <param name="minimumDistance">The arrival distance.</param>
-        /// <param name="targetHeading">The formation's requested heading.</param>
+        /// <param name="targetHeading">The formation's stored normalized requested heading.</param>
         /// <returns>Whether the reference point moved.</returns>
         public bool MoveTowards(
             Vector3 point,
@@ -210,11 +251,17 @@ namespace Rebellion.Gameplay
         )
         {
             Vector3 delta = point - Position;
-            float distance = TacticalCombatGeometry.GetLength(delta);
-            bool moved = delta != Vector3.Zero && distance > minimumDistance;
+            double liveDistance = TacticalCombatGeometry.MeasureLength(delta);
+            float distance = (float)liveDistance;
+            double arrivalDistance =
+                Kind == TacticalCombatFormationKind.Direct ? liveDistance : distance;
+            bool moved = delta != Vector3.Zero && arrivalDistance > minimumDistance;
             if (moved)
             {
-                Vector3 direction = TacticalCombatGeometry.Normalize(delta);
+                Vector3 direction =
+                    Kind == TacticalCombatFormationKind.Direct
+                        ? TacticalCombatGeometry.Normalize(delta, distance)
+                        : TacticalCombatGeometry.NormalizeWithStoredScale(delta, distance);
                 float speed =
                     Kind == TacticalCombatFormationKind.Direct
                         ? MovementSpeed
@@ -244,11 +291,11 @@ namespace Rebellion.Gameplay
                 targetHeading = _lastMovement == Vector3.Zero ? Heading : _lastMovement;
                 targetHeading.Y = 0;
                 if (targetHeading == Vector3.Zero && _memberOrder.Count > 0)
-                    targetHeading = _memberOrder[0].Heading;
+                    targetHeading = _initialHeading;
+                targetHeading = TacticalCombatGeometry.Normalize(targetHeading);
             }
             else if (targetHeading.X == 0 && targetHeading.Z == 0)
                 return moved;
-            targetHeading = TacticalCombatGeometry.Normalize(targetHeading);
             if (Vector3.Dot(targetHeading, Heading) < 0)
                 Heading =
                     Kind == TacticalCombatFormationKind.Surround
@@ -421,8 +468,6 @@ namespace Rebellion.Gameplay
             public Vector3 Offset;
             public Vector3 Recovery;
             public bool HasRecovery;
-            public float RecoveryTime;
-            public int RecoveryPhase;
         }
     }
 }

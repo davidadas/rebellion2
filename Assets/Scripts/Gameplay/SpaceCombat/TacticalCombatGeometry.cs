@@ -153,7 +153,17 @@ namespace Rebellion.Gameplay
         /// <returns>The normalized vector, or the supplied zero vector.</returns>
         public static Vector3 Normalize(Vector3 vector)
         {
-            float length = GetLength(vector);
+            return Normalize(vector, GetLength(vector));
+        }
+
+        /// <summary>
+        /// Normalizes a vector using its stored magnitude without rounding the reciprocal scale.
+        /// </summary>
+        /// <param name="vector">The vector to normalize.</param>
+        /// <param name="length">The vector's stored magnitude.</param>
+        /// <returns>The normalized vector, preserving a zero or unordered magnitude.</returns>
+        internal static Vector3 Normalize(Vector3 vector, float length)
+        {
             if (length <= 0 || float.IsNaN(length))
                 return vector;
             double inverse = 1.0 / length;
@@ -165,11 +175,11 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Normalizes a fighter's requested heading with a rounded single-precision scale.
+        /// Normalizes a direction with a stored single-precision scale.
         /// </summary>
         /// <param name="heading">The requested direction before normalization.</param>
         /// <returns>The normalized direction, preserving a zero or unordered direction.</returns>
-        internal static Vector3 NormalizeFighterHeading(Vector3 heading)
+        internal static Vector3 NormalizeWithStoredScale(Vector3 heading)
         {
             float length = (float)
                 Math.Sqrt(
@@ -177,6 +187,17 @@ namespace Rebellion.Gameplay
                         + (double)heading.Z * heading.Z
                         + (double)heading.X * heading.X
                 );
+            return NormalizeWithStoredScale(heading, length);
+        }
+
+        /// <summary>
+        /// Normalizes a direction using its stored magnitude and a single-precision scale.
+        /// </summary>
+        /// <param name="heading">The requested direction before normalization.</param>
+        /// <param name="length">The direction's stored magnitude.</param>
+        /// <returns>The normalized direction, preserving a zero or unordered magnitude.</returns>
+        internal static Vector3 NormalizeWithStoredScale(Vector3 heading, float length)
+        {
             if (!(length > 0))
                 return heading;
             float inverse = (float)(1.0 / length);
@@ -184,6 +205,19 @@ namespace Rebellion.Gameplay
                 (float)((double)heading.X * inverse),
                 (float)((double)heading.Y * inverse),
                 (float)((double)heading.Z * inverse)
+            );
+        }
+
+        /// <summary>
+        /// Measures a vector's length without storing a single-precision magnitude.
+        /// </summary>
+        /// <param name="vector">The vector to measure.</param>
+        /// <returns>The magnitude before single-precision rounding.</returns>
+        internal static double MeasureLength(Vector3 vector)
+        {
+            return Math.Sqrt(
+                (double)vector.X * vector.X
+                    + ((double)vector.Y * vector.Y + (double)vector.Z * vector.Z)
             );
         }
 

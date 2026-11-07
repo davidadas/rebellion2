@@ -397,14 +397,15 @@ public sealed class AudioManager : MonoBehaviour
     /// Plays one loaded sound effect through an independently controllable source.
     /// </summary>
     /// <param name="clip">The sound effect clip to play.</param>
+    /// <param name="loop">Whether playback repeats until its handle is stopped.</param>
     /// <returns>The playback handle, or null when the clip is missing.</returns>
-    public AudioPlaybackHandle PlaySfxInstance(AudioClip clip)
+    public AudioPlaybackHandle PlaySfxInstance(AudioClip clip, bool loop = false)
     {
         if (clip == null)
             return null;
 
         AudioPlaybackHandle playback = CreatePlayback();
-        StartPlayback(playback, clip);
+        StartPlayback(playback, clip, loop);
         return playback;
     }
 
@@ -816,7 +817,8 @@ public sealed class AudioManager : MonoBehaviour
     /// </summary>
     /// <param name="playback">The playback receiving the clip.</param>
     /// <param name="clip">The loaded clip.</param>
-    private void StartPlayback(AudioPlaybackHandle playback, AudioClip clip)
+    /// <param name="loop">Whether playback repeats until its handle is stopped.</param>
+    private void StartPlayback(AudioPlaybackHandle playback, AudioClip clip, bool loop = false)
     {
         if (!_activeSfxPlaybacks.Contains(playback) || clip == null)
             return;
@@ -825,7 +827,7 @@ public sealed class AudioManager : MonoBehaviour
             _availableSfxSources.Count > 0 ? _availableSfxSources.Pop() : CreateAudioSource();
         playback.Source = source;
         source.clip = clip;
-        source.loop = false;
+        source.loop = loop;
         source.volume = sfxVolume * masterVolume;
         source.Play();
     }

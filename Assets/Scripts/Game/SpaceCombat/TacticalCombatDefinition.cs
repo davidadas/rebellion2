@@ -13,10 +13,13 @@ namespace Rebellion.Game.SpaceCombat
         public List<TacticalCombatUnitDefinition> Units { get; set; } = new();
         public List<TacticalCombatEffectDefinition> Effects { get; set; } = new();
         public List<TacticalCombatSoundDefinition> Sounds { get; set; } = new();
+        public List<TacticalCombatNotificationDefinition> Notifications { get; set; } = new();
         public List<TacticalCombatEnvironmentDefinition> Environments { get; set; } = new();
         public List<string> CriticalPlanetInstanceIDs { get; set; } = new();
         public int WithdrawalDistancePercent { get; set; }
         public string BackgroundImagePath { get; set; }
+        public string AttackRunSuccessMoviePath { get; set; }
+        public string AttackRunFailureMoviePath { get; set; }
         public int FastSystemRepairTicks { get; set; }
         public int NormalSystemRepairTicks { get; set; }
     }
@@ -65,7 +68,6 @@ namespace Rebellion.Game.SpaceCombat
     public sealed class TacticalCombatSoundClip
     {
         public string Path { get; set; }
-        public float DurationMilliseconds { get; set; }
     }
 
     /// <summary>

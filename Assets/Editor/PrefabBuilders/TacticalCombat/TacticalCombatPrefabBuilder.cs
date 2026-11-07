@@ -110,6 +110,9 @@ public static class TacticalCombatPrefabBuilder
             "Navigation ring 2",
             "Navigation ring 3",
             "Navigation ring 4",
+            "Save camera",
+            "Restore camera",
+            "Track selection",
         };
         Array values = Enum.GetValues(typeof(TacticalCombatControl));
         SerializedObject serialized = new SerializedObject(view);
