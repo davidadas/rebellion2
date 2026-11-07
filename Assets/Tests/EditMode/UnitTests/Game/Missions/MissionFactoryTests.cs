@@ -477,6 +477,37 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void TryCreateMission_ParticipantsOnDifferentPlanets_ReturnsFalse()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            Planet otherPlanet = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 10,
+                PositionY = 10,
+            };
+            game.AttachNode(otherPlanet, planet.GetParent());
+            Officer decoy = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(decoy, otherPlanet);
+            planet.AddVisitor("empire");
+            MissionContext context = CreateContext(
+                game,
+                EspionageMission.MissionTypeID,
+                "empire",
+                officer,
+                planet
+            );
+            context.DecoyParticipants.Add(decoy);
+
+            bool created = factory.TryCreateMission(context, out Mission mission);
+
+            Assert.IsFalse(created);
+            Assert.IsNull(mission);
+        }
+
+        [Test]
         public void TryCreateMission_RecruitmentWithUnrecruited_ReturnsMissionWithMatchingConfigKey()
         {
             (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();

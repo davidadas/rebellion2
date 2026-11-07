@@ -446,21 +446,21 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ResolveObjective_OfficersOnSameProbabilityPlateau_PreservesSelectionOrder()
+        public void ResolveObjective_OfficersOnSameProbabilityPlateau_UsesInstanceIdentityOrder()
         {
             (
                 GameRoot game,
                 Planet empirePlanet,
                 Planet enemyPlanet,
-                Officer lowScoreOfficer,
+                Officer highIdentityOfficer,
                 FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
             Regiment target = CreateSabotageTarget(game, enemyPlanet);
-            lowScoreOfficer.SetBaseRating(SkillRating.Espionage, 20);
-            lowScoreOfficer.SetBaseRating(SkillRating.Combat, 20);
-            Officer highScoreOfficer = EntityFactory.CreateOfficer("high-score", "empire");
-            highScoreOfficer.SetBaseRating(SkillRating.Espionage, 30);
-            highScoreOfficer.SetBaseRating(SkillRating.Combat, 30);
+            highIdentityOfficer.SetBaseRating(SkillRating.Espionage, 20);
+            highIdentityOfficer.SetBaseRating(SkillRating.Combat, 20);
+            Officer lowIdentityOfficer = EntityFactory.CreateOfficer("a-officer", "empire");
+            lowIdentityOfficer.SetBaseRating(SkillRating.Espionage, 30);
+            lowIdentityOfficer.SetBaseRating(SkillRating.Combat, 30);
             game.Config.ProbabilityTables.Mission.Sabotage = new Dictionary<int, int>
             {
                 { 0, 50 },
@@ -470,7 +470,7 @@ namespace Rebellion.Tests.Game.Missions
             Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
-                new List<IMissionParticipant> { highScoreOfficer, lowScoreOfficer },
+                new List<IMissionParticipant> { highIdentityOfficer, lowIdentityOfficer },
                 new List<IMissionParticipant>(),
                 target
             );
@@ -480,9 +480,59 @@ namespace Rebellion.Tests.Game.Missions
             List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0));
 
             Assert.AreSame(
-                highScoreOfficer,
+                lowIdentityOfficer,
                 results.OfType<GameObjectSabotagedResult>().Single().DestroyedBy
             );
+        }
+
+        [Test]
+        public void ResolveObjective_SpecialForcesOnSameProbability_UsesInstanceIdentityOrder()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarCommands fog
+            ) = MissionSceneBuilder.Build();
+            Regiment target = CreateSabotageTarget(game, enemyPlanet);
+            SpecialForces highIdentityUnit = new SpecialForces
+            {
+                InstanceID = "z-unit",
+                OwnerInstanceID = "empire",
+            };
+            SpecialForces lowIdentityUnit = new SpecialForces
+            {
+                InstanceID = "a-unit",
+                OwnerInstanceID = "empire",
+            };
+            foreach (SpecialForces unit in new[] { highIdentityUnit, lowIdentityUnit })
+            {
+                unit.SetBaseRating(SkillRating.Espionage, 100);
+                unit.SetBaseRating(SkillRating.Combat, 100);
+            }
+            game.Config.ProbabilityTables.Mission.Sabotage = new Dictionary<int, int>
+            {
+                { 100, 100 },
+            };
+
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { highIdentityUnit, lowIdentityUnit },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0));
+
+            Assert.AreSame(
+                lowIdentityUnit,
+                results.OfType<GameObjectSabotagedResult>().Single().DestroyedBy
+            );
+            Assert.AreEqual(lowIdentityUnit.InstanceID, mission.SuccessfulParticipantInstanceID);
         }
 
         [Test]

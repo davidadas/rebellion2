@@ -337,6 +337,11 @@ namespace Rebellion.Game.Units
         /// </summary>
         public int Loyalty => _loyalty;
 
+        /// <summary>
+        /// Gets or sets the instance ID of the traitor most recently discovered by this officer.
+        /// </summary>
+        public string DiscoveredTraitorInstanceID { get; set; }
+
         // Injury Info.
         public int InjuryPoints { get; set; }
 
@@ -651,6 +656,7 @@ namespace Rebellion.Game.Units
             copy.IsKilled = IsKilled;
             copy._canBetray = _canBetray;
             copy._loyalty = _loyalty;
+            copy.DiscoveredTraitorInstanceID = DiscoveredTraitorInstanceID;
             copy.InjuryPoints = InjuryPoints;
             copy.JediProbability = JediProbability;
             copy.JediLevel = JediLevel;

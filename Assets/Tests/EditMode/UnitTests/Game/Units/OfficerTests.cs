@@ -789,6 +789,7 @@ namespace Rebellion.Tests.Game.Units
             originalOfficer.TraitGrants.Add(
                 new OfficerTraitGrant { TraitID = "leadership", SourceID = "event" }
             );
+            originalOfficer.DiscoveredTraitorInstanceID = "traitor";
 
             string xml = SerializationHelper.Serialize(originalOfficer);
             Officer deserializedOfficer = SerializationHelper.Deserialize<Officer>(xml);
@@ -796,6 +797,7 @@ namespace Rebellion.Tests.Game.Units
             StringAssert.Contains("<CanBetray>False</CanBetray>", xml);
             StringAssert.Contains("<Loyalty>75</Loyalty>", xml);
             Assert.AreEqual(713, deserializedOfficer.NextForceDiscoveryTick);
+            Assert.AreEqual("traitor", deserializedOfficer.DiscoveredTraitorInstanceID);
             Assert.AreEqual(4294967300L, deserializedOfficer.ForceDiscoveryOrder);
             CollectionAssert.AreEqual(originalOfficer.Traits, deserializedOfficer.Traits);
             Assert.AreEqual(1, deserializedOfficer.TraitGrants.Count);
