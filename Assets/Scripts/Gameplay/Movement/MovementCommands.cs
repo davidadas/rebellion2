@@ -796,7 +796,7 @@ namespace Rebellion.Gameplay
                 )
             )
             {
-                if (capitalShipRejectionReason != null)
+                if (capitalShipRejectionReason != null && items.All(item => item is CapitalShip))
                     GameLogger.Warning($"RequestMove rejected: {capitalShipRejectionReason}");
                 return false;
             }

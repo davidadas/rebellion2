@@ -37,19 +37,23 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsNull(orphan.Movement);
         }
 
-        [Test]
-        public void TrySetFleetWaypointRoute_CapitalShipInTransit_LogsRejectionReason()
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TrySetFleetWaypointRoute_CapitalShipInTransit_LogsRejectionReason(
+            bool useSnapshot
+        )
         {
             (_, _, Planet destination, _, Fleet fleet, MovementCommands movement) =
                 BuildWaypointScene();
             CapitalShip ship = fleet.GetChildren<CapitalShip>().Single();
             MovementState transit = new() { TransitTicks = 10 };
             ship.Movement = transit;
+            ISceneNode selection = useSnapshot ? ship.CreateCopy() : ship;
 
             List<string> warnings = CaptureWarnings(() =>
                 Assert.IsFalse(
                     movement.TrySetFleetWaypointRoute(
-                        new ISceneNode[] { ship },
+                        new[] { selection },
                         new[] { destination.InstanceID },
                         "empire"
                     )
@@ -60,6 +64,43 @@ namespace Rebellion.Tests.Gameplay
             StringAssert.Contains("already in transit", warnings.Single());
             Assert.AreSame(transit, ship.Movement);
             Assert.AreSame(fleet, ship.GetParent());
+            Assert.IsEmpty(fleet.Waypoints);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TrySetFleetWaypointRoute_MovingFleetWithStaleWaypoint_DoesNotLogShipRejection(
+            bool useSnapshot
+        )
+        {
+            (
+                GameRoot game,
+                _,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet fleet,
+                MovementCommands movement
+            ) = BuildWaypointScene();
+            Assert.IsTrue(
+                movement.TryRequestMove(new ISceneNode[] { fleet }, firstDestination, "empire")
+            );
+            MovementState transit = fleet.Movement;
+            ISceneNode selection = useSnapshot ? fleet.CreateCopy() : fleet;
+            game.DetachNode(secondDestination);
+
+            List<string> warnings = CaptureWarnings(() =>
+                Assert.IsFalse(
+                    movement.TrySetFleetWaypointRoute(
+                        new[] { selection },
+                        new[] { secondDestination.InstanceID },
+                        "empire"
+                    )
+                )
+            );
+
+            Assert.IsEmpty(warnings);
+            Assert.AreSame(transit, fleet.Movement);
+            Assert.AreSame(firstDestination, fleet.GetParent());
             Assert.IsEmpty(fleet.Waypoints);
         }
 
