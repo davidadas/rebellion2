@@ -338,64 +338,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ProcessTick_RepeatingEspionage_ContinuesWithoutNewEncountersOrReturnTravel()
-        {
-            (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
-                BuildDetectionScene();
-            planet.AddVisitor("empire");
-            game.Config.ProbabilityTables.Mission.Espionage = new Dictionary<int, int>
-            {
-                { -1000, 100 },
-            };
-            game.Config.ProbabilityTables.Mission.TickRanges.Espionage =
-                new GameConfig.MissionTickConfig();
-            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
-            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 0 } });
-            DisableCaptureEvasionInjury(game);
-            MissionContext context = new MissionContext
-            {
-                Game = game,
-                MissionTypeID = EspionageMission.MissionTypeID,
-                OwnerInstanceId = "empire",
-                Location = planet,
-                MainParticipants = new List<IMissionParticipant> { spy },
-                DecoyParticipants = new List<IMissionParticipant>(),
-                IsRepeating = true,
-            };
-            Assert.IsTrue(new MissionFactory(game).TryCreateMission(context, out Mission mission));
-            game.AttachNode(mission, planet);
-            game.MoveNode(spy, mission);
-            mission.Initiate(0);
-            mission.DetectionResolved = true;
-            mission.PreObjectiveEncounterResolved = true;
-            MissionCommands commands = TestSystems.CreateMissionCommands(
-                game,
-                new FixedRNG(0.01),
-                movement
-            );
-
-            MissionCompletedResult first = commands
-                .ProcessMissionTick(game)
-                .OfType<MissionCompletedResult>()
-                .Single();
-            MissionCompletedResult second = commands
-                .ProcessMissionTick(game)
-                .OfType<MissionCompletedResult>()
-                .Single();
-
-            Assert.AreEqual(MissionOutcome.Success, first.Outcome);
-            Assert.AreEqual(MissionOutcome.Success, second.Outcome);
-            Assert.IsTrue(first.CanContinue);
-            Assert.IsTrue(second.CanContinue);
-            Assert.IsTrue(mission.DetectionResolved);
-            Assert.IsTrue(mission.PreObjectiveEncounterResolved);
-            Assert.AreSame(planet, mission.GetParent());
-            Assert.AreSame(mission, spy.GetParent());
-            Assert.IsNull(spy.Movement);
-            Assert.IsFalse(spy.IsCaptured);
-        }
-
-        [Test]
         public void ProcessTick_CompletedWithoutReturnDestination_CapturesOfficerAndDetachesMission()
         {
             GameConfig config = TestConfig.Create();
@@ -3924,11 +3866,8 @@ namespace Rebellion.Tests.Gameplay
             );
         }
 
-        /// <summary>
-        /// Ends a repeating espionage mission when its initial departure is foiled.
-        /// </summary>
         [Test]
-        public void InitiateMission_RepeatingEspionageFoiledOnDeparture_TerminatesBeforeTravel()
+        public void InitiateMission_RepeatingEspionage_ReturnsFalseWithoutChangingScene()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
@@ -3999,18 +3938,11 @@ namespace Rebellion.Tests.Gameplay
                 CreateContext(EspionageMission.MissionTypeID, officer, target, isRepeating: true)
             );
 
-            Assert.IsTrue(initiated);
+            Assert.IsFalse(initiated);
             Assert.AreSame(origin, officer.GetParent());
             Assert.IsNull(officer.Movement);
             Assert.IsFalse(game.GetSceneNodesByType<Mission>().Any());
-            OfficerCaptureStateResult capture = results
-                .OfType<OfficerCaptureStateResult>()
-                .Single();
-            MissionCompletedResult completed = results
-                .OfType<MissionCompletedResult>()
-                .Single(result => result.Outcome == MissionOutcome.Foiled);
-            Assert.AreEqual(completed.MissionInstanceID, capture.MissionInstanceID);
-            Assert.IsFalse(completed.CanContinue);
+            Assert.IsEmpty(results);
         }
 
         [Test]

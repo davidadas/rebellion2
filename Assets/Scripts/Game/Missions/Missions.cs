@@ -897,27 +897,14 @@ namespace Rebellion.Game.Missions
     public class EspionageMission : Mission
     {
         public const string MissionTypeID = "Espionage";
-
-        /// <summary>
-        /// Gets or sets whether the mission starts another objective attempt after completion.
-        /// </summary>
-        public bool IsRepeating { get; set; }
+        private const string _headquartersBonusPlanetInstanceID = "CORUSCANT";
+        private const string _headquartersBonusOwnerInstanceID = "FNEMP1";
 
         /// <summary>
         /// Creates an empty espionage mission copy.
         /// </summary>
         /// <returns>An empty espionage mission.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new EspionageMission();
-
-        /// <summary>
-        /// Copies espionage mission state into an empty mission destination.
-        /// </summary>
-        /// <param name="destination">The destination mission.</param>
-        protected override void CopyStateTo(BaseSceneNode destination)
-        {
-            base.CopyStateTo(destination);
-            ((EspionageMission)destination).IsRepeating = IsRepeating;
-        }
 
         /// <summary>
         /// Default constructor used for deserialization.
@@ -937,13 +924,11 @@ namespace Rebellion.Game.Missions
         /// <param name="target">Planet where the mission occurs.</param>
         /// <param name="mainParticipants">Primary mission participants.</param>
         /// <param name="decoyParticipants">Decoy mission participants.</param>
-        /// <param name="isRepeating">Whether the mission repeats its objective in place.</param>
         private EspionageMission(
             string ownerInstanceId,
             ISceneNode target,
             List<IMissionParticipant> mainParticipants,
-            List<IMissionParticipant> decoyParticipants,
-            bool isRepeating
+            List<IMissionParticipant> decoyParticipants
         )
             : base(
                 MissionTypeID,
@@ -952,10 +937,7 @@ namespace Rebellion.Game.Missions
                 mainParticipants,
                 decoyParticipants,
                 SkillRating.Espionage
-            )
-        {
-            IsRepeating = isRepeating;
-        }
+            ) { }
 
         /// <summary>
         /// Returns a new EspionageMission if the target is a visited planet, or null.
@@ -974,23 +956,12 @@ namespace Rebellion.Game.Missions
                 ctx.OwnerInstanceId,
                 ctx.Location,
                 ctx.MainParticipants,
-                ctx.DecoyParticipants,
-                ctx.IsRepeating
+                ctx.DecoyParticipants
             );
         }
 
         /// <summary>
-        /// Starts another objective attempt while retaining the completed encounter state.
-        /// </summary>
-        /// <param name="maxProgress">The rolled duration of the next attempt.</param>
-        internal override void Repeat(int maxProgress)
-        {
-            CurrentProgress = 0;
-            MaxProgress = maxProgress;
-        }
-
-        /// <summary>
-        /// Improves the successful officer's espionage rating when operating against another faction.
+        /// Improves the successful officer's espionage rating when operating away from an owned planet.
         /// </summary>
         /// <param name="participant">The participant whose espionage attempt succeeded.</param>
         internal override void ImproveMissionParticipantRating(IMissionParticipant participant)
@@ -1002,12 +973,10 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Returns whether this mission target allows participant rating improvement.
         /// </summary>
-        /// <returns>True when the target planet is owned by another faction.</returns>
+        /// <returns>True when the target planet is not owned by the mission faction.</returns>
         private bool CanImproveRatingsAgainstTarget()
         {
-            return GetParent() is Planet planet
-                && !string.IsNullOrEmpty(planet.GetOwnerInstanceID())
-                && planet.GetOwnerInstanceID() != OwnerInstanceID;
+            return GetParent() is Planet planet && planet.GetOwnerInstanceID() != OwnerInstanceID;
         }
 
         /// <summary>
@@ -1105,7 +1074,7 @@ namespace Rebellion.Game.Missions
             GameConfig.RandomCountConfig countConfig = config.CoreSectorBonus;
             bool includeOuterRim = false;
 
-            if (IsOpposingHeadquartersTarget(game, targetPlanet))
+            if (IsHeadquartersBonusTarget(targetPlanet))
             {
                 countConfig = config.HeadquartersBonus;
                 includeOuterRim = true;
@@ -1134,27 +1103,24 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns whether the target is currently another faction's headquarters planet.
+        /// Returns whether the target matches the configured headquarters bonus planet and owner.
         /// </summary>
-        /// <param name="game">The game.</param>
         /// <param name="targetPlanet">The target planet.</param>
-        /// <returns>True when the opposing headquarters target condition is met; otherwise false.</returns>
-        private bool IsOpposingHeadquartersTarget(GameRoot game, Planet targetPlanet)
+        /// <returns>True when the configured headquarters bonus condition is met; otherwise false.</returns>
+        private static bool IsHeadquartersBonusTarget(Planet targetPlanet)
         {
-            Faction owner = game.GetFactionByOwnerInstanceID(targetPlanet.OwnerInstanceID);
-            return owner != null
-                && owner.InstanceID != OwnerInstanceID
-                && owner.HQInstanceID == targetPlanet.InstanceID;
+            return targetPlanet.InstanceID == _headquartersBonusPlanetInstanceID
+                && targetPlanet.OwnerInstanceID == _headquartersBonusOwnerInstanceID;
         }
 
         /// <summary>
-        /// Returns whether the selected espionage mission repeats after an attempt.
+        /// Returns whether an espionage mission repeats after an attempt.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>True when repeated attempts were selected.</returns>
+        /// <returns>Always false.</returns>
         public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
-            return IsRepeating;
+            return false;
         }
     }
 
@@ -1910,7 +1876,7 @@ namespace Rebellion.Game.Missions
             Faction faction = game?.GetFactionByOwnerInstanceID(OwnerInstanceID);
             PlanetSector sector = planet.GetParentOfType<PlanetSector>();
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordPlanetSnapshot(faction, planet, sector, game?.CurrentTick ?? 0);
+            recorder.RecordReconnaissanceSnapshot(faction, planet, sector, game?.CurrentTick ?? 0);
 
             return new List<GameResult>();
         }

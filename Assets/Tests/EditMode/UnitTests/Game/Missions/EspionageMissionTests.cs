@@ -272,7 +272,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ResolveObjective_MobileHeadquartersTarget_CanRevealCoreAndOuterRimPlanets()
+        public void ResolveObjective_ConfiguredHeadquartersBonusTarget_CanRevealCoreAndOuterRimPlanets()
         {
             (
                 GameRoot game,
@@ -281,40 +281,46 @@ namespace Rebellion.Tests.Game.Missions
                 Officer officer,
                 FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
-            enemyPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
-            AddSector(game, "core2", "core_planet2", PlanetSectorType.Core);
-            AddSector(game, "rim1", "rim_planet1", PlanetSectorType.OuterRim);
+            PlanetSector targetSector = enemyPlanet.GetParentOfType<PlanetSector>();
+            targetSector.SectorType = PlanetSectorType.Core;
+            Planet targetPlanet = new Planet
+            {
+                InstanceID = "CORUSCANT",
+                OwnerInstanceID = "FNEMP1",
+                IsColonized = true,
+            };
+            game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
+            game.AttachNode(targetPlanet, targetSector);
+            AddSector(game, "core2", "core_planet2", PlanetSectorType.Core, "FNEMP1");
+            AddSector(game, "rim1", "rim_planet1", PlanetSectorType.OuterRim, "FNEMP1");
             AddSector(game, "neutral1", "neutral_planet1", PlanetSectorType.OuterRim, null);
-            Faction rebels = game.GetFactionByOwnerInstanceID("rebels");
-            rebels.HQInstanceID = enemyPlanet.InstanceID;
-            rebels.Settings.Headquarters.IsMobile = true;
             game.Config.Espionage.HeadquartersBonus = new GameConfig.RandomCountConfig
             {
                 Base = 10,
             };
-            enemyPlanet.VisitingFactionIDs.Add("empire");
+            targetPlanet.VisitingFactionIDs.Add("empire");
 
             Mission mission = CreateMission(
                 game,
                 "empire",
-                enemyPlanet,
+                targetPlanet,
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>()
             );
-            game.AttachNode(mission, enemyPlanet);
+            game.AttachNode(mission, targetPlanet);
             mission.Initiate(0);
 
             MissionSceneBuilder.RunToSuccess(mission, game);
 
             Faction empire = game.GetFactionByOwnerInstanceID("empire");
             CollectionAssert.AreEquivalent(
-                new[] { "enemy_planet", "core_planet2", "rim_planet1" },
+                new[] { "CORUSCANT", "core_planet2", "rim_planet1" },
                 RevealedPlanetIDs(empire)
             );
         }
 
         [Test]
-        public void ResolveObjective_FixedHeadquartersTarget_CanRevealCoreAndOuterRimPlanets()
+        public void ResolveObjective_OtherHeadquartersTarget_UsesCoreSectorBonus()
         {
             (
                 GameRoot game,
@@ -330,6 +336,7 @@ namespace Rebellion.Tests.Game.Missions
             Faction rebels = game.GetFactionByOwnerInstanceID("rebels");
             rebels.HQInstanceID = enemyPlanet.InstanceID;
             rebels.Settings.Headquarters.IsMobile = false;
+            game.Config.Espionage.CoreSectorBonus = new GameConfig.RandomCountConfig { Base = 1 };
             game.Config.Espionage.HeadquartersBonus = new GameConfig.RandomCountConfig
             {
                 Base = 10,
@@ -350,7 +357,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Faction empire = game.GetFactionByOwnerInstanceID("empire");
             CollectionAssert.AreEquivalent(
-                new[] { "enemy_planet", "core_planet2", "rim_planet1" },
+                new[] { "enemy_planet", "core_planet2" },
                 RevealedPlanetIDs(empire)
             );
         }
@@ -606,7 +613,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ResolveObjective_NeutralPlanetTarget_DoesNotImproveOfficerEspionageRating()
+        public void ResolveObjective_NeutralPlanetTarget_ImprovesOfficerEspionageRating()
         {
             var (game, _, enemyPlanet, officer, _) = MissionSceneBuilder.Build();
             enemyPlanet.OwnerInstanceID = null;
@@ -624,7 +631,7 @@ namespace Rebellion.Tests.Game.Missions
 
             MissionSceneBuilder.RunToSuccess(mission, game);
 
-            Assert.AreEqual(ratingBefore, officer.GetBaseRating(SkillRating.Espionage));
+            Assert.AreEqual(ratingBefore + 1, officer.GetBaseRating(SkillRating.Espionage));
         }
 
         [Test]
@@ -677,23 +684,12 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        [TestCase(false)]
-        [TestCase(true)]
-        public void ShouldRepeatAfterCompletion_RepeatSelection_ReturnsSelection(bool repeatEnabled)
-        {
-            EspionageMission mission = new EspionageMission { IsRepeating = repeatEnabled };
-
-            Assert.AreEqual(repeatEnabled, mission.ShouldRepeatAfterCompletion(null));
-        }
-
         [Test]
-        public void CreateCopy_RepeatingMission_PreservesRepeatSelection()
+        public void ShouldRepeatAfterCompletion_CompletedMission_ReturnsFalse()
         {
-            EspionageMission mission = new EspionageMission { IsRepeating = true };
+            EspionageMission mission = new EspionageMission();
 
-            EspionageMission copy = (EspionageMission)mission.CreateCopy();
-
-            Assert.IsTrue(copy.IsRepeating);
+            Assert.IsFalse(mission.ShouldRepeatAfterCompletion(null));
         }
 
         [Test]
@@ -712,7 +708,6 @@ namespace Rebellion.Tests.Game.Missions
                 CurrentProgress = 5,
                 DetectionResolved = true,
                 PreObjectiveEncounterResolved = true,
-                IsRepeating = true,
             };
 
             string xml = SerializationHelper.Serialize(mission);
@@ -727,7 +722,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(5, deserialized.CurrentProgress);
             Assert.IsTrue(deserialized.DetectionResolved);
             Assert.IsTrue(deserialized.PreObjectiveEncounterResolved);
-            Assert.IsTrue(((EspionageMission)deserialized).IsRepeating);
         }
 
         /// <summary>

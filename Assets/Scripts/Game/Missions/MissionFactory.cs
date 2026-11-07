@@ -169,8 +169,7 @@ namespace Rebellion.Game.Missions
                 "Espionage",
                 SkillRating.Espionage,
                 MissionTargetKind.Planet,
-                SkillRating.Espionage,
-                canRepeat: true
+                SkillRating.Espionage
             ),
         };
 
