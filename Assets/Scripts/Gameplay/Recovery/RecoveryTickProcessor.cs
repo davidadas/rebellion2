@@ -84,22 +84,21 @@ namespace Rebellion.Gameplay
             List<GameResult> results
         )
         {
-            HashSet<(string Planet, string Owner)> shipyards = null;
-            foreach (CapitalShip ship in game.GetSceneNodesByType<CapitalShip>())
+            List<CapitalShip> ships = game.GetSceneNodesByType<CapitalShip>();
+            HashSet<(string Planet, string Owner)> shipyards = ships.Exists(CanRepairShip)
+                ? GetShipyards(game)
+                : null;
+            foreach (CapitalShip ship in ships)
             {
                 bool damagedSystems = ship.SystemDamage.Total > 0;
                 if (!ship.IsDamaged())
                     continue;
-                if (
-                    ship.ManufacturingStatus != ManufacturingStatus.Complete
-                    || ((IMovable)ship).GetTransitMovement() != null
-                )
+                if (!CanRepairShip(ship))
                 {
                     ship.SystemDamage.RepairDueTick = 0;
                     ship.SystemDamage.RepairInterval = 0;
                     continue;
                 }
-                shipyards ??= GetShipyards(game);
                 Planet planet = ship.GetParentOfType<Planet>();
                 bool atShipyard =
                     planet != null
@@ -125,6 +124,18 @@ namespace Rebellion.Gameplay
                     );
                 }
             }
+        }
+
+        /// <summary>
+        /// Checks whether a damaged ship is complete and stationary before repair resources are resolved.
+        /// </summary>
+        /// <param name="ship">The ship being assessed.</param>
+        /// <returns>Whether hull or component repairs can advance this tick.</returns>
+        private static bool CanRepairShip(CapitalShip ship)
+        {
+            return ship.IsDamaged()
+                && ship.ManufacturingStatus == ManufacturingStatus.Complete
+                && ((IMovable)ship).GetTransitMovement() == null;
         }
 
         /// <summary>
