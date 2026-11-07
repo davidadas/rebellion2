@@ -898,6 +898,8 @@ namespace Rebellion.Game.Missions
     public class EspionageMission : Mission
     {
         public const string MissionTypeID = "Espionage";
+        private const string _fixedCapitalBonusPlanetInstanceID = "CORUSCANT";
+        private const string _fixedCapitalBonusOwnerInstanceID = "FNEMP1";
 
         /// <summary>
         /// Gets or sets whether the mission starts another objective attempt after completion.
@@ -991,7 +993,7 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Improves the successful officer's espionage rating when operating against another faction.
+        /// Improves the successful officer's espionage rating when operating away from an owned planet.
         /// </summary>
         /// <param name="participant">The participant whose espionage attempt succeeded.</param>
         internal override void ImproveMissionParticipantRating(IMissionParticipant participant)
@@ -1003,12 +1005,10 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Returns whether this mission target allows participant rating improvement.
         /// </summary>
-        /// <returns>True when the target planet is owned by another faction.</returns>
+        /// <returns>True when the target planet is not owned by the mission faction.</returns>
         private bool CanImproveRatingsAgainstTarget()
         {
-            return GetParent() is Planet planet
-                && !string.IsNullOrEmpty(planet.GetOwnerInstanceID())
-                && planet.GetOwnerInstanceID() != OwnerInstanceID;
+            return GetParent() is Planet planet && planet.GetOwnerInstanceID() != OwnerInstanceID;
         }
 
         /// <summary>
@@ -1106,7 +1106,7 @@ namespace Rebellion.Game.Missions
             GameConfig.RandomCountConfig countConfig = config.CoreSectorBonus;
             bool includeOuterRim = false;
 
-            if (IsOpposingHeadquartersTarget(game, targetPlanet))
+            if (IsHeadquartersBonusTarget(targetPlanet))
             {
                 countConfig = config.HeadquartersBonus;
                 includeOuterRim = true;
@@ -1135,17 +1135,19 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns whether the target is currently another faction's headquarters planet.
+        /// Returns whether the target hosts an active mobile headquarters or matches the fixed capital bonus target.
         /// </summary>
-        /// <param name="game">The game.</param>
         /// <param name="targetPlanet">The target planet.</param>
-        /// <returns>True when the opposing headquarters target condition is met; otherwise false.</returns>
-        private bool IsOpposingHeadquartersTarget(GameRoot game, Planet targetPlanet)
+        /// <returns>True when a headquarters bonus condition is met; otherwise false.</returns>
+        private static bool IsHeadquartersBonusTarget(Planet targetPlanet)
         {
-            Faction owner = game.GetFactionByOwnerInstanceID(targetPlanet.OwnerInstanceID);
-            return owner != null
-                && owner.InstanceID != OwnerInstanceID
-                && owner.HQInstanceID == targetPlanet.InstanceID;
+            return targetPlanet
+                    .GetChildren<Building>()
+                    .Any(building => building.BuildingType == BuildingType.Headquarters)
+                || (
+                    targetPlanet.InstanceID == _fixedCapitalBonusPlanetInstanceID
+                    && targetPlanet.OwnerInstanceID == _fixedCapitalBonusOwnerInstanceID
+                );
         }
 
         /// <summary>
@@ -1911,7 +1913,7 @@ namespace Rebellion.Game.Missions
             Faction faction = game?.GetFactionByOwnerInstanceID(OwnerInstanceID);
             PlanetSector sector = planet.GetParentOfType<PlanetSector>();
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordPlanetSnapshot(faction, planet, sector, game?.CurrentTick ?? 0);
+            recorder.RecordReconnaissanceSnapshot(faction, planet, sector, game?.CurrentTick ?? 0);
 
             return new List<GameResult>();
         }

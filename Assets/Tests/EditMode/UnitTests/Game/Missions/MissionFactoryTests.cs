@@ -556,6 +556,7 @@ namespace Rebellion.Tests.Game.Missions
                 options.Any(option => option.MissionTypeID == DiplomacyMission.MissionTypeID)
             );
             Assert.AreEqual(EspionageMission.MissionTypeID, options.Last().MissionTypeID);
+            Assert.IsTrue(options.Last().CanRepeat);
         }
 
         [Test]
