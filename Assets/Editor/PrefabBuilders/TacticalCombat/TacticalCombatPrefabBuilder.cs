@@ -384,19 +384,6 @@ public static class TacticalCombatPrefabBuilder
     }
 
     /// <summary>
-    /// Creates an opaque HUD panel.
-    /// </summary>
-    /// <param name="name">The object name.</param>
-    /// <param name="parent">The owning UI parent.</param>
-    /// <returns>The authored rectangle.</returns>
-    private static RectTransform CreatePanel(string name, Transform parent)
-    {
-        RectTransform rect = CreateRect(name, parent);
-        rect.gameObject.AddComponent<Image>().color = new Color(0.015f, 0.025f, 0.04f, 1);
-        return rect;
-    }
-
-    /// <summary>
     /// Creates a sentence-case tactical label.
     /// </summary>
     /// <param name="name">The object name.</param>
