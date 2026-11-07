@@ -898,8 +898,8 @@ namespace Rebellion.Game.Missions
     public class EspionageMission : Mission
     {
         public const string MissionTypeID = "Espionage";
-        private const string _headquartersBonusPlanetInstanceID = "CORUSCANT";
-        private const string _headquartersBonusOwnerInstanceID = "FNEMP1";
+        private const string _fixedCapitalBonusPlanetInstanceID = "CORUSCANT";
+        private const string _fixedCapitalBonusOwnerInstanceID = "FNEMP1";
 
         /// <summary>
         /// Creates an empty espionage mission copy.
@@ -1104,14 +1104,19 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns whether the target matches the configured headquarters bonus planet and owner.
+        /// Returns whether the target hosts an active mobile headquarters or matches the fixed capital bonus target.
         /// </summary>
         /// <param name="targetPlanet">The target planet.</param>
-        /// <returns>True when the configured headquarters bonus condition is met; otherwise false.</returns>
+        /// <returns>True when a headquarters bonus condition is met; otherwise false.</returns>
         private static bool IsHeadquartersBonusTarget(Planet targetPlanet)
         {
-            return targetPlanet.InstanceID == _headquartersBonusPlanetInstanceID
-                && targetPlanet.OwnerInstanceID == _headquartersBonusOwnerInstanceID;
+            return targetPlanet
+                    .GetChildren<Building>()
+                    .Any(building => building.BuildingType == BuildingType.Headquarters)
+                || (
+                    targetPlanet.InstanceID == _fixedCapitalBonusPlanetInstanceID
+                    && targetPlanet.OwnerInstanceID == _fixedCapitalBonusOwnerInstanceID
+                );
         }
 
         /// <summary>
