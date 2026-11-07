@@ -29,11 +29,9 @@ namespace Rebellion.Gameplay
         /// <returns>The Force-related results produced during the tick.</returns>
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
-            List<GameResult> results = new List<GameResult>();
-            foreach (Officer officer in game.GetSceneNodesByType<Officer>())
-                _commands.UpdateForceDiscoveryState(officer, results);
-
-            _commands.ScanForHiddenForceUsers(results);
+            List<GameResult> results = _commands.TakeDiscoveryResults();
+            IReadOnlyList<Officer> officers = game.RegisteredOfficers;
+            _commands.ScanForHiddenForceUsers(officers, results);
             return results;
         }
     }

@@ -10,6 +10,41 @@ namespace Rebellion.Tests.Game.Messages
     public class CombatReportTests
     {
         [Test]
+        public void CreateCopy_EditingCopiedOutcome_DoesNotChangeReport()
+        {
+            CombatReport source = new CombatReport
+            {
+                Title = "Encounter",
+                AttackingUnits =
+                {
+                    new CombatReportUnit { InstanceID = "attacker", Destroyed = false },
+                },
+                DefendingUnits =
+                {
+                    new CombatReportUnit { InstanceID = "defender", Captured = false },
+                },
+                ShipDamage =
+                {
+                    new CombatReportShipDamage { UnitInstanceID = "ship", HullAfter = 50 },
+                },
+                FighterLosses =
+                {
+                    new CombatReportFighterLoss { UnitInstanceID = "fighter", SquadsAfter = 2 },
+                },
+            };
+            string before = SerializationHelper.Serialize(source);
+            CombatReport copy = (CombatReport)source.CreateCopy();
+
+            copy.Read = true;
+            copy.AttackingUnits[0].Destroyed = true;
+            copy.DefendingUnits[0].Captured = true;
+            copy.ShipDamage[0].HullAfter = 0;
+            copy.FighterLosses[0].SquadsAfter = 0;
+
+            Assert.AreEqual(before, SerializationHelper.Serialize(source));
+        }
+
+        [Test]
         public void CaptureBombardment_DestroyedMine_AppearsInDefendingUnits()
         {
             Building mine = new Building

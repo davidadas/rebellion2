@@ -132,7 +132,8 @@ namespace Rebellion.Tests.Gameplay
             UprisingResolver uprisingSystem = new UprisingResolver(
                 game,
                 rng ?? new StubRNG(),
-                planetaryControl
+                planetaryControl,
+                new JediCommands(game, rng ?? new StubRNG())
             );
             return (game, planet, new UprisingObserver(uprisingSystem));
         }

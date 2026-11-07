@@ -1,7 +1,6 @@
 using System;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Util.Reflection;
 
 namespace Rebellion.Tests.UI.SceneUI
 {
@@ -101,7 +100,7 @@ namespace Rebellion.Tests.UI.SceneUI
                 StartingFactionIDs = new[] { "FNEMP1", "FNALL1" },
                 CustomSettings = new CustomGameSettings
                 {
-                    GenerationConfig = TestContent.Data.GenerationConfig.GetDeepCopy(),
+                    GenerationConfig = TestContent.Data.GenerationConfig.CreateCopy(),
                 },
             };
             GameLaunchContext.PrepareSaveLoad("campaign");

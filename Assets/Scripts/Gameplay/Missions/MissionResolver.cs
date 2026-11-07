@@ -26,11 +26,13 @@ namespace Rebellion.Gameplay
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
         private readonly MovementCommands _movementManager;
-        private readonly MovementQueries _movementQueries;
         private readonly UprisingResolver _uprisingSystem;
         private readonly MissionBetrayalResolver _betrayalResolver;
         private readonly PersonnelCommands _personnelCommands;
         private readonly MissionQueries _queries;
+        private readonly JediCommands _jediCommands;
+        private readonly DuelCommands _duelCommands;
+        private readonly MissionForceEncounterSelector _forceEncounters;
 
         /// <summary>
         /// Gets the random provider shared by mission lifecycle operations.
@@ -44,19 +46,21 @@ namespace Rebellion.Gameplay
         /// <param name="provider">The random number provider for mission resolution.</param>
         /// <param name="movementManager">The movement system used for participant travel.</param>
         /// <param name="uprisingSystem">The uprising system used by uprising missions.</param>
-        /// <param name="movementQueries">The mission-return destination rules.</param>
         /// <param name="queries">The mission eligibility and probability queries.</param>
+        /// <param name="duelCommands">The synchronous officer encounter operations.</param>
         /// <param name="betrayalResolver">The mission-betrayal resolver.</param>
         /// <param name="personnelCommands">The personnel lifecycle commands.</param>
+        /// <param name="jediCommands">The Force progression operations.</param>
         internal MissionResolver(
             GameRoot game,
             IRandomNumberProvider provider,
             MovementCommands movementManager,
             UprisingResolver uprisingSystem,
             MissionQueries queries,
-            MovementQueries movementQueries,
+            DuelCommands duelCommands,
             MissionBetrayalResolver betrayalResolver = null,
-            PersonnelCommands personnelCommands = null
+            PersonnelCommands personnelCommands = null,
+            JediCommands jediCommands = null
         )
         {
             _game = game;
@@ -67,8 +71,10 @@ namespace Rebellion.Gameplay
             _betrayalResolver = betrayalResolver ?? new MissionBetrayalResolver(game, provider);
             _personnelCommands =
                 personnelCommands ?? new PersonnelCommands(game, new PersonnelQueries(game));
+            _jediCommands = jediCommands ?? new JediCommands(game, provider);
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
-            _movementQueries = movementQueries;
+            _duelCommands = duelCommands ?? throw new ArgumentNullException(nameof(duelCommands));
+            _forceEncounters = new MissionForceEncounterSelector(game.Config.Jedi, provider);
         }
 
         /// <summary>
@@ -91,6 +97,8 @@ namespace Rebellion.Gameplay
                 out string foilingFactionInstanceID
             );
             AddMissionResults(mission, departureResults, results);
+            if (mission.GetParent() == null)
+                return;
             if (departureFoiled)
             {
                 AddMissionResults(mission, mission.ResolveInterruption(_game, _provider), results);
@@ -151,18 +159,17 @@ namespace Rebellion.Gameplay
                         .GetDecoyParticipants()
                         .Where(participant => participant.GetParentOfType<Planet>() == origin)
                         .ToList();
-                    if (
-                        ResolveEncounter(
-                            mission,
-                            phase,
-                            origin,
-                            mainParticipants,
-                            decoys,
-                            results,
-                            out foilingFactionInstanceID
-                        )
-                    )
-                        return true;
+                    bool foiled = ResolveEncounter(
+                        mission,
+                        phase,
+                        origin,
+                        mainParticipants,
+                        decoys,
+                        results,
+                        out foilingFactionInstanceID
+                    );
+                    if (foiled || mission.GetParent() == null)
+                        return foiled;
                 }
             }
 
@@ -181,12 +188,12 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Removes killed officers from an attached mission and reevaluates the remaining team.
+        /// Removes captured or killed officers from an attached mission and reevaluates the remaining team.
         /// </summary>
-        /// <param name="mission">The mission that contained the officers when they died.</param>
-        /// <param name="officers">The killed officers to remove from the mission.</param>
+        /// <param name="mission">The mission that contained the officers when they became unavailable.</param>
+        /// <param name="officers">The captured or killed officers to remove from the mission.</param>
         /// <param name="results">The batch receiving relocation or interruption results.</param>
-        internal void RemoveKilledParticipants(
+        internal void RemoveUnavailableParticipants(
             Mission mission,
             IReadOnlyCollection<Officer> officers,
             List<GameResult> results
@@ -198,7 +205,11 @@ namespace Rebellion.Gameplay
                 throw new ArgumentNullException(nameof(results));
 
             List<IMissionParticipant> attachedOfficers = officers
-                .Where(officer => officer?.IsKilled == true && officer.GetParent() == mission)
+                .Where(officer =>
+                    officer != null
+                    && (officer.IsKilled || officer.IsCaptured)
+                    && officer.GetParent() == mission
+                )
                 .Distinct()
                 .Cast<IMissionParticipant>()
                 .ToList();
@@ -210,25 +221,75 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Immediately interrupts missions containing newly captured officers.
+        /// Removes newly captured officers and interrupts only missions whose remaining team is invalid.
         /// </summary>
         /// <param name="officers">The newly captured officers.</param>
-        /// <returns>The mission interruption and teardown results.</returns>
-        internal List<GameResult> InterruptMissionsForCapturedOfficers(
+        /// <returns>The participant relocation and mission interruption results.</returns>
+        internal List<GameResult> ReconcileMissionsForCapturedOfficers(
             IReadOnlyList<Officer> officers
         )
         {
             List<GameResult> results = new List<GameResult>();
-            List<Mission> missions = (officers ?? Array.Empty<Officer>())
-                .Select(officer => officer?.GetParent() as Mission)
-                .Where(mission => mission?.GetParent() != null)
-                .Distinct()
+            List<IGrouping<Mission, Officer>> missions = (officers ?? Array.Empty<Officer>())
+                .Where(officer => officer?.IsCaptured == true && officer.GetParent() is Mission)
+                .GroupBy(officer => (Mission)officer.GetParent())
+                .Where(group => group.Key.GetParent() != null)
                 .ToList();
 
-            foreach (Mission mission in missions)
-                InterruptMission(mission, results);
+            foreach (IGrouping<Mission, Officer> mission in missions)
+                RemoveUnavailableParticipants(mission.Key, mission.ToList(), results);
 
             return results;
+        }
+
+        /// <summary>
+        /// Withdraws injured officers from their recorded mission while preserving a valid remaining team.
+        /// Officers on friendly ground remain there; others follow the shared mission return policy.
+        /// </summary>
+        /// <param name="mission">The mission that contained the officers when they were injured.</param>
+        /// <param name="officers">The officers whose injury requires withdrawal.</param>
+        /// <param name="results">The batch receiving withdrawal and interruption consequences.</param>
+        internal void WithdrawInjuredParticipants(
+            Mission mission,
+            IReadOnlyCollection<Officer> officers,
+            List<GameResult> results
+        )
+        {
+            if (mission?.GetParent() is not Planet missionPlanet || officers == null)
+                return;
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
+
+            List<IMissionParticipant> attachedOfficers = officers
+                .Where(officer =>
+                    officer != null && IsFreeParticipant(officer) && officer.GetParent() == mission
+                )
+                .Distinct()
+                .Cast<IMissionParticipant>()
+                .ToList();
+            List<IMissionParticipant> local = attachedOfficers
+                .Where(officer => CanRemainAtMissionLocation(officer, missionPlanet))
+                .ToList();
+            List<GameResult> withdrawalResults = new();
+            List<IMovable> stranded = _movementManager.CompleteMissionAtLocation(
+                local,
+                missionPlanet,
+                withdrawalResults
+            );
+            stranded.AddRange(
+                _movementManager.ReturnFromMission(
+                    attachedOfficers.Except(local).ToList(),
+                    Array.Empty<IMovable>(),
+                    out _,
+                    withdrawalResults
+                )
+            );
+            ResolveStrandedMissionUnits(stranded, missionPlanet, withdrawalResults);
+            AddMissionResults(mission, withdrawalResults, results);
+
+            mission.AcceptCurrentParticipantRoster();
+            if (mission.GetAbortReason(_game).HasValue)
+                InterruptMission(mission, results);
         }
 
         /// <summary>
@@ -304,42 +365,138 @@ namespace Rebellion.Gameplay
         )
         {
             foilingFactionInstanceID = null;
-            bool betrayed = false;
-            if (phase == MissionEncounterPhase.PreObjective)
+            if (mission == null || planet == null || mainParticipants == null || decoys == null)
+                return false;
+
+            List<ISceneNode> detectors = _queries.GetDetectors(
+                mission,
+                planet,
+                phase,
+                out MissionForceEncounterScope scope
+            );
+            Dictionary<Officer, Officer> opponents = _forceEncounters
+                .SelectPairs(
+                    scope.GetParticipants(mainParticipants, decoys, _game.Config.Jedi),
+                    scope.GetDefenders(_game.RegisteredOfficers, _game.Config.Jedi)
+                )
+                .ToDictionary(pair => pair.Participant, pair => pair.Defender);
+            HashSet<Officer> primaryOfficers = mainParticipants.OfType<Officer>().ToHashSet();
+            Officer foilingDefender = opponents
+                .FirstOrDefault(pair => primaryOfficers.Contains(pair.Key))
+                .Value;
+            bool foiled = foilingDefender != null;
+            foilingFactionInstanceID = foilingDefender?.GetOwnerInstanceID();
+            if (!foiled && phase == MissionEncounterPhase.PreObjective)
             {
-                betrayed = _betrayalResolver.TryResolve(
+                foiled = _betrayalResolver.TryResolve(
                     mission,
                     out List<GameResult> betrayalResults
                 );
                 results.AddRange(betrayalResults);
             }
-            if (betrayed)
+
+            ResolveForceEncounters(mission, decoys, opponents, results);
+            if (mission.GetParent() == null)
             {
-                ResolveFoiledParticipants(
+                ApplyOfficerDeaths(results);
+                return foiled;
+            }
+            if (
+                phase
+                is MissionEncounterPhase.DepartureStart
+                    or MissionEncounterPhase.DepartureComplete
+            )
+            {
+                foreach (IMissionParticipant decoy in decoys)
+                {
+                    if (
+                        decoy is Officer officer
+                        && opponents.ContainsKey(officer)
+                        && (!IsFreeParticipant(officer) || officer.InjuryPoints != 0)
+                    )
+                        mission.RemoveDecoyParticipant(officer);
+                }
+            }
+            if (!foiled && detectors.Count > 0)
+            {
+                List<IMissionParticipant> availableDecoys = decoys
+                    .Where(participant =>
+                        IsFreeParticipant(participant)
+                        && (participant is not Officer officer || !opponents.ContainsKey(officer))
+                    )
+                    .ToList();
+                ResolveDecoys(
                     mission,
-                    mainParticipants,
-                    _queries.GetDetectors(mission, planet, phase),
+                    availableDecoys,
+                    detectors,
                     planet,
+                    phase
+                        is MissionEncounterPhase.DepartureStart
+                            or MissionEncounterPhase.DepartureComplete,
                     results
                 );
-                ApplyOfficerDeaths(results);
-                return true;
+                int modifier = _queries.GetFoilChanceModifier(mission);
+                ISceneNode detector = detectors.FirstOrDefault(candidate =>
+                    DoesDetectorFoilMission(mission, candidate, modifier, mainParticipants, planet)
+                );
+                if (detector != null)
+                {
+                    foiled = true;
+                    foilingFactionInstanceID = detector.GetOwnerInstanceID();
+                }
             }
 
-            bool missionFoiled = ResolveDetection(
-                mission,
-                planet,
-                mainParticipants,
-                decoys,
-                phase,
-                phase
-                    is MissionEncounterPhase.DepartureStart
-                        or MissionEncounterPhase.DepartureComplete,
-                results,
-                out foilingFactionInstanceID
-            );
+            if (foiled)
+            {
+                ResolveForceEncounters(mission, mainParticipants, opponents, results);
+                if (mission.GetParent() != null)
+                    ResolveFoiledParticipants(
+                        mission,
+                        mainParticipants,
+                        opponents,
+                        detectors,
+                        planet,
+                        results
+                    );
+            }
             ApplyOfficerDeaths(results);
-            return missionFoiled;
+            return foiled;
+        }
+
+        /// <summary>
+        /// Resolves the selected pairs for one participant role in major-officer and roster order.
+        /// Paired officers do not take an additional ordinary detector confrontation.
+        /// Stops when synchronous authored reactions remove the mission.
+        /// </summary>
+        /// <param name="mission">The mission that reached the checkpoint.</param>
+        /// <param name="participants">The primary or decoy role being resolved.</param>
+        /// <param name="opponents">The pairs selected before any consequences were applied.</param>
+        /// <param name="results">The collection receiving completed encounter consequences.</param>
+        private void ResolveForceEncounters(
+            Mission mission,
+            IReadOnlyList<IMissionParticipant> participants,
+            IReadOnlyDictionary<Officer, Officer> opponents,
+            List<GameResult> results
+        )
+        {
+            foreach (
+                Officer officer in participants
+                    .OfType<Officer>()
+                    .OrderBy(officer => officer.IsMain ? 0 : 1)
+                    .ThenBy(officer => officer.RosterOrder)
+            )
+            {
+                if (mission.GetParent() == null)
+                    return;
+                if (opponents.TryGetValue(officer, out Officer defender))
+                    results.AddRange(
+                        _duelCommands.Resolve(
+                            officer,
+                            defender,
+                            sourceEventInstanceID: mission.SourceEventInstanceID
+                        )
+                    );
+            }
         }
 
         /// <summary>
@@ -478,19 +635,26 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Returns whether a participant may remain at the planet where its mission ended.
+        /// Returns whether a stationary participant may remain at its friendly mission planet.
         /// </summary>
         /// <param name="participant">The participant whose destination is being resolved.</param>
         /// <param name="missionPlanet">The planet where the mission ended.</param>
-        /// <returns>True when the mission planet is intact, friendly, and can accept the participant.</returns>
+        /// <returns>True when the participant has arrived and the intact friendly planet can accept it.</returns>
         private bool CanRemainAtMissionLocation(IMovable participant, Planet missionPlanet)
         {
-            return _movementQueries.CanUseSafeRelocationDestination(
-                participant,
-                missionPlanet,
-                missionPlanet,
-                allowOriginPlanet: true
-            );
+            if (
+                participant == null
+                || missionPlanet?.IsDestroyed != false
+                || participant.GetTransitMovement() != null
+                || participant.GetParentOfType<Planet>() != missionPlanet
+            )
+                return false;
+
+            string ownerInstanceID = MovementQueries.GetMovementControlOwner(participant);
+            return !string.IsNullOrEmpty(ownerInstanceID)
+                && missionPlanet.GetOwnerInstanceID() == ownerInstanceID
+                && (missionPlanet.IsColonized || participant is Officer { IsCaptured: false })
+                && missionPlanet.CanAcceptChild(participant);
         }
 
         /// <summary>
@@ -593,70 +757,18 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Resolves mission detection at one encounter checkpoint.
-        /// </summary>
-        /// <param name="mission">The mission to check for detection.</param>
-        /// <param name="planet">The planet where detection occurs.</param>
-        /// <param name="mainParticipants">The primary team present at the encounter.</param>
-        /// <param name="decoys">The decoy team present at the encounter.</param>
-        /// <param name="phase">The mission lifecycle checkpoint being resolved.</param>
-        /// <param name="isDeparture">Whether the encounter occurs before travel begins.</param>
-        /// <param name="results">Collection to append generated results to.</param>
-        /// <param name="foilingFactionInstanceID">The faction whose detector foiled the mission.</param>
-        /// <returns>True if the mission was foiled.</returns>
-        private bool ResolveDetection(
-            Mission mission,
-            Planet planet,
-            IReadOnlyList<IMissionParticipant> mainParticipants,
-            IReadOnlyList<IMissionParticipant> decoys,
-            MissionEncounterPhase phase,
-            bool isDeparture,
-            List<GameResult> results,
-            out string foilingFactionInstanceID
-        )
-        {
-            foilingFactionInstanceID = null;
-            if (mission == null || planet == null || mainParticipants == null || decoys == null)
-                return false;
-
-            List<ISceneNode> activeDetectors = _queries.GetDetectors(mission, planet, phase);
-            if (activeDetectors.Count == 0)
-                return false;
-
-            List<IMissionParticipant> availableDecoys = decoys.Where(IsFreeParticipant).ToList();
-            ResolveDecoys(mission, availableDecoys, activeDetectors, planet, isDeparture, results);
-
-            int foilChanceModifier = _queries.GetFoilChanceModifier(mission);
-            ISceneNode foilingDetector = activeDetectors.FirstOrDefault(detector =>
-                DoesDetectorFoilMission(
-                    mission,
-                    detector,
-                    foilChanceModifier,
-                    mainParticipants,
-                    planet
-                )
-            );
-            if (foilingDetector == null)
-                return false;
-
-            foilingFactionInstanceID = foilingDetector.GetOwnerInstanceID();
-
-            ResolveFoiledParticipants(mission, mainParticipants, activeDetectors, planet, results);
-
-            return true;
-        }
-
-        /// <summary>
         /// Applies escape or capture consequences to a foiled mission's primary team.
         /// </summary>
         /// <param name="mission">The mission that was foiled.</param>
         /// <param name="mainParticipants">The primary participants exposed by the encounter.</param>
+        /// <param name="opponents">The participants whose Force encounter replaces ordinary evasion.</param>
         /// <param name="detectors">The hostile detectors available for confrontations.</param>
         /// <param name="planet">The planet where the mission was foiled.</param>
         /// <param name="results">The result collection receiving encounter consequences.</param>
         private void ResolveFoiledParticipants(
             Mission mission,
             IReadOnlyList<IMissionParticipant> mainParticipants,
+            IReadOnlyDictionary<Officer, Officer> opponents,
             IReadOnlyList<ISceneNode> detectors,
             Planet planet,
             List<GameResult> results
@@ -667,11 +779,15 @@ namespace Rebellion.Gameplay
 
             foreach (
                 IMissionParticipant participant in mainParticipants
+                    .Where(participant =>
+                        participant is not Officer officer || !opponents.ContainsKey(officer)
+                    )
                     .OrderBy(participant =>
                         participant is Officer { IsMain: true } ? 0
                         : participant is Officer ? 1
                         : 2
                     )
+                    .ThenBy(participant => (participant as Officer)?.RosterOrder ?? 0)
                     .ToList()
             )
             {
@@ -832,10 +948,21 @@ namespace Rebellion.Gameplay
                 _provider,
                 results
             );
+            if (evaded)
+            {
+                ForceExperienceResult growth = _jediCommands.ApplyCaptureEvasionGrowth(
+                    officer,
+                    mission.SourceEventInstanceID
+                );
+                if (growth != null)
+                    results.Add(growth);
+            }
             if (killed)
                 return false;
             if (evaded)
+            {
                 return true;
+            }
 
             CaptureOfficer(
                 officer,
@@ -908,7 +1035,7 @@ namespace Rebellion.Gameplay
             ISceneNode capturingUnit = null
         )
         {
-            if (!officer.TryCapture(captorInstanceId))
+            if (!officer.TryCapture(captorInstanceId, _game, _provider))
                 return;
 
             results.Add(
@@ -932,11 +1059,13 @@ namespace Rebellion.Gameplay
         /// <param name="mission">The mission to begin.</param>
         private void BeginMissionTravel(Mission mission)
         {
-            foreach (IMissionParticipant participant in mission.GetAllParticipants())
-            {
-                if (participant.GetParent() != mission)
-                    _movementManager.SendToMission(participant, mission);
-            }
+            _movementManager.SendToMission(
+                mission
+                    .GetAllParticipants()
+                    .Where(participant => participant.GetParent() != mission)
+                    .ToList(),
+                mission
+            );
 
             mission.Initiate(RollMissionDuration(mission));
         }

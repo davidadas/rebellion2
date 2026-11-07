@@ -163,11 +163,7 @@ namespace Rebellion.Game.Missions
                 _leadership ??= new Dictionary<Mission, int>();
                 if (!_leadership.TryGetValue(mission, out int average))
                 {
-                    IReadOnlyList<IMissionParticipant> participants = mission.GetMainParticipants();
-                    int total = 0;
-                    for (int index = 0; index < participants.Count; index++)
-                        total += participants[index].GetEffectiveRating(SkillRating.Leadership);
-                    average = participants.Count == 0 ? 0 : total / participants.Count;
+                    average = mission.GetAverageLeadership();
                     _leadership.Add(mission, average);
                 }
                 return average;
@@ -534,6 +530,36 @@ namespace Rebellion.Game.Missions
             includeDisabled
                 ? _decoyParticipants
                 : _decoyParticipants.Where(participant => participant.IsActive()).ToList();
+
+        /// <summary>
+        /// Returns the average leadership of the active primary and decoy teams.
+        /// </summary>
+        /// <param name="mainParticipants">An optional proposed primary team replacing the stored team.</param>
+        /// <returns>The integer average leadership, or zero when both teams are empty.</returns>
+        internal int GetAverageLeadership(
+            IReadOnlyList<IMissionParticipant> mainParticipants = null
+        )
+        {
+            IReadOnlyList<IMissionParticipant> main = mainParticipants ?? _mainParticipants;
+            int total = 0;
+            int count = 0;
+            for (int index = 0; index < main.Count; index++)
+            {
+                IMissionParticipant participant = main[index];
+                if (mainParticipants == null && !participant.IsActive())
+                    continue;
+                total += participant.GetEffectiveRating(SkillRating.Leadership);
+                count++;
+            }
+            foreach (IMissionParticipant participant in _decoyParticipants)
+            {
+                if (!participant.IsActive())
+                    continue;
+                total += participant.GetEffectiveRating(SkillRating.Leadership);
+                count++;
+            }
+            return count == 0 ? 0 : total / count;
+        }
 
         /// <summary>
         /// Returns whether any mission participant is still travelling to the mission.
@@ -905,6 +931,7 @@ namespace Rebellion.Game.Missions
                 new OfficerInjuredResult
                 {
                     Officer = officer,
+                    ParentAtInjury = officer.GetParent(),
                     Severity = injury,
                     Tick = game.CurrentTick,
                 }
@@ -1076,23 +1103,27 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Sets the mission ID on result types that use it for report or outcome attribution.
+        /// Supplies missing mission attribution while preserving another producer's mission ID.
         /// </summary>
         /// <param name="result">The result to attribute to this mission.</param>
         internal void SetResultMissionID(GameResult result)
         {
             switch (result)
             {
-                case MissionCompletedResult completed:
+                case MissionCompletedResult completed
+                    when string.IsNullOrEmpty(completed.MissionInstanceID):
                     completed.MissionInstanceID = InstanceID;
                     break;
-                case PlanetsRevealedResult revealed:
+                case PlanetsRevealedResult revealed
+                    when string.IsNullOrEmpty(revealed.MissionInstanceID):
                     revealed.MissionInstanceID = InstanceID;
                     break;
-                case OfficerInjuredResult injured:
+                case OfficerInjuredResult injured
+                    when string.IsNullOrEmpty(injured.MissionInstanceID):
                     injured.MissionInstanceID = InstanceID;
                     break;
-                case OfficerCaptureStateResult capture:
+                case OfficerCaptureStateResult capture
+                    when string.IsNullOrEmpty(capture.MissionInstanceID):
                     capture.MissionInstanceID = InstanceID;
                     break;
             }

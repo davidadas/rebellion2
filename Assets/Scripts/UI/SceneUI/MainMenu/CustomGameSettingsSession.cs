@@ -6,7 +6,6 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Units;
-using Rebellion.Util.Reflection;
 
 /// <summary>
 /// Owns one custom-game configuration draft and its default/override relationships.
@@ -60,6 +59,7 @@ internal sealed class CustomGameSettingsSession
     private readonly GarrisonRuleSettings garrisonDraft;
     private readonly MovementRuleSettings movementDefaults;
     private readonly MovementRuleSettings movementDraft;
+    private int? aiDecisionTickInterval;
     private string currentDifficultySection;
     private string currentGenerationSection;
 
@@ -96,7 +96,7 @@ internal sealed class CustomGameSettingsSession
             throw new ArgumentNullException(nameof(summary));
 
         summaryDefaults = GameLaunchContext.CreateDefaultSummary(pack);
-        summaryDraft = summary.GetDeepCopy();
+        summaryDraft = summary.CreateCopy();
         summaryDefaults.Seed = summaryDraft.Seed;
         summaryDraft.StartingFactionIDs = summaryDefaults.StartingFactionIDs.ToArray();
         summaryDraft.PackID = summaryDefaults.PackID;
@@ -106,19 +106,20 @@ internal sealed class CustomGameSettingsSession
         summaryDraft.ModVersions = summaryDefaults.ModVersions.ToArray();
         if (!summaryDraft.StartingFactionIDs.Contains(summaryDraft.PlayerFactionID))
             summaryDraft.PlayerFactionID = summaryDefaults.PlayerFactionID;
-        generationDefaults = pack.GameData.GenerationConfig.GetDeepCopy();
+        generationDefaults = pack.GameData.GenerationConfig.CreateCopy();
         generationDraft =
-            summaryDraft.CustomSettings?.GenerationConfig?.GetDeepCopy()
-            ?? pack.GameData.GenerationConfig.GetDeepCopy();
+            summaryDraft.CustomSettings?.GenerationConfig?.CreateCopy()
+            ?? pack.GameData.GenerationConfig.CreateCopy();
         facilityChanceEditor = new FacilityGenerationChanceEditor(pack.GameData.Buildings);
         garrisonDefaults = CreateGarrisonRules(pack.GameData.GameConfig.AI.Garrison);
         garrisonDraft =
-            summaryDraft.CustomSettings?.GarrisonRules?.GetDeepCopy()
-            ?? garrisonDefaults.GetDeepCopy();
+            summaryDraft.CustomSettings?.GarrisonRules?.CreateCopy()
+            ?? garrisonDefaults.CreateCopy();
         movementDefaults = new MovementRuleSettings { TravelSpeedPercent = 100 };
         movementDraft =
-            summaryDraft.CustomSettings?.MovementRules?.GetDeepCopy()
-            ?? movementDefaults.GetDeepCopy();
+            summaryDraft.CustomSettings?.MovementRules?.CreateCopy()
+            ?? movementDefaults.CreateCopy();
+        aiDecisionTickInterval = summaryDraft.CustomSettings?.AIDecisionTickInterval;
         ReconcileFactionModifiers(generationDefaults, pack.GameData.Factions);
         ReconcileFactionModifiers(generationDraft, pack.GameData.Factions);
         eventCategories = pack
@@ -400,14 +401,15 @@ internal sealed class CustomGameSettingsSession
     /// <returns>A detached launch summary.</returns>
     internal GameSummary CreateSummarySnapshot()
     {
-        GameSummary snapshot = summaryDraft.GetDeepCopy();
+        GameSummary snapshot = summaryDraft.CreateCopy();
         snapshot.CustomSettings = new CustomGameSettings
         {
             PlayerDifficultyModifiers = CreateModifiers(playerDraft),
             AIDifficultyModifiers = aiCustomized.Count == 0 ? null : CreateModifiers(aiDraft),
-            GenerationConfig = generationDraft.GetDeepCopy(),
-            GarrisonRules = garrisonDraft.GetDeepCopy(),
-            MovementRules = movementDraft.GetDeepCopy(),
+            GenerationConfig = generationDraft.CreateCopy(),
+            GarrisonRules = garrisonDraft.CreateCopy(),
+            MovementRules = movementDraft.CreateCopy(),
+            AIDecisionTickInterval = aiDecisionTickInterval,
         };
         return snapshot;
     }
@@ -629,7 +631,7 @@ internal sealed class CustomGameSettingsSession
                 return new FactionModifierConfig
                 {
                     FactionID = faction.InstanceID,
-                    Settings = (current?.Settings ?? faction.Settings).GetDeepCopy(),
+                    Settings = (current?.Settings ?? faction.Settings).CreateCopy(),
                 };
             })
             .ToList();
@@ -660,6 +662,8 @@ internal sealed class CustomGameSettingsSession
         AddGarrisonRuleEntries();
         currentGenerationSection = "MOVEMENT";
         AddMovementRuleEntries();
+        currentGenerationSection = "AI behavior";
+        AddAIDecisionIntervalEntry();
         AddFactionModifierEntries(pack.GameData.Factions);
     }
 
@@ -1514,6 +1518,44 @@ internal sealed class CustomGameSettingsSession
                 Read = () => movementDraft.TravelSpeedPercent,
                 ReadDefault = () => movementDefaults.TravelSpeedPercent,
                 Write = value => movementDraft.TravelSpeedPercent = value,
+            }
+        );
+    }
+
+    /// <summary>
+    /// Adds the campaign's override for the interval between AI strategic decisions.
+    /// </summary>
+    private void AddAIDecisionIntervalEntry()
+    {
+        generationEntries.Add(
+            new GenerationEntry
+            {
+                Category = NewGameSettingsCategory.WorldGeneration,
+                Section = currentGenerationSection,
+                RowKey = "ai-decision-interval",
+                Key = "ai-decision-interval",
+                Label = "AI decision interval (ticks)",
+                Description =
+                    "Ticks between new AI assignments. Higher values slow decisions. Existing fleet orders continue every tick. Minimum: 1.",
+                Minimum = 1,
+                Maximum = int.MaxValue,
+                Read = () =>
+                    aiDecisionTickInterval
+                    ?? activePack.GameData.GameConfig.AI.GetDecisionTickInterval(
+                        summaryDraft.Difficulty
+                    ),
+                ReadDefault = () =>
+                    activePack.GameData.GameConfig.AI.GetDecisionTickInterval(
+                        summaryDraft.Difficulty
+                    ),
+                Write = value =>
+                    aiDecisionTickInterval =
+                        value
+                        == activePack.GameData.GameConfig.AI.GetDecisionTickInterval(
+                            summaryDraft.Difficulty
+                        )
+                            ? null
+                            : value,
             }
         );
     }

@@ -15,6 +15,20 @@ using UnityEngine.EventSystems;
 public interface IFacilityWindowActions
 {
     /// <summary>
+    /// Opens the item currently under construction at its destination.
+    /// </summary>
+    /// <param name="destinationPlanetId">The containing destination planet identifier.</param>
+    /// <param name="manufacturedItemId">The manufactured item identifier.</param>
+    /// <param name="sourceX">The source window's horizontal coordinate.</param>
+    /// <param name="sourceY">The source window's vertical coordinate.</param>
+    void OpenFacilityManufacturedItem(
+        string destinationPlanetId,
+        string manufacturedItemId,
+        int sourceX,
+        int sourceY
+    );
+
+    /// <summary>
     /// Opens status information for the active facility selection.
     /// </summary>
     /// <param name="target">The resolved facility status target.</param>
@@ -159,6 +173,7 @@ public sealed class FacilityWindowController
         view.InventoryItemReleased += HandleInventoryItemReleased;
         view.ManufacturingCardPressed += HandleManufacturingCardPressed;
         view.ManufacturingCardReleased += HandleManufacturingCardReleased;
+        view.ManufacturingItemRequested += HandleManufacturingItemRequested;
         view.TabSelected += HandleTabSelected;
     }
 
@@ -968,23 +983,93 @@ public sealed class FacilityWindowController
     {
         destinationPlanetId = null;
         destinationItemId = null;
-        Planet producer = session?.Planet?.Planet;
         if (
-            producer?.GetManufacturingQueue().TryGetValue(type, out List<IManufacturable> queue)
-                != true
-            || queue.FirstOrDefault() is not ISceneNode current
-            || current.GetParent() is not ContainerNode destination
+            !TryGetActiveManufacturingItemNode(
+                session,
+                type,
+                out ISceneNode current,
+                out Planet destinationPlanet
+            ) || current.GetParent() is not ContainerNode destination
         )
         {
             return false;
         }
 
-        Planet destinationPlanet = destination as Planet ?? destination.GetParentOfType<Planet>();
+        destinationPlanetId = destinationPlanet.InstanceID;
+        destinationItemId = destination is Planet ? null : destination.InstanceID;
+        return true;
+    }
+
+    /// <summary>
+    /// Gets identifiers for the active item in one manufacturing lane and its destination planet.
+    /// </summary>
+    /// <param name="session">The facility session that identifies the producer.</param>
+    /// <param name="type">The production lane.</param>
+    /// <param name="destinationPlanetId">Receives the destination planet identifier.</param>
+    /// <param name="manufacturedItemId">Receives the item under construction.</param>
+    /// <returns>True when the lane contains an active item at a planet destination.</returns>
+    private bool TryGetActiveManufacturingItem(
+        FacilityWindowSession session,
+        ManufacturingType type,
+        out string destinationPlanetId,
+        out string manufacturedItemId
+    )
+    {
+        destinationPlanetId = null;
+        manufacturedItemId = null;
+        if (
+            !TryGetActiveManufacturingItemNode(
+                session,
+                type,
+                out ISceneNode current,
+                out Planet destinationPlanet
+            )
+        )
+        {
+            return false;
+        }
+
+        destinationPlanetId = destinationPlanet.InstanceID;
+        manufacturedItemId = current.InstanceID;
+        return true;
+    }
+
+    /// <summary>
+    /// Resolves the active scene node in one manufacturing lane and its destination planet.
+    /// </summary>
+    /// <param name="session">The facility session that identifies the producer.</param>
+    /// <param name="type">The production lane.</param>
+    /// <param name="current">Receives the item under construction.</param>
+    /// <param name="destinationPlanet">Receives the planet containing its destination.</param>
+    /// <returns>True when the active item and destination planet resolve.</returns>
+    private bool TryGetActiveManufacturingItemNode(
+        FacilityWindowSession session,
+        ManufacturingType type,
+        out ISceneNode current,
+        out Planet destinationPlanet
+    )
+    {
+        current = null;
+        destinationPlanet = null;
+        Planet producer = session?.Planet?.Planet;
+        if (
+            producer?.GetManufacturingQueue().TryGetValue(type, out List<IManufacturable> queue)
+                != true
+            || queue.FirstOrDefault(item =>
+                item.GetManufacturingStatus() == ManufacturingStatus.Building
+            )
+                is not ISceneNode activeItem
+            || activeItem.GetParent() is not ContainerNode destination
+        )
+        {
+            return false;
+        }
+
+        destinationPlanet = destination as Planet ?? destination.GetParentOfType<Planet>();
         if (destinationPlanet == null)
             return false;
 
-        destinationPlanetId = destinationPlanet.InstanceID;
-        destinationItemId = destination is Planet ? null : destination.InstanceID;
+        current = activeItem;
         return true;
     }
 
@@ -1068,11 +1153,20 @@ public sealed class FacilityWindowController
             eventData == null
             || !TryGetSession(view, out FacilityWindowSession session)
             || session.ActiveTab == FacilityWindowTab.Manufacturing
-            || targetingController.IsTargeting
-                && eventData.button == PointerEventData.InputButton.Left
         )
             return;
 
+        SelectionModifierState modifiers = getSelectionModifiers();
+        if (eventData.button == PointerEventData.InputButton.Left)
+        {
+            session.SelectionClick.Capture(
+                session.GetInventoryBuilding(itemIndex)?.InstanceID,
+                eventData.pointerId,
+                modifiers
+            );
+            if (targetingController.IsTargeting)
+                return;
+        }
         session.CaptureBuildingContext(itemIndex);
         if (eventData.button == PointerEventData.InputButton.Right)
         {
@@ -1082,7 +1176,7 @@ public sealed class FacilityWindowController
         else if (eventData.button == PointerEventData.InputButton.Left)
         {
             session.Window.RequestFocus();
-            session.SelectBuildingForDrag(itemIndex, view.InventoryColumnCount);
+            session.SelectBuildingForDrag(itemIndex, view.InventoryColumnCount, modifiers);
             if (
                 session.IsBuildingSelected(itemIndex)
                 && session.CanDragSelectedBuildings()
@@ -1112,12 +1206,16 @@ public sealed class FacilityWindowController
         )
             return;
 
-        bool targetSelected = TrySelectTarget(view, session.GetInventoryBuilding(itemIndex));
+        Building building = session.GetInventoryBuilding(itemIndex);
+        SelectionModifierState modifiers =
+            session.SelectionClick.Complete(building?.InstanceID, eventData.pointerId)
+            ?? getSelectionModifiers();
+        bool targetSelected = TrySelectTarget(view, building);
         endItemDrag(eventData);
-        if (targetSelected || SelectableListSelection.HasSelectionModifier(getSelectionModifiers()))
+        if (targetSelected || modifiers.HasAnyModifier)
             return;
 
-        session.SelectBuilding(itemIndex);
+        session.SelectBuilding(itemIndex, modifiers);
         markDirty();
     }
 
@@ -1180,6 +1278,39 @@ public sealed class FacilityWindowController
     }
 
     /// <summary>
+    /// Opens the item currently under construction in one manufacturing lane.
+    /// </summary>
+    /// <param name="view">The requesting facility view.</param>
+    /// <param name="cardIndex">The zero-based manufacturing lane index.</param>
+    private void HandleManufacturingItemRequested(FacilityWindowView view, int cardIndex)
+    {
+        FacilityWindowTab? manufacturingTab = FacilityManufacturingLaneCatalog.GetTab(cardIndex);
+        ManufacturingType? manufacturingType = manufacturingTab.HasValue
+            ? FacilityManufacturingLaneCatalog.GetManufacturingType(manufacturingTab.Value)
+            : null;
+        if (
+            !manufacturingType.HasValue
+            || !TryGetSession(view, out FacilityWindowSession session)
+            || !TryGetActiveManufacturingItem(
+                session,
+                manufacturingType.Value,
+                out string destinationPlanetId,
+                out string manufacturedItemId
+            )
+        )
+        {
+            return;
+        }
+
+        actions.OpenFacilityManufacturedItem(
+            destinationPlanetId,
+            manufacturedItemId,
+            session.Window.X,
+            session.Window.Y
+        );
+    }
+
+    /// <summary>
     /// Releases subscriptions and state for a destroyed facility view.
     /// </summary>
     /// <param name="view">The destroyed facility view.</param>
@@ -1197,6 +1328,7 @@ public sealed class FacilityWindowController
         view.InventoryItemReleased -= HandleInventoryItemReleased;
         view.ManufacturingCardPressed -= HandleManufacturingCardPressed;
         view.ManufacturingCardReleased -= HandleManufacturingCardReleased;
+        view.ManufacturingItemRequested -= HandleManufacturingItemRequested;
         view.TabSelected -= HandleTabSelected;
         sessions.Remove(view);
     }

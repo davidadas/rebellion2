@@ -599,6 +599,50 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(reporter.InstanceID, message.NavigationTargetInstanceID);
         }
 
+        [TestCase(80)]
+        [TestCase(100)]
+        public void CreateMessages_LeiaDiscovery_UsesSingleAuthoredReport(int discovererRank)
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Officer discoverer = new Officer
+            {
+                InstanceID = "LUKE_SKYWALKER",
+                OwnerInstanceID = alliance.InstanceID,
+                IsForceSensitive = true,
+                IsForceEligible = true,
+                IsJediTrainer = true,
+                ForceValue = discovererRank,
+                MessageImagePath = "luke-card",
+            };
+            Officer leia = new Officer
+            {
+                TypeID = "OFAL002",
+                InstanceID = "LEIA_ORGANA",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(discoverer, origin);
+            game.AttachNode(leia, origin);
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                TestContent.Data.MessageDefinitions,
+                new ForceDiscoveryResult
+                {
+                    EventType = ForceEventType.ForceUserDiscovered,
+                    Officer = leia,
+                    Discoverer = discoverer,
+                }
+            );
+
+            Assert.AreEqual(1, deliveries.Count);
+            Message message = FirstMessageFor(deliveries, alliance);
+            Assert.AreEqual("Leia uses Force", message.Title);
+            Assert.AreEqual(
+                "Pack/Factions/Alliance/Units/Officers/OFAL002/message",
+                message.OverlayImagePath
+            );
+        }
+
         [TestCase(true, "luke-card")]
         [TestCase(false, null)]
         public void CreateMessages_PersonnelArrivalsWithSameMovementGroup_RespectsSubjectImageSetting(
@@ -3597,7 +3641,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void CreateMessages_ForceExperience_WithoutRankLabelChange_DoesNotReturnForceGrowthMessage()
+        public void CreateMessages_ForceExperienceWithoutRankLabelChange_ReturnsForceGrowthMessage()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
             Officer officer = new Officer
@@ -3625,7 +3669,7 @@ namespace Rebellion.Tests.Gameplay
                 }
             );
 
-            Assert.IsEmpty(deliveries);
+            Assert.AreEqual(1, deliveries.Count);
         }
 
         [Test]
@@ -3652,6 +3696,74 @@ namespace Rebellion.Tests.Gameplay
                     PreviousForceRank =
                         game.Config.Jedi.GetMinimumRank(ForceRankLabel.ForceKnight) - 1,
                     CurrentForceRank = game.Config.Jedi.GetMinimumRank(ForceRankLabel.ForceKnight),
+                }
+            );
+
+            Assert.AreEqual(1, deliveries.Count);
+        }
+
+        [TestCase(0, 10, 0)]
+        [TestCase(10, 0, 0)]
+        [TestCase(10, 10, 0)]
+        [TestCase(10, 11, 1)]
+        [TestCase(32767, -32768, 1)]
+        public void CreateMessages_ForceProgression_ReportsChangedNonzeroRanks(
+            int previous,
+            int current,
+            int expectedCount
+        )
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Officer officer = new Officer
+            {
+                OwnerInstanceID = alliance.InstanceID,
+                IsForceSensitive = true,
+                ForceValue = current,
+            };
+            game.AttachNode(officer, origin);
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(MessageResultType.ForceGrowth, MessageType.Mission, "force", "body"),
+                },
+                new ForceExperienceResult
+                {
+                    Officer = officer,
+                    PreviousForceRank = previous,
+                    CurrentForceRank = current,
+                }
+            );
+
+            Assert.AreEqual(expectedCount, deliveries.Count);
+        }
+
+        [Test]
+        public void CreateMessages_ForceTrainingWithinRankLabel_ReturnsForceGrowthMessage()
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Officer officer = new Officer
+            {
+                OwnerInstanceID = alliance.InstanceID,
+                IsForceSensitive = true,
+                ForceValue = 10,
+                ForceTrainingAdjustment = 1,
+            };
+            game.AttachNode(officer, origin);
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(MessageResultType.ForceGrowth, MessageType.Mission, "force", "body"),
+                },
+                new ForceTrainingResult
+                {
+                    Officer = officer,
+                    Progress = 1,
+                    PreviousForceRank = 10,
+                    CurrentForceRank = 11,
                 }
             );
 

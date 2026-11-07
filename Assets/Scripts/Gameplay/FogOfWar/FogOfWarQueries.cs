@@ -179,17 +179,23 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Adds enemy missions revealed by the latest espionage snapshot.
+        /// Adds stored mission intelligence from the latest snapshot.
         /// </summary>
         /// <param name="viewPlanet">The faction-view planet receiving mission copies.</param>
         /// <param name="snapshot">The latest intelligence snapshot, if any.</param>
         private static void AddObservedMissions(Planet viewPlanet, PlanetSnapshot snapshot)
         {
-            if (snapshot?.RevealedCategories.HasFlag(PlanetIntelligenceCategory.Missions) != true)
+            if (snapshot == null)
                 return;
 
             foreach (Mission mission in snapshot.Missions)
             {
+                if (
+                    !snapshot.HasIntelligence(PlanetIntelligenceCategory.Missions)
+                    && mission.GetAllParticipants(includeDisabled: true).Count == 0
+                )
+                    continue;
+
                 Mission viewMission = FogOfWarRecorder.CopySnapshotForView(mission);
                 viewMission.SetParent(viewPlanet);
                 viewPlanet.AddChild(viewMission);
@@ -503,20 +509,6 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Returns whether a snapshot reveals one category through full or selective intelligence.
-        /// </summary>
-        /// <param name="snapshot">The snapshot to inspect.</param>
-        /// <param name="category">The requested intelligence category.</param>
-        /// <returns>True when the category is available.</returns>
-        private static bool HasIntelligence(
-            PlanetSnapshot snapshot,
-            PlanetIntelligenceCategory category
-        )
-        {
-            return snapshot.RevealedCategories.HasFlag(category);
-        }
-
-        /// <summary>
         /// Adds incoming enemy fleets revealed by espionage to an otherwise live planet view.
         /// </summary>
         /// <param name="viewPlanet">The faction-view planet receiving known incoming fleets.</param>
@@ -530,7 +522,10 @@ namespace Rebellion.Gameplay
         {
             if (
                 snapshot == null
-                || !HasIntelligence(snapshot, PlanetIntelligenceCategory.CapitalShips)
+                || (
+                    !snapshot.HasIntelligence(PlanetIntelligenceCategory.CapitalShips)
+                    && !snapshot.HasIntelligence(PlanetIntelligenceCategory.Fleets)
+                )
             )
                 return;
 

@@ -25,6 +25,9 @@ namespace Rebellion.Game
         [PersistableMember(Name = nameof(MovementRules))]
         private MovementRuleSettings _movementRules;
 
+        [PersistableMember(Name = nameof(AIDecisionTickInterval))]
+        private int? _aiDecisionTickInterval;
+
         [PersistableIgnore]
         public DifficultyModifiers PlayerDifficultyModifiers
         {
@@ -60,10 +63,34 @@ namespace Rebellion.Game
             set => _movementRules = value;
         }
 
+        [PersistableIgnore]
+        public int? AIDecisionTickInterval
+        {
+            get => _aiDecisionTickInterval;
+            set => _aiDecisionTickInterval = value;
+        }
+
         /// <summary>
         /// Creates an empty custom-game settings payload for population or deserialization.
         /// </summary>
         public CustomGameSettings() { }
+
+        /// <summary>
+        /// Captures independent copies of the campaign's editable settings.
+        /// </summary>
+        /// <returns>A custom-game payload that owns every mutable rule override.</returns>
+        public CustomGameSettings CreateCopy()
+        {
+            return new CustomGameSettings
+            {
+                PlayerDifficultyModifiers = PlayerDifficultyModifiers?.CreateCopy(),
+                AIDifficultyModifiers = AIDifficultyModifiers?.CreateCopy(),
+                GenerationConfig = GenerationConfig?.CreateCopy(),
+                GarrisonRules = GarrisonRules?.CreateCopy(),
+                MovementRules = MovementRules?.CreateCopy(),
+                AIDecisionTickInterval = AIDecisionTickInterval,
+            };
+        }
 
         /// <summary>
         /// Applies persisted campaign-specific runtime rules to a detached game configuration.
@@ -73,6 +100,9 @@ namespace Rebellion.Game
         {
             if (config == null)
                 throw new ArgumentNullException(nameof(config));
+
+            if (AIDecisionTickInterval is < 1)
+                throw new InvalidDataException("AI decision interval must be positive.");
 
             if (GarrisonRules != null)
             {
@@ -126,6 +156,18 @@ namespace Rebellion.Game
         public int SupportDeficitPerRegiment { get; set; }
 
         public int UprisingMultiplier { get; set; }
+
+        /// <summary>
+        /// Captures the campaign's editable garrison rules.
+        /// </summary>
+        /// <returns>An independent copy of the rule values.</returns>
+        public GarrisonRuleSettings CreateCopy() =>
+            new GarrisonRuleSettings
+            {
+                SupportThreshold = SupportThreshold,
+                SupportDeficitPerRegiment = SupportDeficitPerRegiment,
+                UprisingMultiplier = UprisingMultiplier,
+            };
     }
 
     /// <summary>
@@ -135,5 +177,12 @@ namespace Rebellion.Game
     public sealed class MovementRuleSettings
     {
         public int TravelSpeedPercent { get; set; }
+
+        /// <summary>
+        /// Captures the campaign's editable movement rules.
+        /// </summary>
+        /// <returns>An independent copy of the rule values.</returns>
+        public MovementRuleSettings CreateCopy() =>
+            new MovementRuleSettings { TravelSpeedPercent = TravelSpeedPercent };
     }
 }

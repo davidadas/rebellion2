@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -24,6 +25,27 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsNotNull(hq.Movement);
             Assert.IsFalse(origin.IsHeadquarters);
             Assert.IsNull(faction.HQInstanceID);
+        }
+
+        [Test]
+        public void TryRelocate_HeadquartersSnapshot_MovesLiveUnitAndClearsLiveMarker()
+        {
+            (GameRoot game, Faction faction, Planet origin, Planet destination, Building hq) =
+                CreateGame(isMobile: true);
+            Planet originSnapshot = (Planet)origin.CreateCopy(recursive: true);
+            Building headquartersSnapshot = originSnapshot.GetChildren<Building>().Single();
+            Planet destinationSnapshot = (Planet)destination.CreateCopy();
+
+            bool relocated = CreateCommands(game)
+                .TryRelocate(headquartersSnapshot, destinationSnapshot);
+
+            Assert.IsTrue(relocated);
+            Assert.IsNotNull(hq.Movement);
+            Assert.AreSame(destination, hq.GetParent());
+            Assert.IsFalse(origin.IsHeadquarters);
+            Assert.IsNull(faction.HQInstanceID);
+            Assert.IsTrue(originSnapshot.IsHeadquarters);
+            Assert.IsNull(headquartersSnapshot.Movement);
         }
 
         [Test]

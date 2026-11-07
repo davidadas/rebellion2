@@ -313,7 +313,7 @@ namespace Rebellion.Tests.Game.Missions
                 new FogOfWarQueries(game),
                 new MovementQueries(game)
             );
-            movement.SendToMission(reconTeam, mission);
+            movement.SendToMission(new IMissionParticipant[] { reconTeam }, mission);
             reconTeam.Movement = null;
             mission.Initiate(1);
 
@@ -380,7 +380,7 @@ namespace Rebellion.Tests.Game.Missions
                 new FogOfWarQueries(game),
                 new MovementQueries(game)
             );
-            movement.SendToMission(reconTeam, mission);
+            movement.SendToMission(new IMissionParticipant[] { reconTeam }, mission);
             reconTeam.Movement = null;
             mission.Initiate(1);
 

@@ -106,7 +106,8 @@ Activates when an uprising ends.
 
 ### IntelligenceRevealed
 
-Activates when intelligence is revealed to a faction.
+Activates when intelligence is revealed to a faction. Both forms of `RevealToFaction`
+activate this trigger. Category reports expose the observed planet in `Observations`.
 
 **Optional options**
 
@@ -416,12 +417,16 @@ Activates after a planetary assault resolves.
 
 Activates after a duel resolves.
 
+Actions run synchronously before mission processing continues. When another event requests the
+duel, `HasEventActivated` and `IsEventComplete` can observe that event's committed activation and
+completion state.
+
 **Optional options**
 
 - `FirstOfficerInstanceID` **[Optional]:** The `InstanceID` of the first officer who must have participated in the duel.
 - `SecondOfficerInstanceID` **[Optional]:** The `InstanceID` of the second officer who must have participated in the duel.
 - `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
-- `Bindings` **[Optional]:** Supports `FirstOfficer`, `SecondOfficer`, `FirstOfficerInstanceID`, `SecondOfficerInstanceID`, `Location`, `FirstOfficerCaptured`, `FirstOfficerInjury`, `SecondOfficerInjury`, `ImagePath`, and `AudioPath`.
+- `Bindings` **[Optional]:** Supports `FirstOfficer`, `SecondOfficer`, `FirstOfficerInstanceID`, `SecondOfficerInstanceID`, `FirstOfficerOwnerInstanceID`, `SecondOfficerOwnerInstanceID`, `Location`, `FirstOfficerCaptured`, `FirstOfficerInjury`, `SecondOfficerInjury`, `ImagePath`, and `AudioPath`.
 
 ```xml
 <Triggers>

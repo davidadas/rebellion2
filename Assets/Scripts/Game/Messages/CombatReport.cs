@@ -56,6 +56,34 @@ namespace Rebellion.Game.Messages
         public bool Damaged { get; set; }
         public bool Destroyed { get; set; }
         public bool Captured { get; set; }
+
+        /// <summary>
+        /// Copies the recorded unit presentation and outcome.
+        /// </summary>
+        /// <returns>An independent unit entry retaining the captured values.</returns>
+        public CombatReportUnit CreateCopy() =>
+            new CombatReportUnit
+            {
+                InstanceID = InstanceID,
+                TypeID = TypeID,
+                DisplayName = DisplayName,
+                OwnerInstanceID = OwnerInstanceID,
+                Category = Category,
+                DisplayImagePath = DisplayImagePath,
+                SmallDisplayImagePath = SmallDisplayImagePath,
+                ResultImagePath = ResultImagePath,
+                DamagedImagePath = DamagedImagePath,
+                DamagedSmallImagePath = DamagedSmallImagePath,
+                ResultDamagedImagePath = ResultDamagedImagePath,
+                InTransitImagePath = InTransitImagePath,
+                InTransitSmallImagePath = InTransitSmallImagePath,
+                ResultInTransitImagePath = ResultInTransitImagePath,
+                CapturedOverlayImagePath = CapturedOverlayImagePath,
+                WasOperational = WasOperational,
+                Damaged = Damaged,
+                Destroyed = Destroyed,
+                Captured = Captured,
+            };
     }
 
     /// <summary>
@@ -68,6 +96,19 @@ namespace Rebellion.Game.Messages
         public string UnitName { get; set; }
         public int HullBefore { get; set; }
         public int HullAfter { get; set; }
+
+        /// <summary>
+        /// Copies the recorded hull damage.
+        /// </summary>
+        /// <returns>An independent damage entry retaining the captured values.</returns>
+        public CombatReportShipDamage CreateCopy() =>
+            new CombatReportShipDamage
+            {
+                UnitInstanceID = UnitInstanceID,
+                UnitName = UnitName,
+                HullBefore = HullBefore,
+                HullAfter = HullAfter,
+            };
     }
 
     /// <summary>
@@ -80,6 +121,19 @@ namespace Rebellion.Game.Messages
         public string UnitName { get; set; }
         public int SquadsBefore { get; set; }
         public int SquadsAfter { get; set; }
+
+        /// <summary>
+        /// Copies the recorded squadron losses.
+        /// </summary>
+        /// <returns>An independent loss entry retaining the captured values.</returns>
+        public CombatReportFighterLoss CreateCopy() =>
+            new CombatReportFighterLoss
+            {
+                UnitInstanceID = UnitInstanceID,
+                UnitName = UnitName,
+                SquadsBefore = SquadsBefore,
+                SquadsAfter = SquadsAfter,
+            };
     }
 
     /// <summary>
@@ -121,6 +175,50 @@ namespace Rebellion.Game.Messages
             new List<CombatReportShipDamage>();
         public List<CombatReportFighterLoss> FighterLosses { get; set; } =
             new List<CombatReportFighterLoss>();
+
+        /// <summary>
+        /// Copies the report and its recorded unit outcomes into another message history.
+        /// </summary>
+        /// <returns>An independent report retaining its presentation and outcome values.</returns>
+        public override Message CreateCopy()
+        {
+            CombatReport copy = new CombatReport
+            {
+                CombatType = CombatType,
+                PerspectiveOwnerInstanceID = PerspectiveOwnerInstanceID,
+                PlanetInstanceID = PlanetInstanceID,
+                PlanetName = PlanetName,
+                PlanetOwnerInstanceID = PlanetOwnerInstanceID,
+                AttackerOwnerInstanceID = AttackerOwnerInstanceID,
+                DefenderOwnerInstanceID = DefenderOwnerInstanceID,
+                Winner = Winner,
+                AttackerOutcome = AttackerOutcome,
+                DefenderOutcome = DefenderOutcome,
+                AttackerRetreatPlanetInstanceID = AttackerRetreatPlanetInstanceID,
+                DefenderRetreatPlanetInstanceID = DefenderRetreatPlanetInstanceID,
+                Success = Success,
+                BlockedByShields = BlockedByShields,
+                InitialAttackerRegimentCount = InitialAttackerRegimentCount,
+                RemainingAttackerRegimentCount = RemainingAttackerRegimentCount,
+                InitialDefenderRegimentCount = InitialDefenderRegimentCount,
+                RemainingDefenderRegimentCount = RemainingDefenderRegimentCount,
+                BombardmentType = BombardmentType,
+                BombardmentStrength = BombardmentStrength,
+                ShieldStrength = ShieldStrength,
+                StrikeAttempts = StrikeAttempts,
+                SuccessfulStrikes = SuccessfulStrikes,
+                EnergyCapacityDamage = EnergyCapacityDamage,
+                AllocatedEnergyDamage = AllocatedEnergyDamage,
+                HeadquartersDestroyed = HeadquartersDestroyed,
+                PlanetDestroyed = PlanetDestroyed,
+                AttackingUnits = AttackingUnits?.Select(item => item.CreateCopy()).ToList(),
+                DefendingUnits = DefendingUnits?.Select(item => item.CreateCopy()).ToList(),
+                ShipDamage = ShipDamage?.Select(item => item.CreateCopy()).ToList(),
+                FighterLosses = FighterLosses?.Select(item => item.CreateCopy()).ToList(),
+            };
+            CopyStateTo(copy);
+            return copy;
+        }
 
         /// <summary>
         /// Captures a completed combat result as a durable report for faction message history.

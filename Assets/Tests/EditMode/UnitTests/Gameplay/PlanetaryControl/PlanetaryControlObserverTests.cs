@@ -446,6 +446,35 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void HandleResults_DelayedOwnershipChange_PreservesCaptureTickAndUsesCurrentEscapeClock()
+        {
+            _game.CurrentTick = 50;
+            _game.Config.Captive.EscapeAttemptInterval.Minimum = 4;
+            _game.Config.Captive.EscapeAttemptInterval.Maximum = 4;
+            AddBlockadingFleet(_empirePlanet, "blockading");
+            Officer officer = EntityFactory.CreateOfficer("displaced", _empire.InstanceID);
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _game.AttachNode(officer, _targetPlanet);
+            _game.ChangeOwnership(_targetPlanet, _rebels.InstanceID);
+
+            List<GameResult> results = _observer.HandleResults(
+                new[]
+                {
+                    new PlanetOwnershipChangedResult
+                    {
+                        Planet = _targetPlanet,
+                        PreviousOwner = _empire,
+                        NewOwner = _rebels,
+                        Tick = 4,
+                    },
+                }
+            );
+
+            Assert.AreEqual(4, results.OfType<OfficerCaptureStateResult>().Single().Tick);
+            Assert.AreEqual(54, officer.NextEscapeAttemptTick);
+        }
+
+        [Test]
         public void HandleResults_BlockadedOwnershipChange_ResolvesEvacuationAgainstPriorBlockade()
         {
             _game.Config.Blockade.EvacuationLossPercent = 100;
@@ -663,6 +692,35 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(28, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
             Assert.AreEqual(18, _empirePlanet.GetPopularSupport(_rebels.InstanceID));
+        }
+
+        [Test]
+        public void HandleResults_GarrisonRemoval_DoesNotShiftUncolonizedNeighbourSupport()
+        {
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.SetFullPopularSupport(_empire.InstanceID);
+            _empirePlanet.IsColonized = false;
+            _empirePlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _empire.InstanceID, 20 },
+                { _rebels.InstanceID, 80 },
+            };
+
+            _observer.HandleResults(
+                new[]
+                {
+                    new PlanetOwnershipChangedResult
+                    {
+                        Planet = _targetPlanet,
+                        PreviousOwner = _rebels,
+                        NewOwner = _empire,
+                        Reason = PlanetOwnershipChangeReason.GarrisonRemoved,
+                    },
+                }
+            );
+
+            Assert.AreEqual(20, _empirePlanet.GetPopularSupport(_empire.InstanceID));
+            Assert.AreEqual(_empire.InstanceID, _empirePlanet.OwnerInstanceID);
         }
 
         [Test]

@@ -228,7 +228,10 @@ public sealed class ContentEditorNavigation
             var group in record
                 .GetFields()
                 .Where(field =>
-                    field.Group != "AI"
+                    (
+                        field.Group != "AI"
+                        || ContentPackEditorFieldMetadata.IsAIDecisionInterval(field)
+                    )
                     && (
                         !ContentPackEditorFieldMetadata.IsMissionField(field)
                         || ContentPackEditorFieldMetadata.MissionFor(field) == null

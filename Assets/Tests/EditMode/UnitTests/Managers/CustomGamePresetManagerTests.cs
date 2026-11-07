@@ -4,7 +4,6 @@ using System.IO;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.GameEvents;
-using Rebellion.Util.Reflection;
 
 namespace Rebellion.Tests.Managers
 {
@@ -169,7 +168,7 @@ namespace Rebellion.Tests.Managers
         /// <returns>The customized generation configuration.</returns>
         private static GameGenerationConfig CreateGenerationConfig()
         {
-            GameGenerationConfig config = TestContent.Data.GenerationConfig.GetDeepCopy();
+            GameGenerationConfig config = TestContent.Data.GenerationConfig.CreateCopy();
             config.FacilityGeneration.CoreMineMultiplier = 17;
             config.DisabledEventCategories = new List<GameEventCategory>
             {

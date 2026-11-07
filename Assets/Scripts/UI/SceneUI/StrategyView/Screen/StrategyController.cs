@@ -2324,6 +2324,39 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Opens the item currently under construction at its destination.
+    /// </summary>
+    /// <param name="destinationPlanetId">The containing destination planet identifier.</param>
+    /// <param name="manufacturedItemId">The manufactured item identifier.</param>
+    /// <param name="sourceX">The source window's horizontal coordinate.</param>
+    /// <param name="sourceY">The source window's vertical coordinate.</param>
+    void IFacilityWindowActions.OpenFacilityManufacturedItem(
+        string destinationPlanetId,
+        string manufacturedItemId,
+        int sourceX,
+        int sourceY
+    )
+    {
+        GalaxyMapPlanet destinationPlanet = galaxyMapController.FindPlanet(destinationPlanetId);
+        if (destinationPlanet == null)
+            return;
+
+        ISceneNode manufacturedItem = string.IsNullOrEmpty(manufacturedItemId)
+            ? null
+            : galaxyMapController.FindVisibleNode(manufacturedItemId);
+        PlanetIcon icon = GetMessageTargetIcon(manufacturedItem);
+        if (icon == PlanetIcon.None)
+            OpenPlanetSectorWindow(destinationPlanet.Sector);
+        else
+        {
+            UIWindow targetWindow = OpenPlanetWindowAt(destinationPlanet, icon, sourceX, sourceY);
+            SelectMessageTarget(targetWindow, manufacturedItem);
+        }
+
+        MarkDirty();
+    }
+
+    /// <summary>
     /// Opens Encyclopedia information for the active facility selection.
     /// </summary>
     /// <param name="target">The resolved facility information target.</param>
@@ -2581,6 +2614,23 @@ public sealed class StrategyController
     void IStatusWindowActions.OpenStatusInfo(StrategyStatusTarget target)
     {
         OpenEncyclopediaWindow(target);
+    }
+
+    /// <summary>
+    /// Opens the producing planet's sector and facility window.
+    /// </summary>
+    /// <param name="producerPlanetId">The producing planet identifier.</param>
+    /// <param name="sourceX">The source window's horizontal coordinate.</param>
+    /// <param name="sourceY">The source window's vertical coordinate.</param>
+    void IStatusWindowActions.OpenStatusManufacturingSource(
+        string producerPlanetId,
+        int sourceX,
+        int sourceY
+    )
+    {
+        GalaxyMapPlanet producer = galaxyMapController.FindPlanet(producerPlanetId);
+        if (OpenPlanetWindowAt(producer, PlanetIcon.Facility, sourceX, sourceY) != null)
+            dirty = true;
     }
 
     /// <summary>

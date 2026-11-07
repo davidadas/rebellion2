@@ -30,18 +30,37 @@ namespace Rebellion.Gameplay
         /// <returns>True when the relocation order is valid.</returns>
         public bool CanRelocate(Building headquarters, Planet destination)
         {
+            return TryResolveRelocation(headquarters, destination, out _, out _);
+        }
+
+        /// <summary>
+        /// Resolves a headquarters order against the active game and validates its destination.
+        /// </summary>
+        /// <param name="headquarters">The selected headquarters or its snapshot.</param>
+        /// <param name="destination">The selected planet or its snapshot.</param>
+        /// <param name="liveHeadquarters">Receives the registered headquarters.</param>
+        /// <param name="liveDestination">Receives the registered destination.</param>
+        /// <returns>True when the registered units permit relocation.</returns>
+        internal bool TryResolveRelocation(
+            Building headquarters,
+            Planet destination,
+            out Building liveHeadquarters,
+            out Planet liveDestination
+        )
+        {
+            liveHeadquarters = _game.GetSceneNodeByInstanceID<Building>(headquarters?.InstanceID);
+            liveDestination = _game.GetSceneNodeByInstanceID<Planet>(destination?.InstanceID);
             if (
-                !CanMove(headquarters)
-                || destination?.IsDestroyed != false
-                || destination?.IsColonized != true
+                !CanMove(liveHeadquarters)
+                || liveDestination?.IsDestroyed != false
+                || !liveDestination.IsColonized
             )
                 return false;
 
-            Faction faction = _game.GetFactionByOwnerInstanceID(headquarters.OwnerInstanceID);
-            Planet origin = headquarters.GetParentOfType<Planet>();
-            return destination != origin
-                && destination.OwnerInstanceID == faction.InstanceID
-                && destination.CanAcceptChild(headquarters);
+            Planet origin = liveHeadquarters.GetParentOfType<Planet>();
+            return liveDestination != origin
+                && liveDestination.OwnerInstanceID == liveHeadquarters.OwnerInstanceID
+                && liveDestination.CanAcceptChild(liveHeadquarters);
         }
 
         /// <summary>

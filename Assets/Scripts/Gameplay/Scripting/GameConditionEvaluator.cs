@@ -622,18 +622,17 @@ namespace Rebellion.Gameplay.Scripting
         }
 
         /// <summary>
-        /// Checks whether the referenced unit is parented to a <see cref="Mission"/> node.
+        /// Checks whether the referenced unit is assigned to a mission.
         /// </summary>
         /// <param name="definition">The authored condition being evaluated.</param>
         /// <param name="context">The context used to resolve the unit.</param>
-        /// <returns>True if the unit exists and its direct parent is a mission; otherwise false.</returns>
+        /// <returns>True when the unit's immediate parent is a mission.</returns>
         private static bool IsMet(IsOnMissionConditional definition, GameConditionContext context)
         {
             ISceneNode sceneNode = context.Game.GetSceneNodeByInstanceID<ISceneNode>(
                 definition.UnitInstanceID,
                 includeDisabled: true
             );
-            // Check if the unit is on a mission.
             return sceneNode?.GetParent() is Mission;
         }
 
@@ -708,10 +707,12 @@ namespace Rebellion.Gameplay.Scripting
                 definition.UnitInstanceID,
                 includeDisabled: true
             );
-            ISceneNode parent = game.GetSceneNodeByInstanceID<ISceneNode>(
-                definition.ParentInstanceID,
-                includeDisabled: true
-            );
+            ISceneNode parent = string.IsNullOrWhiteSpace(definition.ParentBinding)
+                ? game.GetSceneNodeByInstanceID<ISceneNode>(
+                    definition.ParentInstanceID,
+                    includeDisabled: true
+                )
+                : context.Evaluation?.GetBindingReference<ISceneNode>(definition.ParentBinding);
             return node != null && parent != null && ReferenceEquals(node.GetParent(), parent);
         }
     }
