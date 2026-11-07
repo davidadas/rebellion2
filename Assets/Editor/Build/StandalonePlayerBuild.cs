@@ -187,6 +187,7 @@ public static class StandalonePlayerBuild
     {
         _ = GetDefaultArtifact(target);
         outputPath = NormalizeOutputPath(target, outputPath);
+        ContentPackEditorBuild.PrepareGameBuild(target, outputPath);
         UIBuilderMenu.BuildRuntimeUI();
         return BuildGeneratedPlayer(
             target,
