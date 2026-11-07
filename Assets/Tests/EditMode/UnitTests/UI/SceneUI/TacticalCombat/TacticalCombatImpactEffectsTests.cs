@@ -94,7 +94,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         )
         {
             TacticalCombatShot shot = CreateShot(weapon);
-            _effects.ShowImpact(shot, impact);
+            _effects.ShowImpact(shot.Target, shot.Weapon, impact);
             TacticalCombatEffectDefinition definition = _definition.Effects.Single(item =>
                 item.Kind == expected
             );
@@ -112,7 +112,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             Texture initial = _root
                 .GetComponentInChildren<MeshRenderer>()
                 .sharedMaterial.mainTexture;
-            _effects.ShowImpact(shot, TacticalCombatImpactKind.Hull);
+            _effects.ShowImpact(shot.Target, shot.Weapon, TacticalCombatImpactKind.Hull);
             Assert.AreSame(
                 initial,
                 _root.GetComponentInChildren<MeshRenderer>().sharedMaterial.mainTexture
@@ -135,7 +135,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         public void Advance_CompletedFrameSequence_DisablesImpactRenderer()
         {
             TacticalCombatShot shot = CreateShot(TacticalWeaponType.LaserCannon);
-            _effects.ShowImpact(shot, TacticalCombatImpactKind.Shield);
+            _effects.ShowImpact(shot.Target, shot.Weapon, TacticalCombatImpactKind.Shield);
             int count = _definition
                 .Effects.Single(item => item.Kind == TacticalCombatEffectKind.ShieldHit)
                 .FramePaths.Count;

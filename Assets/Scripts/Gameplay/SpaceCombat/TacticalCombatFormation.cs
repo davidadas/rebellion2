@@ -223,16 +223,22 @@ namespace Rebellion.Gameplay
                 return Vector3.Zero;
             if (Kind != TacticalCombatFormationKind.Direct && member.HasRecovery)
                 return member.Recovery;
-            Vector3 delta = new(
-                (float)((double)Position.X - member.Offset.X - unit.Position.X),
-                (float)((double)Position.Y - member.Offset.Y - unit.Position.Y),
-                (float)((double)Position.Z - member.Offset.Z - unit.Position.Z)
-            );
-            double squared =
-                (double)delta.X * delta.X + (double)delta.Z * delta.Z + (double)delta.Y * delta.Y;
+            float offsetX = (float)((double)Position.X - member.Offset.X);
+            float offsetZ = (float)((double)Position.Z - member.Offset.Z);
+            double liveX = (double)offsetX - unit.Position.X;
+            double liveY = (double)Position.Y - member.Offset.Y - unit.Position.Y;
+            double liveZ = (double)offsetZ - unit.Position.Z;
+            Vector3 delta = new((float)liveX, (float)liveY, (float)liveZ);
             if (Kind == TacticalCombatFormationKind.Direct)
+            {
+                double squared =
+                    (double)delta.X * delta.X
+                    + (double)delta.Z * delta.Z
+                    + (double)delta.Y * delta.Y;
                 return squared > 4 ? delta : Velocity;
-            return squared > 1 ? delta : Vector3.Zero;
+            }
+            double liveSquared = liveX * delta.X + (liveY * liveY + liveZ * delta.Z);
+            return liveSquared > 1 ? delta : Vector3.Zero;
         }
 
         /// <summary>

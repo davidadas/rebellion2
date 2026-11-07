@@ -132,16 +132,38 @@ namespace Rebellion.Gameplay
         {
             if (weapon == TacticalWeaponType.IonCannon && targetIsFighter)
                 return 0;
-            float targetScale =
-                weapon == TacticalWeaponType.LaserCannon
-                    ? targetIsFighter
-                        ? 1
-                        : _laserCapitalScale
-                    : targetIsFighter
-                        ? 0.5f
-                        : 1;
+            float targetScale = GetTargetScale(weapon, targetIsFighter);
             return (float)((double)_shotScale * targetScale * GetStrength(arc, weapon));
         }
+
+        /// <summary>
+        /// Gets the rounded per-mount scalar used before recharge and mount count are applied.
+        /// </summary>
+        /// <param name="weapon">The battery weapon.</param>
+        /// <param name="targetIsFighter">Whether the designated target is a fighter squadron.</param>
+        /// <returns>The single-precision lane scalar.</returns>
+        internal float GetRangeScalar(TacticalWeaponType weapon, bool targetIsFighter)
+        {
+            if (weapon == TacticalWeaponType.IonCannon && targetIsFighter)
+                return 0;
+            float targetScale = GetTargetScale(weapon, targetIsFighter);
+            return (float)((double)_shotScale * targetScale);
+        }
+
+        /// <summary>
+        /// Selects the configured lane multiplier for the target category.
+        /// </summary>
+        /// <param name="weapon">The battery weapon.</param>
+        /// <param name="targetIsFighter">Whether the target is a fighter squadron.</param>
+        /// <returns>The target-category multiplier.</returns>
+        private static float GetTargetScale(TacticalWeaponType weapon, bool targetIsFighter) =>
+            weapon == TacticalWeaponType.LaserCannon
+                ? targetIsFighter
+                    ? 1
+                    : _laserCapitalScale
+                : targetIsFighter
+                    ? 0.5f
+                    : 1;
 
         /// <summary>
         /// Calculates an opportunity shot's complete attack strength while scanning nearby targets.
@@ -149,12 +171,12 @@ namespace Rebellion.Gameplay
         /// <param name="arc">The firing battery.</param>
         /// <param name="weapon">The battery weapon.</param>
         /// <returns>The opportunity-shot attack strength before hull scaling.</returns>
-        public float GetOpportunityDamage(TacticalWeaponArc arc, TacticalWeaponType weapon)
+        public double GetOpportunityDamage(TacticalWeaponArc arc, TacticalWeaponType weapon)
         {
             if (weapon == TacticalWeaponType.IonCannon)
                 return 0;
             float targetScale = weapon == TacticalWeaponType.Turbolaser ? 0.5f : 1;
-            return (float)((double)_shotScale * targetScale * GetStrength(arc, weapon));
+            return (double)_shotScale * targetScale * GetStrength(arc, weapon);
         }
 
         /// <summary>
@@ -188,14 +210,14 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="seconds">The elapsed recharge interval in seconds.</param>
         /// <param name="rechargeRate">The unit's available recharge per second.</param>
-        public void Advance(float seconds, float rechargeRate)
+        public void Advance(float seconds, double rechargeRate)
         {
-            double available = (double)rechargeRate * seconds;
+            double available = rechargeRate * seconds;
             for (int order = 0; order < _rechargeCount && available > 0; order++)
             {
                 int arc = _rechargeOrder[order];
                 double remaining = (double)_maximumCharge[arc] - _charge[arc];
-                if (available < remaining)
+                if (double.IsNaN(remaining) || available < remaining)
                     _charge[arc] = (float)(available + _charge[arc]);
                 else
                 {

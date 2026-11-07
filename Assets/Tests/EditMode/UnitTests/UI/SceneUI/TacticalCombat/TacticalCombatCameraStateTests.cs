@@ -150,6 +150,30 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             AssertAimsAt(position, rotation, target);
         }
 
+        [Test]
+        public void Apply_RestoringTrackedView_RestoresItsObjectIdentity()
+        {
+            TacticalCombatCameraState camera = new(170, 0);
+            camera.Track(() => Vector3.zero, 21);
+            camera.Apply(TacticalCombatCameraCommand.Save);
+            camera.Track(() => Vector3.one, 42);
+
+            camera.Apply(TacticalCombatCameraCommand.Restore);
+
+            Assert.AreEqual(21, camera.TrackedObjectIndex);
+        }
+
+        [Test]
+        public void Track_ReplacingObjectWithPoint_ClearsObjectIdentity()
+        {
+            TacticalCombatCameraState camera = new(170, 0);
+            camera.Track(() => Vector3.zero, 21);
+
+            camera.Track(() => Vector3.one);
+
+            Assert.IsNull(camera.TrackedObjectIndex);
+        }
+
         /// <summary>
         /// Applies a repeated camera operation without introducing a frame-rate dependency.
         /// </summary>

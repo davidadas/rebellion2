@@ -20,10 +20,11 @@ namespace Rebellion.Gameplay
         public float AdmiralLeadership { get; }
         public float CommanderCombat { get; }
         public bool IsAutomated { get; internal set; }
-        public bool IsWithdrawing { get; internal set; }
-        public float WithdrawalMilliseconds { get; internal set; }
-        internal bool DepartureCountdownCompleted { get; set; }
-        internal bool UnreadyScuttleRequested { get; set; }
+        public bool IsWithdrawing => Withdrawal != null;
+        public float AttackBudget { get; internal set; }
+        public float WithdrawalMilliseconds => Withdrawal?.RemainingMilliseconds ?? 0;
+        public TacticalCombatWithdrawalPhase? WithdrawalPhase => Withdrawal?.Phase;
+        internal TacticalCombatWithdrawal Withdrawal { get; set; }
 
         /// <summary>
         /// Captures the command officers and campaign withdrawal route at battle entry.
@@ -73,16 +74,23 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="isFighter">Whether the budget is for a fighter squadron.</param>
         /// <returns>The supported budget clamped between one and nine.</returns>
-        public float GetCommandBudget(bool isFighter)
+        public float GetCommandBudget(bool isFighter) => (float)GetMovementSupport(isFighter);
+
+        /// <summary>
+        /// Reads the selected officer's live host and retains movement-support precision until its consumer stores a result.
+        /// </summary>
+        /// <param name="isFighter">Whether support belongs to the fighter command officer.</param>
+        /// <returns>The ordered supported movement budget between one and nine.</returns>
+        internal double GetMovementSupport(bool isFighter)
         {
             TacticalCombatUnit host = isFighter ? FighterCommandCarrier : CapitalCommandCarrier;
-            if (host?.IsTargetable != true)
+            if (host?.IsActiveDisplayObject != true)
                 return 1;
-            return Math.Clamp(
-                isFighter ? CommanderCombat / 20 + 1 : 9 - AdmiralLeadership / 10,
-                1,
-                9
-            );
+            float scalar = isFighter ? CommanderCombat / 20 : AdmiralLeadership / 10;
+            double value = isFighter ? (double)scalar + 1 : 9d - scalar;
+            if (!(value > 1))
+                return 1;
+            return value >= 9 ? 9 : value;
         }
     }
 }

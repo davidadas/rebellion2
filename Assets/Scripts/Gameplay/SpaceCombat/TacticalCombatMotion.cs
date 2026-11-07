@@ -58,11 +58,25 @@ namespace Rebellion.Gameplay
                 );
             float bound = battleDepth * 0.6666667f;
             Vector3 position = unit.Position;
-            position.X = Math.Max(-bound, Math.Min(bound, position.X));
-            position.Y = Math.Max(-bound, Math.Min(bound, position.Y));
-            position.Z = Math.Max(-bound, Math.Min(bound, position.Z));
+            position.X = ClampCoordinate(position.X, bound);
+            position.Y = ClampCoordinate(position.Y, bound);
+            position.Z = ClampCoordinate(position.Z, bound);
             unit.Position = position;
             spatialIndex.Update(unit);
+        }
+
+        /// <summary>
+        /// Applies the lower coordinate bound before the upper bound, including unordered positions.
+        /// </summary>
+        /// <param name="position">The coordinate after movement.</param>
+        /// <param name="bound">The positive-side coordinate boundary.</param>
+        /// <returns>The coordinate admitted by the ordered boundary comparisons.</returns>
+        private static float ClampCoordinate(float position, float bound)
+        {
+            float limited = -bound < position ? position : -bound;
+            if (limited >= bound)
+                limited = bound;
+            return limited;
         }
 
         /// <summary>

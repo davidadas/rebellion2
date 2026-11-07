@@ -1,10 +1,37 @@
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// Translates tactical keyboard keys into semantic camera commands.
+/// Translates tactical keys into camera commands and visible inspection controls.
 /// </summary>
 public static class TacticalCombatKeyboard
 {
+    /// <summary>
+    /// Resolves inspection traversal from the currently visible panel and the current Shift state.
+    /// </summary>
+    /// <param name="panel">The visible right-panel surface.</param>
+    /// <param name="key">The keyboard key whose state changed.</param>
+    /// <param name="keyDown">Whether this is a press rather than a release.</param>
+    /// <param name="shiftDown">Whether Shift is down at this transition.</param>
+    /// <param name="control">Receives the addressed previous or next inspection control.</param>
+    /// <returns>Whether this panel consumes the transition as an activation or press-state clear.</returns>
+    public static bool TryGetPanelControl(
+        TacticalCombatHudPanel panel,
+        Key key,
+        bool keyDown,
+        bool shiftDown,
+        out TacticalCombatControl control
+    )
+    {
+        control = shiftDown
+            ? TacticalCombatControl.PreviousObject
+            : TacticalCombatControl.NextObject;
+        return key == Key.Tab
+            && (
+                panel == TacticalCombatHudPanel.SingleObject
+                || panel == TacticalCombatHudPanel.ObjectGroup && keyDown
+            );
+    }
+
     /// <summary>
     /// Resolves one camera shortcut while leaving contextual battle commands to their selection owner.
     /// </summary>

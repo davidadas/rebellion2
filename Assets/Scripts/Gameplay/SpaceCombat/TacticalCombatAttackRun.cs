@@ -48,6 +48,7 @@ namespace Rebellion.Gameplay
         public event Action<TacticalCombatUnit> UnitParticipationChanged;
         public event Action<TacticalCombatAttackRun, int> ProgressChanged;
         public event Action<TacticalCombatAttackRun> MovieRequested;
+        public event Action<TacticalCombatGroup, TacticalCombatOrder> OrderRequested;
 
         /// <summary>
         /// Creates the attack sequence after an eligible fighter group receives its order.
@@ -153,7 +154,7 @@ namespace Rebellion.Gameplay
                     else
                         Restore(members[index]);
                 MovieRequested?.Invoke(this);
-                Group.SetOrder(TacticalCombatOrder.None);
+                OrderRequested?.Invoke(Group, TacticalCombatOrder.None);
             }
             else if (state == TacticalCombatAttackRunState.Failed)
             {
@@ -166,7 +167,7 @@ namespace Rebellion.Gameplay
                 if (previous != TacticalCombatAttackRunState.Approaching)
                     foreach (TacticalCombatUnit unit in Group.Members)
                         Restore(unit);
-                Group.SetOrder(TacticalCombatOrder.Withdraw);
+                OrderRequested?.Invoke(Group, TacticalCombatOrder.Withdraw);
             }
         }
 

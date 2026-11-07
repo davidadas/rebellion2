@@ -68,13 +68,40 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ApplyState_CancelledAttack_RestoresParticipationAndRequestsWithdrawal()
+        public void ApplyState_CancelledAttack_RestoresParticipation()
         {
             TacticalCombatAttackRun run = CreateRun(1);
             run.ApplyState(TacticalCombatAttackRunState.Starting);
             run.ApplyState(TacticalCombatAttackRunState.Cancelled);
             Assert.AreEqual(TacticalCombatUnitStatus.Active, run.Group.Members[0].Status);
-            Assert.AreEqual(TacticalCombatOrder.Withdraw, run.Group.Order);
+        }
+
+        [Test]
+        public void ApplyState_CancelledAttack_RequestsWithdrawalThroughOrderOwner()
+        {
+            TacticalCombatAttackRun run = CreateRun(1);
+            List<(TacticalCombatGroup, TacticalCombatOrder)> requests = new();
+            run.OrderRequested += (group, order) => requests.Add((group, order));
+
+            run.ApplyState(TacticalCombatAttackRunState.Cancelled);
+
+            CollectionAssert.AreEqual(
+                new[] { (run.Group, TacticalCombatOrder.Withdraw) },
+                requests
+            );
+        }
+
+        [Test]
+        public void ApplyState_SucceededAttack_RequestsClearOrderAfterMovieLaunch()
+        {
+            TacticalCombatAttackRun run = CreateRun(1);
+            List<string> requests = new();
+            run.MovieRequested += _ => requests.Add("movie");
+            run.OrderRequested += (_, order) => requests.Add(order.ToString());
+
+            run.ApplyState(TacticalCombatAttackRunState.Succeeded);
+
+            CollectionAssert.AreEqual(new[] { "movie", "None" }, requests);
         }
 
         /// <summary>

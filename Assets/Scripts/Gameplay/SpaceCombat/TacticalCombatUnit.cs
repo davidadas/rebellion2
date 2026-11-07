@@ -76,12 +76,16 @@ namespace Rebellion.Gameplay
                 TacticalCombatGeometry.GetLength(Velocity) * 0.5
                 + CollisionRadius * 0.5555555820465088f
             );
-        public bool IsTargetable =>
+
+        /// <summary>
+        /// Gets whether the ordinary unit remains in an active display state, independently of hull strength.
+        /// </summary>
+        public bool IsActiveDisplayObject =>
             !IsBattleStation
-            && Systems.IsAlive
             && Status
                 is TacticalCombatUnitStatus.Active
                     or TacticalCombatUnitStatus.PreparingHyperspace;
+        public bool IsTargetable => IsActiveDisplayObject && Systems.IsAlive;
         public bool IsEngaged =>
             Status
                 is TacticalCombatUnitStatus.Active
@@ -226,7 +230,9 @@ namespace Rebellion.Gameplay
                 fighter.SublightSpeed,
                 fighter.Agility,
                 0,
-                fighter.Hyperdrive != 0 ? 1u : 0u,
+                (uint)(
+                    (fighter.Hyperdrive != 0 ? 1 : 0) + (definition?.BackupHyperdrive > 0 ? 1 : 0)
+                ),
                 0
             );
             int[,] strengths = new int[4, 3];
@@ -255,10 +261,16 @@ namespace Rebellion.Gameplay
         /// Calculates the squadron's torpedo attack after entry and battle losses.
         /// </summary>
         /// <returns>The torpedo attack strength.</returns>
-        public float GetTorpedoDamage()
+        public float GetTorpedoDamage() => (float)GetTorpedoAttack();
+
+        /// <summary>
+        /// Retains the hull-scaled torpedo contribution until its consumer chooses the stored boundary.
+        /// </summary>
+        /// <returns>The live torpedo attack strength after the per-mount scalar store.</returns>
+        internal double GetTorpedoAttack()
         {
             float strength = (float)((double)_torpedoStrength * 0.53333336f);
-            return (float)((double)Systems.Hull * strength / Systems.MaximumHull);
+            return (double)Systems.Hull * strength / Systems.MaximumHull;
         }
 
         /// <summary>

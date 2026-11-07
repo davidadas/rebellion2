@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.Game.Galaxy
 {
@@ -26,6 +28,47 @@ namespace Rebellion.Tests.Game.Galaxy
                 EnergyCapacity = 5,
                 OwnerInstanceID = "FNALL1",
             };
+        }
+
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(3)]
+        public void SpaceCombatEntryFaction_SerializedPlanet_RetainsSelector(int selector)
+        {
+            Planet planet = new() { SpaceCombatEntryFaction = selector };
+            GameSerializer serializer = new(typeof(Planet));
+            using StringWriter writer = new();
+            serializer.Serialize(writer, planet);
+            using StringReader reader = new(writer.ToString());
+            Planet restored = (Planet)serializer.Deserialize(reader);
+
+            Assert.AreEqual(selector, restored.SpaceCombatEntryFaction);
+        }
+
+        [Test]
+        public void SpaceCombatEntryFaction_OlderPlanetWithoutSelector_UsesUnassignedValue()
+        {
+            GameSerializer serializer = new(typeof(Planet));
+            using StringReader reader = new(
+                "<Planet><DisplayName>Test planet</DisplayName></Planet>"
+            );
+            Planet restored = (Planet)serializer.Deserialize(reader);
+
+            Assert.AreEqual(0, restored.SpaceCombatEntryFaction);
+        }
+
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(3)]
+        public void CreateCopy_RetainedEntryFaction_PreservesSelector(int selector)
+        {
+            Planet planet = new() { SpaceCombatEntryFaction = selector };
+
+            Planet copy = (Planet)planet.CreateCopy();
+
+            Assert.AreEqual(selector, copy.SpaceCombatEntryFaction);
         }
 
         [Test]

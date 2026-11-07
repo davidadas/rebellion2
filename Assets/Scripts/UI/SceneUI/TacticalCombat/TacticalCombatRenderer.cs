@@ -20,6 +20,11 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
     [SerializeField]
     private Shader _fighterShader;
     private readonly List<Visual> _visuals = new();
+    private readonly HashSet<TacticalCombatUnit> _yellowBoxes = new();
+    private readonly HashSet<TacticalCombatUnit> _factionBoxes = new();
+    private readonly HashSet<TacticalCombatUnit> _whiteBoxes = new();
+    private readonly bool[] _factionHighlight = new bool[2];
+    private TacticalCombatSession _session;
     private readonly TacticalCombatMeshPicker _picker = new();
     private readonly List<ContentModelInstance> _instances = new();
     private readonly Dictionary<Texture2D, Material> _fighterMaterials = new();
@@ -57,6 +62,7 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
     {
         if (_battleCamera == null || _modelRoot == null || _fighterShader == null)
             throw new MissingReferenceException($"{name} is missing battle rendering references.");
+        _session = session;
         _sceneryRandom =
             session.SceneryRandom
             ?? throw new InvalidOperationException(
@@ -122,7 +128,16 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
                 }
             }
             SetLayer(root.transform, PresentationLayers.TacticalCombat);
-            _picker.Register(root, unit);
+            if (!unit.IsBattleStation && !unit.IsFighter)
+            {
+                _picker.Register(root, unit);
+                visual.SelectionBox = new TacticalCombatSelectionBox(
+                    root.transform,
+                    visual.ModelDetails[Math.Min(1, visual.ModelDetails.Length - 1)],
+                    _fighterShader,
+                    session.GetSide(unit.Side).FactionIndex
+                );
+            }
         }
         UpdateCamera();
         RenderUnits();
@@ -149,10 +164,14 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
     /// <summary>
     /// Displays the animation associated with one applied weapon impact.
     /// </summary>
-    /// <param name="shot">The applied discharge.</param>
+    /// <param name="unit">The impacted encounter participant.</param>
+    /// <param name="weapon">The impacting weapon.</param>
     /// <param name="impact">The affected surface or destruction transition.</param>
-    public void ShowImpact(TacticalCombatShot shot, TacticalCombatImpactKind impact) =>
-        _impacts.ShowImpact(shot, impact);
+    public void ShowImpact(
+        TacticalCombatUnit unit,
+        TacticalWeaponType weapon,
+        TacticalCombatImpactKind impact
+    ) => _impacts.ShowImpact(unit, weapon, impact);
 
     /// <summary>
     /// Begins the capital model's authored destruction sequence.
@@ -291,8 +310,12 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
             ?? throw new InvalidOperationException(
                 $"Fighter sprites are missing for '{visual.Unit.TypeID}'."
             );
-        int color =
-            visual.Unit.Side == session.PlayerSide ? visual.Unit.Definition.FighterGroup : 4;
+        int color = 4;
+        if (visual.Unit.Side == session.PlayerSide)
+        {
+            TacticalCombatGroup requested = session.GetRequestedGroup(visual.Unit);
+            color = requested?.IsFighterGroup == true ? requested.FighterCategory : 0;
+        }
         visual.FighterTextures = new Texture2D[3];
         visual.FighterTextures[0] = assets.GetTexture(sprites.NearImages[color]);
         visual.FighterTextures[1] = assets.GetTexture(sprites.MiddleImages[color]);
@@ -400,6 +423,7 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
     public void RenderUnits()
     {
         UpdateCamera();
+        RefreshSelectionBoxes();
         if (_planet != null)
             _planet.rotation = _battleCamera.transform.rotation;
         foreach (Visual visual in _visuals)
@@ -414,6 +438,18 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
                             or TacticalCombatUnitStatus.UnderConstruction
                 || _impacts.KeepsModelVisible(unit);
             visual.Root.SetActive(visible);
+            if (visual.SelectionBox != null)
+            {
+                int state =
+                    !unit.IsEngaged ? 1
+                    : _yellowBoxes.Contains(unit) ? 2
+                    : _whiteBoxes.Contains(unit) ? 4
+                    : _factionBoxes.Contains(unit)
+                    || _factionHighlight[_session.GetSide(unit.Side).FactionIndex]
+                        ? 3
+                    : 1;
+                visual.SelectionBox.SetState(state, _cameraState.TrackedObjectIndex == unit.Index);
+            }
             if (!visible)
                 continue;
             visual.Root.transform.localPosition = visual.StationPosition ?? ToUnity(unit.Position);
@@ -428,6 +464,53 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
             }
             else if (visual.ModelDetails != null)
                 UpdateModelDetail(visual);
+        }
+    }
+
+    /// <summary>
+    /// Changes one faction's capital bounding-box visibility independently of the command selection.
+    /// </summary>
+    /// <param name="factionIndex">The authored faction index.</param>
+    /// <param name="enabled">Whether that faction's capital boxes are requested.</param>
+    public void SetFactionHighlight(int factionIndex, bool enabled)
+    {
+        if ((uint)factionIndex >= 2)
+            throw new ArgumentOutOfRangeException(nameof(factionIndex));
+        _factionHighlight[factionIndex] = enabled;
+    }
+
+    /// <summary>
+    /// Captures the current context's selection and ordered target colors once for the render frame.
+    /// </summary>
+    private void RefreshSelectionBoxes()
+    {
+        _yellowBoxes.Clear();
+        _factionBoxes.Clear();
+        _whiteBoxes.Clear();
+        TacticalCombatSelection selection = _session.Selection;
+        foreach (TacticalCombatUnit unit in selection.Highlights)
+        {
+            bool yellow =
+                selection.Kind == TacticalCombatSelectionKind.MultipleObjects
+                || selection.Kind
+                    is TacticalCombatSelectionKind.SingleObject
+                        or TacticalCombatSelectionKind.ObjectGroup
+                    && ReferenceEquals(selection.PrimaryUnit, unit);
+            (yellow ? _yellowBoxes : _factionBoxes).Add(unit);
+        }
+        bool first = true;
+        foreach (TacticalCombatUnit target in selection.Targets)
+        {
+            if (!selection.IsDisplayObject(target))
+                continue;
+            if (first)
+            {
+                first = false;
+                if (!target.IsFighter)
+                    _whiteBoxes.Add(target);
+            }
+            else
+                _factionBoxes.Add(target);
         }
     }
 
@@ -513,6 +596,29 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
     }
 
     /// <summary>
+    /// Resolves a pointer press using the ordered pixel neighborhood associated with its button.
+    /// </summary>
+    /// <param name="point">The normalized viewport press.</param>
+    /// <param name="secondary">Whether the secondary pointer button was pressed.</param>
+    /// <param name="unit">Receives an object hit, or null for a navigation marker.</param>
+    /// <param name="waypoint">Receives the addressed navigation marker.</param>
+    /// <returns>Whether one of the ordered neighborhood rays hit an addressed object.</returns>
+    public bool TryPickNeighborhood(
+        Vector2 point,
+        bool secondary,
+        out TacticalCombatUnit unit,
+        out Vector3N waypoint
+    ) =>
+        TacticalCombatPointerPicker.TryPick(
+            point,
+            new Vector2Int(_battleCamera.pixelWidth, _battleCamera.pixelHeight),
+            secondary,
+            TryPick,
+            out unit,
+            out waypoint
+        );
+
+    /// <summary>
     /// Applies one semantic camera operation independently of simulation pause.
     /// </summary>
     /// <param name="command">The requested primary-camera operation.</param>
@@ -552,10 +658,21 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
                     stationPosition = visual.StationPosition;
                     break;
                 }
-            _cameraState.Track(() =>
-                _modelRoot.TransformPoint(stationPosition ?? ToUnity(unit.Position))
+            _cameraState.Track(
+                () => _modelRoot.TransformPoint(stationPosition ?? ToUnity(unit.Position)),
+                unit.Index
             );
         }
+        UpdateCamera();
+    }
+
+    /// <summary>
+    /// Aims the primary camera at an addressed navigation marker without moving its orbit.
+    /// </summary>
+    /// <param name="point">The marker's fixed encounter-local position.</param>
+    public void Focus(Vector3N point)
+    {
+        _cameraState.Track(() => _modelRoot.TransformPoint(ToUnity(point)));
         UpdateCamera();
     }
 
@@ -584,6 +701,8 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
         _effects?.Dispose();
         _impacts?.Dispose();
         _navigation?.Dispose();
+        foreach (Visual visual in _visuals)
+            visual.SelectionBox?.Dispose();
         foreach (ContentModelInstance instance in _instances)
             instance.Dispose();
         _instances.Clear();
@@ -641,6 +760,7 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
         public Texture2D[] FighterTextures { get; set; }
         public Transform[] ModelDetails { get; set; }
         public int DetailLevel { get; set; } = 1;
+        public TacticalCombatSelectionBox SelectionBox { get; set; }
         public Vector3? StationPosition { get; set; }
 
         /// <summary>

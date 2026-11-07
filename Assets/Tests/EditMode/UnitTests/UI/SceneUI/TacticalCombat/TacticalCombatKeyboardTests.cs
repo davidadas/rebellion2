@@ -6,6 +6,114 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
     [TestFixture]
     public sealed class TacticalCombatKeyboardTests
     {
+        [TestCase(
+            TacticalCombatHudPanel.SingleObject,
+            true,
+            false,
+            TacticalCombatControl.NextObject
+        )]
+        [TestCase(
+            TacticalCombatHudPanel.SingleObject,
+            true,
+            true,
+            TacticalCombatControl.PreviousObject
+        )]
+        [TestCase(
+            TacticalCombatHudPanel.SingleObject,
+            false,
+            false,
+            TacticalCombatControl.NextObject
+        )]
+        [TestCase(
+            TacticalCombatHudPanel.SingleObject,
+            false,
+            true,
+            TacticalCombatControl.PreviousObject
+        )]
+        [TestCase(
+            TacticalCombatHudPanel.ObjectGroup,
+            true,
+            false,
+            TacticalCombatControl.NextObject
+        )]
+        [TestCase(
+            TacticalCombatHudPanel.ObjectGroup,
+            true,
+            true,
+            TacticalCombatControl.PreviousObject
+        )]
+        public void TryGetPanelControl_InspectionTransition_UsesCurrentShiftState(
+            TacticalCombatHudPanel panel,
+            bool keyDown,
+            bool shiftDown,
+            TacticalCombatControl expected
+        )
+        {
+            Assert.IsTrue(
+                TacticalCombatKeyboard.TryGetPanelControl(
+                    panel,
+                    Key.Tab,
+                    keyDown,
+                    shiftDown,
+                    out var actual
+                )
+            );
+            Assert.AreEqual(expected, actual);
+        }
+
+        [TestCase(TacticalCombatHudPanel.Empty, true)]
+        [TestCase(TacticalCombatHudPanel.FighterGroup, true)]
+        [TestCase(TacticalCombatHudPanel.Orders, true)]
+        [TestCase(TacticalCombatHudPanel.Tactics, true)]
+        [TestCase(TacticalCombatHudPanel.Commands, true)]
+        [TestCase(TacticalCombatHudPanel.WithdrawalConfirmation, true)]
+        [TestCase(TacticalCombatHudPanel.ObjectGroup, false)]
+        public void TryGetPanelControl_PanelWithoutTabAction_DoesNotActivateControl(
+            TacticalCombatHudPanel panel,
+            bool keyDown
+        ) =>
+            Assert.IsFalse(
+                TacticalCombatKeyboard.TryGetPanelControl(panel, Key.Tab, keyDown, false, out _)
+            );
+
+        [Test]
+        public void TryGetPanelControl_ShiftReleasedBeforeTabRelease_ClearsNextInsteadOfPrevious()
+        {
+            Assert.IsTrue(
+                TacticalCombatKeyboard.TryGetPanelControl(
+                    TacticalCombatHudPanel.SingleObject,
+                    Key.Tab,
+                    true,
+                    true,
+                    out var pressed
+                )
+            );
+            Assert.IsTrue(
+                TacticalCombatKeyboard.TryGetPanelControl(
+                    TacticalCombatHudPanel.SingleObject,
+                    Key.Tab,
+                    false,
+                    false,
+                    out var released
+                )
+            );
+
+            Assert.AreEqual(TacticalCombatControl.PreviousObject, pressed);
+            Assert.AreEqual(TacticalCombatControl.NextObject, released);
+        }
+
+        [Test]
+        public void TryGetPanelControl_OtherKey_DoesNotTraverseInspection() =>
+            Assert.IsFalse(
+                TacticalCombatKeyboard.TryGetPanelControl(
+                    TacticalCombatHudPanel.SingleObject,
+                    Key.Space,
+                    true,
+                    false,
+                    out _
+                )
+            );
+
         [TestCase(Key.PageUp, TacticalCombatCameraCommand.ZoomIn)]
         [TestCase(Key.Numpad9, TacticalCombatCameraCommand.ZoomIn)]
         [TestCase(Key.NumpadPlus, TacticalCombatCameraCommand.ZoomIn)]

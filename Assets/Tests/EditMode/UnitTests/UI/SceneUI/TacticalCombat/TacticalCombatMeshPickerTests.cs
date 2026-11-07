@@ -90,11 +90,46 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             Assert.AreSame(expected, actual);
         }
 
-        [Test]
-        public void Pick_WithdrawnUnit_IgnoresInactiveParticipant()
+        [TestCase(TacticalCombatUnitStatus.PreparingHyperspace)]
+        [TestCase(TacticalCombatUnitStatus.EnteringHyperspace)]
+        [TestCase(TacticalCombatUnitStatus.AwaitingWithdrawal)]
+        [TestCase(TacticalCombatUnitStatus.Withdrawn)]
+        [TestCase(TacticalCombatUnitStatus.Destroyed)]
+        public void Pick_VisibleMesh_DisregardsParticipantStatus(TacticalCombatUnitStatus status)
         {
-            TacticalCombatUnit withdrawn = AddUnit("withdrawn", 3);
-            withdrawn.Status = TacticalCombatUnitStatus.Withdrawn;
+            TacticalCombatUnit expected = AddUnit("near", 3);
+            expected.Status = status;
+            AddUnit("far", 5);
+            float distance = 100;
+
+            TacticalCombatUnit actual = picker.Pick(
+                new Ray(Vector3.zero, Vector3.forward),
+                ref distance
+            );
+
+            Assert.AreSame(expected, actual);
+        }
+
+        [Test]
+        public void Pick_VisibleMeshWithZeroHull_LeavesEligibilityToSelectionOwner()
+        {
+            TacticalCombatUnit expected = AddUnit("zero hull", 3, 0);
+            AddUnit("far", 5);
+            float distance = 100;
+
+            TacticalCombatUnit actual = picker.Pick(
+                new Ray(Vector3.zero, Vector3.forward),
+                ref distance
+            );
+
+            Assert.AreSame(expected, actual);
+        }
+
+        [Test]
+        public void Pick_DisabledRenderer_IgnoresDetachedPresentation()
+        {
+            AddUnit("disabled", 3);
+            root.transform.GetChild(0).GetComponent<MeshRenderer>().enabled = false;
             TacticalCombatUnit expected = AddUnit("visible", 5);
             float distance = 100;
 
@@ -127,15 +162,16 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         /// </summary>
         /// <param name="id">The participant identifier.</param>
         /// <param name="depth">The triangle's local forward distance.</param>
+        /// <param name="currentHull">The unit's current hull pool.</param>
         /// <returns>The associated participant.</returns>
-        private TacticalCombatUnit AddUnit(string id, float depth)
+        private TacticalCombatUnit AddUnit(string id, float depth, int currentHull = 100)
         {
             TacticalCombatUnit unit = new(
                 new CapitalShip
                 {
                     InstanceID = id,
                     MaxHullStrength = 100,
-                    CurrentHullStrength = 100,
+                    CurrentHullStrength = currentHull,
                 },
                 CombatSide.Attacker,
                 root.transform.childCount

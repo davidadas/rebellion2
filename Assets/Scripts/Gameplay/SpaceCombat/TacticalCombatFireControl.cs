@@ -120,10 +120,7 @@ namespace Rebellion.Gameplay
             for (int index = 0; index < _neighbors.Count; index++)
             {
                 TacticalCombatUnit candidate = _neighbors[index];
-                TacticalWeaponArc arc = TacticalCombatGeometry.GetWeaponArc(
-                    unit.Heading,
-                    candidate.Position - unit.Position
-                );
+                TacticalWeaponArc arc = GetFiringArc(unit, candidate.Position - unit.Position);
                 if (!unit.Weapons.IsReady(arc))
                     continue;
                 float distance = TacticalCombatGeometry.GetLength(
@@ -151,7 +148,7 @@ namespace Rebellion.Gameplay
             for (int index = 0; index < 4; index++)
             {
                 TacticalWeaponArc arc = (TacticalWeaponArc)index;
-                float total = (float)(
+                double total =
                     (double)
                         unit.Weapons.GetTargetDamage(
                             arc,
@@ -167,11 +164,10 @@ namespace Rebellion.Gameplay
                         arc,
                         TacticalWeaponType.LaserCannon,
                         targetIsFighter
-                    )
-                );
+                    );
                 if (total > best)
                 {
-                    best = total;
+                    best = (float)total;
                     selected = arc;
                 }
             }
@@ -211,10 +207,10 @@ namespace Rebellion.Gameplay
                 (double)delta.X * delta.X + (double)delta.Y * delta.Y + (double)delta.Z * delta.Z
             );
             float range = GetMaximumRange(unit);
-            if ((double)range * range < squaredDistance)
+            if (!((double)range * range >= squaredDistance))
                 return 2;
             ClearScores();
-            TacticalWeaponArc arc = TacticalCombatGeometry.GetWeaponArc(unit.Heading, delta);
+            TacticalWeaponArc arc = GetFiringArc(unit, delta);
             if (!unit.Weapons.IsReady(arc))
                 return 1;
             float distance = (float)Math.Sqrt(squaredDistance);
@@ -223,7 +219,7 @@ namespace Rebellion.Gameplay
                 TacticalWeaponType type = (TacticalWeaponType)weapon;
                 if (
                     unit.Weapons.GetStrength(arc, type) == 0
-                    || unit.Weapons.GetRange(type) < distance
+                    || !(unit.Weapons.GetRange(type) >= distance)
                 )
                     continue;
                 _scores[(int)arc, weapon] = unit.Weapons.GetTargetDamage(
@@ -235,6 +231,20 @@ namespace Rebellion.Gameplay
             }
             return FireSelectedBattery(unit);
         }
+
+        /// <summary>
+        /// Selects a capital ship's facing battery or a squadron's shared forward battery.
+        /// </summary>
+        /// <param name="unit">The firing unit.</param>
+        /// <param name="targetDelta">The target position relative to the firing unit.</param>
+        /// <returns>The battery used to score the target.</returns>
+        private static TacticalWeaponArc GetFiringArc(
+            TacticalCombatUnit unit,
+            Vector3 targetDelta
+        ) =>
+            unit.IsFighter
+                ? TacticalWeaponArc.Forward
+                : TacticalCombatGeometry.GetWeaponArc(unit.Heading, targetDelta);
 
         /// <summary>
         /// Retains a qualifying opportunity target for one battery lane.
@@ -254,13 +264,13 @@ namespace Rebellion.Gameplay
         {
             if (
                 unit.Weapons.GetStrength(arc, weapon) == 0
-                || distance > unit.Weapons.GetRange(weapon)
+                || !(unit.Weapons.GetRange(weapon) >= distance)
             )
                 return;
-            float unscaled = unit.Weapons.GetOpportunityDamage(arc, weapon);
-            if (unscaled <= _scores[(int)arc, (int)weapon])
+            double unscaled = unit.Weapons.GetOpportunityDamage(arc, weapon);
+            if (!(unscaled > _scores[(int)arc, (int)weapon]))
                 return;
-            _scores[(int)arc, (int)weapon] = unit.Systems.ScaleByHull(unscaled);
+            _scores[(int)arc, (int)weapon] = unit.Systems.ScaleByHull((float)unscaled);
             _targets[(int)arc, (int)weapon] = candidate;
         }
 
@@ -275,10 +285,10 @@ namespace Rebellion.Gameplay
             float best = 0;
             for (int arc = 0; arc < 4; arc++)
             {
-                float total = (float)((double)_scores[arc, 2] + _scores[arc, 1] + _scores[arc, 0]);
+                double total = (double)_scores[arc, 2] + _scores[arc, 1] + _scores[arc, 0];
                 if (total > best)
                 {
-                    best = total;
+                    best = (float)total;
                     selected = arc;
                 }
             }
@@ -302,6 +312,7 @@ namespace Rebellion.Gameplay
             float strength = _scores[arc, (int)weapon];
             if (
                 strength == 0
+                || float.IsNaN(strength)
                 || target?.IsTargetable != true
                 || unit.Status == TacticalCombatUnitStatus.PreparingHyperspace
             )

@@ -95,7 +95,11 @@ namespace Rebellion.Gameplay
                 + (double)targetHeading.Z * heading.Z
                 + (double)targetHeading.X * heading.X
             );
-            return (float)Math.Acos(Math.Max(Math.Min(dot, 1), -1));
+            if (dot > 1)
+                dot = 1;
+            if (!(dot >= -1))
+                dot = -1;
+            return (float)Math.Acos(dot);
         }
 
         /// <summary>

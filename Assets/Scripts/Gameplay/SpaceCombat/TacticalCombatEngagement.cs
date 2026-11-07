@@ -112,51 +112,75 @@ namespace Rebellion.Gameplay
         /// <param name="target">The specific target, or null for a category assessment.</param>
         /// <param name="targetIsFighter">The target category used when no target is provided.</param>
         /// <returns>The normalized attack budget.</returns>
-        public static float GetAttackRate(
+        public static double GetAttackRate(
             TacticalCombatUnit unit,
             TacticalCombatUnit target,
             bool targetIsFighter = false
         )
         {
-            float recharge = unit.Systems.GetWeaponRecharge();
-            if (recharge == 0)
+            double liveRecharge = unit.Systems.GetWeaponRecharge();
+            float recharge = (float)liveRecharge;
+            if (liveRecharge == 0 || double.IsNaN(liveRecharge))
                 return 0;
             bool fighter = target?.IsFighter ?? targetIsFighter;
             TacticalWeaponArc? selected = TacticalCombatFireControl.GetStrongestArc(unit, fighter);
             if (selected == null)
                 return 0;
             TacticalWeaponArc arc = selected.Value;
-            int total =
-                unit.Weapons.GetStrength(arc, TacticalWeaponType.LaserCannon)
-                + unit.Weapons.GetStrength(arc, TacticalWeaponType.IonCannon)
-                + unit.Weapons.GetStrength(arc, TacticalWeaponType.Turbolaser);
-            if (unit.IsFighter)
-                total = (int)((double)unit.Systems.Hull * total / unit.Systems.MaximumHull);
-            float normalized = (float)((double)total / recharge);
-            if (normalized <= 0)
-                return 0;
-            float maneuverRatio = Math.Max(
-                (float)((double)unit.GetManeuverability() / (target?.GetManeuverability() ?? 6)),
-                0.1f
+            uint total = unchecked(
+                (uint)(
+                    unit.Weapons.GetStrength(arc, TacticalWeaponType.LaserCannon)
+                    + unit.Weapons.GetStrength(arc, TacticalWeaponType.IonCannon)
+                    + unit.Weapons.GetStrength(arc, TacticalWeaponType.Turbolaser)
+                )
             );
-            float damage = 0;
-            TacticalWeaponType[] order = _attackOrder;
-            for (int index = 0; index < order.Length; index++)
+            if (unit.IsFighter)
             {
-                TacticalWeaponType weapon = order[index];
+                float count = total;
+                total = unchecked(
+                    (uint)(long)((double)unit.Systems.Hull * count / unit.Systems.MaximumHull)
+                );
+            }
+            double liveNormalized = (double)total / recharge;
+            float normalized = (float)liveNormalized;
+            if (!(liveNormalized > 0))
+                return 0;
+            float maneuverRatio = (float)(
+                (double)unit.GetManeuverability() / (target?.GetManeuverability() ?? 6)
+            );
+            if (maneuverRatio <= 0.1f)
+                maneuverRatio = 0.1f;
+            float damage = 0;
+            for (int index = 0; index < _attackOrder.Length; index++)
+            {
+                TacticalWeaponType weapon = _attackOrder[index];
+                if (unit.Weapons.GetStrength(arc, weapon) <= 0)
+                    continue;
                 float value = unit.Weapons.GetTargetDamage(arc, weapon, fighter);
                 if (fighter && weapon != TacticalWeaponType.IonCannon)
                     value = (float)((double)value * maneuverRatio);
-                if (unit.IsFighter)
-                    value = (float)((double)unit.Systems.Hull * value / unit.Systems.MaximumHull);
-                damage = (float)((double)damage + value);
+                double contribution = unit.IsFighter
+                    ? (double)unit.Systems.Hull * value / unit.Systems.MaximumHull
+                    : value;
+                damage = index == 0 ? (float)contribution : (float)(contribution + damage);
             }
-            if (unit.IsFighter && target?.IsFighter == false && target.Systems.Shields == 0)
-                damage = (float)(
-                    (double)unit.Systems.Hull * unit.GetTorpedoDamage() / unit.Systems.MaximumHull
-                    + damage
-                );
-            return (float)((double)damage / normalized);
+            if (target != null)
+            {
+                double torpedo = unit.GetTorpedoAttack();
+                if (torpedo != 0 && !double.IsNaN(torpedo) && unit.IsFighter && !target.IsFighter)
+                {
+                    double shields = target.Systems.GetShieldFraction();
+                    if (shields == 0 || double.IsNaN(shields))
+                    {
+                        float roundedTorpedo = (float)unit.GetTorpedoAttack();
+                        damage = (float)(
+                            (double)unit.Systems.Hull * roundedTorpedo / unit.Systems.MaximumHull
+                            + damage
+                        );
+                    }
+                }
+            }
+            return (double)damage / normalized;
         }
 
         /// <summary>
@@ -180,11 +204,11 @@ namespace Rebellion.Gameplay
                 if (unit.Weapons.GetStrength(selected.Value, weapon) == 0)
                     continue;
                 float range = unit.Weapons.GetRange(weapon);
-                if (range <= 0)
-                    continue;
+                float scalar = unit.Weapons.GetRangeScalar(weapon, targetIsFighter);
                 float score = (float)(
-                    (double)unit.Systems.GetWeaponRecharge()
-                    * unit.Weapons.GetTargetDamage(selected.Value, weapon, targetIsFighter)
+                    unit.Systems.GetWeaponRecharge()
+                    * scalar
+                    * unit.Weapons.GetStrength(selected.Value, weapon)
                 );
                 _weapons.Add(new WeaponRange(range, subtract ? -score : score));
                 _boundaries.Add(range);

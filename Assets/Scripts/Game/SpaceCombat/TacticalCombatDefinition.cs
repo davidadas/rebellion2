@@ -10,6 +10,7 @@ namespace Rebellion.Game.SpaceCombat
     public sealed class TacticalCombatDefinition
     {
         public List<TacticalCombatFactionDefinition> Factions { get; set; } = new();
+        public List<TacticalCombatHudImage> HudImages { get; set; } = new();
         public List<TacticalCombatUnitDefinition> Units { get; set; } = new();
         public List<TacticalCombatEffectDefinition> Effects { get; set; } = new();
         public List<TacticalCombatSoundDefinition> Sounds { get; set; } = new();
@@ -62,7 +63,7 @@ namespace Rebellion.Game.SpaceCombat
     }
 
     /// <summary>
-    /// Provides an addressed sound and its duration for battle audio scheduling.
+    /// Provides an addressed sound for battle audio playback.
     /// </summary>
     [PersistableObject]
     public sealed class TacticalCombatSoundClip
@@ -124,6 +125,7 @@ namespace Rebellion.Game.SpaceCombat
     public sealed class TacticalCombatFactionDefinition
     {
         public string FactionInstanceID { get; set; }
+        public List<TacticalCombatHudImage> HudImages { get; set; } = new();
         public float ForwardZ { get; set; }
         public int FactionIndex { get; set; }
     }
@@ -147,6 +149,7 @@ namespace Rebellion.Game.SpaceCombat
     public sealed class TacticalCombatUnitDefinition
     {
         public string UnitTypeID { get; set; }
+        public int PresentationIndex { get; set; }
         public string ModelPath { get; set; }
         public List<string> ModelDetailPaths { get; set; } = new();
         public string BillboardImagePath { get; set; }

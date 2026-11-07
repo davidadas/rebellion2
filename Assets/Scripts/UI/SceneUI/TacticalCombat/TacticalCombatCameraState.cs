@@ -26,6 +26,7 @@ public sealed class TacticalCombatCameraState
     private readonly float _distance;
     private Func<Vector3> _focus;
     private Snapshot? _saved;
+    public int? TrackedObjectIndex { get; private set; }
     public float Field { get; private set; } = 0.2f;
     public uint ZoomLevel { get; private set; } = 5;
     public int AngularStep { get; private set; } = 5;
@@ -85,7 +86,12 @@ public sealed class TacticalCombatCameraState
     /// Tracks the selected render object's live world position until another focus is requested.
     /// </summary>
     /// <param name="position">Resolves the object's current world position, or null to clear tracking.</param>
-    public void Track(Func<Vector3> position) => _focus = position;
+    /// <param name="objectIndex">The tracked unit's battle registration identifier, or null for a point.</param>
+    public void Track(Func<Vector3> position, int? objectIndex = null)
+    {
+        _focus = position;
+        TrackedObjectIndex = position == null ? null : objectIndex;
+    }
 
     /// <summary>
     /// Computes the camera transform, keeping tracking separate from its orbital position.
@@ -143,6 +149,7 @@ public sealed class TacticalCombatCameraState
         ZoomLevel = saved.ZoomLevel;
         AngularStep = saved.AngularStep;
         _focus = saved.Focus;
+        TrackedObjectIndex = saved.TrackedObjectIndex;
     }
 
     private readonly struct Snapshot
@@ -153,6 +160,7 @@ public sealed class TacticalCombatCameraState
         public uint ZoomLevel { get; }
         public int AngularStep { get; }
         public Func<Vector3> Focus { get; }
+        public int? TrackedObjectIndex { get; }
 
         /// <summary>
         /// Captures the primary view while retaining its tracked object's live position provider.
@@ -166,6 +174,7 @@ public sealed class TacticalCombatCameraState
             ZoomLevel = camera.ZoomLevel;
             AngularStep = camera.AngularStep;
             Focus = camera._focus;
+            TrackedObjectIndex = camera.TrackedObjectIndex;
         }
     }
 }

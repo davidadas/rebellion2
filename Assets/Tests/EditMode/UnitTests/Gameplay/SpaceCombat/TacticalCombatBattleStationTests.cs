@@ -9,28 +9,28 @@ namespace Rebellion.Tests.Gameplay
     public sealed class TacticalCombatBattleStationTests
     {
         [Test]
-        public void TryFire_NewOperationalStation_ConsumesInitialFullCharge()
+        public void Fire_AdmittedTargetCommand_ConsumesInitialFullCharge()
         {
             TacticalCombatBattleStation station = CreateStation();
-            Assert.IsTrue(station.TryFire());
+            station.Fire();
             Assert.AreEqual(0, station.Charge);
         }
 
         [Test]
-        public void TryFire_ConsumedCharge_RejectsSecondShot()
+        public void CanBeginTargetSelection_ConsumedCharge_RejectsContext()
         {
             TacticalCombatBattleStation station = CreateStation();
-            station.TryFire();
-            Assert.IsFalse(station.TryFire());
+            station.Fire();
+            Assert.IsFalse(station.CanBeginTargetSelection);
         }
 
         [Test]
         public void Advance_FiveMinutes_RechargesSuperlaser()
         {
             TacticalCombatBattleStation station = CreateStation();
-            station.TryFire();
+            station.Fire();
             station.Advance(300000);
-            Assert.IsTrue(station.TryFire());
+            Assert.IsTrue(station.CanBeginTargetSelection);
         }
 
         [Test]
@@ -40,28 +40,30 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void TryFire_PlanetaryProtection_StillAllowsSuperlaser()
+        public void CanBeginTargetSelection_PlanetaryProtection_AllowsContext()
         {
-            Assert.IsTrue(CreateStation(protectedByPlanet: true).TryFire());
+            Assert.IsTrue(CreateStation(protectedByPlanet: true).CanBeginTargetSelection);
         }
 
         [Test]
-        public void TryFire_ConstructionIncomplete_RejectsShot()
+        public void CanKeepTargetSelection_ConstructionIncomplete_RejectsContext()
         {
-            Assert.IsFalse(CreateStation(underConstruction: true).TryFire());
+            Assert.IsFalse(
+                CreateStation(underConstruction: true).CanKeepTargetSelection(false, true)
+            );
         }
 
         [Test]
         public void Advance_ChargeCrossing_NotifiesBeforeStoringCompletedCharge()
         {
             TacticalCombatBattleStation station = CreateStation();
-            station.TryFire();
+            station.Fire();
             float observedCharge = -1;
             bool couldFireInCallback = true;
             station.ChargeCompleted += () =>
             {
                 observedCharge = station.Charge;
-                couldFireInCallback = station.TryFire();
+                couldFireInCallback = station.CanBeginTargetSelection;
             };
             station.Advance(300000);
             Assert.AreEqual(0, observedCharge);
@@ -73,12 +75,52 @@ namespace Rebellion.Tests.Gameplay
         public void Advance_AlreadyCharged_DoesNotRepeatCompletionNotification()
         {
             TacticalCombatBattleStation station = CreateStation();
-            station.TryFire();
+            station.Fire();
             int notifications = 0;
             station.ChargeCompleted += () => notifications++;
             station.Advance(300000);
             station.Advance(300000);
             Assert.AreEqual(1, notifications);
+        }
+
+        [Test]
+        public void CanBeginTargetSelection_UnfinishedStationWithMaximumHull_AllowsInitialContext()
+        {
+            Assert.IsTrue(CreateStation(underConstruction: true).CanBeginTargetSelection);
+        }
+
+        [TestCase(true, true)]
+        [TestCase(false, false)]
+        public void CanKeepTargetSelection_CommandAuthorityUnavailable_RejectsContext(
+            bool withdrawing,
+            bool directControl
+        )
+        {
+            Assert.IsFalse(CreateStation().CanKeepTargetSelection(withdrawing, directControl));
+        }
+
+        [Test]
+        public void TryWithdraw_OperationalStation_PreservesHull()
+        {
+            TacticalCombatBattleStation station = CreateStation();
+
+            Assert.IsTrue(station.TryWithdraw());
+
+            Assert.IsTrue(station.HasDeparted);
+            Assert.IsFalse(station.IsOperational);
+            Assert.AreEqual(1000, station.Unit.Systems.Hull);
+        }
+
+        [Test]
+        public void Advance_DepartedStationWithPositiveHull_ContinuesCharging()
+        {
+            TacticalCombatBattleStation station = CreateStation();
+            station.Fire();
+            station.TryWithdraw();
+
+            station.Advance(300000);
+
+            Assert.AreEqual(100, station.Charge);
         }
 
         /// <summary>

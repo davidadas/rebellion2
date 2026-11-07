@@ -138,6 +138,7 @@ namespace Rebellion.Gameplay
                 decision.DefenderOwnerInstanceID,
             };
             List<TacticalCombatUnit> units = new();
+            List<string> personnelHostInstanceIDs = new();
             Dictionary<string, TacticalCombatUnit> byID = new(StringComparer.Ordinal);
             TacticalCombatFactionDefinition[] factionDefinitions =
                 new TacticalCombatFactionDefinition[2];
@@ -214,10 +215,16 @@ namespace Rebellion.Gameplay
                         units.Add(unit);
                         byID.Add(unit.InstanceID, unit);
                     }
+                    foreach (Officer officer in ship.GetChildren<Officer>())
+                    {
+                        if (((IMovable)officer).GetTransitMovement() != null)
+                            continue;
+                        counters[GetRegistrationSide(officer.OwnerInstanceID, sidesByOwner)]++;
+                        personnelHostInstanceIDs.Add(ship.InstanceID);
+                    }
                     foreach (
-                        ISceneNode payload in ship.GetChildren<Officer>()
+                        ISceneNode payload in ship.GetChildren<SpecialForces>()
                             .Cast<ISceneNode>()
-                            .Concat(ship.GetChildren<SpecialForces>())
                             .Concat(ship.GetChildren<Regiment>())
                     )
                         counters[GetRegistrationSide(payload.OwnerInstanceID, sidesByOwner)]++;
@@ -264,7 +271,6 @@ namespace Rebellion.Gameplay
             {
                 Vector3 forward = new(0, 0, factionDefinitions[side].ForwardZ);
                 Deploy(units, (CombatSide)side, forward, depth);
-                CreateGroups(units, groups, (CombatSide)side, forward, ref counters[side]);
                 (Officer admiral, Officer commander) = SpaceCombatCommands.GetCommandOfficers(
                     fleets[side],
                     planet,
@@ -305,6 +311,10 @@ namespace Rebellion.Gameplay
                     commander?.GetEffectiveRating(SkillRating.Combat) ?? 0,
                     (CombatSide)side != playerSide
                 );
+                foreach (TacticalCombatUnit unit in units)
+                    if ((int)unit.Side == side)
+                        unit.CommandBudget = sides[side].GetCommandBudget(unit.IsFighter);
+                CreateGroups(units, groups, (CombatSide)side, forward, ref counters[side]);
             }
             groups.Sort(CompareGroupRegistration);
             TacticalCombatRandom random = _createRandom();
@@ -323,7 +333,8 @@ namespace Rebellion.Gameplay
                 new TacticalCombatSceneryRandom(
                     random,
                     () => TacticalCombatRandom.GetCalendarSeed(_localClock())
-                )
+                ),
+                personnelHostInstanceIDs: personnelHostInstanceIDs
             );
         }
 
@@ -427,9 +438,9 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Creates individual capital groups and four category-based fighter groups.
+        /// Creates deployed fighter categories before partitioning the side's command groups.
         /// </summary>
-        /// <param name="units">The captured battle roster.</param>
+        /// <param name="units">The captured battle roster in registration order.</param>
         /// <param name="groups">The groups receiving the new deployment.</param>
         /// <param name="side">The deploying side.</param>
         /// <param name="forward">The side's heading.</param>
@@ -442,40 +453,186 @@ namespace Rebellion.Gameplay
             ref int counter
         )
         {
-            List<TacticalCombatUnit>[] fighterGroups = { new(), new(), new(), new() };
+            List<TacticalCombatUnit>[] fighters = { new(), new(), new(), new() };
+            List<TacticalCombatDeployment>[] capitals = { new(), new(), new() };
             foreach (TacticalCombatUnit unit in units)
-                if (unit.Side == side && !unit.IsBattleStation)
-                {
-                    if (unit.IsFighter)
-                    {
-                        int category = unit.Definition.FighterGroup;
-                        if (category is < 0 or > 3)
-                            throw new InvalidDataException(
-                                $"Fighter group category is invalid for '{unit.TypeID}'."
-                            );
-                        fighterGroups[category].Add(unit);
-                    }
-                    else
-                        groups.Add(new TacticalCombatGroup(++counter, new[] { unit }, forward));
-                }
-            for (int category = 0; category < 4; category++)
             {
-                if (fighterGroups[category].Count > 0)
+                if (unit.Side != side || unit.IsBattleStation)
+                    continue;
+                if (unit.IsFighter)
+                {
+                    int category = unit.Definition.FighterGroup;
+                    if (category is < 0 or > 3)
+                        throw new InvalidDataException(
+                            $"Fighter group category is invalid for '{unit.TypeID}'."
+                        );
+                    fighters[category].Add(unit);
+                }
+                else
+                {
+                    TacticalCombatDeployment deployment = new(unit);
+                    capitals[deployment.Category].Add(deployment);
+                }
+            }
+
+            CreateFighterGroups(fighters, groups, forward, ref counter);
+            foreach (List<TacticalCombatDeployment> partition in capitals)
+                partition.Sort(TacticalCombatDeployment.Compare);
+            int firstCount = CreateCapitalGroups(capitals[0], groups, 0, 3, forward, ref counter);
+            int secondCount = CreateCapitalGroups(
+                capitals[1],
+                groups,
+                firstCount,
+                firstCount + 3,
+                forward,
+                ref counter
+            );
+            CreateCapitalGroups(
+                capitals[2],
+                groups,
+                firstCount + secondCount,
+                7,
+                forward,
+                ref counter
+            );
+        }
+
+        /// <summary>
+        /// Registers populated fighter categories before splitting their leading halves into empty categories.
+        /// </summary>
+        /// <param name="fighters">The four authored fighter buckets in registration order.</param>
+        /// <param name="groups">The battle groups receiving newly registered categories.</param>
+        /// <param name="forward">The side's heading.</param>
+        /// <param name="counter">The side's shared registration counter.</param>
+        private static void CreateFighterGroups(
+            IReadOnlyList<List<TacticalCombatUnit>> fighters,
+            List<TacticalCombatGroup> groups,
+            Vector3 forward,
+            ref int counter
+        )
+        {
+            TacticalCombatGroup[] deployed = new TacticalCombatGroup[4];
+            for (int category = 0; category < deployed.Length; category++)
+                if (fighters[category].Count > 0)
+                {
+                    deployed[category] = new TacticalCombatGroup(
+                        ++counter,
+                        fighters[category],
+                        forward
+                    )
+                    {
+                        FighterCategory = category,
+                    };
+                    groups.Add(deployed[category]);
+                }
+            for (int category = 0; category < deployed.Length; category++)
+            {
+                if (deployed[category] != null)
                     continue;
                 int largest = 0;
-                for (int candidate = 1; candidate < 4; candidate++)
-                    if (fighterGroups[candidate].Count > fighterGroups[largest].Count)
+                for (int candidate = 1; candidate < deployed.Length; candidate++)
+                    if (
+                        (deployed[candidate]?.Members.Count ?? 0)
+                        > (deployed[largest]?.Members.Count ?? 0)
+                    )
                         largest = candidate;
-                int count = fighterGroups[largest].Count;
+                TacticalCombatGroup source = deployed[largest];
+                int count = source?.Members.Count ?? 0;
                 if (count < 8)
                     continue;
-                int split = count / 2;
-                fighterGroups[category].AddRange(fighterGroups[largest].GetRange(0, split));
-                fighterGroups[largest].RemoveRange(0, split);
+                List<TacticalCombatUnit> moved = new(count / 2);
+                for (int index = 0; index < count / 2; index++)
+                    moved.Add(source.Members[index]);
+                foreach (TacticalCombatUnit unit in moved)
+                {
+                    source.RemoveRequestedMember(unit);
+                    source.RemoveMember(unit);
+                }
+                deployed[category] = new TacticalCombatGroup(++counter, moved, forward)
+                {
+                    FighterCategory = category,
+                };
+                groups.Add(deployed[category]);
             }
-            foreach (List<TacticalCombatUnit> fighters in fighterGroups)
-                if (fighters.Count > 0)
-                    groups.Add(new TacticalCombatGroup(++counter, fighters, forward));
+        }
+
+        /// <summary>
+        /// Partitions one scored capital roster across its available command slots and aligns each addition.
+        /// </summary>
+        /// <param name="ships">The scored capital ships in deployment order.</param>
+        /// <param name="groups">The battle groups receiving the partition.</param>
+        /// <param name="lower">The first available command slot.</param>
+        /// <param name="upper">The final available command slot.</param>
+        /// <param name="forward">The side's heading.</param>
+        /// <param name="counter">The side's shared registration counter.</param>
+        /// <returns>The number of command groups created.</returns>
+        private static int CreateCapitalGroups(
+            IReadOnlyList<TacticalCombatDeployment> ships,
+            List<TacticalCombatGroup> groups,
+            int lower,
+            int upper,
+            Vector3 forward,
+            ref int counter
+        )
+        {
+            int count = ships.Count & 0xffff;
+            int limit = 1;
+            while (limit <= upper && limit * limit <= count)
+                limit++;
+            int selected = count <= 1 ? 1 : limit - 1;
+            int available = upper - lower + 1;
+            if (selected >= available)
+                selected = available;
+            int spacing = count / selected;
+            int created = 0;
+            TacticalCombatGroup group = null;
+            for (int index = 0; index < ships.Count; index++)
+            {
+                TacticalCombatUnit unit = ships[index].Unit;
+                if (index % spacing == 0 && created < selected)
+                {
+                    int slot = lower + created++;
+                    float y = slot switch
+                    {
+                        0 => 0,
+                        1 => 8,
+                        2 => -8,
+                        3 => 16,
+                        4 => -16,
+                        5 => 24,
+                        6 => -24,
+                        _ => 32,
+                    };
+                    unit.Position = new Vector3(0, y, unit.Position.Z);
+                    group = new TacticalCombatGroup(++counter, new[] { unit }, forward);
+                    groups.Add(group);
+                }
+                else
+                {
+                    group.AddRequestedMember(unit);
+                    group.AddMember(unit);
+                }
+                AlignCapitalGroup(group);
+            }
+            return ships.Count == 0 ? 0 : selected;
+        }
+
+        /// <summary>
+        /// Applies the marker's stored member offsets after each capital joins its deployment group.
+        /// </summary>
+        /// <param name="group">The active capital group being aligned.</param>
+        private static void AlignCapitalGroup(TacticalCombatGroup group)
+        {
+            foreach (TacticalCombatUnit unit in group.Members)
+            {
+                Vector3 position = unit.Position;
+                Vector3 offset = group.Formation.GetMemberMovement(unit);
+                unit.Position = new Vector3(
+                    (float)((double)position.X + offset.X),
+                    (float)((double)position.Y + offset.Y),
+                    (float)((double)position.Z + offset.Z)
+                );
+            }
         }
 
         /// <summary>

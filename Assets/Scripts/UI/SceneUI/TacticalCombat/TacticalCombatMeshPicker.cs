@@ -3,7 +3,7 @@ using Rebellion.Gameplay;
 using UnityEngine;
 
 /// <summary>
-/// Resolves battle-unit selection against the visible model faces and billboard quads.
+/// Resolves battle-unit selection against registered, visible model faces.
 /// </summary>
 internal sealed class TacticalCombatMeshPicker
 {
@@ -45,8 +45,7 @@ internal sealed class TacticalCombatMeshPicker
         {
             MeshRenderer renderer = entry.Renderer;
             if (
-                !entry.Unit.IsTargetable
-                || !renderer.enabled
+                !renderer.enabled
                 || !renderer.gameObject.activeInHierarchy
                 || !renderer.bounds.IntersectRay(ray, out float boundDistance)
                 || boundDistance > distance

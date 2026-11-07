@@ -13,6 +13,425 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public sealed class TacticalCombatSessionTests
     {
+        [TestCase(TacticalWeaponType.LaserCannon, true)]
+        [TestCase(TacticalWeaponType.IonCannon, true)]
+        [TestCase(TacticalWeaponType.Turbolaser, true)]
+        [TestCase(TacticalWeaponType.Torpedo, true)]
+        [TestCase(TacticalWeaponType.LaserCannon, false)]
+        [TestCase(TacticalWeaponType.IonCannon, false)]
+        [TestCase(TacticalWeaponType.Turbolaser, false)]
+        [TestCase(TacticalWeaponType.Torpedo, false)]
+        public void Advance_QueuedDischargeActorReachesZeroHull_StillAnnouncesFire(
+            TacticalWeaponType weapon,
+            bool sourceReachesZero
+        )
+        {
+            TacticalCombatSession session = CreateDischargeSession(weapon);
+            int shots = 0;
+            session.ShotFired += shot =>
+            {
+                if (shot.Weapon == weapon)
+                    shots++;
+            };
+            WaitForQueuedDischarge(session);
+            Assert.AreEqual(0, shots);
+            session.GetUnit(sourceReachesZero ? "a" : "b").Systems.Destroy();
+
+            AdvanceSeconds(session, 12);
+
+            Assert.That(shots, Is.GreaterThan(0));
+        }
+
+        [TestCase(0f)]
+        [TestCase(-5f)]
+        [TestCase(float.NaN)]
+        public void Advance_QueuedImpactEntersWithNonpositiveHull_ClampsHullWithoutDeactivation(
+            float entryHull
+        )
+        {
+            TacticalCombatSession session = CreateDischargeSession(TacticalWeaponType.Turbolaser);
+            TacticalCombatUnit target = session.GetUnit("b");
+            int shots = 0;
+            int effects = 0;
+            int deaths = 0;
+            session.ShotFired += _ =>
+            {
+                shots++;
+                target.Systems.RestorePools(entryHull, 37);
+            };
+            session.ImpactApplied += (_, _, _) => effects++;
+            session.UnitDestroyed += _ => deaths++;
+
+            AdvanceSeconds(session, 20);
+
+            Assert.That(shots, Is.GreaterThan(0));
+            Assert.AreEqual(0, target.Systems.Hull);
+            Assert.AreEqual(37, target.Systems.Shields);
+            Assert.AreEqual(TacticalCombatUnitStatus.Active, target.Status);
+            Assert.IsNotNull(session.GetGroup(target));
+            Assert.AreEqual(0, effects);
+            Assert.AreEqual(0, deaths);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Advance_QueuedDischargeActorEntersHyperspace_RejectsFire(bool sourceLeaves)
+        {
+            TacticalCombatSession session = CreateDischargeSession(TacticalWeaponType.Turbolaser);
+            int shots = 0;
+            session.ShotFired += _ => shots++;
+            WaitForQueuedDischarge(session);
+            session.GetUnit(sourceLeaves ? "a" : "b").Status =
+                TacticalCombatUnitStatus.EnteringHyperspace;
+
+            AdvanceSeconds(session, 12);
+
+            Assert.AreEqual(0, shots);
+        }
+
+        [Test]
+        public void Advance_QueuedImpactSourceLeavesAfterDischarge_StillDamagesActiveTarget()
+        {
+            TacticalCombatSession session = CreateDischargeSession(TacticalWeaponType.Turbolaser);
+            TacticalCombatUnit source = session.GetUnit("a");
+            TacticalCombatUnit target = session.GetUnit("b");
+            session.ShotFired += _ => source.Status = TacticalCombatUnitStatus.Withdrawn;
+
+            AdvanceSeconds(session, 20);
+
+            Assert.That(target.Systems.Hull, Is.LessThan(1000));
+        }
+
+        [TestCase(TacticalCombatUnitStatus.Active)]
+        [TestCase(TacticalCombatUnitStatus.EnteringHyperspace)]
+        [TestCase(TacticalCombatUnitStatus.Destroyed)]
+        public void Advance_QueuedComponentDamageAfterParticipationChanges_StillUpdatesRetainedUnit(
+            TacticalCombatUnitStatus status
+        )
+        {
+            TacticalCombatSession session = CreateSession(
+                CreateShip("a", 1000, 0),
+                CreateShip("b", 1000, 0)
+            );
+            TacticalCombatUnit target = session.GetUnit("b");
+            target.Systems.ApplyHit(
+                TacticalWeaponType.Turbolaser,
+                1,
+                1,
+                1,
+                new FixedRandom(100),
+                "a"
+            );
+            target.Status = status;
+            target.Systems.Destroy();
+
+            AdvanceSeconds(session, 6);
+
+            Assert.AreEqual(1, target.Systems.GetDamage(TacticalShipSystem.Hyperdrive));
+        }
+
+        [TestCase(TacticalCombatUnitStatus.Active)]
+        [TestCase(TacticalCombatUnitStatus.EnteringHyperspace)]
+        [TestCase(TacticalCombatUnitStatus.Destroyed)]
+        public void Advance_QueuedIonDisruptionAfterParticipationChanges_StillUpdatesRetainedUnit(
+            TacticalCombatUnitStatus status
+        )
+        {
+            TacticalCombatSession session = CreateSession(
+                CreateShip("a", 1000, 0),
+                CreateShip("b", 1000, 0)
+            );
+            TacticalCombatUnit target = session.GetUnit("b");
+            target.Systems.ApplyHit(TacticalWeaponType.IonCannon, 1, 1, 1, new FixedRandom(1), "a");
+            target.Status = status;
+            target.Systems.Destroy();
+
+            AdvanceSeconds(session, 6);
+
+            Assert.AreEqual(31, target.Systems.MovementDelay);
+        }
+
+        [TestCase(TacticalCombatUnitStatus.Active)]
+        [TestCase(TacticalCombatUnitStatus.EnteringHyperspace)]
+        [TestCase(TacticalCombatUnitStatus.Destroyed)]
+        public void Advance_QueuedComponentRepairAfterParticipationChanges_StillUpdatesRetainedUnit(
+            TacticalCombatUnitStatus status
+        )
+        {
+            CapitalShip victim = CreateShip("b", 1000, 0);
+            victim.DamageControl = 100;
+            TacticalCombatSession session = CreateSession(CreateShip("a", 1000, 0), victim);
+            TacticalCombatUnit target = session.GetUnit("b");
+            target.Systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+            target.Systems.Advance(1, new FixedRandom(0));
+            target.Status = status;
+            target.Systems.Destroy();
+
+            AdvanceSeconds(session, 6);
+
+            Assert.AreEqual(0, target.Systems.GetDamage(TacticalShipSystem.Engines));
+        }
+
+        [Test]
+        public void Advance_QueuedTractorRepairWithZeroHull_RetainsItsLock()
+        {
+            CapitalShip source = CreateShip("a", 1000, 1);
+            source.TractorBeamPower = 10;
+            source.TractorBeamnRange = 1000;
+            source.DamageControl = 100;
+            TacticalCombatSession session = CreateSession(source, CreateShip("b", 1000000, 0));
+            TacticalCombatUnit unit = session.GetUnit("a");
+            AdvanceSeconds(session, 20);
+            Assert.AreEqual("b", unit.TractorTargetID);
+            unit.Systems.ApplyComponentEvent(TacticalShipSystem.TractorBeam, false);
+            unit.Systems.Advance(1, new FixedRandom(0));
+            unit.Systems.Destroy();
+
+            AdvanceSeconds(session, 12);
+
+            Assert.AreEqual(0, unit.Systems.GetDamage(TacticalShipSystem.TractorBeam));
+            Assert.AreEqual("b", unit.TractorTargetID);
+        }
+
+        [Test]
+        public void Advance_LethalQueuedWeaponImpact_ReportsRegisteredShooterBeforeExplosion()
+        {
+            TacticalCombatSession session = CreateSession(
+                CreateShip("a", 1000, 10000),
+                CreateShip("b", 1000, 0),
+                NotificationBank(17, 86, 9)
+            );
+            List<string> output = new();
+            session.Audio.Playback = (clip, _) =>
+            {
+                output.Add(clip.Path);
+                return null;
+            };
+            session.ImpactApplied += (victim, weapon, impact) =>
+            {
+                Assert.AreSame(session.GetUnit("b"), victim);
+                Assert.AreEqual(TacticalWeaponType.Turbolaser, weapon);
+                Assert.AreEqual(TacticalCombatImpactKind.Destroyed, impact);
+                Assert.AreEqual(0, victim.Systems.Hull);
+                Assert.AreEqual(TacticalCombatUnitStatus.Active, victim.Status);
+                output.Add("effect");
+            };
+            session.UnitDestroyed += _ => output.Add("destroyed");
+            session.DestructionEffectRequested += _ =>
+                Assert.Fail("A weapon impact already owns its destruction effect.");
+
+            AdvanceSeconds(session, 20);
+
+            Assert.AreEqual(TacticalCombatUnitStatus.Destroyed, session.GetUnit("b").Status);
+            CollectionAssert.AreEqual(new[] { "17", "86", "effect", "9", "destroyed" }, output);
+        }
+
+        [TestCase(CombatSide.Attacker, 86)]
+        [TestCase(CombatSide.Defender, 208)]
+        public void Audio_PlayerKill_UsesFiringCapitalCategoryBeforeExplosion(
+            CombatSide player,
+            int reportID
+        )
+        {
+            TacticalCombatSession session = CreateSession(
+                CreateShip("a", 1000, 0),
+                CreateShip("b", 1000, 0),
+                NotificationBank(17, 9, 86, 208),
+                player
+            );
+            TacticalCombatUnit attacker =
+                session.Units[0].Side == player ? session.Units[0] : session.Units[1];
+            TacticalCombatUnit victim =
+                session.Units[0].Side != player ? session.Units[0] : session.Units[1];
+            List<string> output = new();
+            session.Audio.Playback = (clip, _) =>
+            {
+                output.Add(clip.Path);
+                return null;
+            };
+
+            victim.Systems.ApplyHit(
+                TacticalWeaponType.Turbolaser,
+                2000,
+                1,
+                1,
+                new SystemRandomProvider(1),
+                attacker.InstanceID
+            );
+
+            CollectionAssert.AreEqual(new[] { "17", reportID.ToString(), "9" }, output);
+        }
+
+        [TestCase(CombatSide.Attacker, 134, 99)]
+        [TestCase(CombatSide.Defender, 260, 221)]
+        public void Audio_PlayerCapitalLost_ReportsEveryCapturedPersonnelHostBeforeCategory(
+            CombatSide player,
+            int personnelID,
+            int reportID
+        )
+        {
+            string victimID = player == CombatSide.Attacker ? "a" : "b";
+            TacticalCombatSession session = CreateSession(
+                CreateShip("a", 1000, 0),
+                CreateShip("b", 1000, 0),
+                NotificationBank(134, 260, 99, 221),
+                player,
+                new[] { victimID, "unrelated-host", victimID }
+            );
+            TacticalCombatUnit victim = session.GetUnit(victimID);
+            TacticalCombatUnit attacker = session.GetUnit(victimID == "a" ? "b" : "a");
+            List<string> output = new();
+            session.Audio.Playback = (clip, _) =>
+            {
+                output.Add(clip.Path);
+                return null;
+            };
+
+            victim.Systems.ApplyHit(
+                TacticalWeaponType.Turbolaser,
+                2000,
+                1,
+                1,
+                new SystemRandomProvider(1),
+                attacker.InstanceID
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { personnelID.ToString(), personnelID.ToString(), reportID.ToString() },
+                output
+            );
+        }
+
+        [Test]
+        public void Audio_PendingGroupTransfer_UsesAppliedOwnerAndCurrentPlayerSlot()
+        {
+            TacticalCombatSession session = CreateMembershipSession(NotificationBank(86, 89, 91));
+            TacticalCombatUnit attacker = session.GetUnit("first");
+            TacticalCombatGroup applied = session.GetGroup(attacker);
+            TacticalCombatGroup requested = session.CreateGroup(new[] { attacker });
+            session.SetObjectGroup(CombatSide.Attacker, 0, null);
+            session.SetObjectGroup(CombatSide.Attacker, 3, requested);
+            session.SetObjectGroup(CombatSide.Attacker, 5, applied);
+            List<string> output = new();
+            session.Audio.Playback = (clip, _) =>
+            {
+                output.Add(clip.Path);
+                return null;
+            };
+
+            session
+                .GetUnit("enemy")
+                .Systems.ApplyHit(
+                    TacticalWeaponType.Turbolaser,
+                    200,
+                    1,
+                    1,
+                    new SystemRandomProvider(1),
+                    attacker.InstanceID
+                );
+
+            Assert.AreSame(applied, session.GetGroup(attacker));
+            Assert.AreSame(requested, session.GetRequestedGroup(attacker));
+            CollectionAssert.AreEqual(new[] { "91" }, output);
+        }
+
+        [TestCase(0, 94)]
+        [TestCase(3, 97)]
+        [TestCase(4, 98)]
+        public void Audio_FighterCategorySlotCleared_UsesRetainedDeploymentCategory(
+            int category,
+            int reportID
+        )
+        {
+            TacticalCombatSession session = CreateMembershipSession(
+                NotificationBank(94, 97, 98),
+                fighterCategory: category
+            );
+            TacticalCombatUnit attacker = session.GetUnit("fighter");
+            session.DeleteGroup(session.GetGroup(attacker));
+            List<string> output = new();
+            session.Audio.Playback = (clip, _) =>
+            {
+                output.Add(clip.Path);
+                return null;
+            };
+
+            session
+                .GetUnit("enemy")
+                .Systems.ApplyHit(
+                    TacticalWeaponType.Turbolaser,
+                    200,
+                    1,
+                    1,
+                    new SystemRandomProvider(1),
+                    attacker.InstanceID
+                );
+
+            CollectionAssert.AreEqual(new[] { reportID.ToString() }, output);
+        }
+
+        [TestCase(null)]
+        [TestCase("unregistered")]
+        public void Audio_LethalHitWithoutRegisteredAttacker_DoesNotReportDestruction(
+            string attackerID
+        )
+        {
+            TacticalCombatSession session = CreateSession(
+                CreateShip("a", 1000, 0),
+                CreateShip("b", 1000, 0),
+                NotificationBank(85, 86, 98, 99)
+            );
+            List<string> output = new();
+            session.Audio.Playback = (clip, _) =>
+            {
+                output.Add(clip.Path);
+                return null;
+            };
+
+            session
+                .GetUnit("b")
+                .Systems.ApplyHit(
+                    TacticalWeaponType.Turbolaser,
+                    2000,
+                    1,
+                    1,
+                    new SystemRandomProvider(1),
+                    attackerID
+                );
+
+            Assert.IsEmpty(output);
+        }
+
+        [Test]
+        public void Audio_FiringUnitWithZeroHull_StillCreditsRegisteredShooter()
+        {
+            TacticalCombatSession session = CreateSession(
+                CreateShip("a", 1000, 0),
+                CreateShip("b", 1000, 0),
+                NotificationBank(86)
+            );
+            session.GetUnit("a").Systems.Destroy();
+            List<string> output = new();
+            session.Audio.Playback = (clip, _) =>
+            {
+                output.Add(clip.Path);
+                return null;
+            };
+
+            session
+                .GetUnit("b")
+                .Systems.ApplyHit(
+                    TacticalWeaponType.Turbolaser,
+                    2000,
+                    1,
+                    1,
+                    new SystemRandomProvider(1),
+                    "a"
+                );
+
+            CollectionAssert.AreEqual(new[] { "86" }, output);
+        }
+
         [Test]
         public void Advance_WeaponImpacts_LeaveCampaignHullUnchanged()
         {
@@ -341,6 +760,67 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreSame(replacement, session.GetObjectGroup(CombatSide.Attacker, 0));
         }
 
+        [TestCase(TacticalCombatFormationKind.Line)]
+        [TestCase(TacticalCombatFormationKind.Surround)]
+        public void SetFormation_FighterGroup_AppliesRequestedLayout(
+            TacticalCombatFormationKind kind
+        )
+        {
+            TacticalCombatSession session = CreateMembershipSession();
+            TacticalCombatGroup group = session.GetGroup(session.GetUnit("fighter"));
+
+            session.SetFormation(group, kind);
+            Assert.AreEqual(kind, group.RequestedFormation);
+            Assert.AreEqual(TacticalCombatFormationKind.Direct, group.Formation.Kind);
+            AdvanceSeconds(session, 8);
+
+            Assert.AreEqual(kind, group.Formation.Kind);
+            Assert.AreEqual(TacticalCombatGroupKind.Fighter, group.Kind);
+        }
+
+        [Test]
+        public void SetFormation_CapitalDirectRequest_AppliesLineLayout()
+        {
+            TacticalCombatSession session = CreateMembershipSession();
+            TacticalCombatGroup group = session.GetGroup(session.GetUnit("first"));
+
+            session.SetFormation(group, TacticalCombatFormationKind.Direct);
+            AdvanceSeconds(session, 8);
+
+            Assert.AreEqual(TacticalCombatFormationKind.Line, group.Formation.Kind);
+        }
+
+        [Test]
+        public void DeleteGroup_BeforeDispatch_PreservesAppliedRoster()
+        {
+            TacticalCombatSession session = CreateMembershipSession();
+            TacticalCombatUnit unit = session.GetUnit("first");
+            TacticalCombatGroup previous = session.GetGroup(unit);
+
+            session.DeleteGroup(previous);
+
+            Assert.AreSame(previous, session.GetGroup(unit));
+            Assert.IsNull(session.GetObjectGroup(CombatSide.Attacker, 0));
+            AdvanceSeconds(session, 8);
+            Assert.IsNull(session.GetGroup(unit));
+            CollectionAssert.DoesNotContain(session.Groups, previous);
+        }
+
+        [Test]
+        public void DeleteGroup_QueuedReplacement_PreservesNewRequestedOwner()
+        {
+            TacticalCombatSession session = CreateMembershipSession();
+            TacticalCombatUnit unit = session.GetUnit("first");
+            TacticalCombatGroup previous = session.GetGroup(unit);
+            session.DeleteGroup(previous);
+            TacticalCombatGroup replacement = session.CreateGroup(new[] { unit });
+
+            AdvanceSeconds(session, 8);
+
+            Assert.AreSame(replacement, session.GetGroup(unit));
+            Assert.AreSame(replacement, session.GetRequestedGroup(unit));
+        }
+
         [Test]
         public void CreateResult_UnfinishedEncounter_RejectsPrematureCommit()
         {
@@ -360,6 +840,130 @@ namespace Rebellion.Tests.Gameplay
             SpaceCombatResult result = session.CreateResult();
             Assert.AreEqual(0, result.ShipDamage.Find(damage => damage.Ship == defender).HullAfter);
             Assert.AreEqual(10, defender.CurrentHullStrength);
+        }
+
+        [TestCase(0.5f, 1)]
+        [TestCase(0f, 1)]
+        [TestCase(-8f, 1)]
+        [TestCase(1.9f, 1)]
+        [TestCase(42.9f, 42)]
+        [TestCase(float.NegativeInfinity, 1)]
+        [TestCase(float.NaN, 0)]
+        [TestCase(float.PositiveInfinity, 0)]
+        [TestCase(2147483648f, int.MinValue)]
+        [TestCase(4294967296f, 0)]
+        [TestCase(9223372036854775808f, 0)]
+        [TestCase(float.MaxValue, 0)]
+        public void CreateResult_RetainedCapital_ExportsHullThroughFinalSnapshotConversion(
+            float hull,
+            int expected
+        )
+        {
+            TacticalCombatSession session = CreateCompletedExportSession();
+            TacticalCombatUnit unit = session.GetUnit("exported");
+            unit.Systems.RestorePools(hull, 0);
+
+            SpaceCombatResult result = session.CreateResult();
+
+            Assert.AreEqual(
+                expected,
+                result.ShipDamage.Find(damage => damage.Ship == unit.Source).HullAfter
+            );
+            Assert.AreEqual(hull, unit.Systems.Hull);
+            Assert.AreEqual(100, ((CapitalShip)unit.Source).CurrentHullStrength);
+        }
+
+        [TestCase(0f)]
+        [TestCase(0.5f)]
+        [TestCase(50f)]
+        [TestCase(float.NaN)]
+        public void CreateResult_DestroyedCapital_ExportsZeroRegardlessOfRetainedPool(float hull)
+        {
+            TacticalCombatSession session = CreateCompletedExportSession();
+            TacticalCombatUnit unit = session.GetUnit("exported");
+            unit.Status = TacticalCombatUnitStatus.Destroyed;
+            unit.Systems.RestorePools(hull, 0);
+
+            SpaceCombatResult result = session.CreateResult();
+
+            Assert.AreEqual(
+                0,
+                result.ShipDamage.Find(damage => damage.Ship == unit.Source).HullAfter
+            );
+            Assert.AreEqual(hull, unit.Systems.Hull);
+        }
+
+        [TestCase(0.5f, 1)]
+        [TestCase(0f, 1)]
+        [TestCase(-0.5f, 1)]
+        [TestCase(-8f, -1)]
+        [TestCase(7.9f, 1)]
+        [TestCase(19.9f, 2)]
+        [TestCase(float.NaN, 1)]
+        [TestCase(float.PositiveInfinity, 1)]
+        [TestCase(float.NegativeInfinity, 1)]
+        [TestCase(17179869184f, int.MinValue)]
+        [TestCase(34359738368f, 1)]
+        public void CreateResult_RetainedFighter_ExportsCountThroughFinalSnapshotConversion(
+            float hull,
+            int expected
+        )
+        {
+            TacticalCombatSession session = CreateCompletedExportSession(fighter: true);
+            TacticalCombatUnit unit = session.GetUnit("exported");
+            unit.Systems.RestorePools(hull, 0);
+
+            SpaceCombatResult result = session.CreateResult();
+
+            Assert.AreEqual(
+                expected,
+                result.FighterLosses.Find(loss => loss.Fighter == unit.Source).SquadsAfter
+            );
+            Assert.AreEqual(hull, unit.Systems.Hull);
+            Assert.AreEqual(12, ((Starfighter)unit.Source).CurrentSquadronSize);
+        }
+
+        [TestCase(0f)]
+        [TestCase(4f)]
+        [TestCase(96f)]
+        [TestCase(float.NaN)]
+        public void CreateResult_DestroyedFighter_ExportsZeroRegardlessOfRetainedPool(float hull)
+        {
+            TacticalCombatSession session = CreateCompletedExportSession(fighter: true);
+            TacticalCombatUnit unit = session.GetUnit("exported");
+            unit.Status = TacticalCombatUnitStatus.Destroyed;
+            unit.Systems.RestorePools(hull, 0);
+
+            SpaceCombatResult result = session.CreateResult();
+
+            Assert.AreEqual(
+                0,
+                result.FighterLosses.Find(loss => loss.Fighter == unit.Source).SquadsAfter
+            );
+            Assert.AreEqual(hull, unit.Systems.Hull);
+        }
+
+        [TestCase(0.5f, 0)]
+        [TestCase(0f, 0)]
+        [TestCase(1.9f, 1)]
+        [TestCase(float.NaN, 0)]
+        [TestCase(float.PositiveInfinity, 0)]
+        public void CreateResult_BattleStation_ExportsStoredHullWithoutOrdinaryCapitalMinimum(
+            float hull,
+            int expected
+        )
+        {
+            TacticalCombatSession session = CreateCompletedExportSession(station: true);
+            TacticalCombatUnit unit = session.GetUnit("exported");
+            unit.Systems.RestorePools(hull, 0);
+
+            SpaceCombatResult result = session.CreateResult();
+
+            Assert.AreEqual(
+                expected,
+                result.ShipDamage.Find(damage => damage.Ship == unit.Source).HullAfter
+            );
+            Assert.AreEqual(hull, unit.Systems.Hull);
         }
 
         [Test]
@@ -671,6 +1275,96 @@ namespace Rebellion.Tests.Gameplay
             CollectionAssert.AreEqual(new[] { "visual" }, output);
         }
 
+        [Test]
+        public void FireSuperlaser_AdmittedTarget_RequestsExplosionThenEffectBeforeDeactivation()
+        {
+            CapitalShip station = CreateShip("station", 1000, 0);
+            station.CanDestroyPlanets = true;
+            TacticalCombatSession session = CreateSession(
+                CreateShip("target", 1000, 0),
+                station,
+                NotificationBank(9, 86, 99, 134)
+            );
+            TacticalCombatUnit target = session.GetUnit("target");
+            List<string> output = new();
+            session.Audio.Playback = (clip, _) =>
+            {
+                Assert.AreEqual(1000, target.Systems.Hull);
+                Assert.IsNotNull(session.GetGroup(target));
+                output.Add(clip.Path);
+                return null;
+            };
+            session.DestructionEffectRequested += unit =>
+            {
+                Assert.AreSame(target, unit);
+                Assert.AreEqual(1000, unit.Systems.Hull);
+                Assert.AreEqual(TacticalCombatUnitStatus.Active, unit.Status);
+                Assert.IsNotNull(session.GetGroup(unit));
+                output.Add("effect");
+            };
+            session.UnitDestroyed += unit =>
+            {
+                Assert.AreSame(target, unit);
+                Assert.AreEqual(0, unit.Systems.Hull);
+                Assert.AreEqual(TacticalCombatUnitStatus.Destroyed, unit.Status);
+                Assert.IsNull(session.GetGroup(unit));
+                output.Add("destroyed");
+            };
+            session.ImpactApplied += (_, _, _) =>
+                Assert.Fail("A direct command does not apply a weapon impact.");
+
+            Assert.IsTrue(session.FireSuperlaser(target));
+            AdvanceSeconds(session, 5);
+
+            CollectionAssert.AreEqual(new[] { "9", "effect", "destroyed" }, output);
+        }
+
+        [Test]
+        public void BeginWithdrawal_NewlyUnreadyCapital_RequestsScuttleEffectBeforeDeactivation()
+        {
+            TacticalCombatSession session = CreateSession(
+                CreateShip("target", 1000, 0),
+                CreateShip("enemy", 1000, 0),
+                NotificationBank(9, 86, 99, 134)
+            );
+            TacticalCombatUnit target = session.GetUnit("target");
+            Assert.IsTrue(session.BeginWithdrawal(CombatSide.Attacker));
+            target.Systems.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, false);
+            List<string> output = new();
+            session.Audio.Playback = (clip, _) =>
+            {
+                Assert.AreEqual(1000, target.Systems.Hull);
+                Assert.IsTrue(target.IsActiveDisplayObject);
+                output.Add(clip.Path);
+                return null;
+            };
+            session.DestructionEffectRequested += unit =>
+            {
+                Assert.AreSame(target, unit);
+                Assert.AreEqual(1000, unit.Systems.Hull);
+                Assert.IsTrue(unit.IsActiveDisplayObject);
+                Assert.IsNotNull(session.GetGroup(unit));
+                output.Add("effect");
+            };
+            session.UnitDestroyed += unit =>
+            {
+                Assert.AreSame(target, unit);
+                Assert.AreEqual(0, unit.Systems.Hull);
+                Assert.AreEqual(TacticalCombatUnitStatus.Destroyed, unit.Status);
+                Assert.IsNull(session.GetGroup(unit));
+                output.Add("destroyed");
+            };
+
+            for (
+                int frame = 0;
+                frame < 2400 && target.Status != TacticalCombatUnitStatus.Destroyed;
+                frame++
+            )
+                session.Advance(50);
+
+            CollectionAssert.AreEqual(new[] { "9", "effect", "destroyed" }, output);
+        }
+
         [TestCase(CombatSide.Attacker, false)]
         [TestCase(CombatSide.Defender, true)]
         public void Advance_StationChargeCrossing_AnnouncesOnlyToEmpireBeforeChargeStore(
@@ -692,7 +1386,7 @@ namespace Rebellion.Tests.Gameplay
                 announcedCharge = session.BattleStation.Charge;
                 return null;
             };
-            session.BattleStation.TryFire();
+            session.BattleStation.Fire();
             session.BattleStation.Advance(300000);
             Assert.AreEqual(shouldAnnounce ? 0 : -1, announcedCharge);
             Assert.AreEqual(100, session.BattleStation.Charge);
@@ -763,6 +1457,500 @@ namespace Rebellion.Tests.Gameplay
             CollectionAssert.AreEqual(new[] { "29" }, output);
         }
 
+        [TestCase(CombatSide.Attacker, 32)]
+        [TestCase(CombatSide.Defender, 154)]
+        public void Advance_PausedStartup_QueuesSelectedFactionBriefing(
+            CombatSide player,
+            int messageID
+        )
+        {
+            TacticalCombatSession session = CreateSession(
+                CreateShip("a", 100, 0),
+                CreateShip("b", 100, 0),
+                NotificationBank(32, 154),
+                player
+            );
+            session.IsPaused = true;
+            List<string> output = new();
+            session.Audio.Playback = (clip, _) =>
+            {
+                output.Add(clip.Path);
+                return null;
+            };
+
+            session.Advance(16);
+
+            CollectionAssert.AreEqual(new[] { messageID.ToString() }, output);
+            Assert.AreEqual(3, session.SystemTime);
+        }
+
+        [Test]
+        public void Advance_ZeroHullActiveParticipant_DoesNotCaptureTerminalExtinction()
+        {
+            TacticalCombatSession session = CreateSession(
+                CreateShip("a", 100, 0),
+                CreateShip("b", 100, 0)
+            );
+            AdvanceSeconds(session, 3);
+            session.GetUnit("b").Systems.Destroy();
+
+            session.Advance(16);
+
+            CollectionAssert.AreEqual(new bool[7], session.TerminalFlags);
+            Assert.IsFalse(session.IsComplete);
+        }
+
+        [TestCase(CombatSide.Attacker, 152)]
+        [TestCase(CombatSide.Defender, 283)]
+        public void Advance_EmpireExtinction_QueuesSelectedFactionTerminalCue(
+            CombatSide player,
+            int messageID
+        )
+        {
+            TacticalCombatSession session = CreateSession(
+                CreateShip("a", 100, 0),
+                CreateShip("b", 100, 0),
+                NotificationBank(152, 283),
+                player
+            );
+            AdvanceSeconds(session, 3);
+            session.GetUnit("b").Status = TacticalCombatUnitStatus.Destroyed;
+            List<string> output = new();
+            session.Audio.Playback = (clip, _) =>
+            {
+                output.Add(clip.Path);
+                return null;
+            };
+
+            session.Advance(16);
+
+            CollectionAssert.AreEqual(new[] { messageID.ToString() }, output);
+            CollectionAssert.AreEqual(
+                new[] { false, true, false, false, false, false, false },
+                session.TerminalFlags
+            );
+        }
+
+        [Test]
+        public void Advance_MutualExtinction_ClearsBothWinnerFlags()
+        {
+            TacticalCombatSession session = CreateSession(
+                CreateShip("a", 100, 0),
+                CreateShip("b", 100, 0)
+            );
+            AdvanceSeconds(session, 3);
+            session.GetUnit("a").Status = TacticalCombatUnitStatus.Destroyed;
+            session.GetUnit("b").Status = TacticalCombatUnitStatus.Destroyed;
+
+            session.Advance(16);
+
+            CollectionAssert.AreEqual(new bool[7], session.TerminalFlags);
+            Assert.AreEqual(CombatSide.Draw, session.Winner);
+        }
+
+        [TestCase(TacticalCombatUnitStatus.Active, false)]
+        [TestCase(TacticalCombatUnitStatus.PreparingHyperspace, false)]
+        [TestCase(TacticalCombatUnitStatus.EnteringHyperspace, false)]
+        [TestCase(TacticalCombatUnitStatus.AwaitingWithdrawal, false)]
+        [TestCase(TacticalCombatUnitStatus.Withdrawn, true)]
+        [TestCase(TacticalCombatUnitStatus.Destroyed, true)]
+        public void CanWithdraw_OpposingGravityWellParticipation_UsesRetainedCapitalChain(
+            TacticalCombatUnitStatus status,
+            bool expected
+        )
+        {
+            CapitalShip interdictor = CreateShip("b", 100, 0);
+            interdictor.HasGravityWell = true;
+            TacticalCombatSession session = CreateSession(CreateShip("a", 100, 0), interdictor);
+            session.GetUnit("b").Status = status;
+
+            Assert.AreEqual(expected, session.CanWithdraw(CombatSide.Attacker));
+        }
+
+        [Test]
+        public void CanWithdraw_ZeroHullOpposingGravityWell_RetainsCapitalChainBlock()
+        {
+            CapitalShip interdictor = CreateShip("b", 100, 0);
+            interdictor.HasGravityWell = true;
+            TacticalCombatSession session = CreateSession(CreateShip("a", 100, 0), interdictor);
+            session.GetUnit("b").Systems.Destroy();
+
+            Assert.IsFalse(session.CanWithdraw(CombatSide.Attacker));
+        }
+
+        [Test]
+        public void CanWithdraw_UnorderedMovementDelay_PreservesAvailableMovementBudget()
+        {
+            TacticalCombatSession session = CreateSession(
+                CreateShip("a", 100, 0),
+                CreateShip("b", 100, 0)
+            );
+            session.GetUnit("a").Systems.ApplyDisruption(0, float.NaN);
+
+            Assert.IsTrue(session.CanWithdraw(CombatSide.Attacker));
+        }
+
+        [Test]
+        public void CanWithdraw_IncompleteZeroHullStation_AllowsEmpireDeparture()
+        {
+            CapitalShip station = CreateShip("station", 100, 0);
+            station.CanDestroyPlanets = true;
+            station.CurrentHullStrength = 0;
+            station.ManufacturingStatus = ManufacturingStatus.Building;
+            TacticalCombatSession session = CreateSession(CreateShip("a", 100, 0), station);
+
+            Assert.IsTrue(session.CanWithdraw(CombatSide.Defender));
+        }
+
+        [TestCase(CombatSide.Attacker, 143)]
+        [TestCase(CombatSide.Defender, 269)]
+        public void BeginWithdrawal_PlayerSide_QueuesSelectedFactionWithdrawalCue(
+            CombatSide side,
+            int messageID
+        )
+        {
+            TacticalCombatSession session = CreateSession(
+                CreateShip("a", 100, 0),
+                CreateShip("b", 100, 0),
+                NotificationBank(143, 269),
+                side
+            );
+            List<string> output = new();
+            session.Audio.Playback = (clip, _) =>
+            {
+                output.Add(clip.Path);
+                return null;
+            };
+
+            Assert.IsTrue(session.BeginWithdrawal(side));
+            CollectionAssert.AreEqual(new[] { messageID.ToString() }, output);
+            Assert.AreEqual(
+                TacticalCombatWithdrawalPhase.Waiting,
+                session.GetSide(side).WithdrawalPhase
+            );
+        }
+
+        [Test]
+        public void BeginWithdrawal_OpposingSide_DoesNotQueuePlayerWithdrawalCue()
+        {
+            TacticalCombatSession session = CreateSession(
+                CreateShip("a", 100, 0),
+                CreateShip("b", 100, 0),
+                NotificationBank(143, 269)
+            );
+            List<string> output = new();
+            session.Audio.Playback = (clip, _) =>
+            {
+                output.Add(clip.Path);
+                return null;
+            };
+
+            Assert.IsTrue(session.BeginWithdrawal(CombatSide.Defender));
+            Assert.IsEmpty(output);
+        }
+
+        [Test]
+        public void Advance_DestroyedTractorContributor_RetainsLinkUntilQueuedUnlock()
+        {
+            CapitalShip source = CreateShip("a", 100, 1);
+            source.MaxShieldStrength = 10000;
+            source.TractorBeamPower = 10;
+            source.TractorBeamnRange = 1000;
+            TacticalCombatSession session = CreateSession(source, CreateShip("b", 1000, 1000));
+            string targetAtDestruction = null;
+            session.UnitDestroyed += unit =>
+            {
+                if (unit.InstanceID == "a")
+                    targetAtDestruction = unit.TractorTargetID;
+            };
+
+            AdvanceSeconds(session, 120);
+
+            Assert.AreEqual("b", targetAtDestruction);
+        }
+
+        [Test]
+        public void PreparePlayerWithdrawal_UnreadyCapital_QueuesWarningWithoutStartingDeparture()
+        {
+            TacticalCombatSession session = CreateMembershipSession(NotificationBank(149));
+            session
+                .GetUnit("first")
+                .Systems.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, false);
+            List<string> output = new();
+            session.Audio.Playback = (clip, _) =>
+            {
+                output.Add(clip.Path);
+                return null;
+            };
+
+            Assert.IsTrue(session.PreparePlayerWithdrawal());
+            CollectionAssert.AreEqual(new[] { "149" }, output);
+            Assert.IsFalse(session.GetSide(session.PlayerSide).IsWithdrawing);
+        }
+
+        [Test]
+        public void PreparePlayerWithdrawal_UnreadyFighter_DoesNotQueueCapitalWarning()
+        {
+            TacticalCombatSession session = CreateMembershipSession(NotificationBank(149));
+            List<string> output = new();
+            session.Audio.Playback = (clip, _) =>
+            {
+                output.Add(clip.Path);
+                return null;
+            };
+
+            Assert.IsTrue(session.PreparePlayerWithdrawal());
+            Assert.IsEmpty(output);
+        }
+
+        [Test]
+        public void PreparePlayerWithdrawal_GravityBlocked_ReturnsFalseWithoutWarning()
+        {
+            CapitalShip interdictor = CreateShip("b", 100, 0);
+            interdictor.HasGravityWell = true;
+            TacticalCombatSession session = CreateSession(
+                CreateShip("a", 100, 0),
+                interdictor,
+                NotificationBank(149)
+            );
+            List<string> output = new();
+            session.Audio.Playback = (clip, _) =>
+            {
+                output.Add(clip.Path);
+                return null;
+            };
+
+            Assert.IsFalse(session.PreparePlayerWithdrawal());
+            Assert.IsEmpty(output);
+        }
+
+        [Test]
+        public void ConfirmPlayerWithdrawal_EligiblePlayer_QueuesDepartureUntilInputDrains()
+        {
+            TacticalCombatSession session = CreateSession(
+                CreateShip("a", 100, 0),
+                CreateShip("b", 100, 0)
+            );
+
+            Assert.IsTrue(session.ConfirmPlayerWithdrawal());
+            Assert.IsFalse(session.GetSide(session.PlayerSide).IsWithdrawing);
+            session.Selection.ProcessPendingCommands();
+            Assert.IsTrue(session.GetSide(session.PlayerSide).IsWithdrawing);
+        }
+
+        [Test]
+        public void ConfirmPlayerWithdrawal_GravityBecomesBlocking_RejectsConfirmation()
+        {
+            CapitalShip interdictor = CreateShip("b", 100, 0);
+            interdictor.HasGravityWell = true;
+            TacticalCombatSession session = CreateSession(CreateShip("a", 100, 0), interdictor);
+            session.GetUnit("b").Status = TacticalCombatUnitStatus.Withdrawn;
+            Assert.IsTrue(session.PreparePlayerWithdrawal());
+            session.GetUnit("b").Status = TacticalCombatUnitStatus.Active;
+
+            Assert.IsFalse(session.ConfirmPlayerWithdrawal());
+            session.Selection.ProcessPendingCommands();
+            Assert.IsFalse(session.GetSide(session.PlayerSide).IsWithdrawing);
+        }
+
+        [Test]
+        public void ConfirmPlayerWithdrawal_GravityBlocksBeforeDispatch_RejectsQueuedDeparture()
+        {
+            CapitalShip interdictor = CreateShip("b", 100, 0);
+            interdictor.HasGravityWell = true;
+            TacticalCombatSession session = CreateSession(CreateShip("a", 100, 0), interdictor);
+            session.GetUnit("b").Status = TacticalCombatUnitStatus.Withdrawn;
+            Assert.IsTrue(session.ConfirmPlayerWithdrawal());
+            session.GetUnit("b").Status = TacticalCombatUnitStatus.Active;
+
+            session.Selection.ProcessPendingCommands();
+
+            Assert.IsFalse(session.GetSide(session.PlayerSide).IsWithdrawing);
+        }
+
+        [Test]
+        public void BeginWithdrawal_GroupedCapitals_RequestsSeparateDepartureGroups()
+        {
+            TacticalCombatSession session = CreateMembershipSession();
+            TacticalCombatUnit first = session.GetUnit("first");
+            TacticalCombatUnit second = session.GetUnit("second");
+            TacticalCombatGroup previous = session.CreateGroup(new[] { first, second });
+            AdvanceSeconds(session, 5);
+
+            Assert.IsTrue(session.BeginWithdrawal(CombatSide.Attacker));
+
+            TacticalCombatGroup firstDeparture = session.GetRequestedGroup(first);
+            TacticalCombatGroup secondDeparture = session.GetRequestedGroup(second);
+            Assert.AreNotSame(firstDeparture, secondDeparture);
+            CollectionAssert.AreEqual(new[] { first }, firstDeparture.RequestedMembers);
+            CollectionAssert.AreEqual(new[] { second }, secondDeparture.RequestedMembers);
+            Assert.AreSame(previous, session.GetGroup(first));
+            Assert.AreSame(previous, session.GetGroup(second));
+        }
+
+        [Test]
+        public void BeginWithdrawal_PlayerCapitalCategory_ClearsRequestedCategoryOwnership()
+        {
+            TacticalCombatSession session = CreateMembershipSession();
+            Assert.IsNotNull(session.GetObjectGroup(session.PlayerSide, 0));
+
+            Assert.IsTrue(session.BeginWithdrawal(session.PlayerSide));
+
+            Assert.IsNull(session.GetObjectGroup(session.PlayerSide, 0));
+        }
+
+        [Test]
+        public void BeginWithdrawal_ReadyFighterGroup_ClearsPlayerFighterCategory()
+        {
+            TacticalCombatSession session = CreateMembershipSession(
+                fighterHyperdrive: true,
+                fighterCategory: 0
+            );
+            Assert.IsNotNull(session.GetFighterGroup(session.PlayerSide, 0));
+
+            Assert.IsTrue(session.BeginWithdrawal(session.PlayerSide));
+
+            Assert.IsNull(session.GetFighterGroup(session.PlayerSide, 0));
+        }
+
+        [Test]
+        public void BeginWithdrawal_PendingCapitalRegrouping_PreservesLatestDepartureOwnerAtDispatch()
+        {
+            TacticalCombatSession session = CreateMembershipSession();
+            TacticalCombatUnit unit = session.GetUnit("first");
+            session.CreateGroup(new[] { unit });
+            Assert.IsTrue(session.BeginWithdrawal(session.PlayerSide));
+            TacticalCombatGroup departure = session.GetRequestedGroup(unit);
+
+            AdvanceSeconds(session, 5);
+
+            Assert.AreSame(departure, session.GetGroup(unit));
+            CollectionAssert.AreEqual(new[] { unit }, departure.Members);
+            Assert.AreEqual(TacticalCombatOrder.Withdraw, departure.ActiveOrder);
+        }
+
+        [TestCase(true, false, TacticalCombatOrder.Withdraw)]
+        [TestCase(true, true, TacticalCombatOrder.Withdraw)]
+        [TestCase(false, false, TacticalCombatOrder.Withdraw)]
+        [TestCase(false, true, TacticalCombatOrder.Recover)]
+        public void SetOrder_ProtectedRequestedOrder_UsesLiveFactionControlPolicy(
+            bool playerOwnsGroup,
+            bool automated,
+            TacticalCombatOrder expected
+        )
+        {
+            TacticalCombatSession session = CreateMembershipSession(
+                player: playerOwnsGroup ? CombatSide.Attacker : CombatSide.Defender
+            );
+            TacticalCombatGroup group = session.GetGroup(session.GetUnit("fighter"));
+            session.SetOrder(group, TacticalCombatOrder.Recover);
+            session.SetAutomated(CombatSide.Attacker, automated);
+
+            session.SetOrder(group, TacticalCombatOrder.Withdraw);
+
+            Assert.AreEqual(expected, group.Order);
+        }
+
+        [Test]
+        public void SetOrder_ProtectedAppliedOrder_RejectsAutomatedOpponentNonzeroChange()
+        {
+            TacticalCombatSession session = CreateMembershipSession(player: CombatSide.Defender);
+            TacticalCombatGroup group = session.GetGroup(session.GetUnit("fighter"));
+            session.SetOrder(group, TacticalCombatOrder.Recover);
+            for (
+                int frame = 0;
+                frame < 100 && group.ActiveOrder != TacticalCombatOrder.Recover;
+                frame++
+            )
+                session.Advance(50);
+            Assert.AreEqual(TacticalCombatOrder.Recover, group.ActiveOrder);
+            session.SetOrder(group, TacticalCombatOrder.None);
+            session.SetAutomated(CombatSide.Attacker, true);
+
+            session.SetOrder(group, TacticalCombatOrder.Withdraw);
+
+            Assert.AreEqual(TacticalCombatOrder.None, group.Order);
+        }
+
+        [Test]
+        public void SetOrder_ProtectedAutomatedOpponent_AllowsClearOrder()
+        {
+            TacticalCombatSession session = CreateMembershipSession(player: CombatSide.Defender);
+            TacticalCombatGroup group = session.GetGroup(session.GetUnit("fighter"));
+            session.SetOrder(group, TacticalCombatOrder.Recover);
+            session.SetAutomated(CombatSide.Attacker, true);
+
+            session.SetOrder(group, TacticalCombatOrder.None);
+
+            Assert.AreEqual(TacticalCombatOrder.None, group.Order);
+        }
+
+        [Test]
+        public void ActiveAttackRun_CancelledAutomatedOpponent_UsesSharedOrderRequestGate()
+        {
+            TacticalCombatSession session = CreateAttackSession(player: CombatSide.Defender);
+            session.SetAutomated(CombatSide.Attacker, true);
+
+            session.ActiveAttackRun.ApplyState(TacticalCombatAttackRunState.Cancelled);
+
+            Assert.AreEqual(
+                TacticalCombatOrder.AttackBattleStation,
+                session.ActiveAttackRun.Group.Order
+            );
+        }
+
+        [Test]
+        public void BeginWithdrawal_RecoveringAutomatedOpponent_RetainsProtectedFighterOrder()
+        {
+            TacticalCombatSession session = CreateMembershipSession(
+                fighterHyperdrive: true,
+                player: CombatSide.Defender
+            );
+            TacticalCombatGroup group = session.GetGroup(session.GetUnit("fighter"));
+            session.SetOrder(group, TacticalCombatOrder.Recover);
+            session.SetAutomated(CombatSide.Attacker, true);
+
+            Assert.IsTrue(session.BeginWithdrawal(CombatSide.Attacker));
+
+            Assert.AreEqual(TacticalCombatOrder.Recover, group.Order);
+        }
+
+        [Test]
+        public void Advance_StationWithdrawalCrossing_ClosesStationControlsBeforeChargeCue()
+        {
+            CapitalShip station = CreateShip("station", 1000, 0);
+            station.CanDestroyPlanets = true;
+            TacticalCombatSession session = CreateSession(
+                CreateShip("a", 1000, 0),
+                station,
+                NotificationBank(275),
+                CombatSide.Defender
+            );
+            TacticalCombatSide side = session.GetSide(CombatSide.Defender);
+            Assert.IsTrue(session.BeginWithdrawal(side.Side));
+            for (int frame = 0; frame < 4000 && side.WithdrawalMilliseconds > 1000; frame++)
+                session.Advance(50);
+            Assert.AreEqual(1000, side.WithdrawalMilliseconds);
+            session.BattleStation.Fire();
+            session.BattleStation.Advance(299000);
+            List<string> effects = new();
+            session.Selection.StationControlsClosed += () => effects.Add("close");
+            session.Audio.Playback = (_, _) =>
+            {
+                effects.Add("charge");
+                return null;
+            };
+
+            for (
+                int frame = 0;
+                frame < 100 && side.WithdrawalPhase == TacticalCombatWithdrawalPhase.Waiting;
+                frame++
+            )
+                session.Advance(50);
+
+            CollectionAssert.AreEqual(new[] { "close", "charge" }, effects);
+        }
+
         /// <summary>
         /// Creates explicit shared notification records for observing a public encounter transition.
         /// </summary>
@@ -780,6 +1968,129 @@ namespace Rebellion.Tests.Gameplay
                     }
                 );
             return definition;
+        }
+
+        /// <summary>
+        /// Captures one designated weapon lane with a passive capital target.
+        /// </summary>
+        /// <param name="weapon">The queued discharge category to observe.</param>
+        /// <returns>The targeted encounter with no automated orders.</returns>
+        private static TacticalCombatSession CreateDischargeSession(TacticalWeaponType weapon)
+        {
+            if (weapon == TacticalWeaponType.Torpedo)
+            {
+                TacticalCombatUnit source = new(
+                    new Starfighter
+                    {
+                        InstanceID = "a",
+                        MaxSquadronSize = 12,
+                        CurrentSquadronSize = 12,
+                        Hyperdrive = 1,
+                        LaserCannon = 5,
+                        LaserRange = 100,
+                        Torpedoes = 3,
+                        TorpedoRange = 100,
+                        SublightSpeed = 4,
+                        Agility = 1,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    CombatSide.Attacker,
+                    0
+                )
+                {
+                    Position = new Vector3(0, 0, -40),
+                };
+                TacticalCombatUnit target = new(
+                    CreateShip("b", 1000, 0),
+                    CombatSide.Defender,
+                    1000000
+                )
+                {
+                    Position = new Vector3(0, 0, 40),
+                    Heading = -Vector3.UnitZ,
+                    DesiredHeading = -Vector3.UnitZ,
+                };
+                return CreateEncounter(source, target, null, CombatSide.Attacker);
+            }
+            CapitalShip ship = CreateShip("a", 1000, 0);
+            ship.WeaponRecharge = 10;
+            PrimaryWeaponType lane = weapon switch
+            {
+                TacticalWeaponType.LaserCannon => PrimaryWeaponType.LaserCannon,
+                TacticalWeaponType.IonCannon => PrimaryWeaponType.IonCannon,
+                _ => PrimaryWeaponType.Turbolaser,
+            };
+            ship.PrimaryWeapons[lane] = new[] { 10, 10, 10, 10, 100 };
+            return CreateSession(ship, CreateShip("b", 1000, 0));
+        }
+
+        /// <summary>
+        /// Advances until a battery discharges while its animation command remains queued.
+        /// </summary>
+        /// <param name="session">The encounter with one armed firing unit.</param>
+        private static void WaitForQueuedDischarge(TacticalCombatSession session)
+        {
+            TacticalCombatUnit unit = session.GetUnit("a");
+            for (int frame = 0; frame < 1200; frame++)
+            {
+                session.Advance(1000f / 60);
+                for (int arc = 0; arc < 4; arc++)
+                    if (
+                        unit.Weapons.GetCharge((TacticalWeaponArc)arc)
+                        < unit.Weapons.GetMaximumCharge((TacticalWeaponArc)arc)
+                    )
+                        return;
+            }
+            Assert.Fail("The designated battery did not queue a discharge.");
+        }
+
+        /// <summary>
+        /// Completes an unarmed encounter around a retained participant for final-pool export checks.
+        /// </summary>
+        /// <param name="fighter">Whether the retained participant is a fighter squadron.</param>
+        /// <param name="station">Whether the retained capital is a battle station.</param>
+        /// <returns>The completed encounter whose retained unit has identity exported.</returns>
+        private static TacticalCombatSession CreateCompletedExportSession(
+            bool fighter = false,
+            bool station = false
+        )
+        {
+            TacticalCombatUnit first;
+            if (fighter)
+                first = new TacticalCombatUnit(
+                    new Starfighter
+                    {
+                        InstanceID = "exported",
+                        MaxSquadronSize = 12,
+                        CurrentSquadronSize = 12,
+                    },
+                    CombatSide.Attacker,
+                    1
+                );
+            else
+            {
+                CapitalShip ship = CreateShip("exported", 100, 0);
+                ship.CanDestroyPlanets = station;
+                first = new TacticalCombatUnit(ship, CombatSide.Attacker, 1);
+            }
+            first.Status = TacticalCombatUnitStatus.Withdrawn;
+            TacticalCombatUnit second = new(
+                CreateShip("enemy", 100, 0),
+                CombatSide.Defender,
+                1000001
+            )
+            {
+                Status = TacticalCombatUnitStatus.Destroyed,
+            };
+            TacticalCombatSession session = CreateEncounter(
+                first,
+                second,
+                null,
+                CombatSide.Attacker
+            );
+            AdvanceSeconds(session, 10);
+            Assert.IsTrue(session.IsComplete);
+            return session;
         }
 
         /// <summary>
@@ -820,12 +2131,14 @@ namespace Rebellion.Tests.Gameplay
         /// <param name="defender">The defending campaign ship.</param>
         /// <param name="definition">The optional authored notification bank.</param>
         /// <param name="player">The player-controlled side.</param>
+        /// <param name="personnelHostInstanceIDs">The captured host identity for each available embarked officer.</param>
         /// <returns>The isolated tactical encounter.</returns>
         private static TacticalCombatSession CreateSession(
             CapitalShip attacker,
             CapitalShip defender,
             TacticalCombatDefinition definition = null,
-            CombatSide player = CombatSide.Attacker
+            CombatSide player = CombatSide.Attacker,
+            IReadOnlyList<string> personnelHostInstanceIDs = null
         )
         {
             TacticalCombatUnit first = new(attacker, CombatSide.Attacker, 0)
@@ -838,7 +2151,7 @@ namespace Rebellion.Tests.Gameplay
                 Heading = -Vector3.UnitZ,
                 DesiredHeading = -Vector3.UnitZ,
             };
-            return CreateEncounter(first, second, definition, player);
+            return CreateEncounter(first, second, definition, player, personnelHostInstanceIDs);
         }
 
         /// <summary>
@@ -848,12 +2161,14 @@ namespace Rebellion.Tests.Gameplay
         /// <param name="second">The defending captured unit.</param>
         /// <param name="definition">The optional authored notification bank.</param>
         /// <param name="player">The player-controlled side.</param>
+        /// <param name="personnelHostInstanceIDs">The captured host identity for each available embarked officer.</param>
         /// <returns>The isolated tactical encounter.</returns>
         private static TacticalCombatSession CreateEncounter(
             TacticalCombatUnit first,
             TacticalCombatUnit second,
             TacticalCombatDefinition definition,
-            CombatSide player
+            CombatSide player,
+            IReadOnlyList<string> personnelHostInstanceIDs = null
         )
         {
             TacticalCombatGroup firstGroup = new(1, new[] { first }, Vector3.UnitZ);
@@ -893,15 +2208,25 @@ namespace Rebellion.Tests.Gameplay
                 100,
                 new SystemRandomProvider(42),
                 definition,
-                presentationClock: () => 0
+                presentationClock: () => 0,
+                personnelHostInstanceIDs: personnelHostInstanceIDs
             );
         }
 
         /// <summary>
         /// Creates ordered friendly capital and fighter members with an unarmed opposing group.
         /// </summary>
+        /// <param name="definition">The optional shared notification bank.</param>
+        /// <param name="fighterHyperdrive">Whether the deployed fighter can leave independently.</param>
+        /// <param name="fighterCategory">The deployed fighter's initial retained category.</param>
+        /// <param name="player">The faction side controlled by the player.</param>
         /// <returns>The encounter used to observe membership command transitions.</returns>
-        private static TacticalCombatSession CreateMembershipSession()
+        private static TacticalCombatSession CreateMembershipSession(
+            TacticalCombatDefinition definition = null,
+            bool fighterHyperdrive = false,
+            int fighterCategory = 4,
+            CombatSide player = CombatSide.Attacker
+        )
         {
             TacticalCombatUnit first = new(CreateShip("first", 100, 0), CombatSide.Attacker, 8);
             TacticalCombatUnit second = new(CreateShip("second", 100, 0), CombatSide.Attacker, 2);
@@ -909,6 +2234,7 @@ namespace Rebellion.Tests.Gameplay
                 new Starfighter
                 {
                     InstanceID = "fighter",
+                    Hyperdrive = fighterHyperdrive ? 1 : 0,
                     MaxSquadronSize = 12,
                     CurrentSquadronSize = 12,
                 },
@@ -926,14 +2252,18 @@ namespace Rebellion.Tests.Gameplay
                 {
                     new TacticalCombatGroup(10, new[] { first }, Vector3.UnitZ),
                     new TacticalCombatGroup(11, new[] { second }, Vector3.UnitZ),
-                    new TacticalCombatGroup(12, new[] { fighter }, Vector3.UnitZ),
+                    new TacticalCombatGroup(12, new[] { fighter }, Vector3.UnitZ)
+                    {
+                        FighterCategory = fighterCategory,
+                    },
                     new TacticalCombatGroup(1000010, new[] { enemy }, -Vector3.UnitZ),
                 },
-                CreateSide(CombatSide.Attacker, 0, Vector3.UnitZ),
-                CreateSide(CombatSide.Defender, 1, -Vector3.UnitZ),
-                CombatSide.Attacker,
+                CreateSide(CombatSide.Attacker, 0, Vector3.UnitZ, hasWithdrawalDestination: true),
+                CreateSide(CombatSide.Defender, 1, -Vector3.UnitZ, hasWithdrawalDestination: true),
+                player,
                 100,
-                new SystemRandomProvider(42)
+                new SystemRandomProvider(42),
+                definition
             );
         }
 
@@ -949,11 +2279,43 @@ namespace Rebellion.Tests.Gameplay
         }
 
         /// <summary>
+        /// Selects a repeatable offset within every requested random interval.
+        /// </summary>
+        private sealed class FixedRandom : IRandomNumberProvider
+        {
+            private readonly int _offset;
+
+            /// <summary>
+            /// Captures the deterministic interval offset.
+            /// </summary>
+            /// <param name="offset">The nonnegative offset reduced to the requested interval.</param>
+            public FixedRandom(int offset) => _offset = offset;
+
+            /// <summary>
+            /// Supplies a deterministic fractional draw when requested.
+            /// </summary>
+            /// <returns>The fixed fractional value zero.</returns>
+            public double NextDouble() => 0;
+
+            /// <summary>
+            /// Selects the fixed offset within the requested half-open interval.
+            /// </summary>
+            /// <param name="min">The inclusive lower bound.</param>
+            /// <param name="max">The exclusive upper bound.</param>
+            /// <returns>The selected value within the requested interval.</returns>
+            public int NextInt(int min, int max) => min + _offset % (max - min);
+        }
+
+        /// <summary>
         /// Creates a registered station attack with one surviving fighter squadron.
         /// </summary>
         /// <param name="reserveFighter">Whether to deploy another eligible squadron in a separate group.</param>
+        /// <param name="player">The faction side controlled by the player.</param>
         /// <returns>The battle after its attack run has entered the two-minute sequence.</returns>
-        private static TacticalCombatSession CreateAttackSession(bool reserveFighter = false)
+        private static TacticalCombatSession CreateAttackSession(
+            bool reserveFighter = false,
+            CombatSide player = CombatSide.Attacker
+        )
         {
             TacticalCombatUnit fighter = new(
                 new Starfighter
@@ -1004,7 +2366,7 @@ namespace Rebellion.Tests.Gameplay
                 groups,
                 CreateSide(CombatSide.Attacker, 0, Vector3.UnitZ),
                 CreateSide(CombatSide.Defender, 1, -Vector3.UnitZ),
-                CombatSide.Attacker,
+                player,
                 100,
                 new SystemRandomProvider(42),
                 new TacticalCombatDefinition
@@ -1022,19 +2384,25 @@ namespace Rebellion.Tests.Gameplay
         }
 
         /// <summary>
-        /// Captures an unautomated side without command officers or retreat destinations.
+        /// Captures an unautomated side without command officers and with an explicit retreat-route choice.
         /// </summary>
         /// <param name="side">The deployment side.</param>
         /// <param name="faction">The authored faction index.</param>
         /// <param name="forward">The deployment heading.</param>
+        /// <param name="hasWithdrawalDestination">Whether the fixture captures a legal withdrawal route.</param>
         /// <returns>The side's command state.</returns>
-        private static TacticalCombatSide CreateSide(CombatSide side, int faction, Vector3 forward)
+        private static TacticalCombatSide CreateSide(
+            CombatSide side,
+            int faction,
+            Vector3 forward,
+            bool hasWithdrawalDestination = false
+        )
         {
             return new TacticalCombatSide(
                 side,
                 faction,
                 forward,
-                false,
+                hasWithdrawalDestination,
                 0,
                 0,
                 null,

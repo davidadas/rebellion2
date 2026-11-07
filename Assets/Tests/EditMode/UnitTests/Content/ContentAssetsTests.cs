@@ -67,6 +67,54 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void GetReadableTexture_ExistingAddress_RetainsPixelsAndCachesIndependently()
+        {
+            using ContentAssets assets = CreateAssets();
+            Texture2D rendered = assets.GetTexture(_textureAddress);
+
+            Texture2D first = assets.GetReadableTexture(_textureAddress);
+            Texture2D second = assets.GetReadableTexture(_textureAddress);
+
+            Assert.IsTrue(first.isReadable);
+            Assert.IsFalse(rendered.isReadable);
+            Assert.AreSame(first, second);
+            Assert.AreNotSame(rendered, first);
+            Assert.DoesNotThrow(() => first.GetPixel(0, 0));
+        }
+
+        [Test]
+        public void GetReadableTexture_RgbImageThenCursor_PreservesSharedTextureOwnership()
+        {
+            const string address = "Application/Textures/rgb-mask";
+            Texture2D source = new(1, 1, TextureFormat.RGB24, false);
+            source.SetPixel(0, 0, Color.red);
+            source.Apply();
+            File.WriteAllBytes(
+                Path.Combine(_contentRoot, "Application", "Textures", "rgb-mask.png"),
+                source.EncodeToPNG()
+            );
+            UnityEngine.Object.DestroyImmediate(source);
+            using ContentAssets assets = CreateAssets();
+            Texture2D first = assets.GetReadableTexture(address);
+
+            Texture2D cursor = assets.GetCursor(address);
+
+            Assert.AreSame(first, cursor);
+            Assert.IsTrue(first != null);
+            Assert.AreEqual(TextureFormat.RGBA32, first.format);
+            Assert.AreEqual(Color.red, first.GetPixel(0, 0));
+            Assert.AreSame(first, assets.GetReadableTexture(address));
+        }
+
+        [Test]
+        public void GetReadableTexture_MissingAddress_ReturnsNull()
+        {
+            using ContentAssets assets = CreateAssets();
+
+            Assert.IsNull(assets.GetReadableTexture("Application/Textures/missing"));
+        }
+
+        [Test]
         public void GetTextureContentBounds_TransparentCanvas_ReturnsVisiblePixelBounds()
         {
             const string address = "Application/Textures/trimmed";

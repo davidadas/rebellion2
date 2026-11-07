@@ -80,6 +80,17 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void GetHeadingAngle_UnorderedDotProduct_UsesLowerDotLimit()
+        {
+            float angle = TacticalCombatGeometry.GetHeadingAngle(
+                Vector3.UnitX,
+                new Vector3(float.NaN, 0, 0)
+            );
+
+            Assert.AreEqual((float)System.Math.PI, angle);
+        }
+
+        [Test]
         public void GetHeadingAngle_StoredNormalizedComponents_PreservesTheirRoundedDotProduct()
         {
             Vector3 heading = new(0.57735026f, 0.57735026f, 0.57735026f);

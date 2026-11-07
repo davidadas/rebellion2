@@ -33,6 +33,19 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(heading, group.GetMemberHeading(fighter));
         }
 
+        [Test]
+        public void GetAttackRate_ZeroHullActiveFighter_UpdatesItsRechargeSample()
+        {
+            TacticalCombatUnit fighter = CreateFighter("fighter", CombatSide.Attacker);
+            TacticalCombatUnit target = CreateFighter("target", CombatSide.Defender);
+            fighter.Systems.Destroy();
+            TacticalCombatGroup group = new(10, new[] { fighter }, Vector3.UnitZ);
+
+            group.GetAttackRate(target);
+
+            Assert.AreEqual(0, fighter.Systems.GetWeaponRechargeRatio());
+        }
+
         /// <summary>
         /// Captures an active fighter squadron for group heading behavior.
         /// </summary>

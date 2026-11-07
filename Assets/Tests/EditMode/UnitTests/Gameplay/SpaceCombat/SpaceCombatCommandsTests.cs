@@ -3961,11 +3961,314 @@ namespace Rebellion.Tests.Gameplay
             };
             Assert.AreEqual(expected.Length, groups.Length);
             for (int index = 0; index < expected.Length; index++)
+            {
+                Assert.AreEqual(index, groups[index].FighterCategory);
                 CollectionAssert.AreEqual(
                     expected[index],
                     groups[index].Members.Select(unit => unit.InstanceID),
                     $"Fighter bucket {index}"
                 );
+            }
+        }
+
+        [Test]
+        public void BeginTacticalCombat_MultiplePopulatedFighterBuckets_RegistersExistingCategoriesBeforeSplits()
+        {
+            (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
+                CreateTacticalEncounter();
+            Planet planet = attacker.GetParentOfType<Planet>();
+            for (int index = 1; index <= 8; index++)
+                CreateDeploymentFighter(
+                    game,
+                    planet,
+                    attacker.OwnerInstanceID,
+                    $"first-{index}",
+                    "SFEM01"
+                );
+            CreateDeploymentFighter(game, planet, attacker.OwnerInstanceID, "third", "SFEM02");
+
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+
+            TacticalCombatGroup[] groups = battle
+                .Groups.Where(group => group.Side == battle.PlayerSide && group.IsFighterGroup)
+                .OrderBy(group => group.ID)
+                .ToArray();
+            CollectionAssert.AreEqual(
+                new[] { 0, 2, 1 },
+                groups.Select(group => group.FighterCategory)
+            );
+            CollectionAssert.AreEqual(
+                new[] { 1_000_011, 1_000_012, 1_000_013, 1_000_014 },
+                battle
+                    .Groups.Where(group => group.Side == battle.PlayerSide)
+                    .Select(group => group.ID)
+            );
+            CollectionAssert.AreEqual(
+                new[] { "first-5", "first-6", "first-7", "first-8" },
+                groups[0].Members.Select(unit => unit.InstanceID)
+            );
+            CollectionAssert.AreEqual(
+                new[] { "third" },
+                groups[1].Members.Select(unit => unit.InstanceID)
+            );
+            CollectionAssert.AreEqual(
+                new[] { "first-1", "first-2", "first-3", "first-4" },
+                groups[2].Members.Select(unit => unit.InstanceID)
+            );
+            Assert.AreEqual("first-5", groups[0].PrimaryMember.InstanceID);
+            Assert.AreEqual(0, groups[0].Formation.Position.X);
+        }
+
+        [Test]
+        public void BeginTacticalCombat_SixteenMatchingCapitals_PartitionsCommandGroupsAtThreeLeaderPlanes()
+        {
+            (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
+                CreateTacticalEncounter();
+            Fleet extra = CreateFleet(
+                game,
+                "deployment",
+                attacker.OwnerInstanceID,
+                attacker.GetParentOfType<Planet>(),
+                15,
+                1000,
+                0
+            );
+            CapitalShip[] ships = new[] { attacker }
+                .Concat(extra.GetChildren<CapitalShip>())
+                .ToArray();
+            foreach (CapitalShip ship in ships)
+                ConfigureDeploymentCapital(ship, 0, 0, 10, 20);
+
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+
+            TacticalCombatGroup[] groups = battle
+                .Groups.Where(group => group.Side == battle.PlayerSide && !group.IsFighterGroup)
+                .OrderBy(group => group.ID)
+                .ToArray();
+            CollectionAssert.AreEqual(
+                new[] { 5, 5, 6 },
+                groups.Select(group => group.Members.Count)
+            );
+            CollectionAssert.AreEqual(
+                new[] { 1_000_017, 1_000_018, 1_000_019 },
+                groups.Select(group => group.ID)
+            );
+            CollectionAssert.AreEqual(
+                new[] { ships[0].InstanceID, ships[5].InstanceID, ships[10].InstanceID },
+                groups.Select(group => group.PrimaryMember.InstanceID)
+            );
+            CollectionAssert.AreEqual(
+                new float[] { 0, 8, -8 },
+                groups.Select(group => group.Formation.Position.Y)
+            );
+            CollectionAssert.AreEqual(
+                new float[] { 0, 12, -12, 24, -24 },
+                groups[0].Members.Select(unit => unit.Position.X)
+            );
+            foreach (TacticalCombatGroup group in groups)
+            foreach (TacticalCombatUnit member in group.Members)
+                Assert.AreEqual(group.Formation.Position.Y, member.Position.Y);
+        }
+
+        [Test]
+        public void BeginTacticalCombat_ThreeCapitalWeaponClasses_AllocatesEightContiguousCommandPlanes()
+        {
+            (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
+                CreateTacticalEncounter();
+            Fleet extra = CreateFleet(
+                game,
+                "deployment",
+                attacker.OwnerInstanceID,
+                attacker.GetParentOfType<Planet>(),
+                35,
+                1000,
+                0
+            );
+            CapitalShip[] ships = new[] { attacker }
+                .Concat(extra.GetChildren<CapitalShip>())
+                .ToArray();
+            for (int index = 0; index < ships.Length; index++)
+                ConfigureDeploymentCapital(
+                    ships[index],
+                    index is >= 4 and < 20 ? 10 : 0,
+                    0,
+                    index < 4 ? 10 : 0,
+                    20
+                );
+
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+
+            TacticalCombatGroup[] groups = battle
+                .Groups.Where(group => group.Side == battle.PlayerSide && !group.IsFighterGroup)
+                .OrderBy(group => group.ID)
+                .ToArray();
+            CollectionAssert.AreEqual(
+                new[] { 2, 2, 4, 4, 4, 4, 8, 8 },
+                groups.Select(group => group.Members.Count)
+            );
+            CollectionAssert.AreEqual(
+                new float[] { 0, 8, -8, 16, -16, 24, -24, 32 },
+                groups.Select(group => group.Formation.Position.Y)
+            );
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    ships[0].InstanceID,
+                    ships[2].InstanceID,
+                    ships[4].InstanceID,
+                    ships[8].InstanceID,
+                    ships[12].InstanceID,
+                    ships[16].InstanceID,
+                    ships[20].InstanceID,
+                    ships[28].InstanceID,
+                },
+                groups.Select(group => group.PrimaryMember.InstanceID)
+            );
+        }
+
+        [Test]
+        public void BeginTacticalCombat_DamagedLongRangeCapital_KeepsScoredLeaderSeparateFromRegistryFirstMember()
+        {
+            (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
+                CreateTacticalEncounter();
+            Fleet extra = CreateFleet(
+                game,
+                "deployment",
+                attacker.OwnerInstanceID,
+                attacker.GetParentOfType<Planet>(),
+                3,
+                1000,
+                0
+            );
+            CapitalShip[] ships = new[] { attacker }
+                .Concat(extra.GetChildren<CapitalShip>())
+                .ToArray();
+            foreach (CapitalShip ship in ships)
+                ConfigureDeploymentCapital(ship, 0, 0, 10, 10);
+            ships[1].PrimaryWeapons[PrimaryWeaponType.Turbolaser][
+                CapitalShip.PrimaryWeaponRangeIndex
+            ] = 20;
+            ships[1].SystemDamage.Weapons = 4;
+            ships[0].SublightSpeed = 8;
+            ships[2].SublightSpeed = 8;
+
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+
+            TacticalCombatGroup[] groups = battle
+                .Groups.Where(group => group.Side == battle.PlayerSide && !group.IsFighterGroup)
+                .OrderBy(group => group.ID)
+                .ToArray();
+            CollectionAssert.AreEqual(
+                new[] { ships[0].InstanceID, ships[1].InstanceID },
+                groups[0].Members.Select(unit => unit.InstanceID)
+            );
+            Assert.AreEqual(ships[1].InstanceID, groups[0].PrimaryMember.InstanceID);
+            CollectionAssert.AreEqual(
+                new[] { ships[2].InstanceID, ships[3].InstanceID },
+                groups[1].Members.Select(unit => unit.InstanceID)
+            );
+            Assert.AreEqual(12, groups[0].Members[0].Position.X);
+            Assert.AreEqual(0, groups[0].PrimaryMember.Position.X);
+        }
+
+        [Test]
+        public void BeginTacticalCombat_EmbarkedAdmiral_SeedsSupportedCommandBudgetBeforeUpdates()
+        {
+            (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
+                CreateTacticalEncounter();
+            Officer admiral = new()
+            {
+                InstanceID = "deployment-admiral",
+                OwnerInstanceID = attacker.OwnerInstanceID,
+                CurrentRank = OfficerRank.Admiral,
+            };
+            admiral.SetBaseRating(SkillRating.Leadership, 50);
+            game.AttachNode(admiral, attacker);
+
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+
+            TacticalCombatUnit unit = battle.Units.Single(candidate =>
+                candidate.InstanceID == attacker.InstanceID
+            );
+            Assert.AreEqual(4, unit.CommandBudget);
+            Assert.AreEqual(4, battle.GetSide(battle.PlayerSide).GetCommandBudget(false));
+        }
+
+        [Test]
+        public void BeginTacticalCombat_CapitalLost_ReportsEveryAvailableDirectOfficerIncludingInjuredAndCaptured()
+        {
+            (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
+                CreateTacticalEncounter();
+            Officer available = new()
+            {
+                InstanceID = "available-passenger",
+                OwnerInstanceID = attacker.OwnerInstanceID,
+            };
+            Officer injured = new()
+            {
+                InstanceID = "injured-passenger",
+                OwnerInstanceID = attacker.OwnerInstanceID,
+                InjuryPoints = 20,
+            };
+            Officer captured = new()
+            {
+                InstanceID = "captured-passenger",
+                OwnerInstanceID = attacker.OwnerInstanceID,
+                CaptorInstanceID = "FNALL1",
+            };
+            Officer inTransit = new()
+            {
+                InstanceID = "moving-passenger",
+                OwnerInstanceID = attacker.OwnerInstanceID,
+                Movement = new MovementState { TransitTicks = 5 },
+            };
+            Officer disabled = new()
+            {
+                InstanceID = "disabled-passenger",
+                OwnerInstanceID = attacker.OwnerInstanceID,
+                IsEnabled = false,
+            };
+            foreach (Officer officer in new[] { available, injured, captured, inTransit, disabled })
+                game.AttachNode(officer, attacker);
+            Planet origin = attacker.GetParentOfType<Planet>();
+            game.AttachNode(
+                new Officer
+                {
+                    InstanceID = "planet-passenger",
+                    OwnerInstanceID = origin.OwnerInstanceID,
+                },
+                origin
+            );
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+            TacticalCombatUnit victim = battle.GetUnit(attacker.InstanceID);
+            TacticalCombatUnit shooter = battle.Units.Single(unit =>
+                unit.Side != battle.PlayerSide
+            );
+            string personnelClip = battle
+                .Definition.Notifications.Single(message =>
+                    message.MessageID == 260
+                    && message.FactionInstanceID == attacker.OwnerInstanceID
+                )
+                .Variants.Single()
+                .Path;
+            int reports = 0;
+            battle.Audio.Playback = (clip, _) =>
+            {
+                if (clip.Path == personnelClip)
+                    reports++;
+                return null;
+            };
+
+            victim.Systems.ApplyHit(
+                TacticalWeaponType.Turbolaser,
+                2000,
+                1,
+                1,
+                new Rebellion.Util.Random.SystemRandomProvider(1),
+                shooter.InstanceID
+            );
+
+            Assert.AreEqual(3, reports);
         }
 
         [Test]
@@ -4336,6 +4639,70 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(fighter, planet);
             TacticalCombatSession battle = commands.BeginTacticalCombat();
             Assert.AreEqual(expected, battle.GetSide(battle.PlayerSide).RetreatStrengthRatio);
+        }
+
+        /// <summary>
+        /// Configures a runtime capital ship for an authored tactical deployment.
+        /// </summary>
+        /// <param name="ship">The runtime ship to configure.</param>
+        /// <param name="laser">The forward laser count.</param>
+        /// <param name="ion">The forward ion count.</param>
+        /// <param name="turbolaser">The forward turbolaser count.</param>
+        /// <param name="range">The range assigned to each weapon type.</param>
+        private static void ConfigureDeploymentCapital(
+            CapitalShip ship,
+            int laser,
+            int ion,
+            int turbolaser,
+            int range
+        )
+        {
+            ship.TypeID = "CSEM006";
+            ship.SublightSpeed = 4;
+            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { laser, 0, 0, 0, range };
+            ship.PrimaryWeapons[PrimaryWeaponType.IonCannon] = new[] { ion, 0, 0, 0, range };
+            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[]
+            {
+                turbolaser,
+                0,
+                0,
+                0,
+                range,
+            };
+        }
+
+        /// <summary>
+        /// Adds a runtime fighter squadron without changing the shared content catalog.
+        /// </summary>
+        /// <param name="game">The active campaign.</param>
+        /// <param name="planet">The squadron's location.</param>
+        /// <param name="ownerID">The squadron's owner.</param>
+        /// <param name="instanceID">The squadron identifier.</param>
+        /// <param name="typeID">The authored fighter type.</param>
+        private static void CreateDeploymentFighter(
+            GameRoot game,
+            Planet planet,
+            string ownerID,
+            string instanceID,
+            string typeID
+        )
+        {
+            game.AttachNode(
+                new Starfighter
+                {
+                    InstanceID = instanceID,
+                    TypeID = typeID,
+                    OwnerInstanceID = ownerID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                    SublightSpeed = 9,
+                    Agility = 5,
+                    LaserCannon = 5,
+                    LaserRange = 12,
+                },
+                planet
+            );
         }
 
         /// <summary>

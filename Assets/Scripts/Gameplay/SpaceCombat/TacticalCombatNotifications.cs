@@ -177,6 +177,17 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Reports whether an owned active record remains started after its latest playback refresh.
+        /// </summary>
+        /// <param name="queueID">The active queue identity held by a playback consumer.</param>
+        /// <returns>Whether the active record exists and retains its started state.</returns>
+        public bool IsActive(uint queueID)
+        {
+            ThrowIfDisposed();
+            return Find(_active, queueID)?.Value.Started == true;
+        }
+
+        /// <summary>
         /// Stops and removes an active queue handle; pending handles are unaffected.
         /// </summary>
         /// <param name="queueID">The active playback to stop.</param>

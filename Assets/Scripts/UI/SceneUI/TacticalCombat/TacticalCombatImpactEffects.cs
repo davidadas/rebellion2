@@ -54,30 +54,31 @@ internal sealed class TacticalCombatImpactEffects : IDisposable
     /// <summary>
     /// Requests the effect associated with the weapon and the surface reached by its applied impact.
     /// </summary>
-    /// <param name="shot">The applied discharge.</param>
+    /// <param name="unit">The impacted encounter participant.</param>
+    /// <param name="weapon">The impacting weapon.</param>
     /// <param name="impact">The surface reached by the simulation's damage calculation.</param>
-    public void ShowImpact(TacticalCombatShot shot, TacticalCombatImpactKind impact)
+    public void ShowImpact(
+        TacticalCombatUnit unit,
+        TacticalWeaponType weapon,
+        TacticalCombatImpactKind impact
+    )
     {
-        if (
-            shot.Target.IsFighter
-            || shot.Target.IsBattleStation
-            || impact == TacticalCombatImpactKind.None
-        )
+        if (unit.IsFighter || unit.IsBattleStation || impact == TacticalCombatImpactKind.None)
             return;
         (TacticalCombatEffectKind Kind, int Priority) effect = impact switch
         {
             TacticalCombatImpactKind.Destroyed => (TacticalCombatEffectKind.Destruction, 128),
-            TacticalCombatImpactKind.Shield => shot.Weapon == TacticalWeaponType.IonCannon
+            TacticalCombatImpactKind.Shield => weapon == TacticalWeaponType.IonCannon
                 ? (TacticalCombatEffectKind.IonShieldHit, 4)
                 : (TacticalCombatEffectKind.ShieldHit, 8),
-            _ => shot.Weapon switch
+            _ => weapon switch
             {
                 TacticalWeaponType.IonCannon => (TacticalCombatEffectKind.IonHullHit, 16),
                 TacticalWeaponType.Torpedo => (TacticalCombatEffectKind.TorpedoHullHit, 64),
                 _ => (TacticalCombatEffectKind.HullHit, 32),
             },
         };
-        Show(shot.Target, effect.Kind, effect.Priority);
+        Show(unit, effect.Kind, effect.Priority);
     }
 
     /// <summary>

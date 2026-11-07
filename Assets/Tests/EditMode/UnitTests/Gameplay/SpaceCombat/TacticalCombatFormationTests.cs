@@ -12,6 +12,26 @@ namespace Rebellion.Tests.Gameplay
     {
         [TestCase(TacticalCombatFormationKind.Line)]
         [TestCase(TacticalCombatFormationKind.Surround)]
+        public void GetMemberMovement_VerticalDeltaRoundsToThreshold_RetainsLiveDistance(
+            TacticalCombatFormationKind kind
+        )
+        {
+            TacticalCombatUnit unit = CreateUnit();
+            unit.Position = new Vector3(0, 1, 0);
+            TacticalCombatFormation formation = new(kind, new[] { unit }, Vector3.UnitZ);
+            unit.Position = new Vector3(
+                0,
+                -1f / 33554432,
+                kind == TacticalCombatFormationKind.Surround ? -12.5f : 0
+            );
+
+            Vector3 movement = formation.GetMemberMovement(unit);
+
+            Assert.AreEqual(Vector3.UnitY, movement);
+        }
+
+        [TestCase(TacticalCombatFormationKind.Line)]
+        [TestCase(TacticalCombatFormationKind.Surround)]
         public void MoveTowards_ThreeDimensionalDirection_UsesStoredScale(
             TacticalCombatFormationKind kind
         )

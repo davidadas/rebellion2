@@ -7,6 +7,54 @@ namespace Rebellion.Tests.Gameplay
     public sealed class TacticalCombatWeaponsTests
     {
         [Test]
+        public void GetOpportunityDamage_ThreeLasers_RetainsLiveScoreBeforeTargetComparison()
+        {
+            TacticalCombatWeapons weapons = new(
+                new int[,]
+                {
+                    { 3, 0, 0 },
+                    { 0, 0, 0 },
+                    { 0, 0, 0 },
+                    { 0, 0, 0 },
+                },
+                new float[] { 100, 0, 0 },
+                0
+            );
+
+            double damage = weapons.GetOpportunityDamage(
+                TacticalWeaponArc.Forward,
+                TacticalWeaponType.LaserCannon
+            );
+
+            Assert.AreEqual(0x3fe99999b0000000L, System.BitConverter.DoubleToInt64Bits(damage));
+        }
+
+        [Test]
+        public void Advance_LiveFighterRecharge_StoresAfterAddingExistingCharge()
+        {
+            TacticalCombatWeapons weapons = new(
+                new int[,]
+                {
+                    { 10, 2, 0 },
+                    { 0, 0, 0 },
+                    { 0, 0, 0 },
+                    { 0, 0, 0 },
+                },
+                new float[] { 10, 10, 0 },
+                0
+            );
+            TacticalCombatSystems systems = new(true, 96, 5, 0, 0, 0, 0, 0, 0, 1, 0);
+            weapons.Discharge(TacticalWeaponArc.Forward, TacticalWeaponType.LaserCannon);
+
+            weapons.Advance(1, systems.GetWeaponRecharge());
+
+            Assert.AreEqual(
+                0x408b051f,
+                System.BitConverter.SingleToInt32Bits(weapons.GetCharge(TacticalWeaponArc.Forward))
+            );
+        }
+
+        [Test]
         public void Constructor_ArmedBattery_StartsCharged()
         {
             TacticalCombatWeapons weapons = CreateWeapons();

@@ -23,14 +23,31 @@ namespace Rebellion.Gameplay
         private readonly Dictionary<string, TacticalCombatUnit> _unitsByID = new(
             StringComparer.Ordinal
         );
+        private readonly Dictionary<string, int> _personnelHostCounts = new(StringComparer.Ordinal);
         private readonly Dictionary<string, TacticalCombatCarrier> _carriers = new(
             StringComparer.Ordinal
         );
         private readonly Dictionary<TacticalCombatUnit, Recovery> _recoveries = new();
         private readonly HashSet<TacticalCombatUnit> _tractorCommandsPending = new();
-        private HashSet<TacticalCombatUnit> _tractorTargets = new();
-        private HashSet<TacticalCombatUnit> _nextTractorTargets = new();
+        private readonly Dictionary<
+            TacticalCombatUnit,
+            SortedDictionary<uint, TacticalCombatUnit>
+        > _tractorSources = new();
+        private readonly List<WithdrawalMember> _orderedWithdrawalMembers = new();
+        private readonly Dictionary<int, TacticalCombatUnit> _withdrawalUnitsByIndex = new();
+        private readonly Action<int> _requestUnreadyScuttle;
+        private readonly List<ITacticalCombatWithdrawalMember>[] _withdrawalCapitals =
+        {
+            new(),
+            new(),
+        };
+        private readonly List<ITacticalCombatWithdrawalMember>[] _withdrawalFighters =
+        {
+            new(),
+            new(),
+        };
         private readonly HashSet<TacticalCombatUnit> _departed = new();
+        private readonly List<TacticalCombatUnit> _initiallyDockedFighters = new();
         private readonly SortedDictionary<int, Queue<Command>> _commands = new();
         private readonly TacticalCombatSpatialIndex _spatial;
         private readonly TacticalCombatFireControl _fireControl = new();
@@ -46,20 +63,27 @@ namespace Rebellion.Gameplay
         private int _progress;
         private int _phase;
         private float _elapsedInTick;
-        private float _completionMilliseconds;
+        private readonly TacticalCombatDirector _director;
+        private readonly TacticalCombatEnding _ending;
         private bool _completionStarted;
         private bool _userPaused;
+        private bool _directCommandsSuspended;
         private int _moviePauses;
         private readonly SpaceCombatSideOutcome[] _outcomes = new SpaceCombatSideOutcome[2];
 
         public IReadOnlyList<TacticalCombatUnit> Units { get; }
         public IReadOnlyList<TacticalCombatGroup> Groups { get; }
+        internal IReadOnlyList<TacticalCombatUnit> InitiallyDockedFighters =>
+            _initiallyDockedFighters;
+        internal bool CanStartBattleStationAttack => CaptureDirectorState().CanAttackBattleStation;
         public CombatSide PlayerSide { get; }
         public float BattleDepth { get; }
         public TacticalCombatNavigation Navigation { get; }
         public TacticalCombatAudio Audio { get; }
+        public TacticalCombatSelection Selection { get; }
         public int SystemTime { get; private set; } = 3;
         public bool IsComplete { get; private set; }
+        public IReadOnlyList<bool> TerminalFlags => _ending.Flags;
         public CombatSide Winner { get; private set; } = CombatSide.Draw;
         public bool IsPaused
         {
@@ -73,7 +97,20 @@ namespace Rebellion.Gameplay
         public Rebellion.Game.SpaceCombat.TacticalCombatEnvironmentDefinition Environment { get; }
         public TacticalCombatAttackRun ActiveAttackRun { get; private set; }
         public event Action<TacticalCombatShot> ShotFired;
-        public event Action<TacticalCombatShot, TacticalCombatImpactKind> ShotApplied;
+
+        /// <summary>
+        /// Projects a stored weapon impact at its effect boundary within damage processing.
+        /// </summary>
+        public event Action<
+            TacticalCombatUnit,
+            TacticalWeaponType,
+            TacticalCombatImpactKind
+        > ImpactApplied;
+
+        /// <summary>
+        /// Requests an admitted direct destruction effect before deactivating its participant.
+        /// </summary>
+        public event Action<TacticalCombatUnit> DestructionEffectRequested;
         public event Action<TacticalCombatUnit> UnitDestroyed;
         public event Action<TacticalCombatUnit> UnitWithdrawn;
         public event Action<TacticalCombatUnit, TacticalSystemEvent> SystemChanged;
@@ -81,7 +118,8 @@ namespace Rebellion.Gameplay
         public event Action<TacticalCombatGroup> RecoveryUnavailable;
         public event Action Completed;
         public event Action GroupCategoryChanged;
-        public bool IsDirectControlEnabled => !GetSide(PlayerSide).IsAutomated;
+        public bool IsDirectControlEnabled =>
+            !_directCommandsSuspended && !GetSide(PlayerSide).IsAutomated;
         public event Action<TacticalCombatUnit, TacticalCombatUnit> SuperlaserFired;
         public event Action<TacticalCombatAttackRun> AttackRunChanged;
         public event Action<TacticalCombatMovieRequest> AttackRunMovieRequested;
@@ -100,6 +138,7 @@ namespace Rebellion.Gameplay
         /// <param name="environment">The planet-specific tactical scenery and texture palette.</param>
         /// <param name="sceneryRandom">The encounter-owned scenery stream, when presentation is available.</param>
         /// <param name="presentationClock">An optional unscaled millisecond clock for encounter replay.</param>
+        /// <param name="personnelHostInstanceIDs">The captured host identity for each available embarked officer.</param>
         public TacticalCombatSession(
             IReadOnlyList<TacticalCombatUnit> units,
             IReadOnlyList<TacticalCombatGroup> groups,
@@ -111,12 +150,14 @@ namespace Rebellion.Gameplay
             Rebellion.Game.SpaceCombat.TacticalCombatDefinition definition = null,
             Rebellion.Game.SpaceCombat.TacticalCombatEnvironmentDefinition environment = null,
             TacticalCombatSceneryRandom sceneryRandom = null,
-            Func<uint> presentationClock = null
+            Func<uint> presentationClock = null,
+            IReadOnlyList<string> personnelHostInstanceIDs = null
         )
         {
             this._units = new(units ?? throw new ArgumentNullException(nameof(units)));
             this._groups = new(groups ?? throw new ArgumentNullException(nameof(groups)));
             this._random = random ?? throw new ArgumentNullException(nameof(random));
+            _requestUnreadyScuttle = RequestUnreadyScuttle;
             _sides = new[]
             {
                 attacker ?? throw new ArgumentNullException(nameof(attacker)),
@@ -145,9 +186,20 @@ namespace Rebellion.Gameplay
             );
             Units = this._units.AsReadOnly();
             Groups = this._groups.AsReadOnly();
+            if (personnelHostInstanceIDs != null)
+                foreach (string hostID in personnelHostInstanceIDs)
+                {
+                    _personnelHostCounts.TryGetValue(hostID, out int count);
+                    _personnelHostCounts[hostID] = count + 1;
+                }
             foreach (TacticalCombatUnit unit in this._units)
             {
                 _unitsByID.Add(unit.InstanceID, unit);
+                if (!unit.IsBattleStation)
+                {
+                    _orderedWithdrawalMembers.Add(new WithdrawalMember(this, unit));
+                    _withdrawalUnitsByIndex.Add(unit.Index, unit);
+                }
                 if (unit.IsBattleStation)
                 {
                     if (BattleStation != null)
@@ -176,6 +228,9 @@ namespace Rebellion.Gameplay
                 unit.TurnRate = unit.GetInitialTurnRate();
                 unit.Systems.SystemEventRequested += change => QueueSystemChange(unit, change);
                 unit.Systems.SoundRequested += Audio.Enqueue;
+                unit.Systems.LethalHit += attackerID => ReportDestruction(unit, attackerID);
+                unit.Systems.ImpactRequested += (weapon, impact) =>
+                    ImpactApplied?.Invoke(unit, weapon, impact);
                 if (!unit.IsFighter)
                 {
                     TacticalCombatCarrier carrier = new TacticalCombatCarrier(unit);
@@ -183,13 +238,18 @@ namespace Rebellion.Gameplay
                     _carriers.Add(unit.InstanceID, carrier);
                 }
             }
+            _orderedWithdrawalMembers.Sort(CompareWithdrawalMembers);
             foreach (TacticalCombatUnit unit in this._units)
                 if (
                     unit.Status == TacticalCombatUnitStatus.Docked
                     && unit.CarrierID != null
                     && _carriers.TryGetValue(unit.CarrierID, out TacticalCombatCarrier carrier)
                 )
+                {
                     carrier.AddDocked(unit);
+                    _initiallyDockedFighters.Add(unit);
+                }
+            _initiallyDockedFighters.Sort(CompareUnits);
             int[] objectCategories = new int[2];
             foreach (TacticalCombatGroup group in this._groups)
             {
@@ -214,6 +274,17 @@ namespace Rebellion.Gameplay
                 }
             _spatial = new TacticalCombatSpatialIndex(this._units);
             _automation = new TacticalCombatAI(this);
+            Selection = new TacticalCombatSelection(this);
+            _director = new TacticalCombatDirector(
+                GetSide(PlayerSide).FactionIndex,
+                messageID => Audio.EnqueueNotification(messageID)
+            );
+            _ending = new TacticalCombatEnding(
+                GetSide(PlayerSide).FactionIndex,
+                messageID => Audio.EnqueueNotification(messageID),
+                AssignSurvivors,
+                Complete
+            );
             _fireControl.ShotRequested += RequestShot;
             _fireControl.TractorTargetRequested += RequestTractorTarget;
         }
@@ -435,6 +506,17 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Removes category ownership now and queues deletion of the group's applied roster.
+        /// </summary>
+        /// <param name="group">The registered group being replaced.</param>
+        public void DeleteGroup(TacticalCombatGroup group)
+        {
+            ValidateGroup(group);
+            ClearGroupCategories(group);
+            QueueCommand(new Command(CommandKind.DeleteGroup, null, group: group));
+        }
+
+        /// <summary>
         /// Queues a designated target command for a registered group.
         /// </summary>
         /// <param name="group">The attacking group.</param>
@@ -469,26 +551,66 @@ namespace Rebellion.Gameplay
         /// <returns>Whether a legal route and at least one mobile hyperdrive unit remain.</returns>
         public bool CanWithdraw(CombatSide side)
         {
-            TacticalCombatSide state = GetSide(side);
-            if (!state.HasWithdrawalDestination || state.IsWithdrawing || _completionStarted)
+            if (side is not (CombatSide.Attacker or CombatSide.Defender))
                 return false;
-            bool mobile = false;
-            for (int index = 0; index < _units.Count; index++)
-            {
-                TacticalCombatUnit unit = _units[index];
-                if (unit.IsBattleStation && unit.Side == side && BattleStation.IsOperational)
-                    mobile = true;
-                if (!unit.IsTargetable)
-                    continue;
-                if (unit.Side != side && unit.HasGravityWell)
-                    return false;
+            TacticalCombatSide state = GetSide(side);
+            if (!state.HasWithdrawalDestination || state.IsWithdrawing)
+                return false;
+            foreach (WithdrawalMember member in _orderedWithdrawalMembers)
                 if (
-                    unit.Side == side
-                    && (unit.IsBattleStation || unit.Systems.HasHyperdrive && unit.GetSpeed() > 0)
+                    member.Unit.Side != side
+                    && !member.Unit.IsFighter
+                    && IsDisplayedMember(member.Unit)
+                    && member.Unit.HasGravityWell
                 )
-                    mobile = true;
-            }
-            return mobile;
+                    return false;
+            for (int pass = 0; pass < 2; pass++)
+                foreach (WithdrawalMember member in _orderedWithdrawalMembers)
+                    if (
+                        member.Unit.Side == side
+                        && member.Unit.IsFighter == (pass == 0)
+                        && IsDisplayedMember(member.Unit)
+                        && member.CheckWithdrawalReadiness()
+                    )
+                        return true;
+            return state.FactionIndex == 1
+                && BattleStation != null
+                && (BattleStation.IsOperational || !BattleStation.IsConstructionComplete);
+        }
+
+        /// <summary>
+        /// Checks player departure admission and announces the first unready capital before confirmation opens.
+        /// </summary>
+        /// <returns>Whether the player may open the withdrawal confirmation.</returns>
+        public bool PreparePlayerWithdrawal()
+        {
+            if (!CanWithdraw(PlayerSide))
+                return false;
+            foreach (WithdrawalMember member in _orderedWithdrawalMembers)
+                if (
+                    member.Unit.Side == PlayerSide
+                    && !member.Unit.IsFighter
+                    && IsDisplayedMember(member.Unit)
+                    && !member.CheckWithdrawalReadiness()
+                )
+                {
+                    Audio.EnqueueNotification(GetSide(PlayerSide).FactionIndex == 0 ? 149 : 270);
+                    break;
+                }
+            return true;
+        }
+
+        /// <summary>
+        /// Rechecks the confirmed player departure before queuing its semantic input command.
+        /// Dispatch rechecks current availability when the queued command is drained.
+        /// </summary>
+        /// <returns>Whether the withdrawal command was queued for the player.</returns>
+        public bool ConfirmPlayerWithdrawal()
+        {
+            if (!CanWithdraw(PlayerSide))
+                return false;
+            Selection.QueueWithdrawal();
+            return true;
         }
 
         /// <summary>
@@ -525,22 +647,23 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Selects an opposing unit for a charged station's delayed superlaser attack.
+        /// Queues the superlaser visual and delayed destruction for an admitted opposing target.
         /// </summary>
         /// <param name="target">The opposing tactical unit.</param>
-        /// <returns>Whether a superlaser attack was queued.</returns>
+        /// <returns>Whether the target resolves within this encounter.</returns>
         public bool FireSuperlaser(TacticalCombatUnit target)
         {
             if (
                 BattleStation == null
-                || target?.IsTargetable != true
+                || target == null
                 || target.Side == BattleStation.Unit.Side
-                || GetSide(BattleStation.Unit.Side).IsWithdrawing
-                || !BattleStation.TryFire()
+                || !_unitsByID.TryGetValue(target.InstanceID, out TacticalCombatUnit registered)
+                || !ReferenceEquals(target, registered)
             )
                 return false;
+            BattleStation.Fire();
             QueueCommand(new Command(CommandKind.Superlaser, BattleStation.Unit, target));
-            QueueCommand(new Command(CommandKind.Scuttle, target), 1);
+            QueueCommand(new Command(CommandKind.Destroy, target, BattleStation.Unit), 1);
             return true;
         }
 
@@ -553,25 +676,111 @@ namespace Rebellion.Gameplay
         {
             if (!CanWithdraw(side))
                 return false;
-            TacticalCombatSide state = GetSide(side);
-            state.IsWithdrawing = true;
-            bool station = false;
-            foreach (TacticalCombatUnit unit in _units)
-                station |= unit.Side == side && unit.IsBattleStation && BattleStation.IsOperational;
-            state.WithdrawalMilliseconds = Math.Max(
-                state.InitialWithdrawalMilliseconds,
-                station ? 150000 : 30000
-            );
-            foreach (TacticalCombatGroup group in _groups)
-                if (group.Side == side && group.Members.Count > 0)
-                    SetOrder(
-                        group,
-                        group.IsFighterGroup && !group.Members[0].Systems.HasHyperdrive
-                            ? TacticalCombatOrder.Recover
-                            : TacticalCombatOrder.Withdraw
-                    );
+            ApplyWithdrawal(side);
             return true;
         }
+
+        /// <summary>
+        /// Suspends direct player orders while preserving camera and inspection ownership.
+        /// </summary>
+        internal void SuspendDirectCommands() => _directCommandsSuspended = true;
+
+        /// <summary>
+        /// Applies a withdrawal admitted by the caller's current eligibility check.
+        /// </summary>
+        /// <param name="side">The side whose admitted departure is being applied.</param>
+        internal void ApplyWithdrawal(CombatSide side)
+        {
+            TacticalCombatSide state = GetSide(side);
+            state.Withdrawal = new TacticalCombatWithdrawal(
+                state.FactionIndex,
+                state.InitialWithdrawalMilliseconds,
+                Selection.ProcessStationDeparture,
+                () => QueueCommand(new Command(CommandKind.Withdraw, BattleStation.Unit))
+            );
+            if (side == PlayerSide)
+                Audio.EnqueueNotification(state.FactionIndex == 0 ? 143 : 269);
+            PrepareWithdrawalGroups(side);
+            state.Withdrawal.SelectInitialDelay(BattleStation?.IsOperational == true);
+        }
+
+        /// <summary>
+        /// Changes retained group labels before requesting a separate departure group for each deployed capital.
+        /// </summary>
+        /// <param name="side">The side whose admitted withdrawal is being prepared.</param>
+        private void PrepareWithdrawalGroups(CombatSide side)
+        {
+            List<TacticalCombatGroup> groups = new();
+            foreach (TacticalCombatGroup group in _groups)
+                if (group.Side == side)
+                    groups.Add(group);
+            groups.Sort(CompareGroupRegistration);
+            foreach (TacticalCombatGroup group in groups)
+            {
+                if (!group.IsFighterGroup)
+                {
+                    SetOrder(group, TacticalCombatOrder.Withdraw);
+                    continue;
+                }
+                if (side == PlayerSide)
+                    ClearGroupCategories(group);
+                if (group.Members.Count == 0)
+                    continue;
+                if (
+                    group.ActiveOrder == TacticalCombatOrder.AttackBattleStation
+                    && group.AttackRun != null
+                )
+                    RequestAttackRunState(group.AttackRun, TacticalCombatAttackRunState.Cancelled);
+                SetOrder(
+                    group,
+                    group.Members[0].Systems.HasHyperdrive
+                        ? TacticalCombatOrder.Withdraw
+                        : TacticalCombatOrder.Recover
+                );
+            }
+            foreach (WithdrawalMember member in _orderedWithdrawalMembers)
+            {
+                TacticalCombatUnit unit = member.Unit;
+                if (unit.Side != side || unit.IsFighter || !IsDisplayedMember(unit))
+                    continue;
+                TacticalCombatGroup applied = GetGroup(unit);
+                if (applied != null)
+                {
+                    if (applied.Side == PlayerSide && !HasUntrackedRequestedOwner(unit))
+                        ClearGroupCategories(applied);
+                    RemoveGroupMember(applied, unit);
+                }
+                TacticalCombatGroup departure = CreateGroup(new[] { unit });
+                SetOrder(departure, TacticalCombatOrder.Withdraw);
+            }
+        }
+
+        /// <summary>
+        /// Checks whether requested ownership lies outside the player's retained object categories.
+        /// </summary>
+        /// <param name="unit">The deployed capital whose secondary ownership is inspected.</param>
+        /// <returns>Whether a nonempty requested owner is not retained in an object category.</returns>
+        private bool HasUntrackedRequestedOwner(TacticalCombatUnit unit)
+        {
+            TacticalCombatGroup requested = GetRequestedGroup(unit);
+            if (requested == null)
+                return false;
+            for (int category = 0; category < 8; category++)
+                if (ReferenceEquals(_objectGroups[(int)PlayerSide, category], requested))
+                    return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Compares retained group labels by unsigned battle registration identity.
+        /// </summary>
+        /// <param name="first">The first retained group.</param>
+        /// <param name="second">The second retained group.</param>
+        /// <returns>The ordered comparison of their registration keys.</returns>
+        private static int CompareGroupRegistration(
+            TacticalCombatGroup first,
+            TacticalCombatGroup second
+        ) => unchecked((uint)first.ID).CompareTo(unchecked((uint)second.ID));
 
         /// <summary>
         /// Changes one group's behavior while releasing recovery reservations owned by its previous order.
@@ -585,6 +794,20 @@ namespace Rebellion.Gameplay
                 || !ReferenceEquals(existing, group)
             )
                 throw new ArgumentException("The group is outside this encounter.", nameof(group));
+            if (
+                group.Side != PlayerSide
+                && GetSide(group.Side).IsAutomated
+                && order != TacticalCombatOrder.None
+                && (
+                    group.Order
+                        is TacticalCombatOrder.Recover
+                            or TacticalCombatOrder.AttackBattleStation
+                    || group.ActiveOrder
+                        is TacticalCombatOrder.Recover
+                            or TacticalCombatOrder.AttackBattleStation
+                )
+            )
+                return;
             if (
                 order == TacticalCombatOrder.AttackBattleStation
                 && (!group.IsFighterGroup || !CanAttackBattleStation(group.Side))
@@ -641,6 +864,7 @@ namespace Rebellion.Gameplay
                 );
                 run.StateChangeRequested += RequestAttackRunState;
                 run.MovieRequested += RequestAttackRunMovie;
+                run.OrderRequested += SetOrder;
                 run.UnitDestroyed += Destroy;
                 run.UnitParticipationChanged += _spatial.Update;
                 group.AttackRun = run;
@@ -699,9 +923,10 @@ namespace Rebellion.Gameplay
         /// <param name="elapsedMilliseconds">The elapsed unpaused frame duration.</param>
         public void Advance(float elapsedMilliseconds)
         {
-            Audio.Update();
+            Selection.ProcessPendingCommands();
             if (IsComplete || elapsedMilliseconds <= 0)
                 return;
+            _director.Advance(elapsedMilliseconds, CaptureDirectorState());
             _elapsedInTick += elapsedMilliseconds;
             if (IsPaused)
                 return;
@@ -710,6 +935,11 @@ namespace Rebellion.Gameplay
                 _elapsedInTick %= 1000;
                 if (_phase != 5)
                     elapsedMilliseconds = 0;
+                else if (_completionStarted && _ending.AdvanceTerminalTick())
+                {
+                    Complete();
+                    return;
+                }
                 _progress++;
                 _phase = 0;
             }
@@ -723,12 +953,6 @@ namespace Rebellion.Gameplay
             {
                 if (!_completionStarted)
                     AdvanceSystems();
-                else
-                {
-                    _completionMilliseconds -= 1000;
-                    if (_completionMilliseconds <= 0)
-                        Complete();
-                }
                 SystemTime++;
                 _phase = 5;
             }
@@ -792,6 +1016,7 @@ namespace Rebellion.Gameplay
             {
                 group.AttackRun.StateChangeRequested -= RequestAttackRunState;
                 group.AttackRun.MovieRequested -= RequestAttackRunMovie;
+                group.AttackRun.OrderRequested -= SetOrder;
                 group.AttackRun.UnitDestroyed -= Destroy;
                 group.AttackRun.UnitParticipationChanged -= _spatial.Update;
             }
@@ -828,7 +1053,7 @@ namespace Rebellion.Gameplay
             );
 
         /// <summary>
-        /// Queues a formation change for a registered capital-ship group.
+        /// Queues a formation change for a registered command or fighter group.
         /// </summary>
         /// <param name="group">The group receiving the formation.</param>
         /// <param name="formation">The requested formation.</param>
@@ -841,11 +1066,6 @@ namespace Rebellion.Gameplay
             )
                 throw new ArgumentException(
                     "The group does not belong to this encounter.",
-                    nameof(group)
-                );
-            if (group.IsFighterGroup || formation == TacticalCombatFormationKind.Direct)
-                throw new ArgumentException(
-                    "A selectable formation requires a capital-ship group.",
                     nameof(group)
                 );
             group.RequestFormation(formation);
@@ -1029,15 +1249,12 @@ namespace Rebellion.Gameplay
         /// </summary>
         private void AdvanceSystems()
         {
-            BattleStation?.Advance(1000);
             TacticalCombatSide first = GetSide(PlayerSide);
             TacticalCombatSide second = GetSide(
                 PlayerSide == CombatSide.Attacker ? CombatSide.Defender : CombatSide.Attacker
             );
-            AdvanceWithdrawal(first);
-            _automation.Advance(first);
-            AdvanceWithdrawal(second);
-            _automation.Advance(second);
+            AdvanceSide(first);
+            AdvanceSide(second);
             foreach (TacticalCombatGroup group in _groups)
             {
                 group.Refresh(_units, SystemTime);
@@ -1063,6 +1280,22 @@ namespace Rebellion.Gameplay
                 if (group != null)
                     _fireControl.AcquireTargets(unit, group, _spatial, _random);
             }
+            UpdateTractorRestraint();
+        }
+
+        /// <summary>
+        /// Prepares candidates, advances the Empire station, and checks withdrawal members before side planning.
+        /// </summary>
+        /// <param name="side">The side occupying this whole-tick update slot.</param>
+        private void AdvanceSide(TacticalCombatSide side)
+        {
+            _automation.AssessStrength(side);
+            AdvanceWithdrawalCountdown(side);
+            _automation.PrepareCandidates(side);
+            if (side.FactionIndex == 1)
+                BattleStation?.Advance(1000);
+            AdvanceWithdrawalMembers(side);
+            _automation.Plan(side);
         }
 
         /// <summary>
@@ -1084,6 +1317,15 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Orders tactical object roots by unsigned registration identity.
+        /// </summary>
+        /// <param name="first">The first registered unit.</param>
+        /// <param name="second">The second registered unit.</param>
+        /// <returns>The unsigned registration comparison.</returns>
+        private static int CompareUnits(TacticalCombatUnit first, TacticalCombatUnit second) =>
+            unchecked((uint)first.Index).CompareTo(unchecked((uint)second.Index));
+
+        /// <summary>
         /// Resolves each newly activated maneuver once using the preceding frame's opposing center.
         /// </summary>
         private void AdvanceManeuvers()
@@ -1099,7 +1341,7 @@ namespace Rebellion.Gameplay
                 )
                     SetWaypoint(group, point);
                 else
-                    group.SetOrder(TacticalCombatOrder.None);
+                    SetOrder(group, TacticalCombatOrder.None);
             _pendingManeuvers.Clear();
         }
 
@@ -1174,46 +1416,105 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Counts down a departing side and scuttles units that cannot leave after its mobile units depart.
+        /// Counts down an admitted withdrawal before the side's candidate-maintenance phase.
         /// </summary>
         /// <param name="side">The withdrawing side.</param>
-        private void AdvanceWithdrawal(TacticalCombatSide side)
+        private void AdvanceWithdrawalCountdown(TacticalCombatSide side)
         {
-            if (!side.IsWithdrawing)
+            TacticalCombatWithdrawal withdrawal = side.Withdrawal;
+            if (withdrawal == null)
                 return;
-            side.WithdrawalMilliseconds -= 1000;
-            if (side.WithdrawalMilliseconds > 0 || side.UnreadyScuttleRequested)
-                return;
-            if (
-                !side.DepartureCountdownCompleted
-                && BattleStation != null
-                && BattleStation.Unit.Side == side.Side
-                && BattleStation.IsOperational
-            )
-                QueueCommand(new Command(CommandKind.Withdraw, BattleStation.Unit));
-            side.DepartureCountdownCompleted = true;
-            foreach (TacticalCombatUnit unit in _units)
-                if (
-                    unit.Side == side.Side
-                    && unit.Systems.HasHyperdrive
-                    && unit.GetSpeed() > 0
-                    && (
-                        unit.IsTargetable
-                        || unit.Status
-                            is TacticalCombatUnitStatus.EnteringHyperspace
-                                or TacticalCombatUnitStatus.AwaitingWithdrawal
-                    )
-                )
-                    return;
-            side.UnreadyScuttleRequested = true;
-            foreach (TacticalCombatUnit unit in _units)
-                if (
-                    unit.Side == side.Side
-                    && unit.IsTargetable
-                    && (!unit.Systems.HasHyperdrive || unit.GetSpeed() == 0)
-                )
-                    QueueCommand(new Command(CommandKind.Scuttle, unit));
+            withdrawal.AdvanceCountdown(
+                1000,
+                true,
+                BattleStation?.IsOperational == true,
+                side.Side == PlayerSide
+            );
         }
+
+        /// <summary>
+        /// Rechecks retained capital members before fighters after the side's candidate-maintenance phase.
+        /// </summary>
+        /// <param name="side">The withdrawing side whose departure phase is active.</param>
+        private void AdvanceWithdrawalMembers(TacticalCombatSide side)
+        {
+            TacticalCombatWithdrawal withdrawal = side.Withdrawal;
+            if (withdrawal?.Phase != TacticalCombatWithdrawalPhase.Departing)
+                return;
+            List<ITacticalCombatWithdrawalMember> capitals = _withdrawalCapitals[(int)side.Side];
+            List<ITacticalCombatWithdrawalMember> fighters = _withdrawalFighters[(int)side.Side];
+            capitals.Clear();
+            fighters.Clear();
+            foreach (WithdrawalMember member in _orderedWithdrawalMembers)
+                if (member.Unit.Side == side.Side && IsDisplayedMember(member.Unit))
+                    (member.Unit.IsFighter ? fighters : capitals).Add(member);
+            withdrawal.AdvanceMembers(capitals, fighters, _requestUnreadyScuttle);
+        }
+
+        /// <summary>
+        /// Queues one addressed retained member's scuttling command without traversing the roster.
+        /// </summary>
+        /// <param name="index">The member's tactical registration key.</param>
+        private void RequestUnreadyScuttle(int index) =>
+            QueueCommand(new Command(CommandKind.Scuttle, _withdrawalUnitsByIndex[index]));
+
+        /// <summary>
+        /// Checks the deployed capital or fighter chain's retained participation domain independently of hull.
+        /// </summary>
+        /// <param name="unit">The registered non-station participant.</param>
+        /// <returns>Whether the member remains in its side's deployed display chain.</returns>
+        private static bool IsDisplayedMember(TacticalCombatUnit unit) =>
+            unit.Status
+                is TacticalCombatUnitStatus.Active
+                    or TacticalCombatUnitStatus.PreparingHyperspace
+                    or TacticalCombatUnitStatus.EnteringHyperspace
+                    or TacticalCombatUnitStatus.AwaitingWithdrawal
+                    or TacticalCombatUnitStatus.AttackingBattleStation;
+
+        /// <summary>
+        /// Compares tactical member keys using their unsigned registration ordering.
+        /// </summary>
+        /// <param name="first">The first registered member.</param>
+        /// <param name="second">The second registered member.</param>
+        /// <returns>The comparison of their unsigned keys.</returns>
+        private static int CompareWithdrawalMembers(
+            WithdrawalMember first,
+            WithdrawalMember second
+        ) => unchecked((uint)first.Index).CompareTo(unchecked((uint)second.Index));
+
+        /// <summary>
+        /// Reads a participant's movement using current command support and retained beam sources.
+        /// </summary>
+        /// <param name="unit">The participant being inspected.</param>
+        /// <returns>The available movement before a single-precision speed store.</returns>
+        public double GetMovementBudget(TacticalCombatUnit unit) =>
+            unit.Systems.GetAvailableMovement(
+                GetSide(unit.Side).GetMovementSupport(unit.IsFighter),
+                GetTractorRestraint(unit)
+            );
+
+        /// <summary>
+        /// Reads a participant's live movement relative to its complete engine budget.
+        /// </summary>
+        /// <param name="unit">The participant being inspected.</param>
+        /// <returns>The available movement ratio using current command support and retained beams.</returns>
+        public double GetMovementRatio(TacticalCombatUnit unit) =>
+            unit.Systems.GetMovementRatio(
+                GetSide(unit.Side).GetMovementSupport(unit.IsFighter),
+                GetTractorRestraint(unit)
+            );
+
+        /// <summary>
+        /// Refreshes departure readiness from live command support and retained tractor contributors.
+        /// </summary>
+        /// <param name="unit">The participating capital ship or fighter.</param>
+        /// <returns>Whether its hyperdrive and movement budgets are ordered and nonzero.</returns>
+        private bool CheckWithdrawalReadiness(TacticalCombatUnit unit) =>
+            unit.Systems.HasHyperdrive
+            && unit.Systems.CanEnterHyperspace(
+                GetSide(unit.Side).GetMovementSupport(unit.IsFighter),
+                GetTractorRestraint(unit)
+            );
 
         /// <summary>
         /// Reserves carrier berths and queues recovery for squadrons within their hangar entrance.
@@ -1270,7 +1571,7 @@ namespace Rebellion.Gameplay
                         if (full && GetSide(group.Side).IsWithdrawing)
                             QueueCommand(new Command(CommandKind.Scuttle, fighter));
                         else if (full)
-                            group.SetOrder(TacticalCombatOrder.None);
+                            SetOrder(group, TacticalCombatOrder.None);
                         continue;
                     }
                     recovery = new Recovery(carrier);
@@ -1352,6 +1653,17 @@ namespace Rebellion.Gameplay
             TacticalCombatUnit target = command.Target;
             switch (command.Kind)
             {
+                case CommandKind.DeleteGroup:
+                    if (
+                        _groupsByID.TryGetValue(command.Group.ID, out TacticalCombatGroup deleted)
+                        && ReferenceEquals(deleted, command.Group)
+                    )
+                    {
+                        while (deleted.Members.Count != 0)
+                            deleted.RemoveMember(deleted.Members[0]);
+                        DeregisterGroup(deleted);
+                    }
+                    break;
                 case CommandKind.CreateGroup:
                 case CommandKind.AddGroupMember:
                 case CommandKind.RemoveGroupMember:
@@ -1436,30 +1748,29 @@ namespace Rebellion.Gameplay
                     }
                     break;
                 case CommandKind.Fire:
-                    if (source.IsTargetable && target.IsTargetable)
+                    if (IsActiveDisplayObject(source) && IsActiveDisplayObject(target))
                     {
                         Audio.Enqueue(GetFiringSound(command.Shot));
                         ShotFired?.Invoke(command.Shot);
                     }
                     break;
                 case CommandKind.Hit:
-                    if (target.IsTargetable)
+                    if (IsActiveDisplayObject(target))
                     {
                         TacticalCombatImpactKind impact = target.Systems.ApplyHit(
                             command.Shot.Weapon,
                             command.Shot.Strength,
                             target.GetManeuverability(),
                             source.GetManeuverability(),
-                            _random
+                            _random,
+                            source.InstanceID
                         );
-                        ShotApplied?.Invoke(command.Shot, impact);
-                        if (!target.Systems.IsAlive)
+                        RefreshTractorContribution(target);
+                        if (impact == TacticalCombatImpactKind.Destroyed)
                             Destroy(target);
                     }
                     break;
                 case CommandKind.System:
-                    if (!source.IsTargetable)
-                        break;
                     TacticalSystemEvent change = command.Change;
                     if (change.Kind == TacticalSystemEventKind.Disruption)
                     {
@@ -1472,7 +1783,8 @@ namespace Rebellion.Gameplay
                     {
                         source.Systems.ApplyComponentEvent(change.System, change.IsRepair);
                         if (
-                            change.System == TacticalShipSystem.TractorBeam
+                            !change.IsRepair
+                            && change.System == TacticalShipSystem.TractorBeam
                             && source.TractorTargetID != null
                             && source.Systems.GetTractorBudget() == 0
                         )
@@ -1487,7 +1799,7 @@ namespace Rebellion.Gameplay
                             );
                         }
                     }
-                    UpdateTractorRestraint();
+                    RefreshTractorContribution(source);
                     SystemChanged?.Invoke(source, change);
                     break;
                 case CommandKind.Launch:
@@ -1497,6 +1809,7 @@ namespace Rebellion.Gameplay
                         && _carriers[source.InstanceID].Launch(target)
                     )
                     {
+                        _initiallyDockedFighters.Remove(target);
                         Audio.Enqueue(TacticalCombatSound.FighterLaunch);
                         _spatial.Update(target);
                     }
@@ -1525,54 +1838,163 @@ namespace Rebellion.Gameplay
                     break;
                 case CommandKind.TractorLock:
                     _tractorCommandsPending.Remove(source);
-                    if (source.IsTargetable && target.IsTargetable)
-                        source.TractorTargetID = target.InstanceID;
-                    UpdateTractorRestraint();
+                    if (IsActiveDisplayObject(source) && IsActiveDisplayObject(target))
+                        ApplyTractorLock(source, target);
                     break;
                 case CommandKind.TractorUnlock:
                     _tractorCommandsPending.Remove(source);
-                    if (source.TractorTargetID == target?.InstanceID)
-                        source.TractorTargetID = null;
-                    UpdateTractorRestraint();
+                    source.TractorTargetID = null;
+                    if (target != null)
+                        ApplyTractorUnlock(source, target);
                     break;
                 case CommandKind.Hyperspace:
-                    if (!source.IsTargetable)
+                    if (!IsActiveDisplayObject(source))
                         break;
-                    if (source.Systems.HasHyperdrive && source.GetSpeed() > 0)
+                    if (CheckWithdrawalReadiness(source))
                     {
                         source.Status = TacticalCombatUnitStatus.EnteringHyperspace;
-                        source.TractorTargetID = null;
                         _spatial.Update(source);
-                        UpdateTractorRestraint();
                     }
                     else
-                        Destroy(source);
+                        Scuttle(source);
                     break;
                 case CommandKind.Withdraw:
+                    if (source.IsBattleStation)
+                    {
+                        if (!BattleStation.TryWithdraw())
+                            break;
+                    }
+                    else if (
+                        source.Status
+                        is not (
+                            TacticalCombatUnitStatus.Active
+                            or TacticalCombatUnitStatus.PreparingHyperspace
+                            or TacticalCombatUnitStatus.EnteringHyperspace
+                            or TacticalCombatUnitStatus.AwaitingWithdrawal
+                        )
+                    )
+                        break;
+
+                    source.Status = TacticalCombatUnitStatus.Withdrawn;
+                    _departed.Add(source);
+                    RemoveFromGroup(source);
+                    _spatial.Update(source);
+                    UnitWithdrawn?.Invoke(source);
+                    break;
+                case CommandKind.Destroy:
                     if (
-                        source.Systems.IsAlive
-                        && source.Status != TacticalCombatUnitStatus.Destroyed
+                        IsActiveDisplayObject(source)
+                        && (
+                            (BattleStation != null && ReferenceEquals(target, BattleStation.Unit))
+                            || source.Systems.Hull < 0
+                            || float.IsNaN(source.Systems.Hull)
+                        )
                     )
                     {
-                        source.Status = TacticalCombatUnitStatus.Withdrawn;
-                        _departed.Add(source);
-                        RemoveFromGroup(source);
-                        _spatial.Update(source);
-                        UnitWithdrawn?.Invoke(source);
+                        Audio.Enqueue(source.Systems.GetExplosionSound());
+                        DestructionEffectRequested?.Invoke(source);
+                        if (BattleStation == null || !ReferenceEquals(target, BattleStation.Unit))
+                            ReportDestruction(source, target?.InstanceID);
+                        Destroy(source);
                     }
                     break;
                 case CommandKind.Scuttle:
-                    if (source.IsTargetable && !source.IsBattleStation)
-                        Audio.Enqueue(source.Systems.GetExplosionSound());
-                    if (
-                        source.Status
-                        is not TacticalCombatUnitStatus.EnteringHyperspace
-                            and not TacticalCombatUnitStatus.AwaitingWithdrawal
-                            and not TacticalCombatUnitStatus.Withdrawn
-                    )
-                        Destroy(source);
+                    Scuttle(source);
                     break;
             }
+        }
+
+        /// <summary>
+        /// Queues the destruction report for the credited actor's applied group and current category.
+        /// </summary>
+        /// <param name="victim">The unit whose hull was lost.</param>
+        /// <param name="attackerInstanceID">The firing unit's captured identity.</param>
+        private void ReportDestruction(TacticalCombatUnit victim, string attackerInstanceID)
+        {
+            if (
+                attackerInstanceID == null
+                || !_unitsByID.TryGetValue(attackerInstanceID, out TacticalCombatUnit attacker)
+            )
+                return;
+            bool credited = attacker.Side == PlayerSide;
+            TacticalCombatUnit actor = credited ? attacker : victim;
+            int bank = GetSide(PlayerSide).FactionIndex == 0 ? 0 : 122;
+            int message = credited ? 85 : 98;
+            if (actor.GroupID is int groupID)
+            {
+                if (actor.IsFighter)
+                {
+                    int category = GetReportFighterCategory(groupID);
+                    if (category < 0)
+                        return;
+                    message = (credited ? 94 : 107) + category;
+                }
+                else
+                {
+                    if (
+                        !credited
+                        && _personnelHostCounts.TryGetValue(victim.InstanceID, out int count)
+                    )
+                        for (int index = 0; index < count; index++)
+                            Audio.EnqueueNotification(bank == 0 ? 134 : 260);
+                    int category = GetReportObjectCategory(groupID);
+                    if (category >= 0)
+                        message += 1 + category;
+                }
+            }
+            Audio.EnqueueNotification(message + bank);
+        }
+
+        /// <summary>
+        /// Finds an applied capital group in the player's current command slots.
+        /// </summary>
+        /// <param name="groupID">The applied group identity.</param>
+        /// <returns>The matching command slot, or minus one when it has no slot.</returns>
+        private int GetReportObjectCategory(int groupID)
+        {
+            for (int category = 0; category < 8; category++)
+                if (_objectGroups[(int)PlayerSide, category]?.ID == groupID)
+                    return category;
+            return -1;
+        }
+
+        /// <summary>
+        /// Resolves a fighter group's current slot or retained deployment category.
+        /// </summary>
+        /// <param name="groupID">The applied group identity.</param>
+        /// <returns>The resolved category, or minus one for an unavailable fighter group.</returns>
+        private int GetReportFighterCategory(int groupID)
+        {
+            for (int category = 0; category < 4; category++)
+                if (_fighterGroups[(int)PlayerSide, category]?.ID == groupID)
+                    return category;
+            return
+                _groupsByID.TryGetValue(groupID, out TacticalCombatGroup group)
+                && group.IsFighterGroup
+                ? group.FighterCategory
+                : -1;
+        }
+
+        /// <summary>
+        /// Checks the ordinary display states admitted by destruction and scuttling commands.
+        /// Hull strength is evaluated separately by each command.
+        /// </summary>
+        /// <param name="unit">The registered encounter participant.</param>
+        /// <returns>Whether the unit remains in an admitted display state.</returns>
+        private static bool IsActiveDisplayObject(TacticalCombatUnit unit) =>
+            unit?.IsActiveDisplayObject == true;
+
+        /// <summary>
+        /// Applies scuttling only to an active display object with ordered positive hull strength.
+        /// </summary>
+        /// <param name="unit">The unit addressed by the scuttling request.</param>
+        private void Scuttle(TacticalCombatUnit unit)
+        {
+            if (!IsActiveDisplayObject(unit) || !(unit.Systems.Hull > 0))
+                return;
+            Audio.Enqueue(unit.Systems.GetExplosionSound());
+            DestructionEffectRequested?.Invoke(unit);
+            Destroy(unit);
         }
 
         /// <summary>
@@ -1583,9 +2005,19 @@ namespace Rebellion.Gameplay
         {
             if (unit.Status == TacticalCombatUnitStatus.Destroyed)
                 return;
-            unit.Systems.Destroy();
+            if (unit.IsBattleStation)
+                BattleStation.Destroy();
+            else
+                unit.Systems.Destroy();
             unit.Status = TacticalCombatUnitStatus.Destroyed;
-            unit.TractorTargetID = null;
+            _initiallyDockedFighters.Remove(unit);
+            if (unit.TractorTargetID != null)
+            {
+                _tractorCommandsPending.Add(unit);
+                QueueCommand(
+                    new Command(CommandKind.TractorUnlock, unit, GetUnit(unit.TractorTargetID))
+                );
+            }
             RemoveFromGroup(unit);
             _spatial.Update(unit);
             if (_carriers.TryGetValue(unit.InstanceID, out TacticalCombatCarrier carrier))
@@ -1614,64 +2046,210 @@ namespace Rebellion.Gameplay
                     host.Detach(unit);
                 unit.CarrierID = null;
             }
-            UpdateTractorRestraint();
+            RefreshTractorContribution(unit);
             UnitDestroyed?.Invoke(unit);
         }
 
         /// <summary>
-        /// Rebuilds tractor restraint from current live locks without querying campaign state.
+        /// Adds a retained tractor contributor after active-object command admission.
         /// </summary>
-        private void UpdateTractorRestraint()
+        /// <param name="source">The unit applying the tractor beam.</param>
+        /// <param name="target">The unit whose movement chain retains the source.</param>
+        private void ApplyTractorLock(TacticalCombatUnit source, TacticalCombatUnit target)
         {
-            _nextTractorTargets.Clear();
-            foreach (TacticalCombatUnit unit in _units)
-                unit.TractorRestraint = 0;
-            foreach (TacticalCombatUnit unit in _units)
+            if (
+                !_tractorSources.TryGetValue(
+                    target,
+                    out SortedDictionary<uint, TacticalCombatUnit> sources
+                )
+            )
             {
-                TacticalCombatUnit target = GetUnit(unit.TractorTargetID);
-                if (target != null && unit.IsTargetable && target.IsTargetable)
-                {
-                    target.TractorRestraint += unit.Systems.GetTractorBudget();
-                    _nextTractorTargets.Add(target);
-                }
-                else
-                    unit.TractorTargetID = null;
+                sources = new();
+                _tractorSources.Add(target, sources);
             }
-            foreach (TacticalCombatUnit target in _nextTractorTargets)
-                if (!_tractorTargets.Contains(target))
-                    Audio.Enqueue(TacticalCombatSound.TractorEngaged);
-            foreach (TacticalCombatUnit target in _tractorTargets)
-                if (!_nextTractorTargets.Contains(target))
-                    Audio.Enqueue(TacticalCombatSound.TractorReleased);
-            (_tractorTargets, _nextTractorTargets) = (_nextTractorTargets, _tractorTargets);
+            if (sources.Count == 0)
+                Audio.Enqueue(TacticalCombatSound.TractorEngaged);
+            source.TractorTargetID = target.InstanceID;
+            sources.TryAdd(unchecked((uint)source.Index), source);
+            target.TractorRestraint = GetTractorRestraint(target);
         }
 
         /// <summary>
-        /// Starts result presentation after one side has no active or departing units.
+        /// Removes an addressed contributor and announces every resulting empty tractor chain.
+        /// </summary>
+        /// <param name="source">The contributor addressed by the command.</param>
+        /// <param name="target">The resolved target whose chain is updated.</param>
+        private void ApplyTractorUnlock(TacticalCombatUnit source, TacticalCombatUnit target)
+        {
+            bool populated = _tractorSources.TryGetValue(
+                target,
+                out SortedDictionary<uint, TacticalCombatUnit> sources
+            );
+            if (populated)
+                sources.Remove(unchecked((uint)source.Index));
+            if (!populated || sources.Count == 0)
+                Audio.Enqueue(TacticalCombatSound.TractorReleased);
+            target.TractorRestraint = GetTractorRestraint(target);
+        }
+
+        /// <summary>
+        /// Adds retained tractor contributions in unsigned source-key order with a store after every addition.
+        /// </summary>
+        /// <param name="target">The unit whose retained tractor chain is read.</param>
+        /// <returns>The rounded sum of its current contributors, without a health or participation filter.</returns>
+        private float GetTractorRestraint(TacticalCombatUnit target)
+        {
+            float restraint = 0;
+            if (
+                _tractorSources.TryGetValue(
+                    target,
+                    out SortedDictionary<uint, TacticalCombatUnit> sources
+                )
+            )
+                foreach (TacticalCombatUnit source in sources.Values)
+                    restraint = (float)(
+                        (double)restraint + source.Systems.GetTractorContribution()
+                    );
+            return restraint;
+        }
+
+        /// <summary>
+        /// Refreshes the one retained target affected by a contributor's hull or tractor-system mutation.
+        /// </summary>
+        /// <param name="source">The contributor whose current budget changed.</param>
+        private void RefreshTractorContribution(TacticalCombatUnit source)
+        {
+            TacticalCombatUnit target = GetUnit(source.TractorTargetID);
+            if (target != null)
+                target.TractorRestraint = GetTractorRestraint(target);
+        }
+
+        /// <summary>
+        /// Refreshes stored movement inputs after a retained lock or system mutation without changing link ownership.
+        /// </summary>
+        private void UpdateTractorRestraint()
+        {
+            foreach (TacticalCombatUnit unit in _units)
+                unit.TractorRestraint = GetTractorRestraint(unit);
+        }
+
+        /// <summary>
+        /// Captures the station, faction fighter roots, and retained behavior helpers for notification sequencing.
+        /// </summary>
+        /// <returns>The current admission and briefing facts, independent of hull and simulation pause.</returns>
+        private TacticalCombatDirectorState CaptureDirectorState()
+        {
+            int allianceFighters = 0;
+            int empireFighters = 0;
+            int allianceOutsideAttackRuns = 0;
+            foreach (TacticalCombatUnit unit in _units)
+            {
+                if (!unit.IsFighter || !unit.IsEngaged)
+                    continue;
+                if (GetSide(unit.Side).FactionIndex == 0)
+                {
+                    allianceFighters++;
+                    if (unit.Status != TacticalCombatUnitStatus.AttackingBattleStation)
+                        allianceOutsideAttackRuns++;
+                }
+                else
+                    empireFighters++;
+            }
+            bool attackRunActive = false;
+            bool allianceAttackRunOrdered = false;
+            foreach (TacticalCombatGroup group in _groups)
+            {
+                attackRunActive |=
+                    group.ActiveOrder == TacticalCombatOrder.AttackBattleStation
+                    && group.AttackRun != null;
+                if (GetSide(group.Side).FactionIndex == 0)
+                    allianceAttackRunOrdered |=
+                        group.Order == TacticalCombatOrder.AttackBattleStation
+                        || group.ActiveOrder == TacticalCombatOrder.AttackBattleStation;
+            }
+            return new TacticalCombatDirectorState(
+                false,
+                BattleStation != null,
+                BattleStation?.IsOperational == true,
+                BattleStation?.HasPlanetaryProtection == true,
+                attackRunActive,
+                allianceFighters != 0,
+                empireFighters != 0,
+                allianceAttackRunOrdered,
+                allianceFighters,
+                empireFighters,
+                allianceOutsideAttackRuns
+            );
+        }
+
+        /// <summary>
+        /// Starts the terminal assessment once active movement and object counting find an inactive faction.
         /// </summary>
         private void CheckCompletion()
         {
-            bool attacker = false;
-            bool defender = false;
-            foreach (TacticalCombatUnit unit in _units)
-                if (unit.IsEngaged && (!unit.IsBattleStation || BattleStation.IsOperational))
-                {
-                    if (unit.Side == CombatSide.Attacker)
-                        attacker = true;
-                    else
-                        defender = true;
-                }
-            if (attacker && defender)
+            if (_completionStarted)
+                return;
+            TacticalCombatForceAssessment first = CaptureForceAssessment(_sides[0]);
+            TacticalCombatForceAssessment second = CaptureForceAssessment(_sides[1]);
+            TacticalCombatForceAssessment alliance = _sides[0].FactionIndex == 0 ? first : second;
+            TacticalCombatForceAssessment empire = _sides[0].FactionIndex == 1 ? first : second;
+            if (
+                !_ending.TryBegin(
+                    alliance,
+                    empire,
+                    BattleStation?.IsOperational == true,
+                    BattleStation?.HasDeparted == true
+                )
+            )
                 return;
             _completionStarted = true;
-            _completionMilliseconds = 4000;
+            bool attacker =
+                first.ActiveCount != 0
+                || BattleStation?.Unit.Side == CombatSide.Attacker && BattleStation.IsOperational;
+            bool defender =
+                second.ActiveCount != 0
+                || BattleStation?.Unit.Side == CombatSide.Defender && BattleStation.IsOperational;
             Winner =
                 attacker == defender ? CombatSide.Draw
                 : attacker ? CombatSide.Attacker
                 : CombatSide.Defender;
             _outcomes[0] = GetEndingOutcome(CombatSide.Attacker, attacker);
             _outcomes[1] = GetEndingOutcome(CombatSide.Defender, defender);
-            AssignSurvivors();
+        }
+
+        /// <summary>
+        /// Counts active-root members separately from ordinary roster participation and completed departures.
+        /// </summary>
+        /// <param name="side">The faction whose withdrawal and object facts are captured.</param>
+        /// <returns>The immutable terminal assessment.</returns>
+        private TacticalCombatForceAssessment CaptureForceAssessment(TacticalCombatSide side)
+        {
+            int active = 0;
+            bool stillActive = false;
+            bool departed = false;
+            foreach (TacticalCombatUnit unit in _units)
+            {
+                if (unit.Side != side.Side || unit.IsBattleStation)
+                    continue;
+                if (unit.IsEngaged)
+                    active++;
+                stillActive |=
+                    unit.Status
+                        is TacticalCombatUnitStatus.Active
+                            or TacticalCombatUnitStatus.PreparingHyperspace
+                            or TacticalCombatUnitStatus.EnteringHyperspace
+                            or TacticalCombatUnitStatus.AwaitingWithdrawal;
+                departed |= unit.Status == TacticalCombatUnitStatus.Withdrawn;
+            }
+            int withdrawalState = side.WithdrawalPhase.HasValue
+                ? (int)side.WithdrawalPhase.Value
+                : 0;
+            return new TacticalCombatForceAssessment(
+                active,
+                withdrawalState,
+                stillActive,
+                departed
+            );
         }
 
         /// <summary>
@@ -1704,7 +2282,7 @@ namespace Rebellion.Gameplay
                         {
                             Ship = ship,
                             HullBefore = (int)unit.InitialHull,
-                            HullAfter = Math.Max((int)unit.Systems.Hull, 0),
+                            HullAfter = GetCapitalResultHull(unit),
                             SystemDamage = unit.Systems.CaptureDamage(
                                 ship.Hyperdrive != 0,
                                 unit.Definition?.BackupHyperdrive > 0
@@ -1718,7 +2296,7 @@ namespace Rebellion.Gameplay
                         {
                             Fighter = fighter,
                             SquadsBefore = unit.InitialSquadronSize,
-                            SquadsAfter = unit.SquadronSize,
+                            SquadsAfter = GetFighterResultCount(unit),
                         }
                     );
                     if (unit.Systems.IsAlive)
@@ -1741,6 +2319,52 @@ namespace Rebellion.Gameplay
                     result.WithdrawnUnits.Add(unit.Source);
             }
             return result;
+        }
+
+        /// <summary>
+        /// Captures hull for campaign import, retaining at least one point for a non-destroyed ordinary ship.
+        /// Battle stations export their separate stored hull pool directly.
+        /// </summary>
+        /// <param name="unit">The capital ship whose final tactical state is being captured.</param>
+        /// <returns>The truncated hull count carried into the campaign result.</returns>
+        private static int GetCapitalResultHull(TacticalCombatUnit unit)
+        {
+            float hull = unit.Systems.Hull;
+            if (unit.IsBattleStation)
+                return TruncateResultCount(hull);
+            if (unit.Status == TacticalCombatUnitStatus.Destroyed)
+                return 0;
+            return TruncateResultCount(hull < 1 ? 1 : hull);
+        }
+
+        /// <summary>
+        /// Captures squadron strength from the retained participation state and final hull pool.
+        /// </summary>
+        /// <param name="unit">The fighter squadron whose final tactical state is being captured.</param>
+        /// <returns>Zero for a destroyed squadron, or its truncated count with a zero count replaced by one.</returns>
+        private static int GetFighterResultCount(TacticalCombatUnit unit)
+        {
+            if (unit.Status == TacticalCombatUnitStatus.Destroyed)
+                return 0;
+            int count = TruncateResultCount((double)unit.Systems.Hull / 8);
+            return count == 0 ? 1 : count;
+        }
+
+        /// <summary>
+        /// Truncates a final pool through a signed 64-bit count before retaining its low 32 bits.
+        /// Nonfinite and out-of-range values carry a zero low word.
+        /// </summary>
+        /// <param name="value">The final hull or squadron count before integer conversion.</param>
+        /// <returns>The low 32 bits of the truncated count.</returns>
+        private static int TruncateResultCount(double value)
+        {
+            if (
+                double.IsNaN(value)
+                || value < -9223372036854775808d
+                || value >= 9223372036854775808d
+            )
+                return 0;
+            return unchecked((int)(long)value);
         }
 
         /// <summary>
@@ -1818,6 +2442,7 @@ namespace Rebellion.Gameplay
         /// </summary>
         private enum CommandKind
         {
+            DeleteGroup,
             CreateGroup,
             AddGroupMember,
             RemoveGroupMember,
@@ -1840,6 +2465,7 @@ namespace Rebellion.Gameplay
             TractorUnlock,
             Hyperspace,
             Withdraw,
+            Destroy,
             Scuttle,
         }
 
@@ -1900,6 +2526,38 @@ namespace Rebellion.Gameplay
                 Run = run;
                 RunState = runState;
             }
+        }
+
+        /// <summary>
+        /// Reads live unit facts for the ordered withdrawal lifecycle without copying mutable readiness state.
+        /// </summary>
+        private sealed class WithdrawalMember : ITacticalCombatWithdrawalMember
+        {
+            private readonly TacticalCombatSession _session;
+            public TacticalCombatUnit Unit { get; }
+            public int Index => Unit.Index;
+            public bool IsActiveMember => IsActiveDisplayObject(Unit);
+            public bool IsAwaitingDeparture =>
+                Unit.Status
+                    is TacticalCombatUnitStatus.EnteringHyperspace
+                        or TacticalCombatUnitStatus.AwaitingWithdrawal;
+
+            /// <summary>
+            /// Captures the session that owns the member's live support and retained tractor links.
+            /// </summary>
+            /// <param name="session">The owning local encounter.</param>
+            /// <param name="unit">The registered non-station participant.</param>
+            public WithdrawalMember(TacticalCombatSession session, TacticalCombatUnit unit)
+            {
+                _session = session;
+                Unit = unit;
+            }
+
+            /// <summary>
+            /// Reads the current budgets before the lifecycle observes participation state.
+            /// </summary>
+            /// <returns>Whether both live departure budgets are ordered and nonzero.</returns>
+            public bool CheckWithdrawalReadiness() => _session.CheckWithdrawalReadiness(Unit);
         }
 
         /// <summary>

@@ -197,28 +197,40 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     }
 
     /// <summary>
-    /// Resolves and caches a texture that meets Unity's hardware cursor requirements.
+    /// Resolves and caches a readable RGBA32 texture shared by pointer masks and cursors.
     /// </summary>
-    /// <param name="path">The application content address.</param>
-    /// <returns>The loaded cursor texture, or null when the address cannot be loaded.</returns>
-    public Texture2D GetCursor(string path)
+    /// <param name="path">The application or pack content address.</param>
+    /// <returns>The retained readable texture, or null when the address cannot be loaded.</returns>
+    public Texture2D GetReadableTexture(string path)
     {
         Texture2D texture = GetTexture(path, readableTextures, false);
         if (texture == null || texture.format == TextureFormat.RGBA32)
             return texture;
 
-        Texture2D cursor = new Texture2D(texture.width, texture.height, TextureFormat.RGBA32, false)
+        Texture2D readable = new Texture2D(
+            texture.width,
+            texture.height,
+            TextureFormat.RGBA32,
+            false
+        )
         {
             name = texture.name,
             filterMode = texture.filterMode,
             wrapMode = texture.wrapMode,
         };
-        cursor.SetPixels32(texture.GetPixels32());
-        cursor.Apply(false, false);
-        readableTextures[NormalizeAddress(path)] = cursor;
+        readable.SetPixels32(texture.GetPixels32());
+        readable.Apply(false, false);
+        readableTextures[NormalizeAddress(path)] = readable;
         DestroyAsset(texture);
-        return cursor;
+        return readable;
     }
+
+    /// <summary>
+    /// Resolves and caches a texture that meets Unity's hardware cursor requirements.
+    /// </summary>
+    /// <param name="path">The application content address.</param>
+    /// <returns>The loaded cursor texture, or null when the address cannot be loaded.</returns>
+    public Texture2D GetCursor(string path) => GetReadableTexture(path);
 
     /// <summary>
     /// Resolves and caches a texture with the requested CPU-readability.

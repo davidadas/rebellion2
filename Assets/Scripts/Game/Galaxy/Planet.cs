@@ -53,6 +53,13 @@ namespace Rebellion.Game.Galaxy
         // Planet Properties.
         public bool IsColonized { get; set; }
         public int PlanetDataId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the retained faction selector for space-combat arrival presentation.
+        /// Zero records no activation, one and two identify the two authored combat factions,
+        /// and three records neutral ownership.
+        /// </summary>
+        public int SpaceCombatEntryFaction { get; set; }
         public int NumRawResourceNodes { get; set; }
         public int EnergyCapacity { get; set; }
         public int AllocatedEnergy { get; set; }
@@ -162,6 +169,7 @@ namespace Rebellion.Game.Galaxy
             Planet copy = (Planet)destination;
             copy.IsColonized = IsColonized;
             copy.PlanetDataId = PlanetDataId;
+            copy.SpaceCombatEntryFaction = SpaceCombatEntryFaction;
             copy.NumRawResourceNodes = NumRawResourceNodes;
             copy.EnergyCapacity = EnergyCapacity;
             copy.AllocatedEnergy = AllocatedEnergy;

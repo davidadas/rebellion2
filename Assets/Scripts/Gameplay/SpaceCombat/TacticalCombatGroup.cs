@@ -233,7 +233,16 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="formation">The due marker layout.</param>
         internal void ApplyFormation(TacticalCombatFormationKind formation) =>
-            Formation.SetKind(formation, PrimaryMember, Members);
+            Formation.SetKind(
+                formation == TacticalCombatFormationKind.Surround
+                        ? TacticalCombatFormationKind.Surround
+                    : formation == TacticalCombatFormationKind.Direct
+                    && PrimaryMember?.IsFighter == true
+                        ? TacticalCombatFormationKind.Direct
+                    : TacticalCombatFormationKind.Line,
+                PrimaryMember,
+                Members
+            );
 
         /// <summary>
         /// Changes the group's tactical behavior and clears the lists owned by that order.
@@ -655,7 +664,7 @@ namespace Rebellion.Gameplay
         {
             float total = 0;
             for (int index = 0; index < Members.Count; index++)
-                if (Members[index].IsTargetable)
+                if (Members[index].IsActiveDisplayObject)
                     total = (float)(
                         (double)total
                         + TacticalCombatEngagement.GetAttackRate(Members[index], target)
