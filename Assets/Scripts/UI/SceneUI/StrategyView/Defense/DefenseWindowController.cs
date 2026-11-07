@@ -704,10 +704,14 @@ public sealed class DefenseWindowController
         if (!TryGetSession(view, out DefenseWindowSession session) || eventData == null)
             return;
 
-        if (!session.TryGetItem(itemIndex, out _))
+        if (!session.TryGetItem(itemIndex, out ISceneNode pressedItem))
             return;
+        SelectionModifierState modifiers = getSelectionModifiers();
         if (eventData.button == PointerEventData.InputButton.Left)
+        {
             session.Window.RequestFocus();
+            session.SelectionClick.Capture(pressedItem.InstanceID, eventData.pointerId, modifiers);
+        }
         if (
             targetingController.IsTargeting
             && eventData.button == PointerEventData.InputButton.Left
@@ -725,7 +729,19 @@ public sealed class DefenseWindowController
         if (eventData.button != PointerEventData.InputButton.Left)
             return;
 
-        session.SelectItemForDrag(itemIndex, view.ItemColumnCount);
+        bool hasPoint = view.TryGetSelectionPoint(eventData, out Vector2 point);
+        if (hasPoint && modifiers.RangeSelect && !modifiers.MultiSelect)
+        {
+            session.SelectItemsInRectangle(
+                view.GetItemsInSelectionRectangle(GetSelectionAnchor(view, session, point), point)
+            );
+        }
+        else
+        {
+            session.SelectItemForDrag(itemIndex, view.ItemColumnCount, modifiers);
+        }
+        if (hasPoint)
+            session.SelectionAnchor = point;
         RenderSelection(view, session);
         if (
             session.CanDragSelectedItems()
@@ -736,6 +752,27 @@ public sealed class DefenseWindowController
             startItemDrag(session.Window, eventData);
             return;
         }
+    }
+
+    /// <summary>
+    /// Resolves the range anchor from the last gesture or a replacement card selection.
+    /// </summary>
+    /// <param name="view">The source Defense view.</param>
+    /// <param name="session">The current selection state.</param>
+    /// <param name="point">The current pointer position when no anchor is available.</param>
+    /// <returns>The range-selection start in scroll-content coordinates.</returns>
+    private static Vector2 GetSelectionAnchor(
+        DefenseWindowView view,
+        DefenseWindowSession session,
+        Vector2 point
+    )
+    {
+        if (session.SelectionAnchor is Vector2 anchor)
+            return anchor;
+
+        return session.SelectedItemIndexes.Count == 1
+            ? view.GetItemSelectionPoint(session.SelectedItemIndexes.Single()) ?? point
+            : point;
     }
 
     /// <summary>
@@ -771,7 +808,11 @@ public sealed class DefenseWindowController
         )
             return;
 
-        if (!session.TryGetItem(itemIndex, out ISceneNode item))
+        bool hasItem = session.TryGetItem(itemIndex, out ISceneNode item);
+        SelectionModifierState modifiers =
+            session.SelectionClick.Complete(item?.InstanceID, eventData.pointerId)
+            ?? getSelectionModifiers();
+        if (!hasItem)
         {
             endItemDrag(eventData);
             return;
@@ -781,11 +822,11 @@ public sealed class DefenseWindowController
         endItemDrag(eventData);
         if (targetSelected)
             return;
-        if (SelectableListSelection.HasSelectionModifier(getSelectionModifiers()))
+        if (modifiers.HasAnyModifier)
             return;
 
         session.PrepareItemSelection(itemIndex);
-        session.SelectItem(itemIndex, view.ItemColumnCount);
+        session.SelectItem(itemIndex, view.ItemColumnCount, modifiers);
         RenderSelection(view, session);
     }
 
@@ -844,7 +885,7 @@ public sealed class DefenseWindowController
     }
 
     /// <summary>
-    /// Handles a Defense-window surface click as targeting or selection clearing.
+    /// Handles a Defense-window surface click as targeting, range selection, or selection clearing.
     /// </summary>
     /// <param name="view">The source Defense view.</param>
     /// <param name="eventData">The pointer event.</param>
@@ -855,7 +896,20 @@ public sealed class DefenseWindowController
         if (TrySelectTarget(session, null) || view.IsSelectionItemClick(eventData))
             return;
 
-        session.ClearSelection();
+        bool hasPoint = view.TryGetSelectionPoint(eventData, out Vector2 point);
+        SelectionModifierState modifiers = getSelectionModifiers();
+        if (hasPoint && modifiers.RangeSelect && !modifiers.MultiSelect)
+        {
+            session.SelectItemsInRectangle(
+                view.GetItemsInSelectionRectangle(GetSelectionAnchor(view, session, point), point)
+            );
+        }
+        else if (!hasPoint || !modifiers.MultiSelect)
+        {
+            session.ClearSelection();
+        }
+        if (hasPoint)
+            session.SelectionAnchor = point;
         markDirty();
     }
 

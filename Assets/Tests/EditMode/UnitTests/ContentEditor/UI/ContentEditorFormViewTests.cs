@@ -69,6 +69,34 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
+        public void Render_AIDecisionIntervals_ExposesOnlyPositiveDecisionValues()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            navigation.SetExpanded(true);
+            ContentEditorTreeNode page = navigation
+                .GetRows(string.Empty)
+                .Single(node => node.Caption == "AI decisions");
+
+            SelectPage(page);
+
+            Assert.AreEqual(3, page.Fields.Count);
+            CollectionAssert.AreEquivalent(
+                new[] { "Easy", "Medium", "Hard" },
+                page.Fields.Select(field => field.XmlElement.Parent.Element("Key").Value)
+            );
+            Assert.IsTrue(page.Fields.All(field => field.MemberName == "Value" && field.IsNumber));
+            Assert.AreEqual(
+                3,
+                view.GetComponentsInChildren<TMP_InputField>().Count(input => input.interactable)
+            );
+            ContentPackEditorField field = page.Fields.First();
+            Assert.Throws<ArgumentException>(() => project.SetField(field, "0"));
+            project.SetField(field, "13");
+            Assert.AreEqual("13", field.Value);
+        }
+
+        [Test]
         public void Render_FactionMissionRestrictions_UsesNamedCheckboxesForTheAuthoredSelection()
         {
             ContentEditorNavigation navigation = new();

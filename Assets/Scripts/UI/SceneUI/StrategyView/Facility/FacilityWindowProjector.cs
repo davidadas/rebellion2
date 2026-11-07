@@ -212,7 +212,8 @@ internal sealed class FacilityWindowProjector
             current?.GetDisplayName(),
             current == null ? string.Empty : "Building " + Math.Max(1, queue.Count),
             "Destination: " + GetDestinationName(planet, type, current, destinationNames),
-            $"{activeFacilityCount}:{facilities.Count}"
+            $"{activeFacilityCount}:{facilities.Count}",
+            current != null
         );
     }
 

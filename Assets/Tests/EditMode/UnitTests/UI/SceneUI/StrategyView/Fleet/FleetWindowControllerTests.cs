@@ -40,6 +40,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         private int _selectionRouteRenderCount;
         private GameRoot _game;
         private GameSession _session;
+        private SelectionModifierState _selectionModifiers;
         private GameFleet _fleet;
         private Officer _officer;
         private GalaxyMapPlanet _planet;
@@ -594,8 +595,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
-        [Test]
-        public void FleetRowRelease_UnselectedFleet_RendersSelectionWithoutInvalidatingScreen()
+        [TestCase(false)]
+        [TestCase(true)]
+        public void FleetRowRelease_CompletedClick_PreservesExpectedSelection(
+            bool releaseShiftBeforeMouseUp
+        )
         {
             GameFleet secondFleet = CreateFleet("second-fleet", "Second Fleet", out _);
             _planet.Planet.AddChild(secondFleet);
@@ -630,9 +634,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             };
             UIPointerGestureRelay pointerGestures = row.GetComponent<UIPointerGestureRelay>();
 
+            if (releaseShiftBeforeMouseUp)
+                _selectionModifiers = new SelectionModifierState(false, true);
             pointerGestures.OnPointerDown(eventData);
+            _selectionModifiers = default;
             pointerGestures.OnPointerClick(eventData);
 
+            CollectionAssert.AreEquivalent(
+                releaseShiftBeforeMouseUp
+                    ? new[] { _fleet.InstanceID, secondFleet.InstanceID }
+                    : new[] { secondFleet.InstanceID },
+                _controller.GetSelectedFleetInstanceIds()
+            );
             Assert.AreEqual(1, _controller.GetSelectedFleetIndex(view));
             Assert.AreEqual(1, _dirtyCount);
             Assert.AreEqual(1, _selectionRouteRenderCount);
@@ -1255,6 +1268,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         /// </summary>
         private void CreateFixture()
         {
+            _selectionModifiers = default;
             _dirtyCount = 0;
             _selectionRouteRenderCount = 0;
             _game = CreateGame();
@@ -1411,6 +1425,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 _windowManager,
                 (x, y) => new Vector2Int(x + 17, y + 19),
                 () => _dirtyCount++,
+                getSelectionModifiers: () => _selectionModifiers,
                 renderSelectionRoutes: () => _selectionRouteRenderCount++
             );
         }

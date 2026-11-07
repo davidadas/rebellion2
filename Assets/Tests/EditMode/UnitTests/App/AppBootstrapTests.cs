@@ -6,7 +6,6 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Gameplay;
 using Rebellion.Persistence;
-using Rebellion.Util.Reflection;
 using UnityEditor;
 using UnityEngine;
 
@@ -271,7 +270,7 @@ namespace Rebellion.Tests.App
             summary.Difficulty = GameDifficulty.Hard;
             summary.CustomSettings = new CustomGameSettings
             {
-                GenerationConfig = selected.GameData.GenerationConfig.GetDeepCopy(),
+                GenerationConfig = selected.GameData.GenerationConfig.CreateCopy(),
             };
             summary.CustomSettings.GenerationConfig.FacilityGeneration.CoreMineMultiplier = 17;
             int transitionCount = 0;

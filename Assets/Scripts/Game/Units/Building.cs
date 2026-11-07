@@ -36,8 +36,7 @@ namespace Rebellion.Game.Units
     public class Building : LeafNode, IManufacturable, IMovable, IEncyclopediaSource
     {
         public string EncyclopediaImagePath { get; set; }
-        public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; } =
-            new List<EncyclopediaEntryStat>();
+        public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; }
         public string EncyclopediaDescription { get; set; }
 
         // Construction Info.
@@ -57,9 +56,9 @@ namespace Rebellion.Game.Units
         public int WeaponPower { get; set; }
         public DefenseWeaponEffect DefenseWeaponEffect { get; set; }
         public bool IsDetectionBlocker { get; set; }
-        public List<string> ProtectedUnitTypeIDs { get; set; } = new List<string>();
+        public List<string> ProtectedUnitTypeIDs { get; set; }
         public int ProductionModifier { get; set; }
-        public List<string> Upgrades { get; set; } = new List<string>();
+        public List<string> Upgrades { get; set; }
 
         // Manufacturing Info.
         public string ProducerOwnerID { get; set; }
@@ -67,6 +66,7 @@ namespace Rebellion.Game.Units
         public long ManufacturingQueueSequence { get; set; }
         public int ManufacturingProgress { get; set; } = 0;
         public ManufacturingStatus ManufacturingStatus { get; set; } = ManufacturingStatus.Building;
+
         public ManufacturingType ProductionType { get; set; }
         public double ProductionCycleProgress { get; set; }
         public int ProductionCycleDuration { get; set; }
@@ -79,15 +79,33 @@ namespace Rebellion.Game.Units
         public MovementState Movement { get; set; }
 
         /// <summary>
-        /// Default constructor for the Building class.
+        /// Creates a building with the default state used for gameplay and deserialization.
         /// </summary>
-        public Building() { }
+        public Building()
+            : this(initializeDefaultState: true) { }
 
         /// <summary>
-        /// Creates an empty building copy.
+        /// Creates a building with optional defaults before copied state is populated.
+        /// </summary>
+        /// <param name="initializeDefaultState">Whether to initialize fresh state instead of leaving it for the copy pipeline.</param>
+        private Building(bool initializeDefaultState)
+        {
+            if (!initializeDefaultState)
+                return;
+
+            EncyclopediaStats = new List<EncyclopediaEntryStat>();
+            ProtectedUnitTypeIDs = new List<string>();
+            Upgrades = new List<string>();
+        }
+
+        /// <summary>
+        /// Creates a building for copying, retaining default state for derived factory callers.
         /// </summary>
         /// <returns>The created node copy.</returns>
-        protected override BaseSceneNode CreateNodeCopy() => new Building();
+        protected override BaseSceneNode CreateNodeCopy() =>
+            GetType() == typeof(Building)
+                ? new Building(initializeDefaultState: false)
+                : new Building();
 
         /// <summary>
         /// Copies building state into an empty destination.
@@ -198,6 +216,22 @@ namespace Rebellion.Game.Units
         public bool IsShieldGenerator()
         {
             return IsPlanetaryShieldGenerator() || IsUnitShieldGenerator();
+        }
+
+        /// <summary>
+        /// Gets the manufacturing output required by a building category.
+        /// </summary>
+        /// <param name="buildingType">The building category.</param>
+        /// <returns>The matching manufacturing output, or none for non-manufacturing buildings.</returns>
+        public static ManufacturingType GetRequiredProductionType(BuildingType buildingType)
+        {
+            return buildingType switch
+            {
+                BuildingType.ConstructionFacility => ManufacturingType.Building,
+                BuildingType.Shipyard => ManufacturingType.Ship,
+                BuildingType.TrainingFacility => ManufacturingType.Troop,
+                _ => ManufacturingType.None,
+            };
         }
 
         /// <summary>

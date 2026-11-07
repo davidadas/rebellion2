@@ -179,6 +179,10 @@ public static class StrategyViewPrefabBuilder
         "Application/Strategy/UI/Windows/ui_strategyview_status_close_button.png";
     private const string _statusCloseButtonDownPreviewPath =
         "Application/Strategy/UI/Windows/ui_strategyview_status_close_button_pressed.png";
+    private const string _openLocationButtonPreviewPath =
+        "Application/Strategy/UI/Windows/ui_strategyview_open_location_button.png";
+    private const string _openLocationButtonDownPreviewPath =
+        "Application/Strategy/UI/Windows/ui_strategyview_open_location_button_pressed.png";
 
     private const float _sourcePixelsPerUnit = UILayout.HdPixelsPerSourceUnit;
     private const float _screenWidth = 3840f / _sourcePixelsPerUnit;
@@ -4343,6 +4347,19 @@ public static class StrategyViewPrefabBuilder
         SetSourceRect(rightRowTemplate.rectTransform, 104, 0, 89, 14);
         rightRowTemplate.gameObject.SetActive(false);
 
+        RawImage manufacturingSourceButton = CreateRawImage(
+            "ManufacturingSourceButtonImage",
+            rowsContent,
+            _openLocationButtonPreviewPath,
+            0,
+            0,
+            10,
+            10
+        );
+        Button manufacturingSourceButtonComponent = CreateButton(manufacturingSourceButton);
+        ConfigureLocationLinkButton(manufacturingSourceButtonComponent);
+        manufacturingSourceButton.gameObject.SetActive(false);
+
         RawImage infoButton = CreateRawImage(
             "InfoButtonImage",
             window.transform,
@@ -4383,6 +4400,13 @@ public static class StrategyViewPrefabBuilder
         );
         AssignReference(view, "infoButton", infoButtonComponent);
         AssignReference(view, "closeButton", closeButtonComponent);
+        AssignReference(view, "manufacturingSourceButtonImage", manufacturingSourceButton);
+        AssignReference(
+            view,
+            "manufacturingSourceButtonPressVisual",
+            manufacturingSourceButton.GetComponent<RawImagePressVisual>()
+        );
+        AssignReference(view, "manufacturingSourceButton", manufacturingSourceButtonComponent);
         AssignReference(view, "infoButtonUpTexture", LoadTexture(_statusInfoButtonPreviewPath));
         AssignReference(
             view,
@@ -4399,6 +4423,16 @@ public static class StrategyViewPrefabBuilder
             view,
             "closeButtonDownTexture",
             LoadTexture(_statusCloseButtonDownPreviewPath)
+        );
+        AssignReference(
+            view,
+            "manufacturingSourceButtonUpTexture",
+            LoadTexture(_openLocationButtonPreviewPath)
+        );
+        AssignReference(
+            view,
+            "manufacturingSourceButtonDownTexture",
+            LoadTexture(_openLocationButtonDownPreviewPath)
         );
 
         GameObject saved = SaveGeneratedPrefabAsset(window, _statusWindowPrefabPath);
@@ -6062,7 +6096,20 @@ public static class StrategyViewPrefabBuilder
         destination.color = Color.white;
         destination.fontSize = 11;
         destination.alignment = TextAlignmentOptions.TopLeft;
+        destination.overflowMode = TextOverflowModes.Ellipsis;
         SetSourceRect(destination.rectTransform, 60, cardY + 58, 150, 16);
+
+        RawImage destinationLink = CreateRawImage(
+            "DestinationLinkImage",
+            card.transform,
+            _openLocationButtonPreviewPath,
+            200,
+            cardY + 58,
+            10,
+            10
+        );
+        Button destinationLinkButton = CreateButton(destinationLink);
+        ConfigureLocationLinkButton(destinationLinkButton);
 
         TextMeshProUGUI facilityCount = CreateTextLabel("FacilityCountTextField", card.transform);
         facilityCount.text = "1:3";
@@ -6080,6 +6127,23 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "currentCountTextField", currentCount);
         AssignReference(view, "emptyTextField", empty);
         AssignReference(view, "destinationTextField", destination);
+        AssignReference(view, "destinationLinkImage", destinationLink);
+        AssignReference(
+            view,
+            "destinationLinkPressVisual",
+            destinationLink.GetComponent<RawImagePressVisual>()
+        );
+        AssignReference(view, "destinationLinkButton", destinationLinkButton);
+        AssignReference(
+            view,
+            "destinationLinkUpTexture",
+            LoadTexture(_openLocationButtonPreviewPath)
+        );
+        AssignReference(
+            view,
+            "destinationLinkDownTexture",
+            LoadTexture(_openLocationButtonDownPreviewPath)
+        );
         AssignReference(view, "facilityCountTextField", facilityCount);
         card.SetActive(false);
         return view;
@@ -8354,6 +8418,22 @@ public static class StrategyViewPrefabBuilder
         pressVisual.SetTextures(image.texture, null);
         ConvertToPressVisualBinding(image.gameObject);
         return button;
+    }
+
+    /// <summary>
+    /// Adds subdued pointer feedback to a location-link glyph.
+    /// </summary>
+    /// <param name="button">The location-link button to configure.</param>
+    private static void ConfigureLocationLinkButton(Button button)
+    {
+        button.transition = Selectable.Transition.ColorTint;
+        ColorBlock colors = button.colors;
+        colors.normalColor = Color.white;
+        colors.highlightedColor = new Color(1f, 1f, 1f, 0.72f);
+        colors.selectedColor = colors.highlightedColor;
+        colors.pressedColor = new Color(1f, 1f, 1f, 0.55f);
+        colors.fadeDuration = 0.05f;
+        button.colors = colors;
     }
 
     /// <summary>

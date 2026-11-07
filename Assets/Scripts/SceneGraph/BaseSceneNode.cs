@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Runtime.CompilerServices;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.SceneGraph
@@ -10,9 +10,6 @@ namespace Rebellion.SceneGraph
     /// </summary>
     public abstract class BaseSceneNode : BaseGameEntity, ISceneNode
     {
-        [ThreadStatic]
-        private static Stack<HashSet<ISceneNode>> _availableTraversalPaths;
-
         // Parent Info.
         public string ParentInstanceID { get; set; }
 
@@ -27,7 +24,19 @@ namespace Rebellion.SceneGraph
         /// <summary>
         /// Gets or sets whether this node participates in active gameplay.
         /// </summary>
-        public bool IsEnabled { get; set; } = true;
+        public bool IsEnabled
+        {
+            get => _isEnabled;
+            set
+            {
+                if (_isEnabled == value)
+                    return;
+                _isEnabled = value;
+                OnAvailabilityChanged();
+            }
+        }
+
+        private bool _isEnabled = true;
 
         // Owner Info.
         private string _ownerInstanceId;
@@ -77,6 +86,15 @@ namespace Rebellion.SceneGraph
         }
 
         /// <summary>
+        /// Notifies descendants when an ancestor's active or transit state changes.
+        /// </summary>
+        protected virtual void OnAvailabilityChanged()
+        {
+            foreach (ISceneNode child in EnumerateChildren())
+                ((BaseSceneNode)child).OnAvailabilityChanged();
+        }
+
+        /// <summary>
         /// Gets the parent scene node of the current scene node.
         /// </summary>
         /// <returns>The parent scene node.</returns>
@@ -101,24 +119,25 @@ namespace Rebellion.SceneGraph
         public bool IsActive()
         {
             ISceneNode node = this;
-            HashSet<ISceneNode> visitedNodes = RentTraversalPath();
-            try
+            ISceneNode cycleAnchor = this;
+            long checkpointDistance = 1;
+            long distance = 0;
+            while (node != null)
             {
-                while (node != null)
+                if (!node.IsEnabled)
+                    return false;
+                node = node.GetParent();
+                if (ReferenceEquals(node, cycleAnchor))
+                    throw new InvalidOperationException("Cycle detected in scene graph.");
+                if (++distance == checkpointDistance)
                 {
-                    if (!visitedNodes.Add(node))
-                        throw new InvalidOperationException("Cycle detected in scene graph.");
-                    if (!node.IsEnabled)
-                        return false;
-                    node = node.GetParent();
+                    cycleAnchor = node;
+                    checkpointDistance *= 2;
+                    distance = 0;
                 }
+            }
 
-                return true;
-            }
-            finally
-            {
-                ReturnTraversalPath(visitedNodes);
-            }
+            return true;
         }
 
         /// <summary>
@@ -138,35 +157,32 @@ namespace Rebellion.SceneGraph
         public T GetParentOfType<T>()
             where T : class, ISceneNode
         {
-            // Check the parent scene nodes.
             ISceneNode parent = ParentNode;
-            HashSet<ISceneNode> visitedNodes = RentTraversalPath();
-            try
+            ISceneNode cycleAnchor = this;
+            long checkpointDistance = 1;
+            long distance = 0;
+
+            while (parent != null)
             {
-                visitedNodes.Add(this);
-                while (parent != null)
+                if (ReferenceEquals(parent, this) || ReferenceEquals(parent, cycleAnchor))
+                    throw new InvalidOperationException("Cycle detected in scene graph.");
+
+                if (parent is T matchingParent)
                 {
-                    if (!visitedNodes.Add(parent))
-                    {
-                        // Node has already been visited, indicating a cycle in the scene graph.
-                        throw new InvalidOperationException("Cycle detected in scene graph.");
-                    }
-
-                    if (parent is T matchingParent)
-                    {
-                        return matchingParent;
-                    }
-
-                    parent = parent.GetParent();
+                    return matchingParent;
                 }
 
-                // No parent of the specified type was found.
-                return null;
+                if (++distance == checkpointDistance)
+                {
+                    cycleAnchor = parent;
+                    checkpointDistance *= 2;
+                    distance = 0;
+                }
+                parent = parent.GetParent();
             }
-            finally
-            {
-                ReturnTraversalPath(visitedNodes);
-            }
+
+            // No parent of the specified type was found.
+            return null;
         }
 
         /// <summary>
@@ -204,6 +220,18 @@ namespace Rebellion.SceneGraph
         protected abstract IEnumerable<ISceneNode> EnumerateChildren();
 
         /// <summary>
+        /// Collects direct children through the container's raw traversal contract.
+        /// </summary>
+        /// <typeparam name="T">The child type retained in the snapshot.</typeparam>
+        /// <param name="collector">The current query's validation and collection state.</param>
+        protected virtual void CollectDirectChildren<T>(ref DirectChildCollector<T> collector)
+            where T : class, ISceneNode
+        {
+            foreach (ISceneNode child in EnumerateChildren())
+                collector.Add(child);
+        }
+
+        /// <summary>
         /// Returns a read-only snapshot of this node's children at the requested depth.
         /// </summary>
         /// <param name="recursive">Whether to include children at every depth.</param>
@@ -214,46 +242,10 @@ namespace Rebellion.SceneGraph
             bool includeDisabled = false
         )
         {
-            IEnumerable<ISceneNode> children = EnumerateChildren();
-            IReadOnlyList<ISceneNode> directChildren = (
-                includeDisabled ? children : children.Where(child => child.IsActive())
-            )
-                .ToList()
-                .AsReadOnly();
-
             if (!recursive)
-                return directChildren;
+                return GetDirectChildren<ISceneNode>(includeDisabled);
 
-            List<ISceneNode> descendants = new List<ISceneNode>();
-            HashSet<ISceneNode> currentPath = RentTraversalPath();
-
-            void Collect(ISceneNode node)
-            {
-                foreach (
-                    ISceneNode child in node.GetChildren(
-                        recursive: false,
-                        includeDisabled: includeDisabled
-                    )
-                )
-                {
-                    if (!currentPath.Add(child))
-                        throw new InvalidOperationException("Cycle detected in scene graph.");
-                    descendants.Add(child);
-                    Collect(child);
-                    currentPath.Remove(child);
-                }
-            }
-
-            try
-            {
-                currentPath.Add(this);
-                Collect(this);
-                return descendants.AsReadOnly();
-            }
-            finally
-            {
-                ReturnTraversalPath(currentPath);
-            }
+            return GetDescendants<ISceneNode>(includeDisabled);
         }
 
         /// <summary>
@@ -267,40 +259,70 @@ namespace Rebellion.SceneGraph
             where T : class, ISceneNode
         {
             if (recursive)
-                return GetChildren(recursive: true, includeDisabled)
-                    .OfType<T>()
-                    .ToList()
-                    .AsReadOnly();
+                return GetDescendants<T>(includeDisabled);
 
-            List<T> children = new List<T>();
-            foreach (ISceneNode child in EnumerateChildren())
+            return GetDirectChildren<T>(includeDisabled);
+        }
+
+        /// <summary>
+        /// Collects matching descendants into one ordered, read-only snapshot.
+        /// </summary>
+        /// <typeparam name="T">The descendant type to include.</typeparam>
+        /// <param name="includeDisabled">Whether inactive children may be returned.</param>
+        /// <returns>The depth-first descendant snapshot, including an empty read-only list when no descendants match.</returns>
+        private IReadOnlyList<T> GetDescendants<T>(bool includeDisabled)
+            where T : class, ISceneNode
+        {
+            List<T> descendants = new List<T>();
+            HashSet<ISceneNode> currentPath = new HashSet<ISceneNode> { this };
+            CollectDescendants(this, includeDisabled, currentPath, descendants);
+            return descendants.AsReadOnly();
+        }
+
+        /// <summary>
+        /// Visits every descendant in direct-child order while rejecting cycles before collecting matches.
+        /// </summary>
+        /// <typeparam name="T">The descendant type to include.</typeparam>
+        /// <param name="node">The current node whose direct children are visited.</param>
+        /// <param name="includeDisabled">Whether inactive children may be visited.</param>
+        /// <param name="currentPath">The nodes on the active traversal path.</param>
+        /// <param name="descendants">The ordered matching descendants collected so far.</param>
+        private static void CollectDescendants<T>(
+            ISceneNode node,
+            bool includeDisabled,
+            HashSet<ISceneNode> currentPath,
+            List<T> descendants
+        )
+            where T : class, ISceneNode
+        {
+            foreach (
+                ISceneNode child in node.GetChildren(
+                    recursive: false,
+                    includeDisabled: includeDisabled
+                )
+            )
             {
-                if ((includeDisabled || child.IsActive()) && child is T matchingChild)
-                    children.Add(matchingChild);
+                if (!currentPath.Add(child))
+                    throw new InvalidOperationException("Cycle detected in scene graph.");
+                if (child is T matchingChild)
+                    descendants.Add(matchingChild);
+                CollectDescendants(child, includeDisabled, currentPath, descendants);
+                currentPath.Remove(child);
             }
-            return children.AsReadOnly();
         }
 
         /// <summary>
-        /// Borrows one empty path for a synchronous traversal, keeping nested calls independent.
-        /// Each thread retains only the paths required by its concurrent traversal depth.
+        /// Copies direct children while sharing each parent hierarchy's validation within this query only.
         /// </summary>
-        /// <returns>An exclusively owned empty set using the existing node equality rules.</returns>
-        private static HashSet<ISceneNode> RentTraversalPath()
+        /// <typeparam name="T">The child type to include.</typeparam>
+        /// <param name="includeDisabled">Whether inactive children may be returned.</param>
+        /// <returns>The ordered, read-only child snapshot.</returns>
+        private IReadOnlyList<T> GetDirectChildren<T>(bool includeDisabled)
+            where T : class, ISceneNode
         {
-            return _availableTraversalPaths?.Count > 0
-                ? _availableTraversalPaths.Pop()
-                : new HashSet<ISceneNode>();
-        }
-
-        /// <summary>
-        /// Releases node references after every traversal exit before making its storage reusable.
-        /// </summary>
-        /// <param name="path">The path exclusively owned by the completing traversal.</param>
-        private static void ReturnTraversalPath(HashSet<ISceneNode> path)
-        {
-            path.Clear();
-            (_availableTraversalPaths ??= new Stack<HashSet<ISceneNode>>()).Push(path);
+            DirectChildCollector<T> collector = new DirectChildCollector<T>(this, includeDisabled);
+            CollectDirectChildren(ref collector);
+            return collector.GetSnapshot();
         }
 
         /// <summary>
@@ -343,20 +365,8 @@ namespace Rebellion.SceneGraph
         /// <param name="copy">The destination node.</param>
         protected virtual void CopyStateTo(BaseSceneNode copy)
         {
+            base.CopyStateTo(copy);
             copy.InstanceID = InstanceID;
-            copy.TypeID = TypeID;
-            copy.DisplayName = DisplayName;
-            copy.DisplayStatus = DisplayStatus;
-            copy.DisplayImagePath = DisplayImagePath;
-            copy.SmallDisplayImagePath = SmallDisplayImagePath;
-            copy.MessageImagePath = MessageImagePath;
-            copy.InTransitImagePath = InTransitImagePath;
-            copy.InTransitSmallImagePath = InTransitSmallImagePath;
-            copy.DamagedImagePath = DamagedImagePath;
-            copy.DamagedSmallImagePath = DamagedSmallImagePath;
-            copy.CapturedOverlayImagePath = CapturedOverlayImagePath;
-            copy.InjuredImagePath = InjuredImagePath;
-            copy.Description = Description;
             copy.OwnerInstanceID = OwnerInstanceID;
             copy.IsEnabled = IsEnabled;
         }
@@ -423,6 +433,83 @@ namespace Rebellion.SceneGraph
             action(this);
             foreach (ISceneNode child in GetChildren())
                 child.Traverse(action);
+        }
+
+        /// <summary>
+        /// Validates raw children and builds one independent direct-child snapshot.
+        /// </summary>
+        /// <typeparam name="T">The child type retained after activity validation.</typeparam>
+        protected struct DirectChildCollector<T>
+            where T : class, ISceneNode
+        {
+            private readonly BaseSceneNode _container;
+            private readonly bool _includeDisabled;
+            private List<T> _children;
+            private bool? _containerIsActive;
+            private ISceneNode _sharedParent;
+            private bool? _sharedParentIsActive;
+
+            /// <summary>
+            /// Creates collection state for one container query.
+            /// </summary>
+            /// <param name="container">The container whose children are inspected.</param>
+            /// <param name="includeDisabled">Whether inactive children may be retained.</param>
+            public DirectChildCollector(BaseSceneNode container, bool includeDisabled)
+            {
+                _container = container;
+                _includeDisabled = includeDisabled;
+                _children = null;
+                _containerIsActive = null;
+                _sharedParent = null;
+                _sharedParentIsActive = null;
+            }
+
+            /// <summary>
+            /// Validates one raw child before retaining a matching type.
+            /// </summary>
+            /// <param name="child">The next raw child in container order.</param>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Add(ISceneNode child)
+            {
+                if (!_includeDisabled)
+                {
+                    if (!child.IsEnabled)
+                        return;
+                    ISceneNode parent = child.GetParent();
+                    if (ReferenceEquals(parent, _container))
+                    {
+                        _containerIsActive ??= _container.IsActive();
+                        if (!_containerIsActive.Value)
+                            return;
+                    }
+                    else
+                    {
+                        if (
+                            !_sharedParentIsActive.HasValue
+                            || !ReferenceEquals(_sharedParent, parent)
+                        )
+                        {
+                            _sharedParent = parent;
+                            _sharedParentIsActive = child.IsActive();
+                        }
+                        if (!_sharedParentIsActive.Value)
+                            return;
+                    }
+                }
+
+                if (child is T matchingChild)
+                {
+                    _children ??= new List<T>();
+                    _children.Add(matchingChild);
+                }
+            }
+
+            /// <summary>
+            /// Returns the completed snapshot with its own backing collection.
+            /// </summary>
+            /// <returns>The shared empty array or the independent read-only child list.</returns>
+            public IReadOnlyList<T> GetSnapshot() =>
+                _children == null ? Array.Empty<T>() : _children.AsReadOnly();
         }
     }
 }

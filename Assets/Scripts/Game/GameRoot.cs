@@ -40,6 +40,11 @@ namespace Rebellion.Game
         // Scene graph.
         private GalaxyMap _galaxy;
 
+        /// <summary>
+        /// Reports an officer whose retained discovery state has just become enabled.
+        /// </summary>
+        internal event Action<Officer> ForceDiscoveryStarted;
+
         // Game details.
         [PersistableMember(Name = nameof(Summary))]
         private GameSummary _summary = new GameSummary();
@@ -178,6 +183,19 @@ namespace Rebellion.Game
         public Dictionary<string, ISceneNode> NodesByInstanceID =
             new Dictionary<string, ISceneNode>();
 
+        [PersistableIgnore]
+        private readonly List<Officer> _registeredOfficers = new List<Officer>();
+
+        [PersistableIgnore]
+        private long _forceDiscoveryOrder;
+
+        /// <summary>
+        /// Gets the registered officer roster, including disabled officers, without traversing the scene.
+        /// Callers must finish enumeration before adding or removing registered officers.
+        /// </summary>
+        [PersistableIgnore]
+        internal IReadOnlyList<Officer> RegisteredOfficers => _registeredOfficers;
+
         // Game objects.
         [PersistableMember(Name = "Factions")]
         private List<Faction> _factions = new List<Faction>();
@@ -280,6 +298,8 @@ namespace Rebellion.Game
                 throw new ArgumentNullException(nameof(config));
 
             Config = config;
+            foreach (Officer officer in _registeredOfficers)
+                officer.BindForceRules(config.Jedi, this);
         }
 
         /// <summary>
@@ -345,8 +365,15 @@ namespace Rebellion.Game
         /// <returns>The launch override, configured AI modifier, or a neutral modifier.</returns>
         public DifficultyModifiers GetDifficultyModifier(string ownerInstanceId)
         {
-            Faction faction = _factions.Find(candidate => candidate.InstanceID == ownerInstanceId);
-            return GetDifficultyModifier(faction);
+            List<Faction> factions = _factions;
+            for (int index = 0; index < factions.Count; index++)
+            {
+                Faction faction = factions[index];
+                if (faction.InstanceID == ownerInstanceId)
+                    return GetDifficultyModifier(faction);
+            }
+
+            return GetDifficultyModifier((Faction)null);
         }
 
         /// <summary>
@@ -398,7 +425,17 @@ namespace Rebellion.Game
         /// <returns>The controlling participant, or null when none is assigned.</returns>
         public Player GetFactionPlayer(string factionInstanceID)
         {
-            return _players.FirstOrDefault(player => player.FactionID == factionInstanceID);
+            List<Player> players = _players;
+            if (players == null)
+                throw new ArgumentNullException("source");
+            for (int index = 0; index < players.Count; index++)
+            {
+                Player player = players[index];
+                if (player.FactionID == factionInstanceID)
+                    return player;
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -476,14 +513,15 @@ namespace Rebellion.Game
         /// <returns>The faction with the specified ID.</returns>
         public Faction GetFactionByOwnerInstanceID(string ownerInstanceId)
         {
-            Faction faction = GetFactions().Find(faction => faction.InstanceID == ownerInstanceId);
-
-            if (faction == null)
+            List<Faction> factions = GetFactions();
+            for (int index = 0; index < factions.Count; index++)
             {
-                throw new SceneNodeNotFoundException(ownerInstanceId);
+                Faction faction = factions[index];
+                if (faction.InstanceID == ownerInstanceId)
+                    return faction;
             }
 
-            return faction;
+            throw new SceneNodeNotFoundException(ownerInstanceId);
         }
 
         /// <summary>
@@ -509,6 +547,7 @@ namespace Rebellion.Game
                     $"Cannot delete '{node.GetDisplayName()}' because it has no parent."
                 );
             Planet origin = UnitPresenceChanged == null ? null : GetContainingPlanet(node);
+            ((BaseSceneNode)node).TraverseIncludingDisabled(DisconnectOfficerRuntime);
             node.GetParent().RemoveChild(node);
             node.SetParent(null);
             ((BaseSceneNode)node).TraverseIncludingDisabled(child =>
@@ -631,6 +670,7 @@ namespace Rebellion.Game
             ISceneNode parent = node.GetParent();
             Planet origin = UnitPresenceChanged == null ? null : GetContainingPlanet(node);
 
+            ((BaseSceneNode)node).TraverseIncludingDisabled(DisconnectOfficerRuntime);
             parent.RemoveChild(node);
             node.SetParent(null);
 
@@ -890,9 +930,21 @@ namespace Rebellion.Game
         public void AddSceneNodeByInstanceID(ISceneNode node)
         {
             EnsureRuntimeIdentifier((BaseGameEntity)node);
+            if (node is Officer officerToBind && Config != null)
+                officerToBind.BindForceRules(Config.Jedi, this);
             try
             {
                 NodesByInstanceID.Add(node.InstanceID, node);
+                if (node is Officer officer)
+                {
+                    _registeredOfficers.Add(officer);
+                    _forceDiscoveryOrder = Math.Max(
+                        _forceDiscoveryOrder,
+                        officer.ForceDiscoveryOrder
+                    );
+                    if (officer.IsDiscoveringForceUser && officer.ForceDiscoveryOrder == 0)
+                        officer.ForceDiscoveryOrder = AllocateForceDiscoveryOrder();
+                }
             }
             catch (ArgumentException)
             {
@@ -900,6 +952,8 @@ namespace Rebellion.Game
                     $"Cannot add duplicate node \"{node.GetInstanceID()}\" and Display Name \"{node.GetDisplayName()}\" to scene."
                 );
             }
+            if (node is Officer registeredOfficer)
+                registeredOfficer.ReconcileForceDiscoveryState();
         }
 
         /// <summary>
@@ -909,6 +963,37 @@ namespace Rebellion.Game
         public void RemoveSceneNodeByInstanceID(ISceneNode node)
         {
             NodesByInstanceID.Remove(node.InstanceID);
+            if (node is Officer officer)
+            {
+                officer.UnbindForceRuntime();
+                _registeredOfficers.Remove(officer);
+            }
+        }
+
+        /// <summary>
+        /// Records a completed discovery-state transition for the connected runtime.
+        /// </summary>
+        /// <param name="officer">The officer whose scanner became enabled.</param>
+        internal void RecordForceDiscoveryStarted(Officer officer)
+        {
+            ForceDiscoveryStarted?.Invoke(officer);
+        }
+
+        /// <summary>
+        /// Allocates the next insertion order for a discovery scan, including recurring scans.
+        /// Restored officer orders advance this counter as the scene registry is rebuilt.
+        /// </summary>
+        /// <returns>An order greater than every previously registered or scheduled scan.</returns>
+        internal long AllocateForceDiscoveryOrder() => ++_forceDiscoveryOrder;
+
+        /// <summary>
+        /// Disconnects a removed officer before containment changes can schedule new work.
+        /// </summary>
+        /// <param name="node">The node leaving the game registry.</param>
+        private static void DisconnectOfficerRuntime(ISceneNode node)
+        {
+            if (node is Officer officer)
+                officer.UnbindForceRuntime();
         }
 
         /// <summary>
@@ -916,7 +1001,10 @@ namespace Rebellion.Game
         /// </summary>
         public void RebuildSceneState()
         {
+            foreach (Officer officer in _registeredOfficers)
+                officer.UnbindForceRuntime();
             NodesByInstanceID.Clear();
+            _registeredOfficers.Clear();
             foreach (Faction faction in _factions)
                 faction.ClearOwnedUnits();
 

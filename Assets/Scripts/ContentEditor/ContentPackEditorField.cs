@@ -188,6 +188,21 @@ public sealed class ContentPackEditorField
             if (value.Length == 0 && detach != null)
                 continue;
             ContentPackEditorFieldSchema.ValidateScalar(value, type);
+            if (
+                ContentPackEditorFieldMetadata.IsAIDecisionInterval(this)
+                && (
+                    !int.TryParse(
+                        value,
+                        NumberStyles.Integer,
+                        CultureInfo.InvariantCulture,
+                        out int interval
+                    )
+                    || interval < 1
+                )
+            )
+                throw new ArgumentException(
+                    "AI decision interval must be a positive whole number."
+                );
             if (IsIdentity && string.IsNullOrWhiteSpace(value))
                 throw new ArgumentException("ID required.");
         }

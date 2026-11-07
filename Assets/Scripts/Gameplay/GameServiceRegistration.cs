@@ -25,7 +25,6 @@ namespace Rebellion.Gameplay
             typeof(VictoryObserver),
             typeof(PlanetaryControlObserver),
             typeof(UprisingObserver),
-            typeof(JediObserver),
             typeof(OfficerLoyaltyObserver),
             typeof(FogOfWarObserver),
             typeof(ManufacturingObserver),
@@ -89,7 +88,15 @@ namespace Rebellion.Gameplay
             services.AddSingleton<FleetCommands>();
             services.AddSingleton<PersonnelQueries>();
             services.AddSingleton<PersonnelCommands>();
-            services.AddSingleton<DuelCommands>();
+            services.AddSingleton<DuelCommands>(locator => new DuelCommands(
+                locator.GetService<GameRoot>(),
+                locator.GetService<IRandomNumberProvider>(),
+                encounter =>
+                    locator
+                        .GetService<GameEventCommands>()
+                        .ProcessTriggeredEvents(new[] { encounter }),
+                locator.GetService<JediCommands>()
+            ));
             services.AddSingleton<MovementQueries>();
             services.AddSingleton<BlockadeTransitionResolver>();
             services.AddSingleton<MovementCommands>();
@@ -115,9 +122,10 @@ namespace Rebellion.Gameplay
                 locator.GetService<MovementCommands>(),
                 locator.GetService<UprisingResolver>(),
                 locator.GetService<MissionQueries>(),
-                locator.GetService<MovementQueries>(),
+                locator.GetService<DuelCommands>(),
                 locator.GetService<MissionBetrayalResolver>(),
-                locator.GetService<PersonnelCommands>()
+                locator.GetService<PersonnelCommands>(),
+                locator.GetService<JediCommands>()
             ));
             services.AddSingleton<MissionCommands>(locator => new MissionCommands(
                 locator.GetService<GameRoot>(),

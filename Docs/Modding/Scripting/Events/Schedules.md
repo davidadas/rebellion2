@@ -9,6 +9,11 @@ Bindings are evaluation-scoped, not persistent. Their selectors run whenever the
 evaluated, including while a recurring schedule is waiting for its next eligible tick. A random
 binding can therefore resolve a different node on successive evaluations.
 
+With [`ForEach`](Index.md#foreach), `Every` and `RandomInterval` run independently for each target.
+Their first delay starts when that target enters the scope. `Until` permanently completes that
+target's schedule; the event's activation limit and history remain shared across targets. Events
+without `ForEach` retain the campaign-tick timing described below.
+
 ## At
 
 `At` makes an event eligible at one absolute campaign tick. It is inherently one-shot.

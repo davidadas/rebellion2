@@ -71,7 +71,8 @@ namespace Rebellion.AI.Phases
 
             foreach (IAIProposalScorer proposalScorer in _proposalScorers)
             {
-                if (!proposalScorer.CanScore(proposal))
+                bool canScore = proposalScorer.CanScore(proposal);
+                if (!canScore)
                     continue;
 
                 proposal.SetScore(proposalScorer.Score(context, proposal));

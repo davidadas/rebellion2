@@ -100,18 +100,40 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        [Test]
-        public void TryCreate_ParticipantWithoutKnownForceAbility_ReturnsNull()
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void TryCreate_StudentWithNonzeroForceRank_ReturnsMission(
+            bool isForceSensitive,
+            bool isForceEligible
+        )
         {
-            _student.IsForceEligible = false;
+            _student.IsForceSensitive = isForceSensitive;
+            _student.IsForceEligible = isForceEligible;
 
-            Assert.IsNull(CreateMission());
+            Assert.IsNotNull(CreateMission());
+        }
+
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void TryCreate_TrainerWithQualifiedForceRank_ReturnsMission(
+            bool isForceSensitive,
+            bool isForceEligible
+        )
+        {
+            _trainer.IsForceSensitive = isForceSensitive;
+            _trainer.IsForceEligible = isForceEligible;
+
+            Assert.IsNotNull(CreateMission());
         }
 
         [Test]
-        public void TryCreate_NonJediParticipant_ReturnsNull()
+        public void TryCreate_StudentWithZeroEffectiveForceRank_ReturnsNull()
         {
-            _student.IsForceSensitive = false;
+            _student.ForceTrainingAdjustment = -_student.ForceValue;
 
             Assert.IsNull(CreateMission());
         }
@@ -141,9 +163,25 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void TryCreate_MultipleTrainers_SelectsHighestRankedTrainer()
+        public void TryCreate_FirstTrainerBelowAnotherParticipant_ReturnsNull()
         {
             Officer higherTrainer = CreateJedi("higher-trainer", 160, isTrainer: true);
+            _trainer.RosterOrder = 10;
+            higherTrainer.RosterOrder = 20;
+
+            JediTrainingMission mission = CreateMission(
+                new List<IMissionParticipant> { _trainer, _student, higherTrainer }
+            );
+
+            Assert.IsNull(mission);
+        }
+
+        [Test]
+        public void TryCreate_FirstTrainerOutranksOtherParticipants_SelectsTrainerInRosterOrder()
+        {
+            Officer higherTrainer = CreateJedi("higher-trainer", 160, isTrainer: true);
+            _trainer.RosterOrder = 20;
+            higherTrainer.RosterOrder = 10;
 
             JediTrainingMission mission = CreateMission(
                 new List<IMissionParticipant> { _trainer, _student, higherTrainer }
@@ -208,6 +246,27 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void ResolveObjective_EqualTrainingScores_AttemptsStudentsInRosterOrder()
+        {
+            Officer secondStudent = CreateJedi("student2", _student.ForceRank);
+            _student.RosterOrder = 20;
+            secondStudent.RosterOrder = 10;
+            JediTrainingMission mission = CreateMission(
+                new List<IMissionParticipant> { _trainer, _student, secondStudent }
+            );
+
+            List<GameResult> results = mission.ResolveObjective(
+                _game,
+                new SequenceRNG(intValues: new[] { 0, 0, 20, 99 })
+            );
+
+            ForceTrainingResult progress = results.OfType<ForceTrainingResult>().Single();
+            Assert.AreEqual(secondStudent, progress.Officer);
+            Assert.AreEqual(20, secondStudent.ForceTrainingAdjustment);
+            Assert.AreEqual(0, _student.ForceTrainingAdjustment);
+        }
+
+        [Test]
         public void ResolveObjective_FailedTrainingRoll_ReturnsFailedReport()
         {
             JediTrainingMission mission = CreateMission();
@@ -222,6 +281,19 @@ namespace Rebellion.Tests.Game.Missions
                 MissionOutcome.Failed,
                 results.OfType<MissionCompletedResult>().Single().Outcome
             );
+        }
+
+        [Test]
+        public void ResolveObjective_ZeroCatchUpRange_DoesNotConsumeBonusRoll()
+        {
+            _game.Config.Jedi.TrainingCatchUpPercent = 0;
+            JediTrainingMission mission = CreateMission();
+            QueueRNG random = new QueueRNG(0, 0, 0.75);
+
+            mission.ResolveObjective(_game, random);
+
+            Assert.AreEqual(0.75, random.NextDouble());
+            Assert.AreEqual(0, _student.ForceTrainingAdjustment);
         }
 
         [Test]

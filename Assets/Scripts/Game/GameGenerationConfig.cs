@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.GameEvents;
 using Rebellion.Util.Serialization;
@@ -43,6 +44,24 @@ namespace Rebellion.Game
             return category == GameEventCategory.None
                 || DisabledEventCategories?.Contains(category) != true;
         }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public GameGenerationConfig CreateCopy() =>
+            new GameGenerationConfig
+            {
+                Officers = Officers?.CreateCopy(),
+                GalaxyClassification = GalaxyClassification?.CreateCopy(),
+                PlanetResources = PlanetResources?.CreateCopy(),
+                PlanetSupport = PlanetSupport?.CreateCopy(),
+                FacilityGeneration = FacilityGeneration?.CreateCopy(),
+                UnitDeployment = UnitDeployment?.CreateCopy(),
+                Balance = Balance?.CreateCopy(),
+                DisabledEventCategories = DisabledEventCategories?.ToList(),
+                FactionModifiers = FactionModifiers?.Select(item => item?.CreateCopy()).ToList(),
+            };
     }
 
     /// <summary>
@@ -53,6 +72,13 @@ namespace Rebellion.Game
     {
         public string FactionID { get; set; }
         public FactionSettings Settings { get; set; } = new FactionSettings();
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public FactionModifierConfig CreateCopy() =>
+            new FactionModifierConfig { FactionID = FactionID, Settings = Settings?.CreateCopy() };
     }
 
     #region OFFICERS
@@ -65,6 +91,16 @@ namespace Rebellion.Game
     {
         public List<StartingOfficerRule> StartingOfficers { get; set; } =
             new List<StartingOfficerRule>();
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public OfficerSection CreateCopy() =>
+            new OfficerSection
+            {
+                StartingOfficers = StartingOfficers?.Select(item => item?.CreateCopy()).ToList(),
+            };
     }
 
     /// <summary>
@@ -81,6 +117,19 @@ namespace Rebellion.Game
         public string DestinationTypeID { get; set; }
 
         public string DestinationInstanceID { get; set; }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public StartingOfficerRule CreateCopy() =>
+            new StartingOfficerRule
+            {
+                OfficerInstanceID = OfficerInstanceID,
+                GalaxySizes = GalaxySizes?.ToList(),
+                DestinationTypeID = DestinationTypeID,
+                DestinationInstanceID = DestinationInstanceID,
+            };
     }
 
     #endregion
@@ -95,6 +144,17 @@ namespace Rebellion.Game
     {
         public List<FactionSetup> FactionSetups { get; set; }
         public List<FactionBucketConfig> FactionBuckets { get; set; }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public GalaxyClassificationSection CreateCopy() =>
+            new GalaxyClassificationSection
+            {
+                FactionSetups = FactionSetups?.Select(item => item?.CreateCopy()).ToList(),
+                FactionBuckets = FactionBuckets?.Select(item => item?.CreateCopy()).ToList(),
+            };
     }
 
     /// <summary>
@@ -110,6 +170,19 @@ namespace Rebellion.Game
         public PlanetSizeProfile NumStartingOfficers { get; set; }
 
         public List<StartingPlanet> StartingPlanets { get; set; }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public FactionSetup CreateCopy() =>
+            new FactionSetup
+            {
+                FactionID = FactionID,
+                StartingResearchLevel = StartingResearchLevel,
+                NumStartingOfficers = NumStartingOfficers?.CreateCopy(),
+                StartingPlanets = StartingPlanets?.Select(item => item?.CreateCopy()).ToList(),
+            };
     }
 
     /// <summary>
@@ -123,6 +196,20 @@ namespace Rebellion.Game
         public int Loyalty { get; set; }
         public bool PickFromRim { get; set; }
         public List<string> VisibleToFactionIDs { get; set; }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public StartingPlanet CreateCopy() =>
+            new StartingPlanet
+            {
+                PlanetTypeID = PlanetTypeID,
+                IsHeadquarters = IsHeadquarters,
+                Loyalty = Loyalty,
+                PickFromRim = PickFromRim,
+                VisibleToFactionIDs = VisibleToFactionIDs?.ToList(),
+            };
     }
 
     /// <summary>
@@ -136,6 +223,19 @@ namespace Rebellion.Game
         public int WeakPct { get; set; }
         public List<FactionBucketOverride> Overrides { get; set; } =
             new List<FactionBucketOverride>();
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public FactionBucketConfig CreateCopy() =>
+            new FactionBucketConfig
+            {
+                FactionID = FactionID,
+                StrongPct = StrongPct,
+                WeakPct = WeakPct,
+                Overrides = Overrides?.Select(item => item?.CreateCopy()).ToList(),
+            };
     }
 
     /// <summary>
@@ -148,6 +248,19 @@ namespace Rebellion.Game
         public PlayerControllerType ControllerType { get; set; }
         public int StrongPct { get; set; }
         public int WeakPct { get; set; }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public FactionBucketOverride CreateCopy() =>
+            new FactionBucketOverride
+            {
+                Difficulty = Difficulty,
+                ControllerType = ControllerType,
+                StrongPct = StrongPct,
+                WeakPct = WeakPct,
+            };
     }
 
     #endregion
@@ -161,6 +274,16 @@ namespace Rebellion.Game
     public class PlanetResourcesSection
     {
         public List<PlanetResourceProfile> Profiles { get; set; }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public PlanetResourcesSection CreateCopy() =>
+            new PlanetResourcesSection
+            {
+                Profiles = Profiles?.Select(item => item?.CreateCopy()).ToList(),
+            };
     }
 
     /// <summary>
@@ -179,6 +302,25 @@ namespace Rebellion.Game
         public int RawMaterialsMin { get; set; }
         public int RawMaterialsMax { get; set; }
         public int RimColonizationPct { get; set; }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public PlanetResourceProfile CreateCopy() =>
+            new PlanetResourceProfile
+            {
+                Availability = Availability,
+                CoreEnergy = CoreEnergy?.CreateCopy(),
+                RimEnergy = RimEnergy?.CreateCopy(),
+                CoreRawMaterials = CoreRawMaterials?.CreateCopy(),
+                RimRawMaterials = RimRawMaterials?.CreateCopy(),
+                EnergyMin = EnergyMin,
+                EnergyMax = EnergyMax,
+                RawMaterialsMin = RawMaterialsMin,
+                RawMaterialsMax = RawMaterialsMax,
+                RimColonizationPct = RimColonizationPct,
+            };
     }
 
     /// <summary>
@@ -190,6 +332,18 @@ namespace Rebellion.Game
         public int Base { get; set; }
         public int Random1 { get; set; }
         public int Random2 { get; set; }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public DiceFormula CreateCopy() =>
+            new DiceFormula
+            {
+                Base = Base,
+                Random1 = Random1,
+                Random2 = Random2,
+            };
     }
 
     #endregion
@@ -206,6 +360,19 @@ namespace Rebellion.Game
         public SupportFormula Weak { get; set; }
         public SupportFormula Neutral { get; set; }
         public int RimSupportRandom { get; set; }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public PlanetSupportSection CreateCopy() =>
+            new PlanetSupportSection
+            {
+                Strong = Strong?.CreateCopy(),
+                Weak = Weak?.CreateCopy(),
+                Neutral = Neutral?.CreateCopy(),
+                RimSupportRandom = RimSupportRandom,
+            };
     }
 
     /// <summary>
@@ -216,6 +383,12 @@ namespace Rebellion.Game
     {
         public int Base { get; set; }
         public int Random { get; set; }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public SupportFormula CreateCopy() => new SupportFormula { Base = Base, Random = Random };
     }
 
     #endregion
@@ -236,6 +409,23 @@ namespace Rebellion.Game
         public List<WeightedFacilityEntry> CoreFacilityTable { get; set; }
         public List<WeightedFacilityEntry> RimFacilityTable { get; set; }
         public List<HQFacilityLoadout> HQLoadouts { get; set; }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public FacilityGenerationSection CreateCopy() =>
+            new FacilityGenerationSection
+            {
+                CoreMineMultiplier = CoreMineMultiplier,
+                RimMineMultiplier = RimMineMultiplier,
+                MineTypeID = MineTypeID,
+                FacilityTableRollMin = FacilityTableRollMin,
+                FacilityTableRollMaxExclusive = FacilityTableRollMaxExclusive,
+                CoreFacilityTable = CoreFacilityTable?.Select(item => item?.CreateCopy()).ToList(),
+                RimFacilityTable = RimFacilityTable?.Select(item => item?.CreateCopy()).ToList(),
+                HQLoadouts = HQLoadouts?.Select(item => item?.CreateCopy()).ToList(),
+            };
     }
 
     /// <summary>
@@ -246,6 +436,13 @@ namespace Rebellion.Game
     {
         public int CumulativeWeight { get; set; }
         public string TypeID { get; set; }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public WeightedFacilityEntry CreateCopy() =>
+            new WeightedFacilityEntry { CumulativeWeight = CumulativeWeight, TypeID = TypeID };
     }
 
     /// <summary>
@@ -257,6 +454,18 @@ namespace Rebellion.Game
         public string PlanetTypeID { get; set; }
         public string FactionID { get; set; }
         public List<string> FacilityTypeIDs { get; set; }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public HQFacilityLoadout CreateCopy() =>
+            new HQFacilityLoadout
+            {
+                PlanetTypeID = PlanetTypeID,
+                FactionID = FactionID,
+                FacilityTypeIDs = FacilityTypeIDs?.ToList(),
+            };
     }
 
     #endregion
@@ -275,6 +484,20 @@ namespace Rebellion.Game
         public List<FixedGarrison> FixedGarrisons { get; set; }
         public List<FixedFleet> FixedFleets { get; set; }
         public List<FactionBudget> FactionBudgets { get; set; }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public UnitDeploymentSection CreateCopy() =>
+            new UnitDeploymentSection
+            {
+                UprisingPreventionThreshold = UprisingPreventionThreshold,
+                SupportDeficitPerGarrisonTroop = SupportDeficitPerGarrisonTroop,
+                FixedGarrisons = FixedGarrisons?.Select(item => item?.CreateCopy()).ToList(),
+                FixedFleets = FixedFleets?.Select(item => item?.CreateCopy()).ToList(),
+                FactionBudgets = FactionBudgets?.Select(item => item?.CreateCopy()).ToList(),
+            };
     }
 
     /// <summary>
@@ -286,6 +509,18 @@ namespace Rebellion.Game
         public string PlanetTypeID { get; set; }
         public string FactionID { get; set; }
         public List<UnitEntry> Units { get; set; }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public FixedGarrison CreateCopy() =>
+            new FixedGarrison
+            {
+                PlanetTypeID = PlanetTypeID,
+                FactionID = FactionID,
+                Units = Units?.Select(item => item?.CreateCopy()).ToList(),
+            };
     }
 
     /// <summary>
@@ -299,6 +534,20 @@ namespace Rebellion.Game
         public string FactionID { get; set; }
         public int SpawnChancePct { get; set; }
         public List<FixedFleetShip> ShipEntries { get; set; }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public FixedFleet CreateCopy() =>
+            new FixedFleet
+            {
+                PlanetTypeID = PlanetTypeID,
+                TargetPlanets = TargetPlanets?.ToList(),
+                FactionID = FactionID,
+                SpawnChancePct = SpawnChancePct,
+                ShipEntries = ShipEntries?.Select(item => item?.CreateCopy()).ToList(),
+            };
     }
 
     /// <summary>
@@ -310,6 +559,18 @@ namespace Rebellion.Game
         public string TypeID { get; set; }
         public int Count { get; set; }
         public List<UnitEntry> Cargo { get; set; }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public FixedFleetShip CreateCopy() =>
+            new FixedFleetShip
+            {
+                TypeID = TypeID,
+                Count = Count,
+                Cargo = Cargo?.Select(item => item?.CreateCopy()).ToList(),
+            };
     }
 
     /// <summary>
@@ -320,6 +581,12 @@ namespace Rebellion.Game
     {
         public string TypeID { get; set; }
         public int Count { get; set; }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public UnitEntry CreateCopy() => new UnitEntry { TypeID = TypeID, Count = Count };
     }
 
     /// <summary>
@@ -332,6 +599,19 @@ namespace Rebellion.Game
         public List<BudgetLevel> BudgetLevels { get; set; }
         public List<WeightedUnitEntry> UnitTable { get; set; }
         public List<StartingUnitBudgetBonus> Bonuses { get; set; }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public FactionBudget CreateCopy() =>
+            new FactionBudget
+            {
+                FactionID = FactionID,
+                BudgetLevels = BudgetLevels?.Select(item => item?.CreateCopy()).ToList(),
+                UnitTable = UnitTable?.Select(item => item?.CreateCopy()).ToList(),
+                Bonuses = Bonuses?.Select(item => item?.CreateCopy()).ToList(),
+            };
     }
 
     /// <summary>
@@ -353,6 +633,19 @@ namespace Rebellion.Game
         public bool AIOnly { get; set; }
         public StartingUnitBudgetCategory Category { get; set; }
         public List<BudgetLevel> BudgetLevels { get; set; }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public StartingUnitBudgetBonus CreateCopy() =>
+            new StartingUnitBudgetBonus
+            {
+                Difficulty = Difficulty,
+                AIOnly = AIOnly,
+                Category = Category,
+                BudgetLevels = BudgetLevels?.Select(item => item?.CreateCopy()).ToList(),
+            };
     }
 
     /// <summary>
@@ -363,6 +656,13 @@ namespace Rebellion.Game
     {
         public int GalaxySize { get; set; }
         public int Percentage { get; set; }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public BudgetLevel CreateCopy() =>
+            new BudgetLevel { GalaxySize = GalaxySize, Percentage = Percentage };
     }
 
     /// <summary>
@@ -373,6 +673,17 @@ namespace Rebellion.Game
     {
         public int Weight { get; set; }
         public List<UnitEntry> Units { get; set; }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public WeightedUnitEntry CreateCopy() =>
+            new WeightedUnitEntry
+            {
+                Weight = Weight,
+                Units = Units?.Select(item => item?.CreateCopy()).ToList(),
+            };
     }
 
     #endregion
@@ -388,6 +699,17 @@ namespace Rebellion.Game
         public int SupportBoostPerUnit { get; set; } = 2;
 
         public int MaxMilitaryPresenceBoost { get; set; } = 10;
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public BalanceSection CreateCopy() =>
+            new BalanceSection
+            {
+                SupportBoostPerUnit = SupportBoostPerUnit,
+                MaxMilitaryPresenceBoost = MaxMilitaryPresenceBoost,
+            };
     }
 
     #endregion
@@ -403,6 +725,18 @@ namespace Rebellion.Game
         public int Small { get; set; }
         public int Medium { get; set; }
         public int Large { get; set; }
+
+        /// <summary>
+        /// Creates an independent snapshot of these settings.
+        /// </summary>
+        /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
+        public PlanetSizeProfile CreateCopy() =>
+            new PlanetSizeProfile
+            {
+                Small = Small,
+                Medium = Medium,
+                Large = Large,
+            };
     }
 
     #endregion

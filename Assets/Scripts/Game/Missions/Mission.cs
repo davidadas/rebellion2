@@ -163,11 +163,7 @@ namespace Rebellion.Game.Missions
                 _leadership ??= new Dictionary<Mission, int>();
                 if (!_leadership.TryGetValue(mission, out int average))
                 {
-                    IReadOnlyList<IMissionParticipant> participants = mission.GetMainParticipants();
-                    int total = 0;
-                    for (int index = 0; index < participants.Count; index++)
-                        total += participants[index].GetEffectiveRating(SkillRating.Leadership);
-                    average = participants.Count == 0 ? 0 : total / participants.Count;
+                    average = mission.GetAverageLeadership();
                     _leadership.Add(mission, average);
                 }
                 return average;
@@ -536,6 +532,36 @@ namespace Rebellion.Game.Missions
                 : _decoyParticipants.Where(participant => participant.IsActive()).ToList();
 
         /// <summary>
+        /// Returns the average leadership of the active primary and decoy teams.
+        /// </summary>
+        /// <param name="mainParticipants">An optional proposed primary team replacing the stored team.</param>
+        /// <returns>The integer average leadership, or zero when both teams are empty.</returns>
+        internal int GetAverageLeadership(
+            IReadOnlyList<IMissionParticipant> mainParticipants = null
+        )
+        {
+            IReadOnlyList<IMissionParticipant> main = mainParticipants ?? _mainParticipants;
+            int total = 0;
+            int count = 0;
+            for (int index = 0; index < main.Count; index++)
+            {
+                IMissionParticipant participant = main[index];
+                if (mainParticipants == null && !participant.IsActive())
+                    continue;
+                total += participant.GetEffectiveRating(SkillRating.Leadership);
+                count++;
+            }
+            foreach (IMissionParticipant participant in _decoyParticipants)
+            {
+                if (!participant.IsActive())
+                    continue;
+                total += participant.GetEffectiveRating(SkillRating.Leadership);
+                count++;
+            }
+            return count == 0 ? 0 : total / count;
+        }
+
+        /// <summary>
         /// Returns whether any mission participant is still travelling to the mission.
         /// </summary>
         /// <returns>True if any participant has active movement.</returns>
@@ -850,6 +876,30 @@ namespace Rebellion.Game.Missions
             officer?.IsMain == false ? Math.Clamp(deathProbability, 0, 100) : 0;
 
         /// <summary>
+        /// Returns the injury roll threshold for an officer confronted during evasion.
+        /// </summary>
+        /// <param name="officer">The officer exposed to injury.</param>
+        /// <param name="config">The active encounter rules.</param>
+        /// <returns>The injury threshold before percentage clamping.</returns>
+        private static int GetEvasionInjuryChance(Officer officer, GameConfig config) =>
+            Math.Max(
+                config.DuelResolution.MinimumInjuryChance,
+                config.DuelResolution.CaptureEvasionInjuryBaseChance
+                    - officer.GetEffectiveRating(SkillRating.Combat)
+            );
+
+        /// <summary>
+        /// Returns the chance that an evasion confrontation kills an officer, independently of escape.
+        /// </summary>
+        /// <param name="officer">The officer exposed to injury.</param>
+        /// <param name="config">The active encounter rules.</param>
+        /// <returns>The combined injury and death probability from zero to one.</returns>
+        internal static double GetEvasionDeathProbability(Officer officer, GameConfig config) =>
+            Math.Clamp(GetEvasionInjuryChance(officer, config) / 100d, 0, 1)
+            * GetPostInjuryDeathProbability(officer, config.Assassination.KillProbability)
+            / 100d;
+
+        /// <summary>
         /// Applies the injury and minor-character death checks used after an evasion attempt.
         /// </summary>
         /// <param name="officer">The officer resolving the evasion encounter.</param>
@@ -868,11 +918,7 @@ namespace Rebellion.Game.Missions
             List<GameResult> results
         )
         {
-            int injuryChance = Math.Max(
-                game.Config.DuelResolution.MinimumInjuryChance,
-                game.Config.DuelResolution.CaptureEvasionInjuryBaseChance
-                    - officer.GetEffectiveRating(SkillRating.Combat)
-            );
+            int injuryChance = GetEvasionInjuryChance(officer, game.Config);
             if (provider.NextInt(0, 100) >= Math.Min(100, injuryChance))
                 return false;
 
@@ -885,6 +931,7 @@ namespace Rebellion.Game.Missions
                 new OfficerInjuredResult
                 {
                     Officer = officer,
+                    ParentAtInjury = officer.GetParent(),
                     Severity = injury,
                     Tick = game.CurrentTick,
                 }
@@ -980,6 +1027,17 @@ namespace Rebellion.Game.Missions
         internal Officer FindDetectorCommander(ISceneNode detector, Planet planet = null)
         {
             planet ??= GetParent() as Planet ?? detector?.GetParentOfType<Planet>();
+            return GetDetectorCommander(detector, planet);
+        }
+
+        /// <summary>
+        /// Returns the eligible ranked commander paired with a detector in its observed container.
+        /// </summary>
+        /// <param name="detector">The detector whose commander is required.</param>
+        /// <param name="planet">The observed planet containing the detector.</param>
+        /// <returns>The assigned commander, or null when no eligible commander is present.</returns>
+        internal static Officer GetDetectorCommander(ISceneNode detector, Planet planet)
+        {
             if (planet == null)
                 return null;
 
@@ -1045,23 +1103,27 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Sets the mission ID on result types that use it for report or outcome attribution.
+        /// Supplies missing mission attribution while preserving another producer's mission ID.
         /// </summary>
         /// <param name="result">The result to attribute to this mission.</param>
         internal void SetResultMissionID(GameResult result)
         {
             switch (result)
             {
-                case MissionCompletedResult completed:
+                case MissionCompletedResult completed
+                    when string.IsNullOrEmpty(completed.MissionInstanceID):
                     completed.MissionInstanceID = InstanceID;
                     break;
-                case PlanetsRevealedResult revealed:
+                case PlanetsRevealedResult revealed
+                    when string.IsNullOrEmpty(revealed.MissionInstanceID):
                     revealed.MissionInstanceID = InstanceID;
                     break;
-                case OfficerInjuredResult injured:
+                case OfficerInjuredResult injured
+                    when string.IsNullOrEmpty(injured.MissionInstanceID):
                     injured.MissionInstanceID = InstanceID;
                     break;
-                case OfficerCaptureStateResult capture:
+                case OfficerCaptureStateResult capture
+                    when string.IsNullOrEmpty(capture.MissionInstanceID):
                     capture.MissionInstanceID = InstanceID;
                     break;
             }
@@ -1305,16 +1367,23 @@ namespace Rebellion.Game.Missions
             _decoyParticipants.Remove(participant);
 
         /// <summary>
+        /// Removes a participant from the mission roster independently of physical containment.
+        /// </summary>
+        /// <param name="participant">The participant leaving the mission.</param>
+        internal void RemoveParticipant(IMissionParticipant participant)
+        {
+            _mainParticipants.Remove(participant);
+            _decoyParticipants.Remove(participant);
+        }
+
+        /// <summary>
         /// Removes the child from participant lists (called by GameRoot.MoveNode/DetachNode).
         /// </summary>
         /// <param name="child">The node to remove from participant lists.</param>
         public override void RemoveChild(ISceneNode child)
         {
             if (child is IMissionParticipant participant)
-            {
-                _mainParticipants.Remove(participant);
-                _decoyParticipants.Remove(participant);
-            }
+                RemoveParticipant(participant);
         }
     }
 }

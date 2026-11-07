@@ -395,7 +395,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                     "Status:|Active",
                     "Maintenance Cost:|7",
                     "Standard Processing Rate:|4",
-                    "Bombardment Value:|2",
+                    "Bombardment Resistance:|2",
                 },
                 info.Rows.Select(row => row.Left + "|" + row.Right)
             );
@@ -412,7 +412,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 BuildingType = BuildingType.Defense,
                 ManufacturingStatus = ManufacturingStatus.Building,
                 MaintenanceCost = 8,
-                WeaponStrength = 13,
+                WeaponPower = 13,
                 ShieldStrength = 21,
                 Bombardment = 5,
             };
@@ -427,7 +427,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 "Under Construction",
                 info.Rows.Single(row => row.Left == "Status:").Right
             );
-            Assert.AreEqual("13", info.Rows.Single(row => row.Left == "Weapons Rating:").Right);
+            Assert.AreEqual("13", info.Rows.Single(row => row.Left == "Weapon Power:").Right);
             Assert.AreEqual("21", info.Rows.Single(row => row.Left == "Shield Strength:").Right);
             Assert.AreEqual("5", info.Rows.Single(row => row.Left == "Bombardment Defense:").Right);
             Assert.IsFalse(info.Rows.Any(row => row.Left == "Standard Processing Rate:"));
@@ -1031,7 +1031,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         }
 
         [Test]
-        public void Build_CapitalShipUnderConstruction_ReturnsOriginalCompletionDayLabel()
+        public void Build_CapitalShipUnderConstruction_ReturnsLinkedProducerAndCompletionDay()
         {
             _game.AttachNode(
                 new Building
@@ -1066,14 +1066,37 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
 
             StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, ship));
 
-            Assert.AreEqual(
-                "Under Construction",
-                info.Rows.Single(row => row.Left == "Status:").Right
-            );
+            StrategyStatusRow status = info.Rows.Single(row => row.Left == "Status:");
+            Assert.AreEqual("Under Construction", status.Right);
+            Assert.IsFalse(status.OpensManufacturingSource);
+            StrategyStatusRow productionLocation = info.Rows.Single(row => row.Left == "Producer:");
+            Assert.AreEqual("Corellia", productionLocation.Right);
+            Assert.IsTrue(productionLocation.OpensManufacturingSource);
             Assert.AreEqual(
                 "Day 130",
                 info.Rows.Single(row => row.Left == "ETA Destination:").Right
             );
+        }
+
+        [Test]
+        public void Build_CapitalShipUnderConstructionAtOpponentPlanet_DoesNotLinkProducer()
+        {
+            _planet.OwnerInstanceID = _opponentId;
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "queued-ship",
+                DisplayName = "Queued Ship",
+                OwnerInstanceID = _ownerId,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                ProducerPlanetID = _planet.InstanceID,
+            };
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, ship));
+
+            StrategyStatusRow status = info.Rows.Single(row => row.Left == "Status:");
+            Assert.AreEqual("Under Construction", status.Right);
+            Assert.IsFalse(status.OpensManufacturingSource);
+            Assert.IsFalse(info.Rows.Any(row => row.Left == "Producer:"));
         }
 
         [Test]

@@ -25,6 +25,19 @@ namespace Rebellion.Game.Factions
         [PersistableCollectionItem(Name = "Name")]
         public List<string> Names { get; set; } = new List<string>();
         public int NextNameIndex { get; set; }
+
+        /// <summary>
+        /// Copies a naming pool without sharing its mutable name list.
+        /// </summary>
+        /// <returns>A naming pool with the same names and next-name position.</returns>
+        public FactionNamePool CreateCopy() =>
+            new FactionNamePool
+            {
+                NamePoolID = NamePoolID,
+                FallbackNamePoolID = FallbackNamePoolID,
+                Names = Names?.ToList(),
+                NextNameIndex = NextNameIndex,
+            };
     }
 
     /// <summary>
@@ -32,6 +45,9 @@ namespace Rebellion.Game.Factions
     /// </summary>
     public class Faction : BaseGameEntity
     {
+        [ThreadStatic]
+        private static HashSet<ISceneNode> _ownedUnitQueryBuffer;
+
         private FactionSettings _settings = new FactionSettings();
 
         [PersistableMember(Name = "NextFleetNumber")]
@@ -179,6 +195,44 @@ namespace Rebellion.Game.Factions
         /// Default constructor used for deserialization.
         /// </summary>
         public Faction() { }
+
+        /// <summary>
+        /// Transfers authored identity, rules, naming pools, and starting messages.
+        /// Runtime ownership, research, and intelligence collections belong to the destination.
+        /// </summary>
+        /// <param name="copy">The newly constructed faction receiving the authored state.</param>
+        internal void CopyDefinitionTo(Faction copy)
+        {
+            base.CopyStateTo(copy);
+            copy._settings = _settings?.CreateCopy();
+            copy._nextFleetNumber = _nextFleetNumber;
+            copy._nextGenericShipNameNumbers = new Dictionary<string, int>(
+                _nextGenericShipNameNumbers
+            );
+            copy.HQInstanceID = HQInstanceID;
+            copy.HeadquartersUnitInstanceID = HeadquartersUnitInstanceID;
+            copy.HasLostHeadquarters = HasLostHeadquarters;
+            copy.GarrisonTroopTypeID = GarrisonTroopTypeID;
+            copy.DisallowedMissionTypeIDs = DisallowedMissionTypeIDs?.ToList();
+            copy.ShipNamePools = ShipNamePools?.Select(pool => pool.CreateCopy()).ToList();
+            copy.AdvisorMessageNotificationsEnabled = AdvisorMessageNotificationsEnabled;
+            copy.AdvisorMessageNotifications = new Dictionary<MessageType, bool>(
+                AdvisorMessageNotifications
+            );
+            copy.TranslateCounterpart = TranslateCounterpart;
+            copy.AgentAdvice = AgentAdvice;
+            copy.ManageGarrisons = ManageGarrisons;
+            copy.ManageProduction = ManageProduction;
+            copy.ManageNaming = ManageNaming;
+            copy._rawMaterialStockpile = _rawMaterialStockpile;
+            copy._refinedMaterialStockpile = _refinedMaterialStockpile;
+            copy.PendingRawMaterialFacilityIDs = PendingRawMaterialFacilityIDs?.ToList();
+            copy.PendingRefinedMaterialFacilityIDs = PendingRefinedMaterialFacilityIDs?.ToList();
+            copy._messages = _messages.ToDictionary(
+                entry => entry.Key,
+                entry => entry.Value.ConvertAll(message => message.CreateCopy())
+            );
+        }
 
         /// <summary>
         /// Reserves one raw material for a facility or queues its request in arrival order.
@@ -340,13 +394,26 @@ namespace Rebellion.Game.Factions
                     .ToList();
             }
 
-            return _ownedEntities
-                .Where(entry => typeof(T).IsAssignableFrom(entry.Key))
-                .SelectMany(entry => entry.Value)
-                .Distinct()
-                .Where(node => includeDisabled || node.IsActive())
-                .Cast<T>()
-                .ToList();
+            HashSet<ISceneNode> seen = _ownedUnitQueryBuffer ?? new();
+            _ownedUnitQueryBuffer = null;
+            try
+            {
+                List<T> matches = new();
+                foreach (var entry in _ownedEntities)
+                {
+                    if (!typeof(T).IsAssignableFrom(entry.Key))
+                        continue;
+                    foreach (ISceneNode node in entry.Value)
+                        if (seen.Add(node) && (includeDisabled || node.IsActive()))
+                            matches.Add((T)node);
+                }
+                return matches;
+            }
+            finally
+            {
+                seen.Clear();
+                _ownedUnitQueryBuffer ??= seen;
+            }
         }
 
         /// <summary>
@@ -603,11 +670,22 @@ namespace Rebellion.Game.Factions
         /// <returns>The available refined capacity count.</returns>
         public int GetTotalAvailableMaterialsRaw()
         {
-            return CalculateRefinedCapacity(
-                GetTotalAvailableResourceNodes(),
-                GetTotalAvailableMinedResources(),
-                GetTotalAvailableRefinementCapacity()
-            );
+            int resourceNodes = 0;
+            int minedResources = 0;
+            int refinementCapacity = 0;
+            foreach (Planet planet in GetOwnedUnitsByType<Planet>())
+            {
+                if (planet.IsResourceProductionSuspended())
+                    continue;
+                checked
+                {
+                    resourceNodes += planet.GetRawResourceNodes();
+                    minedResources += planet.GetActiveMinedResources();
+                    refinementCapacity += planet.GetActiveRefinementCapacity();
+                }
+            }
+
+            return CalculateRefinedCapacity(resourceNodes, minedResources, refinementCapacity);
         }
 
         /// <summary>

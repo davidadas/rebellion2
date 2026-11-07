@@ -21,18 +21,84 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="fleet">The fleet to inspect.</param>
         /// <param name="config">The space-combat rules.</param>
+        /// <param name="command">Optional command ratings for a read-only assignment estimate.</param>
         /// <returns>The fleet's capital-target combat value.</returns>
         internal static int GetFleetCombatValueAgainstCapitalShips(
             Fleet fleet,
-            GameConfig.SpaceCombatConfig config
+            GameConfig.SpaceCombatConfig config,
+            SpaceCombatCommandModifiers? command = null
         )
         {
             if (fleet == null || config == null)
                 return 0;
 
+            SpaceCombatCommandModifiers modifiers =
+                command
+                ?? SpaceCombatCommands.GetCommandModifiers(
+                    new[] { fleet },
+                    null,
+                    fleet.GetOwnerInstanceID()
+                );
             return fleet
                 .GetChildren<CapitalShip>()
-                .Sum(ship => GetCapitalShipCombatValueAgainstCapitalShips(ship, config));
+                .Sum(ship => GetCapitalShipCombatValueAgainstCapitalShips(ship, config, modifiers));
+        }
+
+        /// <summary>
+        /// Returns completed ships' strength once their observed travel has finished.
+        /// </summary>
+        /// <param name="fleet">The observed fleet.</param>
+        /// <param name="config">The space-combat rules.</param>
+        /// <param name="arrivalTicks">Ticks available for observed movement to finish.</param>
+        /// <returns>The capital-target strength available at arrival.</returns>
+        internal static int GetFleetCombatValueAgainstCapitalShipsAtArrival(
+            Fleet fleet,
+            GameConfig.SpaceCombatConfig config,
+            int arrivalTicks
+        )
+        {
+            if (fleet == null || config == null || !HasArrived(fleet.Movement, arrivalTicks))
+                return 0;
+            SpaceCombatCommandModifiers modifiers = SpaceCombatCommands.GetCommandModifiers(
+                new[] { fleet },
+                null,
+                fleet.GetOwnerInstanceID()
+            );
+            return fleet
+                .GetChildren<CapitalShip>()
+                .Sum(ship =>
+                    GetCapitalShipCombatValueAgainstCapitalShips(
+                        ship,
+                        config,
+                        modifiers,
+                        arrivalTicks
+                    )
+                );
+        }
+
+        /// <summary>
+        /// Checks current readiness or completion of an observed movement.
+        /// </summary>
+        /// <param name="movement">The observed movement, if any.</param>
+        /// <param name="arrivalTicks">The available travel window, or null for current readiness only.</param>
+        /// <returns>True when movement does not prevent participation.</returns>
+        private static bool HasArrived(MovementState movement, int? arrivalTicks)
+        {
+            return movement == null
+                || arrivalTicks.HasValue && movement.TicksRemaining() <= arrivalTicks.Value;
+        }
+
+        /// <summary>
+        /// Checks whether manufacture is complete, including finished units being delivered.
+        /// </summary>
+        /// <param name="unit">The manufactured unit.</param>
+        /// <param name="arrivalTicks">The travel window, or null for present readiness.</param>
+        /// <returns>True when manufacturing does not require a future completion assumption.</returns>
+        private static bool IsManufacturedForArrival(IManufacturable unit, int? arrivalTicks)
+        {
+            return unit?.ManufacturingStatus == ManufacturingStatus.Complete
+                || arrivalTicks.HasValue
+                    && unit?.ManufacturingStatus == ManufacturingStatus.Delivering;
         }
 
         /// <summary>
@@ -40,18 +106,29 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="fleet">The fleet to inspect.</param>
         /// <param name="config">The space-combat rules.</param>
+        /// <param name="command">Optional command ratings for a read-only assignment estimate.</param>
         /// <returns>The fleet's projected capital-target combat value.</returns>
         internal static int GetProjectedFleetCombatValueAgainstCapitalShips(
             Fleet fleet,
-            GameConfig.SpaceCombatConfig config
+            GameConfig.SpaceCombatConfig config,
+            SpaceCombatCommandModifiers? command = null
         )
         {
             if (fleet == null || config == null)
                 return 0;
 
+            SpaceCombatCommandModifiers modifiers =
+                command
+                ?? SpaceCombatCommands.GetCommandModifiers(
+                    new[] { fleet },
+                    null,
+                    fleet.GetOwnerInstanceID()
+                );
             return fleet
                 .GetChildren<CapitalShip>()
-                .Sum(ship => GetProjectedCapitalShipCombatValueAgainstCapitalShips(ship, config));
+                .Sum(ship =>
+                    GetProjectedCapitalShipCombatValueAgainstCapitalShips(ship, config, modifiers)
+                );
         }
 
         /// <summary>
@@ -59,24 +136,35 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="ship">The capital ship to inspect.</param>
         /// <param name="config">The space-combat rules.</param>
+        /// <param name="command">The fleet's effective command ratings.</param>
+        /// <param name="arrivalTicks">The observed travel window, or null for current readiness.</param>
         /// <returns>The ship group's capital-target combat value.</returns>
         private static int GetCapitalShipCombatValueAgainstCapitalShips(
             CapitalShip ship,
-            GameConfig.SpaceCombatConfig config
+            GameConfig.SpaceCombatConfig config,
+            SpaceCombatCommandModifiers command,
+            int? arrivalTicks = null
         )
         {
             if (
                 ship == null
-                || ship.ManufacturingStatus != ManufacturingStatus.Complete
-                || ship.Movement != null
+                || !IsManufacturedForArrival(ship, arrivalTicks)
+                || !HasArrived(ship.Movement, arrivalTicks)
                 || (ship.MaxHullStrength > 0 && ship.CurrentHullStrength <= 0)
             )
                 return 0;
 
-            return CalculateCapitalShipCombatValue(ship, ship.CurrentHullStrength, config)
+            return CalculateCapitalShipCombatValue(ship, ship.CurrentHullStrength, config, command)
                 + ship.GetChildren<Starfighter>()
                     .Where(fighter => fighter != null)
-                    .Sum(GetReadyCarriedStarfighterCombatValue);
+                    .Sum(fighter =>
+                        GetReadyCarriedStarfighterCombatValue(
+                            fighter,
+                            config,
+                            command,
+                            arrivalTicks
+                        )
+                    );
         }
 
         /// <summary>
@@ -84,10 +172,12 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="ship">The capital ship to inspect.</param>
         /// <param name="config">The space-combat rules.</param>
+        /// <param name="command">The fleet's effective command ratings.</param>
         /// <returns>The ship group's projected capital-target combat value.</returns>
         internal static int GetProjectedCapitalShipCombatValueAgainstCapitalShips(
             CapitalShip ship,
-            GameConfig.SpaceCombatConfig config
+            GameConfig.SpaceCombatConfig config,
+            SpaceCombatCommandModifiers command = default
         )
         {
             if (
@@ -104,10 +194,12 @@ namespace Rebellion.Gameplay
                 ship.ManufacturingStatus == ManufacturingStatus.Complete
                     ? ship.CurrentHullStrength
                     : ship.MaxHullStrength;
-            return CalculateCapitalShipCombatValue(ship, hullStrength, config)
+            return CalculateCapitalShipCombatValue(ship, hullStrength, config, command)
                 + ship.GetChildren<Starfighter>()
                     .Where(fighter => fighter != null)
-                    .Sum(GetProjectedCarriedStarfighterCombatValue);
+                    .Sum(fighter =>
+                        GetProjectedCarriedStarfighterCombatValue(fighter, config, command)
+                    );
         }
 
         /// <summary>
@@ -138,11 +230,13 @@ namespace Rebellion.Gameplay
         /// <param name="ship">The capital ship to inspect.</param>
         /// <param name="hullStrength">The hull strength used by the estimate.</param>
         /// <param name="config">The space-combat rules.</param>
+        /// <param name="command">The fleet's effective command ratings.</param>
         /// <returns>The ship's capital-target combat value.</returns>
         private static int CalculateCapitalShipCombatValue(
             CapitalShip ship,
             int hullStrength,
-            GameConfig.SpaceCombatConfig config
+            GameConfig.SpaceCombatConfig config,
+            SpaceCombatCommandModifiers command
         )
         {
             double attackStrength = ship.PrimaryWeapons.Sum(weaponEntry =>
@@ -154,6 +248,12 @@ namespace Rebellion.Gameplay
                 )
             );
             long durability = Math.Max(0L, hullStrength) + Math.Max(0L, ship.MaxShieldStrength);
+            // Sustained fire scales with the Admiral's additive weapon-recharge budget.
+            double rechargeBonus =
+                config.AdmiralLeadershipDivisor > 0
+                    ? (double)command.AdmiralLeadership / config.AdmiralLeadershipDivisor
+                    : 0;
+            attackStrength *= 1 + rechargeBonus / Math.Max(1, ship.WeaponRecharge);
             if (attackStrength <= 0 || durability <= 0)
                 return attackStrength >= int.MaxValue ? int.MaxValue : (int)attackStrength;
 
@@ -231,12 +331,16 @@ namespace Rebellion.Gameplay
         /// Returns a ready starfighter squadron's firepower against capital ships.
         /// </summary>
         /// <param name="fighter">The starfighter squadron to inspect.</param>
+        /// <param name="arrivalTicks">The observed travel window, or null for current readiness.</param>
         /// <returns>The capital-target firepower.</returns>
-        internal static int GetStarfighterFirepowerAgainstCapitalShips(Starfighter fighter)
+        internal static int GetStarfighterFirepowerAgainstCapitalShips(
+            Starfighter fighter,
+            int? arrivalTicks = null
+        )
         {
             return
-                fighter?.ManufacturingStatus == ManufacturingStatus.Complete
-                && fighter.Movement == null
+                IsManufacturedForArrival(fighter, arrivalTicks)
+                && HasArrived(fighter.Movement, arrivalTicks)
                 ? GetStarfighterFirepower(
                     fighter,
                     fighter.CurrentSquadronSize,
@@ -249,12 +353,16 @@ namespace Rebellion.Gameplay
         /// Returns a ready starfighter squadron's firepower against starfighters.
         /// </summary>
         /// <param name="fighter">The starfighter squadron to inspect.</param>
+        /// <param name="arrivalTicks">The observed travel window, or null for current readiness.</param>
         /// <returns>The fighter-target firepower.</returns>
-        internal static int GetStarfighterFirepowerAgainstStarfighters(Starfighter fighter)
+        internal static int GetStarfighterFirepowerAgainstStarfighters(
+            Starfighter fighter,
+            int? arrivalTicks = null
+        )
         {
             return
-                fighter?.ManufacturingStatus == ManufacturingStatus.Complete
-                && fighter.Movement == null
+                IsManufacturedForArrival(fighter, arrivalTicks)
+                && HasArrived(fighter.Movement, arrivalTicks)
                 ? GetStarfighterFirepower(
                     fighter,
                     fighter.CurrentSquadronSize,
@@ -379,30 +487,80 @@ namespace Rebellion.Gameplay
         /// Returns the ready strength of a carried fighter squadron.
         /// </summary>
         /// <param name="fighter">The fighter squadron to inspect.</param>
+        /// <param name="config">The space-combat rules.</param>
+        /// <param name="command">The fleet's effective command ratings.</param>
+        /// <param name="arrivalTicks">The observed travel window, or null for current readiness.</param>
         /// <returns>The squadron's ready combat value.</returns>
-        private static int GetReadyCarriedStarfighterCombatValue(Starfighter fighter)
+        private static int GetReadyCarriedStarfighterCombatValue(
+            Starfighter fighter,
+            GameConfig.SpaceCombatConfig config,
+            SpaceCombatCommandModifiers command,
+            int? arrivalTicks = null
+        )
         {
             if (
-                fighter.ManufacturingStatus != ManufacturingStatus.Complete
-                || fighter.Movement != null
+                !IsManufacturedForArrival(fighter, arrivalTicks)
+                || !HasArrived(fighter.Movement, arrivalTicks)
             )
                 return 0;
 
-            return fighter.CalculateCombatValue(fighter.CurrentSquadronSize);
+            return GetCommandedStarfighterCombatValue(
+                fighter,
+                fighter.CurrentSquadronSize,
+                config,
+                command
+            );
         }
 
         /// <summary>
         /// Returns the projected strength of a carried fighter squadron.
         /// </summary>
         /// <param name="fighter">The fighter squadron to inspect.</param>
+        /// <param name="config">The space-combat rules.</param>
+        /// <param name="command">The fleet's effective command ratings.</param>
         /// <returns>The squadron's projected combat value.</returns>
-        private static int GetProjectedCarriedStarfighterCombatValue(Starfighter fighter)
+        internal static int GetProjectedCarriedStarfighterCombatValue(
+            Starfighter fighter,
+            GameConfig.SpaceCombatConfig config,
+            SpaceCombatCommandModifiers command
+        )
         {
             int squadronSize =
                 fighter.ManufacturingStatus == ManufacturingStatus.Complete
                     ? fighter.CurrentSquadronSize
                     : fighter.MaxSquadronSize;
-            return fighter.CalculateCombatValue(squadronSize);
+            return GetCommandedStarfighterCombatValue(fighter, squadronSize, config, command);
+        }
+
+        /// <summary>
+        /// Estimates a squadron's strength with the additive bonus on each usable weapon lane.
+        /// </summary>
+        /// <param name="fighter">The squadron to inspect.</param>
+        /// <param name="squadronSize">The surviving or projected squadron size.</param>
+        /// <param name="config">The space-combat rules.</param>
+        /// <param name="command">The fleet's effective command ratings.</param>
+        /// <returns>The command-adjusted squadron value, without multiplying full-squadron weapon ratings.</returns>
+        private static int GetCommandedStarfighterCombatValue(
+            Starfighter fighter,
+            int squadronSize,
+            GameConfig.SpaceCombatConfig config,
+            SpaceCombatCommandModifiers command
+        )
+        {
+            int lanes =
+                (fighter.LaserCannon > 0 ? 1 : 0)
+                + (fighter.IonCannon > 0 ? 1 : 0)
+                + (fighter.Torpedoes > 0 ? 1 : 0);
+            double bonus =
+                config.CommanderCombatDivisor > 0
+                    ? (double)command.CommanderCombat / config.CommanderCombatDivisor
+                    : 0;
+            double fraction =
+                fighter.MaxSquadronSize > 0
+                    ? (double)Math.Max(0, squadronSize) / fighter.MaxSquadronSize
+                    : 1;
+            double value = fighter.CalculateCombatValue(squadronSize) + bonus * lanes * fraction;
+            return value >= int.MaxValue ? int.MaxValue : (int)value;
         }
 
         /// <summary>

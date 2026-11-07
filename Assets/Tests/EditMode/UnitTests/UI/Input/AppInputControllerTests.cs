@@ -73,6 +73,35 @@ namespace Rebellion.Tests.UI.Input
         }
 
         [Test]
+        public void CancelOrSettings_ShortcutsSuppressed_DoesNotCancel()
+        {
+            InputTestFixture inputFixture = new();
+            inputFixture.Setup();
+            GameObject root = new("AppInputControllerUnderTest");
+            InputManager inputManager = root.AddComponent<InputManager>();
+            AppInputController controller = root.AddComponent<AppInputController>();
+            Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+            TestCancelable cancelable = new();
+            CancelStack cancelStack = new();
+            cancelStack.Register(cancelable);
+
+            try
+            {
+                controller.Initialize(inputManager, cancelStack, null);
+                inputManager.SetApplicationShortcutsSuppressed(true);
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Escape));
+                InputSystem.Update();
+
+                Assert.AreEqual(0, cancelable.CancelCount);
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+                inputFixture.TearDown();
+            }
+        }
+
+        [Test]
         public void QuickLoad_Performed_RoutesThroughSavedGameTransition()
         {
             InputTestFixture inputFixture = new();

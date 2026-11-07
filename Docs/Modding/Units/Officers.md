@@ -46,6 +46,7 @@ Officers are unique authored characters. Add each officer as an `Officer` entry 
 | Field | Purpose |
 | --- | --- |
 | `InstanceID` | Stable identity used by events, missions, saves, and starting-officer rules. |
+| `RosterOrder` | Stable order used for trainer selection and encounter candidates. |
 | `OwnerInstanceID` | Faction that owns the officer when the definition is loaded. |
 | `IsMain` | Marks a principal character. |
 | `IsRecruitable` | Allows the officer to enter play through recruitment. |
@@ -64,9 +65,10 @@ from zero through a positive variance, or from a negative variance through zero.
 value. `LoyaltyVariance` is ignored when `CanBetray` is `false` because that officer's loyalty is
 fixed.
 
-`CanHeal` allows an injured officer to recover. `FastHeal` selects the faster recovery amount from
-game configuration. Capture, injury, death, movement, and mission-return fields are runtime state
-and should not be initialized in the officer catalog.
+Injured officers recover while free, living, outside missions and transit, and at a location owned
+by their faction. An effective Force rank at or above `Jedi.FastHealThreshold` selects the faster
+configured recovery amount. Capture, injury, death, movement, and mission-return fields are runtime
+state and should not be initialized in the officer catalog.
 
 After a resolved battle establishes one controlling faction, every officer whose `CanBetray` value
 is `true` receives the same global loyalty reaction. Officers owned by the controlling faction get
@@ -82,10 +84,26 @@ shift by themselves.
 | `JediLevel` | Base Force value used when the officer becomes eligible. It is not a probability. |
 | `JediLevelVariance` | Random variation applied when Force eligibility is initialized. |
 | `IsKnownJedi` | Whether the officer's Force ability begins publicly known. |
-| `IsJediTrainer` | Whether the officer may train another eligible officer. |
-| `GrowsForceOnMission` | Whether successful mission activity may advance Force ability. |
+| `IsJediTrainer` | Whether the officer may lead Force training and discover Force abilities after meeting the configured rank thresholds. |
+| `ForceDiscoveryConditionals` | Additional scripting conditions required for discovery. `$discoverer` contains the scanning officer. |
+| `GrowsForceOnMission` | Whether successfully evading capture may advance Force ability after that ability has been discovered. |
 | `CurrentRank` | Initial command rank: `None`, `Commander`, `General`, or `Admiral`. |
 | `AllowedRanks` | Command ranks this officer may hold. Each item is an `OfficerRank` value. |
+
+Capture evasion advances configured officers by `Jedi.ForceGrowthPerMission`; the serialized field
+names are retained for compatibility. Force progression reports cover experience and training,
+including numeric rank changes within the same displayed rank label. Initializing a zero rank
+does not produce a separate growth report.
+
+Qualified trainers scan stationary officers sharing their immediate container and faction.
+The first scan runs on the following campaign tick. Scans run by deadline, with insertion order
+breaking ties. Recurring scans advance from their previous deadline and process overdue scans
+before advancing beyond the current tick. Saves retain that insertion order; older saves without
+it initialize scans in their existing officer order. Older saves without a scan deadline start
+scanning on the following campaign tick instead of replaying scans from before the save.
+
+Discovery initializes a zero stored Force value and preserves an existing nonzero value.
+Additional `ForceDiscoveryConditionals` use the existing [condition syntax](../Scripting/Conditionals.md).
 
 ## AI behavior
 
@@ -101,10 +119,11 @@ Its `Conditionals` use the existing [condition syntax](../Scripting/Conditionals
 </AIBehavior>
 ```
 
-When every condition matches, the AI excludes the officer from new mission assignments, including
-decoy roles and mission-related relocation. An empty condition list holds the officer unconditionally.
-Conditions are evaluated once when assessing the faction's next AI turn. If they stop matching, the
-next assessment makes the officer available for normal assignment again.
+When every condition matches, the AI keeps the officer's new mission assignments on their current
+planet. Local missions, including recruitment, remain available. Remote missions, remote decoy roles,
+mission staging on another planet, and assignments to attack fleets are excluded. An empty condition
+list applies this restriction unconditionally. Conditions are evaluated once when assessing the
+faction's next AI turn. If they stop matching, the next assessment permits normal assignment again.
 
 The behavior uses the active content catalog, including after loading an existing campaign. Neither
 the configuration nor the evaluated hold decision is written into saved officers. Omitted behavior

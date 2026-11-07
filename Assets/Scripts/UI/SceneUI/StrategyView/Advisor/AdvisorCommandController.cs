@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 
 /// <summary>
 /// Owns advisor construction targeting and routes valid destinations to construction windows.
@@ -16,7 +17,8 @@ public sealed class AdvisorCommandController : ITargetingReceiver
     private readonly Action<
         GalaxyMapPlanet,
         GalaxyMapPlanet,
-        FacilityWindowTab
+        FacilityWindowTab,
+        ISceneNode
     > openConstructionWindow;
 
     /// <summary>
@@ -30,7 +32,12 @@ public sealed class AdvisorCommandController : ITargetingReceiver
         Func<Faction> getFaction,
         TargetingController targetingController,
         Func<IReadOnlyList<GalaxyMapSector>> getSectors,
-        Action<GalaxyMapPlanet, GalaxyMapPlanet, FacilityWindowTab> openConstructionWindow
+        Action<
+            GalaxyMapPlanet,
+            GalaxyMapPlanet,
+            FacilityWindowTab,
+            ISceneNode
+        > openConstructionWindow
     )
     {
         this.getFaction = getFaction ?? throw new ArgumentNullException(nameof(getFaction));
@@ -51,7 +58,11 @@ public sealed class AdvisorCommandController : ITargetingReceiver
     public void BeginConstruction(ManufacturingType manufacturingType, int sourceX, int sourceY)
     {
         targetingController.Begin(
-            new TargetingRequest("Select construction destination", manufacturingType, this),
+            new TargetingRequest(
+                "Select construction destination",
+                new AdvisorConstructionTargetingSource(manufacturingType),
+                this
+            ),
             sourceX,
             sourceY
         );
@@ -65,12 +76,13 @@ public sealed class AdvisorCommandController : ITargetingReceiver
     public void OnTargetSelected(TargetingRequest request, object target)
     {
         if (
-            request?.Source is not ManufacturingType manufacturingType
+            request?.Source is not AdvisorConstructionTargetingSource source
             || target is not StrategyMissionTarget missionTarget
             || missionTarget.Planet?.Planet == null
         )
             return;
 
+        ManufacturingType manufacturingType = source.ManufacturingType;
         Faction faction = getFaction();
         Planet producer = FindProducerPlanet(
             faction,
@@ -87,7 +99,12 @@ public sealed class AdvisorCommandController : ITargetingReceiver
         if (!manufacturingTab.HasValue)
             return;
 
-        openConstructionWindow(producerView, missionTarget.Planet, manufacturingTab.Value);
+        openConstructionWindow(
+            producerView,
+            missionTarget.Planet,
+            manufacturingTab.Value,
+            missionTarget.Item
+        );
     }
 
     /// <summary>
@@ -140,5 +157,24 @@ public sealed class AdvisorCommandController : ITargetingReceiver
         return getSectors()
             .SelectMany(sector => sector.Planets)
             .FirstOrDefault(planet => planet.Planet?.InstanceID == planetInstanceId);
+    }
+
+    /// <summary>
+    /// Identifies an advisor construction request as manufacturing-destination targeting.
+    /// </summary>
+    private sealed class AdvisorConstructionTargetingSource : IStrategyTargetingSource
+    {
+        StrategyMenuAction IStrategyTargetingSource.Action => StrategyMenuAction.Destination;
+
+        public ManufacturingType ManufacturingType { get; }
+
+        /// <summary>
+        /// Creates an advisor construction targeting source for one manufacturing category.
+        /// </summary>
+        /// <param name="manufacturingType">The requested manufacturing category.</param>
+        public AdvisorConstructionTargetingSource(ManufacturingType manufacturingType)
+        {
+            ManufacturingType = manufacturingType;
+        }
     }
 }

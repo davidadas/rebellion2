@@ -12,6 +12,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Gameplay
@@ -19,6 +20,38 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class MovementQueriesTests
     {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TryGetSelectionTransitTicks_UnavailableDestination_DoesNotLogWarnings(
+            bool fleetDestination
+        )
+        {
+            (GameRoot game, _, Planet destination, Officer officer, MovementQueries movement) =
+                BuildScene();
+            ContainerNode target = destination;
+            if (fleetDestination)
+            {
+                Fleet fleet = EntityFactory.CreateFleet("empty-fleet", "empire");
+                game.AttachNode(fleet, destination);
+                target = fleet;
+            }
+            else
+                destination.OwnerInstanceID = "rebels";
+
+            List<string> warnings = CaptureWarnings(() =>
+                Assert.IsFalse(
+                    movement.TryGetSelectionTransitTicks(
+                        new ISceneNode[] { officer },
+                        target,
+                        "empire",
+                        out _
+                    )
+                )
+            );
+
+            Assert.IsEmpty(warnings);
+        }
+
         [Test]
         public void TryGetTransitTicks_ValidDestination_DoesNotMoveUnit()
         {
@@ -610,6 +643,39 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsFalse(estimated);
         }
 
+        [TestCase(false, false, true)]
+        [TestCase(true, false, false)]
+        [TestCase(false, true, false)]
+        public void TryEstimateManufacturedTransitTicks_UnownedTemplate_UsesProspectiveOwner(
+            bool hostile,
+            bool blockaded,
+            bool expected
+        )
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementQueries movement
+            ) = BuildScene();
+            Starfighter template = new Starfighter();
+            if (hostile)
+                destination.OwnerInstanceID = "rebels";
+            if (blockaded)
+                AddBlockadingFleet(game, destination);
+
+            bool estimated = movement.TryEstimateManufacturedTransitTicks(
+                template,
+                origin,
+                destination,
+                out _,
+                "empire"
+            );
+
+            Assert.AreEqual(expected, estimated);
+        }
+
         [Test]
         public void GetPersonnelEncounterOdds_HostileDetector_ReturnsCompleteProjection()
         {
@@ -947,6 +1013,34 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.IsFalse(estimated);
+        }
+
+        /// <summary>
+        /// Captures warning messages emitted by the supplied operation.
+        /// </summary>
+        /// <param name="action">The operation exercised with warnings enabled.</param>
+        /// <returns>The warning messages emitted while the operation runs.</returns>
+        private static List<string> CaptureWarnings(Action action)
+        {
+            List<string> warnings = new();
+            GameLogger.LogLevel originalLevel = GameLogger.MinimumLevel;
+            GameLogger.SetMinimumLevel(GameLogger.LogLevel.Warning);
+            UnityEngine.Application.LogCallback handler = (message, _, type) =>
+            {
+                if (type == UnityEngine.LogType.Warning)
+                    warnings.Add(message);
+            };
+            UnityEngine.Application.logMessageReceived += handler;
+            try
+            {
+                action();
+            }
+            finally
+            {
+                UnityEngine.Application.logMessageReceived -= handler;
+                GameLogger.SetMinimumLevel(originalLevel);
+            }
+            return warnings;
         }
 
         /// <summary>

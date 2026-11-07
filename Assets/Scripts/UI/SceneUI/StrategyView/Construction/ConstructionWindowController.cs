@@ -207,10 +207,12 @@ public sealed class ConstructionWindowController
     /// <param name="producer">The manufacturing planet.</param>
     /// <param name="destination">The delivery planet.</param>
     /// <param name="manufacturingTab">The selected manufacturing category.</param>
+    /// <param name="destinationItem">The fleet or capital ship receiving completed units.</param>
     public void OpenFromAdvisor(
         GalaxyMapPlanet producer,
         GalaxyMapPlanet destination,
-        FacilityWindowTab manufacturingTab
+        FacilityWindowTab manufacturingTab,
+        ISceneNode destinationItem = null
     )
     {
         if (producer?.Planet == null || destination?.Planet == null)
@@ -221,7 +223,7 @@ public sealed class ConstructionWindowController
             null,
             manufacturingTab,
             destination.Planet.InstanceID,
-            null,
+            destinationItem is Fleet or CapitalShip ? destinationItem.InstanceID : null,
             getUtilityWindowPosition()
         );
     }

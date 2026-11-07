@@ -199,6 +199,8 @@ public static partial class HeadlessSimulationRunner
         public int OfficerLedHostileStarted;
         public int OfficerLedHostileStartedWithDecoy;
         public int OfficerLedHostileStartedWithSpecialForcesDecoy;
+        public int SpecialForcesLedStarted;
+        public int SpecialForcesLedStartedWithDecoy;
         public int Ended;
         public int Active;
     }

@@ -208,8 +208,13 @@ public sealed class GameFlowController : MonoBehaviour
     {
         try
         {
-            if (activeTick?.MoveNext() != false)
+            if (
+                activeGameManager != null
+                    ? activeGameManager.AdvanceTick(activeTick)
+                    : activeTick?.MoveNext() != false
+            )
                 return;
+
             DisposeActiveTick();
         }
         catch (Exception exception)

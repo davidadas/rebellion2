@@ -68,10 +68,12 @@ namespace Rebellion.AI.Selectors
     internal enum AISelectionReservationKind
     {
         FleetOrder,
+        FleetOrderContinuation,
         FleetMovement,
         FleetAttack,
         FleetAttackTarget,
         FleetRole,
+        FleetCommand,
         FleetColonization,
         FleetEngagementTarget,
         FleetTransferTarget,
@@ -89,7 +91,6 @@ namespace Rebellion.AI.Selectors
         MissionActor,
         Mission,
         MissionRecruitment,
-        MissionResearch,
         MissionOfficer,
         MissionTarget,
         MissionAtPlanet,

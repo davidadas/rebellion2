@@ -47,9 +47,7 @@ namespace Rebellion.SceneGraph
         /// Enumerates no children because leaf nodes cannot contain other scene nodes.
         /// </summary>
         /// <returns>An empty collection of children.</returns>
-        protected override IEnumerable<ISceneNode> EnumerateChildren()
-        {
-            yield break;
-        }
+        protected override IEnumerable<ISceneNode> EnumerateChildren() =>
+            System.Array.Empty<ISceneNode>();
     }
 }

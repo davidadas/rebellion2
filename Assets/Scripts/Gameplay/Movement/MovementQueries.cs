@@ -7,7 +7,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Logging;
 using Rebellion.Util.Mathematics;
 using Rebellion.Util.Random;
 
@@ -131,7 +130,8 @@ namespace Rebellion.Gameplay
                 || !TryResolveControlledSelection(
                     items,
                     ownerInstanceId,
-                    out List<ISceneNode> liveItems
+                    out List<ISceneNode> liveItems,
+                    out _
                 )
                 || !TryResolveSelectionMoveGroup(
                     liveItems,
@@ -160,7 +160,7 @@ namespace Rebellion.Gameplay
         )
         {
             if (destination is not Planet || !movables.Any(unit => unit is CapitalShip))
-                return TryResolveMoveGroupDestinations(movables, destination, out _);
+                return TryResolveMoveGroupDestinations(movables, destination, out _, out _);
 
             if (movables.Any(unit => unit is not CapitalShip))
                 return false;
@@ -212,7 +212,7 @@ namespace Rebellion.Gameplay
             int maxTransitTicks = 0;
             foreach (IMovable liveUnit in liveUnits)
             {
-                if (!CanReceiveMoveOrder(liveUnit))
+                if (!CanReceiveMoveOrder(liveUnit, out _))
                     return false;
 
                 Planet origin = liveUnit.GetParentOfType<Planet>();
@@ -252,12 +252,14 @@ namespace Rebellion.Gameplay
         /// <param name="origin">The production planet.</param>
         /// <param name="destination">The requested destination.</param>
         /// <param name="transitTicks">The estimated delivery duration when transit is required.</param>
+        /// <param name="ownerInstanceId">The prospective owner for an unowned manufacturing template.</param>
         /// <returns>True if the destination can be evaluated; otherwise false.</returns>
         public bool TryEstimateManufacturedTransitTicks(
             IMovable unit,
             Planet origin,
             ContainerNode destination,
-            out int transitTicks
+            out int transitTicks,
+            string ownerInstanceId = null
         )
         {
             transitTicks = 0;
@@ -280,8 +282,14 @@ namespace Rebellion.Gameplay
             }
 
             if (
-                destinationPlanet.GetOwnerInstanceID() != unit.GetOwnerInstanceID()
-                && !CanEnterHostileOrbit(unit, destination)
+                destinationPlanet.GetOwnerInstanceID()
+                    != (ownerInstanceId ?? unit.GetOwnerInstanceID())
+                && !(
+                    ownerInstanceId == null
+                        ? CanEnterHostileOrbit(unit, destination)
+                        : destination is Fleet or CapitalShip
+                            && destination.GetOwnerInstanceID() == ownerInstanceId
+                )
             )
             {
                 return false;
@@ -289,7 +297,9 @@ namespace Rebellion.Gameplay
 
             if (
                 unit is Starfighter
-                && destinationPlanet.IsBlockadedFor(GetMovementControlOwner(unit))
+                && destinationPlanet.IsBlockadedFor(
+                    ownerInstanceId ?? GetMovementControlOwner(unit)
+                )
             )
             {
                 return false;
@@ -399,7 +409,7 @@ namespace Rebellion.Gameplay
                 return true;
             }
 
-            if (TryResolveAcceptedDestination(unit, destination, out ContainerNode accepted))
+            if (TryResolveAcceptedDestination(unit, destination, out ContainerNode accepted, out _))
             {
                 destinationPlanet = RequireDestinationPlanet(accepted);
                 return true;
@@ -416,7 +426,7 @@ namespace Rebellion.Gameplay
         /// <returns>True if the whole group can move.</returns>
         internal bool CanMoveGroup(List<IMovable> units, ContainerNode destination)
         {
-            return TryResolveMoveGroupDestinations(units, destination, out _);
+            return TryResolveMoveGroupDestinations(units, destination, out _, out _);
         }
 
         /// <summary>
@@ -425,13 +435,16 @@ namespace Rebellion.Gameplay
         /// <param name="units">The units being validated together.</param>
         /// <param name="destination">The shared requested destination.</param>
         /// <param name="resolvedDestinations">The accepted destination for each unit in order.</param>
+        /// <param name="rejectionReason">The reason the group cannot move, or null when accepted.</param>
         /// <returns>True when every unit has an accepted destination.</returns>
         internal bool TryResolveMoveGroupDestinations(
             List<IMovable> units,
             ContainerNode destination,
-            out List<ContainerNode> resolvedDestinations
+            out List<ContainerNode> resolvedDestinations,
+            out string rejectionReason
         )
         {
+            rejectionReason = null;
             resolvedDestinations = new List<ContainerNode>();
             Dictionary<ContainerNode, List<ISceneNode>> reservedChildren =
                 new Dictionary<ContainerNode, List<ISceneNode>>();
@@ -440,19 +453,17 @@ namespace Rebellion.Gameplay
             {
                 if (unit == null)
                 {
-                    GameLogger.Warning("RequestMove rejected: group contains a null unit.");
+                    rejectionReason = "group contains a null unit.";
                     return false;
                 }
 
-                if (!CanReceiveMoveOrder(unit))
+                if (!CanReceiveMoveOrder(unit, out rejectionReason))
                     return false;
 
                 Planet unitOrigin = unit.GetParentOfType<Planet>();
                 if (unitOrigin == null)
                 {
-                    GameLogger.Warning(
-                        $"RequestMove rejected: {unit.GetDisplayName()} is not at a movable location."
-                    );
+                    rejectionReason = $"{unit.GetDisplayName()} is not at a movable location.";
                     return false;
                 }
 
@@ -460,9 +471,7 @@ namespace Rebellion.Gameplay
                     groupOrigin = unitOrigin;
                 else if (!ReferenceEquals(groupOrigin, unitOrigin))
                 {
-                    GameLogger.Warning(
-                        "RequestMove rejected: group units are not at the same location."
-                    );
+                    rejectionReason = "group units are not at the same location.";
                     return false;
                 }
 
@@ -471,7 +480,8 @@ namespace Rebellion.Gameplay
                         unit,
                         destination,
                         reservedChildren,
-                        out ContainerNode resolvedDestination
+                        out ContainerNode resolvedDestination,
+                        out rejectionReason
                     )
                 )
                     return false;
@@ -493,9 +503,8 @@ namespace Rebellion.Gameplay
 
             if (!HasRequiredCapturedOfficerEscorts(units, out Officer unescortedCapturedOfficer))
             {
-                GameLogger.Warning(
-                    $"RequestMove rejected: {unescortedCapturedOfficer.GetDisplayName()} has no captor escort."
-                );
+                rejectionReason =
+                    $"{unescortedCapturedOfficer.GetDisplayName()} has no captor escort.";
                 return false;
             }
 
@@ -508,25 +517,33 @@ namespace Rebellion.Gameplay
         /// <param name="units">The units being placed together.</param>
         /// <param name="destination">The shared requested destination.</param>
         /// <param name="resolvedDestinations">The accepted destination for each unit in order.</param>
+        /// <param name="rejectionReason">The reason placement was rejected, or null when accepted.</param>
         /// <returns>True when every unit has an accepted destination.</returns>
         internal bool TryResolvePlacementGroupDestinations(
             IReadOnlyList<IMovable> units,
             ContainerNode destination,
-            out List<ContainerNode> resolvedDestinations
+            out List<ContainerNode> resolvedDestinations,
+            out string rejectionReason
         )
         {
+            rejectionReason = null;
             resolvedDestinations = new List<ContainerNode>();
             Dictionary<ContainerNode, List<ISceneNode>> reservedChildren =
                 new Dictionary<ContainerNode, List<ISceneNode>>();
             foreach (IMovable unit in units)
             {
+                if (unit == null)
+                {
+                    rejectionReason = "group contains a null unit.";
+                    return false;
+                }
                 if (
-                    unit == null
-                    || !TryResolveAcceptedDestination(
+                    !TryResolveAcceptedDestination(
                         unit,
                         destination,
                         reservedChildren,
-                        out ContainerNode resolvedDestination
+                        out ContainerNode resolvedDestination,
+                        out rejectionReason
                     )
                 )
                     return false;
@@ -553,13 +570,16 @@ namespace Rebellion.Gameplay
         /// <param name="items">The selected scene nodes or their snapshots.</param>
         /// <param name="ownerInstanceId">The faction authorized to move the selection.</param>
         /// <param name="liveItems">Receives registered scene nodes in selection order.</param>
+        /// <param name="rejectionReason">The movement eligibility rejection reason, when provided.</param>
         /// <returns>True when the complete selection can receive movement orders.</returns>
         internal bool TryResolveControlledSelection(
             IReadOnlyList<ISceneNode> items,
             string ownerInstanceId,
-            out List<ISceneNode> liveItems
+            out List<ISceneNode> liveItems,
+            out string rejectionReason
         )
         {
+            rejectionReason = null;
             liveItems = new List<ISceneNode>();
             if (items == null || items.Count == 0 || string.IsNullOrEmpty(ownerInstanceId))
                 return false;
@@ -576,7 +596,7 @@ namespace Rebellion.Gameplay
                         ownerInstanceId,
                         StringComparison.Ordinal
                     )
-                    || !CanReceiveMoveOrder(movable)
+                    || !CanReceiveMoveOrder(movable, out rejectionReason)
                 )
                     return false;
 
@@ -703,7 +723,8 @@ namespace Rebellion.Gameplay
                 !TryResolveControlledSelection(
                     items,
                     ownerInstanceId,
-                    out List<ISceneNode> liveItems
+                    out List<ISceneNode> liveItems,
+                    out _
                 )
                 || liveItems.Any(item => item is not CapitalShip)
                 || !TryResolveWaypointDestinations(waypointPlanetIds, out destinations)
@@ -837,15 +858,15 @@ namespace Rebellion.Gameplay
         /// Returns whether a unit can receive a movement order.
         /// </summary>
         /// <param name="unit">The unit to check.</param>
+        /// <param name="rejectionReason">The reason the order is rejected, or null when accepted.</param>
         /// <returns>True if the unit can receive the order.</returns>
-        internal bool CanReceiveMoveOrder(IMovable unit)
+        internal bool CanReceiveMoveOrder(IMovable unit, out string rejectionReason)
         {
+            rejectionReason = null;
             bool changesManufacturingDestination = IsManufacturingDestinationChange(unit);
             if (!changesManufacturingDestination && unit.GetTransitMovement() != null)
             {
-                GameLogger.Warning(
-                    $"RequestMove rejected: {unit.GetDisplayName()} is already in transit."
-                );
+                rejectionReason = $"{unit.GetDisplayName()} is already in transit.";
                 return false;
             }
 
@@ -857,9 +878,7 @@ namespace Rebellion.Gameplay
                 )
             )
             {
-                GameLogger.Warning(
-                    $"RequestMove rejected: {unit.GetDisplayName()} is a completed building."
-                );
+                rejectionReason = $"{unit.GetDisplayName()} is a completed building.";
                 return false;
             }
 
@@ -1166,6 +1185,75 @@ namespace Rebellion.Gameplay
             bool allowOriginPlanet = false
         )
         {
+            return CanUseSafeRelocationDestination(
+                unit,
+                destination,
+                originPlanet,
+                canTravelRemotely,
+                allowOriginPlanet,
+                null
+            );
+        }
+
+        /// <summary>
+        /// Returns whether every unit can use one safe destination while sharing immutable blockade
+        /// observations only for this synchronous query.
+        /// </summary>
+        /// <param name="units">The units requiring the common destination.</param>
+        /// <param name="destination">The proposed destination.</param>
+        /// <param name="canTravelRemotely">
+        /// Whether the units or their calling mechanic can cross between planets.
+        /// </param>
+        /// <param name="allowOriginPlanet">
+        /// Whether each unit's origin planet may receive it without relocation.
+        /// </param>
+        /// <returns>True when every unit can safely use the destination.</returns>
+        internal bool CanUseSafeRelocationDestination(
+            IReadOnlyList<IMovable> units,
+            ContainerNode destination,
+            bool canTravelRemotely = true,
+            bool allowOriginPlanet = false
+        )
+        {
+            if (units == null)
+                return false;
+
+            Dictionary<(Planet Planet, string FactionInstanceId), bool> blockades =
+                units.Count > 1 ? new() : null;
+            foreach (IMovable unit in units)
+                if (
+                    !CanUseSafeRelocationDestination(
+                        unit,
+                        destination,
+                        unit.GetParentOfType<Planet>(),
+                        canTravelRemotely,
+                        allowOriginPlanet,
+                        blockades
+                    )
+                )
+                    return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Evaluates one relocation destination with optional query-local blockade reuse.
+        /// </summary>
+        /// <param name="unit">The unit requiring a destination.</param>
+        /// <param name="destination">The proposed destination.</param>
+        /// <param name="originPlanet">The planet from which the unit would relocate or remain.</param>
+        /// <param name="canTravelRemotely">Whether the unit can cross between planets.</param>
+        /// <param name="allowOriginPlanet">Whether the origin planet may receive the unit.</param>
+        /// <param name="blockades">Optional blockade results shared within one synchronous query.</param>
+        /// <returns>True when the destination can safely receive the unit.</returns>
+        private bool CanUseSafeRelocationDestination(
+            IMovable unit,
+            ContainerNode destination,
+            Planet originPlanet,
+            bool canTravelRemotely,
+            bool allowOriginPlanet,
+            Dictionary<(Planet Planet, string FactionInstanceId), bool> blockades
+        )
+        {
             if (unit == null || destination == null)
                 return false;
 
@@ -1186,7 +1274,7 @@ namespace Rebellion.Gameplay
                 liveDestination as Planet ?? liveDestination.GetParentOfType<Planet>();
             if (
                 destinationPlanet?.IsDestroyed != false
-                || destinationPlanet.IsBlockadedFor(ownerInstanceId)
+                || IsBlockadedFor(destinationPlanet, ownerInstanceId, blockades)
                     && (destinationPlanet != originPlanet || liveDestination is Planet)
                 || liveDestination == originPlanet && !allowOriginPlanet
                 || destinationPlanet != originPlanet && !canTravelRemotely
@@ -1204,6 +1292,31 @@ namespace Rebellion.Gameplay
             };
 
             return isFriendlyDestination && liveDestination.CanAcceptChild(unit);
+        }
+
+        /// <summary>
+        /// Returns a blockade result, optionally reusing the result within one synchronous query.
+        /// </summary>
+        /// <param name="planet">The destination planet.</param>
+        /// <param name="factionInstanceId">The faction whose access is evaluated.</param>
+        /// <param name="blockades">Optional query-local blockade results.</param>
+        /// <returns>True when another faction blockades the planet.</returns>
+        private static bool IsBlockadedFor(
+            Planet planet,
+            string factionInstanceId,
+            Dictionary<(Planet Planet, string FactionInstanceId), bool> blockades
+        )
+        {
+            if (blockades == null)
+                return planet.IsBlockadedFor(factionInstanceId);
+
+            var key = (planet, factionInstanceId);
+            if (!blockades.TryGetValue(key, out bool isBlockaded))
+            {
+                isBlockaded = planet.IsBlockadedFor(factionInstanceId);
+                blockades.Add(key, isBlockaded);
+            }
+            return isBlockaded;
         }
 
         /// <summary>
@@ -1231,14 +1344,22 @@ namespace Rebellion.Gameplay
         /// <param name="unit">The unit being moved.</param>
         /// <param name="destination">The requested destination.</param>
         /// <param name="resolvedDestination">The resolved destination when accepted.</param>
+        /// <param name="rejectionReason">The reason the destination is rejected, or null when accepted.</param>
         /// <returns>True if the destination can receive the unit.</returns>
         internal bool TryResolveAcceptedDestination(
             IMovable unit,
             ContainerNode destination,
-            out ContainerNode resolvedDestination
+            out ContainerNode resolvedDestination,
+            out string rejectionReason
         )
         {
-            return TryResolveAcceptedDestination(unit, destination, null, out resolvedDestination);
+            return TryResolveAcceptedDestination(
+                unit,
+                destination,
+                null,
+                out resolvedDestination,
+                out rejectionReason
+            );
         }
 
         /// <summary>
@@ -1248,46 +1369,45 @@ namespace Rebellion.Gameplay
         /// <param name="destination">The requested destination.</param>
         /// <param name="reservedChildren">The children already reserved by the movement group.</param>
         /// <param name="resolvedDestination">The resolved destination when accepted.</param>
+        /// <param name="rejectionReason">The reason the destination is rejected, or null when accepted.</param>
         /// <returns>True when the destination can receive the unit.</returns>
         internal bool TryResolveAcceptedDestination(
             IMovable unit,
             ContainerNode destination,
             IReadOnlyDictionary<ContainerNode, List<ISceneNode>> reservedChildren,
-            out ContainerNode resolvedDestination
+            out ContainerNode resolvedDestination,
+            out string rejectionReason
         )
         {
+            rejectionReason = null;
             resolvedDestination = ResolveMoveDestination(unit, destination, reservedChildren);
             if (resolvedDestination == null)
             {
-                GameLogger.Warning(
-                    $"RequestMove rejected: no capacity in {destination.GetDisplayName()} for {unit.GetDisplayName()}"
-                );
+                rejectionReason =
+                    $"no capacity in {destination.GetDisplayName()} for {unit.GetDisplayName()}";
                 return false;
             }
 
             if (!CanMoveToUncolonizedPlanet(unit, resolvedDestination))
             {
-                GameLogger.Warning(
-                    $"RequestMove rejected: {unit.GetDisplayName()} cannot land at uncolonized {resolvedDestination.GetDisplayName()}."
-                );
+                rejectionReason =
+                    $"{unit.GetDisplayName()} cannot land at uncolonized {resolvedDestination.GetDisplayName()}.";
                 return false;
             }
 
             Planet destinationPlanet = RequireDestinationPlanet(resolvedDestination);
             if (IsBlockedFromDestinationByBlockade(unit, destinationPlanet))
             {
-                GameLogger.Warning(
-                    $"RequestMove rejected: {unit.GetDisplayName()} cannot enter the enemy blockade at {destinationPlanet.GetDisplayName()}."
-                );
+                rejectionReason =
+                    $"{unit.GetDisplayName()} cannot enter the enemy blockade at {destinationPlanet.GetDisplayName()}.";
                 return false;
             }
 
             if (CanAcceptReservedChild(resolvedDestination, unit, reservedChildren))
                 return true;
 
-            GameLogger.Warning(
-                $"RequestMove rejected: {resolvedDestination.GetDisplayName()} cannot accept {unit.GetDisplayName()}"
-            );
+            rejectionReason =
+                $"{resolvedDestination.GetDisplayName()} cannot accept {unit.GetDisplayName()}";
             return false;
         }
 
@@ -1688,7 +1808,12 @@ namespace Rebellion.Gameplay
         {
             PlanetSector originSector = origin?.GetParentOfType<PlanetSector>();
             PlanetSector destinationSector = destination?.GetParentOfType<PlanetSector>();
-            return originSector != null && ReferenceEquals(originSector, destinationSector);
+            return originSector != null
+                && (
+                    ReferenceEquals(originSector, destinationSector)
+                    || !string.IsNullOrEmpty(originSector.InstanceID)
+                        && originSector.InstanceID == destinationSector?.InstanceID
+                );
         }
 
         /// <summary>

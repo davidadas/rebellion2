@@ -539,6 +539,79 @@ namespace Rebellion.Tests.Gameplay
             );
         }
 
+        [Test]
+        public void Constructor_StaleSavedEventDefinition_UsesCurrentCatalogActions()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            GameEvent previous = new GameEvent
+            {
+                InstanceID = "listener",
+                Triggers = new List<GameTrigger> { new UnitCreatedTrigger() },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "value", Operand = 1 },
+                },
+            };
+            game.GetEventPool().Add(previous);
+            GameEvent current = new GameEvent
+            {
+                InstanceID = "listener",
+                Triggers = new List<GameTrigger> { new UnitCreatedTrigger() },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "value", Operand = 2 },
+                },
+            };
+            using GameSession session = new(
+                game,
+                TestGameData.Create(game.Config, gameEvents: new[] { current })
+            );
+
+            session.Results.Publish(new GameObjectCreatedResult());
+
+            Assert.AreEqual(2, game.EventRuntime.GetVariable("value"));
+        }
+
+        [Test]
+        public void Constructor_RetiredSavedEvent_RemovesDefinitionAndPreservesHistory()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.GetEventPool()
+                .Add(
+                    new GameEvent
+                    {
+                        InstanceID = "retired",
+                        Triggers = new List<GameTrigger> { new UnitCreatedTrigger() },
+                    }
+                );
+            game.EventRuntime.GetState("retired").ActivationCount = 3;
+            using GameSession session = new(game, TestGameData.Create(game.Config));
+
+            Assert.IsEmpty(game.GetEventPool());
+            Assert.AreEqual(3, game.EventRuntime.GetState("retired").ActivationCount);
+        }
+
+        [Test]
+        public void Constructor_NewForceScanner_ArmsFirstScanForNextTick()
+        {
+            Officer trainer = new Officer
+            {
+                InstanceID = "trainer",
+                OwnerInstanceID = _faction.InstanceID,
+                IsJediTrainer = true,
+                IsForceSensitive = true,
+                IsForceEligible = true,
+                ForceValue = _game.Config.Jedi.DiscoveringForceUserThreshold,
+            };
+            _game.AttachNode(trainer, _planet);
+            _session.Dispose();
+
+            _session = new GameSession(_game, TestGameData.Create(_game.Config));
+
+            Assert.IsTrue(trainer.IsDiscoveringForceUser);
+            Assert.AreEqual(_game.CurrentTick + 1, trainer.NextForceDiscoveryTick);
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void ProcessResults_PlanetDestructionDestroysHeadquarters_PublishesLossAndVictory(
@@ -1163,7 +1236,9 @@ namespace Rebellion.Tests.Gameplay
             _game.AttachNode(carrier, fleet);
             _game.AttachNode(officer, carrier);
             _game.AttachNode(mission, _planet);
-            _session.GetService<MovementCommands>().SendToMission(officer, mission);
+            _session
+                .GetService<MovementCommands>()
+                .SendToMission(new IMissionParticipant[] { officer }, mission);
             DestroyUnitsAction action = new DestroyUnitsAction
             {
                 PlanetInstanceID = _planet.InstanceID,
@@ -1397,6 +1472,78 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.IsTrue(granted);
             Assert.AreEqual(60, officer.GetEffectiveRating(SkillRating.Leadership));
+        }
+
+        [TestCase("OFAL003", true)]
+        [TestCase("OFAL002", false)]
+        public void Constructor_SavedOfficerWithStaleForceRules_BindsAuthoredRules(
+            string typeID,
+            bool trainer
+        )
+        {
+            Officer template = TestContent.Data.Officers.Single(officer =>
+                officer.TypeID == typeID
+            );
+            Officer officer = EntityFactory.CreateOfficer("saved", _faction.InstanceID);
+            officer.TypeID = typeID;
+            officer.IsJediTrainer = !trainer;
+            officer.GrowsForceOnMission = !template.GrowsForceOnMission;
+            officer.JediProbability = -1;
+            officer.JediLevel = -1;
+            officer.JediLevelVariance = -1;
+            officer.RosterOrder = -1;
+            officer.IsKnownJedi = !template.IsKnownJedi;
+            officer.ForceValue = 37;
+            officer.ForceTrainingAdjustment = 9;
+            officer.IsForceSensitive = true;
+            officer.IsForceEligible = false;
+            _game.AttachNode(officer, _planet);
+            _session.Dispose();
+
+            _session = new GameSession(
+                _game,
+                TestGameData.Create(_game.Config, officers: new[] { template })
+            );
+
+            Assert.AreEqual(trainer, officer.IsJediTrainer);
+            Assert.AreEqual(template.JediProbability, officer.JediProbability);
+            Assert.AreEqual(template.JediLevel, officer.JediLevel);
+            Assert.AreEqual(template.JediLevelVariance, officer.JediLevelVariance);
+            Assert.AreEqual(template.RosterOrder, officer.RosterOrder);
+            Assert.AreEqual(template.IsKnownJedi, officer.IsKnownJedi);
+            Assert.AreEqual(template.GrowsForceOnMission, officer.GrowsForceOnMission);
+            CollectionAssert.AreEqual(
+                template.ForceDiscoveryConditionals,
+                officer.ForceDiscoveryConditionals
+            );
+            Assert.AreNotSame(
+                template.ForceDiscoveryConditionals,
+                officer.ForceDiscoveryConditionals
+            );
+            Assert.AreEqual(37, officer.ForceValue);
+            Assert.AreEqual(9, officer.ForceTrainingAdjustment);
+            Assert.IsTrue(officer.IsForceSensitive);
+            Assert.IsFalse(officer.IsForceEligible);
+        }
+
+        [Test]
+        public void Constructor_UnrecruitedOfficer_BindsForceRulesBeforeRecruitment()
+        {
+            Officer template = TestContent.Data.Officers.Single(officer =>
+                officer.TypeID == "OFAL003"
+            );
+            Officer officer = EntityFactory.CreateOfficer("unrecruited", _faction.InstanceID);
+            officer.TypeID = template.TypeID;
+            _game.GetUnrecruitedOfficers().Add(officer);
+            _session.Dispose();
+
+            _session = new GameSession(
+                _game,
+                TestGameData.Create(_game.Config, officers: new[] { template })
+            );
+
+            Assert.IsTrue(officer.IsJediTrainer);
+            Assert.IsTrue(officer.GrowsForceOnMission);
         }
 
         [Test]
@@ -1872,6 +2019,7 @@ namespace Rebellion.Tests.Gameplay
         public void Tick_InjuredOfficerAtFriendlyPlanet_Heals()
         {
             GameConfig config = TestConfig.Create();
+            config.Jedi.FastHealThreshold = 80;
             config.Recovery.NormalHealAmount = 1;
             GameRoot game = TestGame.Create(config);
             Faction faction = new Faction { InstanceID = "FNALL1" };
@@ -1989,7 +2137,10 @@ namespace Rebellion.Tests.Gameplay
                         },
                     }
                 );
-            GameSession manager = new GameSession(game, TestGameData.Create(config));
+            GameSession manager = new GameSession(
+                game,
+                TestGameData.Create(config, gameEvents: game.GetEventPool().ToArray())
+            );
 
             manager.Tick.ProcessTick();
 
@@ -3803,6 +3954,7 @@ namespace Rebellion.Tests.Gameplay
         ) CreateRecoveryGame()
         {
             GameConfig config = new GameConfig();
+            config.Jedi.FastHealThreshold = 80;
             config.Recovery.NormalHealAmount = 1;
             config.Recovery.FastRepairAmount = 1;
             config.Recovery.FastReplacementAmount = 1;

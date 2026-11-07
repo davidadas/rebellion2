@@ -4,6 +4,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.AI.Proposals
@@ -13,8 +14,17 @@ namespace Rebellion.AI.Proposals
     /// </summary>
     public sealed class AIMissionProposal : AIProposal
     {
+        /// <summary>
+        /// Gives recruitment first claim on its personnel before competing assignments.
+        /// </summary>
+        internal override AIProposalPriority Priority =>
+            MissionTypeID == MissionTypeIDs.Recruitment
+                ? AIProposalPriority.Recruitment
+                : base.Priority;
+
         // Cached Identity.
-        private readonly string _sortKey;
+        private readonly string[] _sortKeyParts;
+        private string _sortKey;
 
         // Participants.
         public IReadOnlyList<IMissionParticipant> Participants { get; }
@@ -37,6 +47,12 @@ namespace Rebellion.AI.Proposals
         // Mission Assessment.
         public double FoilProbability { get; private set; }
 
+        internal bool IsTeamFinal { get; }
+
+        internal bool IsInterception { get; }
+
+        internal MissionOdds OperationalOdds { get; private set; }
+
         /// <summary>
         /// Creates a mission proposal.
         /// </summary>
@@ -47,6 +63,8 @@ namespace Rebellion.AI.Proposals
         /// <param name="targetOfficer">Officer targeted by the mission.</param>
         /// <param name="discipline">Research discipline advanced by the mission.</param>
         /// <param name="decoyParticipants">Participants assigned to distract mission defenders.</param>
+        /// <param name="teamIsFinal">Whether the planner has evaluated the complete participant roles.</param>
+        /// <param name="isInterception">Whether dated mission intelligence supplies the target window.</param>
         public AIMissionProposal(
             IEnumerable<IMissionParticipant> mainParticipants,
             string missionTypeId,
@@ -54,7 +72,9 @@ namespace Rebellion.AI.Proposals
             ISceneNode selectedTarget = null,
             Officer targetOfficer = null,
             ResearchDiscipline? discipline = null,
-            IEnumerable<IMissionParticipant> decoyParticipants = null
+            IEnumerable<IMissionParticipant> decoyParticipants = null,
+            bool teamIsFinal = false,
+            bool isInterception = false
         )
         {
             MainParticipants =
@@ -69,7 +89,9 @@ namespace Rebellion.AI.Proposals
             SelectedTarget = selectedTarget;
             TargetOfficer = targetOfficer;
             Discipline = discipline;
-            _sortKey = BuildSortKey();
+            IsTeamFinal = teamIsFinal;
+            IsInterception = isInterception;
+            _sortKeyParts = BuildSortKeyParts();
         }
 
         /// <summary>
@@ -78,17 +100,17 @@ namespace Rebellion.AI.Proposals
         /// <returns>A stable sort key.</returns>
         public override string GetSortKey()
         {
-            return _sortKey;
+            return _sortKey ??= string.Join(":", _sortKeyParts);
         }
 
         /// <summary>
-        /// Builds the immutable proposal identity used for deterministic ordering.
+        /// Captures immutable identity components before deterministic ordering is requested.
         /// </summary>
-        /// <returns>The stable proposal sort key.</returns>
-        private string BuildSortKey()
+        /// <returns>The eagerly evaluated proposal identity components.</returns>
+        private string[] BuildSortKeyParts()
         {
-            return string.Join(
-                ":",
+            return new[]
+            {
                 "mission",
                 MissionTypeID,
                 TargetPlanet?.InstanceID,
@@ -96,8 +118,8 @@ namespace Rebellion.AI.Proposals
                 SelectedTarget?.InstanceID,
                 Discipline?.ToString(),
                 string.Join(",", MainParticipants.Select(participant => participant.InstanceID)),
-                string.Join(",", DecoyParticipants.Select(participant => participant.InstanceID))
-            );
+                string.Join(",", DecoyParticipants.Select(participant => participant.InstanceID)),
+            };
         }
 
         /// <summary>
@@ -107,10 +129,34 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if this mission proposal may be selected.</returns>
         public override bool CanSelect(AITurnContext context)
         {
-            return IsStillValid()
-                && !Participants
-                    .OfType<Officer>()
-                    .Any(officer => context?.Assessment?.IsOfficerHoldingPosition(officer) == true);
+            if (!IsStillValid())
+                return false;
+
+            foreach (IMissionParticipant participant in Participants)
+            {
+                if (
+                    participant is SpecialForces unit
+                    && !context.CanAssignManufacturingInterceptor(unit, MissionTypeID, TargetPlanet)
+                )
+                    return false;
+            }
+
+            if (
+                MissionTypeID == MissionTypeIDs.Assassination
+                && !context.Assessment.IsHostileMissionAtOwnedPlanet(TargetPlanet, TargetOfficer)
+            )
+                return false;
+
+            foreach (IMissionParticipant participant in Participants)
+            {
+                if (
+                    participant is Officer officer
+                    && !context.Assessment.CanAssignOfficerToPlanet(officer, TargetPlanet)
+                )
+                    return false;
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -122,7 +168,33 @@ namespace Rebellion.AI.Proposals
         {
             if (context?.Missions == null || !CanSelect(context))
                 return false;
+            if (
+                MissionTypeID == MissionTypeIDs.Assassination
+                && context
+                    .Game.GetSceneNodeByInstanceID<Planet>(TargetPlanet.InstanceID)
+                    ?.GetOwnerInstanceID() != context.Faction.InstanceID
+            )
+                return false;
 
+            if (
+                IsInterception
+                && (
+                    !context.Assessment.TryGetOfficerMissionWindow(
+                        TargetOfficer,
+                        out int arrival,
+                        out _,
+                        out _
+                    )
+                    || arrival > 0
+                    || !TryGetInterceptionTiming(
+                        context,
+                        EstimateOutboundTravelTicks(context),
+                        out _,
+                        out _
+                    )
+                )
+            )
+                return false;
             return context.MissionQueries.CanCreateMission(CreateContext());
         }
 
@@ -152,7 +224,9 @@ namespace Rebellion.AI.Proposals
                 SelectedTarget,
                 TargetOfficer,
                 Discipline,
-                DecoyParticipants.Concat(new[] { decoy })
+                DecoyParticipants.Concat(new[] { decoy }),
+                IsTeamFinal,
+                IsInterception
             );
             if (HasScore)
                 proposal.SetScore(Score);
@@ -167,6 +241,157 @@ namespace Rebellion.AI.Proposals
         internal void SetFoilProbability(double probability)
         {
             FoilProbability = probability;
+        }
+
+        /// <summary>
+        /// Records evaluated odds for this immutable team during the current planning turn.
+        /// </summary>
+        /// <param name="odds">The operational odds for the proposal's exact participant roles.</param>
+        internal void SetOperationalOdds(MissionOdds odds)
+        {
+            OperationalOdds = odds;
+        }
+
+        /// <summary>
+        /// Estimates outbound and grouped return travel for this complete mission team.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="departure">An optional common future departure planet.</param>
+        /// <returns>The time until every participant could finish its return journey.</returns>
+        internal long EstimateTravelTicks(AITurnContext context, Planet departure = null)
+        {
+            return EstimateOutboundTravelTicks(context, departure)
+                + EstimateReturnTravelTicks(context, departure);
+        }
+
+        /// <summary>
+        /// Estimates the travel until every participant reaches the mission objective.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="departure">An optional common future departure planet.</param>
+        /// <returns>The slowest participant's outbound travel duration.</returns>
+        internal long EstimateOutboundTravelTicks(AITurnContext context, Planet departure = null)
+        {
+            if (Participants.Count == 0)
+                return Enumerable.Empty<int>().Max();
+
+            int maximum = int.MinValue;
+            foreach (IMissionParticipant participant in Participants)
+            {
+                Planet origin = departure ?? participant.GetParentOfType<Planet>();
+                int transitTicks =
+                    origin.InstanceID == TargetPlanet.InstanceID
+                        ? 0
+                        : context.MovementQueries.CalculateTransitTicks(
+                            participant,
+                            origin,
+                            TargetPlanet
+                        );
+                maximum = System.Math.Max(maximum, transitTicks);
+            }
+            return maximum;
+        }
+
+        /// <summary>
+        /// Estimates grouped travel from the mission planet back to the team's departure containers.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="departure">An optional common future departure planet.</param>
+        /// <returns>The time until every surviving participant could return.</returns>
+        internal long EstimateReturnTravelTicks(AITurnContext context, Planet departure = null)
+        {
+            if (departure != null)
+                return EstimateGroupReturnTravelTicks(context, Participants, departure);
+
+            int returning = 0;
+            foreach (
+                IGrouping<string, IMissionParticipant> group in Participants.GroupBy(participant =>
+                    departure?.InstanceID ?? participant.GetParent()?.InstanceID
+                )
+            )
+            {
+                returning = System.Math.Max(
+                    returning,
+                    EstimateGroupReturnTravelTicks(context, group.Cast<IMovable>().ToArray())
+                );
+            }
+            return returning;
+        }
+
+        /// <summary>
+        /// Estimates one movement group's return using its shared personnel travel modifier.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="participants">The complete movement group in participant order.</param>
+        /// <param name="departure">An optional common return planet instead of each participant's current planet.</param>
+        /// <returns>The slowest participant's return duration, or zero for an empty group.</returns>
+        private int EstimateGroupReturnTravelTicks(
+            AITurnContext context,
+            IReadOnlyList<IMovable> participants,
+            Planet departure = null
+        )
+        {
+            if (participants.Count == 0)
+                return 0;
+
+            string departureId = departure?.InstanceID;
+            int percent = MovementQueries.GetPersonnelGroupTravelTimePercent(participants);
+            int returning = 0;
+            foreach (IMovable participant in participants)
+            {
+                Planet destination = departure ?? participant.GetParentOfType<Planet>();
+                if ((departureId ?? destination.InstanceID) != TargetPlanet.InstanceID)
+                    returning = System.Math.Max(
+                        returning,
+                        context.MovementQueries.CalculateTransitTicks(
+                            participant,
+                            TargetPlanet,
+                            destination,
+                            percent
+                        )
+                    );
+            }
+            return returning;
+        }
+
+        /// <summary>
+        /// Checks whether travel, waiting, and execution fit the observed target's remaining stay.
+        /// </summary>
+        /// <param name="context">The current turn and observed mission timing.</param>
+        /// <param name="outboundTicks">Travel until the complete team reaches the objective.</param>
+        /// <param name="waitingTicks">Additional waiting needed for the target to arrive.</param>
+        /// <param name="confidence">The remaining window discounted by the report's age.</param>
+        /// <param name="preparationTicks">Time until personnel are ready to start from their departure planet.</param>
+        /// <returns>True when the expected objective completes no later than the target departs.</returns>
+        internal bool TryGetInterceptionTiming(
+            AITurnContext context,
+            long outboundTicks,
+            out long waitingTicks,
+            out double confidence,
+            long preparationTicks = 0
+        )
+        {
+            waitingTicks = 0;
+            confidence = 0;
+            if (
+                !IsInterception
+                || !context.Assessment.TryGetOfficerMissionWindow(
+                    TargetOfficer,
+                    out int arrival,
+                    out int remaining,
+                    out int age
+                )
+            )
+                return false;
+            waitingTicks = System.Math.Max(0, arrival - preparationTicks);
+            double execution = context.MissionQueries.EstimateExecutionTicks(
+                MissionTypeID,
+                context.Faction.InstanceID
+            );
+            if (preparationTicks + waitingTicks + outboundTicks + execution > remaining)
+                return false;
+            confidence = (double)remaining / ((long)remaining + age);
+            return true;
         }
 
         /// <summary>

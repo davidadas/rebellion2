@@ -13,7 +13,6 @@ using Rebellion.Gameplay;
 using Rebellion.Generation;
 using Rebellion.Multiplayer;
 using Rebellion.Util.IO;
-using Rebellion.Util.Reflection;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -147,7 +146,7 @@ namespace Rebellion.Tests.Content
                 summary.Difficulty = GameDifficulty.Hard;
                 summary.CustomSettings = new CustomGameSettings
                 {
-                    GenerationConfig = selected.GameData.GenerationConfig.GetDeepCopy(),
+                    GenerationConfig = selected.GameData.GenerationConfig.CreateCopy(),
                 };
                 summary.CustomSettings.GenerationConfig.DisabledEventCategories =
                     new List<GameEventCategory> { GameEventCategory.Story };
@@ -244,10 +243,7 @@ namespace Rebellion.Tests.Content
                     "The main-menu planet rig survived the scene transition."
                 );
                 Assert.That(
-                    Object.FindObjectsByType<LoadingScreenView>(
-                        FindObjectsInactive.Include,
-                        FindObjectsSortMode.None
-                    ),
+                    Object.FindObjectsByType<LoadingScreenView>(FindObjectsInactive.Include),
                     Has.Length.EqualTo(1)
                 );
             }

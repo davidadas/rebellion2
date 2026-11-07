@@ -23,7 +23,19 @@ namespace Rebellion.Game.Units
     public class Fleet : ContainerNode, IMovable
     {
         // Movement Info.
-        public MovementState Movement { get; set; }
+        public MovementState Movement
+        {
+            get => _movement;
+            set
+            {
+                if (ReferenceEquals(_movement, value))
+                    return;
+                _movement = value;
+                OnAvailabilityChanged();
+            }
+        }
+
+        private MovementState _movement;
 
         public FleetRoleType RoleType { get; set; } = FleetRoleType.None;
 
@@ -356,6 +368,23 @@ namespace Rebellion.Game.Units
         {
             // Movement == null means not moving (can be moved)
             return Movement == null;
+        }
+
+        /// <summary>
+        /// Collects direct children without allocating a raw traversal iterator.
+        /// </summary>
+        /// <typeparam name="T">The child type retained in the snapshot.</typeparam>
+        /// <param name="collector">The current query's validation and collection state.</param>
+        protected override void CollectDirectChildren<T>(ref DirectChildCollector<T> collector)
+        {
+            if (GetType() != typeof(Fleet))
+            {
+                base.CollectDirectChildren(ref collector);
+                return;
+            }
+
+            foreach (CapitalShip child in _capitalShips)
+                collector.Add(child);
         }
 
         /// <summary>

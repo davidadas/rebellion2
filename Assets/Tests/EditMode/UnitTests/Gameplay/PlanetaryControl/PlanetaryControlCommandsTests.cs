@@ -585,6 +585,7 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void TransferPlanet_PlanetWithEnemyRegiments_EvictsEnemyRegiments()
         {
+            _empirePlanet.SetFullPopularSupport(_empire.InstanceID);
             _game.ChangeOwnership(_targetPlanet, "empire");
             _targetPlanet.EnergyCapacity = 1;
             Regiment regiment = EntityFactory.CreateRegiment("reg1", "empire");
@@ -1534,9 +1535,7 @@ namespace Rebellion.Tests.Gameplay
         {
             GameResultBus bus = new GameResultBus();
             MovementQueries movementQueries = new MovementQueries(_game);
-            new CaptiveObserver(_game, _movementSystem, movementQueries, new FixedRNG(0)).Connect(
-                bus
-            );
+            new CaptiveObserver(_game, _movementSystem, movementQueries).Connect(bus);
             new PlanetaryControlObserver(
                 _game,
                 commands,

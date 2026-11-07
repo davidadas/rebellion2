@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
@@ -203,6 +204,8 @@ namespace Rebellion.Game.Results
     {
         public Faction Recipient { get; set; }
         public List<ISceneNode> Observations { get; set; } = new List<ISceneNode>();
+        public PlanetIntelligenceCategory Category { get; set; }
+        public bool IncludeDescendants { get; set; } = true;
     }
 
     /// <summary>
@@ -379,6 +382,7 @@ namespace Rebellion.Game.Results
     {
         public string MissionInstanceID { get; set; }
         public Officer Officer { get; set; }
+        public ISceneNode ParentAtInjury { get; set; }
         public int Severity { get; set; }
         public int Detail { get; set; }
     }
@@ -414,11 +418,20 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A character's Force training progress changed.
+    /// Records the effective Force rank before and after one progression operation.
     /// </summary>
-    public class ForceTrainingResult : GameResult
+    public abstract class ForceProgressionResult : GameResult
     {
         public Officer Officer { get; set; }
+        public int PreviousForceRank { get; set; }
+        public int CurrentForceRank { get; set; }
+    }
+
+    /// <summary>
+    /// A character's Force training progress changed.
+    /// </summary>
+    public class ForceTrainingResult : ForceProgressionResult
+    {
         public int Progress { get; set; }
         public int Detail { get; set; }
     }
@@ -426,12 +439,9 @@ namespace Rebellion.Game.Results
     /// <summary>
     /// A character gained Force experience.
     /// </summary>
-    public class ForceExperienceResult : GameResult
+    public class ForceExperienceResult : ForceProgressionResult
     {
-        public Officer Officer { get; set; }
         public int ExperienceGained { get; set; }
-        public int PreviousForceRank { get; set; }
-        public int CurrentForceRank { get; set; }
         public int Detail { get; set; }
     }
 
@@ -866,6 +876,7 @@ namespace Rebellion.Game.Results
     {
         public Planet Planet { get; set; }
         public Faction AttackingFaction { get; set; }
+        public List<Fleet> AttackingFleets { get; set; } = new List<Fleet>();
         public string AttackerOwnerInstanceID { get; set; }
         public string DefenderOwnerInstanceID { get; set; }
         public bool Success { get; set; }

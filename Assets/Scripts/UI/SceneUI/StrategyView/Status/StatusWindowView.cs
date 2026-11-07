@@ -10,6 +10,7 @@ using UnityEngine.UI;
 public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
 {
     private const int _minimumRowColumnWidth = 24;
+    private const int _rowActionGap = 2;
 
     private readonly List<TextMeshProUGUI> labelTextFields = new List<TextMeshProUGUI>();
     private readonly List<TextMeshProUGUI> leftRowTextFields = new List<TextMeshProUGUI>();
@@ -68,6 +69,15 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
     private Button closeButton;
 
     [SerializeField]
+    private RawImage manufacturingSourceButtonImage;
+
+    [SerializeField]
+    private RawImagePressVisual manufacturingSourceButtonPressVisual;
+
+    [SerializeField]
+    private Button manufacturingSourceButton;
+
+    [SerializeField]
     private Texture2D infoButtonUpTexture;
 
     [SerializeField]
@@ -81,6 +91,12 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
 
     [SerializeField]
     private Texture2D closeButtonDownTexture;
+
+    [SerializeField]
+    private Texture2D manufacturingSourceButtonUpTexture;
+
+    [SerializeField]
+    private Texture2D manufacturingSourceButtonDownTexture;
 
     private bool renderedAnyRows;
 
@@ -100,6 +116,11 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
     public event Action<StatusWindowView> InfoRequested;
 
     /// <summary>
+    /// Occurs when the represented item's manufacturing source is requested.
+    /// </summary>
+    public event Action<StatusWindowView> ManufacturingSourceRequested;
+
+    /// <summary>
     /// Raised when an authored status control enters its pressed state.
     /// </summary>
     internal event Action<StatusWindowView> ControlPressed;
@@ -112,8 +133,10 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
         VerifyReferences(false);
         infoButtonPressVisual.Pressed += RequestControlPress;
         closeButtonPressVisual.Pressed += RequestControlPress;
+        manufacturingSourceButtonPressVisual.Pressed += RequestControlPress;
         infoButton.onClick.AddListener(RequestInfo);
         closeButton.onClick.AddListener(RequestClose);
+        manufacturingSourceButton.onClick.AddListener(RequestManufacturingSource);
     }
 
     /// <summary>
@@ -125,10 +148,14 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
             infoButtonPressVisual.Pressed -= RequestControlPress;
         if (closeButtonPressVisual != null)
             closeButtonPressVisual.Pressed -= RequestControlPress;
+        if (manufacturingSourceButtonPressVisual != null)
+            manufacturingSourceButtonPressVisual.Pressed -= RequestControlPress;
         if (infoButton != null)
             infoButton.onClick.RemoveListener(RequestInfo);
         if (closeButton != null)
             closeButton.onClick.RemoveListener(RequestClose);
+        if (manufacturingSourceButton != null)
+            manufacturingSourceButton.onClick.RemoveListener(RequestManufacturingSource);
         Destroyed?.Invoke(this);
     }
 
@@ -157,6 +184,14 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
         closeButtonDownTexture = ContentBindings.RequireTexture(
             contentAssets,
             "Application/Strategy/UI/Windows/ui_strategyview_status_close_button_pressed"
+        );
+        manufacturingSourceButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_open_location_button"
+        );
+        manufacturingSourceButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_open_location_button_pressed"
         );
     }
 
@@ -203,6 +238,14 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
     internal void RequestClose()
     {
         CloseRequested?.Invoke(this);
+    }
+
+    /// <summary>
+    /// Emits a semantic request to open the represented item's manufacturing source.
+    /// </summary>
+    internal void RequestManufacturingSource()
+    {
+        ManufacturingSourceRequested?.Invoke(this);
     }
 
     /// <summary>
@@ -285,7 +328,11 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
             rows ?? Array.Empty<StatusWindowRowRenderData>();
         RectInt leftTemplate = UILayout.GetSourceRect(leftRowTextTemplate.rectTransform);
         RectInt rightTemplate = UILayout.GetSourceRect(rightRowTextTemplate.rectTransform);
+        RectInt actionTemplate = UILayout.GetSourceRect(
+            manufacturingSourceButtonImage.rectTransform
+        );
         int contentHeight = 0;
+        bool renderedManufacturingSourceButton = false;
         for (int i = 0; i < safeRows.Count; i++)
         {
             StatusWindowRowRenderData row = safeRows[i];
@@ -295,6 +342,7 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
                 leftTemplate,
                 rightTemplate,
                 row,
+                row.OpensManufacturingSource ? actionTemplate.width + _rowActionGap : 0,
                 out RectInt leftRect,
                 out RectInt rightRect
             );
@@ -325,8 +373,44 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
                     rightHeight
                 )
             );
+            if (row.OpensManufacturingSource)
+            {
+                int textWidth = Mathf.Min(
+                    rightRect.width,
+                    Mathf.CeilToInt(
+                        rightRowTextTemplate.GetPreferredValues(row.Right ?? string.Empty).x
+                    )
+                );
+                int buttonX = Mathf.Min(
+                    rightRect.x + textWidth + _rowActionGap,
+                    rightTemplate.xMax - actionTemplate.width
+                );
+                int buttonY =
+                    rightRect.y
+                    + contentHeight
+                    + Mathf.Max(0, (rowHeight - actionTemplate.height) / 2)
+                    - 1;
+                UILayout.SetImage(
+                    manufacturingSourceButtonImage,
+                    manufacturingSourceButtonUpTexture,
+                    buttonX,
+                    buttonY,
+                    actionTemplate.width,
+                    actionTemplate.height
+                );
+                manufacturingSourceButtonImage.raycastTarget = true;
+                manufacturingSourceButtonPressVisual.SetInteractiveTextures(
+                    manufacturingSourceButtonUpTexture,
+                    manufacturingSourceButtonDownTexture
+                );
+                manufacturingSourceButton.interactable = true;
+                renderedManufacturingSourceButton = true;
+            }
             contentHeight += rowHeight;
         }
+
+        if (!renderedManufacturingSourceButton)
+            manufacturingSourceButtonImage.gameObject.SetActive(false);
 
         rowsScrollArea.SetContentHeight(
             contentHeight,
@@ -346,6 +430,7 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
     /// <param name="leftRect">The authored left-column bounds.</param>
     /// <param name="rightRect">The authored right-column bounds.</param>
     /// <param name="row">The row content to fit.</param>
+    /// <param name="reservedRightWidth">The width reserved for an optional row action.</param>
     /// <param name="resolvedLeftRect">The allocated left-column bounds.</param>
     /// <param name="resolvedRightRect">The allocated right-column bounds.</param>
     private static void GetRowRects(
@@ -354,12 +439,13 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
         RectInt leftRect,
         RectInt rightRect,
         StatusWindowRowRenderData row,
+        int reservedRightWidth,
         out RectInt resolvedLeftRect,
         out RectInt resolvedRightRect
     )
     {
         int gap = rightRect.x - leftRect.xMax;
-        int availableWidth = rightRect.xMax - leftRect.x - gap;
+        int availableWidth = rightRect.xMax - leftRect.x - gap - reservedRightWidth;
         int preferredLeftWidth = Mathf.Max(
             _minimumRowColumnWidth,
             Mathf.CeilToInt(leftTemplate.GetPreferredValues(row.Left ?? string.Empty).x)
@@ -493,7 +579,11 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
 
         for (int i = 0; i < rows.Count; i++)
         {
-            if (renderedRows[i].Left != rows[i].Left || renderedRows[i].Right != rows[i].Right)
+            if (
+                renderedRows[i].Left != rows[i].Left
+                || renderedRows[i].Right != rows[i].Right
+                || renderedRows[i].OpensManufacturingSource != rows[i].OpensManufacturingSource
+            )
                 return true;
         }
 
@@ -585,6 +675,16 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
             throw new MissingReferenceException($"{name}/InfoButton is missing.");
         if (closeButton == null)
             throw new MissingReferenceException($"{name}/CloseButton is missing.");
+        if (manufacturingSourceButtonImage == null)
+            throw new MissingReferenceException(
+                $"{name}/ManufacturingSourceButtonImage is missing."
+            );
+        if (manufacturingSourceButtonPressVisual == null)
+            throw new MissingReferenceException(
+                $"{name}/ManufacturingSourceButtonPressVisual is missing."
+            );
+        if (manufacturingSourceButton == null)
+            throw new MissingReferenceException($"{name}/ManufacturingSourceButton is missing.");
         if (verifyContent && infoButtonUpTexture == null)
             throw new MissingReferenceException($"{name}/InfoButtonUpTexture is missing.");
         if (verifyContent && infoButtonDownTexture == null)
@@ -595,6 +695,14 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
             throw new MissingReferenceException($"{name}/CloseButtonUpTexture is missing.");
         if (verifyContent && closeButtonDownTexture == null)
             throw new MissingReferenceException($"{name}/CloseButtonDownTexture is missing.");
+        if (verifyContent && manufacturingSourceButtonUpTexture == null)
+            throw new MissingReferenceException(
+                $"{name}/ManufacturingSourceButtonUpTexture is missing."
+            );
+        if (verifyContent && manufacturingSourceButtonDownTexture == null)
+            throw new MissingReferenceException(
+                $"{name}/ManufacturingSourceButtonDownTexture is missing."
+            );
 
         statusImageTemplate.gameObject.SetActive(false);
         statusImageAreaTemplate.gameObject.SetActive(false);

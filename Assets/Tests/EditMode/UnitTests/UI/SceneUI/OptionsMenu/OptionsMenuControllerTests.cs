@@ -590,6 +590,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             bool initiallyShowingFrameRate = _bootstrap
                 .GetUserSettingsManager()
                 .Settings.UserInterface.ShowFrameRate;
+            bool initiallyQuickOpening = _bootstrap
+                .GetUserSettingsManager()
+                .Settings.UserInterface.QuickOpenMapItems;
             OptionsToggleRowView[] rows = GetField<OptionsToggleRowView[]>(
                 view,
                 "_userInterfaceRows"
@@ -608,6 +611,15 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
             OptionsToggleRowView frameRateRow = rows.Single(row =>
                 row.OptionIndex == (int)UserInterfaceOption.ShowFrameRate
+            );
+            OptionsToggleRowView quickOpenRow = rows.Single(row =>
+                row.OptionIndex == (int)UserInterfaceOption.QuickOpenMapItems
+            );
+
+            GetField<Button>(quickOpenRow, "_button").onClick.Invoke();
+            Assert.AreEqual(
+                !initiallyQuickOpening,
+                _bootstrap.GetUserSettingsManager().Settings.UserInterface.QuickOpenMapItems
             );
 
             GetField<Button>(showRow, "_button").onClick.Invoke();

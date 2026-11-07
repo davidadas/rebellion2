@@ -96,7 +96,6 @@ namespace Rebellion.Gameplay
         {
             if (mission == null || mission.GetParent() == null)
                 return new List<GameResult>();
-
             List<GameResult> results = new List<GameResult>();
             List<Officer> killedParticipants = null;
             foreach (IMissionParticipant participant in mission.GetMainParticipants(true))
@@ -111,7 +110,7 @@ namespace Rebellion.Gameplay
             }
             if (killedParticipants != null)
             {
-                _resolver.RemoveKilledParticipants(mission, killedParticipants, results);
+                _resolver.RemoveUnavailableParticipants(mission, killedParticipants, results);
                 if (mission.GetParent() == null)
                     return CompleteStep(mission, results);
             }
@@ -151,6 +150,8 @@ namespace Rebellion.Gameplay
                     results,
                     out foilingFactionInstanceID
                 );
+                if (mission.GetParent() == null)
+                    return CompleteStep(mission, results);
             }
             if (wasDetected)
             {
@@ -185,6 +186,8 @@ namespace Rebellion.Gameplay
                     results,
                     out foilingFactionInstanceID
                 );
+                if (mission.GetParent() == null)
+                    return CompleteStep(mission, results);
             }
             if (wasDetected)
             {

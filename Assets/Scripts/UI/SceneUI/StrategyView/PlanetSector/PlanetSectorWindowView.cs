@@ -556,7 +556,7 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
     }
 
     /// <summary>
-    /// Forwards a semantic planet double click.
+    /// Forwards a semantic planet click.
     /// </summary>
     /// <param name="view">The clicked planet view.</param>
     /// <param name="element">The semantic presentation element.</param>

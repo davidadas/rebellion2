@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Demands;
 using Rebellion.AI.Proposals;
+using Rebellion.AI.Selectors;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -10,10 +11,21 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Util.Mathematics;
 using Rebellion.Util.Random;
 
 namespace Rebellion.AI
 {
+    /// <summary>
+    /// Describes how the AI intends to use an available special-forces unit this turn.
+    /// </summary>
+    public enum SpecialForcesIntent
+    {
+        PrimaryAgent,
+        Decoy,
+        Reserve,
+    }
+
     /// <summary>
     /// Shared state for one faction AI turn.
     /// </summary>
@@ -29,6 +41,7 @@ namespace Rebellion.AI
         public MovementQueries MovementQueries { get; }
         public HeadquartersCommands Headquarters { get; }
         public HeadquartersQueries HeadquartersQueries { get; }
+        public PersonnelCommands OfficerCommands { get; }
         public ManufacturingCommands Manufacturing { get; }
         public MaintenanceCommands Maintenance { get; }
         public BombardmentCommands Bombardment { get; }
@@ -49,16 +62,45 @@ namespace Rebellion.AI
         }
 
         // Turn Output.
+        /// <summary>
+        /// Gets whether this turn can assign new strategic objectives and resources.
+        /// </summary>
+        internal bool IsDecisionTick { get; set; } = true;
+
         public bool HasGeneratedProductionDemands { get; private set; }
         public IReadOnlyCollection<AIAttackDemand> AttackDemands => _attackDemands.Values;
         public IReadOnlyList<AIProductionDemand> ProductionDemands => _productionDemands;
+        public IReadOnlyList<Fleet> FleetProductionPriorities { get; private set; } =
+            Array.Empty<Fleet>();
         public IReadOnlyList<AIProposal> Proposals => _proposals;
         public IReadOnlyList<AIProposal> SelectedProposals => _selectedProposals;
+
+        /// <summary>
+        /// Gets or sets shared reservations for selection stages within this faction turn.
+        /// </summary>
+        internal AISelectionState SelectionState { get; set; }
+
+        /// <summary>
+        /// Gets or sets the production selector retaining this turn's accepted budgets and claims.
+        /// </summary>
+        internal AIProductionSelector ProductionSelector { get; set; }
+
+        /// <summary>
+        /// Gets or sets the proposal boundary already considered by an earlier selection stage.
+        /// </summary>
+        internal int SelectionProposalCount { get; set; }
         public IReadOnlyList<GameResult> Results => _results;
 
-        private readonly List<AIProductionDemand> _productionDemands =
-            new List<AIProductionDemand>();
+        private IReadOnlyList<AIProductionDemand> _productionDemands =
+            Array.Empty<AIProductionDemand>();
         private readonly Dictionary<string, AIAttackDemand> _attackDemands = new(
+            StringComparer.Ordinal
+        );
+        private readonly Dictionary<
+            (string Fleet, string Planet),
+            AIAttackDemand
+        > _fleetAttackDemands = new();
+        private readonly Dictionary<string, int> _readyAttackActionTicks = new(
             StringComparer.Ordinal
         );
         private readonly List<AIProposal> _proposals = new List<AIProposal>();
@@ -73,6 +115,8 @@ namespace Rebellion.AI
             StringComparer.Ordinal
         );
         private readonly HashSet<SpecialForces> _headquartersEspionageAgents;
+        private readonly HashSet<SpecialForces> _localEspionageAgents;
+        private readonly HashSet<SpecialForces> _manufacturingInterceptionAgents;
         private readonly HashSet<string> _unlockedSpecialForcesMissionTypes;
         private bool _hasManufacturingBudget;
         private int _availableManufacturingHeadroom;
@@ -93,6 +137,8 @@ namespace Rebellion.AI
         /// <param name="factionView">The faction-visible galaxy state for this turn.</param>
         /// <param name="maintenance">Maintenance system used to project production capacity.</param>
         /// <param name="headquarters">Headquarters system used by relocation proposals.</param>
+        /// <param name="officerCommands">Officer command appointment operations.</param>
+        /// <param name="missionQueries">Optional mission queries prepared for the current assessment.</param>
         public AITurnContext(
             GameRoot game,
             Faction faction,
@@ -106,16 +152,31 @@ namespace Rebellion.AI
             AIStrategicPlan strategicPlan,
             GalaxyMap factionView = null,
             MaintenanceCommands maintenance = null,
-            HeadquartersCommands headquarters = null
+            HeadquartersCommands headquarters = null,
+            PersonnelCommands officerCommands = null,
+            MissionQueries missionQueries = null
         )
         {
             Game = game;
             Faction = faction;
             Missions = missions;
-            MissionQueries = game == null ? null : new MissionQueries(game);
+            MissionQueries =
+                missionQueries
+                ?? (
+                    game == null ? null
+                    : assessment == null ? new MissionQueries(game)
+                    : new MissionQueries(
+                        game,
+                        assessment.GetMissionDetectorCommander,
+                        new MissionEncounterOdds.Cache(
+                            game.Config.AI.MissionPlanning.EncounterCacheCapacity
+                        )
+                    )
+                );
             Movement = movement;
             MovementQueries = game == null ? null : new MovementQueries(game);
             Headquarters = headquarters;
+            OfficerCommands = officerCommands;
             HeadquartersQueries = game == null ? null : new HeadquartersQueries(game);
             Manufacturing = manufacturing;
             Maintenance = maintenance;
@@ -148,6 +209,8 @@ namespace Rebellion.AI
                         )
                         .ToHashSet()
                     : new HashSet<SpecialForces>();
+            _localEspionageAgents = BuildLocalEspionageAgents();
+            _manufacturingInterceptionAgents = BuildManufacturingInterceptionAgents();
         }
 
         /// <summary>
@@ -157,6 +220,7 @@ namespace Rebellion.AI
         public void SetAttackDemands(IEnumerable<AIAttackDemand> demands)
         {
             _attackDemands.Clear();
+            _fleetAttackDemands.Clear();
             if (demands == null)
                 return;
 
@@ -206,9 +270,19 @@ namespace Rebellion.AI
         /// Returns the generated attack demand for a known planet.
         /// </summary>
         /// <param name="planet">The known target planet.</param>
+        /// <param name="fleet">Optional attacking fleet whose arrival was assessed.</param>
         /// <returns>The attack demand, or null when the target has no generated demand.</returns>
-        public AIAttackDemand GetAttackDemand(Planet planet)
+        public AIAttackDemand GetAttackDemand(Planet planet, Fleet fleet = null)
         {
+            if (
+                planet != null
+                && fleet != null
+                && _fleetAttackDemands.TryGetValue(
+                    (fleet.InstanceID, planet.InstanceID),
+                    out AIAttackDemand arrivalDemand
+                )
+            )
+                return arrivalDemand;
             return
                 planet != null
                 && _attackDemands.TryGetValue(planet.InstanceID, out AIAttackDemand demand)
@@ -217,22 +291,341 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Resolves ground-force requirements against the turn's measured attack demand.
+        /// </summary>
+        /// <param name="planet">The target whose current defenses are assessed.</param>
+        /// <param name="fleet">The attacking fleet.</param>
+        /// <param name="projected">Whether to include units committed to the fleet.</param>
+        /// <param name="additionalBombardmentStrength">Additional proposed bombardment strength.</param>
+        /// <returns>The required regiment count and attack strength after available bombardment.</returns>
+        internal (int Count, int Strength) GetAttackRegimentRequirements(
+            Planet planet,
+            Fleet fleet,
+            bool projected = false,
+            int additionalBombardmentStrength = 0
+        )
+        {
+            AIAttackDemand demand = GetAttackDemand(planet, fleet);
+            if (demand == null)
+                return (0, 0);
+            var required = demand.GetRegimentRequirements(
+                Assessment.CanBombardDefenders(
+                    fleet,
+                    planet,
+                    projected,
+                    additionalBombardmentStrength,
+                    demand.ShieldStrength
+                ),
+                projected
+                    ? Assessment.GetFleetRegimentCapacity(fleet)
+                    : Assessment.GetReadyFleetRegimentCapacity(fleet)
+            );
+            if (
+                required.Strength > 0
+                && !demand.IsAssaultBlockedByShields
+                && fleet?.Order?.OrderType == FleetOrderType.Attack
+                && fleet.Order.TargetPlanetId == planet.InstanceID
+                && Assessment.IsEnemyPlanet(planet)
+            )
+            {
+                int committedCount = projected
+                    ? fleet.GetCurrentRegimentCount()
+                    : Assessment.GetReadyFleetRegimentCount(fleet);
+                if (
+                    committedCount >= required.Count
+                    && Assessment.GetPlanetaryAssaultSuccessPercent(
+                        fleet,
+                        planet,
+                        projected: projected
+                    ) < Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent
+                )
+                    required.Count = committedCount + 1;
+            }
+            return required;
+        }
+
+        /// <summary>
+        /// Returns whether ready bombardment can damage military targets at the assessed arrival.
+        /// </summary>
+        /// <param name="fleet">The attacking fleet.</param>
+        /// <param name="planet">The known attack target.</param>
+        /// <returns>True when bombardment exceeds the expected shields and has military targets.</returns>
+        internal bool CanBombardAttackTarget(Fleet fleet, Planet planet)
+        {
+            AIAttackDemand demand = GetAttackDemand(planet, fleet);
+            int shieldStrength = Math.Max(
+                demand?.ShieldStrength ?? 0,
+                Assessment.GetBombardmentShieldStrength(planet)
+            );
+            return fleet != null
+                && planet != null
+                && Assessment.GetFleetBombardmentStrength(fleet) > shieldStrength
+                && (Assessment.HasBombardmentTargets(planet) || shieldStrength > 0);
+        }
+
+        /// <summary>
+        /// Returns whether ready forces can clear military targets and complete the resulting occupation.
+        /// </summary>
+        /// <param name="fleet">The fleet supplying ready bombardment.</param>
+        /// <param name="planet">The faction-visible target.</param>
+        /// <returns>True when surviving bombardment penetrates shields and the required occupation force is ready.</returns>
+        internal bool CanUseMilitaryBombardment(Fleet fleet, Planet planet)
+        {
+            if (fleet == null || planet == null || !Assessment.HasBombardmentTargets(planet))
+                return false;
+
+            AIAttackDemand demand = GetAttackDemand(planet, fleet);
+            if (demand == null)
+                return false;
+
+            var required = demand.GetRegimentRequirements(
+                canBombardDefenders: true,
+                Assessment.GetReadyFleetRegimentCapacity(fleet)
+            );
+            if (Assessment.GetReadyFleetRegimentCount(fleet) < required.Count)
+                return false;
+
+            int shields = Math.Max(
+                demand.ShieldStrength,
+                Assessment.GetBombardmentShieldStrength(planet)
+            );
+            return Assessment.GetBombardmentStrengthAfterDefenseFire(fleet, planet) > shields;
+        }
+
+        /// <summary>
+        /// Returns whether a fleet can launch bombardment with the force required to secure the target.
+        /// </summary>
+        /// <param name="fleet">The attacking fleet.</param>
+        /// <param name="planet">The faction-visible attack target.</param>
+        /// <returns>True when naval departure, surviving bombardment, and occupation requirements are satisfied.</returns>
+        internal bool CanLaunchBombardment(Fleet fleet, Planet planet)
+        {
+            return Assessment.GetPlanetOrbitalIntelAge(planet) != int.MaxValue
+                && HasAttackNavalReadiness(fleet, planet, GetAttackDemand(planet, fleet))
+                && CanUseMilitaryBombardment(fleet, planet);
+        }
+
+        /// <summary>
+        /// Checks the naval requirements shared by capture and bombardment departures.
+        /// </summary>
+        /// <param name="fleet">The attacking fleet.</param>
+        /// <param name="planet">The faction-visible attack target.</param>
+        /// <param name="demand">The assessed combat and bombardment requirements.</param>
+        /// <returns>True when ready ships satisfy the existing departure requirements.</returns>
+        private bool HasAttackNavalReadiness(Fleet fleet, Planet planet, AIAttackDemand demand)
+        {
+            if (
+                fleet == null
+                || demand == null
+                || !HasCurrentHeadquartersAttackIntel(fleet, planet)
+                || !StrategicPlan.CanFleetDepart(fleet)
+                || !fleet.HasOperationalCapitalShips()
+            )
+                return false;
+
+            int combat = Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet);
+            return combat > 0
+                && combat >= demand.CombatStrength
+                && Assessment.GetFleetBombardmentStrength(fleet) >= demand.BombardmentStrength;
+        }
+
+        /// <summary>
+        /// Estimates the remaining journey to one fleet's prospective attack target.
+        /// </summary>
+        /// <param name="fleet">The fleet being assessed.</param>
+        /// <param name="planet">The known destination.</param>
+        /// <returns>The arrival delay, or the maximum integer when the fleet has no known location.</returns>
+        internal int GetAttackArrivalTicks(Fleet fleet, Planet planet)
+        {
+            Planet origin = Assessment.GetFleetPlanet(fleet);
+            if (origin == null || planet == null || MovementQueries == null)
+                return int.MaxValue;
+
+            long arrivalTicks = fleet.Movement?.TicksRemaining() ?? 0;
+            if (origin.InstanceID != planet.InstanceID)
+                arrivalTicks += MovementQueries.CalculateTransitTicks(fleet, origin, planet);
+            return (int)Math.Min(int.MaxValue, arrivalTicks);
+        }
+
+        /// <summary>
+        /// Checks headquarters intelligence at the time a fleet is expected to reach its target.
+        /// </summary>
+        /// <param name="fleet">The fleet whose journey is assessed.</param>
+        /// <param name="planet">The prospective attack target.</param>
+        /// <returns>True when the headquarters age limit permits this journey.</returns>
+        internal bool HasCurrentHeadquartersAttackIntel(Fleet fleet, Planet planet)
+        {
+            return Assessment.HasCurrentHeadquartersAttackIntel(
+                planet,
+                planet?.IsHeadquarters == true ? GetAttackArrivalTicks(fleet, planet) : 0
+            );
+        }
+
+        /// <summary>
+        /// Separates fleet launch readiness from the regiments needed to complete the attack.
+        /// </summary>
+        /// <param name="fleet">The attacking fleet.</param>
+        /// <param name="planet">The faction-visible attack target.</param>
+        /// <param name="additionalRegimentCapacity">Additional ready troop berths to assess without changing the fleet.</param>
+        /// <returns>Whether the fleet and its regiments satisfy their launch requirements.</returns>
+        internal (bool FleetReady, bool RegimentsReady) GetAttackReadiness(
+            Fleet fleet,
+            Planet planet,
+            int additionalRegimentCapacity = 0
+        )
+        {
+            return GetAttackReadiness(fleet, planet, out _, additionalRegimentCapacity);
+        }
+
+        /// <summary>
+        /// Separates launch readiness while returning the ready army requirements measured during this evaluation.
+        /// </summary>
+        /// <param name="fleet">The attacking fleet.</param>
+        /// <param name="planet">The faction-visible attack target.</param>
+        /// <param name="readyRequirements">Receives ready regiment requirements after naval readiness passes, or the default tuple otherwise.</param>
+        /// <param name="additionalRegimentCapacity">Additional ready troop berths to assess without changing the fleet.</param>
+        /// <returns>Whether the fleet and its regiments satisfy their launch requirements.</returns>
+        internal (bool FleetReady, bool RegimentsReady) GetAttackReadiness(
+            Fleet fleet,
+            Planet planet,
+            out (int Count, int Strength) readyRequirements,
+            int additionalRegimentCapacity = 0
+        )
+        {
+            readyRequirements = default;
+            AIAttackDemand demand = GetAttackDemand(planet, fleet);
+            if (!HasAttackNavalReadiness(fleet, planet, demand))
+                return default;
+
+            readyRequirements = GetAttackRegimentRequirements(planet, fleet);
+            if (
+                (long)Assessment.GetReadyFleetRegimentCapacity(fleet)
+                    + Math.Max(0, additionalRegimentCapacity)
+                < readyRequirements.Count
+            )
+                return default;
+
+            bool canBombard = CanBombardAttackTarget(fleet, planet);
+            if (!canBombard && demand.IsAssaultBlockedByShields)
+                return default;
+
+            bool regimentsReady =
+                Assessment.GetReadyFleetRegimentCount(fleet) >= readyRequirements.Count
+                && Assessment.GetReadyFleetRegimentAttackStrength(fleet)
+                    >= readyRequirements.Strength
+                && (
+                    canBombard
+                    || Assessment.GetPlanetaryAssaultSuccessPercent(fleet, planet)
+                        >= Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent
+                );
+            return (true, regimentsReady);
+        }
+
+        /// <summary>
+        /// Counts the current attack capabilities satisfied by a fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <param name="targetPlanet">The attack target.</param>
+        /// <returns>The number of satisfied attack capabilities.</returns>
+        internal int CountCurrentAttackCapabilities(Fleet fleet, Planet targetPlanet)
+        {
+            AIAttackDemand demand = GetAttackDemand(targetPlanet, fleet);
+            if (demand == null)
+                return 0;
+
+            var required = GetAttackRegimentRequirements(targetPlanet, fleet);
+            int count = 0;
+            if (fleet?.HasOperationalCapitalShips() == true)
+                count++;
+            int combat = Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet);
+            if (combat > 0 && combat >= demand.CombatStrength)
+                count++;
+            if (Assessment.GetReadyFleetRegimentCount(fleet) >= required.Count)
+                count++;
+            if (Assessment.GetReadyFleetRegimentCapacity(fleet) >= required.Count)
+                count++;
+            if (Assessment.GetReadyFleetRegimentAttackStrength(fleet) >= required.Strength)
+                count++;
+            if (Assessment.GetFleetBombardmentStrength(fleet) >= demand.BombardmentStrength)
+                count++;
+            return count;
+        }
+
+        /// <summary>
+        /// Returns whether a fleet can defeat known orbital defenders.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <param name="targetPlanet">The target planet.</param>
+        /// <returns>True when ready combat strength satisfies the orbital demand.</returns>
+        internal bool CanWinOrbitalCombat(Fleet fleet, Planet targetPlanet)
+        {
+            int required = GetAttackDemand(targetPlanet, fleet)?.OrbitalStrength ?? 0;
+            return required > 0
+                && fleet?.HasOperationalCapitalShips() == true
+                && Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet) >= required;
+        }
+
+        /// <summary>
+        /// Stores an arrival-specific demand during attack assessment.
+        /// </summary>
+        /// <param name="fleet">The fleet whose travel time was assessed.</param>
+        /// <param name="demand">The measured requirements at that fleet's arrival.</param>
+        internal void SetFleetAttackDemand(Fleet fleet, AIAttackDemand demand)
+        {
+            _fleetAttackDemands[(fleet.InstanceID, demand.TargetPlanet.InstanceID)] = demand;
+        }
+
+        /// <summary>
+        /// Reuses the nearest ready attack duration within this unchanged faction turn.
+        /// </summary>
+        /// <param name="fleet">The fleet whose attack alternatives are evaluated.</param>
+        /// <param name="calculate">Calculates the nearest eligible action duration on a cache miss.</param>
+        /// <returns>The shortest action duration, or the maximum integer when none is ready.</returns>
+        internal int GetReadyAttackActionTicks(Fleet fleet, Func<int> calculate)
+        {
+            if (!_readyAttackActionTicks.TryGetValue(fleet.InstanceID, out int ticks))
+            {
+                ticks = calculate();
+                _readyAttackActionTicks.Add(fleet.InstanceID, ticks);
+            }
+            return ticks;
+        }
+
+        /// <summary>
         /// Replaces the production demands generated for this turn.
         /// </summary>
         /// <param name="demands">The generated production demands in strategic order.</param>
         public void SetProductionDemands(IEnumerable<AIProductionDemand> demands)
         {
-            _productionDemands.Clear();
+            _productionDemands =
+                demands?.Where(demand => demand != null).ToArray()
+                ?? Array.Empty<AIProductionDemand>();
             HasGeneratedProductionDemands = true;
+        }
 
-            if (demands == null)
-                return;
+        /// <summary>
+        /// Finds the current requirement for an exact queued manufacturing order.
+        /// </summary>
+        /// <param name="order">The queued object evaluated by production selection.</param>
+        /// <returns>The first matching requirement, or null when the order has no current demand.</returns>
+        internal AIProductionDemand GetCurrentProductionDemand(IManufacturable order)
+        {
+            if (order == null)
+                return null;
+            foreach (AIProductionDemand demand in _productionDemands)
+                if (ReferenceEquals(demand.ExistingOrder, order))
+                    return demand;
+            return null;
+        }
 
-            foreach (AIProductionDemand demand in demands)
-            {
-                if (demand != null)
-                    _productionDemands.Add(demand);
-            }
+        /// <summary>
+        /// Sets attack fleets in the order they receive suitable production capacity this turn.
+        /// </summary>
+        /// <param name="fleets">The ranked fleets, or null when no attack fleet needs production.</param>
+        public void SetFleetProductionPriorities(IEnumerable<Fleet> fleets)
+        {
+            FleetProductionPriorities =
+                fleets?.Where(fleet => fleet != null).Distinct().ToArray() ?? Array.Empty<Fleet>();
         }
 
         /// <summary>
@@ -274,6 +667,36 @@ namespace Rebellion.AI
                 if (proposal != null)
                     _selectedProposals.Add(proposal);
             }
+        }
+
+        /// <summary>
+        /// Returns the real maintenance capacity that must remain after one production order.
+        /// </summary>
+        /// <param name="demand">The production need being funded.</param>
+        /// <returns>The upkeep buffer after accounting for the demand's economic role.</returns>
+        internal int GetMinimumManufacturingHeadroom(AIProductionDemand demand)
+        {
+            if (demand?.RestoresMaintenanceCapacity == true)
+                return 0;
+
+            int reserve = Game.Config.AI.Selection.MaintenanceHeadroomReserve;
+            if (
+                demand?.Kind
+                    is AIProductionDemandKind.ConstructionFacility
+                        or AIProductionDemandKind.Shipyard
+                && demand.InfrastructureHubIndex == 0
+            )
+                return Math.Max(0, reserve - StrategicPlan.ExpectedDiplomacyMaintenanceGain);
+
+            return demand?.UsesDefensiveReserve == true
+                ? Math.Max(
+                    reserve,
+                    IntegerMath.ScaleByPercentRoundedUp(
+                        Assessment.MaintenanceCapacity,
+                        Game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent
+                    )
+                )
+                : reserve;
         }
 
         /// <summary>
@@ -375,6 +798,140 @@ namespace Rebellion.AI
         public bool IsHeadquartersEspionageAgent(SpecialForces unit)
         {
             return unit != null && _headquartersEspionageAgents.Contains(unit);
+        }
+
+        /// <summary>
+        /// Returns whether this turn assigns the available agent to local headquarters or hub espionage.
+        /// </summary>
+        /// <param name="unit">The special-forces unit to inspect.</param>
+        /// <returns>True for the selected available local agent at a covered planet.</returns>
+        public bool IsLocalEspionageAgent(SpecialForces unit)
+        {
+            return unit != null && _localEspionageAgents.Contains(unit);
+        }
+
+        /// <summary>
+        /// Returns the available special forces retained for local interceptions at a leading hub.
+        /// </summary>
+        /// <param name="unit">The available unit to inspect.</param>
+        /// <returns>True when this turn reserves the unit for local abduction or assassination.</returns>
+        public bool IsManufacturingInterceptionAgent(SpecialForces unit)
+        {
+            return unit != null && _manufacturingInterceptionAgents.Contains(unit);
+        }
+
+        /// <summary>
+        /// Keeps a hub's interception agents on missions at their stationed planet.
+        /// </summary>
+        /// <param name="unit">The potential main participant or decoy.</param>
+        /// <param name="missionTypeId">The proposed mission capability.</param>
+        /// <param name="target">The mission's target planet.</param>
+        /// <returns>True for unrestricted units or local officer-targeting work.</returns>
+        public bool CanAssignManufacturingInterceptor(
+            SpecialForces unit,
+            string missionTypeId,
+            Planet target
+        )
+        {
+            return !IsManufacturingInterceptionAgent(unit)
+                || missionTypeId is MissionTypeIDs.Abduction or MissionTypeIDs.Assassination
+                    && target?.InstanceID == unit.GetParentOfType<Planet>()?.InstanceID;
+        }
+
+        /// <summary>
+        /// Counts local interception personnel, including active missions, deliveries, and construction.
+        /// </summary>
+        /// <param name="planet">The hub to supply.</param>
+        /// <param name="excluded">An existing manufacturing order omitted when measuring its continuation.</param>
+        /// <returns>The supplied abduction-capable units after preserving one local spy.</returns>
+        public int GetManufacturingInterceptionSupply(Planet planet, SpecialForces excluded = null)
+        {
+            return GetManufacturingInterceptionCandidates(planet)
+                .Count(unit => !ReferenceEquals(unit, excluded));
+        }
+
+        /// <summary>
+        /// Selects one available local spy per manufacturing hub or mobile headquarters.
+        /// </summary>
+        /// <returns>The strongest available spy at each covered planet.</returns>
+        private HashSet<SpecialForces> BuildLocalEspionageAgents()
+        {
+            if (Assessment == null)
+                return new HashSet<SpecialForces>();
+
+            HashSet<Planet> planets = Assessment.GetManufacturingEspionagePlanets().ToHashSet();
+            if (
+                Faction?.Settings?.Headquarters?.IsMobile == true
+                && Assessment.FactionHeadquarters != null
+            )
+                planets.Add(Assessment.FactionHeadquarters);
+
+            return Assessment
+                .AvailableMissionParticipants.OfType<SpecialForces>()
+                .Where(unit =>
+                    unit.CanPerformMission(MissionTypeIDs.Espionage)
+                    && planets.Contains(unit.GetParentOfType<Planet>())
+                )
+                .GroupBy(unit => unit.GetParentOfType<Planet>())
+                .Select(group =>
+                    group
+                        .OrderByDescending(unit => unit.GetEffectiveRating(SkillRating.Espionage))
+                        .ThenBy(unit => unit.InstanceID, StringComparer.Ordinal)
+                        .First()
+                )
+                .ToHashSet();
+        }
+
+        /// <summary>
+        /// Selects each manufacturing hub's available interception complement after its spy.
+        /// </summary>
+        /// <returns>The available guards selected for manufacturing hubs.</returns>
+        private HashSet<SpecialForces> BuildManufacturingInterceptionAgents()
+        {
+            if (Assessment == null)
+                return new HashSet<SpecialForces>();
+
+            HashSet<IMissionParticipant> available =
+                Assessment.AvailableMissionParticipants.ToHashSet();
+            return Assessment
+                .GetManufacturingEspionagePlanets()
+                .SelectMany(planet =>
+                    GetManufacturingInterceptionCandidates(planet)
+                        .Where(available.Contains)
+                        .OrderByDescending(unit => unit.GetEffectiveRating(SkillRating.Combat))
+                        .ThenBy(unit => unit.InstanceID, StringComparer.Ordinal)
+                        .Take(
+                            Math.Max(
+                                0,
+                                Game.Config.AI.Infrastructure.ManufacturingInterceptionAgentCount
+                            )
+                        )
+                )
+                .ToHashSet();
+        }
+
+        /// <summary>
+        /// Identifies local abduction personnel without counting the same unit as a hub's spy.
+        /// </summary>
+        /// <param name="planet">The local mission base or delivery destination.</param>
+        /// <returns>Owned abduction-capable units assigned directly to the planet or its missions.</returns>
+        private IEnumerable<SpecialForces> GetManufacturingInterceptionCandidates(Planet planet)
+        {
+            List<SpecialForces> local = Assessment
+                .OwnedSpecialForces.Where(unit =>
+                    !unit.IsRetired
+                    && unit.GetParent() is Planet or Mission
+                    && unit.GetParentOfType<Planet>() == planet
+                )
+                .ToList();
+            SpecialForces spy = local
+                .Where(unit => unit.CanPerformMission(MissionTypeIDs.Espionage))
+                .OrderByDescending(IsLocalEspionageAgent)
+                .ThenBy(unit => unit.InstanceID, StringComparer.Ordinal)
+                .FirstOrDefault();
+            return local.Where(unit =>
+                unit != spy && unit.CanPerformMission(MissionTypeIDs.Abduction)
+            );
         }
 
         /// <summary>

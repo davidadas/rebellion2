@@ -575,7 +575,10 @@ namespace Rebellion.Tests.ContentEditor.Integration
                 .Where(page => page.Key.Contains("#rules/"))
                 .ToArray();
             Assert.IsNotEmpty(rules);
-            Assert.IsFalse(rules.SelectMany(page => page.Fields).Any(field => field.Group == "AI"));
+            CollectionAssert.AreEquivalent(
+                rules.Single(page => page.Caption == "AI decisions").Fields,
+                rules.SelectMany(page => page.Fields).Where(field => field.Group == "AI")
+            );
             Assert.IsTrue(
                 rules
                     .Single(page => page.Caption == "Difficulty")

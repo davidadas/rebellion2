@@ -80,6 +80,129 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ProcessResults_AuthoredDelivery_NotifiesOnceWithoutRedelivery()
+        {
+            Faction recipient = new Faction { InstanceID = "recipient" };
+            Message message = new StatusMessage(MessageType.Advice, "Informants", "Report");
+            recipient.AddMessage(message);
+            MessageDeliveredResult delivery = new MessageDeliveredResult
+            {
+                Recipient = recipient,
+                Message = message,
+                SourceEventInstanceID = "PLANET_INFORMANTS",
+            };
+            List<MessageDeliveredResult> observed = new List<MessageDeliveredResult>();
+            List<string> calls = new List<string>();
+            _pipeline.ResultsResolved += _ => calls.Add("results");
+            _pipeline.MessageDelivered += result =>
+            {
+                calls.Add("message");
+                observed.Add(result);
+            };
+
+            _pipeline.ProcessResults(new[] { delivery });
+
+            CollectionAssert.AreEqual(new[] { "results", "message" }, calls);
+            CollectionAssert.AreEqual(new[] { delivery }, observed);
+            CollectionAssert.AreEqual(new[] { message }, recipient.Messages[MessageType.Advice]);
+        }
+
+        [Test]
+        public void ProcessResults_ReactionAuthoredDelivery_NotifiesOnce()
+        {
+            MessageDeliveredResult delivery = new MessageDeliveredResult
+            {
+                SourceEventInstanceID = "REACTION_EVENT",
+            };
+            _bus.Subscribe<PlanetGarrisonChangedResult>(_ => new List<GameResult> { delivery });
+            List<MessageDeliveredResult> observed = new List<MessageDeliveredResult>();
+            _pipeline.MessageDelivered += observed.Add;
+
+            _pipeline.ProcessResults(new[] { new PlanetGarrisonChangedResult() });
+
+            CollectionAssert.AreEqual(new[] { delivery }, observed);
+        }
+
+        [Test]
+        public void ProcessResults_AutomaticDelivery_NotifiesAndPersistsOnce()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            Faction recipient = new Faction { InstanceID = "recipient" };
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet
+            {
+                InstanceID = "planet",
+                OwnerInstanceID = recipient.InstanceID,
+                IsColonized = true,
+            };
+            Officer officer = new Officer
+            {
+                InstanceID = "officer",
+                OwnerInstanceID = recipient.InstanceID,
+            };
+            game.GetFactions().Add(recipient);
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
+            game.AttachNode(officer, planet);
+            MessageFactory factory = new MessageFactory(
+                new[]
+                {
+                    new MessageDefinition
+                    {
+                        ResultType = MessageResultType.OfficerInjured,
+                        MessageType = MessageType.Mission,
+                        Subject = "Injured",
+                        Body = "Injured",
+                    },
+                }
+            );
+            GameResultBus bus = new GameResultBus();
+            MessageObserver messages = new MessageObserver(
+                game,
+                factory,
+                new MessageCommands(game, factory)
+            );
+            GameResultPipeline pipeline = new GameResultPipeline(() => bus, () => messages);
+            List<MessageDeliveredResult> observed = new List<MessageDeliveredResult>();
+            pipeline.MessageDelivered += observed.Add;
+
+            pipeline.ProcessResults(
+                new[]
+                {
+                    new OfficerInjuredResult { Officer = officer, Severity = 1 },
+                }
+            );
+
+            Assert.AreEqual(1, observed.Count);
+            Assert.AreSame(
+                observed.Single().Message,
+                recipient.Messages[MessageType.Mission].Single()
+            );
+        }
+
+        [Test]
+        public void ProcessResults_AuthoredDeliveryDeferred_DelaysNotificationUntilRelease()
+        {
+            MessageDeliveredResult delivery = new MessageDeliveredResult
+            {
+                SourceEventInstanceID = "DEFERRED_EVENT",
+            };
+            List<MessageDeliveredResult> observed = new List<MessageDeliveredResult>();
+            _pipeline.MessageDelivered += observed.Add;
+
+            List<GameResult> resolved = _pipeline.ProcessResults(
+                new[] { delivery },
+                processMessages: false
+            );
+
+            Assert.IsEmpty(observed);
+
+            _pipeline.ProcessMessageReactions(resolved);
+
+            CollectionAssert.AreEqual(new[] { delivery }, observed);
+        }
+
+        [Test]
         public void ProcessResults_PresentationThrows_SkipsLaterNotifications()
         {
             InvalidOperationException failure = new InvalidOperationException(
@@ -143,13 +266,23 @@ namespace Rebellion.Tests.Gameplay
 
         [TestCase(false)]
         [TestCase(true)]
-        public void ProcessResults_DirectDelivery_NotifiesExactlyOnce(bool processMessages)
+        public void ProcessResults_DirectDelivery_NotifiesExactlyOnceAtMessageRelease(
+            bool processMessages
+        )
         {
             MessageDeliveredResult delivery = DeliverDirectMessage("direct");
             List<MessageDeliveredResult> observed = new List<MessageDeliveredResult>();
             _pipeline.MessageDelivered += observed.Add;
 
-            _pipeline.ProcessResults(new[] { delivery }, processMessages);
+            List<GameResult> resolved = _pipeline.ProcessResults(
+                new[] { delivery },
+                processMessages
+            );
+            if (!processMessages)
+            {
+                Assert.IsEmpty(observed);
+                _pipeline.ProcessMessageReactions(resolved);
+            }
 
             CollectionAssert.AreEqual(new[] { delivery }, observed);
             Assert.AreSame(delivery.Message, _recipient.Messages[MessageType.Chat].Single());

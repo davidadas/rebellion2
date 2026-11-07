@@ -48,6 +48,20 @@
     </Entry>
   </DifficultyModifiers>
   <AI>
+    <DecisionTickIntervals>
+      <Entry>
+        <Key>Easy</Key>
+        <Value>7</Value>
+      </Entry>
+      <Entry>
+        <Key>Medium</Key>
+        <Value>5</Value>
+      </Entry>
+      <Entry>
+        <Key>Hard</Key>
+        <Value>1</Value>
+      </Entry>
+    </DecisionTickIntervals>
     <TickInterval>1</TickInterval>
   </AI>
   <Movement>

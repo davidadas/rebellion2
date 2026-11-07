@@ -14,6 +14,348 @@ namespace Rebellion.Tests.Gameplay
     public sealed class MissionEncounterOddsTests
     {
         /// <summary>
+        /// Verifies cached defender packets cannot be mutated through their read-only views.
+        /// </summary>
+        [Test]
+        public void Evaluate_CachedDefenderInput_RejectsMutation()
+        {
+            var defender = new MissionEncounterOdds.DefenderProbabilities(
+                0.5,
+                new[] { 0.4 },
+                new[] { 60 }
+            );
+            var cache = new MissionEncounterOdds.Cache(2);
+            cache.Evaluate(
+                new[] { defender },
+                new[] { 0 },
+                new Dictionary<BigInteger, double> { { 1, 1 } }
+            );
+
+            Assert.Throws<NotSupportedException>(() =>
+                ((IList<double>)defender.DiversionProbabilities)[0] = 0.9
+            );
+        }
+
+        /// <summary>
+        /// Verifies a consumer cannot corrupt a shared cached probability distribution.
+        /// </summary>
+        [Test]
+        public void Evaluate_CachedResult_RejectsMutation()
+        {
+            var defender = new MissionEncounterOdds.DefenderProbabilities(
+                0.5,
+                Array.Empty<double>(),
+                new[] { 60 }
+            );
+            var result = new MissionEncounterOdds.Cache(2).Evaluate(
+                new[] { defender },
+                Array.Empty<int>(),
+                new Dictionary<BigInteger, double> { { 0, 1 } }
+            );
+
+            Assert.Throws<NotSupportedException>(() =>
+                ((IDictionary<BigInteger, double>)result.Survivors)[0] = 0.9
+            );
+        }
+
+        /// <summary>
+        /// Verifies eviction changes reuse only, never numerical results.
+        /// </summary>
+        [Test]
+        public void Evaluate_FullCache_EvictsLeastRecentlyUsedEncounter()
+        {
+            var cache = new MissionEncounterOdds.Cache(2);
+            var survivors = new Dictionary<BigInteger, double> { { 0, 1 } };
+            var a = new[]
+            {
+                new MissionEncounterOdds.DefenderProbabilities(
+                    0.2,
+                    Array.Empty<double>(),
+                    new[] { 60 }
+                ),
+            };
+            var b = new[]
+            {
+                new MissionEncounterOdds.DefenderProbabilities(
+                    0.4,
+                    Array.Empty<double>(),
+                    new[] { 60 }
+                ),
+            };
+            var c = new[]
+            {
+                new MissionEncounterOdds.DefenderProbabilities(
+                    0.6,
+                    Array.Empty<double>(),
+                    new[] { 60 }
+                ),
+            };
+            var firstA = cache.Evaluate(a, Array.Empty<int>(), survivors);
+            var firstB = cache.Evaluate(b, Array.Empty<int>(), survivors);
+            cache.Evaluate(a, Array.Empty<int>(), survivors);
+
+            cache.Evaluate(c, Array.Empty<int>(), survivors);
+            var reusedA = cache.Evaluate(a, Array.Empty<int>(), survivors);
+            var replacedB = cache.Evaluate(b, Array.Empty<int>(), survivors);
+
+            Assert.AreSame(firstA, reusedA);
+            Assert.AreNotSame(firstB, replacedB);
+            Assert.AreEqual(firstB.PersonnelLossProbability, replacedB.PersonnelLossProbability);
+        }
+
+        /// <summary>
+        /// Verifies disabling reuse keeps exactly the same numerical behavior.
+        /// </summary>
+        [Test]
+        public void Evaluate_ZeroCapacity_ComputesWithoutRetainingResults()
+        {
+            var cache = new MissionEncounterOdds.Cache(0);
+            var defenders = new[]
+            {
+                new MissionEncounterOdds.DefenderProbabilities(
+                    0.5,
+                    Array.Empty<double>(),
+                    new[] { 60 }
+                ),
+            };
+            var survivors = new Dictionary<BigInteger, double> { { 0, 1 } };
+            var first = cache.Evaluate(defenders, Array.Empty<int>(), survivors);
+
+            var second = cache.Evaluate(defenders, Array.Empty<int>(), survivors);
+
+            Assert.AreNotSame(first, second);
+            Assert.AreEqual(first.PersonnelLossProbability, second.PersonnelLossProbability);
+        }
+
+        /// <summary>
+        /// Checks shared evasion factors without losing distinct decoy and foiling branches.
+        /// </summary>
+        [Test]
+        public void Apply_UniformOfficerEvasionWithDifferentDetection_MatchesExactEnumeration()
+        {
+            var detectors = new[]
+            {
+                new MissionEncounterOdds.DefenderProbabilities(
+                    0.8,
+                    new[] { 0.4, 0.7 },
+                    new[] { 30, 60 }
+                ),
+                new MissionEncounterOdds.DefenderProbabilities(
+                    0.5,
+                    new[] { 0.6, 0.2 },
+                    new[] { 30, 60 }
+                ),
+                new MissionEncounterOdds.DefenderProbabilities(
+                    0.9,
+                    new[] { 0.3, 0.8 },
+                    new[] { 30, 60 }
+                ),
+            };
+            var incoming = new Dictionary<BigInteger, double> { { 3, 1 } };
+            var exactIncoming = new Dictionary<BigInteger, Fraction> { { 3, Fraction.One } };
+            (Fraction foil, Fraction loss) = Exhaustive(detectors, new[] { 0, 1 }, exactIncoming);
+
+            var result = MissionEncounterOdds.Apply(detectors, new[] { 0, 1 }, incoming);
+
+            Assert.That(result.FoilProbability, Is.EqualTo(foil.Value).Within(1e-12));
+            Assert.That(result.PersonnelLossProbability, Is.EqualTo(loss.Value).Within(1e-12));
+        }
+
+        /// <summary>
+        /// Verifies numerically equivalent encounters reuse a scoped result.
+        /// </summary>
+        [Test]
+        public void Evaluate_EquivalentNumericalInputs_ReusesResult()
+        {
+            var cache = new MissionEncounterOdds.Cache(64);
+            var first = cache.Evaluate(
+                new[]
+                {
+                    new MissionEncounterOdds.DefenderProbabilities(
+                        0.5,
+                        new[] { 0.4 },
+                        new[] { 60 }
+                    ),
+                },
+                new[] { 0 },
+                new Dictionary<BigInteger, double> { { 1, 1 } }
+            );
+
+            var second = cache.Evaluate(
+                new[]
+                {
+                    new MissionEncounterOdds.DefenderProbabilities(
+                        0.5,
+                        new[] { 0.4 },
+                        new[] { 60 }
+                    ),
+                },
+                new[] { 0 },
+                new Dictionary<BigInteger, double> { { 1, 1 } }
+            );
+
+            Assert.AreSame(first, second);
+        }
+
+        /// <summary>
+        /// Verifies reused input containers cannot alter an earlier cache identity.
+        /// </summary>
+        [Test]
+        public void Evaluate_ChangedIncomingProbability_DoesNotReusePreviousResult()
+        {
+            var cache = new MissionEncounterOdds.Cache(64);
+            var defenders = new[]
+            {
+                new MissionEncounterOdds.DefenderProbabilities(
+                    0.5,
+                    Array.Empty<double>(),
+                    new[] { 60 }
+                ),
+            };
+            var survivors = new Dictionary<BigInteger, double> { { 0, 1 } };
+            var first = cache.Evaluate(defenders, Array.Empty<int>(), survivors);
+            survivors[0] = 0.5;
+
+            var second = cache.Evaluate(defenders, Array.Empty<int>(), survivors);
+            survivors[0] = 1;
+            var restored = cache.Evaluate(defenders, Array.Empty<int>(), survivors);
+
+            Assert.AreNotSame(first, second);
+            Assert.AreEqual(first.FoilProbability / 2, second.FoilProbability);
+            Assert.AreSame(first, restored);
+        }
+
+        /// <summary>
+        /// Verifies decoy-loss history remains part of the numerical cache identity.
+        /// </summary>
+        [Test]
+        public void Evaluate_ChangedNoLossProbability_DoesNotReusePreviousResult()
+        {
+            var cache = new MissionEncounterOdds.Cache(64);
+            var defenders = new[]
+            {
+                new MissionEncounterOdds.DefenderProbabilities(
+                    0.5,
+                    Array.Empty<double>(),
+                    new[] { 60 }
+                ),
+            };
+            var survivors = new Dictionary<BigInteger, double> { { 0, 1 } };
+            var first = cache.Evaluate(defenders, Array.Empty<int>(), survivors);
+
+            var second = cache.Evaluate(
+                defenders,
+                Array.Empty<int>(),
+                survivors,
+                new Dictionary<BigInteger, double> { { 0, 0.5 } }
+            );
+
+            Assert.AreNotSame(first, second);
+            Assert.AreEqual(first.PersonnelLossProbability / 2, second.PersonnelLossProbability);
+        }
+
+        /// <summary>
+        /// Verifies defender changes do not reuse an earlier encounter result.
+        /// </summary>
+        [Test]
+        public void Evaluate_ChangedDefenderProbabilities_DoesNotReusePreviousResult()
+        {
+            var cache = new MissionEncounterOdds.Cache(64);
+            var survivors = new Dictionary<BigInteger, double> { { 0, 1 } };
+            var first = cache.Evaluate(
+                new[]
+                {
+                    new MissionEncounterOdds.DefenderProbabilities(
+                        0.5,
+                        Array.Empty<double>(),
+                        new[] { 60 }
+                    ),
+                },
+                Array.Empty<int>(),
+                survivors
+            );
+
+            var second = cache.Evaluate(
+                new[]
+                {
+                    new MissionEncounterOdds.DefenderProbabilities(
+                        0.75,
+                        Array.Empty<double>(),
+                        new[] { 60 }
+                    ),
+                },
+                Array.Empty<int>(),
+                survivors
+            );
+
+            Assert.AreNotSame(first, second);
+            Assert.AreEqual(0.25, second.FoilProbability);
+        }
+
+        /// <summary>
+        /// Verifies decoy and primary losses use disjoint probability weights.
+        /// </summary>
+        /// <param name="noFoil">The defender's no-foil probability.</param>
+        /// <param name="expectedLoss">The combined officer-loss probability.</param>
+        [TestCase(1d, 0.125d)]
+        [TestCase(0.5d, 0.2375d)]
+        [TestCase(0d, 0.35d)]
+        public void Apply_DecoyAndPrimaryOfficerRisk_DoesNotDoubleCountLoss(
+            double noFoil,
+            double expectedLoss
+        )
+        {
+            var detector = new MissionEncounterOdds.DefenderProbabilities(
+                noFoil,
+                new[] { 0.5 },
+                new[] { 50 },
+                new[] { 0.25 },
+                new[] { 0.8 }
+            );
+
+            var result = MissionEncounterOdds.Apply(
+                new[] { detector },
+                new[] { 0 },
+                new Dictionary<BigInteger, double> { { 1, 1 } }
+            );
+
+            Assert.That(result.PersonnelLossProbability, Is.EqualTo(expectedLoss).Within(1e-12));
+        }
+
+        /// <summary>
+        /// Verifies earlier unfoiled decoy losses remain excluded from later no-loss weights.
+        /// </summary>
+        [Test]
+        public void Apply_PreviousDecoyLoss_PreservesSurvivalSubsetAcrossCheckpoints()
+        {
+            var detector = new MissionEncounterOdds.DefenderProbabilities(
+                0.5,
+                new[] { 0.5 },
+                new[] { 50 },
+                new[] { 0.25 },
+                new[] { 0.8 }
+            );
+            var first = MissionEncounterOdds.Apply(
+                new[] { detector },
+                new[] { 0 },
+                new Dictionary<BigInteger, double> { { 1, 1 } }
+            );
+
+            var second = MissionEncounterOdds.Apply(
+                new[] { detector },
+                new[] { 0 },
+                first.Survivors,
+                first.NoLossSurvivors
+            );
+
+            Assert.That(
+                first.PersonnelLossProbability + second.PersonnelLossProbability,
+                Is.EqualTo(0.4125d).Within(1e-12)
+            );
+            Assert.That(second.NoLossSurvivors.Values.Sum(), Is.EqualTo(0.4375d).Within(1e-12));
+        }
+
+        /// <summary>
         /// Tests varied teams, decoy choices, defender odds, and cross-checkpoint survivors.
         /// </summary>
         [Test]

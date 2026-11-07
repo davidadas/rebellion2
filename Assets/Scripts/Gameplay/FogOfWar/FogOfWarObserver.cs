@@ -85,14 +85,28 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Applies selected entity intelligence emitted by a simulation event.
+        /// Applies selected entity or category intelligence emitted by a simulation event.
         /// </summary>
         /// <param name="results">The intelligence results to record.</param>
         /// <returns>No reactions; snapshots are updated directly.</returns>
         public List<GameResult> HandleResults(IReadOnlyList<IntelligenceRevealedResult> results)
         {
             foreach (IntelligenceRevealedResult result in results)
-                _commands.ObserveEntities(result.Recipient, result.Observations, result.Tick);
+            {
+                if (result.Category == PlanetIntelligenceCategory.None)
+                {
+                    _commands.ObserveEntities(result.Recipient, result.Observations, result.Tick);
+                    continue;
+                }
+                foreach (Planet planet in result.Observations.OfType<Planet>())
+                    _commands.ObservePlanetIntelligence(
+                        result.Recipient,
+                        planet,
+                        result.Category,
+                        result.IncludeDescendants,
+                        result.Tick
+                    );
+            }
 
             return new List<GameResult>();
         }
@@ -165,17 +179,17 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Records the attacking regiments observed landing after a successful planetary assault.
+        /// Records the attacking fleet and landed regiments observed during a successful planetary assault.
         /// </summary>
         /// <param name="result">The completed planetary assault.</param>
         private void RecordAssaultLanding(PlanetaryAssaultResult result)
         {
-            if (result?.Success != true || result.LandedRegiments.Count == 0)
+            if (result?.Success != true)
                 return;
 
             _commands.ObserveEntities(
                 FindFaction(result.DefenderOwnerInstanceID),
-                result.LandedRegiments,
+                result.AttackingFleets.Cast<ISceneNode>().Concat(result.LandedRegiments),
                 result.Tick
             );
         }

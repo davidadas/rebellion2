@@ -19,6 +19,7 @@ namespace Rebellion.Tests.Gameplay
         private Planet _planet;
         private Building _mine;
         private SmugglingCommands _smuggling;
+        private JediCommands _jediCommands;
         private PlanetNotificationObserver _observer;
         private GameResultBus _results;
 
@@ -65,7 +66,11 @@ namespace Rebellion.Tests.Gameplay
         /// Releases the fixture's model and result subscriptions.
         /// </summary>
         [TearDown]
-        public void TearDown() => _observer.Dispose();
+        public void TearDown()
+        {
+            _observer.Dispose();
+            _jediCommands.Dispose();
+        }
 
         [Test]
         public void HandleResults_ObservableSupportChange_ReportsSmugglingOnceWithoutTickPolling()
@@ -323,13 +328,15 @@ namespace Rebellion.Tests.Gameplay
         private void Connect()
         {
             _observer?.Dispose();
+            _jediCommands?.Dispose();
             _smuggling = new SmugglingCommands(_game);
+            _jediCommands = new JediCommands(_game, new ThrowingRNG());
             PlanetaryControlCommands control = new(
                 _game,
                 new PlanetaryControlQueries(_game),
                 new FogOfWarQueries(_game)
             );
-            UprisingResolver uprising = new(_game, new ThrowingRNG(), control);
+            UprisingResolver uprising = new(_game, new ThrowingRNG(), control, _jediCommands);
             _observer = new PlanetNotificationObserver(_game, _smuggling, uprising);
             _results = new GameResultBus();
             _observer.Connect(_results);

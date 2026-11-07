@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Rebellion.Game;
-using Rebellion.Util.Reflection;
 
 /// <summary>
 /// Owns preparation, commitment, and recovery for one game or content-selection load.
@@ -69,7 +68,7 @@ internal sealed class ContentLoadOperation
     /// Gets an independent custom-game configuration, or null during other loads and recovery.
     /// </summary>
     internal GameSummary CustomGameSummary =>
-        IsRecovering ? null : _customGameSummary?.GetDeepCopy();
+        IsRecovering ? null : _customGameSummary?.CreateCopy();
 
     /// <summary>
     /// Captures the active content and committed preferences before any preparation starts.
@@ -182,7 +181,7 @@ internal sealed class ContentLoadOperation
 
         BeginPreparation();
         ValidateApplicationPreloads(contentPack);
-        _customGameSummary = summary.GetDeepCopy();
+        _customGameSummary = summary.CreateCopy();
         UserContentSettings requested = CopySettings(_previousSettings);
         requested.SetDisabledModsForPack(
             contentPack.FileResolver.AvailableMods.Select(mod => mod.ID),

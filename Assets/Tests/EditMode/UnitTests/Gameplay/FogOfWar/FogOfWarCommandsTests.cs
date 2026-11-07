@@ -481,15 +481,18 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ObservePlanet_ParticipantSeenElsewhere_RemovesStaleMission()
+        public void ObservePlanet_ParticipantSeenElsewhere_RemovesParticipantFromStaleMission()
         {
             Officer vader = CreateOfficer("VADER", _empire);
             vader.DisplayName = "Darth Vader";
+            Officer tarkin = CreateOfficer("TARKIN", _empire);
             _game.AttachNode(vader, _coruscant);
+            _game.AttachNode(tarkin, _coruscant);
 
             Mission empireMission = CreateMission("M1", _empire, _coruscant);
             _game.AttachNode(empireMission, _coruscant);
             _game.MoveNode(vader, empireMission);
+            _game.MoveNode(tarkin, empireMission);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
@@ -503,7 +506,11 @@ namespace Rebellion.Tests.Gameplay
                 .Snapshots[_coreSector.InstanceID]
                 .Planets[_coruscant.InstanceID];
             Assert.IsEmpty(coruscantSnapshot.Officers);
-            Assert.IsEmpty(coruscantSnapshot.Missions);
+            Mission rememberedMission = coruscantSnapshot.Missions.Single();
+            Assert.AreEqual(
+                tarkin.InstanceID,
+                rememberedMission.GetMainParticipants(includeDisabled: true).Single().InstanceID
+            );
             Assert.AreEqual(_tatooine.InstanceID, _alliance.Fog.EntityLastSeenAt[vader.InstanceID]);
         }
 
@@ -573,7 +580,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ObservePlanet_AfterEspionage_RemovesAbsentManufacturingIntel()
+        public void ObservePlanet_AfterEspionage_PreservesAbsentManufacturingIntel()
         {
             Building knownBuilding = AddQueuedBuilding(_coruscant, _empire, "KNOWN_BUILDING", 25);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
@@ -589,11 +596,10 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsFalse(
                 snapshot.Buildings.Any(building => building.InstanceID == knownBuilding.InstanceID)
             );
-            Assert.IsFalse(
-                snapshot.ManufacturingQueueItems.Any(item =>
-                    item.InstanceID == knownBuilding.InstanceID
-                )
+            IManufacturable rememberedOrder = snapshot.ManufacturingQueueItems.Single(item =>
+                item.InstanceID == knownBuilding.InstanceID
             );
+            Assert.AreEqual(25, rememberedOrder.ManufacturingProgress);
         }
 
         [Test]
@@ -906,7 +912,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ObservePlanets_ForwardEntryAbsentFromSnapshot_RemovesOnlyObservedPlanetEntry()
+        public void ObservePlanets_ForwardEntriesAbsentFromSnapshots_RemovesUnrepresentedEntries()
         {
             _alliance.Fog.EntityLastSeenAt["ORPHAN"] = _coruscant.InstanceID;
             _alliance.Fog.EntityLastSeenAt[string.Empty] = _coruscant.InstanceID;
@@ -915,10 +921,7 @@ namespace Rebellion.Tests.Gameplay
 
             _commands.ObservePlanets(_alliance, new[] { _coruscant }, 20);
 
-            CollectionAssert.AreEquivalent(
-                new[] { "UNOBSERVED", "UNLOCATED" },
-                _alliance.Fog.EntityLastSeenAt.Keys
-            );
+            Assert.IsEmpty(_alliance.Fog.EntityLastSeenAt);
         }
 
         [Test]
@@ -1031,7 +1034,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ObservePlanets_PriorMissionInvalidated_CleansOrphanedDescendantIndex()
+        public void ObservePlanets_PriorMissionParticipantMoves_PreservesRemainingSnapshotParticipants()
         {
             MakeTatooineImperial();
             Officer moving = CreateOfficer("MOVING_PARTICIPANT", _empire);
@@ -1050,8 +1053,14 @@ namespace Rebellion.Tests.Gameplay
                 _tatooine.InstanceID,
                 _alliance.Fog.EntityLastSeenAt[moving.InstanceID]
             );
-            Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(remaining.InstanceID));
-            Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(mission.InstanceID));
+            Assert.AreEqual(
+                _coruscant.InstanceID,
+                _alliance.Fog.EntityLastSeenAt[remaining.InstanceID]
+            );
+            Assert.AreEqual(
+                _coruscant.InstanceID,
+                _alliance.Fog.EntityLastSeenAt[mission.InstanceID]
+            );
         }
 
         [Test]

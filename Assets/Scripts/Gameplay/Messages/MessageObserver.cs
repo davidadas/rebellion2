@@ -42,7 +42,8 @@ namespace Rebellion.Gameplay
                 results?.Where(result => result != null).ToArray()
                 ?? System.Array.Empty<GameResult>();
             IEnumerable<GameResult> automaticResults = resultBatch.Where(result =>
-                string.IsNullOrWhiteSpace(result.SourceEventInstanceID)
+                result.ReportContext == null
+                && string.IsNullOrWhiteSpace(result.SourceEventInstanceID)
             );
             return _commands.Deliver(_messageFactory.CreateMessages(automaticResults, _game));
         }

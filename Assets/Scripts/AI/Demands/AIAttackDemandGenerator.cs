@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Util.Mathematics;
 
@@ -20,7 +21,165 @@ namespace Rebellion.AI.Demands
         /// <param name="context">The current AI turn context.</param>
         public void Generate(AITurnContext context)
         {
-            context?.SetAttackDemands(BuildDemands(context));
+            IReadOnlyList<AIAttackDemand> demands = BuildDemands(context);
+            context?.SetAttackDemands(demands);
+            if (context?.Assessment == null || context.MovementQueries == null)
+                return;
+            foreach (AIAttackDemand demand in demands)
+            {
+                IReadOnlyList<Fleet> hostileFleets = context.Assessment.GetHostileFleets(
+                    demand.TargetPlanet
+                );
+                bool hasMultipleFleets = hostileFleets
+                    .Select(fleet => fleet.InstanceID)
+                    .Distinct(StringComparer.Ordinal)
+                    .Skip(1)
+                    .Any();
+                bool hasInbound =
+                    hostileFleets.Any(fleet =>
+                        fleet.Movement != null
+                        || fleet
+                            .GetChildren<CapitalShip>()
+                            .Any(ship =>
+                                ship.Movement != null
+                                || ship.GetChildren<Starfighter>()
+                                    .Any(fighter => fighter.Movement != null)
+                            )
+                    )
+                    || demand
+                        .TargetPlanet.GetAllBuildings()
+                        .Any(building =>
+                            building.IsPlanetaryShieldGenerator()
+                            && (
+                                building.ManufacturingStatus != ManufacturingStatus.Complete
+                                || building.Movement != null
+                            )
+                        )
+                    || demand
+                        .TargetPlanet.GetAllStarfighters()
+                        .Any(fighter => fighter.Movement != null);
+                if (
+                    !hasInbound
+                    && !hasMultipleFleets
+                    && !IsSupportOpportunityTarget(context, demand.TargetPlanet)
+                    && !IsLocalAttackTarget(context, demand.TargetPlanet)
+                )
+                    continue;
+                foreach (
+                    Fleet fleet in context.Assessment.OwnedFleets.Where(fleet =>
+                        fleet.RoleType == FleetRoleType.Battle
+                    )
+                )
+                    context.SetFleetAttackDemand(fleet, BuildArrivalDemand(context, fleet, demand));
+            }
+        }
+
+        /// <summary>
+        /// Measures known defenders expected to be available when one fleet reaches its target.
+        /// </summary>
+        /// <param name="context">The current faction assessment.</param>
+        /// <param name="fleet">The prospective attacking fleet.</param>
+        /// <param name="demand">The target's current ground and orbital requirements.</param>
+        /// <returns>The requirements for this fleet's arrival, without changing any orders.</returns>
+        private static AIAttackDemand BuildArrivalDemand(
+            AITurnContext context,
+            Fleet fleet,
+            AIAttackDemand demand
+        )
+        {
+            Planet origin = context.Assessment.GetFleetPlanet(fleet);
+            if (origin == null)
+                return demand;
+            int arrivalTicks = context.GetAttackArrivalTicks(fleet, demand.TargetPlanet);
+            var defense = context.Assessment.GetHostileOrbitalCapabilitiesAtArrival(
+                demand.TargetPlanet,
+                arrivalTicks
+            );
+            GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
+            int orbital = IntegerMath.ScaleByPercent(
+                defense.Combat,
+                config.AttackStrengthPercentOfStrongestHostileFleet
+            );
+            bool supportOpportunity =
+                IsSupportOpportunityTarget(context, demand.TargetPlanet)
+                && arrivalTicks <= Math.Max(0, config.SupportOpportunityMaximumTravelTicks)
+                && (long)context.Assessment.GetPlanetOrbitalIntelAge(demand.TargetPlanet)
+                    + arrivalTicks
+                    <= Math.Max(0, config.SupportOpportunityMaximumIntelAgeTicks);
+            bool localAttack =
+                IsLocalAttackTarget(context, demand.TargetPlanet)
+                && arrivalTicks <= Math.Max(0, config.LocalAttackMaximumTravelTicks);
+            int localMinimumPercent = 100;
+            if (localAttack)
+            {
+                long graceAge = Math.Max(0, config.LocalAttackMaximumIntelAgeTicks);
+                long arrivalAge =
+                    (long)
+                        Math.Max(
+                            context.Assessment.GetPlanetIntelAge(demand.TargetPlanet),
+                            context.Assessment.GetPlanetOrbitalIntelAge(demand.TargetPlanet)
+                        ) + arrivalTicks;
+                double staleRisk = Math.Clamp(
+                    (arrivalAge - graceAge)
+                        / (double)Math.Max(1L, GetLocalAttackIntelSaturationAge(config) - graceAge),
+                    0,
+                    1
+                );
+                int localFloorPercent = Math.Clamp(
+                    config.LocalAttackMinimumStrengthPercent,
+                    0,
+                    100
+                );
+                localMinimumPercent = (int)
+                    Math.Ceiling(localFloorPercent + (100 - localFloorPercent) * staleRisk);
+            }
+            int minimumPercent = Math.Min(
+                supportOpportunity ? config.SupportOpportunityMinimumAttackStrengthPercent : 100,
+                localMinimumPercent
+            );
+            int minimum = IntegerMath.ScaleByPercent(
+                config.MinimumAttackStrength,
+                Math.Clamp(minimumPercent, 0, 100)
+            );
+            int combat = Math.Max(
+                minimum,
+                IntegerMath.ScaleByPercent(
+                    orbital,
+                    GetIntelReservePercent(context, demand.TargetPlanet)
+                )
+            );
+            var shields = context.Assessment.GetPlanetaryShieldsAtArrival(
+                demand.TargetPlanet,
+                arrivalTicks,
+                context.MovementQueries
+            );
+            bool blockedByShields =
+                shields.Count >= context.Game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
+            return new AIAttackDemand(
+                demand.TargetPlanet,
+                combat,
+                orbital,
+                IntegerMath.ScaleByPercent(
+                    defense.CapitalFirepower,
+                    config.AssaultFleetCompositionReservePercent
+                ),
+                IntegerMath.ScaleByPercent(
+                    defense.FighterFirepower,
+                    config.AssaultFleetCompositionReservePercent
+                ),
+                IntegerMath.ScaleByPercent(
+                    defense.Fighters,
+                    config.AssaultFleetCompositionReservePercent
+                ),
+                demand.RegimentStrength,
+                demand.RegimentCount,
+                demand.OccupationRegimentCount,
+                blockedByShields ? (int)Math.Min(int.MaxValue, (long)shields.Strength + 1) : 0,
+                blockedByShields,
+                shields.Strength,
+                supportOpportunity && HasBombardmentSupportReserve(context, demand.TargetPlanet),
+                demand.BombardmentOccupationRegimentCount
+            );
         }
 
         /// <summary>
@@ -66,18 +225,33 @@ namespace Rebellion.AI.Demands
         {
             GameConfig config = context.Game.Config;
             AIAssessment assessment = context.Assessment;
-            bool blockedByShields = PlanetaryAssaultResolver.IsBlockedByShields(
+            var shields = assessment.GetPlanetaryShieldsAtArrival(
                 planet,
-                config.Combat.PlanetaryAssault.ShieldGeneratorLimit
+                0,
+                context.MovementQueries
             );
+            bool blockedByShields =
+                shields.Count >= config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
             int occupationCount = GetOccupationRegimentCount(context, planet);
+            int bombardmentSupport = (int)
+                Math.Clamp(
+                    (long)assessment.GetFactionPopularSupport(planet)
+                        + GetBombardmentSupportPenalty(context, planet),
+                    0L,
+                    100L
+                );
+            int bombardmentOccupationCount = GetOccupationRegimentCount(
+                context,
+                planet,
+                bombardmentSupport
+            );
             int defendingCount = assessment.GetDefendingRegimentCount(planet);
             int combatCount = defendingCount == 0 ? 0 : defendingCount + 1;
             int defendingStrength =
                 defendingCount == 0 ? 0 : assessment.GetDefendingRegimentDefenseStrength(planet);
-            int combatStrength = IntegerMath.ScaleByPercent(
-                Math.Max(config.AI.FleetDeployment.MinimumAttackStrength, orbitalStrength),
-                GetIntelReservePercent(context, planet)
+            int combatStrength = Math.Max(
+                config.AI.FleetDeployment.MinimumAttackStrength,
+                IntegerMath.ScaleByPercent(orbitalStrength, GetIntelReservePercent(context, planet))
             );
             return new AIAttackDemand(
                 planet,
@@ -95,8 +269,10 @@ namespace Rebellion.AI.Demands
                 ),
                 combatCount + occupationCount,
                 occupationCount,
-                blockedByShields ? assessment.GetBombardmentShieldStrength(planet) + 1 : 0,
-                blockedByShields
+                blockedByShields ? (int)Math.Min(int.MaxValue, (long)shields.Strength + 1) : 0,
+                blockedByShields,
+                shields.Strength,
+                bombardmentOccupationRegimentCount: bombardmentOccupationCount
             );
         }
 
@@ -183,6 +359,95 @@ namespace Rebellion.AI.Demands
         }
 
         /// <summary>
+        /// Checks whether recent orbital intelligence permits a smaller local attack force.
+        /// </summary>
+        /// <param name="context">The faction's observed targets and local attack settings.</param>
+        /// <param name="planet">The prospective target.</param>
+        /// <returns>True for recently observed non-headquarters targets without known interdiction.</returns>
+        private static bool IsLocalAttackTarget(AITurnContext context, Planet planet)
+        {
+            GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
+            AIAssessment assessment = context.Assessment;
+            int age = Math.Max(
+                assessment.GetPlanetIntelAge(planet),
+                assessment.GetPlanetOrbitalIntelAge(planet)
+            );
+            return config.LocalAttackMinimumStrengthPercent < 100
+                && planet?.IsHeadquarters == false
+                && assessment.IsEnemyPlanet(planet)
+                && age < int.MaxValue
+                && age <= GetLocalAttackIntelSaturationAge(config)
+                && !assessment
+                    .GetHostileFleets(planet)
+                    .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
+                    .Any(ship => ship.HasGravityWell);
+        }
+
+        /// <summary>
+        /// Returns the intelligence age at which a local attack needs the full baseline force.
+        /// </summary>
+        /// <param name="config">The local attack grace window and staleness reserve intervals.</param>
+        /// <returns>The age where the local force reduction has completely expired.</returns>
+        private static long GetLocalAttackIntelSaturationAge(
+            GameConfig.AIFleetDeploymentConfig config
+        )
+        {
+            return (long)Math.Max(1, config.LocalAttackMaximumIntelAgeTicks)
+                * Math.Max(1, config.StaleIntelReserveSaturationIntervals);
+        }
+
+        /// <summary>
+        /// Checks whether recent orbital memory exposes a garrison whose removal benefits support.
+        /// </summary>
+        /// <param name="context">The faction's known defenses and attack settings.</param>
+        /// <param name="planet">The prospective target.</param>
+        /// <returns>True when a nearby fleet may assess a limited bombardment opportunity.</returns>
+        private static bool IsSupportOpportunityTarget(AITurnContext context, Planet planet)
+        {
+            GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
+            AIAssessment assessment = context.Assessment;
+            return config.SupportOpportunityMinimumAttackStrengthPercent < 100
+                && assessment.HasSupportBombardmentOpportunity(planet)
+                && assessment.GetPlanetOrbitalIntelAge(planet)
+                    <= Math.Max(0, config.SupportOpportunityMaximumIntelAgeTicks)
+                && !assessment
+                    .GetHostileFleets(planet)
+                    .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
+                    .Any(ship => ship.HasGravityWell);
+        }
+
+        /// <summary>
+        /// Checks whether favorable support can survive a civilian hit before the garrison is cleared.
+        /// </summary>
+        /// <param name="context">The faction and configured political reactions.</param>
+        /// <param name="planet">The prospective bombardment target.</param>
+        /// <returns>True when an occupation force is unnecessary after one full support penalty.</returns>
+        private static bool HasBombardmentSupportReserve(AITurnContext context, Planet planet)
+        {
+            long penalty = GetBombardmentSupportPenalty(context, planet);
+            long projectedSupport = context.Assessment.GetFactionPopularSupport(planet) + penalty;
+            long opposingSupport = planet.GetPopularSupport(planet.GetOwnerInstanceID()) - penalty;
+            return projectedSupport > opposingSupport;
+        }
+
+        /// <summary>
+        /// Measures the combined nonpositive support change from one civilian bombardment hit.
+        /// </summary>
+        /// <param name="context">The faction and configured political reactions.</param>
+        /// <param name="planet">The prospective bombardment target.</param>
+        /// <returns>The configured direct and sector support penalties combined.</returns>
+        private static long GetBombardmentSupportPenalty(AITurnContext context, Planet planet)
+        {
+            Faction faction = context.Faction;
+            int sectorPenalty =
+                planet.GetParentOfType<PlanetSector>()?.SectorType == PlanetSectorType.Core
+                    ? faction.Settings.CivilianBombardmentCoreSupportPenalty
+                    : faction.Settings.CivilianBombardmentOuterRimSupportPenalty;
+            return Math.Min(0, context.Game.Config.Combat.Bombardment.CivilianSupportPenalty)
+                + (long)Math.Min(0, sectorPenalty);
+        }
+
+        /// <summary>
         /// Calculates the stale-intelligence reserve for one target.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -194,7 +459,10 @@ namespace Rebellion.AI.Demands
                 1,
                 context.Game.Config.AI.MissionPlanning.HostileMissionMaximumIntelAgeTicks
             );
-            int age = context.Assessment.GetPlanetIntelAge(planet);
+            int age = Math.Max(
+                context.Assessment.GetPlanetIntelAge(planet),
+                context.Assessment.GetPlanetOrbitalIntelAge(planet)
+            );
             if (age <= maximumAge)
                 return 100;
 
@@ -208,12 +476,17 @@ namespace Rebellion.AI.Demands
         }
 
         /// <summary>
-        /// Calculates the regiment count needed to hold a captured planet.
+        /// Calculates the regiment count needed to hold a captured planet at its known friendly support.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="planet">The target planet.</param>
+        /// <param name="popularSupport">The assumed friendly support, or null for current known support.</param>
         /// <returns>The required occupation regiment count.</returns>
-        private static int GetOccupationRegimentCount(AITurnContext context, Planet planet)
+        private static int GetOccupationRegimentCount(
+            AITurnContext context,
+            Planet planet,
+            int? popularSupport = null
+        )
         {
             Faction faction = context.Faction;
             GameConfig config = context.Game.Config;
@@ -224,7 +497,9 @@ namespace Rebellion.AI.Demands
             int stabilityRequirement = UprisingQueries.CalculateGarrisonRequirement(
                 planet,
                 faction,
-                config.AI.Garrison
+                config.AI.Garrison,
+                popularSupport: popularSupport
+                    ?? context.Assessment.GetFactionPopularSupport(planet)
             );
             int landingCapacity = config.Combat.PlanetaryAssault.CaptureGarrisonCount;
             return Math.Max(minimum, Math.Min(stabilityRequirement, landingCapacity));

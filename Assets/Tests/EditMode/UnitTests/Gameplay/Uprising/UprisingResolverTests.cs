@@ -25,7 +25,8 @@ namespace Rebellion.Tests.Gameplay
                 new PlanetaryControlQueries(game),
                 new FogOfWarQueries(game)
             );
-            UprisingResolver restored = new(game, new ThrowingRNG(), control);
+            using JediCommands jediCommands = new(game, new ThrowingRNG());
+            UprisingResolver restored = new(game, new ThrowingRNG(), control, jediCommands);
             List<GameResult> results = new();
 
             restored.RecordGarrisonWarning(planet, results);
@@ -271,28 +272,102 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsEmpty(results.OfType<PlanetOwnershipChangedResult>());
         }
 
-        [Test]
-        public void ProcessTick_ActiveUprising_OfficerCaptured()
+        [TestCase(80, 19, 16)]
+        [TestCase(80, 20, 0)]
+        [TestCase(120, 4, 11)]
+        [TestCase(120, 5, 0)]
+        public void ProcessTick_OfficerIncident_UsesCombatBasedInjuryChance(
+            int combat,
+            int injuryRoll,
+            int expectedInjury
+        )
         {
-            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
-                ownerSupport: 10,
-                troopCount: 1,
-                rng: new SequenceRNG(intValues: new[] { 2, 1 })
+            var (game, planet, system, officer) = BuildOfficerIncident(
+                combat + 3,
+                new SequenceRNG(intValues: new[] { 0, 0, 0, injuryRoll, 10, 4 })
             );
-            ScheduleIncident(planet, 1);
-            game.CurrentTick = 1;
-            Officer officer = new Officer { InstanceID = "o1", OwnerInstanceID = "empire" };
-            game.AttachNode(officer, planet);
+            officer.InjuryPoints = 3;
 
             IReadOnlyList<GameResult> results = new UprisingTickProcessor(system).ProcessTick(game);
 
-            Assert.IsTrue(officer.IsCaptured, "Officer should be captured by uprising case 3");
-            Assert.IsNotNull(
-                officer.CaptorInstanceID,
-                "CaptorInstanceID should be set to the opposing faction"
-            );
-            Assert.IsTrue(officer.CanEscape, "Uprising-captured officer should be able to escape");
-            Assert.IsTrue(results.OfType<OfficerCaptureStateResult>().Any(r => r.IsCaptured));
+            Assert.AreEqual(3 + expectedInjury, officer.InjuryPoints);
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsNull(officer.CaptorInstanceID);
+            Assert.IsEmpty(results.OfType<OfficerCaptureStateResult>());
+            if (expectedInjury == 0)
+                Assert.IsEmpty(results.OfType<OfficerInjuredResult>());
+            else
+            {
+                OfficerInjuredResult injured = results.OfType<OfficerInjuredResult>().Single();
+                Assert.AreSame(officer, injured.Officer);
+                Assert.AreEqual(expectedInjury, injured.Severity);
+                Assert.AreEqual(game.CurrentTick, injured.Tick);
+            }
+        }
+
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        public void ProcessTick_OfficerIncident_OnlyMinorOfficersCanDie(
+            bool isMain,
+            bool expectedDeath
+        )
+        {
+            var (game, planet, system, officer) = BuildOfficerIncident(80, new StubRNG());
+            officer.IsMain = isMain;
+            game.Config.Assassination.KillProbability = 100;
+
+            IReadOnlyList<GameResult> results = new UprisingTickProcessor(system).ProcessTick(game);
+
+            Assert.IsNotEmpty(results.OfType<OfficerInjuredResult>());
+            Assert.AreEqual(expectedDeath, officer.IsKilled);
+            Assert.AreEqual(!expectedDeath, officer.IsEnabled);
+            Assert.IsFalse(officer.IsCaptured);
+            if (expectedDeath)
+            {
+                OfficerKilledResult killed = results.OfType<OfficerKilledResult>().Single();
+                Assert.AreSame(officer, killed.TargetOfficer);
+                Assert.AreSame(planet, killed.ParentAtDeath);
+                Assert.AreSame(planet, killed.Context);
+                Assert.IsNull(killed.Assassin);
+                Assert.AreEqual(game.CurrentTick, killed.Tick);
+            }
+            else
+                Assert.IsEmpty(results.OfType<OfficerKilledResult>());
+        }
+
+        [Test]
+        public void ProcessTick_ZeroSeverityOfficerIncident_DoesNotInjureOrKill()
+        {
+            var (game, _, system, officer) = BuildOfficerIncident(80, new StubRNG());
+            officer.IsMain = false;
+            game.Config.DuelResolution.InjuryBase = 0;
+            game.Config.DuelResolution.InjurySecondaryRollMaximum = 0;
+            game.Config.Assassination.KillProbability = 100;
+
+            IReadOnlyList<GameResult> results = new UprisingTickProcessor(system).ProcessTick(game);
+
+            Assert.Zero(officer.InjuryPoints);
+            Assert.IsFalse(officer.IsKilled);
+            Assert.IsEmpty(results.OfType<OfficerInjuredResult>());
+            Assert.IsEmpty(results.OfType<OfficerKilledResult>());
+        }
+
+        [Test]
+        public void ProcessTick_OfficerIncidentWithoutEligibleOfficers_DoesNotInjureAnyone()
+        {
+            var (game, planet, system, officer) = BuildOfficerIncident(80, new StubRNG());
+            officer.IsCaptured = true;
+            Officer travelling = EntityFactory.CreateOfficer("travelling", "empire");
+            travelling.Movement = new MovementState();
+            game.AttachNode(travelling, planet);
+            Officer killed = EntityFactory.CreateOfficer("killed", "empire");
+            killed.IsKilled = true;
+            game.AttachNode(killed, planet);
+
+            IReadOnlyList<GameResult> results = new UprisingTickProcessor(system).ProcessTick(game);
+
+            Assert.IsEmpty(results.OfType<OfficerInjuredResult>());
+            Assert.IsEmpty(results.OfType<OfficerKilledResult>());
         }
 
         [Test]
@@ -310,6 +385,9 @@ namespace Rebellion.Tests.Gameplay
                 InstanceID = "o1",
                 OwnerInstanceID = "empire",
                 IsCaptured = true,
+                CaptorInstanceID = "rebels",
+                CanEscape = true,
+                NextEscapeAttemptTick = 10,
             };
             game.AttachNode(captive, planet);
 
@@ -319,6 +397,9 @@ namespace Rebellion.Tests.Gameplay
                 captive.IsCaptured,
                 "Captured officer should be freed by uprising case 4"
             );
+            Assert.IsNull(captive.CaptorInstanceID);
+            Assert.IsFalse(captive.CanEscape);
+            Assert.Zero(captive.NextEscapeAttemptTick);
             Assert.IsTrue(
                 results.OfType<OfficerCaptureStateResult>().Any(r => !r.IsCaptured),
                 "Should emit OfficerCaptureStateResult with IsCaptured=false"
@@ -389,7 +470,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ProcessTick_Incident_CapturesOnlyUsableOfficer()
+        public void ProcessTick_Incident_InjuresOnlyUsableOfficer()
         {
             (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 10,
@@ -417,9 +498,10 @@ namespace Rebellion.Tests.Gameplay
 
             new UprisingTickProcessor(system).ProcessTick(game);
 
-            Assert.IsFalse(enroute.IsCaptured);
-            Assert.IsFalse(killed.IsCaptured);
-            Assert.IsTrue(usable.IsCaptured);
+            Assert.Zero(enroute.InjuryPoints);
+            Assert.Zero(killed.InjuryPoints);
+            Assert.Greater(usable.InjuryPoints, 0);
+            Assert.IsFalse(usable.IsCaptured);
         }
 
         [Test]
@@ -544,6 +626,45 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(92, planet.GetPopularSupport("rebels"));
         }
 
+        [TestCase(InciteUprisingMission.MissionTypeID, 80, 8, true)]
+        [TestCase(InciteUprisingMission.MissionTypeID, 0, 6, false)]
+        [TestCase(SubdueUprisingMission.MissionTypeID, 80, 0, false)]
+        [TestCase(SubdueUprisingMission.MissionTypeID, 0, 3, true)]
+        public void ProcessTick_IncidentWithDecoy_AveragesBothMissionRoles(
+            string missionTypeId,
+            int decoyLeadership,
+            int destructionThreshold,
+            bool expectedDestruction
+        )
+        {
+            var (game, planet, system) = BuildScene(troopCount: 1);
+            game.Config.Uprising.DiceRange = 0;
+            game.Config.Uprising.DiceAddend = 0;
+            game.Config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int>
+            {
+                { destructionThreshold, 1 },
+            };
+            game.Config.Uprising.SecondaryConsequenceTable.Clear();
+            string owner =
+                missionTypeId == InciteUprisingMission.MissionTypeID ? "rebels" : "empire";
+            if (missionTypeId == SubdueUprisingMission.MissionTypeID)
+                ScheduleIncident(planet, 1);
+            AttachActiveMission(game, planet, missionTypeId, owner, 20, decoyLeadership);
+            ScheduleIncident(planet, 1);
+            game.CurrentTick = 1;
+            planet.EnergyCapacity = 1;
+            Building facility = EntityFactory.CreateBuilding("facility", "empire");
+            facility.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(facility, planet);
+
+            new UprisingTickProcessor(system).ProcessTick(game);
+
+            Assert.AreEqual(
+                expectedDestruction,
+                game.GetSceneNodeByInstanceID<Building>(facility.InstanceID) == null
+            );
+        }
+
         [Test]
         public void ProcessTick_Incident_ExcludesMissionParticipantsInTransit()
         {
@@ -602,7 +723,8 @@ namespace Rebellion.Tests.Gameplay
             UprisingResolver uprisingSystem = new UprisingResolver(
                 game,
                 new StubRNG(),
-                planetaryControl
+                planetaryControl,
+                new JediCommands(game, new StubRNG())
             );
             new UprisingTickProcessor(uprisingSystem).ProcessTick(game);
 
@@ -680,7 +802,8 @@ namespace Rebellion.Tests.Gameplay
             UprisingResolver uprisingSystem = new UprisingResolver(
                 game,
                 new StubRNG(),
-                planetaryControl
+                planetaryControl,
+                new JediCommands(game, new StubRNG())
             );
             new UprisingTickProcessor(uprisingSystem).ProcessTick(game);
 
@@ -737,7 +860,8 @@ namespace Rebellion.Tests.Gameplay
             UprisingResolver uprisingSystem = new UprisingResolver(
                 game,
                 new StubRNG(),
-                planetaryControl
+                planetaryControl,
+                new JediCommands(game, new StubRNG())
             );
             new UprisingTickProcessor(uprisingSystem).ProcessTick(game);
 
@@ -892,6 +1016,39 @@ namespace Rebellion.Tests.Gameplay
         }
 
         /// <summary>
+        /// Builds a scheduled officer incident with controlled injury rules.
+        /// </summary>
+        /// <param name="combat">The target officer's combat rating.</param>
+        /// <param name="rng">The incident and injury rolls.</param>
+        /// <returns>The game, planet, resolver, and eligible officer.</returns>
+        private (
+            GameRoot game,
+            Planet planet,
+            UprisingResolver system,
+            Officer officer
+        ) BuildOfficerIncident(int combat, IRandomNumberProvider rng)
+        {
+            var (game, planet, system) = BuildScene(troopCount: 1, rng: rng);
+            game.Config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int>
+            {
+                { -1000, 3 },
+            };
+            game.Config.Uprising.SecondaryConsequenceTable.Clear();
+            game.Config.DuelResolution.MinimumInjuryChance = 5;
+            game.Config.DuelResolution.CaptureEvasionInjuryBaseChance = 100;
+            game.Config.DuelResolution.InjuryBase = 2;
+            game.Config.DuelResolution.InjurySecondaryRollMaximum = 10;
+            game.Config.Recovery.MaxInjuryPoints = 100;
+            ScheduleIncident(planet, 1);
+            game.CurrentTick = 1;
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            officer.IsMain = true;
+            officer.SetBaseRating(SkillRating.Combat, combat);
+            game.AttachNode(officer, planet);
+            return (game, planet, system, officer);
+        }
+
+        /// <summary>
         /// Builds scene.
         /// </summary>
         /// <param name="ownerSupport">The owner support.</param>
@@ -962,7 +1119,8 @@ namespace Rebellion.Tests.Gameplay
             UprisingResolver uprisingSystem = new UprisingResolver(
                 game,
                 rng ?? new StubRNG(),
-                planetaryControl
+                planetaryControl,
+                new JediCommands(game, rng ?? new StubRNG())
             );
             return (game, planet, uprisingSystem);
         }
@@ -990,13 +1148,15 @@ namespace Rebellion.Tests.Gameplay
         /// <param name="missionTypeId">The mission type id.</param>
         /// <param name="ownerInstanceId">The owner instance id.</param>
         /// <param name="leadership">The leadership.</param>
+        /// <param name="decoyLeadership">Optional leadership for a stationary decoy.</param>
         /// <returns>The result of attach active mission.</returns>
         private static Mission AttachActiveMission(
             GameRoot game,
             Planet planet,
             string missionTypeId,
             string ownerInstanceId,
-            int leadership
+            int leadership,
+            int? decoyLeadership = null
         )
         {
             Officer officer = EntityFactory.CreateOfficer(
@@ -1004,18 +1164,27 @@ namespace Rebellion.Tests.Gameplay
                 ownerInstanceId
             );
             officer.SetBaseRating(SkillRating.Leadership, leadership);
+            Officer decoy = null;
+            if (decoyLeadership.HasValue)
+            {
+                decoy = EntityFactory.CreateOfficer($"{missionTypeId}-decoy", ownerInstanceId);
+                decoy.SetBaseRating(SkillRating.Leadership, decoyLeadership.Value);
+            }
             Mission mission = MissionTestFactory.TryCreate(
                 missionTypeId,
                 game,
                 ownerInstanceId,
                 planet,
-                new List<IMissionParticipant> { officer }
+                new List<IMissionParticipant> { officer },
+                decoy == null ? null : new List<IMissionParticipant> { decoy }
             );
             Assert.IsNotNull(mission);
             mission.InstanceID = $"{missionTypeId}-mission";
             game.AttachNode(mission, planet);
             mission.Initiate(100);
             game.AttachNode(officer, mission);
+            if (decoy != null)
+                game.AttachNode(decoy, mission);
             return mission;
         }
 

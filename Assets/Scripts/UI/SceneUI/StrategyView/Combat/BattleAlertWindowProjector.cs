@@ -821,6 +821,12 @@ internal sealed class BattleAlertWindowProjector
         CombatSide? playerSide = BattleResultPresentation.GetSideForOwner(result, playerFactionId);
         CombatSide? losingSide = BattleResultPresentation.GetOpposingSide(result.Winner);
         string winnerName = GetSideLabel(uiContext, result, result.Winner, "Victorious");
+        string winnerOwnerInstanceId = result.Winner switch
+        {
+            CombatSide.Attacker => result.AttackerOwnerInstanceID,
+            CombatSide.Defender => result.DefenderOwnerInstanceID,
+            _ => null,
+        };
 
         if (playerSide.HasValue && result.Winner != playerSide.Value)
         {
@@ -839,11 +845,21 @@ internal sealed class BattleAlertWindowProjector
             losingFleetText =
                 BattleResultPresentation.GetOutcome(result, losingSide.Value)
                 == SpaceCombatSideOutcome.Destroyed
-                    ? $" The {loserName} fleet has been completely destroyed."
-                    : $" The {loserName} fleet has withdrawn.";
+                    ? $"The {loserName} fleet has been completely destroyed."
+                    : $"The {loserName} fleet has withdrawn.";
         }
 
-        return $"The {winnerName} fleet is victorious.\n\n{planetName} is now under blockade by {winnerName} forces.{losingFleetText}";
+        bool winnerOwnsPlanet =
+            !string.IsNullOrEmpty(winnerOwnerInstanceId)
+            && string.Equals(
+                winnerOwnerInstanceId,
+                result.PlanetOwnerInstanceID,
+                StringComparison.Ordinal
+            );
+        string resultDetails = winnerOwnsPlanet
+            ? losingFleetText
+            : $"{planetName} is now under blockade by {winnerName} forces. {losingFleetText}";
+        return $"The {winnerName} fleet is victorious.\n\n{resultDetails}";
     }
 
     /// <summary>

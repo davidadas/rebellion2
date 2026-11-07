@@ -35,6 +35,29 @@ namespace Rebellion.SceneGraph
         public string Description { get; set; }
 
         /// <summary>
+        /// Transfers stored identity and presentation into a separately constructed entity.
+        /// An unset identifier remains unset until the receiving entity requests one.
+        /// </summary>
+        /// <param name="copy">The entity receiving the stored state.</param>
+        protected void CopyStateTo(BaseGameEntity copy)
+        {
+            copy._instanceId = _instanceId;
+            copy.TypeID = TypeID;
+            copy.DisplayName = DisplayName;
+            copy.DisplayStatus = DisplayStatus;
+            copy.DisplayImagePath = DisplayImagePath;
+            copy.SmallDisplayImagePath = SmallDisplayImagePath;
+            copy.MessageImagePath = MessageImagePath;
+            copy.InTransitImagePath = InTransitImagePath;
+            copy.InTransitSmallImagePath = InTransitSmallImagePath;
+            copy.DamagedImagePath = DamagedImagePath;
+            copy.DamagedSmallImagePath = DamagedSmallImagePath;
+            copy.CapturedOverlayImagePath = CapturedOverlayImagePath;
+            copy.InjuredImagePath = InjuredImagePath;
+            copy.Description = Description;
+        }
+
+        /// <summary>
         /// Sets the deterministic instance-identifier seed.
         /// </summary>
         /// <param name="seed">The seed, or null to restore random identifiers.</param>

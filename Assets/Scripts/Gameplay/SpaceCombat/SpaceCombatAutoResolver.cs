@@ -118,8 +118,6 @@ namespace Rebellion.Gameplay
                 ApplyPendingDamage(pendingDamage);
                 AdvanceTacticalState(attacker);
                 AdvanceTacticalState(defender);
-                double attackerStrength = GetTacticalStrength(attacker, defender);
-                double defenderStrength = GetTacticalStrength(defender, attacker);
                 double attackerDurability = GetTacticalDurability(attacker);
                 double defenderDurability = GetTacticalDurability(defender);
                 double attackerWithdrawalProgress = GetWithdrawalProgress(attacker);
@@ -139,7 +137,12 @@ namespace Rebellion.Gameplay
 
                 if (stagnantIterations >= _config.AutoResolveStagnationIterations)
                 {
-                    ResolveStalemate(attacker, defender, attackerStrength, defenderStrength);
+                    ResolveStalemate(
+                        attacker,
+                        defender,
+                        GetTacticalStrength(attacker, defender),
+                        GetTacticalStrength(defender, attacker)
+                    );
                     break;
                 }
             }

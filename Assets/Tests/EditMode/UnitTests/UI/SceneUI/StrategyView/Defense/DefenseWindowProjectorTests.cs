@@ -152,6 +152,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         [Test]
         public void Build_PlayerOwnedRegimentTab_ReturnsGarrisonRequirement()
         {
+            _planet.IsColonized = true;
             _planet.SetPopularSupport(_ownerId, 35);
             _session.SelectTab(DefenseWindowTab.Regiments);
 

@@ -7,7 +7,7 @@ using Rebellion.Game.Results;
 namespace Rebellion.Gameplay
 {
     /// <summary>
-    /// Reconciles missions after participant capture or death results are published.
+    /// Reconciles missions after participant capture, death, or injury results are published.
     /// </summary>
     internal sealed class MissionObserver : IResultObserver, IDisposable
     {
@@ -38,6 +38,7 @@ namespace Rebellion.Gameplay
             {
                 results.Subscribe<OfficerCaptureStateResult>(HandleResults),
                 results.Subscribe<OfficerKilledResult>(HandleResults),
+                results.Subscribe<OfficerInjuredResult>(HandleResults),
             };
         }
 
@@ -51,17 +52,31 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Ends missions whose participants were captured by another simulation system.
+        /// Removes captured participants and reevaluates each mission's remaining team.
         /// </summary>
         /// <param name="results">The officer capture-state changes to process.</param>
-        /// <returns>Mission interruption results produced while tearing down affected missions.</returns>
+        /// <returns>Participant relocation and mission interruption results.</returns>
         public List<GameResult> HandleResults(IReadOnlyList<OfficerCaptureStateResult> results)
         {
-            IEnumerable<Mission> affectedMissions = results
-                .Where(result => result?.IsCaptured == true && result.TargetOfficer != null)
-                .Select(result => result.ParentAtCapture as Mission);
+            List<GameResult> missionResults = new();
+            IEnumerable<IGrouping<Mission, OfficerCaptureStateResult>> affectedMissions = results
+                .Where(result =>
+                    result?.IsCaptured == true && result.TargetOfficer?.IsCaptured == true
+                )
+                .Where(result => result.ParentAtCapture is Mission)
+                .GroupBy(result => (Mission)result.ParentAtCapture)
+                .Where(group => group.Key.GetParent() != null);
 
-            return InterruptMissions(affectedMissions);
+            foreach (
+                IGrouping<Mission, OfficerCaptureStateResult> affectedMission in affectedMissions
+            )
+                _resolver.RemoveUnavailableParticipants(
+                    affectedMission.Key,
+                    affectedMission.Select(result => result.TargetOfficer).Distinct().ToList(),
+                    missionResults
+                );
+
+            return missionResults;
         }
 
         /// <summary>
@@ -80,7 +95,7 @@ namespace Rebellion.Gameplay
 
             foreach (IGrouping<Mission, OfficerKilledResult> affectedMission in affectedMissions)
             {
-                _resolver.RemoveKilledParticipants(
+                _resolver.RemoveUnavailableParticipants(
                     affectedMission.Key,
                     affectedMission.Select(result => result.TargetOfficer).Distinct().ToList(),
                     missionResults
@@ -91,20 +106,26 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Interrupts each distinct mission that is still attached to the game.
+        /// Withdraws injured officers and reevaluates each recorded mission's remaining team.
+        /// Recovery notices do not remove participants.
         /// </summary>
-        /// <param name="missions">The recorded participant missions.</param>
-        /// <returns>Mission interruption results produced while tearing down affected missions.</returns>
-        private List<GameResult> InterruptMissions(IEnumerable<Mission> missions)
+        /// <param name="results">The officer injury changes to process.</param>
+        /// <returns>The withdrawal and mission interruption results.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<OfficerInjuredResult> results)
         {
-            List<GameResult> missionResults = new List<GameResult>();
-            List<Mission> affectedMissions = missions
-                .Where(mission => mission?.GetParent() != null)
-                .Distinct()
-                .ToList();
+            List<GameResult> missionResults = new();
+            IEnumerable<IGrouping<Mission, OfficerInjuredResult>> affectedMissions = results
+                .Where(result => result?.Severity > 0 && result.Officer != null)
+                .Where(result => result.ParentAtInjury is Mission)
+                .GroupBy(result => (Mission)result.ParentAtInjury)
+                .Where(group => group.Key.GetParent() != null);
 
-            foreach (Mission mission in affectedMissions)
-                _resolver.InterruptMission(mission, missionResults);
+            foreach (IGrouping<Mission, OfficerInjuredResult> affectedMission in affectedMissions)
+                _resolver.WithdrawInjuredParticipants(
+                    affectedMission.Key,
+                    affectedMission.Select(result => result.Officer).Distinct().ToList(),
+                    missionResults
+                );
 
             return missionResults;
         }

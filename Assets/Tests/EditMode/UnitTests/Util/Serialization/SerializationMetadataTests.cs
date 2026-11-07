@@ -77,6 +77,37 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
+        [TestCase("LegacyValue")]
+        [TestCase("DeprecatedValue")]
+        public void GetElementType_ReadAlias_ReportsCanonicalValueType(string name)
+        {
+            Assert.AreEqual(
+                typeof(int),
+                SerializationMetadata.GetElementType(typeof(ReadAliasItem), name)
+            );
+        }
+
+        [TestCase("LegacyID")]
+        [TestCase("DeprecatedID")]
+        public void GetAttributeType_ReadAlias_ReportsCanonicalValueType(string name)
+        {
+            Assert.AreEqual(
+                typeof(string),
+                SerializationMetadata.GetAttributeType(typeof(ReadAliasItem), name)
+            );
+        }
+
+        [TestCase("LegacyAliasItem")]
+        [TestCase("DeprecatedAliasItem")]
+        public void GetTypes_ReadAlias_ReportsDeclaredTypeWithoutInheritingAlias(string name)
+        {
+            CollectionAssert.Contains(SerializationMetadata.GetTypes(name), typeof(ReadAliasItem));
+            CollectionAssert.DoesNotContain(
+                SerializationMetadata.GetTypes(name),
+                typeof(ReadAliasDerivedItem)
+            );
+        }
+
         [PersistableObject]
         public sealed class MetadataSample
         {

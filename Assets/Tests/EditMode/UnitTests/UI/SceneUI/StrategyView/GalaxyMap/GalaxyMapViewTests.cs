@@ -239,13 +239,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             string openedSector = null;
             int openedX = -1;
             int openedY = -1;
+            int openedClickCount = 0;
             _view.SectorHovered += sectorId => hoveredSector = sectorId;
             _view.SectorHoverCleared += () => hoverClearedCount++;
-            _view.SectorOpenRequested += (sectorId, x, y) =>
+            _view.SectorClicked += (sectorId, x, y, clickCount) =>
             {
                 openedSector = sectorId;
                 openedX = x;
                 openedY = y;
+                openedClickCount = clickCount;
             };
             PlanetSectorClusterView cluster = FindCluster("sector-1");
             PointerEventData eventData = CreateMapPointerEvent(Vector2.zero);
@@ -261,6 +263,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual("sector-1", openedSector);
             Assert.AreEqual(426, openedX);
             Assert.AreEqual(240, openedY);
+            Assert.AreEqual(2, openedClickCount);
         }
 
         [Test]
@@ -279,7 +282,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             _view.Destroyed += view => destroyedView = view;
             _view.SectorHovered += _ => hoverCount++;
             _view.SectorHoverCleared += () => clearCount++;
-            _view.SectorOpenRequested += (_, _, _) => openCount++;
+            _view.SectorClicked += (_, _, _, _) => openCount++;
             PlanetSectorClusterView cluster = FindCluster("sector-1");
             PointerEventData eventData = CreateMapPointerEvent(Vector2.zero);
             eventData.button = PointerEventData.InputButton.Left;

@@ -361,7 +361,7 @@ public sealed class StrategyController
         strategyHudController.Initialize(this);
         strategyHudController.BindView(strategyHud);
 
-        galaxyMapController = new GalaxyMapController(() => uiContext);
+        galaxyMapController = new GalaxyMapController(() => uiContext, GetQuickOpenMapItems);
         galaxyMapController.Initialize(this);
         galaxyMapController.BindView(galaxyMap);
         contextMenuController = new ContextMenuController();
@@ -666,7 +666,8 @@ public sealed class StrategyController
             () =>
                 galacticInformationDisplayController?.FilterMode
                 ?? GalacticInformationFilterMode.DisplayOff,
-            GetSelectedFleetInstanceIds
+            GetSelectedFleetInstanceIds,
+            GetQuickOpenMapItems
         );
         missionsWindowController = new MissionsWindowController(
             () => uiContext,
@@ -2117,6 +2118,18 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Returns whether campaign-map items should open on their first click.
+    /// </summary>
+    /// <returns>True when quick map opening is enabled; otherwise false.</returns>
+    private static bool GetQuickOpenMapItems()
+    {
+        return AppBootstrap
+                .Instance?.GetUserSettingsManager()
+                ?.Settings?.UserInterface?.QuickOpenMapItems
+            ?? false;
+    }
+
+    /// <summary>
     /// Saves mission-odds visibility when the Mission Create checkbox changes.
     /// </summary>
     /// <param name="visible">Whether mission-planning estimates should be displayed.</param>
@@ -2412,6 +2425,39 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Opens the item currently under construction at its destination.
+    /// </summary>
+    /// <param name="destinationPlanetId">The containing destination planet identifier.</param>
+    /// <param name="manufacturedItemId">The manufactured item identifier.</param>
+    /// <param name="sourceX">The source window's horizontal coordinate.</param>
+    /// <param name="sourceY">The source window's vertical coordinate.</param>
+    void IFacilityWindowActions.OpenFacilityManufacturedItem(
+        string destinationPlanetId,
+        string manufacturedItemId,
+        int sourceX,
+        int sourceY
+    )
+    {
+        GalaxyMapPlanet destinationPlanet = galaxyMapController.FindPlanet(destinationPlanetId);
+        if (destinationPlanet == null)
+            return;
+
+        ISceneNode manufacturedItem = string.IsNullOrEmpty(manufacturedItemId)
+            ? null
+            : galaxyMapController.FindVisibleNode(manufacturedItemId);
+        PlanetIcon icon = GetMessageTargetIcon(manufacturedItem);
+        if (icon == PlanetIcon.None)
+            OpenPlanetSectorWindow(destinationPlanet.Sector);
+        else
+        {
+            UIWindow targetWindow = OpenPlanetWindowAt(destinationPlanet, icon, sourceX, sourceY);
+            SelectMessageTarget(targetWindow, manufacturedItem);
+        }
+
+        MarkDirty();
+    }
+
+    /// <summary>
     /// Opens Encyclopedia information for the active facility selection.
     /// </summary>
     /// <param name="target">The resolved facility information target.</param>
@@ -2644,6 +2690,23 @@ public sealed class StrategyController
     void IStatusWindowActions.OpenStatusInfo(StrategyStatusTarget target)
     {
         OpenEncyclopediaWindow(target);
+    }
+
+    /// <summary>
+    /// Opens the producing planet's sector and facility window.
+    /// </summary>
+    /// <param name="producerPlanetId">The producing planet identifier.</param>
+    /// <param name="sourceX">The source window's horizontal coordinate.</param>
+    /// <param name="sourceY">The source window's vertical coordinate.</param>
+    void IStatusWindowActions.OpenStatusManufacturingSource(
+        string producerPlanetId,
+        int sourceX,
+        int sourceY
+    )
+    {
+        GalaxyMapPlanet producer = galaxyMapController.FindPlanet(producerPlanetId);
+        if (OpenPlanetWindowAt(producer, PlanetIcon.Facility, sourceX, sourceY) != null)
+            dirty = true;
     }
 
     /// <summary>

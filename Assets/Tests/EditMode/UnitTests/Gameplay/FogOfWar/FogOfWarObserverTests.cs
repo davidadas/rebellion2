@@ -505,6 +505,46 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void HandleResults_PlanetResources_RefreshesResourcesAndBasicStatus()
+        {
+            _coruscant.OwnerInstanceID = _alliance.InstanceID;
+            new FogOfWarRecorder().RecordPlanetOwnershipSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                20
+            );
+            _coruscant.OwnerInstanceID = _empire.InstanceID;
+            _coruscant.NumRawResourceNodes = 8;
+            _coruscant.EnergyCapacity = 12;
+            _coruscant.AllocatedEnergy = 5;
+
+            _observer.HandleResults(
+                new List<IntelligenceRevealedResult>
+                {
+                    new IntelligenceRevealedResult
+                    {
+                        Tick = 42,
+                        Recipient = _alliance,
+                        Observations = new List<ISceneNode> { _coruscant },
+                        Category = PlanetIntelligenceCategory.PlanetResources,
+                    },
+                }
+            );
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"];
+            Assert.AreEqual(42, snapshot.TickCaptured);
+            Assert.AreEqual(8, snapshot.NumRawResourceNodes);
+            Assert.AreEqual(12, snapshot.EnergyCapacity);
+            Assert.Zero(snapshot.AllocatedEnergy);
+            Assert.AreEqual(_empire.InstanceID, snapshot.OwnerInstanceID);
+            Assert.AreEqual(
+                PlanetIntelligenceCategory.PlanetResources,
+                snapshot.RevealedCategories
+            );
+        }
+
+        [Test]
         public void HandleResults_SelectedCapitalShip_RevealsPartialFleetWithoutSiblingsOrCargo()
         {
             Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);
@@ -994,7 +1034,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ProcessResults_SuccessfulAssault_RevealsOnlyLandedRegimentsToDefender()
+        public void ProcessResults_SuccessfulAssault_RetainsAttackingFleetAndLandedRegimentsForDefender()
         {
             Fleet fleet = CreateFleet("ATTACKERS", _alliance);
             _game.AttachNode(fleet, _coruscant);
@@ -1024,6 +1064,7 @@ namespace Rebellion.Tests.Gameplay
                     new PlanetaryAssaultResult
                     {
                         Planet = _coruscant,
+                        AttackingFleets = new List<Fleet> { fleet },
                         AttackerOwnerInstanceID = _alliance.InstanceID,
                         DefenderOwnerInstanceID = _empire.InstanceID,
                         Success = true,
@@ -1041,9 +1082,14 @@ namespace Rebellion.Tests.Gameplay
                 new[] { first.InstanceID, second.InstanceID },
                 snapshot.Regiments.Select(regiment => regiment.InstanceID)
             );
-            Assert.IsEmpty(snapshot.Fleets);
-            Assert.IsFalse(_empire.Fog.EntityLastSeenAt.ContainsKey(retained.InstanceID));
-
+            Assert.AreEqual(fleet.InstanceID, snapshot.Fleets.Single().InstanceID);
+            CollectionAssert.AreEqual(
+                new[] { retained.InstanceID },
+                snapshot
+                    .Fleets.Single()
+                    .GetChildren<Regiment>(recursive: true)
+                    .Select(regiment => regiment.InstanceID)
+            );
             Planet viewPlanet = new FogOfWarQueries(_game)
                 .BuildFactionView(_empire)
                 .GetChildren<PlanetSector>()
@@ -1054,7 +1100,7 @@ namespace Rebellion.Tests.Gameplay
                 new[] { first.InstanceID, second.InstanceID },
                 viewPlanet.GetChildren<Regiment>().Select(regiment => regiment.InstanceID)
             );
-            Assert.IsEmpty(viewPlanet.GetChildren<Fleet>());
+            Assert.AreEqual(fleet.InstanceID, viewPlanet.GetChildren<Fleet>().Single().InstanceID);
         }
 
         [Test]
