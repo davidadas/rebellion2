@@ -88,7 +88,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void TryCreateMission_RepeatingEspionage_ReturnsFalse()
+        public void TryCreateMission_RepeatingEspionage_ReturnsRepeatingMission()
         {
             (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
             planet.AddVisitor("empire");
@@ -103,8 +103,8 @@ namespace Rebellion.Tests.Game.Missions
 
             bool created = factory.TryCreateMission(context, out Mission mission);
 
-            Assert.IsFalse(created);
-            Assert.IsNull(mission);
+            Assert.IsTrue(created);
+            Assert.IsTrue(((EspionageMission)mission).IsRepeating);
         }
 
         [Test]
@@ -556,7 +556,7 @@ namespace Rebellion.Tests.Game.Missions
                 options.Any(option => option.MissionTypeID == DiplomacyMission.MissionTypeID)
             );
             Assert.AreEqual(EspionageMission.MissionTypeID, options.Last().MissionTypeID);
-            Assert.IsFalse(options.Last().CanRepeat);
+            Assert.IsTrue(options.Last().CanRepeat);
         }
 
         [Test]

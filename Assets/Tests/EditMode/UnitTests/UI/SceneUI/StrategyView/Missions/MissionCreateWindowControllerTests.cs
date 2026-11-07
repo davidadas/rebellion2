@@ -220,9 +220,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(window, _windowManager.ActiveWindow);
         }
 
+        /// <summary>
+        /// Offers repeat entries only for missions whose picker option supports them.
+        /// </summary>
+        /// <param name="espionage">Whether to use repeatable espionage instead of reconnaissance.</param>
         [TestCase(false)]
         [TestCase(true)]
-        public void DropdownButton_MissionWithoutRepeatSupport_OffersSingleChoice(bool espionage)
+        public void DropdownButton_MissionRepeatPolicy_OffersExpectedChoices(bool espionage)
         {
             if (espionage)
             {
@@ -248,7 +252,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 .ToArray();
 
             CollectionAssert.AreEqual(
-                espionage ? new[] { "Espionage" } : new[] { "Reconnaissance" },
+                espionage
+                    ? new[] { "Espionage", "Espionage (Repeat)" }
+                    : new[] { "Reconnaissance" },
                 labels
             );
             Assert.AreEqual(355, UILayout.GetSourceRect((RectTransform)view.transform).height);
