@@ -3845,17 +3845,16 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ResolvePending_ManualResolution_ClearsPendingWithoutDamage()
+        public void ResolvePending_ManualResolutionWithoutSession_PreservesPendingEncounter()
         {
             (_, SpaceCombatCommands commands, Fleet empireFleet, Fleet allianceFleet) =
                 CreatePendingEncounter(failResolution: true);
 
-            List<GameResult> results = commands.ResolvePending(false);
+            Assert.Throws<InvalidOperationException>(() => commands.ResolvePending(false));
 
-            Assert.IsEmpty(results);
-            Assert.IsFalse(commands.HasPendingDecision);
-            Assert.IsFalse(empireFleet.IsInCombat);
-            Assert.IsFalse(allianceFleet.IsInCombat);
+            Assert.IsTrue(commands.HasPendingDecision);
+            Assert.IsTrue(empireFleet.IsInCombat);
+            Assert.IsTrue(allianceFleet.IsInCombat);
             Assert.AreEqual(100, empireFleet.GetChildren<CapitalShip>()[0].CurrentHullStrength);
             Assert.AreEqual(100, allianceFleet.GetChildren<CapitalShip>()[0].CurrentHullStrength);
         }
@@ -3885,6 +3884,358 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(42, after.Tick);
             Assert.IsTrue(commands.HasPendingDecision);
             Assert.IsNull(empireFleet.Movement);
+        }
+
+        [Test]
+        public void BeginTacticalCombat_AuthoredEncounter_KeepsCampaignPendingAndUnitsUnchanged()
+        {
+            (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
+                CreateTacticalEncounter();
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+            Assert.IsTrue(commands.HasPendingDecision);
+            Assert.AreEqual(2, battle.Units.Count);
+            Assert.AreEqual(1000, attacker.CurrentHullStrength);
+            Assert.IsTrue(attacker.GetParentOfType<Fleet>().IsInCombat);
+        }
+
+        [Test]
+        public void CompleteTacticalCombat_UnfinishedEncounter_PreservesPendingDecision()
+        {
+            (_, SpaceCombatCommands commands, _) = CreateTacticalEncounter();
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+            Assert.Throws<InvalidOperationException>(() => commands.CompleteTacticalCombat(battle));
+            Assert.IsTrue(commands.HasPendingDecision);
+        }
+
+        [Test]
+        public void CompleteTacticalCombat_FinishedEncounter_CommitsLossesAndClearsPendingState()
+        {
+            (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
+                CreateTacticalEncounter();
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+            TacticalCombatUnit target = battle.Units.Single(unit => unit.Side != battle.PlayerSide);
+            battle.SetTarget(
+                battle.Groups.Single(group => group.Side == battle.PlayerSide),
+                target
+            );
+            for (int frame = 0; frame < 12000 && !battle.IsComplete; frame++)
+                battle.Advance(50);
+            Assert.IsTrue(
+                battle.IsComplete,
+                string.Join(
+                    "; ",
+                    battle.Units.Select(unit =>
+                        $"{unit.InstanceID}: hull={unit.Systems.Hull}, position={unit.Position}, state={unit.Status}"
+                    )
+                )
+            );
+            IReadOnlyList<GameResult> results = commands.CompleteTacticalCombat(battle);
+            SpaceCombatResult combat = results.OfType<SpaceCombatResult>().Single();
+            Assert.IsFalse(commands.HasPendingDecision);
+            Assert.IsFalse(attacker.GetParentOfType<Fleet>().IsInCombat);
+            Assert.AreEqual(1, attacker.SystemDamage.Weapons);
+            Assert.AreEqual(
+                0,
+                combat
+                    .ShipDamage.Single(damage => damage.Ship.OwnerInstanceID == "FNALL1")
+                    .HullAfter
+            );
+        }
+
+        [Test]
+        public void CompleteTacticalCombat_UnchangedHull_EmitsNoHullDamageEvent()
+        {
+            (_, SpaceCombatCommands commands, _) = CreateTacticalEncounter();
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+            TacticalCombatUnit target = battle.Units.Single(unit => unit.Side != battle.PlayerSide);
+            battle.SetTarget(
+                battle.Groups.Single(group => group.Side == battle.PlayerSide),
+                target
+            );
+            for (int frame = 0; frame < 12000 && !battle.IsComplete; frame++)
+                battle.Advance(50);
+            Assert.IsTrue(battle.IsComplete);
+
+            SpaceCombatResult result = commands
+                .CompleteTacticalCombat(battle)
+                .OfType<SpaceCombatResult>()
+                .Single();
+
+            Assert.IsNotEmpty(result.Events.OfType<GameObjectDamagedResult>());
+            Assert.IsTrue(
+                result
+                    .Events.OfType<GameObjectDamagedResult>()
+                    .All(damage => damage.DamageValue > 0)
+            );
+        }
+
+        [Test]
+        public void CompleteTacticalCombat_WithdrawalWithImmobileShip_MovesOnlyEscapedSurvivor()
+        {
+            (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
+                CreateTacticalEncounter();
+            (Planet destination, _) = CreatePlanet(game, "withdrawal-home", "FNEMP1");
+            Fleet fleet = attacker.GetParentOfType<Fleet>();
+            CapitalShip stranded = (CapitalShip)attacker.CreateCopy();
+            stranded.InstanceID = "immobile-companion";
+            stranded.SystemDamage.Engines = 4;
+            stranded.DamageControl = 0;
+            game.AttachNode(stranded, fleet);
+            foreach (CapitalShip ship in fleet.GetChildren<CapitalShip>())
+            foreach (int[] battery in ship.PrimaryWeapons.Values)
+                for (int arc = 0; arc < 4; arc++)
+                    battery[arc] = 0;
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+            Assert.IsTrue(battle.BeginWithdrawal(battle.PlayerSide));
+            for (int frame = 0; frame < 6000 && !battle.IsComplete; frame++)
+                battle.Advance(50);
+            Assert.IsTrue(battle.IsComplete);
+
+            SpaceCombatResult result = commands
+                .CompleteTacticalCombat(battle)
+                .OfType<SpaceCombatResult>()
+                .Single();
+
+            Assert.AreSame(fleet, attacker.GetParentOfType<Fleet>());
+            Assert.AreSame(destination, fleet.GetParentOfType<Planet>());
+            Assert.IsNotNull(fleet.Movement);
+            CollectionAssert.AreEquivalent(new ISceneNode[] { attacker }, result.WithdrawnUnits);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>(stranded.InstanceID));
+            Assert.IsTrue(
+                result
+                    .Events.OfType<GameObjectDestroyedResult>()
+                    .Any(item => ReferenceEquals(item.DestroyedObject, stranded))
+            );
+        }
+
+        [Test]
+        public void CompleteTacticalCombat_UnrecoveredSurvivor_RetainsFighterAtOpposingPlanet()
+        {
+            (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
+                CreateTacticalEncounter();
+            Planet planet = attacker.GetParentOfType<Planet>();
+            planet.OwnerInstanceID = "FNALL1";
+            Starfighter fighter = (Starfighter)TestContent.Data.Starfighters.First().CreateCopy();
+            fighter.InstanceID = "unrecovered-fighter";
+            fighter.OwnerInstanceID = attacker.OwnerInstanceID;
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            fighter.CurrentSquadronSize = fighter.MaxSquadronSize;
+            fighter.LaserCannon = 0;
+            fighter.Torpedoes = 0;
+            attacker.StarfighterCapacity = 1;
+            game.AttachNode(fighter, attacker);
+            attacker.StarfighterCapacity = 0;
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+            TacticalCombatGroup group = battle.GetGroup(battle.GetUnit(attacker.InstanceID));
+            battle.SetOrder(group, TacticalCombatOrder.HoldFire);
+            for (
+                int frame = 0;
+                frame < 1000
+                    && battle.GetUnit(fighter.InstanceID).Status == TacticalCombatUnitStatus.Docked;
+                frame++
+            )
+                battle.Advance(50);
+            Assert.AreEqual(
+                TacticalCombatUnitStatus.Active,
+                battle.GetUnit(fighter.InstanceID).Status
+            );
+            battle.SetOrder(group, TacticalCombatOrder.None);
+            battle.SetTarget(group, battle.Units.Single(unit => unit.Side != battle.PlayerSide));
+            for (int frame = 0; frame < 12000 && !battle.IsComplete; frame++)
+                battle.Advance(50);
+            Assert.IsTrue(battle.IsComplete);
+
+            SpaceCombatResult result = commands
+                .CompleteTacticalCombat(battle)
+                .OfType<SpaceCombatResult>()
+                .Single();
+
+            Assert.AreSame(planet, fighter.GetParent());
+            Assert.AreSame(fighter, game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID));
+            Assert.AreEqual("FNALL1", planet.OwnerInstanceID);
+            Assert.AreEqual(attacker.OwnerInstanceID, fighter.OwnerInstanceID);
+            Assert.IsNull(
+                result.FighterRecovery.Single(recovery => recovery.Fighter == fighter).Carrier
+            );
+        }
+
+        [Test]
+        public void BeginTacticalCombat_CarriedFighters_RegistersFleetCapitalsBeforePayloads()
+        {
+            (GameRoot game, SpaceCombatCommands commands, CapitalShip first) =
+                CreateTacticalEncounter();
+            CapitalShip second = (CapitalShip)first.CreateCopy();
+            second.InstanceID = "second-capital";
+            game.AttachNode(second, first.GetParent());
+            Starfighter fighter = (Starfighter)TestContent.Data.Starfighters.First().CreateCopy();
+            fighter.InstanceID = "carried-fighter";
+            fighter.OwnerInstanceID = first.OwnerInstanceID;
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            fighter.CurrentSquadronSize = fighter.MaxSquadronSize;
+            first.StarfighterCapacity = 1;
+            game.AttachNode(fighter, first);
+
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+
+            Assert.AreEqual(1000001, battle.GetUnit(first.InstanceID).Index);
+            Assert.AreEqual(1000002, battle.GetUnit(second.InstanceID).Index);
+            Assert.AreEqual(1000003, battle.GetUnit(fighter.InstanceID).Index);
+        }
+
+        [Test]
+        public void BeginTacticalCombat_CarriedPrisoner_UsesPrisonersFactionRegistrationCounter()
+        {
+            (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
+                CreateTacticalEncounter();
+            Officer prisoner = new()
+            {
+                InstanceID = "prisoner",
+                OwnerInstanceID = "FNALL1",
+                IsCaptured = true,
+                CaptorInstanceID = "FNEMP1",
+            };
+            game.AttachNode(prisoner, attacker);
+            Planet planet = attacker.GetParentOfType<Planet>();
+            Fleet nextFleet = CreateFleet(game, "next-empire-fleet", "FNEMP1", planet, 1, 1000, 0);
+            CapitalShip next = nextFleet.GetChildren<CapitalShip>()[0];
+            next.TypeID = attacker.TypeID;
+
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+
+            Assert.AreEqual(2, battle.Units.Single(unit => unit.Side != battle.PlayerSide).Index);
+            Assert.AreEqual(1000002, battle.GetUnit(next.InstanceID).Index);
+        }
+
+        [TestCase(false, 1000004, 1000005)]
+        [TestCase(true, 1000005, 1000006)]
+        public void BeginTacticalCombat_ConstructionAcrossFleets_PreservesLastStationRegistration(
+            bool emptyFleet,
+            int nextIndex,
+            int stationIndex
+        )
+        {
+            (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
+                CreateTacticalEncounter();
+            Planet planet = attacker.GetParentOfType<Planet>();
+            CapitalShip construction = (CapitalShip)
+                TestContent.Data.CapitalShips.Single(ship => ship.CanDestroyPlanets).CreateCopy();
+            construction.InstanceID = "station-construction";
+            construction.OwnerInstanceID = attacker.OwnerInstanceID;
+            construction.ManufacturingStatus = ManufacturingStatus.Building;
+            game.AttachNode(construction, attacker.GetParent());
+            planet.OwnerInstanceID = attacker.OwnerInstanceID;
+            planet.AddToManufacturingQueue(construction);
+            if (emptyFleet)
+                CreateFleet(game, "empty-fleet", "FNEMP1", planet, 0, 0, 0);
+            Fleet nextFleet = CreateFleet(game, "next-empire-fleet", "FNEMP1", planet, 1, 1000, 0);
+            CapitalShip next = nextFleet.GetChildren<CapitalShip>()[0];
+            next.TypeID = attacker.TypeID;
+
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+
+            Assert.AreEqual(nextIndex, battle.GetUnit(next.InstanceID).Index);
+            Assert.AreEqual(stationIndex, battle.BattleStation.Unit.Index);
+        }
+
+        [Test]
+        public void BeginTacticalCombat_UnfinishedStation_CapturesNonoperationalConstruction()
+        {
+            (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
+                CreateTacticalEncounter();
+            Planet planet = attacker.GetParentOfType<Planet>();
+            CapitalShip construction = (CapitalShip)
+                TestContent.Data.CapitalShips.Single(ship => ship.CanDestroyPlanets).CreateCopy();
+            construction.InstanceID = "station-construction";
+            construction.OwnerInstanceID = attacker.OwnerInstanceID;
+            construction.ManufacturingStatus = ManufacturingStatus.Building;
+            planet.OwnerInstanceID = attacker.OwnerInstanceID;
+            game.AttachNode(construction, attacker.GetParentOfType<Fleet>());
+            planet.AddToManufacturingQueue(construction);
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+            Assert.IsNotNull(battle.BattleStation);
+            Assert.AreEqual(
+                TacticalCombatUnitStatus.UnderConstruction,
+                battle.BattleStation.Unit.Status
+            );
+            Assert.IsFalse(battle.BattleStation.IsOperational);
+            Assert.IsFalse(battle.BattleStation.Unit.IsEngaged);
+            Assert.AreSame(construction, planet.GetManufacturingQueue()[ManufacturingType.Ship][0]);
+        }
+
+        [TestCase(false, 0.9f)]
+        [TestCase(true, 0f)]
+        public void BeginTacticalCombat_HeadquartersDefense_UsesMobileHeadquartersRetreatRule(
+            bool mobile,
+            float expected
+        )
+        {
+            (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
+                CreateTacticalEncounter();
+            Planet planet = attacker.GetParentOfType<Planet>();
+            planet.OwnerInstanceID = attacker.OwnerInstanceID;
+            planet.IsHeadquarters = true;
+            game.GetFactionByOwnerInstanceID(
+                attacker.OwnerInstanceID
+            ).Settings.Headquarters.IsMobile = mobile;
+            Starfighter fighter = (Starfighter)TestContent.Data.Starfighters.First().CreateCopy();
+            fighter.InstanceID = "ground-fighter";
+            fighter.OwnerInstanceID = attacker.OwnerInstanceID;
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            fighter.CurrentSquadronSize = fighter.MaxSquadronSize;
+            game.AttachNode(fighter, planet);
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+            Assert.AreEqual(expected, battle.GetSide(battle.PlayerSide).RetreatStrengthRatio);
+        }
+
+        /// <summary>
+        /// Creates a pending content-backed tactical encounter with a decisive weapon advantage.
+        /// </summary>
+        /// <returns>The campaign, command owner, and surviving player ship.</returns>
+        private (
+            GameRoot Game,
+            SpaceCombatCommands Commands,
+            CapitalShip Attacker
+        ) CreateTacticalEncounter()
+        {
+            GameRoot game = TestGame.Create(TestContent.Data.GameConfig.CreateCopy());
+            game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
+            game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
+            game.Summary.PlayerFactionID = "FNEMP1";
+            game.Random = new Rebellion.Util.Random.SystemRandomProvider(42);
+            game.SetFactionController("FNEMP1", "player1", PlayerControllerType.Human);
+            (Planet planet, _) = CreatePlanet(game, "tactical-planet");
+            Fleet player = CreateFleet(
+                game,
+                "tactical-attacker",
+                "FNEMP1",
+                planet,
+                1,
+                1000,
+                100000
+            );
+            Fleet enemy = CreateFleet(game, "tactical-defender", "FNALL1", planet, 1, 10, 0);
+            CapitalShip attacker = player.GetChildren<CapitalShip>()[0];
+            attacker.TypeID = "CSEM006";
+            attacker.SystemDamage.Weapons = 1;
+            attacker.SublightSpeed = 4;
+            enemy.GetChildren<CapitalShip>()[0].TypeID = "ALCS008";
+            MovementCommands movement = new(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            SpaceCombatQueries queries = new(game, new MovementQueries(game));
+            TacticalCombatFactory factory = new(
+                game,
+                TestContent.Data,
+                queries,
+                () => new TacticalCombatRandom(42)
+            );
+            SpaceCombatCommands commands = new(game, movement, queries, tacticalFactory: factory);
+            Assert.IsNotEmpty(new SpaceCombatTickProcessor(commands).ProcessTick(game));
+            return (game, commands, attacker);
         }
 
         /// <summary>

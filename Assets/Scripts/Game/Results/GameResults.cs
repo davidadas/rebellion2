@@ -648,6 +648,16 @@ namespace Rebellion.Game.Results
         public CapitalShip Ship { get; set; }
         public int HullBefore { get; set; }
         public int HullAfter { get; set; }
+        public CapitalShipSystemDamage SystemDamage { get; set; }
+    }
+
+    /// <summary>
+    /// Assigns a surviving fighter squadron to a carrier or to the combat planet after recovery.
+    /// </summary>
+    public sealed class FighterRecoveryResult
+    {
+        public Starfighter Fighter { get; set; }
+        public CapitalShip Carrier { get; set; }
     }
 
     /// <summary>
@@ -789,6 +799,7 @@ namespace Rebellion.Game.Results
         public SpaceCombatSideOutcome DefenderOutcome { get; set; }
         public List<ShipDamageResult> ShipDamage { get; set; } = new List<ShipDamageResult>();
         public List<FighterLossResult> FighterLosses { get; set; } = new List<FighterLossResult>();
+        public List<FighterRecoveryResult> FighterRecovery { get; set; } = new();
         public List<CombatUnitSnapshot> AttackingUnits { get; set; } =
             new List<CombatUnitSnapshot>();
         public List<CombatUnitSnapshot> DefendingUnits { get; set; } =

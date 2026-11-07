@@ -346,6 +346,16 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Commits manual combat and routes its results before resuming the suspended tick.
+        /// </summary>
+        /// <param name="session">The completed tactical encounter.</param>
+        /// <returns>The routed battle summary.</returns>
+        public SpaceCombatResult CompleteTacticalCombat(TacticalCombatSession session)
+        {
+            return CompleteCombatResolution(_spaceCombatCommands.CompleteTacticalCombat(session));
+        }
+
+        /// <summary>
         /// Resolves a pending retreat and routes its results before resuming ticks.
         /// </summary>
         /// <param name="retreatingFactionInstanceId">The faction withdrawing from combat.</param>

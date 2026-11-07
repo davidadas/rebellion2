@@ -245,6 +245,7 @@ namespace Rebellion.Gameplay
             );
             GetService<HeadquartersObserver>().ReconcileState();
             _gameData.BindOfficerDefinitions(GetPersistedOfficers());
+            _gameData.BindCapitalShipDefinitions(Game.GetSceneNodesByType<CapitalShip>());
             GetService<JediCommands>().ReconcileDiscoveryState();
 
             IManufacturable[] templates = CopyTemplates(_gameData.Buildings)
@@ -255,6 +256,7 @@ namespace Rebellion.Gameplay
                 .Concat(CopyTemplates(_gameData.SpecialForces))
                 .ToArray();
 
+            _gameData.BindCapitalShipDefinitions(templates.OfType<CapitalShip>());
             foreach (Faction faction in Game.GetFactions())
                 faction.RebuildResearchCatalog(templates);
 

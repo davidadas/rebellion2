@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Rebellion.Input;
 using UnityEngine;
@@ -10,10 +11,14 @@ public sealed class InputManager : MonoBehaviour
 {
     private PlayerInputActions _actions;
 
+    private bool _bindingShortcutsSuppressed;
+    private int _shortcutSuppressionCount;
+
     /// <summary>
     /// Gets whether application shortcuts should ignore input while another UI interaction owns it.
     /// </summary>
-    internal bool AreApplicationShortcutsSuppressed { get; private set; }
+    internal bool AreApplicationShortcutsSuppressed =>
+        _bindingShortcutsSuppressed || _shortcutSuppressionCount > 0;
 
     /// <summary>
     /// Gets the generated input action wrapper.
@@ -27,6 +32,42 @@ public sealed class InputManager : MonoBehaviour
     /// Gets the generated input action asset.
     /// </summary>
     public InputActionAsset Asset => Actions.asset;
+
+    /// <summary>
+    /// Reserves application shortcut input for an independently focused presentation.
+    /// Overlapping reservations remain active until every owner releases its lease.
+    /// </summary>
+    /// <returns>The idempotent suppression lease.</returns>
+    internal IDisposable SuppressApplicationShortcuts()
+    {
+        _shortcutSuppressionCount++;
+        return new ShortcutSuppression(this);
+    }
+
+    /// <summary>
+    /// Owns one application-shortcut suppression reservation.
+    /// </summary>
+    private sealed class ShortcutSuppression : IDisposable
+    {
+        private InputManager owner;
+
+        /// <summary>
+        /// Captures the manager that owns this reservation.
+        /// </summary>
+        /// <param name="owner">The input manager.</param>
+        internal ShortcutSuppression(InputManager owner) => this.owner = owner;
+
+        /// <summary>
+        /// Releases this reservation exactly once.
+        /// </summary>
+        public void Dispose()
+        {
+            if (ReferenceEquals(owner, null))
+                return;
+            owner._shortcutSuppressionCount--;
+            owner = null;
+        }
+    }
 
     /// <summary>
     /// Captures the currently held, user-configured strategy selection modifiers.
@@ -58,7 +99,7 @@ public sealed class InputManager : MonoBehaviour
     /// <param name="suppressed">Whether application shortcuts should ignore input.</param>
     internal void SetApplicationShortcutsSuppressed(bool suppressed)
     {
-        AreApplicationShortcutsSuppressed = suppressed;
+        _bindingShortcutsSuppressed = suppressed;
     }
 
     /// <summary>

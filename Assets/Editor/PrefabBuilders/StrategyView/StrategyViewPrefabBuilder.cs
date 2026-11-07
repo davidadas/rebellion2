@@ -607,6 +607,7 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void BuildStrategyViewRootPrefab()
     {
+        TacticalCombatPrefabBuilder.Rebuild();
         Directory.CreateDirectory(Path.GetDirectoryName(_prefabPath));
         _previewThemes = null;
         _previewThemeId = null;
@@ -944,6 +945,13 @@ public static class StrategyViewPrefabBuilder
         FillParent(briefingConfirmationRect);
         briefingSkipConfirmation.transform.SetAsLastSibling();
 
+        AssignReference(
+            controller,
+            "tacticalCombatPrefab",
+            AssetDatabase
+                .LoadAssetAtPath<GameObject>(TacticalCombatPrefabBuilder.PrefabPath)
+                .GetComponent<TacticalCombatView>()
+        );
         AssignReference(controller, "contentGroup", rootContentGroup);
         AssignReference(controller, "strategySurface", surfaceRect);
         AssignReference(controller, "strategySurfaceImage", surfaceImage);

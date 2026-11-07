@@ -1142,7 +1142,7 @@ namespace Rebellion.Gameplay
             internal double CurrentShields { get; private set; }
             internal override ISceneNode Node => Ship;
             internal override bool IsAlive => CurrentHull > 0;
-            internal override bool CanWithdrawIndependently => Ship.Hyperdrive > 0;
+            internal override bool CanWithdrawIndependently => Ship.GetOperationalHyperdrive() > 0;
             internal override bool IsStarfighter => false;
             internal override double RemainingDurability => CurrentHull + CurrentShields;
             internal override bool IsAttackDelayed => _attackDelay > 0;
@@ -1163,12 +1163,16 @@ namespace Rebellion.Gameplay
                 }
             }
             internal override double ClosingSpeed =>
-                _movementDelay > 0 ? 0 : Math.Max(Ship.SublightSpeed, 0);
+                _movementDelay > 0
+                    ? 0
+                    : Math.Max(Ship.SublightSpeed * (1 - Ship.SystemDamage.Engines * 0.25), 0);
             internal override double ManeuverRate =>
                 _movementDelay > 0
                     ? MinimumManeuverRatio
                     : Math.Max(
-                        Ship.SublightSpeed + Ship.Maneuverability + _commandBonus,
+                        Math.Max(Ship.SublightSpeed * (1 - Ship.SystemDamage.Engines * 0.25), 0)
+                            + Ship.Maneuverability
+                            + _commandBonus,
                         MinimumManeuverRatio
                     );
 
@@ -1562,7 +1566,12 @@ namespace Rebellion.Gameplay
                 double condition = CurrentHull / _maximumHull;
                 CurrentShields = Math.Min(
                     _maximumShields,
-                    CurrentShields + Math.Max(Ship.ShieldRechargeRate, 0) * condition
+                    CurrentShields
+                        + Math.Max(
+                            Ship.ShieldRechargeRate * condition
+                                - Ship.ShieldRechargeRate * Ship.SystemDamage.Shields * 0.25,
+                            0
+                        )
                 );
             }
 
@@ -1572,7 +1581,11 @@ namespace Rebellion.Gameplay
             private void RechargeWeapons()
             {
                 double condition = CurrentHull / _maximumHull;
-                double recharge = (Math.Max(Ship.WeaponRecharge, 0) + _commandBonus) * condition;
+                double recharge = Math.Max(
+                    (Math.Max(Ship.WeaponRecharge, 0) + _commandBonus) * condition
+                        - Ship.WeaponRecharge * Ship.SystemDamage.Weapons * 0.25,
+                    0
+                );
                 int queuedArcCount = _rechargeQueue.Count;
                 for (int arcIndex = 0; arcIndex < queuedArcCount && recharge > 0; arcIndex++)
                 {

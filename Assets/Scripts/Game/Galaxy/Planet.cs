@@ -1322,7 +1322,8 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Returns true if this planet can accept the child. Destroyed planets reject manufactured
         /// surface units. Fleets and Missions are always
-        /// accepted. Uncolonized planets accept regiments and facilities under construction;
+        /// accepted. Starfighters may remain at a surviving planet independently of its surface
+        /// ownership or colonization. Uncolonized planets accept regiments and facilities under construction;
         /// an owned uncolonized planet with a stationed friendly unit also accepts its owner's
         /// other surface units. Colonized planets accept surface children when ownership and
         /// capacity rules permit them.
@@ -1349,9 +1350,8 @@ namespace Rebellion.Game.Galaxy
                 case SpecialForces specialForces:
                     return CanHostOwnedUnits()
                         && specialForces.GetOwnerInstanceID() == GetOwnerInstanceID();
-                case Starfighter starfighter:
-                    return CanHostOwnedUnits()
-                        && starfighter.GetOwnerInstanceID() == GetOwnerInstanceID();
+                case Starfighter _:
+                    return true;
                 case Building building:
                     return (
                             IsColonized

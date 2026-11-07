@@ -933,23 +933,27 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
-        public void AddStarfighter_InvalidOwner_ThrowsException()
+        public void AddChild_OpposingStarfighterOwner_PreservesBothOwners()
         {
-            Starfighter starfighter = new Starfighter { OwnerInstanceID = "INVALID" };
+            Starfighter starfighter = new Starfighter { OwnerInstanceID = "FNEMP1" };
 
-            Assert.Throws<SceneAccessException>(
-                () => _planet.AddChild(starfighter),
-                "Adding a starfighter with a mismatched OwnerInstanceID should throw a SceneAccessException."
-            );
+            _planet.AddChild(starfighter);
+
+            CollectionAssert.Contains(_planet.GetChildren<Starfighter>(), starfighter);
+            Assert.AreEqual("FNALL1", _planet.OwnerInstanceID);
+            Assert.AreEqual("FNEMP1", starfighter.OwnerInstanceID);
         }
 
         [Test]
-        public void AddStarfighter_UncolonizedPlanet_ThrowsException()
+        public void AddChild_UncolonizedPlanet_RetainsStarfighterWithoutColonizing()
         {
             _planet.IsColonized = false;
             Starfighter starfighter = new Starfighter { OwnerInstanceID = "FNALL1" };
 
-            Assert.Throws<SceneAccessException>(() => _planet.AddChild(starfighter));
+            _planet.AddChild(starfighter);
+
+            CollectionAssert.Contains(_planet.GetChildren<Starfighter>(), starfighter);
+            Assert.IsFalse(_planet.IsColonized);
         }
 
         [Test]

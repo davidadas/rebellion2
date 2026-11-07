@@ -1079,14 +1079,14 @@ namespace Rebellion.Gameplay
             return unit switch
             {
                 Starfighter fighter => fighter.Hyperdrive > 0,
-                CapitalShip capitalShip => capitalShip.Hyperdrive > 0,
+                CapitalShip capitalShip => capitalShip.GetOperationalHyperdrive() > 0,
                 Fleet fleet => fleet
                     .GetChildren<CapitalShip>()
                     .Any(ship =>
                         ship.ManufacturingStatus == ManufacturingStatus.Complete
                         && ship.Movement == null
                         && ship.CurrentHullStrength > 0
-                        && ship.Hyperdrive > 0
+                        && ship.GetOperationalHyperdrive() > 0
                     ),
                 _ => unit != null,
             };
@@ -1782,7 +1782,7 @@ namespace Rebellion.Gameplay
                 if (completedShips.Count > 0)
                 {
                     return completedShips
-                        .Select(ship => ship.Hyperdrive)
+                        .Select(ship => ship.GetOperationalHyperdrive())
                         .Where(hyperdrive => hyperdrive > 0)
                         .DefaultIfEmpty(1)
                         .Max();
@@ -1790,7 +1790,7 @@ namespace Rebellion.Gameplay
             }
 
             if (unit is CapitalShip capitalShip)
-                return Math.Max(capitalShip.Hyperdrive, 1);
+                return Math.Max(capitalShip.GetOperationalHyperdrive(), 1);
 
             if (unit is Starfighter starfighter && starfighter.Hyperdrive > 0)
                 return starfighter.Hyperdrive;

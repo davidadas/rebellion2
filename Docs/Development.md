@@ -55,6 +55,36 @@ BUILD_TARGET=StandaloneWindows64 BUILD_PLAYER_PATH=build/rebellion2.exe ./build.
 Player builds generate the UI through `StandalonePlayerBuild.Build` and verify that development
 content under `Assets/Content/` was not embedded in the player.
 
+## Tactical space combat
+
+The battle alert opens manual combat when the selected content pack supplies tactical definitions
+for both factions and every participating unit. The campaign stays suspended while the encounter
+runs. Closing a completed encounter applies its losses, component damage, fighter recovery, and
+withdrawals through the shared combat-result pipeline. Surviving fighters without a carrier may
+remain at the encounter planet without changing its surface ownership or colonization.
+
+Select friendly groups with a click or drag. Right-click an enemy to designate a target, or show a
+navigation ring and right-click one of its markers to plot movement. Hold Shift to add or remove
+queued targets and waypoints. Drag with the right mouse button to orbit, drag with the middle button
+to pan, and scroll to zoom. Space or Escape pauses the battle; F focuses the selection and G groups
+selected units. Capital ships and starfighters form separate groups.
+
+`TacticalCombatSession` owns battle state and queued commands independently of Unity objects.
+`TacticalCombatFactory` captures campaign participants and the pack's shared definitions at entry.
+`TacticalCombatController` translates screen input, and `TacticalCombatRenderer` owns instantiated
+models, effects, and render targets. Required media finishes loading before the session advances.
+The shared content caches retain source assets; disposing the encounter releases its presentation
+instances and audio handles.
+
+A pack selects its definition XML with `TacticalCombatDefinitionsPath` in `pack.xml`. It contains
+faction deployment, unit geometry and model detail paths, fighter images, environments, sound
+variants, impact sequences, retreat settings, and component-repair intervals. Paths resolve through
+the pack's existing file resolver. Keep these assets in the private media checkout and copy them
+into the ignored development content directory before rebuilding the UI or running tests.
+
+Capital-ship component damage and its campaign repair timer are saved per ship. Shared tactical
+geometry and media references remain pack data. Older saves load with an undamaged component record.
+
 ## Content-pack editor and packaging
 
 Windows and Linux builds include `rebellion2-editor` beside `rebellion2`. The macOS editor is a

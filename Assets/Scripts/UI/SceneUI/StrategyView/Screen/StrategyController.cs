@@ -94,6 +94,12 @@ public sealed class StrategyController
     [SerializeField]
     private ConfirmationDialogView briefingSkipConfirmation;
 
+    [SerializeField]
+    private TacticalCombatView tacticalCombatPrefab;
+
+    private TacticalCombatController tacticalCombatController;
+    private bool tacticalCombatStarting;
+    private IDisposable tacticalShortcutSuppression;
     private CancelStack cancelStack;
     private GameManager gameManager;
     private GameSession session;
@@ -751,7 +757,9 @@ public sealed class StrategyController
             strategyWindowManager,
             windowPlacementController.GetBattleAlertWindowPosition,
             CloseWindow,
-            MarkDirty
+            MarkDirty,
+            () => session.GetService<SpaceCombatCommands>().CanTakeCommand,
+            BeginTacticalCombatAsync
         );
         confirmDialogWindowController = new ConfirmDialogWindowController(
             () => uiContext,
@@ -1059,6 +1067,10 @@ public sealed class StrategyController
     /// </summary>
     private void OnDestroy()
     {
+        tacticalShortcutSuppression?.Dispose();
+        tacticalShortcutSuppression = null;
+        tacticalCombatController?.Dispose();
+        tacticalCombatController = null;
         briefingController?.Dispose();
         if (_appBootstrap != null)
         {
@@ -1100,6 +1112,13 @@ public sealed class StrategyController
         if (gameManager == null || !contentReady || runtime?.GetActiveGameSession() != session)
             return;
 
+        if (tacticalCombatController != null)
+        {
+            tacticalCombatController.Advance(Time.unscaledDeltaTime);
+            return;
+        }
+        if (tacticalCombatStarting)
+            return;
         CaptureChangedWindows();
 
         if (briefingActive)
@@ -3985,11 +4004,110 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Prepares an interactive encounter while preserving its pending campaign decision.
+    /// </summary>
+    /// <param name="origin">The report window that will display the completed result.</param>
+    private async void BeginTacticalCombatAsync(BattleAlertWindowView origin)
+    {
+        if (tacticalCombatController != null || tacticalCombatStarting)
+            return;
+        tacticalCombatStarting = true;
+        TacticalCombatSession battle = null;
+        TacticalCombatController controller = null;
+        SpaceCombatCommands commands = session.GetService<SpaceCombatCommands>();
+        try
+        {
+            if (tacticalCombatPrefab == null)
+                throw new MissingReferenceException(
+                    "The strategy screen is missing its tactical combat prefab."
+                );
+            battle = commands.BeginTacticalCombat();
+            SetTacticalInteraction(true);
+            TacticalCombatView view = Instantiate(tacticalCombatPrefab);
+            controller = new TacticalCombatController(
+                battle,
+                view,
+                completed => CompleteTacticalCombat(origin, completed),
+                presentationCancellationToken
+            );
+            tacticalCombatController = controller;
+            await controller.PrepareAsync(
+                AppBootstrap.Instance.GetContentModelCache(),
+                AppBootstrap.Instance.GetContentAssets()
+            );
+        }
+        catch (Exception exception)
+        {
+            controller?.Dispose();
+            tacticalCombatController = null;
+            if (battle != null)
+                commands.CancelTacticalPreparation(battle);
+            if (this != null)
+                SetTacticalInteraction(false);
+            if (exception is not OperationCanceledException)
+                Debug.LogException(exception);
+        }
+        finally
+        {
+            tacticalCombatStarting = false;
+        }
+    }
+
+    /// <summary>
+    /// Commits manual losses and restores the campaign's originating battle report.
+    /// </summary>
+    /// <param name="origin">The originating report view.</param>
+    /// <param name="battle">The completed tactical encounter.</param>
+    private void CompleteTacticalCombat(BattleAlertWindowView origin, TacticalCombatSession battle)
+    {
+        SpaceCombatResult result = session.Tick.CompleteTacticalCombat(battle);
+        tacticalCombatController.Dispose();
+        tacticalCombatController = null;
+        SetTacticalInteraction(false);
+        battleAlertWindowController.ShowTacticalResult(origin, result);
+        MarkDirty();
+    }
+
+    /// <summary>
+    /// Suspends strategy-specific input while the independently authored battle canvas owns focus.
+    /// </summary>
+    /// <param name="active">Whether tactical presentation owns input.</param>
+    private void SetTacticalInteraction(bool active)
+    {
+        contentGroup.interactable = !active;
+        contentGroup.blocksRaycasts = !active;
+        if (active)
+        {
+            tacticalShortcutSuppression ??= AppBootstrap
+                .Instance.GetInputManager()
+                .SuppressApplicationShortcuts();
+            _strategyInputActionMap?.Disable();
+            UnregisterCancelHandlers();
+            targetingController?.Cancel();
+            contextMenuController?.Cancel();
+        }
+        else
+        {
+            tacticalShortcutSuppression?.Dispose();
+            tacticalShortcutSuppression = null;
+            if (presentationActive)
+            {
+                _strategyInputActionMap?.Enable();
+                RegisterCancelHandlers();
+            }
+        }
+    }
+
+    /// <summary>
     /// Toggles the Options menu.
     /// </summary>
     private void HandleToggleOptions()
     {
-        if (_optionsMenuController == null)
+        if (
+            _optionsMenuController == null
+            || tacticalCombatController != null
+            || tacticalCombatStarting
+        )
             return;
 
         // The tutorial uses Escape to open its confirmation dialog.

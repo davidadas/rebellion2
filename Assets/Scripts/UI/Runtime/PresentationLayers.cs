@@ -7,6 +7,9 @@ public static class PresentationLayers
     // The loading shuttle, its exhaust, and its isolated camera and lights.
     public const int LoadingScreen = 26;
 
+    // Tactical models, fighter billboards, and the isolated battle camera.
+    public const int TacticalCombat = 25;
+
     // The main-menu planetary backdrop and its isolated camera and sun.
     public const int MainMenuPlanet = 31;
 }

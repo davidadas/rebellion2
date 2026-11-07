@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
@@ -85,21 +84,34 @@ namespace Rebellion.Gameplay
             List<GameResult> results
         )
         {
+            HashSet<(string Planet, string Owner)> shipyards = null;
             foreach (CapitalShip ship in game.GetSceneNodesByType<CapitalShip>())
             {
+                bool damagedSystems = ship.SystemDamage.Total > 0;
+                if (!ship.IsDamaged())
+                    continue;
                 if (
-                    !ship.IsDamaged()
-                    || ship.ManufacturingStatus != ManufacturingStatus.Complete
+                    ship.ManufacturingStatus != ManufacturingStatus.Complete
                     || ((IMovable)ship).GetTransitMovement() != null
                 )
+                {
+                    ship.SystemDamage.RepairDueTick = 0;
+                    ship.SystemDamage.RepairInterval = 0;
                     continue;
-
+                }
+                shipyards ??= GetShipyards(game);
+                Planet planet = ship.GetParentOfType<Planet>();
+                bool atShipyard =
+                    planet != null
+                    && planet.OwnerInstanceID == ship.OwnerInstanceID
+                    && shipyards.Contains((planet.InstanceID, ship.OwnerInstanceID));
                 int before = ship.CurrentHullStrength;
-                int amount = IsAtFriendlyShipyard(ship)
-                    ? config.FastRepairAmount
-                    : config.NormalRepairAmount;
-                ship.RepairHull(amount);
-
+                if (damagedSystems)
+                    RepairSystems(game, ship, atShipyard);
+                if (ship.CurrentHullStrength < ship.MaxHullStrength)
+                    ship.RepairHull(
+                        atShipyard ? config.FastRepairAmount : config.NormalRepairAmount
+                    );
                 if (!ship.IsDamaged())
                 {
                     results.Add(
@@ -112,6 +124,54 @@ namespace Rebellion.Gameplay
                         }
                     );
                 }
+            }
+        }
+
+        /// <summary>
+        /// Indexes operational shipyards once for the tick's damaged ships.
+        /// </summary>
+        /// <param name="game">The active campaign graph.</param>
+        /// <returns>The planet and owner pairs that provide accelerated repair.</returns>
+        private static HashSet<(string Planet, string Owner)> GetShipyards(GameRoot game)
+        {
+            HashSet<(string Planet, string Owner)> result = new();
+            foreach (Building building in game.GetSceneNodesByType<Building>())
+            {
+                if (
+                    building.BuildingType == BuildingType.Shipyard
+                    && building.ManufacturingStatus == ManufacturingStatus.Complete
+                    && building.Movement == null
+                    && building.GetParent() is Planet planet
+                )
+                    result.Add((planet.InstanceID, building.OwnerInstanceID));
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Advances the ship's persistent repair timer and attempts one weighted component repair.
+        /// </summary>
+        /// <param name="game">The active campaign and random stream.</param>
+        /// <param name="ship">The damaged ship.</param>
+        /// <param name="atShipyard">Whether an operational friendly shipyard is available.</param>
+        private static void RepairSystems(GameRoot game, CapitalShip ship, bool atShipyard)
+        {
+            CapitalShipSystemDamage damage = ship.SystemDamage;
+            int interval = ship.GetSystemRepairInterval(atShipyard);
+            if (damage.RepairDueTick == 0 || damage.RepairInterval != interval)
+            {
+                damage.RepairInterval = interval;
+                damage.RepairDueTick = game.CurrentTick + interval;
+            }
+            if (game.CurrentTick < damage.RepairDueTick)
+                return;
+            damage.RepairDueTick = game.CurrentTick + interval;
+            if (game.Random.NextInt(1, 101) <= ship.DamageControl)
+                damage.RepairComponent(game.Random.NextInt(0, damage.Total));
+            if (damage.Total == 0)
+            {
+                damage.RepairDueTick = 0;
+                damage.RepairInterval = 0;
             }
         }
 
@@ -167,26 +227,6 @@ namespace Rebellion.Gameplay
         {
             Planet planet = unit.GetParentOfType<Planet>();
             return planet != null && planet.OwnerInstanceID == unit.OwnerInstanceID;
-        }
-
-        /// <summary>
-        /// Returns true if the ship is at a friendly planet with an operational orbital shipyard.
-        /// </summary>
-        /// <param name="ship">The capital ship to check.</param>
-        /// <returns>True when a friendly operational shipyard can accelerate repairs.</returns>
-        private static bool IsAtFriendlyShipyard(CapitalShip ship)
-        {
-            Planet planet = ship.GetParentOfType<Planet>();
-            return planet != null
-                && planet.OwnerInstanceID == ship.OwnerInstanceID
-                && planet
-                    .GetChildren<Building>()
-                    .Any(building =>
-                        building.OwnerInstanceID == ship.OwnerInstanceID
-                        && building.BuildingType == BuildingType.Shipyard
-                        && building.ManufacturingStatus == ManufacturingStatus.Complete
-                        && building.Movement == null
-                    );
         }
     }
 }
