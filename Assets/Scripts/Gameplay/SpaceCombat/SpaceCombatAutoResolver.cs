@@ -1130,7 +1130,6 @@ namespace Rebellion.Gameplay
             private readonly double _commandBonus;
             private readonly double _maximumHull;
             private readonly double _maximumShields;
-            private readonly double _weaponDamagePerStrength;
             private readonly double[] _maximumArcCharge = new double[
                 CapitalShip.PrimaryWeaponArcs.Count
             ];
@@ -1191,7 +1190,6 @@ namespace Rebellion.Gameplay
                 _commandBonus = Math.Max(commandBonus, 0);
                 _maximumHull = Math.Max(ship.MaxHullStrength, 1);
                 _maximumShields = Math.Max(ship.MaxShieldStrength, 0);
-                _weaponDamagePerStrength = Math.Max(config.AutoResolveWeaponDamagePerStrength, 0);
                 _turbolasers = GetWeaponValues(ship, PrimaryWeaponType.Turbolaser);
                 _laserCannons = GetWeaponValues(ship, PrimaryWeaponType.LaserCannon);
                 _ionCannons = GetWeaponValues(ship, PrimaryWeaponType.IonCannon);
@@ -1225,23 +1223,42 @@ namespace Rebellion.Gameplay
                 if (scansForTarget)
                     ScanForArcTargets(targets, engagementDistance);
 
-                double strongestDamage = 0;
-                int selectedArc = -1;
-                for (int arc = 0; arc < _currentArcCharge.Length; arc++)
+                double condition = CurrentHull / _maximumHull;
+                int firedArcMask = 0;
+                for (
+                    int firedArcCount = 0;
+                    firedArcCount < _currentArcCharge.Length;
+                    firedArcCount++
+                )
                 {
-                    if (_currentArcCharge[arc] < _maximumArcCharge[arc])
-                        continue;
+                    double strongestDamage = 0;
+                    int selectedArc = -1;
+                    for (int arc = 0; arc < _currentArcCharge.Length; arc++)
+                    {
+                        if ((firedArcMask & (1 << arc)) != 0)
+                            continue;
 
-                    double candidateDamage = GetQueuedArcDamage(arc, engagementDistance);
-                    if (candidateDamage <= strongestDamage)
-                        continue;
+                        if (_currentArcCharge[arc] < _maximumArcCharge[arc])
+                            continue;
 
-                    strongestDamage = candidateDamage;
-                    selectedArc = arc;
+                        double candidateDamage = GetQueuedArcDamage(
+                            arc,
+                            engagementDistance,
+                            condition
+                        );
+                        if (candidateDamage <= strongestDamage)
+                            continue;
+
+                        strongestDamage = candidateDamage;
+                        selectedArc = arc;
+                    }
+
+                    if (selectedArc < 0)
+                        break;
+
+                    firedArcMask |= 1 << selectedArc;
+                    QueueArcAttacks(selectedArc, engagementDistance, condition, pendingDamage);
                 }
-
-                if (selectedArc >= 0)
-                    QueueArcAttacks(selectedArc, engagementDistance, pendingDamage);
             }
 
             /// <summary>
@@ -1254,6 +1271,7 @@ namespace Rebellion.Gameplay
                 double engagementDistance
             )
             {
+                double condition = CurrentHull / _maximumHull;
                 for (int arc = 0; arc < _currentArcCharge.Length; arc++)
                 {
                     if (_currentArcCharge[arc] < _maximumArcCharge[arc])
@@ -1287,7 +1305,7 @@ namespace Rebellion.Gameplay
                                 )
                                 * GetTargetTypeMultiplier(weaponType, candidate.IsStarfighter)
                                 * maneuverMultiplier
-                                * _weaponDamagePerStrength;
+                                * condition;
                             if (candidateDamage <= _arcTargetDamage[arc, weaponIndex])
                                 continue;
 
@@ -1303,8 +1321,9 @@ namespace Rebellion.Gameplay
             /// </summary>
             /// <param name="arc">The zero-based firing arc.</param>
             /// <param name="startingDistance">The configured initial separation.</param>
+            /// <param name="condition">The ship's current hull condition.</param>
             /// <returns>The arc's combined pending damage.</returns>
-            private double GetQueuedArcDamage(int arc, double startingDistance)
+            private double GetQueuedArcDamage(int arc, double startingDistance, double condition)
             {
                 double damage = 0;
                 for (int weaponIndex = 0; weaponIndex < _weaponTypes.Length; weaponIndex++)
@@ -1322,7 +1341,7 @@ namespace Rebellion.Gameplay
                         )
                         * GetTargetTypeMultiplier(_weaponTypes[weaponIndex], target.IsStarfighter)
                         * GetManeuverMultiplier(target)
-                        * _weaponDamagePerStrength;
+                        * condition;
                 }
 
                 return damage;
@@ -1333,10 +1352,12 @@ namespace Rebellion.Gameplay
             /// </summary>
             /// <param name="arc">The zero-based firing arc.</param>
             /// <param name="startingDistance">The configured initial separation.</param>
+            /// <param name="condition">The ship's current hull condition.</param>
             /// <param name="pendingDamage">Damage grouped by tactical target.</param>
             private void QueueArcAttacks(
                 int arc,
                 double startingDistance,
+                double condition,
                 IDictionary<TacticalUnit, PendingDamage> pendingDamage
             )
             {
@@ -1360,7 +1381,7 @@ namespace Rebellion.Gameplay
                         weaponStrength
                         * GetTargetTypeMultiplier(_weaponTypes[weaponIndex], target.IsStarfighter)
                         * GetManeuverMultiplier(target)
-                        * _weaponDamagePerStrength;
+                        * condition;
                     if (damage <= 0)
                         continue;
 
@@ -1385,9 +1406,7 @@ namespace Rebellion.Gameplay
             internal override double GetEffectiveness(bool targetsFighters)
             {
                 double condition = CurrentHull / _maximumHull;
-                return GetStrongestArcStrength(targetsFighters)
-                    * condition
-                    * _weaponDamagePerStrength;
+                return GetStrongestArcStrength(targetsFighters) * condition;
             }
 
             /// <summary>
@@ -1553,7 +1572,7 @@ namespace Rebellion.Gameplay
             private void RechargeWeapons()
             {
                 double condition = CurrentHull / _maximumHull;
-                double recharge = Math.Max(Ship.WeaponRecharge, 0) * condition;
+                double recharge = (Math.Max(Ship.WeaponRecharge, 0) + _commandBonus) * condition;
                 int queuedArcCount = _rechargeQueue.Count;
                 for (int arcIndex = 0; arcIndex < queuedArcCount && recharge > 0; arcIndex++)
                 {
@@ -1645,14 +1664,11 @@ namespace Rebellion.Gameplay
             /// <returns>The target-specific damage multiplier.</returns>
             private double GetTargetTypeMultiplier(PrimaryWeaponType type, bool targetsFighters)
             {
-                if (type == PrimaryWeaponType.LaserCannon && !targetsFighters)
-                    return _laserCannonCapitalDamageMultiplier;
-                if (
-                    targetsFighters
-                    && type is PrimaryWeaponType.IonCannon or PrimaryWeaponType.Turbolaser
-                )
-                    return 0.5;
-                return 1;
+                return SpaceCombatStrengthCalculator.GetPrimaryWeaponTargetMultiplier(
+                    type,
+                    targetsFighters,
+                    _laserCannonCapitalDamageMultiplier
+                );
             }
 
             /// <summary>
