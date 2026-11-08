@@ -1777,15 +1777,16 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Calculates a movement group's common arrival time, preserving unfinished fighter
-        /// legs and existing continuations.
+        /// Calculates a movement group's common arrival time without discarding unfinished travel.
         /// </summary>
         /// <param name="units">The in-transit members of one movement group.</param>
         /// <param name="destination">The new destination planet.</param>
+        /// <param name="previousDestination">The assigned planet before its receiving container moved, when known.</param>
         /// <returns>The longest member duration after applying the group's travel modifier.</returns>
         internal int CalculateRetargetedGroupTransitTicks(
             IReadOnlyList<IMovable> units,
-            Planet destination
+            Planet destination,
+            Planet previousDestination = null
         )
         {
             if (units == null || units.Count == 0)
@@ -1796,50 +1797,51 @@ namespace Rebellion.Gameplay
             foreach (IMovable unit in units)
             {
                 if (unit?.Movement == null)
-                {
                     throw new InvalidOperationException(
                         "Only in-transit units can be included in a retargeted movement group."
                     );
-                }
-
                 MovementState movement = unit.Movement;
-                Planet legDestination =
-                    unit is Starfighter || movement.NextLeg != null
-                        ? _game.GetSceneNodeByInstanceID<Planet>(
-                            movement.DestinationPlanetInstanceID
-                        )
-                        : null;
-                Point? legEndpoint =
-                    movement.NextLeg?.OriginPosition ?? legDestination?.GetPosition();
-                int transitTicks;
-                if (legEndpoint.HasValue)
-                {
-                    int onwardTicks =
-                        legEndpoint.Value == destination.GetPosition()
-                            ? 0
-                            : CalculateTransitTicks(
-                                unit,
-                                legEndpoint.Value,
-                                legDestination,
-                                destination,
-                                personnelTravelTimePercent
-                            );
-                    transitTicks = movement.TransitTicks - movement.TicksElapsed + onwardTicks;
-                }
-                else
-                {
-                    transitTicks = CalculateTransitTicks(
-                        unit,
-                        movement.CurrentPosition,
-                        destination,
-                        sameSector: false,
-                        personnelTravelTimePercent: personnelTravelTimePercent
-                    );
-                }
+                Planet legDestination = GetTransitLegDestination(
+                    movement,
+                    previousDestination
+                        ?? RequireDestinationPlanet(unit.GetParent() as ContainerNode)
+                );
+                Point endpoint = movement.NextLeg?.OriginPosition ?? legDestination.GetPosition();
+                int onwardTicks =
+                    endpoint == destination.GetPosition()
+                        ? 0
+                        : CalculateTransitTicks(
+                            unit,
+                            endpoint,
+                            legDestination,
+                            destination,
+                            personnelTravelTimePercent
+                        );
+                int transitTicks =
+                    Math.Max(0, movement.TransitTicks - movement.TicksElapsed) + onwardTicks;
                 groupTransitTicks = Math.Max(groupTransitTicks, transitTicks);
             }
-
             return groupTransitTicks;
+        }
+
+        /// <summary>
+        /// Resolves a running leg's endpoint through the existing instance index, using its
+        /// assigned planet for movement saved without an explicit endpoint.
+        /// </summary>
+        /// <param name="movement">The active journey.</param>
+        /// <param name="assignedDestination">The receiving container's planet before relocation.</param>
+        /// <returns>The planet at the end of the running leg.</returns>
+        internal Planet GetTransitLegDestination(MovementState movement, Planet assignedDestination)
+        {
+            return
+                movement.DestinationPlanetInstanceID != null
+                && _game.NodesByInstanceID.TryGetValue(
+                    movement.DestinationPlanetInstanceID,
+                    out ISceneNode node
+                )
+                && node is Planet planet
+                ? planet
+                : assignedDestination;
         }
 
         /// <summary>

@@ -19,8 +19,68 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class MovementObserverTests
     {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void HandleResults_CombatDestroyedCarrierWithInboundFighter_PreservesUnfinishedLeg(
+            bool continuedJourney
+        )
+        {
+            var scene = BuildRemovedCarrierScene();
+            scene.game.Config.Movement.SameSectorMinTransitTicks = 5;
+            scene.carrier.StarfighterCapacity = 1;
+            Planet outboundDestination = new Planet
+            {
+                InstanceID = "outbound-destination",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 200,
+            };
+            scene.game.AttachNode(outboundDestination, scene.origin.GetParent());
+            Starfighter fighter = EntityFactory.CreateStarfighter("incoming-fighter", "empire");
+            fighter.Hyperdrive = 1;
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            scene.game.AttachNode(fighter, scene.fallback);
+            scene.movement.RequestMove(
+                fighter,
+                continuedJourney ? outboundDestination : scene.carrier
+            );
+            new MovementTickProcessor(scene.movement).ProcessTick(scene.game);
+            if (continuedJourney)
+                scene.movement.RedirectMovement(fighter, scene.carrier, new List<GameResult>());
+            MovementState movement = fighter.Movement;
+            MovementState before = movement.CreateCopy();
+            Planet legDestination = continuedJourney ? outboundDestination : scene.origin;
+            int onwardTicks = new MovementQueries(scene.game).CalculateTransitTicks(
+                fighter,
+                legDestination,
+                scene.fallback
+            );
+            scene.game.DeleteNode(scene.carrier);
+
+            scene.resultBus.Publish(
+                new GameObjectDestroyedResult
+                {
+                    DestroyedObject = scene.carrier,
+                    Context = scene.origin,
+                    Reason = UnitDestructionReason.Combat,
+                }
+            );
+
+            Assert.AreSame(movement, fighter.Movement);
+            Assert.AreSame(scene.fallback, fighter.GetParent());
+            Assert.AreEqual(before.CurrentPosition, movement.CurrentPosition);
+            Assert.AreEqual(before.TicksElapsed, movement.TicksElapsed);
+            Assert.AreEqual(before.PreviousLocationInstanceID, movement.PreviousLocationInstanceID);
+            Assert.AreEqual(legDestination.InstanceID, movement.DestinationPlanetInstanceID);
+            Assert.AreEqual(legDestination.GetPosition(), movement.NextLeg.OriginPosition);
+            Assert.AreEqual(
+                before.TransitTicks - before.TicksElapsed + onwardTicks,
+                movement.TicksRemaining()
+            );
+        }
+
         [Test]
-        public void HandleResults_RegimentAndSpecialForcesInbound_RerouteFromCurrentPosition()
+        public void HandleResults_RegimentAndSpecialForcesInbound_PreserveUnfinishedTravel()
         {
             (
                 GameRoot game,
@@ -83,11 +143,19 @@ namespace Rebellion.Tests.Gameplay
             foreach (IMovable unit in units)
             {
                 Assert.AreSame(scene.origin, unit.GetParent());
-                Assert.AreEqual(currentPositions[unit], unit.Movement.OriginPosition);
+                Assert.AreEqual(scene.origin.GetPosition(), unit.Movement.OriginPosition);
+                Assert.AreEqual(
+                    scene.blockadedDestination.GetPosition(),
+                    unit.Movement.NextLeg.OriginPosition
+                );
+                Assert.AreEqual(
+                    scene.origin.InstanceID,
+                    unit.Movement.NextLeg.DestinationPlanetInstanceID
+                );
                 Assert.AreEqual(currentPositions[unit], unit.Movement.CurrentPosition);
                 Assert.AreEqual(movementGroupIDs[unit], unit.Movement.MovementGroupID);
                 Assert.IsTrue(unit.Movement.ResolveEncounterOnArrival);
-                Assert.AreEqual(0, unit.Movement.TicksElapsed);
+                Assert.AreEqual(1, unit.Movement.TicksElapsed);
             }
 
             CollectionAssert.AreEquivalent(

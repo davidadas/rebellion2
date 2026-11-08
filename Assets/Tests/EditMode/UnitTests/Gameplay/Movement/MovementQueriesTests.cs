@@ -20,6 +20,59 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class MovementQueriesTests
     {
+        [TestCase(false, false)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(true, true)]
+        public void TryEstimateRetargetedTransitTicks_InboundJourney_IncludesUnfinishedLeg(
+            bool legacyMovement,
+            bool fighter
+        )
+        {
+            var scene = BuildScene(TestConfig.Create());
+            IMovable unit = scene.officer;
+            if (fighter)
+            {
+                Starfighter starfighter = EntityFactory.CreateStarfighter(
+                    "incoming-fighter",
+                    "empire"
+                );
+                starfighter.Hyperdrive = 100;
+                starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
+                unit = starfighter;
+                scene.game.AttachNode(unit, scene.origin);
+            }
+            scene.game.MoveNode(unit, scene.destination);
+            unit.Movement = legacyMovement
+                ? SerializationHelper.Deserialize<MovementState>(
+                    "<MovementState><TransitTicks>20</TransitTicks><TicksElapsed>4</TicksElapsed>"
+                        + "<OriginPositionX>0</OriginPositionX><OriginPositionY>0</OriginPositionY>"
+                        + "<CurrentPositionX>20</CurrentPositionX><CurrentPositionY>20</CurrentPositionY></MovementState>"
+                )
+                : TestMovement.Create(
+                    transitTicks: 20,
+                    ticksElapsed: 4,
+                    originPosition: scene.origin.GetPosition(),
+                    currentPosition: new Point(20, 20),
+                    destinationPlanetInstanceID: scene.destination.InstanceID
+                );
+            int expectedTicks =
+                16 + scene.movement.CalculateTransitTicks(unit, scene.destination, scene.origin);
+
+            bool estimated = scene.movement.TryEstimateRetargetedTransitTicks(
+                unit,
+                scene.origin,
+                out int ticks
+            );
+
+            Assert.IsTrue(estimated);
+            Assert.AreEqual(expectedTicks, ticks);
+            Assert.AreEqual(4, unit.Movement.TicksElapsed);
+            Assert.IsNull(unit.Movement.NextLeg);
+            if (legacyMovement)
+                Assert.IsNull(unit.Movement.DestinationPlanetInstanceID);
+        }
+
         [TestCase(0)]
         [TestCase(1)]
         public void TryEstimateRetargetedTransitTicks_ContinuedFighterJourney_IncludesUnfinishedLeg(

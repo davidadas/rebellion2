@@ -64,4 +64,33 @@ public static class TestMovement
         movement.Advance(ticksElapsed - movement.TicksElapsed, position);
         movement.SetPosition(position);
     }
+
+    /// <summary>
+    /// Creates a test journey with a new duration from its current position, retaining its context.
+    /// </summary>
+    /// <param name="movement">The journey being arranged.</param>
+    /// <param name="transitTicks">The replacement duration.</param>
+    /// <returns>The arranged movement state.</returns>
+    public static MovementState WithDuration(MovementState movement, int transitTicks)
+    {
+        MovementState arranged = Create(
+            transitTicks: transitTicks,
+            originPosition: movement.CurrentPosition,
+            currentPosition: movement.CurrentPosition,
+            movementGroupID: movement.MovementGroupID,
+            sourceEventInstanceID: movement.SourceEventInstanceID,
+            resolveEncounterOnArrival: movement.ResolveEncounterOnArrival,
+            previousLocationInstanceID: movement.PreviousLocationInstanceID,
+            destinationPlanetInstanceID: movement.DestinationPlanetInstanceID,
+            isObservation: movement.IsObservation,
+            observedAtTick: movement.ObservedAtTick
+        );
+        if (movement.NextLeg != null)
+            arranged.Redirect(
+                movement.NextLeg.CreateCopy(),
+                movement.DestinationPlanetInstanceID,
+                movement.PreviousLocationInstanceID
+            );
+        return arranged;
+    }
 }

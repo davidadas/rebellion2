@@ -132,17 +132,7 @@ namespace Rebellion.Gameplay
                     continue;
                 }
 
-                if (unit is Starfighter)
-                {
-                    _commands.RedirectMovement(unit, destination, reactions);
-                    continue;
-                }
-
-                _game.MoveNode(unit, destination);
-                _commands.RetargetMovement(unit, destinationPlanet);
-                reactions.Add(
-                    new GameObjectEnrouteResult { GameObject = unit, Tick = _game.CurrentTick }
-                );
+                _commands.RedirectMovement(unit, destination, reactions);
             }
         }
 

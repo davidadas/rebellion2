@@ -103,47 +103,6 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
-        public void Retarget_ContinuedJourney_ReplacesRouteAndPreservesSharedMetadata()
-        {
-            MovementState movement = CreateContinuedJourney();
-            movement.MarkObserved(100);
-            Point position = movement.CurrentPosition;
-
-            movement.Retarget(new MovementLeg(7, position, "replacement"));
-
-            Assert.AreEqual(position, movement.OriginPosition);
-            Assert.AreEqual(position, movement.CurrentPosition);
-            Assert.AreEqual(0, movement.TicksElapsed);
-            Assert.AreEqual(7, movement.TicksRemaining());
-            Assert.AreEqual("replacement", movement.DestinationPlanetInstanceID);
-            Assert.IsNull(movement.NextLeg);
-            Assert.AreEqual("origin", movement.PreviousLocationInstanceID);
-            Assert.AreEqual("group", movement.MovementGroupID);
-            Assert.AreEqual("event", movement.SourceEventInstanceID);
-            Assert.IsTrue(movement.ResolveEncounterOnArrival);
-            Assert.IsTrue(movement.IsObservation);
-            Assert.AreEqual(100, movement.ObservedAtTick);
-        }
-
-        [Test]
-        public void RetimeCurrentLeg_ContinuedJourney_PreservesContinuationAndContext()
-        {
-            MovementState movement = CreateContinuedJourney();
-            MovementLeg continuation = movement.NextLeg;
-            Point position = movement.CurrentPosition;
-
-            movement.RetimeCurrentLeg(3);
-
-            Assert.AreEqual(position, movement.OriginPosition);
-            Assert.AreEqual(0, movement.TicksElapsed);
-            Assert.AreEqual(13, movement.TicksRemaining());
-            Assert.AreSame(continuation, movement.NextLeg);
-            Assert.AreEqual("first-stop", movement.DestinationPlanetInstanceID);
-            Assert.AreEqual("origin", movement.PreviousLocationInstanceID);
-            Assert.AreEqual("event", movement.SourceEventInstanceID);
-        }
-
-        [Test]
         public void CreateCopy_ObservedMovement_PreservesObservationTiming()
         {
             MovementState movement = new MovementState(

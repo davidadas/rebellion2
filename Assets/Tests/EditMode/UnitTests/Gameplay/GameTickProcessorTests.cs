@@ -297,7 +297,7 @@ namespace Rebellion.Tests.Gameplay
             _game.AttachNode(regiment, sourcePlanet);
             MovementCommands movement = _session.GetService<MovementCommands>();
             movement.RequestMove(regiment, blockadedPlanet);
-            regiment.Movement.RetimeCurrentLeg(10);
+            regiment.Movement = TestMovement.WithDuration(regiment.Movement, 10);
 
             _tick.ProcessTick();
 

@@ -28,7 +28,10 @@ namespace Rebellion.Tests.AI.Scorers
             var (context, waiting, _) = CreateWaitingScenario();
             AIMissionProposalScorer scorer = new();
             double sooner = scorer.Score(context, waiting);
-            waiting.Mission.Participants[0].Movement.RetimeCurrentLeg(130);
+            waiting.Mission.Participants[0].Movement = TestMovement.WithDuration(
+                waiting.Mission.Participants[0].Movement,
+                130
+            );
 
             double later = scorer.Score(context, waiting);
 
@@ -41,7 +44,10 @@ namespace Rebellion.Tests.AI.Scorers
         public void GetScoreUpperBound_InboundTeam_NeverUnderstatesWaitingScore(int arrivalTicks)
         {
             var (context, waiting, _) = CreateWaitingScenario();
-            waiting.Mission.Participants[0].Movement.RetimeCurrentLeg(arrivalTicks);
+            waiting.Mission.Participants[0].Movement = TestMovement.WithDuration(
+                waiting.Mission.Participants[0].Movement,
+                arrivalTicks
+            );
             AIMissionProposalScorer scorer = new();
 
             Assert.GreaterOrEqual(

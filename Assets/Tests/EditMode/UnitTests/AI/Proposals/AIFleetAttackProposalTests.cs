@@ -313,7 +313,7 @@ namespace Rebellion.Tests.AI.Fleets
         }
 
         [Test]
-        public void Execute_WithInboundShipArrivingAtTargetBeforeFleet_PreservesEarlierArrival()
+        public void Execute_WithInboundShipNearTarget_PreservesUnfinishedLeg()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             ConfigureMinimalAttackRequirements(game);
@@ -335,6 +335,8 @@ namespace Rebellion.Tests.AI.Fleets
             );
             inbound.Movement = TestMovement.Create(
                 transitTicks: 100,
+                ticksElapsed: 10,
+                originPosition: new Point(10000, 0),
                 currentPosition: new Point(9000, 0)
             );
             game.AttachNode(inbound, fleet);
@@ -347,11 +349,18 @@ namespace Rebellion.Tests.AI.Fleets
                 target
             );
 
+            int expectedTicks =
+                90 + context.MovementQueries.CalculateTransitTicks(inbound, staging, target);
+
             proposal.Execute(context);
 
             Assert.IsNotNull(fleet.Movement);
             Assert.IsNotNull(inbound.Movement);
-            Assert.Less(inbound.Movement.TransitTicks, fleet.Movement.TransitTicks);
+            Assert.AreEqual(100, inbound.Movement.TransitTicks);
+            Assert.AreEqual(10, inbound.Movement.TicksElapsed);
+            Assert.AreEqual(staging.GetPosition(), inbound.Movement.NextLeg.OriginPosition);
+            Assert.AreEqual(expectedTicks, inbound.Movement.TicksRemaining());
+            Assert.Greater(inbound.Movement.TicksRemaining(), fleet.Movement.TicksRemaining());
         }
 
         [Test]
@@ -481,8 +490,10 @@ namespace Rebellion.Tests.AI.Fleets
             Assert.IsNotNull(fleet.Movement);
             Assert.AreEqual(FleetOrderStatus.Readying, fleet.Order.Status);
             Assert.AreEqual(fleetTransitTicks, fleet.Movement.TransitTicks);
-            Assert.AreEqual(groupTransitTicks, smuggler.Movement.TransitTicks);
-            Assert.AreEqual(groupTransitTicks, companion.Movement.TransitTicks);
+            Assert.AreEqual(100, smuggler.Movement.TransitTicks);
+            Assert.AreEqual(100, companion.Movement.TransitTicks);
+            Assert.AreEqual(groupTransitTicks, smuggler.Movement.TicksRemaining());
+            Assert.AreEqual(groupTransitTicks, companion.Movement.TicksRemaining());
         }
 
         [Test]
@@ -579,7 +590,7 @@ namespace Rebellion.Tests.AI.Fleets
             inbound.Movement = TestMovement.Create(
                 transitTicks: 20,
                 ticksElapsed: 5,
-                currentPosition: new Point(7500, 0)
+                currentPosition: new Point(2500, 0)
             );
             fleet.Order = new FleetOrder
             {
@@ -595,13 +606,19 @@ namespace Rebellion.Tests.AI.Fleets
                 target
             );
 
+            int expectedTicks =
+                15 + context.MovementQueries.CalculateTransitTicks(inbound, target, friendly);
+
             proposal.Execute(context);
 
             Assert.AreEqual(friendly.InstanceID, fleet.GetParentOfType<Planet>()?.InstanceID);
             Assert.IsNotNull(fleet.Movement);
             Assert.IsNotNull(inbound.Movement);
-            Assert.AreEqual(0, inbound.Movement.TicksElapsed);
-            Assert.AreEqual(new Point(7500, 0), inbound.Movement.OriginPosition);
+            Assert.AreEqual(5, inbound.Movement.TicksElapsed);
+            Assert.AreEqual(Point.Empty, inbound.Movement.OriginPosition);
+            Assert.AreEqual(new Point(2500, 0), inbound.Movement.CurrentPosition);
+            Assert.AreEqual(target.GetPosition(), inbound.Movement.NextLeg.OriginPosition);
+            Assert.AreEqual(expectedTicks, inbound.Movement.TicksRemaining());
         }
 
         [Test]

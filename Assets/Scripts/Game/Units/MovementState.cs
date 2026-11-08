@@ -135,16 +135,6 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Replaces the remaining route while retaining the journey's identity and history.
-        /// </summary>
-        /// <param name="leg">The new route from the unit's current position.</param>
-        public void Retarget(MovementLeg leg)
-        {
-            ApplyLeg(leg ?? throw new ArgumentNullException(nameof(leg)));
-            _nextLeg = null;
-        }
-
-        /// <summary>
         /// Preserves the running leg and replaces its planned continuation.
         /// </summary>
         /// <param name="onwardLeg">The route starting at the running leg's endpoint.</param>
@@ -167,18 +157,6 @@ namespace Rebellion.Game.Units
             }
             else
                 _nextLeg = onwardLeg;
-        }
-
-        /// <summary>
-        /// Restarts the current leg's clock from the current position with a coordinated duration.
-        /// </summary>
-        /// <param name="transitTicks">The new duration of the current leg.</param>
-        public void RetimeCurrentLeg(int transitTicks)
-        {
-            _originPositionX = _currentPositionX;
-            _originPositionY = _currentPositionY;
-            _transitTicks = transitTicks;
-            _ticksElapsed = 0;
         }
 
         /// <summary>

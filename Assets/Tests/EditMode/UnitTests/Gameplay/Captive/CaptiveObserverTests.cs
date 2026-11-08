@@ -427,7 +427,7 @@ namespace Rebellion.Tests.Gameplay
             Officer observed = snapshot.Officers.Single(officer =>
                 officer.InstanceID == captive.InstanceID
             );
-            captive.Movement.RetimeCurrentLeg(1);
+            captive.Movement = TestMovement.WithDuration(captive.Movement, 1);
 
             game.CurrentTick = 12;
             new MovementTickProcessor(movement).ProcessTick(game);
