@@ -260,6 +260,7 @@ public static class MainMenuPrefabBuilder
         Camera camera = cameraObject.AddComponent<Camera>();
         camera.clearFlags = CameraClearFlags.SolidColor;
         camera.backgroundColor = Color.black;
+        cameraObject.AddComponent<OverlayDisplayCamera>();
         cameraObject.AddComponent<AudioListener>();
     }
 

@@ -14,6 +14,28 @@ public sealed class GraphicsManager : IDisposable
 
     private const string _runtimeVolumeName = "Runtime Graphics Volume";
 
+    private static readonly FrameSettingsField[] _overlayDisabledFeatures =
+    {
+        FrameSettingsField.OpaqueObjects,
+        FrameSettingsField.TransparentObjects,
+        FrameSettingsField.ShadowMaps,
+        FrameSettingsField.Postprocess,
+        FrameSettingsField.Antialiasing,
+        FrameSettingsField.ReflectionProbe,
+        FrameSettingsField.PlanarProbe,
+        FrameSettingsField.SkyReflection,
+        FrameSettingsField.SSR,
+        FrameSettingsField.SSAO,
+        FrameSettingsField.ExposureControl,
+        FrameSettingsField.MotionVectors,
+        FrameSettingsField.ObjectMotionVectors,
+        FrameSettingsField.ContactShadows,
+        FrameSettingsField.SubsurfaceScattering,
+        FrameSettingsField.Volumetrics,
+        FrameSettingsField.AtmosphericScattering,
+        FrameSettingsField.Distortion,
+    };
+
     private readonly GameObject _runtimeVolumeObject;
     private readonly VolumeProfile _runtimeVolumeProfile;
     private readonly ScreenSpaceAmbientOcclusion _ambientOcclusion;
@@ -207,7 +229,26 @@ public sealed class GraphicsManager : IDisposable
         SetFrameSetting(cameraData, FrameSettingsField.Bloom, _bloomEnabled);
         SetFrameSetting(cameraData, FrameSettingsField.MotionBlur, _motionBlurEnabled);
         SetFrameSetting(cameraData, FrameSettingsField.RayTracing, _rayTracingEnabled);
+        if (camera.TryGetComponent<OverlayDisplayCamera>(out _))
+            ConfigureOverlayDisplayCamera(camera, cameraData);
         _configuredCameraIds.Add(camera.GetEntityId());
+    }
+
+    /// <summary>
+    /// Retains screen clearing and overlay composition without rendering a second 3D scene.
+    /// Applies after user settings so changing quality cannot restore unused screen-camera work.
+    /// </summary>
+    /// <param name="camera">The explicitly authored overlay display camera.</param>
+    /// <param name="cameraData">The display camera's HDRP settings.</param>
+    private static void ConfigureOverlayDisplayCamera(
+        Camera camera,
+        HDAdditionalCameraData cameraData
+    )
+    {
+        camera.cullingMask = 0;
+        cameraData.antialiasing = HDAdditionalCameraData.AntialiasingMode.None;
+        foreach (FrameSettingsField field in _overlayDisabledFeatures)
+            SetFrameSetting(cameraData, field, false);
     }
 
     /// <summary>

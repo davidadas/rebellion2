@@ -111,6 +111,64 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(camera.backgroundColor.linear, cameraData.backgroundColorHDR);
         }
 
+        [TestCase(UserAntiAliasingMode.Off)]
+        [TestCase(UserAntiAliasingMode.Fxaa)]
+        [TestCase(UserAntiAliasingMode.Smaa)]
+        [TestCase(UserAntiAliasingMode.Taa)]
+        public void Apply_OverlayDisplayCamera_PreservesRoleAcrossSettingsChanges(
+            UserAntiAliasingMode antiAliasing
+        )
+        {
+            Camera camera = _cameraObject.GetComponent<Camera>();
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = new Color(0.1f, 0.2f, 0.3f, 1f);
+            _cameraObject.AddComponent<OverlayDisplayCamera>();
+            _manager.Apply(new UserVideoSettings { AntiAliasingMode = 0 });
+
+            _manager.Apply(
+                new UserVideoSettings
+                {
+                    AntiAliasingMode = (int)antiAliasing,
+                    AmbientOcclusion = true,
+                    Bloom = true,
+                    MotionBlur = true,
+                    RayTracing = true,
+                }
+            );
+
+            HDAdditionalCameraData data = _cameraObject.GetComponent<HDAdditionalCameraData>();
+            Assert.AreEqual(0, camera.cullingMask);
+            Assert.AreEqual(HDAdditionalCameraData.ClearColorMode.Color, data.clearColorMode);
+            Assert.AreEqual(camera.backgroundColor.linear, data.backgroundColorHDR);
+            Assert.AreEqual(HDAdditionalCameraData.AntialiasingMode.None, data.antialiasing);
+            Assert.IsFalse(
+                data.renderingPathCustomFrameSettings.IsEnabled(FrameSettingsField.Postprocess)
+            );
+            Assert.IsFalse(
+                data.renderingPathCustomFrameSettings.IsEnabled(FrameSettingsField.Antialiasing)
+            );
+        }
+
+        [TestCase(FrameSettingsField.OpaqueObjects)]
+        [TestCase(FrameSettingsField.TransparentObjects)]
+        [TestCase(FrameSettingsField.ShadowMaps)]
+        [TestCase(FrameSettingsField.MotionVectors)]
+        [TestCase(FrameSettingsField.ReflectionProbe)]
+        public void Apply_OverlayDisplayCamera_OverridesEnabledSceneFeatures(
+            FrameSettingsField feature
+        )
+        {
+            _cameraObject.AddComponent<OverlayDisplayCamera>();
+            HDAdditionalCameraData data = _cameraObject.AddComponent<HDAdditionalCameraData>();
+            data.renderingPathCustomFrameSettings.SetEnabled(feature, true);
+            data.renderingPathCustomFrameSettingsOverrideMask.mask[(uint)feature] = true;
+
+            _manager.Apply(new UserVideoSettings());
+
+            Assert.IsFalse(data.renderingPathCustomFrameSettings.IsEnabled(feature));
+            Assert.IsTrue(data.renderingPathCustomFrameSettingsOverrideMask.mask[(uint)feature]);
+        }
+
         /// <summary>
         /// Verifies that auxiliary display cameras are outside the global graphics-camera policy.
         /// </summary>
@@ -182,6 +240,10 @@ namespace Rebellion.Tests.Managers
             HDAdditionalCameraData cameraData =
                 _cameraObject.AddComponent<HDAdditionalCameraData>();
             cameraData.volumeLayerMask = 1 << GraphicsManager.RuntimeVolumeLayer;
+            cameraData.renderingPathCustomFrameSettings.SetEnabled(
+                FrameSettingsField.ShadowMaps,
+                true
+            );
 
             try
             {
@@ -196,6 +258,12 @@ namespace Rebellion.Tests.Managers
                 );
 
                 Assert.IsFalse(cameraData.allowDynamicResolution);
+                Assert.AreNotEqual(0, camera.cullingMask);
+                Assert.IsTrue(
+                    cameraData.renderingPathCustomFrameSettings.IsEnabled(
+                        FrameSettingsField.ShadowMaps
+                    )
+                );
                 Assert.AreEqual(
                     HDAdditionalCameraData.AntialiasingMode.FastApproximateAntialiasing,
                     cameraData.antialiasing

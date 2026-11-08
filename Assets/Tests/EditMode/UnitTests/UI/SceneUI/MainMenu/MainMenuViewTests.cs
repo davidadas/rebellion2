@@ -81,6 +81,19 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void AuthoredPrefab_DisplayCamera_DeclaresOnlyOneOverlayRole()
+        {
+            OverlayDisplayCamera[] displays =
+                _prefabRoot.GetComponentsInChildren<OverlayDisplayCamera>(true);
+
+            Assert.AreEqual(1, displays.Length);
+            Camera camera = displays[0].GetComponent<Camera>();
+            Assert.AreSame(_prefabRoot.transform.Find("Main Camera"), camera.transform);
+            Assert.IsNull(camera.targetTexture);
+            Assert.IsTrue(camera.CompareTag("MainCamera"));
+        }
+
+        [Test]
         public void AuthoredPrefab_IconAtlas_PreservesSourceColorEncoding()
         {
             Camera[] cameras = _prefabRoot.GetComponentsInChildren<Camera>(true);
