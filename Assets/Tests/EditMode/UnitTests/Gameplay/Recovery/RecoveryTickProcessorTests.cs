@@ -155,7 +155,7 @@ namespace Rebellion.Tests.Gameplay
 
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             officer.InjuryPoints = 10;
-            officer.Movement = new MovementState { TransitTicks = 10 };
+            officer.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(officer, planet);
 
             RecoveryTickProcessor system = new RecoveryTickProcessor();
@@ -170,7 +170,7 @@ namespace Rebellion.Tests.Gameplay
         {
             (GameRoot game, Planet planet) = BuildScene();
             Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
-            fleet.Movement = new MovementState { TransitTicks = 10 };
+            fleet.Movement = TestMovement.Create(transitTicks: 10);
             CapitalShip ship = new CapitalShip
             {
                 InstanceID = "ship",
@@ -356,7 +356,7 @@ namespace Rebellion.Tests.Gameplay
         {
             (GameRoot game, Planet planet) = BuildScene();
             Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
-            fleet.Movement = new MovementState { TransitTicks = 10 };
+            fleet.Movement = TestMovement.Create(transitTicks: 10);
             CapitalShip ship = new CapitalShip
             {
                 InstanceID = "s1",
@@ -385,7 +385,7 @@ namespace Rebellion.Tests.Gameplay
                 MaxHullStrength = 100,
                 CurrentHullStrength = 80,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                Movement = new MovementState { TransitTicks = 10 },
+                Movement = TestMovement.Create(transitTicks: 10),
             };
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);

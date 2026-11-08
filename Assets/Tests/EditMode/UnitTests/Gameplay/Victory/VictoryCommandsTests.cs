@@ -190,7 +190,7 @@ namespace Rebellion.Tests.Gameplay
                 TypeID = "BDHQ01",
                 OwnerInstanceID = empire.InstanceID,
                 BuildingType = BuildingType.Headquarters,
-                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
+                Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 5),
             };
             game.AttachNode(headquarters, empireHQ);
 

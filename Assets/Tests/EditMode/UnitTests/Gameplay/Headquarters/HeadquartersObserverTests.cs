@@ -288,7 +288,7 @@ namespace Rebellion.Tests.Gameplay
             destination.OwnerInstanceID = otherFaction.InstanceID;
             destination.IsHeadquarters = true;
             faction.HQInstanceID = null;
-            headquarters.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 10 };
+            headquarters.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 10);
 
             new HeadquartersObserver(game).HandleResults(
                 new[]
@@ -328,7 +328,7 @@ namespace Rebellion.Tests.Gameplay
             );
             faction.HeadquartersUnitInstanceID = null;
             faction.HQInstanceID = null;
-            headquarters.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            headquarters.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 1);
 
             new HeadquartersObserver(game).ReconcileState();
 

@@ -279,8 +279,8 @@ namespace Rebellion.Tests.Gameplay
             BindTravelTrait(officer);
             Assert.IsTrue(missions.InitiateMission(context));
             Mission mission = game.GetSceneNodesByType<Mission>().Single();
-            officer.Movement.CurrentPosition = new System.Drawing.Point(100, 0);
-            decoy.Movement.CurrentPosition = new System.Drawing.Point(40, 0);
+            officer.Movement.SetPosition(new System.Drawing.Point(100, 0));
+            decoy.Movement.SetPosition(new System.Drawing.Point(40, 0));
             MovementQueries queries = new MovementQueries(game);
             int expectedOfficerTicks = queries.CalculateTransitTicks(
                 officer,
@@ -1262,7 +1262,7 @@ namespace Rebellion.Tests.Gameplay
             {
                 InstanceID = "o2",
                 OwnerInstanceID = "empire",
-                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 0 },
+                Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 0),
             };
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
@@ -1300,7 +1300,7 @@ namespace Rebellion.Tests.Gameplay
             {
                 InstanceID = "o2",
                 OwnerInstanceID = "empire",
-                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 0 },
+                Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 0),
             };
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
@@ -2037,7 +2037,7 @@ namespace Rebellion.Tests.Gameplay
             {
                 InstanceID = "fleet",
                 OwnerInstanceID = "rebels",
-                Movement = new MovementState { TransitTicks = 10 },
+                Movement = TestMovement.Create(transitTicks: 10),
             };
             CapitalShip capitalShip = new CapitalShip
             {
@@ -4028,7 +4028,7 @@ namespace Rebellion.Tests.Gameplay
             );
             Mission mission = game.GetSceneNodesByType<Mission>().Single();
             participant.Movement = null;
-            target.Movement = new MovementState();
+            target.Movement = TestMovement.Create();
 
             List<GameResult> results = missions.ProcessMissionTick(game);
 
@@ -5117,7 +5117,7 @@ namespace Rebellion.Tests.Gameplay
             );
             StubMission mission = CreateMission(game, planet, officer);
             game.MoveNode(officer, mission);
-            officer.Movement = new MovementState { TransitTicks = 10 };
+            officer.Movement = TestMovement.Create(transitTicks: 10);
             MissionCommands system = TestSystems.CreateMissionCommands(
                 game,
                 new StubRNG(),

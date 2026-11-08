@@ -147,7 +147,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
                 new Officer
                 {
                     OwnerInstanceID = "player",
-                    Movement = new MovementState { TransitTicks = 10 },
+                    Movement = TestMovement.Create(transitTicks: 10),
                 }
             );
 
@@ -190,7 +190,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
         public void CanMoveItems_MovingOrEnemyItem_ReturnsFalse()
         {
             Officer movingOfficer = CreateOfficer("player");
-            movingOfficer.Movement = new MovementState();
+            movingOfficer.Movement = TestMovement.Create();
             Officer enemyOfficer = CreateOfficer("enemy");
 
             bool movingCanMove = StrategyContextMenuAvailability.CanMoveItems(
@@ -211,7 +211,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
         {
             Officer officer = CreateOfficer("player");
             CapitalShip ship = new CapitalShip();
-            GameFleet fleet = new GameFleet { Movement = new MovementState() };
+            GameFleet fleet = new GameFleet { Movement = TestMovement.Create() };
             ship.SetParent(fleet);
             officer.SetParent(ship);
 
@@ -313,7 +313,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
         {
             Officer officer = CreateOfficer("player");
             CapitalShip ship = new CapitalShip();
-            GameFleet fleet = new GameFleet { Movement = new MovementState() };
+            GameFleet fleet = new GameFleet { Movement = TestMovement.Create() };
             ship.SetParent(fleet);
             officer.SetParent(ship);
 

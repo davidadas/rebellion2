@@ -33,7 +33,7 @@ namespace Rebellion.Game.FogOfWar
             int currentTick
         )
         {
-            if (RecordPlanetSnapshot(faction, planet, sector, currentTick, false))
+            if (RecordPlanetSnapshot(faction, planet, sector, currentTick, false, true, false))
                 RemoveUnrepresentedEntityLocations(faction);
         }
 
@@ -62,6 +62,8 @@ namespace Rebellion.Game.FogOfWar
                     planet.GetParentOfType<PlanetSector>(),
                     currentTick,
                     false,
+                    true,
+                    false,
                     rememberedLocations[planet.InstanceID]
                 );
             }
@@ -83,7 +85,25 @@ namespace Rebellion.Game.FogOfWar
             int currentTick
         )
         {
-            if (RecordPlanetSnapshot(faction, planet, sector, currentTick, true))
+            if (RecordPlanetSnapshot(faction, planet, sector, currentTick, true, true, true))
+                RemoveUnrepresentedEntityLocations(faction);
+        }
+
+        /// <summary>
+        /// Records reconnaissance intelligence without exposing personnel.
+        /// </summary>
+        /// <param name="faction">The faction receiving the intelligence.</param>
+        /// <param name="planet">The observed planet.</param>
+        /// <param name="sector">The sector containing the planet.</param>
+        /// <param name="currentTick">The tick when the observation is recorded.</param>
+        public void RecordReconnaissanceSnapshot(
+            Faction faction,
+            Planet planet,
+            PlanetSector sector,
+            int currentTick
+        )
+        {
+            if (RecordPlanetSnapshot(faction, planet, sector, currentTick, false, false, true))
                 RemoveUnrepresentedEntityLocations(faction);
         }
 
@@ -1365,6 +1385,8 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="sector">The sector containing the planet.</param>
         /// <param name="currentTick">The tick when the observation is recorded.</param>
         /// <param name="includeEspionageIntelligence">Whether complete espionage intelligence is observable.</param>
+        /// <param name="includePersonnel">Whether officers and special forces are observable.</param>
+        /// <param name="includeManufacturingIntelligence">Whether current manufacturing queues are observable.</param>
         /// <param name="rememberedEntityIds">The initially remembered entities, or null for a single observation.</param>
         /// <returns>True when a planet snapshot was recorded.</returns>
         private bool RecordPlanetSnapshot(
@@ -1373,6 +1395,8 @@ namespace Rebellion.Game.FogOfWar
             PlanetSector sector,
             int currentTick,
             bool includeEspionageIntelligence,
+            bool includePersonnel,
+            bool includeManufacturingIntelligence,
             IEnumerable<string> rememberedEntityIds = null
         )
         {
@@ -1391,17 +1415,21 @@ namespace Rebellion.Game.FogOfWar
             PlanetSnapshot planetSnapshot = CreatePlanetSnapshot(planet, currentTick);
             planetSnapshot.FleetsObservedAtTick = currentTick;
             IReadOnlyList<ISceneNode> activeChildren = planet.GetChildren();
-            AddOfficersToSnapshot(
-                faction,
-                activeChildren.OfType<Officer>(),
-                planetSnapshot,
-                includeEspionageIntelligence
-            );
+            if (includePersonnel)
+            {
+                AddOfficersToSnapshot(
+                    faction,
+                    activeChildren.OfType<Officer>(),
+                    planetSnapshot,
+                    includeEspionageIntelligence
+                );
+            }
             AddFleetsToSnapshot(
                 faction,
                 activeChildren.OfType<Fleet>(),
                 planetSnapshot,
-                includeEspionageIntelligence
+                includeEspionageIntelligence,
+                includePersonnel
             );
             AddEntityCopiesToSnapshot(
                 activeChildren.OfType<Regiment>(),
@@ -1410,13 +1438,16 @@ namespace Rebellion.Game.FogOfWar
                 includeEspionageIntelligence,
                 currentTick
             );
-            AddEntityCopiesToSnapshot(
-                activeChildren.OfType<SpecialForces>(),
-                planetSnapshot.SpecialForces,
-                faction,
-                includeEspionageIntelligence,
-                currentTick
-            );
+            if (includePersonnel)
+            {
+                AddEntityCopiesToSnapshot(
+                    activeChildren.OfType<SpecialForces>(),
+                    planetSnapshot.SpecialForces,
+                    faction,
+                    includeEspionageIntelligence,
+                    currentTick
+                );
+            }
             AddBuildingCopiesToSnapshot(
                 planet.GetChildren<Building>(includeDisabled: true),
                 planetSnapshot.Buildings,
@@ -1453,8 +1484,14 @@ namespace Rebellion.Game.FogOfWar
                 )
                     mission.RemoveChild(participant);
                 PreserveIncomingFleetIntelligence(previousSnapshot, planetSnapshot);
-                PreserveManufacturingIntelligence(previousSnapshot, planetSnapshot, planet);
+                if (includeManufacturingIntelligence)
+                    AddManufacturingQueueToSnapshot(planet, planetSnapshot);
+                else
+                    PreserveManufacturingIntelligence(previousSnapshot, planetSnapshot, planet);
             }
+
+            if (!includePersonnel)
+                RemovePersonnelFromFleets(planetSnapshot.Fleets);
 
             ReconcileEntityLocations(
                 faction,
@@ -1995,11 +2032,13 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="fleets">The active fleets at the observed planet.</param>
         /// <param name="snapshot">The snapshot being populated.</param>
         /// <param name="includeEspionageIntelligence">Whether hidden intelligence should be included.</param>
+        /// <param name="includePersonnel">Whether personnel aboard observed fleets should be included.</param>
         private void AddFleetsToSnapshot(
             Faction faction,
             IEnumerable<Fleet> fleets,
             PlanetSnapshot snapshot,
-            bool includeEspionageIntelligence
+            bool includeEspionageIntelligence,
+            bool includePersonnel = true
         )
         {
             foreach (Fleet fleet in fleets)
@@ -2028,7 +2067,33 @@ namespace Rebellion.Game.FogOfWar
                 if (fleetCopy == null)
                     continue;
 
+                if (!includePersonnel)
+                    RemovePersonnelFromFleet(fleetCopy);
+
                 snapshot.Fleets.Add(fleetCopy);
+            }
+        }
+
+        /// <summary>
+        /// Removes officers and special forces from observed fleets.
+        /// </summary>
+        /// <param name="fleets">The observed fleet copies to filter.</param>
+        private static void RemovePersonnelFromFleets(IEnumerable<Fleet> fleets)
+        {
+            foreach (Fleet fleet in fleets)
+                RemovePersonnelFromFleet(fleet);
+        }
+
+        /// <summary>
+        /// Removes officers and special forces from one observed fleet.
+        /// </summary>
+        /// <param name="fleet">The observed fleet copy to filter.</param>
+        private static void RemovePersonnelFromFleet(Fleet fleet)
+        {
+            foreach (CapitalShip ship in fleet.GetChildren<CapitalShip>())
+            {
+                ship.RemoveChildren<Officer>(_ => true);
+                ship.RemoveChildren<SpecialForces>(_ => true);
             }
         }
 
@@ -2446,8 +2511,7 @@ namespace Rebellion.Game.FogOfWar
                     {
                         if (copy is IMovable { Movement: { } movement })
                         {
-                            movement.IsObservation = true;
-                            movement.ObservedAtTick = observedAtTick;
+                            movement.MarkObserved(observedAtTick);
                         }
                     }
                 ) as T;
@@ -2485,7 +2549,7 @@ namespace Rebellion.Game.FogOfWar
                     configureCopy: copy =>
                     {
                         if (copy is IMovable { Movement: { } movement })
-                            movement.IsObservation = true;
+                            movement.MarkObserved();
                         if (copy is Fleet fleet)
                         {
                             fleet.Order = null;

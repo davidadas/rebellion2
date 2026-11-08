@@ -74,7 +74,7 @@ namespace Rebellion.Tests.AI.Fleets
                 enemy.InstanceID,
                 1000
             );
-            inbound.Movement = new MovementState { TransitTicks = inboundTicks };
+            inbound.Movement = TestMovement.Create(transitTicks: inboundTicks);
             game.AttachNode(inbound, defender);
             AITestSceneBuilder.RevealPlanet(game, faction, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
@@ -159,7 +159,7 @@ namespace Rebellion.Tests.AI.Fleets
                 TargetPlanetId = target.InstanceID,
             };
             if (travelling)
-                fleet.Movement = new MovementState { TransitTicks = 100 };
+                fleet.Movement = TestMovement.Create(transitTicks: 100);
             AITestSceneBuilder.RevealPlanet(game, faction, target);
             game.CurrentTick = 51;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
@@ -290,11 +290,10 @@ namespace Rebellion.Tests.AI.Fleets
                 empire.InstanceID,
                 combatStrength: 100
             );
-            inbound.Movement = new MovementState
-            {
-                TransitTicks = 100,
-                CurrentPosition = new Point(-10000, 0),
-            };
+            inbound.Movement = TestMovement.Create(
+                transitTicks: 100,
+                currentPosition: new Point(-10000, 0)
+            );
             game.AttachNode(inbound, fleet);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -314,7 +313,7 @@ namespace Rebellion.Tests.AI.Fleets
         }
 
         [Test]
-        public void Execute_WithInboundShipArrivingAtTargetBeforeFleet_PreservesEarlierArrival()
+        public void Execute_WithInboundShipNearTarget_PreservesUnfinishedLeg()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             ConfigureMinimalAttackRequirements(game);
@@ -334,11 +333,12 @@ namespace Rebellion.Tests.AI.Fleets
                 empire.InstanceID,
                 combatStrength: 100
             );
-            inbound.Movement = new MovementState
-            {
-                TransitTicks = 100,
-                CurrentPosition = new Point(9000, 0),
-            };
+            inbound.Movement = TestMovement.Create(
+                transitTicks: 100,
+                ticksElapsed: 10,
+                originPosition: new Point(10000, 0),
+                currentPosition: new Point(9000, 0)
+            );
             game.AttachNode(inbound, fleet);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -349,11 +349,18 @@ namespace Rebellion.Tests.AI.Fleets
                 target
             );
 
+            int expectedTicks =
+                90 + context.MovementQueries.CalculateTransitTicks(inbound, staging, target);
+
             proposal.Execute(context);
 
             Assert.IsNotNull(fleet.Movement);
             Assert.IsNotNull(inbound.Movement);
-            Assert.Less(inbound.Movement.TransitTicks, fleet.Movement.TransitTicks);
+            Assert.AreEqual(100, inbound.Movement.TransitTicks);
+            Assert.AreEqual(10, inbound.Movement.TicksElapsed);
+            Assert.AreEqual(staging.GetPosition(), inbound.Movement.NextLeg.OriginPosition);
+            Assert.AreEqual(expectedTicks, inbound.Movement.TicksRemaining());
+            Assert.Greater(inbound.Movement.TicksRemaining(), fleet.Movement.TicksRemaining());
         }
 
         [Test]
@@ -377,11 +384,10 @@ namespace Rebellion.Tests.AI.Fleets
                 empire.InstanceID,
                 combatStrength: 100
             );
-            inbound.Movement = new MovementState
-            {
-                TransitTicks = 100,
-                CurrentPosition = new Point(0, 0),
-            };
+            inbound.Movement = TestMovement.Create(
+                transitTicks: 100,
+                currentPosition: new Point(0, 0)
+            );
             game.AttachNode(inbound, fleet);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -440,12 +446,11 @@ namespace Rebellion.Tests.AI.Fleets
             companion.BindTraitDefinitions(definitions);
             foreach (Officer officer in new[] { smuggler, companion })
             {
-                officer.Movement = new MovementState
-                {
-                    TransitTicks = 100,
-                    MovementGroupID = "personnel-group",
-                    CurrentPosition = new Point(-5000, 0),
-                };
+                officer.Movement = TestMovement.Create(
+                    transitTicks: 100,
+                    movementGroupID: "personnel-group",
+                    currentPosition: new Point(-5000, 0)
+                );
                 game.AttachNode(officer, carrier);
             }
             AITestSceneBuilder.RevealPlanet(game, empire, target);
@@ -485,8 +490,10 @@ namespace Rebellion.Tests.AI.Fleets
             Assert.IsNotNull(fleet.Movement);
             Assert.AreEqual(FleetOrderStatus.Readying, fleet.Order.Status);
             Assert.AreEqual(fleetTransitTicks, fleet.Movement.TransitTicks);
-            Assert.AreEqual(groupTransitTicks, smuggler.Movement.TransitTicks);
-            Assert.AreEqual(groupTransitTicks, companion.Movement.TransitTicks);
+            Assert.AreEqual(100, smuggler.Movement.TransitTicks);
+            Assert.AreEqual(100, companion.Movement.TransitTicks);
+            Assert.AreEqual(groupTransitTicks, smuggler.Movement.TicksRemaining());
+            Assert.AreEqual(groupTransitTicks, companion.Movement.TicksRemaining());
         }
 
         [Test]
@@ -580,12 +587,11 @@ namespace Rebellion.Tests.AI.Fleets
             Fleet fleet = AddBattleFleet(game, target, empire.InstanceID);
             CapitalShip inbound = fleet.GetChildren<CapitalShip>().Single();
             inbound.ManufacturingStatus = ManufacturingStatus.Delivering;
-            inbound.Movement = new MovementState
-            {
-                TransitTicks = 20,
-                TicksElapsed = 5,
-                CurrentPosition = new Point(7500, 0),
-            };
+            inbound.Movement = TestMovement.Create(
+                transitTicks: 20,
+                ticksElapsed: 5,
+                currentPosition: new Point(2500, 0)
+            );
             fleet.Order = new FleetOrder
             {
                 OrderType = FleetOrderType.Attack,
@@ -600,13 +606,19 @@ namespace Rebellion.Tests.AI.Fleets
                 target
             );
 
+            int expectedTicks =
+                15 + context.MovementQueries.CalculateTransitTicks(inbound, target, friendly);
+
             proposal.Execute(context);
 
             Assert.AreEqual(friendly.InstanceID, fleet.GetParentOfType<Planet>()?.InstanceID);
             Assert.IsNotNull(fleet.Movement);
             Assert.IsNotNull(inbound.Movement);
-            Assert.AreEqual(0, inbound.Movement.TicksElapsed);
-            Assert.AreEqual(new Point(7500, 0), inbound.Movement.OriginPosition);
+            Assert.AreEqual(5, inbound.Movement.TicksElapsed);
+            Assert.AreEqual(Point.Empty, inbound.Movement.OriginPosition);
+            Assert.AreEqual(new Point(2500, 0), inbound.Movement.CurrentPosition);
+            Assert.AreEqual(target.GetPosition(), inbound.Movement.NextLeg.OriginPosition);
+            Assert.AreEqual(expectedTicks, inbound.Movement.TicksRemaining());
         }
 
         [Test]

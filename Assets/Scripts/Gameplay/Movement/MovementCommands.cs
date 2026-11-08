@@ -343,17 +343,105 @@ namespace Rebellion.Gameplay
             }
 
             int transitTicks = _queries.CalculateTransitTicks(unit, origin, destinationPlanet);
-            unit.Movement = new MovementState
-            {
-                TransitTicks = transitTicks,
-                TicksElapsed = 0,
-                MovementGroupID = Guid.NewGuid().ToString("N"),
-                OriginPosition = origin.GetPosition(),
-                CurrentPosition = origin.GetPosition(),
-            };
+            unit.Movement = new MovementState(
+                new MovementLeg(transitTicks, origin.GetPosition(), destinationPlanet.InstanceID),
+                origin.InstanceID,
+                Guid.NewGuid().ToString("N")
+            );
 
             GameLogger.Log(
                 $"{unit.GetDisplayName()} departing {origin.GetDisplayName()} for {destination.GetDisplayName()} (ETA: {transitTicks} ticks)"
+            );
+        }
+
+        /// <summary>
+        /// Starts or redirects transit for a unit already attached to its receiving container.
+        /// </summary>
+        /// <param name="unit">The travelling unit.</param>
+        /// <param name="origin">The departure planet.</param>
+        /// <param name="destination">The receiving container.</param>
+        /// <param name="results">The collection receiving movement facts.</param>
+        internal void StartTransit(
+            IMovable unit,
+            Planet origin,
+            ContainerNode destination,
+            ICollection<GameResult> results
+        )
+        {
+            Planet destinationPlanet = MovementQueries.RequireDestinationPlanet(destination);
+            if (unit.Movement != null)
+            {
+                RedirectTransit(unit, origin, destinationPlanet);
+                results.Add(
+                    new GameObjectEnrouteResult { GameObject = unit, Tick = _game.CurrentTick }
+                );
+                return;
+            }
+            string previousLocationID = _queries.GetPreviousLocation(unit)?.InstanceID;
+            unit.Movement = new MovementState(
+                new MovementLeg(
+                    _queries.CalculateTransitTicks(unit, origin, destinationPlanet),
+                    origin.GetPosition(),
+                    destinationPlanet.InstanceID
+                ),
+                previousLocationID,
+                Guid.NewGuid().ToString("N")
+            );
+            results.Add(
+                new GameObjectEnrouteResult { GameObject = unit, Tick = _game.CurrentTick }
+            );
+            results.Add(
+                new GameObjectEnrouteActiveResult
+                {
+                    GameObject = unit,
+                    IsActive = true,
+                    Tick = _game.CurrentTick,
+                }
+            );
+        }
+
+        /// <summary>
+        /// Redirects an in-transit unit while retaining its current leg and scheduling an onward leg.
+        /// </summary>
+        /// <param name="unit">The unit already travelling.</param>
+        /// <param name="destination">The live container receiving the unit after transit.</param>
+        /// <param name="results">The collection receiving the movement result.</param>
+        internal void RedirectMovement(
+            IMovable unit,
+            ContainerNode destination,
+            ICollection<GameResult> results
+        )
+        {
+            if (unit == null)
+                throw new ArgumentNullException(nameof(unit));
+            if (destination == null)
+                throw new ArgumentNullException(nameof(destination));
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
+            MovementState movement =
+                unit.Movement
+                ?? throw new InvalidOperationException(
+                    "Only an in-transit unit can be redirected."
+                );
+            Planet currentDestination = MovementQueries.RequireDestinationPlanet(
+                unit.GetParent() as ContainerNode
+            );
+            Planet destinationPlanet = MovementQueries.RequireDestinationPlanet(destination);
+            string previousLocationID =
+                _queries.GetPreviousLocation(unit)?.InstanceID ?? string.Empty;
+            if (previousLocationID == unit.ParentInstanceID)
+                previousLocationID = string.Empty;
+            if (ReferenceEquals(unit.GetParent(), destination))
+            {
+                movement.RecordPreviousLocation(previousLocationID);
+                return;
+            }
+
+            _game.MoveNode(unit, destination);
+            movement.RecordPreviousLocation(previousLocationID);
+            RedirectTransit(unit, currentDestination, destinationPlanet);
+            results.Add(
+                new GameObjectEnrouteResult { GameObject = unit, Tick = _game.CurrentTick }
             );
         }
 
@@ -1150,8 +1238,7 @@ namespace Rebellion.Gameplay
                     $"Unit {movable.GetDisplayName()} is in transit but has no parent planet."
                 );
 
-            movable.Movement.TicksElapsed++;
-            movable.SetPosition(CalculateInterpolatedPosition(movable, destinationPlanet));
+            movable.Movement.Advance(1, destinationPlanet.GetPosition());
 
             GameLogger.Log(
                 $"{movable.GetDisplayName()} in transit ({movable.Movement.TicksElapsed}/{movable.Movement.TransitTicks} ticks)"
@@ -1391,24 +1478,6 @@ namespace Rebellion.Gameplay
         private bool RollMovementPercent(double probability)
         {
             return probability > 0 && _movementRandom.NextDouble() * 100 < probability;
-        }
-
-        /// <summary>
-        /// Returns the interpolated screen position of a unit between its origin and its destination planet.
-        /// </summary>
-        /// <param name="movable">The moving unit.</param>
-        /// <param name="destinationPlanet">The destination planet.</param>
-        /// <returns>The interpolated position.</returns>
-        private Point CalculateInterpolatedPosition(IMovable movable, Planet destinationPlanet)
-        {
-            float progress = movable.Movement.Progress();
-            Point originPos = movable.Movement.OriginPosition;
-            Point destPos = destinationPlanet.GetPosition();
-
-            return new Point(
-                (int)(originPos.X + (destPos.X - originPos.X) * progress),
-                (int)(originPos.Y + (destPos.Y - originPos.Y) * progress)
-            );
         }
 
         /// <summary>
@@ -1908,7 +1977,7 @@ namespace Rebellion.Gameplay
                 if (rebasePlanet != null)
                 {
                     MoveNode(inactiveFleet, rebasePlanet, results);
-                    RetargetInTransitFleetJoiners(inactiveFleet, rebasePlanet);
+                    RetargetInTransitFleetJoiners(inactiveFleet, currentPlanet, rebasePlanet);
                     GameLogger.Log(
                         $"{inactiveFleet.GetDisplayName()} rebased to {rebasePlanet.GetDisplayName()} because it has no operational capital ships."
                     );
@@ -2238,24 +2307,23 @@ namespace Rebellion.Gameplay
                 return true;
             }
 
+            string previousLocationID =
+                unit.Movement?.PreviousLocationInstanceID ?? unit.ParentInstanceID;
             MoveNode(unit, destination, results);
             ClaimUncolonizedDestinationFromRegiment(unit, destination, results);
 
-            unit.Movement = new MovementState
-            {
-                TransitTicks = transitTicks,
-                TicksElapsed = 0,
-                MovementGroupID = movementGroupID,
-                SourceEventInstanceID = sourceEventInstanceID,
-                ResolveEncounterOnArrival = resolveEncounterOnArrival,
-                OriginPosition = originPosition,
-                CurrentPosition = originPosition,
-            };
+            unit.Movement = new MovementState(
+                new MovementLeg(transitTicks, originPosition, destinationPlanet.InstanceID),
+                previousLocationID,
+                movementGroupID,
+                sourceEventInstanceID,
+                resolveEncounterOnArrival
+            );
 
             AddPlanetGarrisonChangedResults(results, unit, originPlanet);
 
             if (unit is Fleet movingFleet)
-                RetargetInTransitFleetJoiners(movingFleet, destinationPlanet);
+                RetargetInTransitFleetJoiners(movingFleet, originPlanet, destinationPlanet);
 
             results.Add(
                 new GameObjectEnrouteResult { GameObject = unit, Tick = _game.CurrentTick }
@@ -2314,42 +2382,70 @@ namespace Rebellion.Gameplay
         /// Retargets units that are already moving to join a fleet after the fleet receives a new destination.
         /// </summary>
         /// <param name="fleet">The fleet whose inbound units should be retargeted.</param>
+        /// <param name="previousDestination">The fleet's planet before relocation.</param>
         /// <param name="destinationPlanet">The fleet's new destination planet.</param>
-        private void RetargetInTransitFleetJoiners(Fleet fleet, Planet destinationPlanet)
+        private void RetargetInTransitFleetJoiners(
+            Fleet fleet,
+            Planet previousDestination,
+            Planet destinationPlanet
+        )
         {
             foreach (IReadOnlyList<IMovable> group in _queries.GetInTransitFleetJoinerGroups(fleet))
-                RetargetMovementGroup(group, destinationPlanet);
+                RetargetMovementGroup(group, previousDestination, destinationPlanet);
         }
 
         /// <summary>
-        /// Replaces a movement group's active routes while preserving one common arrival time.
+        /// Updates a movement group's routes while preserving unfinished travel and one common arrival time.
         /// </summary>
         /// <param name="movables">The moving units to retarget together.</param>
+        /// <param name="previousDestination">The receiving fleet's planet before relocation.</param>
         /// <param name="destinationPlanet">The new destination planet.</param>
         private void RetargetMovementGroup(
             IReadOnlyList<IMovable> movables,
+            Planet previousDestination,
             Planet destinationPlanet
         )
         {
             int transitTicks = _queries.CalculateRetargetedGroupTransitTicks(
                 movables,
-                destinationPlanet
+                destinationPlanet,
+                previousDestination
             );
             foreach (IMovable movable in movables)
-            {
-                MovementState movement = movable.Movement;
-                Point currentPosition = movement.CurrentPosition;
-                movable.Movement = new MovementState
-                {
-                    TransitTicks = transitTicks,
-                    TicksElapsed = 0,
-                    MovementGroupID = movement.MovementGroupID,
-                    SourceEventInstanceID = movement.SourceEventInstanceID,
-                    ResolveEncounterOnArrival = movement.ResolveEncounterOnArrival,
-                    OriginPosition = currentPosition,
-                    CurrentPosition = currentPosition,
-                };
-            }
+                RedirectTransit(movable, previousDestination, destinationPlanet, transitTicks);
+        }
+
+        /// <summary>
+        /// Replaces only the onward leg of an active journey, retaining its current clock and context.
+        /// </summary>
+        /// <param name="unit">The traveling unit.</param>
+        /// <param name="previousDestination">The assigned planet before its receiving container changed.</param>
+        /// <param name="destination">The final destination planet.</param>
+        /// <param name="totalTransitTicks">The coordinated remaining duration, when traveling in a group.</param>
+        private void RedirectTransit(
+            IMovable unit,
+            Planet previousDestination,
+            Planet destination,
+            int? totalTransitTicks = null
+        )
+        {
+            MovementState movement = unit.Movement;
+            Planet legDestination = _queries.GetTransitLegDestination(
+                movement,
+                previousDestination
+            );
+            Point endpoint = movement.NextLeg?.OriginPosition ?? legDestination.GetPosition();
+            int onwardTicks =
+                totalTransitTicks.HasValue
+                    ? totalTransitTicks.Value
+                        - Math.Max(0, movement.TransitTicks - movement.TicksElapsed)
+                : endpoint == destination.GetPosition() ? 0
+                : _queries.CalculateTransitTicks(unit, endpoint, legDestination, destination);
+            movement.Redirect(
+                new MovementLeg(onwardTicks, endpoint, destination.InstanceID),
+                legDestination.InstanceID,
+                movement.PreviousLocationInstanceID
+            );
         }
 
         /// <summary>
