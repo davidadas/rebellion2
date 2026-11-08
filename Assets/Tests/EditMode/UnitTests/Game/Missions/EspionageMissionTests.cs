@@ -272,7 +272,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ResolveObjective_FixedCapitalBonusTarget_CanRevealCoreAndOuterRimPlanets()
+        public void ResolveObjective_EnemyHeadquartersTarget_CanRevealCoreAndOuterRimPlanets()
         {
             (
                 GameRoot game,
@@ -281,41 +281,38 @@ namespace Rebellion.Tests.Game.Missions
                 Officer officer,
                 FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
-            PlanetSector targetSector = enemyPlanet.GetParentOfType<PlanetSector>();
-            targetSector.SectorType = PlanetSectorType.Core;
-            Planet targetPlanet = new Planet
-            {
-                InstanceID = "CORUSCANT",
-                OwnerInstanceID = "FNEMP1",
-                IsColonized = true,
-            };
-            game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
-            game.AttachNode(targetPlanet, targetSector);
-            AddSector(game, "core2", "core_planet2", PlanetSectorType.Core, "FNEMP1");
-            AddSector(game, "rim1", "rim_planet1", PlanetSectorType.OuterRim, "FNEMP1");
+            empirePlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
+            Faction empire = game.GetFactionByOwnerInstanceID("empire");
+            empire.HQInstanceID = empirePlanet.InstanceID;
+            AddSector(game, "core2", "core_planet2", PlanetSectorType.Core, "empire");
+            AddSector(game, "rim1", "rim_planet1", PlanetSectorType.OuterRim, "empire");
             AddSector(game, "neutral1", "neutral_planet1", PlanetSectorType.OuterRim, null);
             game.Config.Espionage.HeadquartersBonus = new GameConfig.RandomCountConfig
             {
                 Base = 10,
             };
-            targetPlanet.VisitingFactionIDs.Add("empire");
+            empirePlanet.VisitingFactionIDs.Add("rebels");
+            Officer rebelOfficer = EntityFactory.CreateOfficer("rebel_officer", "rebels");
+            game.AttachNode(rebelOfficer, enemyPlanet);
+            rebelOfficer.MissionReturnParentInstanceID = enemyPlanet.InstanceID;
+            rebelOfficer.MissionReturnLocationInstanceID = enemyPlanet.InstanceID;
 
             Mission mission = CreateMission(
                 game,
-                "empire",
-                targetPlanet,
-                new List<IMissionParticipant> { officer },
+                "rebels",
+                empirePlanet,
+                new List<IMissionParticipant> { rebelOfficer },
                 new List<IMissionParticipant>()
             );
-            game.AttachNode(mission, targetPlanet);
+            game.AttachNode(mission, empirePlanet);
             mission.Initiate(0);
 
             MissionSceneBuilder.RunToSuccess(mission, game);
 
-            Faction empire = game.GetFactionByOwnerInstanceID("empire");
+            Faction rebels = game.GetFactionByOwnerInstanceID("rebels");
             CollectionAssert.AreEquivalent(
-                new[] { "CORUSCANT", "core_planet2", "rim_planet1" },
-                RevealedPlanetIDs(empire)
+                new[] { "emp_planet", "core_planet2", "rim_planet1" },
+                RevealedPlanetIDs(rebels)
             );
         }
 
@@ -371,7 +368,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ResolveObjective_OtherHeadquartersTarget_UsesCoreSectorBonus()
+        public void ResolveObjective_HeadquartersBuildingAwayFromCurrentHeadquarters_UsesCoreSectorBonus()
         {
             (
                 GameRoot game,
@@ -385,8 +382,15 @@ namespace Rebellion.Tests.Game.Missions
             AddSector(game, "rim1", "rim_planet1", PlanetSectorType.OuterRim);
             AddSector(game, "neutral1", "neutral_planet1", PlanetSectorType.OuterRim, null);
             Faction rebels = game.GetFactionByOwnerInstanceID("rebels");
-            rebels.HQInstanceID = enemyPlanet.InstanceID;
-            rebels.Settings.Headquarters.IsMobile = false;
+            rebels.HQInstanceID = "different_planet";
+            Building headquarters = new Building
+            {
+                InstanceID = "inactive_headquarters",
+                OwnerInstanceID = "rebels",
+                BuildingType = BuildingType.Headquarters,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(headquarters, enemyPlanet);
             game.Config.Espionage.CoreSectorBonus = new GameConfig.RandomCountConfig { Base = 1 };
             game.Config.Espionage.HeadquartersBonus = new GameConfig.RandomCountConfig
             {
