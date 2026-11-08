@@ -386,7 +386,11 @@ namespace Rebellion.Tests.Game.Missions
                 OwnerInstanceID = "rebels",
                 BuildingType = BuildingType.Headquarters,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 },
+                Movement = TestMovement.Create(
+                    transitTicks: 10,
+                    ticksElapsed: 1,
+                    destinationPlanetInstanceID: enemyPlanet.InstanceID
+                ),
             };
             game.AttachNode(headquarters, enemyPlanet);
             Faction rebels = game.GetFactionByOwnerInstanceID("rebels");
