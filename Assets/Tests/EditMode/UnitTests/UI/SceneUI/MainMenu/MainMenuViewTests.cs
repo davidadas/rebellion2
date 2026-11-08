@@ -103,6 +103,74 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void AuthoredPrefab_IconAtlas_KeepsLocalLightsOutsideOtherImageCrops()
+        {
+            ModelPreviewAtlas atlas = _prefabRoot.GetComponent<ModelPreviewAtlas>();
+            atlas.Initialize();
+            Camera camera = _prefabRoot
+                .GetComponentsInChildren<Camera>(true)
+                .Single(candidate => candidate.name == "IconAtlasCamera");
+            RenderTexture texture = camera.targetTexture;
+            RawImage[] images = _prefabRoot
+                .GetComponentsInChildren<RawImage>(true)
+                .Where(image => image.texture == texture)
+                .ToArray();
+            Light[] lights = _prefabRoot
+                .GetComponentsInChildren<Light>(true)
+                .Where(light => light.type != LightType.Directional)
+                .ToArray();
+            Assert.IsNotEmpty(images);
+            Assert.IsNotEmpty(lights);
+
+            float pixelsPerUnit = texture.height / (2f * camera.orthographicSize);
+            foreach (Light light in lights)
+            {
+                Assert.IsTrue(light.type == LightType.Point || light.type == LightType.Spot);
+                Vector3 owner = camera.WorldToViewportPoint(light.transform.parent.position);
+                Vector2 ownerUv = new Vector2(owner.x, owner.y);
+                Assert.AreEqual(1, images.Count(image => image.uvRect.Contains(ownerUv)));
+                Vector3 position = camera.WorldToViewportPoint(light.transform.position);
+                Vector2 lightPixel = new Vector2(
+                    position.x * texture.width,
+                    position.y * texture.height
+                );
+                float radius = light.range * pixelsPerUnit;
+                if (light.type == LightType.Spot)
+                {
+                    Assert.AreEqual(
+                        1f,
+                        Mathf.Abs(Vector3.Dot(light.transform.forward, camera.transform.forward)),
+                        0.0001f,
+                        "The spot-cone projection requires alignment with the atlas camera."
+                    );
+                    // This bounds the entire finite cone, independently of model depth or rotation.
+                    radius *= Mathf.Tan(light.spotAngle * 0.5f * Mathf.Deg2Rad);
+                }
+
+                foreach (RawImage image in images)
+                {
+                    Rect uv = image.uvRect;
+                    if (uv.Contains(ownerUv))
+                        continue;
+
+                    Vector2 nearest = new Vector2(
+                        Mathf.Clamp(lightPixel.x, uv.xMin * texture.width, uv.xMax * texture.width),
+                        Mathf.Clamp(
+                            lightPixel.y,
+                            uv.yMin * texture.height,
+                            uv.yMax * texture.height
+                        )
+                    );
+                    Assert.Greater(
+                        Vector2.Distance(lightPixel, nearest),
+                        radius,
+                        $"{light.transform.parent.name}/{light.name} reaches {image.transform.parent.name}."
+                    );
+                }
+            }
+        }
+
+        [Test]
         public void AuthoredPrefab_OptionsOverlay_IsFullScreenAndInitiallyHidden()
         {
             Transform overlay = _prefabRoot.transform.Find("UI/OptionsOverlayCanvas");

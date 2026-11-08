@@ -89,8 +89,9 @@ public static class MainMenuPrefabBuilder
     private const int _iconAtlasWidth = 4096;
     private const int _iconAtlasHeight = 2048;
 
-    // Separate the locally lit rigs so their light ranges cannot reach another icon. Each image
-    // retains its source pixel dimensions, including the citadel's authored crop.
+    // Keep local point-light spheres and the HQ spot cone clear of the other image crops.
+    // Nearby faction and easy/medium difficulty pairs have no local lights. Each image retains
+    // its source pixel dimensions, including the citadel's authored crop.
     private static readonly Dictionary<string, Vector2Int> _iconAtlasCenters = new Dictionary<
         string,
         Vector2Int
