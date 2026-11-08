@@ -64,7 +64,6 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreSame(traitor, result.Officer);
             Assert.AreSame(discoverer, result.DiscoveredBy);
             Assert.AreSame(planet, result.Context);
-            Assert.AreEqual(traitor.InstanceID, discoverer.DiscoveredTraitorInstanceID);
         }
 
         [Test]

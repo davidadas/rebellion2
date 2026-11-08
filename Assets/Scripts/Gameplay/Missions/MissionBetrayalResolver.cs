@@ -126,7 +126,6 @@ namespace Rebellion.Gameplay
             ICollection<GameResult> results
         )
         {
-            discoverer.DiscoveredTraitorInstanceID = defector.InstanceID;
             results.Add(
                 new TraitorDiscoveredResult
                 {
