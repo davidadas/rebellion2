@@ -210,7 +210,7 @@ namespace Rebellion.AI.Planners
             long? directTicks = null;
             foreach (Planet planet in context.Assessment.OwnedPlanets)
             {
-                if (planet.IsDestroyed || context.Assessment.HasKnownHostileFleet(planet))
+                if (!IsMissionStagingDestinationEligible(context, planet))
                     continue;
                 AIMissionStagingProposal candidate = new(mission, planet, missionCount);
                 if (candidate.Participants.Count == 0)
@@ -233,6 +233,58 @@ namespace Rebellion.AI.Planners
                 .Select(candidate => candidate.Proposal)
                 .FirstOrDefault(candidate => candidate.CanSelect(context));
             return best?.Destination;
+        }
+
+        /// <summary>
+        /// Finds the nearest eligible owned planet for validating a projected staging team.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="target">The sabotage destination used to compare assembly planets.</param>
+        /// <returns>The nearest eligible owned departure, or null when none is available.</returns>
+        private static Planet FindMissionStagingProjectionDeparture(
+            AITurnContext context,
+            Planet target
+        )
+        {
+            Planet best = null;
+            double bestDistance = double.MaxValue;
+            foreach (Planet candidate in context.Assessment.OwnedPlanets)
+            {
+                if (!IsMissionStagingDestinationEligible(context, candidate))
+                    continue;
+                double distance = candidate.GetRawDistanceTo(target);
+                if (
+                    best == null
+                    || distance < bestDistance
+                    || distance == bestDistance
+                        && string.Compare(
+                            candidate.InstanceID,
+                            best.InstanceID,
+                            StringComparison.Ordinal
+                        ) < 0
+                )
+                {
+                    best = candidate;
+                    bestDistance = distance;
+                }
+            }
+            return best;
+        }
+
+        /// <summary>
+        /// Returns whether an owned planet can be considered as a mission staging destination.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="planet">The owned planet to inspect.</param>
+        /// <returns>True when the planet is intact and has no known hostile fleet.</returns>
+        private static bool IsMissionStagingDestinationEligible(
+            AITurnContext context,
+            Planet planet
+        )
+        {
+            return context?.Assessment?.IsOwnedPlanet(planet) == true
+                && planet.IsDestroyed == false
+                && !context.Assessment.HasKnownHostileFleet(planet);
         }
 
         /// <summary>
@@ -948,6 +1000,10 @@ namespace Rebellion.AI.Planners
                     .Take(Math.Max(1, config.SabotageTeamAlternativesPerTarget))
                     .ToList();
                 List<IManufacturable> targets = GetSabotageTargets(context, planet).ToList();
+                Planet projectedStagingFallback =
+                    targets.Count > 1
+                        ? FindMissionStagingProjectionDeparture(context, planet)
+                        : null;
                 Dictionary<bool, List<IMissionParticipant>> orderedCandidatesByLeaderKind = new();
                 Dictionary<bool, List<IMissionParticipant>> stagingCandidatesByLeaderKind = new();
                 Dictionary<
@@ -997,6 +1053,14 @@ namespace Rebellion.AI.Planners
                         );
                     }
                     Planet origin = leader.GetParentOfType<Planet>();
+                    // This departure only validates the projected team; the complete team still
+                    // searches every eligible owned destination before staging is retained.
+                    Planet projectedStagingDeparture = IsMissionStagingDestinationEligible(
+                        context,
+                        origin
+                    )
+                        ? origin
+                        : projectedStagingFallback;
                     var immediateKey = (allowsOfficers, origin);
                     if (
                         !immediateCandidatesByOrigin.TryGetValue(
@@ -1021,6 +1085,7 @@ namespace Rebellion.AI.Planners
                     );
                     if (
                         targets.Count > 1
+                        && projectedStagingDeparture != null
                         && stagingCandidatesByLeaderKind[allowsOfficers]
                             .Any(candidate => candidate.GetParentOfType<Planet>() != origin)
                     )
@@ -1032,7 +1097,7 @@ namespace Rebellion.AI.Planners
                             leader,
                             stagingCandidatesByLeaderKind[allowsOfficers],
                             proposals,
-                            origin,
+                            projectedStagingDeparture,
                             projectedStaging: true
                         );
                     }
