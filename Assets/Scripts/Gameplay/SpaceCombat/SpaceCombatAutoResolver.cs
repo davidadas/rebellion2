@@ -41,6 +41,10 @@ namespace Rebellion.Gameplay
     /// </summary>
     public sealed class SpaceCombatAutoResolver
     {
+        private const double _weaponDamageScale = 4d / 15d;
+        private const double _torpedoDamageScale = 0.53333336d;
+        private const double _fighterHullPerCraft = 8d;
+        private const double _fighterShieldRechargePerCraft = 0.025d;
         private readonly GameConfig.SpaceCombatConfig _config;
         private readonly IRandomNumberProvider _random;
 
@@ -1082,7 +1086,7 @@ namespace Rebellion.Gameplay
             }
 
             /// <summary>
-            /// Calculates the original maneuver-rate adjustment used against fighter targets.
+            /// Calculates the maneuver-rate adjustment used against fighter targets.
             /// </summary>
             /// <param name="target">The target unit.</param>
             /// <returns>The attack multiplier.</returns>
@@ -1092,7 +1096,7 @@ namespace Rebellion.Gameplay
                     return 1;
 
                 double targetRate = Math.Max(target.ManeuverRate, _minimumManeuverRatio);
-                return Math.Max(Math.Min(ManeuverRate / targetRate, 1), _minimumManeuverRatio);
+                return Math.Max(ManeuverRate / targetRate, _minimumManeuverRatio);
             }
         }
 
@@ -1223,42 +1227,23 @@ namespace Rebellion.Gameplay
                 if (scansForTarget)
                     ScanForArcTargets(targets, engagementDistance);
 
-                double condition = CurrentHull / _maximumHull;
-                int firedArcMask = 0;
-                for (
-                    int firedArcCount = 0;
-                    firedArcCount < _currentArcCharge.Length;
-                    firedArcCount++
-                )
+                double strongestDamage = 0;
+                int selectedArc = -1;
+                for (int arc = 0; arc < _currentArcCharge.Length; arc++)
                 {
-                    double strongestDamage = 0;
-                    int selectedArc = -1;
-                    for (int arc = 0; arc < _currentArcCharge.Length; arc++)
-                    {
-                        if ((firedArcMask & (1 << arc)) != 0)
-                            continue;
+                    if (_currentArcCharge[arc] < _maximumArcCharge[arc])
+                        continue;
 
-                        if (_currentArcCharge[arc] < _maximumArcCharge[arc])
-                            continue;
+                    double candidateDamage = GetQueuedArcDamage(arc, engagementDistance);
+                    if (candidateDamage <= strongestDamage)
+                        continue;
 
-                        double candidateDamage = GetQueuedArcDamage(
-                            arc,
-                            engagementDistance,
-                            condition
-                        );
-                        if (candidateDamage <= strongestDamage)
-                            continue;
-
-                        strongestDamage = candidateDamage;
-                        selectedArc = arc;
-                    }
-
-                    if (selectedArc < 0)
-                        break;
-
-                    firedArcMask |= 1 << selectedArc;
-                    QueueArcAttacks(selectedArc, engagementDistance, condition, pendingDamage);
+                    strongestDamage = candidateDamage;
+                    selectedArc = arc;
                 }
+
+                if (selectedArc >= 0)
+                    QueueArcAttacks(selectedArc, engagementDistance, pendingDamage);
             }
 
             /// <summary>
@@ -1271,7 +1256,6 @@ namespace Rebellion.Gameplay
                 double engagementDistance
             )
             {
-                double condition = CurrentHull / _maximumHull;
                 for (int arc = 0; arc < _currentArcCharge.Length; arc++)
                 {
                     if (_currentArcCharge[arc] < _maximumArcCharge[arc])
@@ -1305,7 +1289,7 @@ namespace Rebellion.Gameplay
                                 )
                                 * GetTargetTypeMultiplier(weaponType, candidate.IsStarfighter)
                                 * maneuverMultiplier
-                                * condition;
+                                * _weaponDamageScale;
                             if (candidateDamage <= _arcTargetDamage[arc, weaponIndex])
                                 continue;
 
@@ -1321,9 +1305,8 @@ namespace Rebellion.Gameplay
             /// </summary>
             /// <param name="arc">The zero-based firing arc.</param>
             /// <param name="startingDistance">The configured initial separation.</param>
-            /// <param name="condition">The ship's current hull condition.</param>
             /// <returns>The arc's combined pending damage.</returns>
-            private double GetQueuedArcDamage(int arc, double startingDistance, double condition)
+            private double GetQueuedArcDamage(int arc, double startingDistance)
             {
                 double damage = 0;
                 for (int weaponIndex = 0; weaponIndex < _weaponTypes.Length; weaponIndex++)
@@ -1341,7 +1324,7 @@ namespace Rebellion.Gameplay
                         )
                         * GetTargetTypeMultiplier(_weaponTypes[weaponIndex], target.IsStarfighter)
                         * GetManeuverMultiplier(target)
-                        * condition;
+                        * _weaponDamageScale;
                 }
 
                 return damage;
@@ -1352,12 +1335,10 @@ namespace Rebellion.Gameplay
             /// </summary>
             /// <param name="arc">The zero-based firing arc.</param>
             /// <param name="startingDistance">The configured initial separation.</param>
-            /// <param name="condition">The ship's current hull condition.</param>
             /// <param name="pendingDamage">Damage grouped by tactical target.</param>
             private void QueueArcAttacks(
                 int arc,
                 double startingDistance,
-                double condition,
                 IDictionary<TacticalUnit, PendingDamage> pendingDamage
             )
             {
@@ -1381,7 +1362,7 @@ namespace Rebellion.Gameplay
                         weaponStrength
                         * GetTargetTypeMultiplier(_weaponTypes[weaponIndex], target.IsStarfighter)
                         * GetManeuverMultiplier(target)
-                        * condition;
+                        * _weaponDamageScale;
                     if (damage <= 0)
                         continue;
 
@@ -1406,7 +1387,7 @@ namespace Rebellion.Gameplay
             internal override double GetEffectiveness(bool targetsFighters)
             {
                 double condition = CurrentHull / _maximumHull;
-                return GetStrongestArcStrength(targetsFighters) * condition;
+                return GetStrongestArcStrength(targetsFighters) * condition * _weaponDamageScale;
             }
 
             /// <summary>
@@ -1572,7 +1553,7 @@ namespace Rebellion.Gameplay
             private void RechargeWeapons()
             {
                 double condition = CurrentHull / _maximumHull;
-                double recharge = (Math.Max(Ship.WeaponRecharge, 0) + _commandBonus) * condition;
+                double recharge = Math.Max(Ship.WeaponRecharge, 0) * condition;
                 int queuedArcCount = _rechargeQueue.Count;
                 for (int arcIndex = 0; arcIndex < queuedArcCount && recharge > 0; arcIndex++)
                 {
@@ -1664,11 +1645,14 @@ namespace Rebellion.Gameplay
             /// <returns>The target-specific damage multiplier.</returns>
             private double GetTargetTypeMultiplier(PrimaryWeaponType type, bool targetsFighters)
             {
-                return SpaceCombatStrengthCalculator.GetPrimaryWeaponTargetMultiplier(
-                    type,
-                    targetsFighters,
-                    _laserCannonCapitalDamageMultiplier
-                );
+                if (type == PrimaryWeaponType.LaserCannon && !targetsFighters)
+                    return _laserCannonCapitalDamageMultiplier;
+                if (
+                    targetsFighters
+                    && type is PrimaryWeaponType.IonCannon or PrimaryWeaponType.Turbolaser
+                )
+                    return 0.5;
+                return 1;
             }
 
             /// <summary>
@@ -1729,27 +1713,30 @@ namespace Rebellion.Gameplay
         {
             internal readonly Starfighter Fighter;
             internal readonly int InitialSquadronSize;
-            private readonly double _durabilityPerFighter;
+            private readonly double _fullSquadronShields;
             private readonly double _laserCannonCapitalDamageMultiplier;
             private readonly double _commandBonus;
+            private readonly double _maximumHull;
+            private readonly double _maximumTorpedoDamage;
             private readonly double _maximumWeaponCharge;
-            private readonly double[] _weaponTargetDamage = new double[3];
-            private readonly TacticalUnit[] _weaponTargets = new TacticalUnit[3];
-            private double _currentDurability;
+            private readonly double[] _weaponTargetDamage = new double[2];
+            private readonly TacticalUnit[] _weaponTargets = new TacticalUnit[2];
+            private double _currentHull;
+            private double _currentShields;
             private double _currentWeaponCharge;
 
             internal int CurrentSquadronSize =>
                 IsAlive
                     ? Math.Min(
                         InitialSquadronSize,
-                        (int)Math.Ceiling(_currentDurability / _durabilityPerFighter)
+                        (int)Math.Ceiling(_currentHull / _fighterHullPerCraft)
                     )
                     : 0;
             internal override ISceneNode Node => Fighter;
-            internal override bool IsAlive => _currentDurability > 0;
+            internal override bool IsAlive => _currentHull > 0;
             internal override bool CanWithdrawIndependently => Fighter.Hyperdrive > 0;
             internal override bool IsStarfighter => true;
-            internal override double RemainingDurability => _currentDurability;
+            internal override double RemainingDurability => _currentHull + _currentShields;
             internal override bool CanScanForTargets =>
                 _maximumWeaponCharge > 0 && _currentWeaponCharge >= _maximumWeaponCharge;
             internal override double ClosingSpeed => Math.Max(Fighter.SublightSpeed, 0);
@@ -1775,16 +1762,21 @@ namespace Rebellion.Gameplay
                 Fighter = fighter;
                 InitialSquadronSize = Math.Max(fighter.CurrentSquadronSize, 0);
                 _commandBonus = Math.Max(commandBonus, 0);
-                _durabilityPerFighter = Math.Max(fighter.ShieldStrength, 1);
+                _maximumHull = Math.Max(fighter.MaxSquadronSize, 1) * _fighterHullPerCraft;
+                _fullSquadronShields = Math.Max(fighter.ShieldStrength, 0);
                 _laserCannonCapitalDamageMultiplier = Math.Max(
                     config.LaserCannonCapitalDamageMultiplier,
                     0
                 );
-                _currentDurability = InitialSquadronSize * _durabilityPerFighter;
+                _currentHull = InitialSquadronSize * _fighterHullPerCraft;
+                _currentShields = _fullSquadronShields;
+                int maximumSquadronSize = Math.Max(fighter.MaxSquadronSize, 0);
                 _maximumWeaponCharge =
-                    Math.Max(fighter.LaserCannon, 0)
-                    + Math.Max(fighter.IonCannon, 0)
-                    + Math.Max(fighter.Torpedoes, 0);
+                    (double)ScaleWeaponStrength(fighter.LaserCannon, maximumSquadronSize)
+                    + ScaleWeaponStrength(fighter.IonCannon, maximumSquadronSize);
+                _maximumTorpedoDamage =
+                    ScaleWeaponStrength(fighter.Torpedoes, maximumSquadronSize)
+                    * _torpedoDamageScale;
                 _currentWeaponCharge = _maximumWeaponCharge;
             }
 
@@ -1808,7 +1800,6 @@ namespace Rebellion.Gameplay
                 if (scansForTarget)
                     ScanForWeaponTargets(targets, engagementDistance);
 
-                double squadronStrength = GetRemainingSquadronStrength();
                 double consumedCharge = 0;
                 for (int weaponIndex = 0; weaponIndex < _weaponTargets.Length; weaponIndex++)
                 {
@@ -1828,11 +1819,12 @@ namespace Rebellion.Gameplay
                             target.IsStarfighter
                         )
                         * GetManeuverMultiplier(target)
-                        * squadronStrength;
+                        * _weaponDamageScale;
                     if (damage > 0)
                     {
-                        AddPendingDamage(pendingDamage, target, damage, weaponIndex == 2);
+                        AddPendingDamage(pendingDamage, target, damage, weaponIndex == 1);
                         consumedCharge += weaponStrength;
+                        QueueTorpedoAttack(weaponIndex, target, engagementDistance, pendingDamage);
                     }
                 }
 
@@ -1850,7 +1842,6 @@ namespace Rebellion.Gameplay
                 double engagementDistance
             )
             {
-                double squadronStrength = GetRemainingSquadronStrength();
                 for (int weaponIndex = 0; weaponIndex < _weaponTargets.Length; weaponIndex++)
                 {
                     _weaponTargets[weaponIndex] = null;
@@ -1863,9 +1854,6 @@ namespace Rebellion.Gameplay
                     double maneuverMultiplier = GetManeuverMultiplier(candidate);
                     for (int weaponIndex = 0; weaponIndex < _weaponTargets.Length; weaponIndex++)
                     {
-                        if (weaponIndex == 2 && candidate.IsStarfighter)
-                            continue;
-
                         double candidateDamage =
                             GetEffectiveWeaponStrength(
                                 GetWeaponStrength(weaponIndex, engagementRange, requireRange: true),
@@ -1873,7 +1861,7 @@ namespace Rebellion.Gameplay
                                 candidate.IsStarfighter
                             )
                             * maneuverMultiplier
-                            * squadronStrength;
+                            * _weaponDamageScale;
                         if (candidateDamage <= _weaponTargetDamage[weaponIndex])
                             continue;
 
@@ -1894,7 +1882,9 @@ namespace Rebellion.Gameplay
                         targetsFighters,
                         engagementDistance: 0,
                         requireRange: true
-                    ) * GetRemainingSquadronStrength();
+                    )
+                    * GetRemainingSquadronStrength()
+                    * _weaponDamageScale;
             }
 
             /// <summary>
@@ -1911,10 +1901,10 @@ namespace Rebellion.Gameplay
                 IRandomNumberProvider random
             )
             {
-                _currentDurability = Math.Max(
-                    _currentDurability - Math.Max(conventionalDamage, 0),
-                    0
-                );
+                double hullDamage = ApplyShieldDamage(conventionalDamage);
+                _currentHull = Math.Max(_currentHull - hullDamage, 0);
+                if (IsAlive)
+                    ApplyShieldDamage(ionDamage);
             }
 
             /// <summary>
@@ -1927,12 +1917,18 @@ namespace Rebellion.Gameplay
                 IRandomNumberProvider random
             )
             {
+                double survivingCrafts = _currentHull / _fighterHullPerCraft;
                 double recharge =
-                    GetRemainingSquadronStrength()
+                    survivingCrafts
                     * Math.Max(config.AutoResolveFighterWeaponRechargeMultiplier, 0);
                 _currentWeaponCharge = Math.Min(
                     _maximumWeaponCharge,
                     _currentWeaponCharge + recharge
+                );
+                double maximumShields = _fullSquadronShields * GetRemainingSquadronStrength();
+                _currentShields = Math.Min(
+                    maximumShields,
+                    _currentShields + survivingCrafts * _fighterShieldRechargePerCraft
                 );
             }
 
@@ -1941,7 +1937,8 @@ namespace Rebellion.Gameplay
             /// </summary>
             internal override void Destroy()
             {
-                _currentDurability = 0;
+                _currentHull = 0;
+                _currentShields = 0;
             }
 
             /// <summary>
@@ -1950,11 +1947,7 @@ namespace Rebellion.Gameplay
             /// <returns>The surviving fraction of the full squadron.</returns>
             private double GetRemainingSquadronStrength()
             {
-                double maximumSquadronSize = Math.Max(Fighter.MaxSquadronSize, 1);
-                return Math.Min(
-                    _currentDurability / (_durabilityPerFighter * maximumSquadronSize),
-                    1
-                );
+                return Math.Min(_currentHull / _maximumHull, 1);
             }
 
             /// <summary>
@@ -1981,25 +1974,16 @@ namespace Rebellion.Gameplay
                         1,
                         targetsFighters
                     );
-                if (!targetsFighters)
-                {
-                    strength += GetEffectiveWeaponStrength(
-                        GetWeaponStrength(2, engagementDistance, requireRange),
-                        2,
-                        targetsFighters
-                    );
-                }
                 return strength;
             }
 
             /// <summary>
-            /// Applies command and target-type damage modifiers to a usable fighter weapon lane
-            /// without changing the weapon charge it consumes.
+            /// Applies target-type damage modifiers to a usable fighter weapon lane.
             /// </summary>
             /// <param name="weaponStrength">The usable raw weapon strength.</param>
             /// <param name="weaponIndex">The zero-based weapon lane.</param>
             /// <param name="targetsFighters">Whether the target is a fighter squadron.</param>
-            /// <returns>The command- and target-adjusted weapon strength.</returns>
+            /// <returns>The target-adjusted weapon strength.</returns>
             private double GetEffectiveWeaponStrength(
                 int weaponStrength,
                 int weaponIndex,
@@ -2007,8 +1991,10 @@ namespace Rebellion.Gameplay
             )
             {
                 double multiplier =
-                    weaponIndex == 0 && !targetsFighters ? _laserCannonCapitalDamageMultiplier : 1;
-                return weaponStrength > 0 ? (weaponStrength + _commandBonus) * multiplier : 0;
+                    weaponIndex == 0 && !targetsFighters ? _laserCannonCapitalDamageMultiplier
+                    : weaponIndex == 1 && targetsFighters ? 0.5
+                    : 1;
+                return weaponStrength * multiplier;
             }
 
             /// <summary>
@@ -2027,19 +2013,13 @@ namespace Rebellion.Gameplay
                 return weaponIndex switch
                 {
                     0 => GetRangedWeaponStrength(
-                        Fighter.LaserCannon,
+                        ScaleWeaponStrength(Fighter.LaserCannon, Fighter.MaxSquadronSize),
                         Fighter.LaserRange,
                         engagementDistance,
                         requireRange
                     ),
                     1 => GetRangedWeaponStrength(
-                        Fighter.Torpedoes,
-                        Fighter.TorpedoRange,
-                        engagementDistance,
-                        requireRange
-                    ),
-                    2 => GetRangedWeaponStrength(
-                        Fighter.IonCannon,
+                        ScaleWeaponStrength(Fighter.IonCannon, Fighter.MaxSquadronSize),
                         Fighter.IonRange,
                         engagementDistance,
                         requireRange
@@ -2066,6 +2046,63 @@ namespace Rebellion.Gameplay
                 return requireRange && (range <= 0 || range < engagementDistance)
                     ? 0
                     : Math.Max(strength, 0);
+            }
+
+            /// <summary>
+            /// Queues a torpedo strike when the laser target is a vulnerable capital ship in range.
+            /// </summary>
+            /// <param name="weaponIndex">The firing weapon lane.</param>
+            /// <param name="target">The laser target.</param>
+            /// <param name="startingDistance">The configured initial separation.</param>
+            /// <param name="pendingDamage">Damage grouped by tactical target.</param>
+            private void QueueTorpedoAttack(
+                int weaponIndex,
+                TacticalUnit target,
+                double startingDistance,
+                IDictionary<TacticalUnit, PendingDamage> pendingDamage
+            )
+            {
+                if (
+                    weaponIndex != 0
+                    || _maximumTorpedoDamage <= 0
+                    || target is not CapitalShipState capitalShip
+                    || capitalShip.CurrentShields > 0
+                    || Fighter.TorpedoRange <= 0
+                    || Fighter.TorpedoRange < GetDistanceTo(target, startingDistance)
+                )
+                    return;
+
+                AddPendingDamage(
+                    pendingDamage,
+                    target,
+                    _maximumTorpedoDamage * GetRemainingSquadronStrength(),
+                    isIonDamage: false
+                );
+            }
+
+            /// <summary>
+            /// Consumes fighter shields and returns conventional damage that reaches the hull.
+            /// </summary>
+            /// <param name="damage">The non-negative incoming damage.</param>
+            /// <returns>The damage remaining after shield absorption.</returns>
+            private double ApplyShieldDamage(double damage)
+            {
+                damage = Math.Max(damage, 0);
+                double shieldDamage = Math.Min(_currentShields, damage);
+                _currentShields -= shieldDamage;
+                return damage - shieldDamage;
+            }
+
+            /// <summary>
+            /// Expands one craft's configured weapon count across a full squadron.
+            /// </summary>
+            /// <param name="weaponStrength">The weapon count carried by one craft.</param>
+            /// <param name="squadronSize">The full squadron size.</param>
+            /// <returns>The aggregate weapon count, clamped to a supported integer.</returns>
+            private static int ScaleWeaponStrength(int weaponStrength, int squadronSize)
+            {
+                long aggregate = (long)Math.Max(weaponStrength, 0) * Math.Max(squadronSize, 0);
+                return aggregate >= int.MaxValue ? int.MaxValue : (int)aggregate;
             }
         }
     }

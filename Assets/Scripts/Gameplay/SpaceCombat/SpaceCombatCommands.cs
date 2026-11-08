@@ -719,15 +719,21 @@ namespace Rebellion.Gameplay
                 planet,
                 defenderOwnerInstanceId
             );
-            SpaceCombatCommandModifiers attackerCommand = GetCommandModifiers(
+            (Officer Admiral, Officer Commander) attackerCommandOfficers = GetCommandOfficers(
                 attackerFleets,
                 planet,
                 attackerOwnerInstanceId
             );
-            SpaceCombatCommandModifiers defenderCommand = GetCommandModifiers(
+            (Officer Admiral, Officer Commander) defenderCommandOfficers = GetCommandOfficers(
                 defenderFleets,
                 planet,
                 defenderOwnerInstanceId
+            );
+            SpaceCombatCommandModifiers attackerCommand = CreateCommandModifiers(
+                attackerCommandOfficers
+            );
+            SpaceCombatCommandModifiers defenderCommand = CreateCommandModifiers(
+                defenderCommandOfficers
             );
             SpaceCombatResult result = _autoResolver.Resolve(
                 attackerShips,
@@ -739,6 +745,8 @@ namespace Rebellion.Gameplay
                 attackerCommand,
                 defenderCommand
             );
+            IncludeCommandOfficers(result.AttackingUnits, attackerCommandOfficers);
+            IncludeCommandOfficers(result.DefendingUnits, defenderCommandOfficers);
             result.AttackerFleet = SpaceCombatQueries.GetRepresentativeFleet(attackerFleets);
             result.DefenderFleet = SpaceCombatQueries.GetRepresentativeFleet(defenderFleets);
             result.AttackerOwnerInstanceID = attackerOwnerInstanceId;
@@ -787,6 +795,22 @@ namespace Rebellion.Gameplay
             string ownerInstanceId
         )
         {
+            return CreateCommandModifiers(GetCommandOfficers(fleets, planet, ownerInstanceId));
+        }
+
+        /// <summary>
+        /// Selects the ranking officers who command one side of a space battle.
+        /// </summary>
+        /// <param name="fleets">The side's participating fleets in encounter order.</param>
+        /// <param name="planet">The system where combat occurs.</param>
+        /// <param name="ownerInstanceId">The side's faction instance identifier.</param>
+        /// <returns>The selected Admiral and Commander.</returns>
+        private static (Officer Admiral, Officer Commander) GetCommandOfficers(
+            IReadOnlyList<Fleet> fleets,
+            Planet planet,
+            string ownerInstanceId
+        )
+        {
             List<Officer> fleetOfficers = (fleets ?? Array.Empty<Fleet>())
                 .Where(fleet => fleet != null)
                 .SelectMany(fleet => fleet.GetOfficers())
@@ -807,10 +831,46 @@ namespace Rebellion.Gameplay
                 SkillRating.Combat,
                 ownerInstanceId
             );
+            return (admiral, commander);
+        }
+
+        /// <summary>
+        /// Converts selected command officers to the ratings consumed by tactical resolution.
+        /// </summary>
+        /// <param name="officers">The selected Admiral and Commander.</param>
+        /// <returns>The tactical command modifiers.</returns>
+        private static SpaceCombatCommandModifiers CreateCommandModifiers(
+            (Officer Admiral, Officer Commander) officers
+        )
+        {
             return new SpaceCombatCommandModifiers(
-                admiral?.GetEffectiveRating(SkillRating.Leadership) ?? 0,
-                commander?.GetEffectiveRating(SkillRating.Combat) ?? 0
+                officers.Admiral?.GetEffectiveRating(SkillRating.Leadership) ?? 0,
+                officers.Commander?.GetEffectiveRating(SkillRating.Combat) ?? 0
             );
+        }
+
+        /// <summary>
+        /// Adds selected command officers that are not already carried by a reported fleet.
+        /// </summary>
+        /// <param name="units">The side's detached combat snapshots.</param>
+        /// <param name="officers">The selected Admiral and Commander.</param>
+        private static void IncludeCommandOfficers(
+            ICollection<CombatUnitSnapshot> units,
+            (Officer Admiral, Officer Commander) officers
+        )
+        {
+            HashSet<string> includedIds = units
+                .Where(unit => unit?.Unit != null)
+                .Select(unit => unit.Unit.GetInstanceID())
+                .Where(instanceId => !string.IsNullOrEmpty(instanceId))
+                .ToHashSet(StringComparer.Ordinal);
+            foreach (Officer officer in new[] { officers.Admiral, officers.Commander })
+            {
+                if (officer == null || !includedIds.Add(officer.GetInstanceID()))
+                    continue;
+
+                units.Add(new CombatUnitSnapshot(officer));
+            }
         }
 
         /// <summary>
