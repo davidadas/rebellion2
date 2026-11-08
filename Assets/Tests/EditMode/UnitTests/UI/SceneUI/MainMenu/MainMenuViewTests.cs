@@ -81,6 +81,28 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void AuthoredPrefab_IconAtlas_PreservesSourceColorEncoding()
+        {
+            Camera[] cameras = _prefabRoot.GetComponentsInChildren<Camera>(true);
+            Camera atlas = cameras.Single(camera => camera.name == "IconAtlasCamera");
+            Camera source = cameras.Single(camera =>
+                camera.transform.parent.name == "IconRig_Faction1"
+            );
+
+            Assert.IsNotNull(_prefabRoot.GetComponent<ModelPreviewAtlas>());
+            Assert.IsFalse(atlas.enabled);
+            Assert.AreEqual(
+                source.targetTexture.graphicsFormat,
+                atlas.targetTexture.graphicsFormat
+            );
+            Assert.AreEqual(source.targetTexture.sRGB, atlas.targetTexture.sRGB);
+            Assert.AreEqual(
+                source.targetTexture.depthStencilFormat,
+                atlas.targetTexture.depthStencilFormat
+            );
+        }
+
+        [Test]
         public void AuthoredPrefab_OptionsOverlay_IsFullScreenAndInitiallyHidden()
         {
             Transform overlay = _prefabRoot.transform.Find("UI/OptionsOverlayCanvas");

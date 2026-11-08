@@ -85,6 +85,25 @@ public static class MainMenuPrefabBuilder
     private static readonly Color _iconAmbientColor = new Color(0.212f, 0.227f, 0.259f).linear;
     private const float _builtInDirectionalLightIntensityToHdrp = Mathf.PI;
     private const float _hqUnderLightIntensity = 60f;
+    private const string _iconAtlasPath = "Assets/Art/Models/MainMenu/IconAtlas.renderTexture";
+    private const int _iconAtlasWidth = 4096;
+    private const int _iconAtlasHeight = 2048;
+
+    // Separate the locally lit rigs so their light ranges cannot reach another icon. Each image
+    // retains its source pixel dimensions, including the citadel's authored crop.
+    private static readonly Dictionary<string, Vector2Int> _iconAtlasCenters = new Dictionary<
+        string,
+        Vector2Int
+    >
+    {
+        ["IconRig_Faction1"] = new Vector2Int(300, 300),
+        ["IconRig_Faction2"] = new Vector2Int(1000, 300),
+        ["IconRig_EasyDifficulty"] = new Vector2Int(1700, 300),
+        ["IconRig_MediumDifficulty"] = new Vector2Int(2400, 300),
+        ["IconRig_GameSetup"] = new Vector2Int(300, 1500),
+        ["IconRig_HqCitadel"] = new Vector2Int(1300, 1500),
+        ["IconRig_HardDifficulty"] = new Vector2Int(3650, 1500),
+    };
 
     // The five icon slots -- two faction coins and three difficulty ships/sphere -- each carrying
     // its model + RenderTexture paths and the orientation its rig applies. (Face is defined below.)
@@ -204,6 +223,7 @@ public static class MainMenuPrefabBuilder
             InstallPlanet(root);
             InstallSpinning3DIcons(root);
             InstallHqCitadel(root);
+            InstallIconAtlas(root);
             PrefabUtility.SaveAsPrefabAsset(root, _prefabPath);
         }
         finally
@@ -2874,6 +2894,64 @@ public static class MainMenuPrefabBuilder
         serializedView.FindProperty("victoryConditionSelectionOverlay").objectReferenceValue =
             selectionOverlay;
         serializedView.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    /// <summary>
+    /// Authors one shared render target and records the source framing for every icon rig.
+    /// Runtime conversion follows model normalization and precedes the first visible menu frame.
+    /// </summary>
+    /// <param name="root">The completed main-menu prefab root.</param>
+    private static void InstallIconAtlas(GameObject root)
+    {
+        Transform rigs = FindDeep(root.transform, _iconRigsName);
+        Camera[] sources = rigs.GetComponentsInChildren<Camera>(true);
+        RenderTextureDescriptor descriptor = sources[0].targetTexture.descriptor;
+        descriptor.width = _iconAtlasWidth;
+        descriptor.height = _iconAtlasHeight;
+
+        RenderTexture atlas = AssetDatabase.LoadAssetAtPath<RenderTexture>(_iconAtlasPath);
+        if (atlas == null)
+        {
+            // Copy the source format, including its linear color encoding and alpha channel.
+            atlas = new RenderTexture(descriptor) { name = "IconAtlas" };
+            EnsureAssetFolder(Path.GetDirectoryName(_iconAtlasPath));
+            AssetDatabase.CreateAsset(atlas, _iconAtlasPath);
+        }
+        else
+        {
+            atlas.Release();
+            atlas.descriptor = descriptor;
+            EditorUtility.SetDirty(atlas);
+        }
+
+        GameObject cameraObject = Object.Instantiate(sources[0].gameObject, rigs, false);
+        cameraObject.name = "IconAtlasCamera";
+        Camera camera = cameraObject.GetComponent<Camera>();
+        camera.enabled = false;
+        camera.transform.position = _rigOrigin + new Vector3(0f, 0f, -4f);
+        float pixelsPerUnit = sources[0].targetTexture.height / (2f * sources[0].orthographicSize);
+        camera.orthographicSize = _iconAtlasHeight / (2f * pixelsPerUnit);
+        camera.targetTexture = atlas;
+        camera.aspect = (float)_iconAtlasWidth / _iconAtlasHeight;
+
+        RawImage[] images = root.GetComponentsInChildren<RawImage>(true);
+        ModelPreviewAtlas.Preview[] previews = sources
+            .Select(source => new ModelPreviewAtlas.Preview(
+                source.transform.parent,
+                source,
+                _iconAtlasCenters[source.transform.parent.name],
+                images.Where(image => image.texture == source.targetTexture).ToArray(),
+                source.transform.parent.GetComponentsInChildren<Light>(true)
+            ))
+            .ToArray();
+        ModelPreviewAtlas renderer = root.AddComponent<ModelPreviewAtlas>();
+        renderer.Configure(camera, previews);
+
+        SerializedObject controller = new SerializedObject(
+            FindRequiredComponent<MainMenuController>(root)
+        );
+        controller.FindProperty("_iconPreviews").objectReferenceValue = renderer;
+        controller.ApplyModifiedPropertiesWithoutUndo();
     }
 
     /// <summary>
