@@ -211,7 +211,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Officer participant = (Officer)_mission.GetMainParticipants()[0];
             participant.Movement = null;
             CapitalShip ship = new CapitalShip();
-            GameFleet fleet = new GameFleet { Movement = new MovementState() };
+            GameFleet fleet = new GameFleet { Movement = TestMovement.Create() };
             ship.SetParent(fleet);
             participant.SetParent(ship);
             MissionsWindowSession session = new MissionsWindowSession(_planet, _window);
@@ -290,7 +290,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 DisplayImagePath = _entityImagePath,
                 SmallDisplayImagePath = _entityImagePath,
                 InTransitSmallImagePath = _entityImagePath,
-                Movement = inTransit ? new MovementState() : null,
+                Movement = inTransit ? TestMovement.Create() : null,
             };
         }
 

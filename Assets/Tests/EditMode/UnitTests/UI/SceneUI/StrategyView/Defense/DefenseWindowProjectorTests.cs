@@ -188,7 +188,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 OwnerInstanceID = _ownerId,
                 DisplayImagePath = definition.DisplayImagePath,
                 SmallDisplayImagePath = definition.SmallDisplayImagePath,
-                Movement = new MovementState(),
+                Movement = TestMovement.Create(),
             };
             _planet.AddTestChild(officer);
             _session.Reconcile();
@@ -223,7 +223,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 SmallDisplayImagePath = definition.SmallDisplayImagePath,
                 InTransitSmallImagePath = definition.InTransitSmallImagePath,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                Movement = new MovementState(),
+                Movement = TestMovement.Create(),
             };
             _planet.AddTestChild(specialForces);
             _session.Reconcile();
@@ -259,7 +259,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 DisplayImagePath = definition.DisplayImagePath,
                 SmallDisplayImagePath = definition.SmallDisplayImagePath,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                Movement = new MovementState(),
+                Movement = TestMovement.Create(),
             };
             _planet.AddTestChild(regiment);
             _session.Reconcile();
@@ -284,7 +284,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         {
             Starfighter starfighter = CreateStarfighter("fighter", "Fighter Squadron");
             starfighter.ManufacturingStatus = ManufacturingStatus.Building;
-            starfighter.Movement = new MovementState();
+            starfighter.Movement = TestMovement.Create();
             starfighter.CurrentSquadronSize = 4;
             starfighter.MaxSquadronSize = 12;
             _planet.AddTestChild(starfighter);
@@ -319,7 +319,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 InTransitSmallImagePath = definition.InTransitSmallImagePath,
                 DamagedSmallImagePath = definition.DamagedSmallImagePath,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                Movement = new MovementState(),
+                Movement = TestMovement.Create(),
                 CurrentSquadronSize = 6,
                 MaxSquadronSize = 12,
             };

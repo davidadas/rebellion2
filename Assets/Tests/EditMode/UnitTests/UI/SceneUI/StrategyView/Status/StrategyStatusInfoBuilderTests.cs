@@ -661,7 +661,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 DisplayName = "Wedge Antilles",
                 OwnerInstanceID = _ownerId,
                 CurrentRank = OfficerRank.Commander,
-                Movement = new MovementState { TransitTicks = 9, TicksElapsed = 4 },
+                Movement = TestMovement.Create(transitTicks: 9, ticksElapsed: 4),
             };
             _game.AttachNode(officer, _planet);
 
@@ -681,7 +681,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 InstanceID = "moving-command-fleet",
                 DisplayName = "First Fleet",
                 OwnerInstanceID = _ownerId,
-                Movement = new MovementState { TransitTicks = 9, TicksElapsed = 4 },
+                Movement = TestMovement.Create(transitTicks: 9, ticksElapsed: 4),
             };
             CapitalShip ship = new CapitalShip
             {
@@ -752,7 +752,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             {
                 DisplayName = "Traveling Officer",
                 OwnerInstanceID = _ownerId,
-                Movement = new MovementState { TransitTicks = 9, TicksElapsed = 4 },
+                Movement = TestMovement.Create(transitTicks: 9, ticksElapsed: 4),
                 InTransitImagePath = "officer/in-transit",
             };
 
@@ -774,7 +774,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             {
                 DisplayName = "Traveling Officer",
                 OwnerInstanceID = _ownerId,
-                Movement = new MovementState { TransitTicks = 9, TicksElapsed = 4 },
+                Movement = TestMovement.Create(transitTicks: 9, ticksElapsed: 4),
             };
 
             StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
@@ -791,7 +791,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 InstanceID = "fleet",
                 DisplayName = "First Fleet",
                 OwnerInstanceID = _ownerId,
-                Movement = new MovementState { TransitTicks = 12, TicksElapsed = 5 },
+                Movement = TestMovement.Create(transitTicks: 12, ticksElapsed: 5),
             };
             _game.AttachNode(fleet, _planet);
             CapitalShip damagedShip = new CapitalShip
@@ -895,7 +895,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                     InstanceID = "incoming-ship",
                     DisplayName = "Incoming Ship",
                     OwnerInstanceID = _ownerId,
-                    Movement = new MovementState { TransitTicks = 12, TicksElapsed = 5 },
+                    Movement = TestMovement.Create(transitTicks: 12, ticksElapsed: 5),
                 },
                 fleet
             );
@@ -918,7 +918,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 InstanceID = "arrived-fleet",
                 DisplayName = "Arrived Fleet",
                 OwnerInstanceID = _ownerId,
-                Movement = new MovementState { TransitTicks = 5, TicksElapsed = 5 },
+                Movement = TestMovement.Create(transitTicks: 5, ticksElapsed: 5),
             };
             _game.AttachNode(fleet, _planet);
             _game.AttachNode(
@@ -927,7 +927,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                     InstanceID = "following-ship",
                     DisplayName = "Following Ship",
                     OwnerInstanceID = _ownerId,
-                    Movement = new MovementState { TransitTicks = 10, TicksElapsed = 4 },
+                    Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 4),
                 },
                 fleet
             );
@@ -1107,7 +1107,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 InstanceID = "moving-fleet",
                 DisplayName = "Moving Fleet",
                 OwnerInstanceID = _ownerId,
-                Movement = new MovementState { TransitTicks = 12, TicksElapsed = 5 },
+                Movement = TestMovement.Create(transitTicks: 12, ticksElapsed: 5),
             };
             _game.AttachNode(fleet, _planet);
             CapitalShip ship = new CapitalShip
@@ -1155,7 +1155,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 {
                     new Officer
                     {
-                        Movement = new MovementState { TransitTicks = 9, TicksElapsed = 4 },
+                        Movement = TestMovement.Create(transitTicks: 9, ticksElapsed: 4),
                     },
                     new SpecialForces(),
                 }
@@ -1263,7 +1263,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         {
             Officer officer = ObserveMovingEnemyOfficer();
             _game.CurrentTick = 110;
-            officer.Movement = new MovementState { TransitTicks = 30, TicksElapsed = 5 };
+            officer.Movement = TestMovement.Create(transitTicks: 30, ticksElapsed: 5);
             new FogOfWarRecorder().RecordIntelligenceSnapshot(
                 _game.GetPlayerFaction(),
                 _planet,
@@ -1284,14 +1284,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         public void Build_LegacyMovementIntelligence_OmitsUnknownArrivalDay()
         {
             Officer officer = ObserveMovingEnemyOfficer();
-            MovementState legacyMovement = _game
+            Officer observedOfficer = _game
                 .GetPlayerFaction()
                 .Fog.Snapshots[_planetSector.InstanceID]
                 .Planets[_planet.InstanceID]
-                .Officers.Single()
-                .Movement;
-            legacyMovement.ObservedAtTick = null;
-            legacyMovement.IsObservation = false;
+                .Officers.Single();
+            MovementState legacyMovement = observedOfficer.Movement;
+            observedOfficer.Movement = TestMovement.Create(
+                transitTicks: legacyMovement.TransitTicks,
+                ticksElapsed: legacyMovement.TicksElapsed
+            );
             _game.CurrentTick = 110;
 
             StrategyStatusInfo info = BuildObservedOfficerStatus(officer.InstanceID);
@@ -1309,7 +1311,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             {
                 InstanceID = "friendly-moving",
                 OwnerInstanceID = _ownerId,
-                Movement = new MovementState { TransitTicks = 20, TicksElapsed = elapsed },
+                Movement = TestMovement.Create(transitTicks: 20, ticksElapsed: elapsed),
             };
             _game.AttachNode(officer, _planet);
             _game.CurrentTick = currentTick;
@@ -1333,7 +1335,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             {
                 InstanceID = "observed-fleet",
                 OwnerInstanceID = _opponentId,
-                Movement = new MovementState { TransitTicks = 20, TicksElapsed = 10 },
+                Movement = TestMovement.Create(transitTicks: 20, ticksElapsed: 10),
             };
             CapitalShip ship = new CapitalShip
             {
@@ -1377,7 +1379,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 InstanceID = "observed-officer",
                 DisplayName = "Observed Officer",
                 OwnerInstanceID = _opponentId,
-                Movement = new MovementState { TransitTicks = 20, TicksElapsed = 10 },
+                Movement = TestMovement.Create(transitTicks: 20, ticksElapsed: 10),
             };
             _game.AttachNode(officer, _planet);
             new FogOfWarRecorder().RecordEspionageSnapshot(

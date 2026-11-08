@@ -519,7 +519,7 @@ namespace Rebellion.Tests.Gameplay
             Fleet empireFleet = CreateFleet("INCOMING_FLEET", _empire);
             _game.AttachNode(empireFleet, _coruscant);
             AddCapitalShip(empireFleet, _empire, "INCOMING_SHIP");
-            empireFleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            empireFleet.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 5);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
@@ -703,19 +703,19 @@ namespace Rebellion.Tests.Gameplay
         public void ObservePlanet_EnemyUnitsInTransit_NotRecorded()
         {
             Officer officer = CreateOfficer("MOVING_OFFICER", _empire);
-            officer.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            officer.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 5);
             _game.AttachNode(officer, _coruscant);
 
             Regiment regiment = CreateRegiment("MOVING_REGIMENT", _empire);
-            regiment.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            regiment.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 5);
             _game.AttachNode(regiment, _coruscant);
 
             Starfighter starfighter = CreateStarfighter("MOVING_STARFIGHTER", _empire);
-            starfighter.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            starfighter.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 5);
             _game.AttachNode(starfighter, _coruscant);
 
             Fleet fleet = CreateFleet("MOVING_FLEET", _empire);
-            fleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            fleet.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 5);
             _game.AttachNode(fleet, _coruscant);
             AddCapitalShip(fleet, _empire, "MOVING_FLEET_SHIP");
 

@@ -341,7 +341,7 @@ namespace Rebellion.Tests.Gameplay
             var (game, planet, system, officer) = BuildOfficerIncident(80, new StubRNG());
             officer.IsCaptured = true;
             Officer travelling = EntityFactory.CreateOfficer("travelling", "empire");
-            travelling.Movement = new MovementState();
+            travelling.Movement = TestMovement.Create();
             game.AttachNode(travelling, planet);
             Officer killed = EntityFactory.CreateOfficer("killed", "empire");
             killed.IsKilled = true;
@@ -417,7 +417,7 @@ namespace Rebellion.Tests.Gameplay
             );
             Regiment enroute = EntityFactory.CreateRegiment("enroute", "empire");
             enroute.ManufacturingStatus = ManufacturingStatus.Complete;
-            enroute.Movement = new MovementState();
+            enroute.Movement = TestMovement.Create();
             game.AttachNode(enroute, planet);
             ScheduleIncident(planet, 1);
             game.CurrentTick = 1;
@@ -464,7 +464,7 @@ namespace Rebellion.Tests.Gameplay
             {
                 InstanceID = "enroute",
                 OwnerInstanceID = "empire",
-                Movement = new MovementState(),
+                Movement = TestMovement.Create(),
             };
             Officer killed = new Officer
             {
@@ -662,7 +662,7 @@ namespace Rebellion.Tests.Gameplay
                 "rebels",
                 50
             );
-            mission.GetMainParticipants()[0].Movement = new MovementState();
+            mission.GetMainParticipants()[0].Movement = TestMovement.Create();
             ScheduleIncident(planet, 1);
             game.CurrentTick = 1;
             planet.EnergyCapacity = 1;

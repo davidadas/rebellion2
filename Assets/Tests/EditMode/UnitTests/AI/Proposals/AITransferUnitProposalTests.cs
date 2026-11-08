@@ -235,7 +235,7 @@ namespace Rebellion.Tests.AI.Fleets
                 combatStrength: 100
             );
             targetShip.ManufacturingStatus = ManufacturingStatus.Delivering;
-            targetShip.Movement = new MovementState { TransitTicks = 10 };
+            targetShip.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(targetShip, targetFleet);
             Fleet hostileFleet = EntityFactory.CreateFleet("hostile-fleet", rebels.InstanceID);
             game.AttachNode(hostileFleet, staging);

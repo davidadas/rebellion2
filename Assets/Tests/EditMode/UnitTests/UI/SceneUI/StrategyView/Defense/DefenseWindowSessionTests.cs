@@ -279,7 +279,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             {
                 InstanceID = "regiment",
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                Movement = new MovementState(),
+                Movement = TestMovement.Create(),
             };
             _planet.AddTestChild(regiment);
             _session.Reconcile();

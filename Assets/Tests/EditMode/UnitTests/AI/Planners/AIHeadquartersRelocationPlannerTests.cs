@@ -408,7 +408,7 @@ namespace Rebellion.Tests.AI.Planners
         {
             Fleet fleet = EntityFactory.CreateFleet(instanceId, ownerInstanceId);
             if (isMoving)
-                fleet.Movement = new MovementState { TransitTicks = 10 };
+                fleet.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(fleet, planet);
             game.AttachNode(
                 AITestSceneBuilder.CreateCapitalShip(

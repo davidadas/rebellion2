@@ -1139,7 +1139,7 @@ namespace Rebellion.Tests.AI.Fleets
             Fleet fleet = AddBattleFleet(game, target, empire.InstanceID, "fleet");
             CapitalShip ship = fleet.GetChildren<CapitalShip>().Single();
             ship.ManufacturingStatus = ManufacturingStatus.Delivering;
-            ship.Movement = new MovementState { TransitTicks = 10 };
+            ship.Movement = TestMovement.Create(transitTicks: 10);
             fleet.Order = new FleetOrder
             {
                 OrderType = FleetOrderType.Attack,
@@ -1201,12 +1201,11 @@ namespace Rebellion.Tests.AI.Fleets
                 combatStrength: 50
             );
             game.AttachNode(inboundShip, fleet);
-            inboundShip.Movement = new MovementState
-            {
-                TransitTicks = 10,
-                TicksElapsed = 1,
-                CurrentPosition = new Point(10, 0),
-            };
+            inboundShip.Movement = TestMovement.Create(
+                transitTicks: 10,
+                ticksElapsed: 1,
+                currentPosition: new Point(10, 0)
+            );
             fleet.Order = new FleetOrder
             {
                 OrderType = FleetOrderType.Attack,
@@ -1248,7 +1247,7 @@ namespace Rebellion.Tests.AI.Fleets
                 "incoming-enemy",
                 combatStrength: 1000
             );
-            incomingEnemy.Movement = new MovementState { TransitTicks = 20, TicksElapsed = 1 };
+            incomingEnemy.Movement = TestMovement.Create(transitTicks: 20, ticksElapsed: 1);
             Fleet fleet = AddBattleFleet(
                 game,
                 owned,
@@ -1425,7 +1424,7 @@ namespace Rebellion.Tests.AI.Fleets
                 Status = FleetOrderStatus.Readying,
                 TargetPlanetId = firstEnemy.InstanceID,
             };
-            fleet.Movement = new MovementState { TransitTicks = 10 };
+            fleet.Movement = TestMovement.Create(transitTicks: 10);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             List<AIFleetAttackProposal> proposals = new AIFleetPlanner()
@@ -1741,7 +1740,7 @@ namespace Rebellion.Tests.AI.Fleets
                 empire.InstanceID,
                 combatStrength: 400
             );
-            inboundShip.Movement = new MovementState { TransitTicks = 10 };
+            inboundShip.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(inboundShip, targetFleet);
             Fleet sourceFleet = AddBattleFleet(game, owned, empire.InstanceID, "source-fleet");
             CapitalShip donor = AITestSceneBuilder.CreateCapitalShip(
@@ -1793,7 +1792,7 @@ namespace Rebellion.Tests.AI.Fleets
                 "inbound-ship",
                 empire.InstanceID
             );
-            inboundShip.Movement = new MovementState { TransitTicks = 10 };
+            inboundShip.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(inboundShip, targetFleet);
             game.AttachNode(
                 AITestSceneBuilder.CreateRegiment(
@@ -1809,7 +1808,7 @@ namespace Rebellion.Tests.AI.Fleets
                     $"inbound-ship-{index}",
                     empire.InstanceID
                 );
-                additionalInboundShip.Movement = new MovementState { TransitTicks = 10 };
+                additionalInboundShip.Movement = TestMovement.Create(transitTicks: 10);
                 game.AttachNode(additionalInboundShip, targetFleet);
                 game.AttachNode(
                     AITestSceneBuilder.CreateRegiment(
@@ -2055,7 +2054,7 @@ namespace Rebellion.Tests.AI.Fleets
                 rebels.InstanceID,
                 "hostile-fleet"
             );
-            incomingHostile.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            incomingHostile.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 1);
             Fleet localDefense = AddBattleFleet(
                 game,
                 staging,
@@ -3189,7 +3188,7 @@ namespace Rebellion.Tests.AI.Fleets
                 "hostile-fleet",
                 combatStrength: 500
             );
-            hostileFleet.Movement = new MovementState { TransitTicks = 10 };
+            hostileFleet.Movement = TestMovement.Create(transitTicks: 10);
             Planet reservePlanet = AITestSceneBuilder.AddPlanet(
                 game,
                 system,
@@ -3401,7 +3400,7 @@ namespace Rebellion.Tests.AI.Fleets
                 empire.InstanceID,
                 combatStrength: 900
             );
-            inboundShip.Movement = new MovementState { TransitTicks = 10 };
+            inboundShip.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(inboundShip, defenseFleet);
             Fleet sourceFleet = AddBattleFleet(
                 game,
@@ -3624,7 +3623,7 @@ namespace Rebellion.Tests.AI.Fleets
                 "inbound-fleet",
                 combatStrength: 1000
             );
-            inboundFleet.Movement = new MovementState { TransitTicks = 10 };
+            inboundFleet.Movement = TestMovement.Create(transitTicks: 10);
             Planet reservePlanet = AITestSceneBuilder.AddPlanet(
                 game,
                 system,

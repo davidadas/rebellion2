@@ -2535,7 +2535,7 @@ namespace Rebellion.Tests.Gameplay
                         alliance.InstanceID
                     )
             );
-            fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
+            TestMovement.AdvanceTo(fleet.Movement, fleet.Movement.TransitTicks - 1);
 
             manager.Tick.ProcessTick();
 
@@ -2671,7 +2671,7 @@ namespace Rebellion.Tests.Gameplay
                         alliance.InstanceID
                     )
             );
-            routeFleet.Movement.TicksElapsed = routeFleet.Movement.TransitTicks - 1;
+            TestMovement.AdvanceTo(routeFleet.Movement, routeFleet.Movement.TransitTicks - 1);
 
             manager.Tick.ProcessTick();
 

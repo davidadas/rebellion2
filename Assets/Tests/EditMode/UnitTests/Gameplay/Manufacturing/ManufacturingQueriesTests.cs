@@ -326,7 +326,7 @@ namespace Rebellion.Tests.Gameplay
                 new ManufacturingQueries(game)
             );
             Assert.IsTrue(manager.StartManufacturing(producer, activeTemplate, fleet, 1, "empire"));
-            carrier.Movement = new MovementState { TransitTicks = 10 };
+            carrier.Movement = TestMovement.Create(transitTicks: 10);
 
             bool canSet = new ManufacturingQueries(game).CanSetManufacturingOrder(
                 producer,
@@ -366,7 +366,7 @@ namespace Rebellion.Tests.Gameplay
                 new ManufacturingQueries(game)
             );
             Assert.IsTrue(manager.StartManufacturing(producer, activeTemplate, fleet, 1, "empire"));
-            carrier.Movement = new MovementState { TransitTicks = 10 };
+            carrier.Movement = TestMovement.Create(transitTicks: 10);
 
             bool canSet = new ManufacturingQueries(game).CanSetManufacturingOrder(
                 producer,
@@ -720,7 +720,7 @@ namespace Rebellion.Tests.Gameplay
             Building unfinished = CreateOrderTestConstructionFacility("unfinished", "empire", 1);
             unfinished.ManufacturingStatus = ManufacturingStatus.Building;
             Building traveling = CreateOrderTestConstructionFacility("traveling", "empire", 1);
-            traveling.Movement = new MovementState { TransitTicks = 5 };
+            traveling.Movement = TestMovement.Create(transitTicks: 5);
             game.AttachNode(active, planet);
             game.AttachNode(unfinished, planet);
             game.AttachNode(traveling, planet);
