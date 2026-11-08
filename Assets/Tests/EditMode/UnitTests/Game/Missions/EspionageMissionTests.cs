@@ -368,6 +368,58 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void ResolveObjective_MobileHeadquartersInTransit_UsesCoreSectorBonus()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarCommands fog
+            ) = MissionSceneBuilder.Build();
+            enemyPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
+            AddSector(game, "core2", "core_planet2", PlanetSectorType.Core);
+            AddSector(game, "rim1", "rim_planet1", PlanetSectorType.OuterRim);
+            Building headquarters = new Building
+            {
+                InstanceID = "rebel_headquarters",
+                OwnerInstanceID = "rebels",
+                BuildingType = BuildingType.Headquarters,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 },
+            };
+            game.AttachNode(headquarters, enemyPlanet);
+            Faction rebels = game.GetFactionByOwnerInstanceID("rebels");
+            rebels.HQInstanceID = enemyPlanet.InstanceID;
+            rebels.HeadquartersUnitInstanceID = headquarters.InstanceID;
+            rebels.Settings.Headquarters.IsMobile = true;
+            game.Config.Espionage.CoreSectorBonus = new GameConfig.RandomCountConfig { Base = 1 };
+            game.Config.Espionage.HeadquartersBonus = new GameConfig.RandomCountConfig
+            {
+                Base = 10,
+            };
+            enemyPlanet.VisitingFactionIDs.Add("empire");
+
+            Mission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+
+            MissionSceneBuilder.RunToSuccess(mission, game);
+
+            Faction empire = game.GetFactionByOwnerInstanceID("empire");
+            CollectionAssert.AreEquivalent(
+                new[] { "enemy_planet", "core_planet2" },
+                RevealedPlanetIDs(empire)
+            );
+        }
+
+        [Test]
         public void ResolveObjective_HeadquartersBuildingAwayFromCurrentHeadquarters_UsesCoreSectorBonus()
         {
             (

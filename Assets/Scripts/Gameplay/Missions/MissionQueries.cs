@@ -134,11 +134,27 @@ namespace Rebellion.Gameplay
         /// <returns>True when the projected co-located team can create the mission.</returns>
         internal bool CanCreateMissionFromDeparture(MissionContext context, Planet departure)
         {
+            return TryCreateMissionFromDeparture(context, departure, out _);
+        }
+
+        /// <summary>
+        /// Creates a projected mission after relocating its complete team to one departure planet.
+        /// </summary>
+        /// <param name="context">The observed objective and live participant identities.</param>
+        /// <param name="departure">The proposed common departure planet.</param>
+        /// <param name="mission">Receives an unstarted mission containing detached participant projections.</param>
+        /// <returns>True when the projected co-located team can create the mission.</returns>
+        internal bool TryCreateMissionFromDeparture(
+            MissionContext context,
+            Planet departure,
+            out Mission mission
+        )
+        {
             return TryCreateProjectedDepartureMission(
                 context,
                 departure,
                 requireArrival: false,
-                out _
+                out mission
             );
         }
 

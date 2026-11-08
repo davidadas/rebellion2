@@ -1144,7 +1144,16 @@ namespace Rebellion.Game.Missions
                 return false;
 
             Faction owner = game.GetFactionByOwnerInstanceID(targetPlanet.OwnerInstanceID);
-            return owner != null && owner.HQInstanceID == targetPlanet.InstanceID;
+            if (owner == null || owner.HQInstanceID != targetPlanet.InstanceID)
+                return false;
+            if (string.IsNullOrEmpty(owner.HeadquartersUnitInstanceID))
+                return true;
+
+            Building headquarters = game.GetSceneNodeByInstanceID<Building>(
+                owner.HeadquartersUnitInstanceID,
+                includeDisabled: true
+            );
+            return headquarters != null && headquarters.Movement == null;
         }
 
         /// <summary>
