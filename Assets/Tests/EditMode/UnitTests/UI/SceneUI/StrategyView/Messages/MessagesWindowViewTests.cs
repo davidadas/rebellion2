@@ -97,6 +97,29 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        public void TryCancel_DetailWithoutIndexHandler_ReturnsFalse()
+        {
+            _view.Render(CreateRenderData(true));
+
+            bool handled = _view.TryCancel();
+
+            Assert.IsFalse(handled);
+        }
+
+        [Test]
+        public void TryCancel_IndexPresentation_DoesNotRequestIndex()
+        {
+            int requests = 0;
+            _view.IndexRequested += _ => requests++;
+            _view.Render(CreateRenderData(false));
+
+            bool handled = _view.TryCancel();
+
+            Assert.IsFalse(handled);
+            Assert.AreEqual(0, requests);
+        }
+
+        [Test]
         public void CommandControls_PressThenClick_RaiseParentControlBeforeSemanticRequests()
         {
             int controlCount = 0;

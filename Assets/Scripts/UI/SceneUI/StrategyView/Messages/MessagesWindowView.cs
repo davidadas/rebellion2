@@ -8,7 +8,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders immutable Messages snapshots and emits semantic interaction gestures.
 /// </summary>
-public sealed class MessagesWindowView : MonoBehaviour
+public sealed class MessagesWindowView : MonoBehaviour, ICancelable
 {
     [SerializeField]
     private UIWindow windowShell;
@@ -147,6 +147,19 @@ public sealed class MessagesWindowView : MonoBehaviour
         }
 
         gameObject.SetActive(true);
+    }
+
+    /// <summary>
+    /// Requests the message index before allowing the window to close.
+    /// </summary>
+    /// <returns>True when a visible detail panel requested index navigation.</returns>
+    public bool TryCancel()
+    {
+        if (!detailPanel.gameObject.activeSelf || IndexRequested == null)
+            return false;
+
+        HandleIndexRequested();
+        return true;
     }
 
     /// <summary>
