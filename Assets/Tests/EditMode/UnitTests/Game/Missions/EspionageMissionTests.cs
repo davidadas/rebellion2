@@ -272,6 +272,54 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void ResolveObjective_FixedCapitalBonusTarget_CanRevealCoreAndOuterRimPlanets()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarCommands fog
+            ) = MissionSceneBuilder.Build();
+            PlanetSector targetSector = enemyPlanet.GetParentOfType<PlanetSector>();
+            targetSector.SectorType = PlanetSectorType.Core;
+            Planet targetPlanet = new Planet
+            {
+                InstanceID = "CORUSCANT",
+                OwnerInstanceID = "FNEMP1",
+                IsColonized = true,
+            };
+            game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
+            game.AttachNode(targetPlanet, targetSector);
+            AddSector(game, "core2", "core_planet2", PlanetSectorType.Core, "FNEMP1");
+            AddSector(game, "rim1", "rim_planet1", PlanetSectorType.OuterRim, "FNEMP1");
+            AddSector(game, "neutral1", "neutral_planet1", PlanetSectorType.OuterRim, null);
+            game.Config.Espionage.HeadquartersBonus = new GameConfig.RandomCountConfig
+            {
+                Base = 10,
+            };
+            targetPlanet.VisitingFactionIDs.Add("empire");
+
+            Mission mission = CreateMission(
+                game,
+                "empire",
+                targetPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, targetPlanet);
+            mission.Initiate(0);
+
+            MissionSceneBuilder.RunToSuccess(mission, game);
+
+            Faction empire = game.GetFactionByOwnerInstanceID("empire");
+            CollectionAssert.AreEquivalent(
+                new[] { "CORUSCANT", "core_planet2", "rim_planet1" },
+                RevealedPlanetIDs(empire)
+            );
+        }
+
+        [Test]
         public void ResolveObjective_MobileHeadquartersTarget_CanRevealCoreAndOuterRimPlanets()
         {
             (
@@ -285,8 +333,17 @@ namespace Rebellion.Tests.Game.Missions
             AddSector(game, "core2", "core_planet2", PlanetSectorType.Core);
             AddSector(game, "rim1", "rim_planet1", PlanetSectorType.OuterRim);
             AddSector(game, "neutral1", "neutral_planet1", PlanetSectorType.OuterRim, null);
+            Building headquarters = new Building
+            {
+                InstanceID = "rebel_headquarters",
+                OwnerInstanceID = "rebels",
+                BuildingType = BuildingType.Headquarters,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(headquarters, enemyPlanet);
             Faction rebels = game.GetFactionByOwnerInstanceID("rebels");
             rebels.HQInstanceID = enemyPlanet.InstanceID;
+            rebels.HeadquartersUnitInstanceID = headquarters.InstanceID;
             rebels.Settings.Headquarters.IsMobile = true;
             game.Config.Espionage.HeadquartersBonus = new GameConfig.RandomCountConfig
             {
@@ -314,7 +371,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ResolveObjective_FixedHeadquartersTarget_CanRevealCoreAndOuterRimPlanets()
+        public void ResolveObjective_OtherHeadquartersTarget_UsesCoreSectorBonus()
         {
             (
                 GameRoot game,
@@ -330,6 +387,7 @@ namespace Rebellion.Tests.Game.Missions
             Faction rebels = game.GetFactionByOwnerInstanceID("rebels");
             rebels.HQInstanceID = enemyPlanet.InstanceID;
             rebels.Settings.Headquarters.IsMobile = false;
+            game.Config.Espionage.CoreSectorBonus = new GameConfig.RandomCountConfig { Base = 1 };
             game.Config.Espionage.HeadquartersBonus = new GameConfig.RandomCountConfig
             {
                 Base = 10,
@@ -350,7 +408,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Faction empire = game.GetFactionByOwnerInstanceID("empire");
             CollectionAssert.AreEquivalent(
-                new[] { "enemy_planet", "core_planet2", "rim_planet1" },
+                new[] { "enemy_planet", "core_planet2" },
                 RevealedPlanetIDs(empire)
             );
         }
@@ -606,7 +664,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ResolveObjective_NeutralPlanetTarget_DoesNotImproveOfficerEspionageRating()
+        public void ResolveObjective_NeutralPlanetTarget_ImprovesOfficerEspionageRating()
         {
             var (game, _, enemyPlanet, officer, _) = MissionSceneBuilder.Build();
             enemyPlanet.OwnerInstanceID = null;
@@ -624,7 +682,7 @@ namespace Rebellion.Tests.Game.Missions
 
             MissionSceneBuilder.RunToSuccess(mission, game);
 
-            Assert.AreEqual(ratingBefore, officer.GetBaseRating(SkillRating.Espionage));
+            Assert.AreEqual(ratingBefore + 1, officer.GetBaseRating(SkillRating.Espionage));
         }
 
         [Test]

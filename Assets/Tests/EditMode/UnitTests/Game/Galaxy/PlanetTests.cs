@@ -1278,13 +1278,25 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
-        public void IsPopulated_NoSupport_ReturnsFalse()
+        public void IsPopulated_UncolonizedPlanet_ReturnsFalse()
         {
             Planet planet = new Planet { PopularSupport = new Dictionary<string, int>() };
 
-            bool populated = _planet.IsPopulated();
+            bool populated = planet.IsPopulated();
 
             Assert.IsFalse(populated);
+        }
+
+        [Test]
+        public void IsPopulated_UncolonizedPlanetWithRetainedSupport_ReturnsFalse()
+        {
+            Planet planet = new Planet
+            {
+                IsColonized = false,
+                PopularSupport = new Dictionary<string, int> { { "empire", 100 } },
+            };
+
+            Assert.IsFalse(planet.IsPopulated());
         }
 
         [Test]
@@ -1292,6 +1304,7 @@ namespace Rebellion.Tests.Game.Galaxy
         {
             Planet planet = new Planet
             {
+                IsColonized = true,
                 PopularSupport = new Dictionary<string, int> { { "empire", 50 } },
             };
 

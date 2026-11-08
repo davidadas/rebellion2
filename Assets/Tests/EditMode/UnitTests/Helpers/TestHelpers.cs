@@ -17,6 +17,8 @@ using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Gameplay.GameEvents;
+using Rebellion.Gameplay.Scripting;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
@@ -506,12 +508,14 @@ public static class TestGameData
     /// <param name="messageDefinitions">The message definitions.</param>
     /// <param name="officerTraits">The officer trait definitions.</param>
     /// <param name="officers">The content-authored officer templates.</param>
+    /// <param name="gameEvents">The fixture's authored event definitions.</param>
     /// <returns>The created value.</returns>
     public static GameDataCatalog Create(
         GameConfig config = null,
         MessageDefinition[] messageDefinitions = null,
         OfficerTraitDefinition[] officerTraits = null,
-        Officer[] officers = null
+        Officer[] officers = null,
+        GameEvent[] gameEvents = null
     )
     {
         return new GameDataCatalog(
@@ -525,11 +529,41 @@ public static class TestGameData
             Array.Empty<Regiment>(),
             Array.Empty<SpecialForces>(),
             officers ?? Array.Empty<Officer>(),
-            Array.Empty<GameEvent>(),
+            gameEvents ?? Array.Empty<GameEvent>(),
             messageDefinitions ?? Array.Empty<MessageDefinition>(),
             new EncyclopediaEntries(),
             new FactionThemes(),
             officerTraits
+        );
+    }
+
+    /// <summary>
+    /// Uses a pack's unit and presentation templates with explicitly authored fixture events.
+    /// </summary>
+    /// <param name="source">The pack catalog supplying the other definitions.</param>
+    /// <param name="gameEvents">The event definitions belonging to the test scenario.</param>
+    /// <returns>A catalog for the test scenario.</returns>
+    public static GameDataCatalog WithGameEvents(
+        GameDataCatalog source,
+        IReadOnlyCollection<GameEvent> gameEvents
+    )
+    {
+        return new GameDataCatalog(
+            source.GameConfig,
+            source.GenerationConfig,
+            source.Factions,
+            source.PlanetSectors,
+            source.Buildings,
+            source.CapitalShips,
+            source.Starfighters,
+            source.Regiments,
+            source.SpecialForces,
+            source.Officers,
+            gameEvents.ToArray(),
+            source.MessageDefinitions,
+            source.EncyclopediaEntries,
+            source.FactionThemes,
+            source.OfficerTraits
         );
     }
 }
@@ -672,7 +706,12 @@ public static class TestSystems
             new PlanetaryControlQueries(game),
             new FogOfWarQueries(game)
         );
-        UprisingResolver uprising = new UprisingResolver(game, provider, control);
+        UprisingResolver uprising = new UprisingResolver(
+            game,
+            provider,
+            control,
+            new JediCommands(game, provider)
+        );
         return CreateMissionCommands(game, provider, movement, uprising);
     }
 
@@ -696,15 +735,46 @@ public static class TestSystems
             game,
             new PersonnelQueries(game)
         );
+        GameEventCommands events = null;
+        DuelCommands duels = new(
+            game,
+            provider,
+            encounter => events.ProcessTriggeredEvents(new[] { encounter })
+        );
         MissionResolver resolver = new MissionResolver(
             game,
             provider,
             movement,
             uprising,
             queries,
-            new MovementQueries(game),
+            duels,
             new MissionBetrayalResolver(game, provider),
             personnelCommands
+        );
+        events = new GameEventCommands(
+            game,
+            provider,
+            new GameActionCommands(
+                game,
+                provider,
+                new UnitFactory(
+                    TestContent.Data.Buildings,
+                    TestContent.Data.CapitalShips,
+                    TestContent.Data.Starfighters,
+                    TestContent.Data.Regiments,
+                    TestContent.Data.SpecialForces
+                ),
+                movement,
+                new PlanetaryControlCommands(
+                    game,
+                    new PlanetaryControlQueries(game),
+                    new FogOfWarQueries(game)
+                ),
+                duels,
+                new MessageCommands(game, new MessageFactory(TestContent.Data.MessageDefinitions)),
+                resolver,
+                new BlockadeTransitionResolver(game)
+            )
         );
         MissionCommands commands = new MissionCommands(game, queries, resolver, personnelCommands);
         _missionResolvers.Add(commands, resolver);

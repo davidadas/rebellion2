@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Util.Reflection;
 using UnityEngine;
 
 namespace Rebellion.Tests.App
@@ -340,7 +339,7 @@ namespace Rebellion.Tests.App
             summary.Difficulty = GameDifficulty.Hard;
             summary.CustomSettings = new CustomGameSettings
             {
-                GenerationConfig = selected.GameData.GenerationConfig.GetDeepCopy(),
+                GenerationConfig = selected.GameData.GenerationConfig.CreateCopy(),
             };
             byte[] before = File.ReadAllBytes(_settingsPath);
             ContentLoadOperation operation = CreateOperation();

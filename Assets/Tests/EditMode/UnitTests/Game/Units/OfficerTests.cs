@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.Xml.Linq;
 using NUnit.Framework;
+using Rebellion.Game;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
@@ -11,6 +13,254 @@ namespace Rebellion.Tests.Game.Units
     [TestFixture]
     public class OfficerTests
     {
+        [TestCase(79, false)]
+        [TestCase(80, true)]
+        [TestCase(81, true)]
+        public void ForceValue_RankCrossesDiscoveryThreshold_UpdatesBeforeNextTick(
+            int rank,
+            bool expectedDiscovery
+        )
+        {
+            (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(50);
+
+            officer.ForceValue = rank;
+
+            Assert.AreEqual(expectedDiscovery, officer.IsDiscoveringForceUser);
+            Assert.AreEqual(
+                expectedDiscovery ? game.CurrentTick + 1 : 0,
+                officer.NextForceDiscoveryTick
+            );
+        }
+
+        [TestCase(29, false)]
+        [TestCase(30, true)]
+        [TestCase(31, true)]
+        public void ForceTrainingAdjustment_RankCrossesDiscoveryThreshold_UpdatesBeforeNextTick(
+            int adjustment,
+            bool expectedDiscovery
+        )
+        {
+            (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(50);
+
+            officer.ForceTrainingAdjustment = adjustment;
+
+            Assert.AreEqual(expectedDiscovery, officer.IsDiscoveringForceUser);
+            Assert.AreEqual(
+                expectedDiscovery ? game.CurrentTick + 1 : 0,
+                officer.NextForceDiscoveryTick
+            );
+        }
+
+        [Test]
+        public void IsCaptured_ActiveScanner_CancelsDiscoveryImmediately()
+        {
+            (_, Officer officer) = RegisterDiscoveryOfficer(80);
+
+            officer.IsCaptured = true;
+
+            Assert.IsFalse(officer.IsDiscoveringForceUser);
+            Assert.Zero(officer.NextForceDiscoveryTick);
+        }
+
+        [Test]
+        public void IsCaptured_ReleasedScanner_ArmsFromActualReleaseTick()
+        {
+            (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
+            officer.IsCaptured = true;
+            game.CurrentTick = 70;
+
+            officer.IsCaptured = false;
+
+            Assert.IsTrue(officer.IsDiscoveringForceUser);
+            Assert.AreEqual(71, officer.NextForceDiscoveryTick);
+        }
+
+        [Test]
+        public void Movement_CompletedBetweenTicks_ArmsFromActualCompletionTick()
+        {
+            (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
+            officer.Movement = TestMovement.Create();
+            game.CurrentTick = 70;
+
+            officer.Movement = null;
+
+            Assert.IsTrue(officer.IsDiscoveringForceUser);
+            Assert.AreEqual(71, officer.NextForceDiscoveryTick);
+        }
+
+        [Test]
+        public void IsEnabled_ReenabledScanner_ArmsFromActualTick()
+        {
+            (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
+            officer.IsEnabled = false;
+            game.CurrentTick = 70;
+
+            officer.IsEnabled = true;
+
+            Assert.IsTrue(officer.IsDiscoveringForceUser);
+            Assert.AreEqual(71, officer.NextForceDiscoveryTick);
+        }
+
+        [Test]
+        public void SetParent_AssignedToMission_CancelsDiscoveryImmediately()
+        {
+            (_, Officer officer) = RegisterDiscoveryOfficer(80);
+            Mission mission = new SabotageMission { InstanceID = "mission" };
+
+            mission.AddChild(officer);
+            officer.SetParent(mission);
+
+            Assert.IsFalse(officer.IsDiscoveringForceUser);
+            Assert.Zero(officer.NextForceDiscoveryTick);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Movement_ContainingTransportCompletes_ArmsPassengerDiscovery(bool fleetTransit)
+        {
+            (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
+            Fleet fleet = new() { InstanceID = "fleet" };
+            CapitalShip ship = new()
+            {
+                InstanceID = "ship",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            fleet.AddChild(ship);
+            ship.SetParent(fleet);
+            ship.AddChild(officer);
+            officer.SetParent(ship);
+            IMovable transport = fleetTransit ? fleet : ship;
+            transport.Movement = TestMovement.Create();
+            Assert.IsFalse(officer.IsDiscoveringForceUser);
+            game.CurrentTick = 70;
+
+            transport.Movement = null;
+
+            Assert.IsTrue(officer.IsDiscoveringForceUser);
+            Assert.AreEqual(71, officer.NextForceDiscoveryTick);
+        }
+
+        [Test]
+        public void IsEnabled_ContainingShipBecomesInactive_CancelsPassengerDiscovery()
+        {
+            (_, Officer officer) = RegisterDiscoveryOfficer(80);
+            CapitalShip ship = new()
+            {
+                InstanceID = "ship",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            ship.AddChild(officer);
+            officer.SetParent(ship);
+
+            ship.IsEnabled = false;
+
+            Assert.IsFalse(officer.IsDiscoveringForceUser);
+            Assert.Zero(officer.NextForceDiscoveryTick);
+        }
+
+        [TestCase(false, 79, false)]
+        [TestCase(false, 80, true)]
+        [TestCase(false, 81, true)]
+        [TestCase(true, 79, false)]
+        [TestCase(true, 80, true)]
+        [TestCase(true, -1, false)]
+        public void HealsFast_ForceRankThreshold_DoesNotRequireSensitivity(
+            bool sensitive,
+            int forceRank,
+            bool expected
+        )
+        {
+            Officer officer = RegisterHealingOfficer(
+                new Officer { IsForceSensitive = sensitive, ForceValue = forceRank }
+            );
+
+            Assert.AreEqual(expected, officer.HealsFast());
+        }
+
+        [Test]
+        public void HealsFast_NonzeroRankFallsBelowThreshold_ClearsEligibility()
+        {
+            Officer officer = RegisterHealingOfficer(new Officer { ForceValue = 80 });
+
+            officer.ForceValue = 79;
+
+            Assert.IsFalse(officer.HealsFast());
+        }
+
+        [Test]
+        public void HealsFast_ConfigurationInjectedAfterRegistration_UsesInjectedRules()
+        {
+            GameRoot game = new();
+            Officer officer = new() { InstanceID = "officer", ForceValue = 80 };
+            game.AddSceneNodeByInstanceID(officer);
+            GameConfig config = TestConfig.Create();
+            config.Jedi.FastHealThreshold = 80;
+
+            game.SetConfig(config);
+
+            Assert.IsTrue(officer.HealsFast());
+        }
+
+        [Test]
+        public void HealsFast_ConfigurationRebound_UsesCurrentThreshold()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Config.Jedi.FastHealThreshold = 80;
+            Officer officer = new() { InstanceID = "officer", ForceValue = 79 };
+            game.AddSceneNodeByInstanceID(officer);
+            Assert.IsFalse(officer.HealsFast());
+            GameConfig changed = TestConfig.Create();
+            changed.Jedi.FastHealThreshold = 60;
+
+            game.SetConfig(changed);
+
+            Assert.IsTrue(officer.HealsFast());
+        }
+
+        [TestCase(32767, 32767)]
+        [TestCase(32768, -32768)]
+        [TestCase(65536, 0)]
+        [TestCase(-32769, 32767)]
+        public void ForceValue_SignedStorageBoundary_PreservesLowSixteenBits(
+            int value,
+            int expected
+        )
+        {
+            Officer officer = new Officer { ForceValue = value };
+
+            Assert.AreEqual(expected, officer.ForceValue);
+        }
+
+        [TestCase(32768, -32768)]
+        [TestCase(-32769, 32767)]
+        public void ForceTrainingAdjustment_SignedStorageBoundary_PreservesLowSixteenBits(
+            int value,
+            int expected
+        )
+        {
+            Officer officer = new Officer { ForceTrainingAdjustment = value };
+
+            Assert.AreEqual(expected, officer.ForceTrainingAdjustment);
+        }
+
+        [TestCase(32767, 1, -32768)]
+        [TestCase(-32768, -1, 32767)]
+        [TestCase(40, 10, 50)]
+        public void ForceRank_TrainingAdjustedValue_UsesSignedSixteenBitSum(
+            int experience,
+            int training,
+            int expected
+        )
+        {
+            Officer officer = new Officer
+            {
+                ForceValue = experience,
+                ForceTrainingAdjustment = training,
+            };
+
+            Assert.AreEqual(expected, officer.ForceRank);
+        }
+
         [Test]
         public void Deserialize_HoldPositionConfiguration_ReadsSharedConditions()
         {
@@ -194,6 +444,73 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(0, officer.GetEffectiveRating(SkillRating.Combat));
         }
 
+        [TestCase(SkillRating.Diplomacy)]
+        [TestCase(SkillRating.Espionage)]
+        [TestCase(SkillRating.Combat)]
+        public void GetEffectiveRating_EnhancedValueExceedsSignedStorage_WrapsToSixteenBits(
+            SkillRating rating
+        )
+        {
+            Officer officer = new();
+            officer.SetBaseRating(rating, 100);
+            officer.ForceValue = short.MaxValue;
+
+            Assert.AreEqual(-32669, officer.GetEffectiveRating(rating));
+        }
+
+        [TestCase(SkillRating.Diplomacy, 90)]
+        [TestCase(SkillRating.Espionage, 90)]
+        [TestCase(SkillRating.Combat, 80)]
+        public void GetEffectiveRating_BaseRatingChangesAfterRead_UsesCurrentRating(
+            SkillRating rating,
+            int expected
+        )
+        {
+            Officer officer = CreateForceRatingOfficer();
+            officer.GetEffectiveRating(rating);
+
+            officer.Ratings[rating] = 60;
+
+            Assert.AreEqual(expected, officer.GetEffectiveRating(rating));
+        }
+
+        [Test]
+        public void Serialize_ComputedOfficerRatings_DoesNotWriteDerivedValues()
+        {
+            Officer officer = RegisterHealingOfficer(CreateForceRatingOfficer());
+            officer.GetEffectiveRating(SkillRating.Diplomacy);
+            officer.GetEffectiveRating(SkillRating.Espionage);
+            officer.GetEffectiveRating(SkillRating.Combat);
+            officer.HealsFast();
+
+            XElement xml = XElement.Parse(SerializationHelper.Serialize(officer));
+
+            foreach (
+                string field in new[]
+                {
+                    "EnhancedDiplomacy",
+                    "EnhancedEspionage",
+                    "EnhancedCombat",
+                    "FastHealing",
+                }
+            )
+                Assert.IsNull(xml.Element(field), field);
+        }
+
+        [Test]
+        public void SerializeDeserialize_ForceRatings_RecomputesFromSavedInputs()
+        {
+            Officer officer = CreateForceRatingOfficer();
+
+            Officer restored = SerializationHelper.Deserialize<Officer>(
+                SerializationHelper.Serialize(officer)
+            );
+
+            Assert.AreEqual(75, restored.GetEffectiveRating(SkillRating.Diplomacy));
+            Assert.AreEqual(60, restored.GetEffectiveRating(SkillRating.Espionage));
+            Assert.AreEqual(65, restored.GetEffectiveRating(SkillRating.Combat));
+        }
+
         [Test]
         public void GetEffectiveRating_Leadership_DoesNotApplyForceRankBonus()
         {
@@ -299,12 +616,104 @@ namespace Rebellion.Tests.Game.Units
         {
             Officer officer = new Officer();
 
-            bool captured = officer.TryCapture("captor", canEscape: false);
+            bool captured = officer.TryCapture(
+                "captor",
+                TestGame.Create(TestConfig.Create()),
+                new SequenceRNG(intValues: new[] { 48 }),
+                canEscape: false
+            );
 
             Assert.IsTrue(captured);
             Assert.IsTrue(officer.IsCaptured);
             Assert.AreEqual("captor", officer.CaptorInstanceID);
             Assert.IsFalse(officer.CanEscape);
+        }
+
+        [Test]
+        public void TryCapture_NewNonEscapingCapture_ConsumesInitialIntervalBeforeCancellation()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            Officer officer = new();
+            FixedRandomProvider random = new(new[] { 0.25, 0.75 });
+
+            officer.TryCapture("captor", game, random, canEscape: false);
+
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.IsFalse(officer.CanEscape);
+            Assert.AreEqual(0, officer.NextEscapeAttemptTick);
+            Assert.AreEqual(0.75, random.NextDouble());
+        }
+
+        [Test]
+        public void TryCapture_EscapableOfficer_ArmsTimerBeforeReturning()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.CurrentTick = 100;
+            game.Config.Captive.EscapeAttemptInterval.Minimum = 48;
+            game.Config.Captive.EscapeAttemptInterval.Maximum = 108;
+            Officer officer = new Officer();
+
+            officer.TryCapture("captor", game, new SequenceRNG(intValues: new[] { 108 }));
+
+            Assert.AreEqual(208, officer.NextEscapeAttemptTick);
+        }
+
+        [Test]
+        public void TryCapture_FixedEscapeInterval_DoesNotAdvanceRandomStream()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.CurrentTick = 100;
+            game.Config.Captive.EscapeAttemptInterval.Minimum = 48;
+            game.Config.Captive.EscapeAttemptInterval.Maximum = 48;
+            Officer officer = new Officer();
+
+            officer.TryCapture("captor", game, new ThrowingRNG());
+
+            Assert.AreEqual(148, officer.NextEscapeAttemptTick);
+        }
+
+        [Test]
+        public void TryCapture_ExistingEscapePermission_PreservesPendingTimer()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            Officer officer = new Officer
+            {
+                IsCaptured = true,
+                CanEscape = true,
+                NextEscapeAttemptTick = 180,
+            };
+
+            officer.TryCapture("captor", game, new ThrowingRNG());
+
+            Assert.AreEqual(180, officer.NextEscapeAttemptTick);
+        }
+
+        [Test]
+        public void TryCapture_DisabledEscapePermission_CancelsPendingTimer()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            Officer officer = new Officer { CanEscape = true, NextEscapeAttemptTick = 180 };
+
+            officer.TryCapture("captor", game, new ThrowingRNG(), canEscape: false);
+
+            Assert.AreEqual(0, officer.NextEscapeAttemptTick);
+        }
+
+        [Test]
+        public void TryCapture_AfterRelease_ArmsNewEscapeTimer()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Config.Captive.EscapeAttemptInterval.Minimum = 48;
+            game.Config.Captive.EscapeAttemptInterval.Maximum = 108;
+            Officer officer = new Officer();
+            SequenceRNG random = new SequenceRNG(intValues: new[] { 48, 108 });
+            officer.TryCapture("captor", game, random);
+            officer.ReleaseFromCaptivity();
+            game.CurrentTick = 100;
+
+            officer.TryCapture("captor", game, random);
+
+            Assert.AreEqual(208, officer.NextEscapeAttemptTick);
         }
 
         [Test]
@@ -315,7 +724,11 @@ namespace Rebellion.Tests.Game.Units
                 DisplayName = "Test Officer",
                 Movement = TestMovement.Create(),
             };
-            bool captured = officer.TryCapture("captor");
+            bool captured = officer.TryCapture(
+                "captor",
+                TestGame.Create(TestConfig.Create()),
+                new ThrowingRNG()
+            );
 
             Assert.IsFalse(captured);
             Assert.IsFalse(officer.IsCaptured);
@@ -334,7 +747,11 @@ namespace Rebellion.Tests.Game.Units
             Fleet fleet = new Fleet { OwnerInstanceID = "owner", Movement = TestMovement.Create() };
             officer.SetParent(ship);
             ship.SetParent(fleet);
-            bool captured = officer.TryCapture("captor");
+            bool captured = officer.TryCapture(
+                "captor",
+                TestGame.Create(TestConfig.Create()),
+                new ThrowingRNG()
+            );
 
             Assert.IsFalse(captured);
             Assert.IsFalse(officer.IsCaptured);
@@ -351,6 +768,7 @@ namespace Rebellion.Tests.Game.Units
                 loyalty: 75
             );
             originalOfficer.IsMain = true;
+            originalOfficer.RosterOrder = 7;
             originalOfficer.CurrentRank = OfficerRank.Admiral;
             originalOfficer.Ratings = new Dictionary<SkillRating, int>
             {
@@ -362,6 +780,8 @@ namespace Rebellion.Tests.Game.Units
             originalOfficer.IsForceEligible = true;
             originalOfficer.ForceValue = 75;
             originalOfficer.ForceTrainingAdjustment = 10;
+            originalOfficer.NextForceDiscoveryTick = 713;
+            originalOfficer.ForceDiscoveryOrder = 4294967300L;
             originalOfficer.NextEscapeAttemptTick = 725;
             originalOfficer.MissionReturnParentInstanceID = "return-parent";
             originalOfficer.MissionReturnLocationInstanceID = "return-location";
@@ -375,11 +795,14 @@ namespace Rebellion.Tests.Game.Units
 
             StringAssert.Contains("<CanBetray>False</CanBetray>", xml);
             StringAssert.Contains("<Loyalty>75</Loyalty>", xml);
+            Assert.AreEqual(713, deserializedOfficer.NextForceDiscoveryTick);
+            Assert.AreEqual(4294967300L, deserializedOfficer.ForceDiscoveryOrder);
             CollectionAssert.AreEqual(originalOfficer.Traits, deserializedOfficer.Traits);
             Assert.AreEqual(1, deserializedOfficer.TraitGrants.Count);
             Assert.AreEqual("leadership", deserializedOfficer.TraitGrants[0].TraitID);
             Assert.AreEqual("event", deserializedOfficer.TraitGrants[0].SourceID);
             Assert.AreEqual(originalOfficer.IsMain, deserializedOfficer.IsMain, "IsMain mismatch");
+            Assert.AreEqual(originalOfficer.RosterOrder, deserializedOfficer.RosterOrder);
             Assert.AreEqual(
                 originalOfficer.CurrentRank,
                 deserializedOfficer.CurrentRank,
@@ -561,6 +984,56 @@ namespace Rebellion.Tests.Game.Units
                 "configured",
                 officer.GetVoicePath(OfficerVoiceLineType.PersonnelArrived, null)
             );
+        }
+
+        /// <summary>
+        /// Registers an officer with the configured game rules used by healing eligibility.
+        /// </summary>
+        /// <param name="officer">The officer whose healing eligibility is evaluated.</param>
+        /// <param name="threshold">The configured minimum rank for fast healing.</param>
+        /// <returns>The registered officer.</returns>
+        private static Officer RegisterHealingOfficer(Officer officer, int threshold = 80)
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Config.Jedi.FastHealThreshold = threshold;
+            officer.InstanceID ??= "healing-officer";
+            game.AddSceneNodeByInstanceID(officer);
+            return officer;
+        }
+
+        /// <summary>
+        /// Registers a trainer with a configured discovery threshold and a known campaign clock.
+        /// </summary>
+        /// <param name="rank">The trainer's initial Force rank.</param>
+        /// <returns>The game and its registered trainer.</returns>
+        private static (GameRoot Game, Officer Officer) RegisterDiscoveryOfficer(int rank)
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Config.Jedi.DiscoveringForceUserThreshold = 80;
+            game.CurrentTick = 42;
+            Officer officer = new()
+            {
+                InstanceID = "discovery-officer",
+                IsJediTrainer = true,
+                ForceValue = rank,
+            };
+            game.AddSceneNodeByInstanceID(officer);
+            return (game, officer);
+        }
+
+        /// <summary>
+        /// Creates an officer whose Force-adjusted ratings differ from their base values.
+        /// </summary>
+        /// <returns>The officer with a nonzero Force rank and an injury.</returns>
+        private static Officer CreateForceRatingOfficer()
+        {
+            Officer officer = new();
+            officer.SetBaseRating(SkillRating.Diplomacy, 50);
+            officer.SetBaseRating(SkillRating.Espionage, 40);
+            officer.SetBaseRating(SkillRating.Combat, 50);
+            officer.ForceValue = 50;
+            officer.InjuryPoints = 10;
+            return officer;
         }
 
         /// <summary>

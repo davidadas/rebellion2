@@ -7,6 +7,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
@@ -28,6 +29,120 @@ namespace Rebellion.Tests.Gameplay.Scripting
         public void SetUp()
         {
             _game = TestGame.Create(TestConfig.Create());
+        }
+
+        [TestCase("ground", true)]
+        [TestCase("ship", false)]
+        [TestCase("other", false)]
+        [TestCase("mission", false)]
+        [TestCase("missing", false)]
+        public void IsMet_HasParentBinding_RequiresImmediatePhysicalParent(
+            string location,
+            bool expected
+        )
+        {
+            GameRoot game = BuildConditionGame(out Planet planet, out Planet otherPlanet);
+            if (location != "missing")
+            {
+                Officer destinationUnit = EntityFactory.CreateOfficer("destination", "empire");
+                ISceneNode parent = planet;
+                if (location == "ship")
+                {
+                    Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+                    CapitalShip ship = new CapitalShip
+                    {
+                        InstanceID = "ship",
+                        OwnerInstanceID = "empire",
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    };
+                    game.AttachNode(fleet, planet);
+                    game.AttachNode(ship, fleet);
+                    parent = ship;
+                }
+                else if (location == "mission")
+                {
+                    StubMission assignment = new("empire", planet.InstanceID);
+                    game.AttachNode(assignment, planet);
+                    parent = assignment;
+                }
+                else if (location == "other")
+                {
+                    destinationUnit.OwnerInstanceID = otherPlanet.OwnerInstanceID;
+                    parent = otherPlanet;
+                }
+                game.AttachNode(destinationUnit, parent);
+            }
+
+            GameEvaluationContext evaluation = new("parent-comparison");
+            evaluation.Bind("$parent", planet);
+            Assert.AreEqual(
+                expected,
+                GameConditionEvaluator.IsMet(
+                    new HasParentConditional
+                    {
+                        UnitInstanceID = "destination",
+                        ParentBinding = "$parent",
+                    },
+                    game,
+                    evaluation
+                )
+            );
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void IsMet_HasParentBinding_MissingOrNullBinding_ReturnsFalse(bool bindNull)
+        {
+            GameRoot game = BuildConditionGame(out Planet planet, out _);
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            game.AttachNode(officer, planet);
+            GameEvaluationContext evaluation = new("parent-comparison");
+            if (bindNull)
+                evaluation.Bind("$parent", null);
+
+            Assert.IsFalse(
+                GameConditionEvaluator.IsMet(
+                    new HasParentConditional
+                    {
+                        UnitInstanceID = officer.InstanceID,
+                        ParentBinding = "$parent",
+                    },
+                    game,
+                    evaluation
+                )
+            );
+        }
+
+        [Test]
+        public void IsMet_AssignedOfficer_MatchesMissionAssignment()
+        {
+            GameRoot game = BuildConditionGame(out Planet planet, out _);
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            StubMission mission = new("empire", planet.InstanceID);
+            game.AttachNode(mission, planet);
+            game.AttachNode(officer, mission);
+
+            Assert.IsTrue(
+                GameConditionEvaluator.IsMet(
+                    new IsOnMissionConditional { UnitInstanceID = officer.InstanceID },
+                    game
+                )
+            );
+        }
+
+        [Test]
+        public void IsMet_UnassignedOfficerAtDestination_DoesNotMatchAssignment()
+        {
+            GameRoot game = BuildConditionGame(out Planet planet, out _);
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            game.AttachNode(officer, planet);
+
+            Assert.IsFalse(
+                GameConditionEvaluator.IsMet(
+                    new IsOnMissionConditional { UnitInstanceID = officer.InstanceID },
+                    game
+                )
+            );
         }
 
         [TestCase("All", false)]

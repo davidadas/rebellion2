@@ -274,13 +274,12 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Returns true if planet has any faction presence.
-        /// Used by uprising system to filter unpopulated planets.
+        /// Returns whether the planet has a living civilian population.
         /// </summary>
-        /// <returns>True if the planet is intact and any faction has popular support.</returns>
+        /// <returns>True when the planet is colonized and intact.</returns>
         public bool IsPopulated()
         {
-            return !IsDestroyed && PopularSupport.Any(kvp => kvp.Value > 0);
+            return !IsDestroyed && IsColonized;
         }
 
         /// <summary>
@@ -525,6 +524,9 @@ namespace Rebellion.Game.Galaxy
             if (regimentOwnerCount > 1)
                 return null;
 
+            if (!IsPopulated())
+                return null;
+
             int threshold = game.Config.SupportShift.OwnershipTransferThreshold;
             Faction controller = null;
             int highestSupport = threshold;
@@ -592,6 +594,9 @@ namespace Rebellion.Game.Galaxy
             int? popularSupport = null
         )
         {
+            if (!IsPopulated())
+                return 0;
+
             int support = popularSupport ?? GetPopularSupport(faction.InstanceID);
             if (support >= config.SupportThreshold)
                 return 0;

@@ -85,14 +85,28 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Applies selected entity intelligence emitted by a simulation event.
+        /// Applies selected entity or category intelligence emitted by a simulation event.
         /// </summary>
         /// <param name="results">The intelligence results to record.</param>
         /// <returns>No reactions; snapshots are updated directly.</returns>
         public List<GameResult> HandleResults(IReadOnlyList<IntelligenceRevealedResult> results)
         {
             foreach (IntelligenceRevealedResult result in results)
-                _commands.ObserveEntities(result.Recipient, result.Observations, result.Tick);
+            {
+                if (result.Category == PlanetIntelligenceCategory.None)
+                {
+                    _commands.ObserveEntities(result.Recipient, result.Observations, result.Tick);
+                    continue;
+                }
+                foreach (Planet planet in result.Observations.OfType<Planet>())
+                    _commands.ObservePlanetIntelligence(
+                        result.Recipient,
+                        planet,
+                        result.Category,
+                        result.IncludeDescendants,
+                        result.Tick
+                    );
+            }
 
             return new List<GameResult>();
         }

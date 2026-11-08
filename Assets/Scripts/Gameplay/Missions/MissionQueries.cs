@@ -2006,22 +2006,32 @@ namespace Rebellion.Gameplay
         /// <param name="mission">The mission being checked for detection.</param>
         /// <param name="planet">The planet where the mission is operating.</param>
         /// <param name="phase">The mission lifecycle checkpoint being evaluated.</param>
+        /// <param name="scope">The Force encounter scope using these same location facts.</param>
         /// <returns>The ordered detector units.</returns>
         internal List<ISceneNode> GetDetectors(
             Mission mission,
             Planet planet,
-            MissionEncounterPhase phase
+            MissionEncounterPhase phase,
+            out MissionForceEncounterScope scope
         )
         {
+            scope = default;
             List<ISceneNode> detectors = new List<ISceneNode>();
             if (mission == null || planet == null)
                 return detectors;
 
-            if (
-                phase == MissionEncounterPhase.DepartureStart
-                || (phase == MissionEncounterPhase.PreObjective && IsPlanetaryObjective(mission))
-            )
+            bool planetaryObjective =
+                phase == MissionEncounterPhase.PreObjective && IsPlanetaryObjective(mission);
+            if (phase == MissionEncounterPhase.DepartureStart || planetaryObjective)
             {
+                scope = new MissionForceEncounterScope(
+                    mission,
+                    planet,
+                    phase,
+                    planetaryObjective,
+                    false,
+                    false
+                );
                 if (
                     !string.IsNullOrEmpty(planet.GetOwnerInstanceID())
                     && planet.GetOwnerInstanceID() != mission.GetOwnerInstanceID()
@@ -2040,12 +2050,19 @@ namespace Rebellion.Gameplay
                     && fleet.Movement == null
                 )
                 .ToList();
-            if (hostileFleets.Count == 0 && phase != MissionEncounterPhase.PreObjective)
-                return detectors;
-
             bool blocksFleetDetection =
-                phase != MissionEncounterPhase.PreObjective && HasDetectionBlocker(mission, planet);
-            if (blocksFleetDetection)
+                hostileFleets.Count > 0
+                && phase != MissionEncounterPhase.PreObjective
+                && HasDetectionBlocker(mission, planet);
+            scope = new MissionForceEncounterScope(
+                mission,
+                planet,
+                phase,
+                planetaryObjective,
+                hostileFleets.Count > 0,
+                blocksFleetDetection
+            );
+            if (hostileFleets.Count == 0 || blocksFleetDetection)
                 return detectors;
 
             foreach (Fleet fleet in hostileFleets)

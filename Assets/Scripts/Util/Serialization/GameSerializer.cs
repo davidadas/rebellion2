@@ -118,7 +118,13 @@ namespace Rebellion.Util.Serialization
             XmlElement overlayRoot =
                 overlay?.DocumentElement
                 ?? throw new InvalidDataException("An overlay document root element is required.");
-            if (!string.Equals(defaultsRoot.Name, overlayRoot.Name, StringComparison.Ordinal))
+            if (
+                !string.Equals(defaultsRoot.Name, overlayRoot.Name, StringComparison.Ordinal)
+                && !(
+                    ReflectionHelper.MatchesPersistableName(_type, defaultsRoot.Name)
+                    && ReflectionHelper.MatchesPersistableName(_type, overlayRoot.Name)
+                )
+            )
             {
                 throw new InvalidDataException(
                     $"Overlay root '{overlayRoot.Name}' does not match defaults root '{defaultsRoot.Name}'."
@@ -126,19 +132,19 @@ namespace Rebellion.Util.Serialization
             }
 
             XmlDocument merged = (XmlDocument)defaults.CloneNode(true);
-            MergeElement(merged.DocumentElement, overlayRoot);
+            MergeElement(merged.DocumentElement, overlayRoot, _type);
             return Deserialize(merged);
         }
 
         /// <summary>
         /// Deserializes the first XML element matching <paramref name="elementName"/> from the given stream.
-        /// When <paramref name="elementName"/> is null, falls back to the type name of <typeparamref name="T"/>.
+        /// When <paramref name="elementName"/> is null, accepts the type's canonical, CLR, and read-alias names.
         /// Use an explicit name when the element is stored under a member name that differs from the type
         /// (e.g. the <c>GameMetadata</c> type stored under a <c>Metadata</c> field).
         /// </summary>
         /// <typeparam name="T">The target type to deserialize.</typeparam>
         /// <param name="stream">The stream to read from.</param>
-        /// <param name="elementName">Optional explicit XML element name; defaults to <c>typeof(T).Name</c>.</param>
+        /// <param name="elementName">Optional explicit XML name; omission accepts the declared type's read names.</param>
         /// <returns>The deserialized instance of <typeparamref name="T"/>.</returns>
         /// <exception cref="InvalidDataException">The requested element was not found.</exception>
         public T DeserializeNode<T>(Stream stream, string elementName = null)
@@ -151,7 +157,14 @@ namespace Rebellion.Util.Serialization
 
             do
             {
-                if (reader.NodeType == XmlNodeType.Element && reader.Name == name)
+                if (
+                    reader.NodeType == XmlNodeType.Element
+                    && (
+                        elementName != null
+                            ? reader.Name == name
+                            : ReflectionHelper.MatchesPersistableName(typeof(T), reader.Name)
+                    )
+                )
                 {
                     return (T)XmlDeserializer.ReadValue(typeof(T), reader, _settings);
                 }
@@ -188,10 +201,75 @@ namespace Rebellion.Util.Serialization
         /// </summary>
         /// <param name="target">The target element to mutate.</param>
         /// <param name="overlay">The overlay element to apply.</param>
-        private static void MergeElement(XmlElement target, XmlElement overlay)
+        /// <param name="type">The declared type represented by the elements, when known.</param>
+        /// <param name="member">The containing member's polymorphic type declarations.</param>
+        private static void MergeElement(
+            XmlElement target,
+            XmlElement overlay,
+            Type type,
+            MemberInfo member = null
+        )
         {
-            MergeAttributes(target, overlay);
-            if (HasRepeatedChildNames(target) || HasRepeatedChildNames(overlay))
+            if (
+                type != null
+                && TypeHelper.HasAttribute<PersistableObjectAttribute>(type)
+                && (type.IsAbstract || type.IsInterface)
+            )
+            {
+                PersistableAttributes memberAttributes = new PersistableAttributes
+                {
+                    IncludeAttributes = member
+                        ?.GetCustomAttributes<PersistableIncludeAttribute>()
+                        .ToArray(),
+                };
+                Type overlayType = XmlDeserializer.ResolveActualType(
+                    type,
+                    overlay.Name,
+                    memberAttributes
+                );
+                Type targetType = XmlDeserializer.ResolveActualType(
+                    type,
+                    target.Name,
+                    memberAttributes
+                );
+                if (targetType != overlayType)
+                {
+                    target.ParentNode.ReplaceChild(
+                        target.OwnerDocument.ImportNode(overlay, true),
+                        target
+                    );
+                    return;
+                }
+                type = overlayType;
+            }
+
+            Dictionary<string, MemberInfo> members = new Dictionary<string, MemberInfo>();
+            Dictionary<string, MemberInfo> attributes = new Dictionary<string, MemberInfo>();
+            if (type != null && TypeHelper.HasAttribute<PersistableObjectAttribute>(type))
+            {
+                foreach (var entry in ReflectionHelper.GetElementMemberLookup(type))
+                    members.Add(entry.Key, entry.Value);
+                foreach (
+                    var entry in ReflectionHelper.GetPersistableAttributeMap(
+                        type,
+                        ReflectionHelper.OperationType.Read
+                    )
+                )
+                {
+                    attributes.Add(entry.Key, entry.Value);
+                    members.TryAdd(entry.Key, entry.Value);
+                }
+            }
+
+            ValidateLayeredMembers(target, members, attributes);
+            ValidateLayeredMembers(overlay, members, attributes);
+            MergeAttributes(target, overlay, members, attributes);
+            if (
+                (!HasChildElements(target) && !HasChildElements(overlay))
+                || (type != null && TypeHelper.IsEnumerable(type) && !TypeHelper.IsDictionary(type))
+                || HasRepeatedChildNames(target)
+                || HasRepeatedChildNames(overlay)
+            )
             {
                 ReplaceChildren(target, overlay);
                 return;
@@ -199,32 +277,99 @@ namespace Rebellion.Util.Serialization
 
             foreach (XmlElement overlayChild in ChildElements(overlay))
             {
-                XmlElement targetChild = FindChildElement(target, overlayChild.Name);
+                members.TryGetValue(overlayChild.Name, out MemberInfo childMember);
+                XmlElement targetChild = ChildElements(target)
+                    .FirstOrDefault(child =>
+                        child.Name == overlayChild.Name
+                        || (
+                            childMember != null
+                            && members.GetValueOrDefault(child.Name) == childMember
+                        )
+                    );
+                if (childMember != null)
+                    foreach (
+                        XmlAttribute attribute in target.Attributes.Cast<XmlAttribute>().ToArray()
+                    )
+                        if (attributes.GetValueOrDefault(attribute.Name) == childMember)
+                            target.RemoveAttributeNode(attribute);
+
                 if (targetChild == null)
                 {
                     target.AppendChild(target.OwnerDocument.ImportNode(overlayChild, true));
                 }
-                else if (HasChildElements(overlayChild) || HasChildElements(targetChild))
-                {
-                    MergeElement(targetChild, overlayChild);
-                }
                 else
                 {
-                    MergeAttributes(targetChild, overlayChild);
-                    ReplaceChildren(targetChild, overlayChild);
+                    Type childType =
+                        childMember != null ? ReflectionHelper.GetMemberType(childMember) : null;
+                    MergeElement(targetChild, overlayChild, childType, childMember);
                 }
             }
         }
 
         /// <summary>
-        /// Applies an overlay element's attributes onto a target element by name.
+        /// Applies overlay attributes, replacing any other accepted representation of each member.
         /// </summary>
         /// <param name="target">The target element to mutate.</param>
         /// <param name="overlay">The overlay element supplying the attributes.</param>
-        private static void MergeAttributes(XmlElement target, XmlElement overlay)
+        /// <param name="members">The names accepted for members represented by the elements.</param>
+        /// <param name="attributes">The names accepted as XML attributes.</param>
+        private static void MergeAttributes(
+            XmlElement target,
+            XmlElement overlay,
+            Dictionary<string, MemberInfo> members,
+            Dictionary<string, MemberInfo> attributes
+        )
         {
             foreach (XmlAttribute attribute in overlay.Attributes)
+            {
+                if (attributes.TryGetValue(attribute.Name, out MemberInfo member))
+                {
+                    foreach (
+                        XmlAttribute existing in target.Attributes.Cast<XmlAttribute>().ToArray()
+                    )
+                        if (
+                            existing.Name != attribute.Name
+                            && attributes.GetValueOrDefault(existing.Name) == member
+                        )
+                            target.RemoveAttributeNode(existing);
+                    foreach (XmlElement child in ChildElements(target).ToArray())
+                        if (members.GetValueOrDefault(child.Name) == member)
+                            target.RemoveChild(child);
+                }
                 target.SetAttribute(attribute.Name, attribute.Value);
+            }
+        }
+
+        /// <summary>
+        /// Rejects multiple names for an aliased member within an individual input layer.
+        /// </summary>
+        /// <param name="element">The defaults or overlay element to validate.</param>
+        /// <param name="members">The accepted read names for its members.</param>
+        /// <param name="attributes">The names accepted as XML attributes.</param>
+        private static void ValidateLayeredMembers(
+            XmlElement element,
+            Dictionary<string, MemberInfo> members,
+            Dictionary<string, MemberInfo> attributes
+        )
+        {
+            HashSet<MemberInfo> supplied = new HashSet<MemberInfo>();
+            foreach (
+                MemberInfo member in element
+                    .Attributes.Cast<XmlAttribute>()
+                    .Select(attribute => attributes.GetValueOrDefault(attribute.Name))
+                    .Concat(
+                        ChildElements(element)
+                            .Select(child => members.GetValueOrDefault(child.Name))
+                    )
+            )
+                if (
+                    member != null
+                    && ReflectionHelper.HasReadAliases(member)
+                    && !supplied.Add(member)
+                )
+                    throw new InvalidOperationException(
+                        $"Member '{member.Name}' is provided more than once."
+                    );
         }
 
         /// <summary>
@@ -271,23 +416,6 @@ namespace Rebellion.Util.Serialization
             }
 
             return false;
-        }
-
-        /// <summary>
-        /// Finds the first child element with the requested name.
-        /// </summary>
-        /// <param name="element">The element to search.</param>
-        /// <param name="name">The child element name to match.</param>
-        /// <returns>The matching child element, or null when absent.</returns>
-        private static XmlElement FindChildElement(XmlElement element, string name)
-        {
-            foreach (XmlElement child in ChildElements(element))
-            {
-                if (string.Equals(child.Name, name, StringComparison.Ordinal))
-                    return child;
-            }
-
-            return null;
         }
 
         /// <summary>
@@ -902,9 +1030,25 @@ namespace Rebellion.Util.Serialization
                 {
                     string elementName = reader.Name;
 
-                    Type actualElementType = persistableMap.ContainsKey(elementName)
-                        ? persistableMap[elementName]
-                        : elementType;
+                    bool usesReadAlias = ReflectionHelper
+                        .GetPersistableTypes(elementName)
+                        .Any(type =>
+                            ReflectionHelper
+                                .GetReadAliases(type)
+                                .Any(alias => alias.Name == elementName)
+                        );
+                    Type actualElementType = elementType;
+                    if (usesReadAlias)
+                    {
+                        if (!TypeHelper.IsScalar(elementType))
+                            actualElementType = ResolveActualType(
+                                elementType,
+                                elementName,
+                                default
+                            );
+                    }
+                    else if (persistableMap.TryGetValue(elementName, out Type mappedType))
+                        actualElementType = mappedType;
 
                     object value = ReadValue(actualElementType, reader, settings);
                     collection.Add(value);
@@ -979,6 +1123,10 @@ namespace Rebellion.Util.Serialization
                 ? ReadAttributes(reader, attributes, obj)
                 : new HashSet<MemberInfo>();
 
+            HashSet<MemberInfo> populatedAliasedMembers = new HashSet<MemberInfo>(
+                populatedAttributes
+            );
+
             if (reader.IsEmptyElement)
             {
                 reader.Read();
@@ -1012,6 +1160,13 @@ namespace Rebellion.Util.Serialization
                             throw new InvalidOperationException(
                                 $"Member '{elementName}' cannot be provided as both an attribute and an element."
                             );
+                        if (
+                            ReflectionHelper.HasReadAliases(member)
+                            && !populatedAliasedMembers.Add(member)
+                        )
+                            throw new InvalidOperationException(
+                                $"Member '{member.Name}' is provided more than once."
+                            );
                         object value = ReadMember(member, reader, settings);
                         ReflectionHelper.SetMemberValue(member, obj, value);
                     }
@@ -1020,6 +1175,13 @@ namespace Rebellion.Util.Serialization
                         if (populatedAttributes.Contains(attributeMember))
                             throw new InvalidOperationException(
                                 $"Member '{elementName}' cannot be provided as both an attribute and an element."
+                            );
+                        if (
+                            ReflectionHelper.HasReadAliases(attributeMember)
+                            && !populatedAliasedMembers.Add(attributeMember)
+                        )
+                            throw new InvalidOperationException(
+                                $"Member '{attributeMember.Name}' is provided more than once."
                             );
                         object value = ReadMember(attributeMember, reader, settings);
                         ReflectionHelper.SetMemberValue(attributeMember, obj, value);
@@ -1078,26 +1240,30 @@ namespace Rebellion.Util.Serialization
         /// <param name="actualTypeName">The name of the actual type from XML.</param>
         /// <param name="objAttributes">The persistable attributes.</param>
         /// <returns>The resolved actual type.</returns>
-        private static Type ResolveActualType(
+        internal static Type ResolveActualType(
             Type objType,
             string actualTypeName,
             PersistableAttributes objAttributes
         )
         {
-            if (objAttributes.IncludeAttributes != null)
-            {
-                foreach (PersistableIncludeAttribute includeAttr in objAttributes.IncludeAttributes)
-                {
-                    if (
-                        includeAttr.PersistableType.Name == actualTypeName
-                        || ReflectionHelper.GetPersistableElementName(includeAttr.PersistableType)
-                            == actualTypeName
-                    )
-                    {
-                        return includeAttr.PersistableType;
-                    }
-                }
-            }
+            Type[] includedTypes =
+                objAttributes
+                    .IncludeAttributes?.Select(attribute => attribute.PersistableType)
+                    .Where(type => ReflectionHelper.MatchesPersistableName(type, actualTypeName))
+                    .Distinct()
+                    .ToArray()
+                ?? Array.Empty<Type>();
+            if (
+                includedTypes.Length > 1
+                && includedTypes.Any(type =>
+                    ReflectionHelper.GetReadAliases(type).Any(alias => alias.Name == actualTypeName)
+                )
+            )
+                throw new InvalidOperationException(
+                    $"XML element '{actualTypeName}' is ambiguous for '{objType.Name}'."
+                );
+            if (includedTypes.Length > 0)
+                return includedTypes[0];
 
             Type[] candidates = ReflectionHelper
                 .GetPersistableTypes(actualTypeName)
@@ -1136,9 +1302,10 @@ namespace Rebellion.Util.Serialization
 
             if (
                 objAttributes.IncludeAttributes?.Any(includeAttribute =>
-                    includeAttribute.PersistableType.Name == actualTypeName
-                    || ReflectionHelper.GetPersistableElementName(includeAttribute.PersistableType)
-                        == actualTypeName
+                    ReflectionHelper.MatchesPersistableName(
+                        includeAttribute.PersistableType,
+                        actualTypeName
+                    )
                 ) == true
             )
             {
@@ -1169,10 +1336,13 @@ namespace Rebellion.Util.Serialization
                 reader.MoveToAttribute(i);
                 if (attributes.TryGetValue(reader.Name, out MemberInfo attribute))
                 {
+                    if (!populated.Add(attribute) && ReflectionHelper.HasReadAliases(attribute))
+                        throw new InvalidOperationException(
+                            $"Member '{attribute.Name}' is provided more than once."
+                        );
                     Type attributeType = ReflectionHelper.GetMemberType(attribute);
                     object value = TypeHelper.ConvertToScalar(reader.Value, attributeType);
                     ReflectionHelper.SetMemberValue(attribute, obj, value);
-                    populated.Add(attribute);
                 }
             }
             reader.MoveToElement();
@@ -1244,6 +1414,11 @@ namespace Rebellion.Util.Serialization
             | BindingFlags.Instance
             | BindingFlags.Static;
 
+        private static readonly ConcurrentDictionary<
+            MemberInfo,
+            IReadOnlyList<PersistableReadAliasAttribute>
+        > _readAliasCache = new();
+        private static readonly ConcurrentDictionary<MemberInfo, bool> _aliasedMemberCache = new();
         private static readonly ConcurrentDictionary<Type, string> _typeNameCache = new();
         private static IDictionary<string, Type> _persistableObjectMap;
         private static IDictionary<string, IReadOnlyList<Type>> _persistableTypesByName;
@@ -1527,12 +1702,17 @@ namespace Rebellion.Util.Serialization
             }
 
             Dictionary<string, MemberInfo> attributeMap = new Dictionary<string, MemberInfo>();
+            List<MemberInfo> attributeMembers = new List<MemberInfo>();
+            HashSet<(Module, int)> declarations = new HashSet<(Module, int)>();
             Type currentType = classType;
 
             while (currentType != null)
             {
                 foreach (MemberInfo member in GetPersistableAttributes(currentType, operationType))
                 {
+                    if (!declarations.Add((member.Module, member.MetadataToken)))
+                        continue;
+                    attributeMembers.Add(member);
                     PersistableAttributeAttribute attr = (PersistableAttributeAttribute)
                         Attribute.GetCustomAttribute(member, typeof(PersistableAttributeAttribute));
                     string key = attr?.Name ?? member.Name;
@@ -1545,6 +1725,10 @@ namespace Rebellion.Util.Serialization
 
                 currentType = currentType.BaseType;
             }
+
+            if (operationType == OperationType.Read)
+                foreach (MemberInfo member in attributeMembers)
+                    AddReadAliases(attributeMap, member, GetReadAliases(member));
 
             _persistableAttributeMapCache[cacheKey] = attributeMap;
             return attributeMap;
@@ -1598,8 +1782,112 @@ namespace Rebellion.Util.Serialization
                 AddElementName(lookup, member.Name, member);
             }
 
+            IDictionary<string, MemberInfo> attributes = GetPersistableAttributeMap(
+                classType,
+                OperationType.Read
+            );
+            foreach (MemberInfo member in GetPersistableMembers(classType, OperationType.Read))
+            {
+                ValidateReadAliases(attributes, member, GetReadAliases(member));
+                AddReadAliases(lookup, member, GetReadAliases(member));
+                foreach (
+                    PersistableIncludeAttribute include in member.GetCustomAttributes<PersistableIncludeAttribute>()
+                )
+                {
+                    ValidateReadAliases(
+                        attributes,
+                        member,
+                        GetReadAliases(include.PersistableType)
+                    );
+                    AddReadAliases(lookup, member, GetReadAliases(include.PersistableType));
+                }
+            }
+            foreach (MemberInfo member in attributes.Values.Distinct())
+                ValidateReadAliases(lookup, member, GetReadAliases(member));
+
             _elementMemberLookupCache[classType] = lookup;
             return lookup;
+        }
+
+        /// <summary>
+        /// Returns the additional names accepted when reading one declared type or member.
+        /// </summary>
+        /// <param name="member">The type or member declaring read aliases.</param>
+        /// <returns>The declared aliases without inherited type aliases.</returns>
+        public static IReadOnlyList<PersistableReadAliasAttribute> GetReadAliases(
+            MemberInfo member
+        ) =>
+            _readAliasCache.GetOrAdd(
+                member,
+                item =>
+                    item.GetCustomAttributes<PersistableReadAliasAttribute>(inherit: false)
+                        .ToArray()
+            );
+
+        /// <summary>
+        /// Checks whether a member accepts aliases directly or through explicitly included types.
+        /// </summary>
+        /// <param name="member">The persisted member being read.</param>
+        /// <returns>True when additional read names identify the member.</returns>
+        public static bool HasReadAliases(MemberInfo member) =>
+            _aliasedMemberCache.GetOrAdd(
+                member,
+                item =>
+                    GetReadAliases(item).Count > 0
+                    || item.GetCustomAttributes<PersistableIncludeAttribute>()
+                        .Any(include => GetReadAliases(include.PersistableType).Count > 0)
+            );
+
+        /// <summary>
+        /// Checks the canonical, CLR, and additional read names of a persistable type.
+        /// </summary>
+        /// <param name="type">The type being resolved.</param>
+        /// <param name="name">The XML name supplied by the document.</param>
+        /// <returns>True when the name identifies the type.</returns>
+        public static bool MatchesPersistableName(Type type, string name) =>
+            type.Name == name
+            || GetPersistableElementName(type) == name
+            || GetReadAliases(type).Any(alias => alias.Name == name);
+
+        /// <summary>
+        /// Adds read aliases while rejecting names already assigned to another member.
+        /// </summary>
+        /// <param name="lookup">The completed canonical name lookup.</param>
+        /// <param name="member">The member the aliases identify.</param>
+        /// <param name="aliases">The additional XML names to register.</param>
+        private static void AddReadAliases(
+            IDictionary<string, MemberInfo> lookup,
+            MemberInfo member,
+            IEnumerable<PersistableReadAliasAttribute> aliases
+        )
+        {
+            ValidateReadAliases(lookup, member, aliases);
+            foreach (PersistableReadAliasAttribute alias in aliases)
+                lookup[alias.Name] = member;
+        }
+
+        /// <summary>
+        /// Rejects aliases that identify a different member in a read-name lookup.
+        /// </summary>
+        /// <param name="lookup">The accepted names to check for conflicts.</param>
+        /// <param name="member">The member declaring the aliases.</param>
+        /// <param name="aliases">The additional XML names to validate.</param>
+        private static void ValidateReadAliases(
+            IDictionary<string, MemberInfo> lookup,
+            MemberInfo member,
+            IEnumerable<PersistableReadAliasAttribute> aliases
+        )
+        {
+            foreach (PersistableReadAliasAttribute alias in aliases)
+            {
+                if (
+                    lookup.TryGetValue(alias.Name, out MemberInfo existing)
+                    && !existing.Equals(member)
+                )
+                    throw new InvalidOperationException(
+                        $"Read alias '{alias.Name}' on '{member.DeclaringType.Name}.{member.Name}' conflicts with '{existing.DeclaringType.Name}.{existing.Name}'."
+                    );
+            }
         }
 
         /// <summary>
@@ -1685,6 +1973,8 @@ namespace Rebellion.Util.Serialization
             {
                 AddPersistableType(typesByName, GetPersistableElementName(type), type);
                 AddPersistableType(typesByName, type.Name, type);
+                foreach (PersistableReadAliasAttribute alias in GetReadAliases(type))
+                    AddPersistableType(typesByName, alias.Name, type);
             }
 
             _persistableTypesByName = typesByName.ToDictionary(

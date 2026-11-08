@@ -61,6 +61,27 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void CanRelocate_StaleDestinationSnapshot_UsesCurrentOwnership()
+        {
+            (GameRoot game, _, _, Planet destination, Building hq) = CreateGame(isMobile: true);
+            Planet destinationSnapshot = (Planet)destination.CreateCopy();
+            destination.OwnerInstanceID = "enemy";
+
+            Assert.IsFalse(new HeadquartersQueries(game).CanRelocate(hq, destinationSnapshot));
+        }
+
+        [Test]
+        public void CanRelocate_OriginSnapshot_ReturnsFalse()
+        {
+            (GameRoot game, _, Planet origin, _, Building hq) = CreateGame(isMobile: true);
+            origin.EnergyCapacity = 2;
+
+            Assert.IsFalse(
+                new HeadquartersQueries(game).CanRelocate(hq, (Planet)origin.CreateCopy())
+            );
+        }
+
+        [Test]
         public void CanRelocate_HeadquartersInTransit_ReturnsFalse()
         {
             (GameRoot game, _, _, Planet destination, Building hq) = CreateGame(isMobile: true);

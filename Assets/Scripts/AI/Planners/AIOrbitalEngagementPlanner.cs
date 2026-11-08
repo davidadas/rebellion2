@@ -23,6 +23,9 @@ namespace Rebellion.AI.Planners
                 return proposals;
 
             AddExistingEngagements(context, proposals);
+            if (!context.IsDecisionTick)
+                return proposals;
+
             foreach (Fleet fleet in context.Assessment.OwnedFleets.Where(CanAssign))
             {
                 Planet origin = context.Assessment.GetFleetPlanet(fleet);

@@ -136,6 +136,47 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Records current intelligence from one category at a registered planet.
+        /// </summary>
+        /// <param name="faction">The faction receiving the intelligence.</param>
+        /// <param name="planet">The planet supplying current intelligence.</param>
+        /// <param name="category">The category to refresh.</param>
+        /// <param name="includeDescendants">Whether descendants of matching planet children are included.</param>
+        /// <param name="observedAtTick">The tick represented by the intelligence, or the current tick.</param>
+        /// <returns>True when the faction, planet, and category were valid.</returns>
+        public bool ObservePlanetIntelligence(
+            Faction faction,
+            Planet planet,
+            PlanetIntelligenceCategory category,
+            bool includeDescendants = true,
+            int? observedAtTick = null
+        )
+        {
+            Faction liveFaction = FindFaction(faction?.InstanceID);
+            Planet livePlanet = string.IsNullOrEmpty(planet?.InstanceID)
+                ? null
+                : _game.GetSceneNodeByInstanceID<Planet>(planet.InstanceID);
+            PlanetSector sector = livePlanet?.GetParentOfType<PlanetSector>();
+            if (
+                liveFaction == null
+                || livePlanet == null
+                || sector == null
+                || category == PlanetIntelligenceCategory.None
+            )
+                return false;
+
+            _recorder.RecordIntelligenceSnapshot(
+                liveFaction,
+                livePlanet,
+                sector,
+                observedAtTick ?? _game.CurrentTick,
+                category,
+                includeDescendants
+            );
+            return true;
+        }
+
+        /// <summary>
         /// Records a planet's current ownership for the factions observing it.
         /// </summary>
         /// <param name="planet">The planet whose ownership is observed.</param>

@@ -62,6 +62,11 @@ namespace Rebellion.AI
         }
 
         // Turn Output.
+        /// <summary>
+        /// Gets whether this turn can assign new strategic objectives and resources.
+        /// </summary>
+        internal bool IsDecisionTick { get; set; } = true;
+
         public bool HasGeneratedProductionDemands { get; private set; }
         public IReadOnlyCollection<AIAttackDemand> AttackDemands => _attackDemands.Values;
         public IReadOnlyList<AIProductionDemand> ProductionDemands => _productionDemands;

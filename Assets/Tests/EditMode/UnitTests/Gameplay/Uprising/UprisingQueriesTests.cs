@@ -12,6 +12,26 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class UprisingQueriesTests
     {
+        [Test]
+        public void CalculateGarrisonRequirement_UncolonizedPlanet_ReturnsZero()
+        {
+            Planet planet = new Planet
+            {
+                IsColonized = false,
+                OwnerInstanceID = "empire",
+                PopularSupport = new Dictionary<string, int> { { "empire", 0 } },
+            };
+
+            Assert.AreEqual(
+                0,
+                UprisingQueries.CalculateGarrisonRequirement(
+                    planet,
+                    new Faction { InstanceID = "empire" },
+                    TestConfig.Create().AI.Garrison
+                )
+            );
+        }
+
         [TestCase(80, 0)]
         [TestCase(60, 0)]
         [TestCase(55, 1)]
@@ -313,6 +333,7 @@ namespace Rebellion.Tests.Gameplay
             {
                 InstanceID = "destination",
                 OwnerInstanceID = faction.InstanceID,
+                IsColonized = true,
             };
             game.AttachNode(destinationSector, game.Galaxy);
             game.AttachNode(destination, destinationSector);

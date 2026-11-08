@@ -594,6 +594,139 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
+        public void Project_ResultSummary_PlayerDefendsOwnedPlanet_DoesNotReportSelfBlockade()
+        {
+            (
+                GameRoot Game,
+                UIContext Context,
+                Planet Planet,
+                GameFleet PlayerFleet,
+                GameFleet OpponentFleet
+            ) scene = CreateScene();
+            SpaceCombatResult result = new SpaceCombatResult
+            {
+                Planet = scene.Planet,
+                PlanetOwnerInstanceID = _playerFactionId,
+                AttackerFleet = scene.OpponentFleet,
+                DefenderFleet = scene.PlayerFleet,
+                AttackerOwnerInstanceID = _opponentFactionId,
+                DefenderOwnerInstanceID = _playerFactionId,
+                Winner = CombatSide.Defender,
+                AttackerOutcome = SpaceCombatSideOutcome.Withdrawn,
+                DefenderOutcome = SpaceCombatSideOutcome.Active,
+            };
+            result.AttackingUnits.AddRange(
+                CombatUnitSnapshot.CaptureFleetUnits(new[] { scene.OpponentFleet })
+            );
+            result.DefendingUnits.AddRange(
+                CombatUnitSnapshot.CaptureFleetUnits(new[] { scene.PlayerFleet })
+            );
+            BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
+
+            BattleAlertWindowRenderData data = projector.Project(
+                BattleAlertWindowMode.Result,
+                BattleAlertPanel.Summary,
+                BattleResultPanel.Summary,
+                BattleResultCategory.CapitalShips,
+                null,
+                BattleResultPresentation.Create(result),
+                _playerFactionId,
+                0,
+                0,
+                scene.Context,
+                null
+            );
+
+            Assert.AreEqual(
+                "The Alliance fleet is victorious.\n\nThe Imperial fleet has withdrawn.",
+                data.Result.Summary
+            );
+            StringAssert.DoesNotContain("blockade", data.Result.Summary);
+        }
+
+        [Test]
+        public void Project_ResultSummary_PlayerWinsAtHostilePlanet_ReportsBlockade()
+        {
+            (
+                GameRoot Game,
+                UIContext Context,
+                Planet Planet,
+                GameFleet PlayerFleet,
+                GameFleet OpponentFleet
+            ) scene = CreateScene();
+            scene.Planet.OwnerInstanceID = _opponentFactionId;
+            SpaceCombatResult result = CreateResult(
+                scene.Planet,
+                scene.PlayerFleet,
+                scene.OpponentFleet,
+                CombatSide.Attacker,
+                SpaceCombatSideOutcome.Active,
+                SpaceCombatSideOutcome.Withdrawn
+            );
+            BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
+
+            BattleAlertWindowRenderData data = projector.Project(
+                BattleAlertWindowMode.Result,
+                BattleAlertPanel.Summary,
+                BattleResultPanel.Summary,
+                BattleResultCategory.CapitalShips,
+                null,
+                BattleResultPresentation.Create(result),
+                _playerFactionId,
+                0,
+                0,
+                scene.Context,
+                null
+            );
+
+            Assert.AreEqual(
+                "The Alliance fleet is victorious.\n\nTest World is now under blockade by Alliance forces. The Imperial fleet has withdrawn.",
+                data.Result.Summary
+            );
+        }
+
+        [Test]
+        public void Project_ResultSummary_PlayerWinsAtNeutralPlanet_ReportsBlockade()
+        {
+            (
+                GameRoot Game,
+                UIContext Context,
+                Planet Planet,
+                GameFleet PlayerFleet,
+                GameFleet OpponentFleet
+            ) scene = CreateScene();
+            scene.Planet.OwnerInstanceID = null;
+            SpaceCombatResult result = CreateResult(
+                scene.Planet,
+                scene.PlayerFleet,
+                scene.OpponentFleet,
+                CombatSide.Attacker,
+                SpaceCombatSideOutcome.Active,
+                SpaceCombatSideOutcome.Destroyed
+            );
+            BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
+
+            BattleAlertWindowRenderData data = projector.Project(
+                BattleAlertWindowMode.Result,
+                BattleAlertPanel.Summary,
+                BattleResultPanel.Summary,
+                BattleResultCategory.CapitalShips,
+                null,
+                BattleResultPresentation.Create(result),
+                _playerFactionId,
+                0,
+                0,
+                scene.Context,
+                null
+            );
+
+            Assert.AreEqual(
+                "The Alliance fleet is victorious.\n\nTest World is now under blockade by Alliance forces. The Imperial fleet has been completely destroyed.",
+                data.Result.Summary
+            );
+        }
+
+        [Test]
         public void Project_BombardmentResult_ReturnsSourceSummaryAndSixCategoryLayouts()
         {
             (
@@ -1152,6 +1285,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             SpaceCombatResult result = new SpaceCombatResult
             {
                 Planet = planet,
+                PlanetOwnerInstanceID = planet.OwnerInstanceID,
                 AttackerFleet = playerFleet,
                 DefenderFleet = opponentFleet,
                 AttackerOwnerInstanceID = _playerFactionId,

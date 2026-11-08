@@ -556,7 +556,7 @@ namespace Rebellion.Tests.Gameplay
             scene.game.AttachNode(capitalShipDestination, scene.blockadedDestination);
 
             scene.movement.RequestMove(officer, scene.blockadedDestination);
-            scene.movement.SendToMission(missionForces, mission);
+            scene.movement.SendToMission(new IMissionParticipant[] { missionForces }, mission);
             scene.movement.RequestMove(fleet, scene.blockadedDestination);
             scene.movement.RequestMove(independentCapitalShip, capitalShipDestination);
 

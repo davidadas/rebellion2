@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
@@ -153,6 +154,40 @@ namespace Rebellion.Gameplay.Scripting
         private static void Execute(RevealToFactionAction action, GameActionContext context)
         {
             Faction recipient = context.Game.GetFactionByOwnerInstanceID(action.FactionInstanceID);
+            bool revealsCategory = action.Category != PlanetIntelligenceCategory.None;
+            bool revealsTargets = action.Targets.Count > 0;
+            if (revealsCategory == revealsTargets)
+                throw new InvalidOperationException(
+                    "RevealToFaction requires exactly one intelligence category or target collection."
+                );
+            if (revealsCategory)
+            {
+                bool hasPlanetID = !string.IsNullOrWhiteSpace(action.PlanetInstanceID);
+                bool hasPlanetBinding = !string.IsNullOrWhiteSpace(action.PlanetBinding);
+                if (hasPlanetID == hasPlanetBinding)
+                    throw new InvalidOperationException(
+                        "Category-based RevealToFaction requires exactly one PlanetInstanceID or PlanetBinding."
+                    );
+                Planet planet = hasPlanetBinding
+                    ? context.Evaluation?.GetBindingReference<Planet>(action.PlanetBinding)
+                    : context.Game.GetSceneNodeByInstanceID<Planet>(action.PlanetInstanceID);
+                if (planet == null)
+                    throw new InvalidOperationException(
+                        "Category-based RevealToFaction could not resolve its planet."
+                    );
+                context.Record(
+                    new IntelligenceRevealedResult
+                    {
+                        Recipient = recipient,
+                        Observations = new List<ISceneNode> { planet },
+                        Category = action.Category,
+                        IncludeDescendants = action.IncludeDescendants,
+                        Tick = context.Game.CurrentTick,
+                    }
+                );
+                return;
+            }
+
             List<ISceneNode> observations = action
                 .Targets.SelectMany(selector =>
                     GameSelectorResolver.Select(
@@ -192,16 +227,21 @@ namespace Rebellion.Gameplay.Scripting
                     action.SubjectInstanceID,
                     includeDisabled: true
                 );
-            ISceneNode relatedSubject = game.GetSceneNodeByInstanceID<ISceneNode>(
-                action.RelatedSubjectInstanceID,
-                includeDisabled: true
-            );
-            if (string.IsNullOrWhiteSpace(action.RecipientFactionInstanceID))
+            ISceneNode relatedSubject = !string.IsNullOrWhiteSpace(action.RelatedSubjectBinding)
+                ? context.Evaluation?.GetBindingReference<ISceneNode>(action.RelatedSubjectBinding)
+                : game.GetSceneNodeByInstanceID<ISceneNode>(
+                    action.RelatedSubjectInstanceID,
+                    includeDisabled: true
+                );
+            string recipientID = !string.IsNullOrWhiteSpace(action.RecipientFactionBinding)
+                ? context.Evaluation?.GetBindingReference<string>(action.RecipientFactionBinding)
+                : action.RecipientFactionInstanceID;
+            if (string.IsNullOrWhiteSpace(recipientID))
                 throw new InvalidOperationException(
-                    "SendMessage requires RecipientFactionInstanceID."
+                    "SendMessage requires a recipient faction instance ID or binding."
                 );
 
-            Faction recipient = game.GetFactionByOwnerInstanceID(action.RecipientFactionInstanceID);
+            Faction recipient = game.GetFactionByOwnerInstanceID(recipientID);
             Planet location = !string.IsNullOrWhiteSpace(action.LocationBinding)
                 ? context.Evaluation?.GetBindingReference<Planet>(action.LocationBinding)
                 : game.GetSceneNodeByInstanceID<Planet>(
@@ -221,7 +261,21 @@ namespace Rebellion.Gameplay.Scripting
             {
                 MessageType = action.MessageType,
                 Subject = action.Subject,
-                Body = action.Body ?? string.Empty,
+                Body =
+                    (action.Body ?? string.Empty)
+                    + string.Concat(
+                        action
+                            .BodySections.Where(section =>
+                                section.Conditionals.All(condition =>
+                                    GameConditionEvaluator.IsMet(
+                                        condition,
+                                        game,
+                                        context.Evaluation
+                                    )
+                                )
+                            )
+                            .Select(section => section.Text)
+                    ),
                 BackgroundImage =
                     string.IsNullOrWhiteSpace(action.BackgroundImage?.Key)
                     && string.IsNullOrWhiteSpace(imagePath)
@@ -311,16 +365,21 @@ namespace Rebellion.Gameplay.Scripting
             {
                 if (action.IsCaptured)
                 {
-                    if (!officer.TryCapture(action.CaptorFactionInstanceID, action.CanEscape))
+                    if (
+                        !officer.TryCapture(
+                            action.CaptorFactionInstanceID,
+                            game,
+                            context.Random,
+                            action.CanEscape
+                        )
+                    )
                         continue;
 
                     capturedOfficers.Add(officer);
                 }
                 else
                 {
-                    officer.IsCaptured = false;
-                    officer.CaptorInstanceID = null;
-                    officer.CanEscape = true;
+                    officer.ReleaseFromCaptivity();
                 }
 
                 results.Add(
@@ -336,7 +395,7 @@ namespace Rebellion.Gameplay.Scripting
             }
             context.Record(results);
             if (capturedOfficers.Count > 0)
-                InterruptMissionsForCapture(capturedOfficers, context);
+                ReconcileMissionsForCapture(capturedOfficers, context);
         }
 
         /// <summary>
@@ -538,7 +597,7 @@ namespace Rebellion.Gameplay.Scripting
         }
 
         /// <summary>
-        /// Applies one positive Force increase mode to every explicitly named or selected officer.
+        /// Applies an authored Force increase, preserving signed percentage arithmetic.
         /// </summary>
         /// <param name="action">The authored action definition.</param>
         /// <param name="context">The current action execution context.</param>
@@ -638,11 +697,23 @@ namespace Rebellion.Gameplay.Scripting
                             )
                         )
                     );
-                if (increase <= 0)
+                if (hasAmount && increase <= 0)
                     throw new InvalidOperationException(
                         $"IncreaseForceRank calculated no increase for '{officer.InstanceID}'."
                     );
+                if (increase == 0)
+                    continue;
                 officer.ForceValue = checked(stored + increase);
+                context.Record(
+                    new ForceExperienceResult
+                    {
+                        Officer = officer,
+                        ExperienceGained = increase,
+                        PreviousForceRank = effective,
+                        CurrentForceRank = officer.ForceRank,
+                        Tick = game.CurrentTick,
+                    }
+                );
             }
             return;
         }
@@ -689,9 +760,7 @@ namespace Rebellion.Gameplay.Scripting
                 return;
 
             officer.IsForceEligible = true;
-            int startingValue =
-                officer.JediLevel + context.Random.NextInt(0, officer.JediLevelVariance + 1);
-            officer.ForceValue = Math.Max(officer.ForceValue, startingValue);
+            officer.InitializeForceValue(context.Random);
             return;
         }
 
@@ -721,6 +790,7 @@ namespace Rebellion.Gameplay.Scripting
                 new OfficerInjuredResult
                 {
                     Officer = officer,
+                    ParentAtInjury = officer.GetParent(),
                     Severity = injury,
                     Tick = game.CurrentTick,
                 }

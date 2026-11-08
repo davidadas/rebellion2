@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
 
@@ -15,6 +16,14 @@ public interface IStatusWindowActions
     /// </summary>
     /// <param name="target">The status target whose information should open.</param>
     void OpenStatusInfo(StrategyStatusTarget target);
+
+    /// <summary>
+    /// Opens the manufacturing source represented by an in-progress status target.
+    /// </summary>
+    /// <param name="producerPlanetId">The producing planet identifier.</param>
+    /// <param name="sourceX">The source window's horizontal coordinate.</param>
+    /// <param name="sourceY">The source window's vertical coordinate.</param>
+    void OpenStatusManufacturingSource(string producerPlanetId, int sourceX, int sourceY);
 }
 
 /// <summary>
@@ -247,6 +256,7 @@ public sealed class StatusWindowController
         view.ControlPressed += HandleControlPressed;
         view.Destroyed += HandleViewDestroyed;
         view.InfoRequested += HandleInfoRequested;
+        view.ManufacturingSourceRequested += HandleManufacturingSourceRequested;
     }
 
     /// <summary>
@@ -308,7 +318,13 @@ public sealed class StatusWindowController
     {
         List<StatusWindowRowRenderData> result = new List<StatusWindowRowRenderData>();
         foreach (StrategyStatusRow row in rows ?? Array.Empty<StrategyStatusRow>())
-            result.Add(new StatusWindowRowRenderData(row?.Left, row?.Right));
+            result.Add(
+                new StatusWindowRowRenderData(
+                    row?.Left,
+                    row?.Right,
+                    row?.OpensManufacturingSource == true
+                )
+            );
         return result.AsReadOnly();
     }
 
@@ -377,6 +393,33 @@ public sealed class StatusWindowController
     }
 
     /// <summary>
+    /// Routes a manufacturing-source request using the current status target and producer state.
+    /// </summary>
+    /// <param name="view">The requesting status view.</param>
+    private void HandleManufacturingSourceRequested(StatusWindowView view)
+    {
+        string playerFactionId = getUIContext()?.GetPlayerFactionInstanceID();
+        if (
+            string.IsNullOrWhiteSpace(playerFactionId)
+            || !sessions.TryGetValue(view, out StatusWindowSession session)
+            || session.Target?.Item is not IManufacturable manufacturable
+            || manufacturable.GetManufacturingStatus() != ManufacturingStatus.Building
+            || string.IsNullOrWhiteSpace(manufacturable.ProducerPlanetID)
+            || findVisibleNode(manufacturable.ProducerPlanetID) is not Planet producer
+            || producer.OwnerInstanceID != playerFactionId
+        )
+        {
+            return;
+        }
+
+        string producerPlanetId = manufacturable.ProducerPlanetID;
+        int sourceX = session.Window.X;
+        int sourceY = session.Window.Y;
+        closeWindow(session.Window);
+        actions.OpenStatusManufacturingSource(producerPlanetId, sourceX, sourceY);
+    }
+
+    /// <summary>
     /// Routes a semantic close request to the owning window controller.
     /// </summary>
     /// <param name="view">The requesting status view.</param>
@@ -409,6 +452,7 @@ public sealed class StatusWindowController
         view.ControlPressed -= HandleControlPressed;
         view.Destroyed -= HandleViewDestroyed;
         view.InfoRequested -= HandleInfoRequested;
+        view.ManufacturingSourceRequested -= HandleManufacturingSourceRequested;
         sessions.Remove(view);
     }
 

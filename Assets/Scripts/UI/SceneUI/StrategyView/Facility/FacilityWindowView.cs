@@ -144,6 +144,11 @@ public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler, IC
     public event Action<FacilityWindowView, int, PointerEventData> ManufacturingCardReleased;
 
     /// <summary>
+    /// Occurs when navigation to a manufacturing lane's current item is requested.
+    /// </summary>
+    public event Action<FacilityWindowView, int> ManufacturingItemRequested;
+
+    /// <summary>
     /// Occurs when the tab is selected.
     /// </summary>
     public event Action<FacilityWindowView, FacilityWindowTab> TabSelected;
@@ -409,6 +414,7 @@ public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler, IC
             card.Pressed += HandleManufacturingCardPressed;
             card.Released += HandleManufacturingCardReleased;
             card.Dropped += HandleManufacturingCardReleased;
+            card.CurrentItemRequested += HandleManufacturingItemRequested;
         }
 
         eventsBound = true;
@@ -432,6 +438,7 @@ public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler, IC
             card.Pressed -= HandleManufacturingCardPressed;
             card.Released -= HandleManufacturingCardReleased;
             card.Dropped -= HandleManufacturingCardReleased;
+            card.CurrentItemRequested -= HandleManufacturingItemRequested;
         }
 
         for (int index = 0; index < inventoryItemViews.Count; index++)
@@ -474,6 +481,16 @@ public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler, IC
     {
         if (card != null && eventData != null)
             ManufacturingCardReleased?.Invoke(this, card.Index, eventData);
+    }
+
+    /// <summary>
+    /// Forwards a manufacturing-item request with its semantic lane index.
+    /// </summary>
+    /// <param name="card">The requesting manufacturing card.</param>
+    private void HandleManufacturingItemRequested(ManufacturingLaneCardView card)
+    {
+        if (card != null)
+            ManufacturingItemRequested?.Invoke(this, card.Index);
     }
 
     /// <summary>

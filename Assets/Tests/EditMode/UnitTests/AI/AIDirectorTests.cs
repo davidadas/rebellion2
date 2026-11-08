@@ -21,6 +21,111 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class AIDirectorTests
     {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ProcessTick_CustomInterval_PreservesDecisionScheduleAfterReload(bool reload)
+        {
+            (GameRoot game, Fleet fleet, AIDirector _) = BuildScene();
+            game.Config.AI.TickInterval = 1;
+            game.Config.AI.DecisionTickIntervals[game.Summary.Difficulty] = 4;
+            game.Summary.CustomSettings = new CustomGameSettings { AIDecisionTickInterval = 8 };
+            game.CurrentTick = 5;
+            GameConfig config = game.Config.CreateCopy();
+            string fleetId = fleet.InstanceID;
+            if (reload)
+                game = SerializationHelper.Deserialize<GameRoot>(
+                    SerializationHelper.Serialize(game)
+                );
+            using GameSession session = new(game, TestGameData.Create(config));
+            AIDirector director = session.GetService<AIDirector>();
+
+            director.ProcessTick();
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(fleetId).Order);
+            game.CurrentTick = 9;
+            director.ProcessTick();
+            Assert.IsNotNull(game.GetSceneNodeByInstanceID<Fleet>(fleetId).Order);
+        }
+
+        [TestCase(1, true)]
+        [TestCase(2, false)]
+        [TestCase(4, false)]
+        [TestCase(5, true)]
+        public void ProcessTick_StrategicInterval_AssignsNewOrdersOnDecisionTicks(
+            int tick,
+            bool assignsOrder
+        )
+        {
+            (GameRoot game, Fleet fleet, AIDirector system) = BuildScene();
+            game.Config.AI.TickInterval = 1;
+            game.Config.AI.DecisionTickIntervals[game.Summary.Difficulty] = 4;
+            game.CurrentTick = tick;
+
+            system.ProcessTick();
+
+            Assert.AreEqual(assignsOrder, fleet.Order != null);
+        }
+
+        [Test]
+        public void ProcessTick_BetweenDecisionTicks_ContinuesExistingDefenseOrder()
+        {
+            (GameRoot game, Fleet fleet, AIDirector system) = BuildScene();
+            game.Config.AI.TickInterval = 1;
+            game.Config.AI.DecisionTickIntervals[game.Summary.Difficulty] = 4;
+            game.CurrentTick = 2;
+            Planet headquarters = fleet.GetParentOfType<Planet>();
+            headquarters.IsHeadquarters = true;
+            game.GetFactionByOwnerInstanceID(fleet.GetOwnerInstanceID()).HQInstanceID =
+                headquarters.InstanceID;
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Defend,
+                Status = FleetOrderStatus.Building,
+                TargetPlanetId = headquarters.InstanceID,
+            };
+
+            system.ProcessTick();
+
+            Assert.IsNotNull(fleet.Order);
+            Assert.AreEqual(FleetOrderStatus.Ready, fleet.Order.Status);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ProcessTick_BetweenDecisionTicks_BombardsAssignedTarget(bool reload)
+        {
+            AITurnContext context = AITestSceneBuilder.CreateBombardmentReinforcementContext(
+                false,
+                true,
+                out Fleet fleet,
+                out _,
+                out _
+            );
+            GameRoot game = context.Game;
+            game.Config.AI.TickInterval = 1;
+            game.Config.AI.DecisionTickIntervals[game.Summary.Difficulty] = 4;
+            game.Config.AI.EnablePlanetaryAssaults = false;
+            game.CurrentTick = 2;
+            Planet target = game.GetSceneNodeByInstanceID<Planet>(fleet.Order.TargetPlanetId);
+            game.MoveNode(fleet, target);
+            fleet.Order.Status = FleetOrderStatus.Ready;
+            GameConfig config = game.Config.CreateCopy();
+            if (reload)
+                game = SerializationHelper.Deserialize<GameRoot>(
+                    SerializationHelper.Serialize(game)
+                );
+            game.Random = new SequenceRNG(intValues: new[] { 1, 0, 10 });
+            using GameSession session = new(game, TestGameData.Create(config));
+            List<BombardmentResult> bombardments = new();
+            session.Pipeline.ResultsResolved += results =>
+                bombardments.AddRange(results.OfType<BombardmentResult>());
+
+            session.GetService<AIDirector>().ProcessTick();
+
+            Assert.AreEqual(1, bombardments.Count);
+            Assert.AreEqual(target.InstanceID, bombardments[0].Planet.InstanceID);
+        }
+
         [Test]
         public void ProcessTick_BeforeConfiguredInterval_DoesNotProcessFaction()
         {

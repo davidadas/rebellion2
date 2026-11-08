@@ -224,5 +224,16 @@ namespace Rebellion.Tests.Game.Scripting
             Assert.AreEqual("FNALL1", action.FactionInstanceID);
             Assert.AreEqual("NABOO", action.Targets.OfType<SelectPlanets>().Single().InstanceID);
         }
+
+        [Test]
+        public void RevealToFaction_IncludeDescendants_DeserializesScope()
+        {
+            RevealToFactionAction action = (RevealToFactionAction)
+                SerializationHelper.Deserialize<GameAction>(
+                    "<RevealToFaction FactionInstanceID=\"FNALL1\" PlanetInstanceID=\"NABOO\" Category=\"Regiments\" IncludeDescendants=\"false\"/>"
+                );
+
+            Assert.IsFalse(action.IncludeDescendants);
+        }
     }
 }

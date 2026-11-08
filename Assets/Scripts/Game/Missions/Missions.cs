@@ -237,7 +237,7 @@ namespace Rebellion.Game.Missions
             )
                 return results;
 
-            if (!target.TryCapture(OwnerInstanceID))
+            if (!target.TryCapture(OwnerInstanceID, game, provider))
                 return results;
 
             results.Add(
@@ -535,6 +535,7 @@ namespace Rebellion.Game.Missions
                 new OfficerInjuredResult
                 {
                     Officer = target,
+                    ParentAtInjury = target.GetParent(),
                     Severity = injury,
                     Tick = game.CurrentTick,
                 }
@@ -897,6 +898,8 @@ namespace Rebellion.Game.Missions
     public class EspionageMission : Mission
     {
         public const string MissionTypeID = "Espionage";
+        private const string _fixedCapitalBonusPlanetInstanceID = "CORUSCANT";
+        private const string _fixedCapitalBonusOwnerInstanceID = "FNEMP1";
 
         /// <summary>
         /// Gets or sets whether the mission starts another objective attempt after completion.
@@ -990,7 +993,7 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Improves the successful officer's espionage rating when operating against another faction.
+        /// Improves the successful officer's espionage rating when operating away from an owned planet.
         /// </summary>
         /// <param name="participant">The participant whose espionage attempt succeeded.</param>
         internal override void ImproveMissionParticipantRating(IMissionParticipant participant)
@@ -1002,12 +1005,10 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Returns whether this mission target allows participant rating improvement.
         /// </summary>
-        /// <returns>True when the target planet is owned by another faction.</returns>
+        /// <returns>True when the target planet is not owned by the mission faction.</returns>
         private bool CanImproveRatingsAgainstTarget()
         {
-            return GetParent() is Planet planet
-                && !string.IsNullOrEmpty(planet.GetOwnerInstanceID())
-                && planet.GetOwnerInstanceID() != OwnerInstanceID;
+            return GetParent() is Planet planet && planet.GetOwnerInstanceID() != OwnerInstanceID;
         }
 
         /// <summary>
@@ -1105,7 +1106,7 @@ namespace Rebellion.Game.Missions
             GameConfig.RandomCountConfig countConfig = config.CoreSectorBonus;
             bool includeOuterRim = false;
 
-            if (IsOpposingHeadquartersTarget(game, targetPlanet))
+            if (IsHeadquartersBonusTarget(targetPlanet))
             {
                 countConfig = config.HeadquartersBonus;
                 includeOuterRim = true;
@@ -1134,17 +1135,19 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns whether the target is currently another faction's headquarters planet.
+        /// Returns whether the target hosts an active mobile headquarters or matches the fixed capital bonus target.
         /// </summary>
-        /// <param name="game">The game.</param>
         /// <param name="targetPlanet">The target planet.</param>
-        /// <returns>True when the opposing headquarters target condition is met; otherwise false.</returns>
-        private bool IsOpposingHeadquartersTarget(GameRoot game, Planet targetPlanet)
+        /// <returns>True when a headquarters bonus condition is met; otherwise false.</returns>
+        private static bool IsHeadquartersBonusTarget(Planet targetPlanet)
         {
-            Faction owner = game.GetFactionByOwnerInstanceID(targetPlanet.OwnerInstanceID);
-            return owner != null
-                && owner.InstanceID != OwnerInstanceID
-                && owner.HQInstanceID == targetPlanet.InstanceID;
+            return targetPlanet
+                    .GetChildren<Building>()
+                    .Any(building => building.BuildingType == BuildingType.Headquarters)
+                || (
+                    targetPlanet.InstanceID == _fixedCapitalBonusPlanetInstanceID
+                    && targetPlanet.OwnerInstanceID == _fixedCapitalBonusOwnerInstanceID
+                );
         }
 
         /// <summary>
@@ -1437,11 +1440,7 @@ namespace Rebellion.Game.Missions
                 else if (mission is SubdueUprisingMission)
                     adjustment -= state.GetAverageLeadership(mission) / divisor;
             }
-            int total = 0;
-            for (int index = 0; index < participants.Count; index++)
-                total += participants[index].GetEffectiveRating(SkillRating.Leadership);
-            int average = participants.Count == 0 ? 0 : total / participants.Count;
-            return adjustment + average / divisor;
+            return adjustment + proposed.GetAverageLeadership(participants) / divisor;
         }
     }
 
@@ -1546,7 +1545,7 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Validates the selected participants and chooses the highest-ranked qualified trainer.
+        /// Validates the selected participants and chooses the first qualified trainer in roster order.
         /// </summary>
         /// <param name="participants">The officers selected for Jedi training.</param>
         /// <param name="game">The game state containing Jedi qualification thresholds.</param>
@@ -1573,7 +1572,7 @@ namespace Rebellion.Game.Missions
 
             Officer selectedTrainer = officers
                 .Where(officer => CanLeadTraining(officer, game))
-                .OrderByDescending(officer => officer.ForceRank)
+                .OrderBy(officer => officer.RosterOrder)
                 .FirstOrDefault();
             if (selectedTrainer == null)
                 return false;
@@ -1588,11 +1587,11 @@ namespace Rebellion.Game.Missions
         /// Returns whether an officer can participate in Jedi training.
         /// </summary>
         /// <param name="officer">The officer to evaluate.</param>
-        /// <returns>True when the officer is a known, active Jedi.</returns>
+        /// <returns>True when the free, living officer has a nonzero effective Force rank.</returns>
         private static bool CanParticipate(Officer officer)
         {
-            return officer?.IsForceSensitive == true
-                && officer.IsForceEligible
+            return officer != null
+                && officer.ForceRank != 0
                 && !officer.IsCaptured
                 && !officer.IsKilled;
         }
@@ -1707,6 +1706,7 @@ namespace Rebellion.Game.Missions
                     Officer officer in GetMainParticipants()
                         .OfType<Officer>()
                         .OrderBy(officer => trainer.ForceRank - officer.ForceRank)
+                        .ThenBy(officer => officer.RosterOrder)
                 )
                 {
                     ForceTrainingResult trainingResult = TrainOfficer(
@@ -1746,10 +1746,11 @@ namespace Rebellion.Game.Missions
                 return null;
 
             int catchUpRange = forceRankGap * game.Config.Jedi.TrainingCatchUpPercent / 100;
-            int bonus = provider.NextInt(0, catchUpRange + 1);
+            int bonus = catchUpRange > 0 ? provider.NextInt(0, catchUpRange + 1) : 0;
             if (bonus <= 0)
                 return null;
 
+            int previousForceRank = officer.ForceRank;
             officer.ForceTrainingAdjustment += bonus;
             GameLogger.Log(
                 $"{officer.GetDisplayName()} gained {bonus} training adjustment from {trainer.GetDisplayName()} (rank {officer.ForceRank})"
@@ -1758,6 +1759,8 @@ namespace Rebellion.Game.Missions
             return new ForceTrainingResult
             {
                 Officer = officer,
+                PreviousForceRank = previousForceRank,
+                CurrentForceRank = officer.ForceRank,
                 Progress = bonus,
                 Detail = trainer.ForceRank,
                 Tick = game.CurrentTick,
@@ -1910,7 +1913,7 @@ namespace Rebellion.Game.Missions
             Faction faction = game?.GetFactionByOwnerInstanceID(OwnerInstanceID);
             PlanetSector sector = planet.GetParentOfType<PlanetSector>();
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordPlanetSnapshot(faction, planet, sector, game?.CurrentTick ?? 0);
+            recorder.RecordReconnaissanceSnapshot(faction, planet, sector, game?.CurrentTick ?? 0);
 
             return new List<GameResult>();
         }
@@ -2316,9 +2319,7 @@ namespace Rebellion.Game.Missions
             Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
             if (target == null)
                 return new List<GameResult>();
-            target.IsCaptured = false;
-            target.CaptorInstanceID = null;
-            target.CanEscape = false;
+            target.ReleaseFromCaptivity();
 
             return new List<GameResult>
             {

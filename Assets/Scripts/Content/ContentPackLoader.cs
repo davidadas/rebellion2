@@ -1113,11 +1113,20 @@ public static class ContentPackLoader
             new Dictionary<string, List<(string Root, ContentPackDefinition Definition)>>(
                 StringComparer.Ordinal
             );
-        foreach (var (definitionPath, candidate) in ReadPackDefinitions(contentRootPath))
+        List<string> definitionIssues = new List<string>();
+        foreach (
+            var (definitionPath, candidate) in ReadPackDefinitions(
+                contentRootPath,
+                definitionIssues
+            )
+        )
         {
             string candidateRoot = Path.GetDirectoryName(definitionPath);
             if (string.IsNullOrWhiteSpace(candidate.ID))
+            {
+                definitionIssues.Add($"'{definitionPath}' is missing its content-pack ID.");
                 continue;
+            }
             if (!packs.TryGetValue(candidate.ID, out var matches))
             {
                 matches = new List<(string Root, ContentPackDefinition Definition)>();
@@ -1139,8 +1148,19 @@ public static class ContentPackLoader
             }
             if (!packs.TryGetValue(currentPackID, out var matches))
             {
+                string discovered = string.Join(
+                    "; ",
+                    packs
+                        .Values.SelectMany(definitions => definitions)
+                        .Select(pack =>
+                            $"'{Path.Combine(pack.Root, _packFileName)}' declares '{pack.Definition.ID}'"
+                        )
+                );
                 throw new InvalidDataException(
-                    $"No installed content pack declares ID '{currentPackID}'."
+                    $"No installed content pack declares ID '{currentPackID}'. "
+                        + $"Content root: '{Path.GetFullPath(contentRootPath)}'. "
+                        + $"Readable pack definitions: {(discovered.Length == 0 ? "none" : discovered)}. "
+                        + $"Pack definition issues: {(definitionIssues.Count == 0 ? "none" : string.Join("; ", definitionIssues))}."
                 );
             }
             if (matches.Count > 1)
@@ -1168,9 +1188,11 @@ public static class ContentPackLoader
     /// Reads installed definitions while isolating malformed authored drafts from unrelated packs.
     /// </summary>
     /// <param name="contentRootPath">The installed Content directory.</param>
+    /// <param name="definitionIssues">Receives definition failures for an unresolved pack's diagnostic.</param>
     /// <returns>The readable definitions and their manifest paths.</returns>
     private static IEnumerable<(string Path, ContentPackDefinition Definition)> ReadPackDefinitions(
-        string contentRootPath
+        string contentRootPath,
+        ICollection<string> definitionIssues
     )
     {
         foreach (string path in EnumeratePackDefinitions(contentRootPath))
@@ -1182,6 +1204,7 @@ public static class ContentPackLoader
             }
             catch (Exception exception) when (IsContentDiscoveryException(exception))
             {
+                definitionIssues.Add($"'{path}': {GetContentErrorMessage(exception)}");
                 GameLogger.Warning(
                     $"Content pack could not be loaded: {path}. {GetContentErrorMessage(exception)}"
                 );

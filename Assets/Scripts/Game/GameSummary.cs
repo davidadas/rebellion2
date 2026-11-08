@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game
@@ -177,5 +178,29 @@ namespace Rebellion.Game
         /// Creates a game summary with the standard launch selections.
         /// </summary>
         public GameSummary() { }
+
+        /// <summary>
+        /// Captures launch selections without sharing mutable arrays or custom settings.
+        /// </summary>
+        /// <returns>An independent launch summary retaining the same seed and content identity.</returns>
+        public GameSummary CreateCopy()
+        {
+            return new GameSummary
+            {
+                GalaxySize = GalaxySize,
+                Difficulty = Difficulty,
+                VictoryCondition = VictoryCondition,
+                ResourceAvailability = ResourceAvailability,
+                CustomSettings = CustomSettings?.CreateCopy(),
+                StartingFactionIDs = StartingFactionIDs?.ToArray(),
+                PlayerFactionID = PlayerFactionID,
+                PackID = PackID,
+                PackVersion = PackVersion,
+                ScenarioID = ScenarioID,
+                ModIDs = ModIDs?.ToArray(),
+                ModVersions = ModVersions?.ToArray(),
+                Seed = Seed,
+            };
+        }
     }
 }

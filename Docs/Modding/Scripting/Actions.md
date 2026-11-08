@@ -196,7 +196,21 @@ Provides a faction with current intelligence about selected game objects.
 **Required options**
 
 - `FactionInstanceID` **[Required]:** The `InstanceID` of the faction receiving the intelligence.
-- `Targets` **[Required]:** The selectors identifying the game objects to reveal.
+- Intelligence source **[Required]:** Provide exactly one:
+  - `Targets`: Selectors identifying individual game objects to reveal.
+  - `Category`: One of the intelligence categories listed below, with exactly one
+    `PlanetInstanceID` or `PlanetBinding` identifying the planet to observe.
+
+**Optional options**
+
+- `PlanetInstanceID` **[Optional]:** The planet to observe when using `Category`; required when
+  `PlanetBinding` is omitted. Do not supply both planet references.
+- `PlanetBinding` **[Optional]:** A bound planet to observe when using `Category`; required when
+  `PlanetInstanceID` is omitted.
+- `IncludeDescendants` **[Optional]:** For officer, regiment, special-forces, and starfighter
+  categories, include units inside fleets, ships, and missions; defaults to `true`. Set `false`
+  to restrict individual unit-category reports to units directly stationed on the planet. Fleet
+  and capital-ship hierarchy reports retain their documented cargo behavior.
 
 ```xml
 <RevealToFaction FactionInstanceID="FNALL1">
@@ -219,13 +233,54 @@ selecting a carried officer, regiment, special-forces unit, or starfighter recor
 only the parent structure needed to locate it. Buildings, missions, and manufacturing orders are
 recorded individually.
 
+Category reports refresh one kind of planet intelligence while retaining unrelated remembered
+information. Omit `Targets` when using this form:
+
+```xml
+<RevealToFaction FactionInstanceID="FNALL1"
+                 PlanetInstanceID="CORUSCANT"
+                 Category="PlanetResources"/>
+```
+
+A scoped event can use its target binding instead of a literal planet ID:
+
+```xml
+<RevealToFaction FactionInstanceID="FNALL1"
+                 PlanetBinding="$planet"
+                 Category="Starfighters"
+                 IncludeDescendants="false"/>
+```
+
+**Category values**
+
+- `Planet`: Planet control, resources, uprising status, and headquarters status.
+- `PlanetControl`: Ownership and popular support.
+- `PlanetResources`: Energy capacity and raw-resource nodes.
+- `Fleets`: Complete fleet, ship, and cargo hierarchies.
+- `CapitalShips`: Capital ships, preserving unreported cargo.
+- `Starfighters`: Starfighters.
+- `GroundForces`: Regiments and special forces.
+- `Regiments`: Regiments only.
+- `SpecialForces`: Special-forces units only.
+- `Buildings`: All buildings, including planetary defenses and production facilities.
+- `PlanetaryDefenses`: Planetary defenses only.
+- `ProductionFacilities`: Production facilities only.
+- `Officers`: Officers.
+- `Missions`: Missions and their participants.
+- `Manufacturing`: Manufacturing queues.
+- `PlanetMilitaryProduction`: Planet details, capital ships and their combat cargo, stationed
+  starfighters and regiments, buildings, and manufacturing queues.
+- `All`: Every intelligence category.
+
 ### SendMessage
 
-Delivers a strategy message to an explicitly identified faction.
+Delivers a strategy message to a faction identified directly or through a binding.
 
 **Required options**
 
-- `RecipientFactionInstanceID` **[Required]:** The `InstanceID` of the faction receiving the message.
+- Recipient **[Required]:** Provide `RecipientFactionInstanceID` or `RecipientFactionBinding`.
+  The binding must contain the receiving faction's instance ID and takes precedence when both
+  are provided.
 
 **Optional options**
 
@@ -233,11 +288,15 @@ Delivers a strategy message to an explicitly identified faction.
 - `SubjectBinding` **[Optional]:** A binding that resolves the message subject; takes precedence over `SubjectInstanceID`.
 - `ShowSubjectImage` **[Optional]:** Whether to use the subject officer's current message image as the overlay; defaults to `false`. Only officer subjects currently provide a subject image, and an explicit `OverlayImage` takes precedence.
 - `RelatedSubjectInstanceID` **[Optional]:** The `InstanceID` of a secondary subject associated with the message.
+- `RelatedSubjectBinding` **[Optional]:** A scene-node binding for the secondary subject; takes precedence over `RelatedSubjectInstanceID`.
 - `LocationInstanceID` **[Optional]:** The `InstanceID` of the message location; `LocationBinding` takes precedence when both are provided.
 - `LocationBinding` **[Optional]:** A binding that resolves the message location; takes precedence over `LocationInstanceID`.
 - `Type` **[Optional]:** The message category: `PopularSupport`, `Fleet`, `Mission`, `Resource`, `Manufacturing`, `Defense`, `Conflict`, `Chat`, or `Advice`; defaults to `Advice`.
 - `Subject` **[Optional]:** The message title; supports context tokens such as `{subject}` and `{location}`.
 - `Body` **[Optional]:** The message body; supports context tokens such as `{subject}` and `{location}`.
+- `BodySections` **[Optional]:** Ordered `Section` entries containing `Text` and optional `Conditionals`.
+  Each section whose conditions all pass appends its text after `Body`. Include any spaces or
+  newlines in the authored text; sections add no separators automatically.
 - `BackgroundImage` **[Optional]:** The message background, supplied by exactly one `Key`, `Path`, or string-valued `Binding`.
 - `OverlayImage` **[Optional]:** The `Path` to an explicit message overlay; takes precedence over the image selected by `ShowSubjectImage`.
 - `BackgroundAudio` **[Optional]:** The message background audio, supplied by exactly one `Path` or string-valued `Binding`.
@@ -566,8 +625,8 @@ Increases Force progression for one or more officers.
   - `Amount`: A positive fixed adjustment.
   - `AmountBinding`: A binding containing the positive fixed adjustment.
   - `RollInteger`: Generates the positive adjustment from its inclusive `Minimum` and `Maximum`.
-  - `PercentOfStored`: A positive change calculated from `ForceValue`.
-  - `PercentOfEffective`: A positive change calculated from the effective `ForceRank`.
+  - `PercentOfStored`: A positive percentage calculated from the signed `ForceValue`.
+  - `PercentOfEffective`: A positive percentage calculated from the signed effective `ForceRank`.
   - `PercentOfPositiveGap`: A positive percentage of the effective-rank gap to `ReferenceOfficerInstanceID`.
 
 **Conditionally required options**
@@ -577,6 +636,10 @@ Increases Force progression for one or more officers.
 **Optional options**
 
 - `MinimumAmount` **[Optional]:** Non-negative lower bound used only with `PercentOfPositiveGap`.
+
+Percentage calculations truncate toward zero. A zero adjustment leaves the rating unchanged;
+a percentage of a negative stored or effective rating produces a negative adjustment. Stored
+Force values retain their signed 16-bit representation when arithmetic crosses its bounds.
 
 ```xml
 <IncreaseForceRank OfficerInstanceID="LUKE_SKYWALKER"
@@ -602,8 +665,8 @@ Marks an officer as having latent Force potential.
 
 Makes a Force-sensitive officer eligible to develop Force ability.
 Eligibility requires sensitivity, so use both actions when revealing a previously unknown candidate.
-On the first eligibility change, `ForceValue` is raised to at least `JediLevel` plus a uniformly
-rolled value from zero through `JediLevelVariance`.
+On the first eligibility change, a zero `ForceValue` is initialized to `JediLevel` plus a uniformly
+rolled value from zero through `JediLevelVariance`. Existing nonzero values are preserved.
 
 **Required options**
 

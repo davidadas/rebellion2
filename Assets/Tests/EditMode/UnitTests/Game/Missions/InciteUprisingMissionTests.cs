@@ -386,6 +386,104 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(0, suppliedTeamOdds);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void GetObjectiveSuccessProbability_ProposedMissionWithDecoy_UsesBothRoles(
+            bool useSnapshot
+        )
+        {
+            GameConfig config = CreateLeadershipConfig(10);
+            var (game, planet, mission) = BuildCompletionScene(config, 1, 60, decoyLeadership: 0);
+            Planet observed = useSnapshot ? (Planet)planet.CreateCopy(recursive: true) : planet;
+            observed.SetParent(planet.GetParent());
+
+            double probability = mission.GetObjectiveSuccessProbability(
+                mission.GetMainParticipants(),
+                game,
+                observed
+            );
+
+            Assert.Zero(probability);
+        }
+
+        [Test]
+        public void GetObjectiveSuccessProbability_DisabledDecoy_DoesNotAffectIncidentOdds()
+        {
+            GameConfig config = CreateLeadershipConfig(10);
+            var (game, planet, mission) = BuildCompletionScene(config, 1, 60, decoyLeadership: 0);
+            mission.GetDecoyParticipants().Single().IsEnabled = false;
+
+            double probability = mission.GetObjectiveSuccessProbability(
+                mission.GetMainParticipants(),
+                game,
+                planet
+            );
+
+            Assert.AreEqual(75, probability, 0.000001);
+        }
+
+        [Test]
+        public void GetObjectiveSuccessProbability_AlternativeTeamWithDecoy_UsesSuppliedMainTeam()
+        {
+            GameConfig config = CreateLeadershipConfig(10);
+            var (game, planet, mission) = BuildCompletionScene(config, 1, 60, decoyLeadership: 0);
+            Officer alternative = EntityFactory.CreateOfficer("alternative", "rebels");
+            alternative.SetBaseRating(SkillRating.Leadership, 200);
+
+            double probability = mission.GetObjectiveSuccessProbability(
+                new[] { alternative },
+                game,
+                planet
+            );
+
+            Assert.AreEqual(75, probability, 0.000001);
+        }
+
+        [TestCase(InciteUprisingMission.MissionTypeID, 15, false)]
+        [TestCase(InciteUprisingMission.MissionTypeID, 15, true)]
+        [TestCase(SubdueUprisingMission.MissionTypeID, 5, false)]
+        [TestCase(SubdueUprisingMission.MissionTypeID, 5, true)]
+        public void GetObjectiveSuccessProbability_ActiveMissionWithDecoy_UsesBothRoles(
+            string activeMissionType,
+            int destructionThreshold,
+            bool useSnapshot
+        )
+        {
+            GameConfig config = CreateLeadershipConfig(destructionThreshold);
+            var (game, planet, mission) = BuildCompletionScene(config, 1, 60);
+            bool isSubdue = activeMissionType == SubdueUprisingMission.MissionTypeID;
+            string owner = isSubdue ? "empire" : "rebels";
+            if (isSubdue)
+                planet.BeginUprising();
+            Officer main = EntityFactory.CreateOfficer("active-main", owner);
+            main.SetBaseRating(SkillRating.Leadership, 100);
+            Officer decoy = EntityFactory.CreateOfficer("active-decoy", owner);
+            decoy.SetBaseRating(SkillRating.Leadership, 0);
+            Mission active = MissionTestFactory.TryCreate(
+                activeMissionType,
+                game,
+                owner,
+                planet,
+                new List<IMissionParticipant> { main },
+                new List<IMissionParticipant> { decoy }
+            );
+            Assert.IsNotNull(active);
+            game.AttachNode(active, planet);
+            game.AttachNode(main, active);
+            game.AttachNode(decoy, active);
+            active.Initiate(1);
+            Planet observed = useSnapshot ? (Planet)planet.CreateCopy(recursive: true) : planet;
+            observed.SetParent(planet.GetParent());
+
+            double probability = mission.GetObjectiveSuccessProbability(
+                mission.GetMainParticipants(),
+                game,
+                observed
+            );
+
+            Assert.AreEqual(75, probability, 0.000001);
+        }
+
         [Test]
         public void GetObjectiveSuccessProbability_ExtremeCoreResistance_MatchesResolvedFailure()
         {
@@ -465,6 +563,28 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         /// <summary>
+        /// Creates a two-die incident scenario that exposes mission leadership contributions.
+        /// </summary>
+        /// <param name="destructionThreshold">The incident score needed to destroy a regiment.</param>
+        /// <returns>The controlled mission and incident rules.</returns>
+        private static GameConfig CreateLeadershipConfig(int destructionThreshold)
+        {
+            GameConfig config = CreateCompletionConfig();
+            config.Uprising.DiceRange = 1;
+            config.Uprising.DiceAddend = 0;
+            config.Uprising.MissionLeadershipDivisor = 10;
+            config.Uprising.InciteMissionSupportShift = -10;
+            config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int>
+            {
+                { destructionThreshold, 2 },
+            };
+            config.Uprising.SecondaryConsequenceTable.Clear();
+            config.AI.Garrison.SupportThreshold = 60;
+            config.SupportShift.OwnershipTransferThreshold = 60;
+            return config;
+        }
+
+        /// <summary>
         /// Builds an initiated mission with stationary personnel and a configured garrison.
         /// </summary>
         /// <param name="config">The shared immutable scenario configuration.</param>
@@ -472,13 +592,15 @@ namespace Rebellion.Tests.Game.Missions
         /// <param name="support">Popular support for the controller.</param>
         /// <param name="core">Whether the destination is in a core sector.</param>
         /// <param name="subdue">Whether to create a subdue mission instead of an incite mission.</param>
+        /// <param name="decoyLeadership">Optional leadership for a stationary decoy.</param>
         /// <returns>The game, destination, and active mission.</returns>
         private static (GameRoot game, Planet planet, Mission mission) BuildCompletionScene(
             GameConfig config,
             int troops,
             int support,
             bool core = false,
-            bool subdue = false
+            bool subdue = false,
+            int? decoyLeadership = null
         )
         {
             GameRoot game = TestGame.Create(config);
@@ -520,6 +642,12 @@ namespace Rebellion.Tests.Game.Missions
                 subdue ? "empire" : "rebels"
             );
             officer.SetBaseRating(SkillRating.Leadership, 100);
+            Officer decoy = null;
+            if (decoyLeadership.HasValue)
+            {
+                decoy = EntityFactory.CreateOfficer("decoy", officer.OwnerInstanceID);
+                decoy.SetBaseRating(SkillRating.Leadership, decoyLeadership.Value);
+            }
             if (subdue)
                 planet.BeginUprising();
             Mission mission = MissionTestFactory.TryCreate(
@@ -527,11 +655,14 @@ namespace Rebellion.Tests.Game.Missions
                 game,
                 officer.OwnerInstanceID,
                 planet,
-                new List<IMissionParticipant> { officer }
+                new List<IMissionParticipant> { officer },
+                decoy == null ? null : new List<IMissionParticipant> { decoy }
             );
             Assert.IsNotNull(mission);
             game.AttachNode(mission, planet);
             game.AttachNode(officer, mission);
+            if (decoy != null)
+                game.AttachNode(decoy, mission);
             mission.Initiate(1);
             return (game, planet, mission);
         }
@@ -551,7 +682,8 @@ namespace Rebellion.Tests.Game.Missions
                     game,
                     new PlanetaryControlQueries(game),
                     new FogOfWarQueries(game)
-                )
+                ),
+                new JediCommands(game, rng)
             );
         }
     }

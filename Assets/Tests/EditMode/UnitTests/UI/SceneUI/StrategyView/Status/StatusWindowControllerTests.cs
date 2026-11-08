@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
@@ -26,6 +27,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         private GameObject _rootObject;
         private UIContext _uiContext;
         private ISceneNode _visibleNode;
+        private TestActions _actions;
         private StrategyWindowLayerView _windowLayer;
         private UIWindowManager _windowManager;
 
@@ -58,7 +60,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 _windowManager.DestroyWindow(window);
             };
             _controller = CreateController();
-            _controller.Initialize(new TestActions());
+            _actions = new TestActions();
+            _controller.Initialize(_actions);
         }
 
         /// <summary>
@@ -204,6 +207,83 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual(0, _closeCount);
         }
 
+        [Test]
+        public void ManufacturingSourceRequest_BuildingItem_RoutesCurrentProducerAndWindowPosition()
+        {
+            Planet producer = new Planet
+            {
+                InstanceID = "producer",
+                DisplayName = "Corellia",
+                OwnerInstanceID = _playerFactionId,
+            };
+            _visibleNode = producer;
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                ManufacturingStatus = ManufacturingStatus.Building,
+                ProducerPlanetID = producer.InstanceID,
+            };
+            _controller.Open(new StrategyStatusTarget(null, ship));
+            UIWindow window = _windowManager.Windows.Single();
+            _windowManager.TryGetWindowView(window, out StatusWindowView view);
+            int sourceX = window.X;
+            int sourceY = window.Y;
+
+            view.RequestManufacturingSource();
+
+            Assert.AreEqual(producer.InstanceID, _actions.ProducerPlanetId);
+            Assert.AreEqual(sourceX, _actions.SourceX);
+            Assert.AreEqual(sourceY, _actions.SourceY);
+            Assert.AreEqual(1, _closeCount);
+            Assert.IsEmpty(_windowManager.Windows);
+        }
+
+        [Test]
+        public void ManufacturingSourceRequest_OpponentProducer_DoesNotRouteRequest()
+        {
+            Planet producer = new Planet
+            {
+                InstanceID = "producer",
+                DisplayName = "Corellia",
+                OwnerInstanceID = "opponent",
+            };
+            _visibleNode = producer;
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                ManufacturingStatus = ManufacturingStatus.Building,
+                ProducerPlanetID = producer.InstanceID,
+            };
+            _controller.Open(new StrategyStatusTarget(null, ship));
+            UIWindow window = _windowManager.Windows.Single();
+            _windowManager.TryGetWindowView(window, out StatusWindowView view);
+
+            view.RequestManufacturingSource();
+
+            Assert.IsNull(_actions.ProducerPlanetId);
+        }
+
+        [Test]
+        public void ManufacturingSourceRequest_MissingPlayerFaction_DoesNotRouteRequest()
+        {
+            _uiContext = null;
+            Planet producer = new Planet { InstanceID = "producer", DisplayName = "Corellia" };
+            _visibleNode = producer;
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                ManufacturingStatus = ManufacturingStatus.Building,
+                ProducerPlanetID = producer.InstanceID,
+            };
+            _controller.Open(new StrategyStatusTarget(null, ship));
+            UIWindow window = _windowManager.Windows.Single();
+            _windowManager.TryGetWindowView(window, out StatusWindowView view);
+
+            view.RequestManufacturingSource();
+
+            Assert.IsNull(_actions.ProducerPlanetId);
+        }
+
         /// <summary>
         /// Creates controller.
         /// </summary>
@@ -231,11 +311,34 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
 
         private sealed class TestActions : IStatusWindowActions
         {
+            public string ProducerPlanetId { get; private set; }
+
+            public int SourceX { get; private set; }
+
+            public int SourceY { get; private set; }
+
             /// <summary>
             /// Opens status info.
             /// </summary>
             /// <param name="target">The target.</param>
             public void OpenStatusInfo(StrategyStatusTarget target) { }
+
+            /// <summary>
+            /// Opens a manufacturing source.
+            /// </summary>
+            /// <param name="producerPlanetId">The producer identifier.</param>
+            /// <param name="sourceX">The source x-coordinate.</param>
+            /// <param name="sourceY">The source y-coordinate.</param>
+            public void OpenStatusManufacturingSource(
+                string producerPlanetId,
+                int sourceX,
+                int sourceY
+            )
+            {
+                ProducerPlanetId = producerPlanetId;
+                SourceX = sourceX;
+                SourceY = sourceY;
+            }
         }
     }
 }

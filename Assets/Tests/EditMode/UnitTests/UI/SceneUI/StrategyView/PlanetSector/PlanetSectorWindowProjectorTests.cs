@@ -216,6 +216,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         public void CreateRenderData_CompositePlanet_ReturnsCompletePresentation()
         {
             Planet planet = CreatePlanet("planet", _playerFactionId, 13, 25);
+            planet.IsColonized = true;
             planet.IsHeadquarters = true;
             planet.EnergyCapacity = 3;
             planet.NumRawResourceNodes = 4;
@@ -469,12 +470,34 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
+        public void CreateRenderData_UncolonizedPlanetWithSupport_HidesSupportBar()
+        {
+            Planet planet = CreatePlanet("planet", _playerFactionId, 13, 25);
+            planet.IsColonized = false;
+            planet.SetFullPopularSupport(_playerFactionId);
+            GalaxyMapSector sector = CreateSector(
+                new GalaxyMapPlanet(_planetSector, planet, string.Empty)
+            );
+
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                sector,
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            Assert.IsFalse(data.Planets[0].SupportBar.Visible);
+        }
+
+        [Test]
         public void CreateRenderData_PopularSupport_ReturnsSupportedOpposingFactionColor()
         {
             _game
                 .GetFactions()
                 .Insert(1, new Faction { InstanceID = "SPECTATOR", DisplayName = "Spectator" });
             Planet planet = CreatePlanet("planet", _playerFactionId, 13, 25);
+            planet.IsColonized = true;
             planet.PopularSupport[_playerFactionId] = 75;
             planet.PopularSupport[_opposingFactionId] = 25;
             FactionTheme opposingTheme = _uiContext.GetTheme(_opposingFactionId);
