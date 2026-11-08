@@ -210,7 +210,7 @@ namespace Rebellion.Tests.Gameplay
         public void CreateFleet_CompletedShipInTransit_PreservesSourceGraph()
         {
             Fleet sourceFleet = CreateFleet("source", out CapitalShip ship);
-            sourceFleet.Movement = new MovementState();
+            sourceFleet.Movement = TestMovement.Create();
 
             Fleet createdFleet = _fleetSystem.CreateFleet(new List<CapitalShip> { ship }, _ownerId);
 
@@ -223,7 +223,7 @@ namespace Rebellion.Tests.Gameplay
         public void CreateFleet_ShipUnderConstruction_ChangesDeliveryFleet()
         {
             Fleet sourceFleet = CreateFleet("source", out CapitalShip ship);
-            sourceFleet.Movement = new MovementState();
+            sourceFleet.Movement = TestMovement.Create();
             ship.ManufacturingStatus = ManufacturingStatus.Building;
 
             Fleet createdFleet = _fleetSystem.CreateFleet(new List<CapitalShip> { ship }, _ownerId);

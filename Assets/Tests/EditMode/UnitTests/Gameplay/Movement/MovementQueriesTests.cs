@@ -20,6 +20,130 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class MovementQueriesTests
     {
+        [TestCase(false, false)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(true, true)]
+        public void TryEstimateRetargetedTransitTicks_InboundJourney_IncludesUnfinishedLeg(
+            bool legacyMovement,
+            bool fighter
+        )
+        {
+            var scene = BuildScene(TestConfig.Create());
+            IMovable unit = scene.officer;
+            if (fighter)
+            {
+                Starfighter starfighter = EntityFactory.CreateStarfighter(
+                    "incoming-fighter",
+                    "empire"
+                );
+                starfighter.Hyperdrive = 100;
+                starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
+                unit = starfighter;
+                scene.game.AttachNode(unit, scene.origin);
+            }
+            scene.game.MoveNode(unit, scene.destination);
+            unit.Movement = legacyMovement
+                ? SerializationHelper.Deserialize<MovementState>(
+                    "<MovementState><TransitTicks>20</TransitTicks><TicksElapsed>4</TicksElapsed>"
+                        + "<OriginPositionX>0</OriginPositionX><OriginPositionY>0</OriginPositionY>"
+                        + "<CurrentPositionX>20</CurrentPositionX><CurrentPositionY>20</CurrentPositionY></MovementState>"
+                )
+                : TestMovement.Create(
+                    transitTicks: 20,
+                    ticksElapsed: 4,
+                    originPosition: scene.origin.GetPosition(),
+                    currentPosition: new Point(20, 20),
+                    destinationPlanetInstanceID: scene.destination.InstanceID
+                );
+            int expectedTicks =
+                16 + scene.movement.CalculateTransitTicks(unit, scene.destination, scene.origin);
+
+            bool estimated = scene.movement.TryEstimateRetargetedTransitTicks(
+                unit,
+                scene.origin,
+                out int ticks
+            );
+
+            Assert.IsTrue(estimated);
+            Assert.AreEqual(expectedTicks, ticks);
+            Assert.AreEqual(4, unit.Movement.TicksElapsed);
+            Assert.IsNull(unit.Movement.NextLeg);
+            if (legacyMovement)
+                Assert.IsNull(unit.Movement.DestinationPlanetInstanceID);
+        }
+
+        [TestCase(0)]
+        [TestCase(1)]
+        public void TryEstimateRetargetedTransitTicks_ContinuedFighterJourney_IncludesUnfinishedLeg(
+            int hyperdrive
+        )
+        {
+            var scene = BuildScene(TestConfig.Create());
+            Starfighter fighter = EntityFactory.CreateStarfighter("continuing-fighter", "empire");
+            fighter.Hyperdrive = hyperdrive;
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            scene.game.AttachNode(fighter, scene.origin);
+            fighter.Movement = new MovementState(
+                new MovementLeg(10, scene.origin.GetPosition(), scene.destination.InstanceID),
+                scene.origin.InstanceID,
+                "continuing-group"
+            );
+            fighter.Movement.Advance(4, scene.destination.GetPosition());
+            fighter.Movement.Redirect(
+                new MovementLeg(1, scene.destination.GetPosition(), scene.origin.InstanceID),
+                scene.destination.InstanceID,
+                scene.origin.InstanceID
+            );
+            MovementState before = fighter.Movement.CreateCopy();
+            int onwardTicks = scene.movement.CalculateTransitTicks(
+                fighter,
+                scene.destination,
+                scene.origin
+            );
+
+            bool estimated = scene.movement.TryEstimateRetargetedTransitTicks(
+                fighter,
+                scene.origin,
+                out int ticks
+            );
+
+            Assert.IsTrue(estimated);
+            Assert.AreEqual(6 + onwardTicks, ticks);
+            Assert.AreEqual(before.TicksElapsed, fighter.Movement.TicksElapsed);
+            Assert.AreEqual(before.CurrentPosition, fighter.Movement.CurrentPosition);
+            Assert.AreEqual(before.NextLeg.TransitTicks, fighter.Movement.NextLeg.TransitTicks);
+        }
+
+        [Test]
+        public void GetPreviousLocation_ClearedSavedLocation_DoesNotReviveGraphHistory()
+        {
+            var scene = BuildScene();
+            scene.game.MoveNode(scene.officer, scene.destination);
+            scene.officer.Movement = SerializationHelper.Deserialize<MovementState>(
+                SerializationHelper.Serialize(
+                    TestMovement.Create(previousLocationInstanceID: string.Empty)
+                )
+            );
+
+            Assert.AreEqual(scene.origin.InstanceID, scene.officer.LastParentInstanceID);
+            Assert.IsNull(scene.movement.GetPreviousLocation(scene.officer));
+        }
+
+        [Test]
+        public void GetPreviousLocation_OlderDelivery_ResolvesProducerWithoutParentHistory()
+        {
+            var scene = BuildScene();
+            Starfighter fighter = EntityFactory.CreateStarfighter("delivery", "empire");
+            fighter.ManufacturingStatus = ManufacturingStatus.Delivering;
+            fighter.ProducerPlanetID = scene.origin.InstanceID;
+            fighter.Movement = TestMovement.Create(transitTicks: 10);
+            scene.game.AttachNode(fighter, scene.destination);
+
+            Assert.IsNull(fighter.LastParentInstanceID);
+            Assert.AreSame(scene.origin, scene.movement.GetPreviousLocation(fighter));
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void TryGetSelectionTransitTicks_UnavailableDestination_DoesNotLogWarnings(
@@ -847,11 +971,10 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(livePositionNearest, assignedDestination.GetParent());
             game.AttachNode(assignedDestinationNearest, assignedDestination.GetParent());
             game.MoveNode(officer, assignedDestination);
-            officer.Movement = new MovementState
-            {
-                OriginPosition = excludedOrigin.GetPosition(),
-                CurrentPosition = new Point(10, 0),
-            };
+            officer.Movement = TestMovement.Create(
+                originPosition: excludedOrigin.GetPosition(),
+                currentPosition: new Point(10, 0)
+            );
 
             IReadOnlyList<ContainerNode> destinations = movement.FindSafeRelocationDestinations(
                 officer,

@@ -2540,8 +2540,7 @@ namespace Rebellion.Game.FogOfWar
                     {
                         if (copy is IMovable { Movement: { } movement })
                         {
-                            movement.IsObservation = true;
-                            movement.ObservedAtTick = observedAtTick;
+                            movement.MarkObserved(observedAtTick);
                         }
                     }
                 ) as T;
@@ -2579,7 +2578,7 @@ namespace Rebellion.Game.FogOfWar
                     configureCopy: copy =>
                     {
                         if (copy is IMovable { Movement: { } movement })
-                            movement.IsObservation = true;
+                            movement.MarkObserved();
                         if (copy is Fleet fleet)
                         {
                             fleet.Order = null;

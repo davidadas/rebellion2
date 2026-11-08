@@ -500,7 +500,7 @@ namespace Rebellion.Tests.AI.Scorers
             );
             reinforcement.ManufacturingStatus = status;
             if (status == ManufacturingStatus.Delivering)
-                reinforcement.Movement = new MovementState { TransitTicks = 10 };
+                reinforcement.Movement = TestMovement.Create(transitTicks: 10);
             context.Game.AttachNode(reinforcement, proposal.Demand.DestinationFleet);
             context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
 

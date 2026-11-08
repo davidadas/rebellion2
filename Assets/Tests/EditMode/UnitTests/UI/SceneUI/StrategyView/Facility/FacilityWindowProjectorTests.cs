@@ -270,7 +270,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 BuildingType.Refinery,
                 ManufacturingStatus.Complete
             );
-            refinery.Movement = new MovementState();
+            refinery.Movement = TestMovement.Create();
             _planet.AddTestChild(refinery);
             _session.Reconcile();
             _session.SetActiveTab(FacilityWindowTab.Refineries);

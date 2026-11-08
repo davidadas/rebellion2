@@ -286,13 +286,12 @@ namespace Rebellion.Tests.Gameplay
                 CurrentHullStrength = 1000,
                 ShieldRechargeRate = 0,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                Movement = new MovementState
-                {
-                    TransitTicks = 5,
-                    TicksElapsed = 1,
-                    OriginPosition = planet.GetPosition(),
-                    CurrentPosition = planet.GetPosition(),
-                },
+                Movement = TestMovement.Create(
+                    transitTicks: 5,
+                    ticksElapsed: 1,
+                    originPosition: planet.GetPosition(),
+                    currentPosition: planet.GetPosition()
+                ),
             };
             game.AttachNode(inTransitShip, empireFleet);
 
@@ -332,13 +331,12 @@ namespace Rebellion.Tests.Gameplay
                 CurrentSquadronSize = 12,
                 LaserCannon = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                Movement = new MovementState
-                {
-                    TransitTicks = 5,
-                    TicksElapsed = 1,
-                    OriginPosition = planet.GetPosition(),
-                    CurrentPosition = planet.GetPosition(),
-                },
+                Movement = TestMovement.Create(
+                    transitTicks: 5,
+                    ticksElapsed: 1,
+                    originPosition: planet.GetPosition(),
+                    currentPosition: planet.GetPosition()
+                ),
             };
             game.AttachNode(inTransitFighter, empireCarrier);
 
@@ -1356,13 +1354,12 @@ namespace Rebellion.Tests.Gameplay
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
-            empireFleet.Movement = new MovementState
-            {
-                TransitTicks = 5,
-                TicksElapsed = 1,
-                OriginPosition = planet.GetPosition(),
-                CurrentPosition = planet.GetPosition(),
-            };
+            empireFleet.Movement = TestMovement.Create(
+                transitTicks: 5,
+                ticksElapsed: 1,
+                originPosition: planet.GetPosition(),
+                currentPosition: planet.GetPosition()
+            );
 
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
@@ -1383,20 +1380,18 @@ namespace Rebellion.Tests.Gameplay
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
-            empireFleet.GetChildren<CapitalShip>()[0].Movement = new MovementState
-            {
-                TransitTicks = 5,
-                TicksElapsed = 1,
-                OriginPosition = planet.GetPosition(),
-                CurrentPosition = planet.GetPosition(),
-            };
-            allianceFleet.GetChildren<CapitalShip>()[0].Movement = new MovementState
-            {
-                TransitTicks = 5,
-                TicksElapsed = 1,
-                OriginPosition = planet.GetPosition(),
-                CurrentPosition = planet.GetPosition(),
-            };
+            empireFleet.GetChildren<CapitalShip>()[0].Movement = TestMovement.Create(
+                transitTicks: 5,
+                ticksElapsed: 1,
+                originPosition: planet.GetPosition(),
+                currentPosition: planet.GetPosition()
+            );
+            allianceFleet.GetChildren<CapitalShip>()[0].Movement = TestMovement.Create(
+                transitTicks: 5,
+                ticksElapsed: 1,
+                originPosition: planet.GetPosition(),
+                currentPosition: planet.GetPosition()
+            );
 
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
@@ -2108,13 +2103,12 @@ namespace Rebellion.Tests.Gameplay
             Fleet stationaryFleet = CreateFleet(game, "ef1", "empire", planet, 1, 1000, 100, 0);
             Fleet inTransitFleet = CreateFleet(game, "ef2", "empire", planet, 1, 1000, 100, 0);
             Fleet opposingFleet = CreateFleet(game, "af1", "alliance", planet, 1, 1, 0, 0);
-            inTransitFleet.Movement = new MovementState
-            {
-                TransitTicks = 5,
-                TicksElapsed = 1,
-                OriginPosition = planet.GetPosition(),
-                CurrentPosition = planet.GetPosition(),
-            };
+            inTransitFleet.Movement = TestMovement.Create(
+                transitTicks: 5,
+                ticksElapsed: 1,
+                originPosition: planet.GetPosition(),
+                currentPosition: planet.GetPosition()
+            );
             string inTransitShipId = inTransitFleet.GetChildren<CapitalShip>().Single().InstanceID;
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
@@ -4158,11 +4152,10 @@ namespace Rebellion.Tests.Gameplay
                     0
                 );
                 unrelatedFleet.GetChildren<CapitalShip>().Single().StarfighterCapacity = 1;
-                unrelatedFleet.Movement = new MovementState
-                {
-                    OriginPosition = combatPlanet.GetPosition(),
-                    CurrentPosition = combatPlanet.GetPosition(),
-                };
+                unrelatedFleet.Movement = TestMovement.Create(
+                    originPosition: combatPlanet.GetPosition(),
+                    currentPosition: combatPlanet.GetPosition()
+                );
             }
             List<Starfighter> displacedFighters = new List<Starfighter>();
             for (int index = 0; index < displacedFighterHyperdrives.Count; index++)
@@ -4198,10 +4191,9 @@ namespace Rebellion.Tests.Gameplay
                 };
                 if (existingRecoveryFightersAreInTransit)
                 {
-                    fighter.Movement = new MovementState
-                    {
-                        CurrentPosition = combatPlanet.GetPosition(),
-                    };
+                    fighter.Movement = TestMovement.Create(
+                        currentPosition: combatPlanet.GetPosition()
+                    );
                 }
                 game.AttachNode(fighter, recoveryCarrier);
                 existingFighters.Add(fighter);

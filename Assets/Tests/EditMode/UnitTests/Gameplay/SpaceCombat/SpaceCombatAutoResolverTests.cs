@@ -1669,7 +1669,7 @@ namespace Rebellion.Tests.Gameplay
                 squadronSize: 12,
                 weaponStrength: 0
             );
-            inTransitFighter.Movement = new MovementState();
+            inTransitFighter.Movement = TestMovement.Create();
             Fleet fleet = new Fleet();
             fleet.AddChild(destroyedCarrier);
             destroyedCarrier.SetParent(fleet);
