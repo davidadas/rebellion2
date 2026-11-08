@@ -21,6 +21,76 @@ namespace Rebellion.Tests.Gameplay
     {
         [TestCase(false)]
         [TestCase(true)]
+        public void HandleResults_PreviousBlockadedLocationWithCarrier_PrefersCarrier(
+            bool departedFromCarrier
+        )
+        {
+            var scene = BuildBlockadeRetargetingScene();
+            CapitalShip carrier = AddFriendlyCarrier(
+                scene.game,
+                scene.origin,
+                "previous-carrier",
+                1
+            );
+            Starfighter fighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            scene.game.AttachNode(fighter, departedFromCarrier ? carrier : scene.origin);
+            scene.movement.RequestMove(fighter, scene.blockadedDestination);
+            scene.origin.OwnerInstanceID = null;
+            AddBlockadingFleet(scene.game, scene.origin);
+            AddBlockadingFleet(scene.game, scene.blockadedDestination);
+            Assert.IsTrue(scene.origin.IsBlockadedFor(fighter.GetOwnerInstanceID()));
+
+            ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
+
+            Assert.AreSame(carrier, fighter.GetParent());
+            Assert.AreEqual(
+                scene.origin.InstanceID,
+                fighter.Movement.NextLeg.DestinationPlanetInstanceID
+            );
+        }
+
+        [Test]
+        public void HandleResults_RemoteFleetAtBlockadedPlanet_RemainsEligibleForCarrierRecovery()
+        {
+            var scene = BuildBlockadeRetargetingScene();
+            Planet carrierPlanet = new Planet
+            {
+                InstanceID = "remote-carrier-planet",
+                IsColonized = true,
+                PositionX = 101,
+            };
+            scene.game.AttachNode(carrierPlanet, scene.origin.GetParent());
+            CapitalShip carrier = AddFriendlyCarrier(
+                scene.game,
+                carrierPlanet,
+                "remote-carrier",
+                1
+            );
+            AddFriendlyCarrier(scene.game, scene.fartherSafeDestination, "farther-carrier", 1);
+            Starfighter fighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            scene.game.AttachNode(fighter, scene.origin);
+            scene.movement.RequestMove(fighter, scene.blockadedDestination);
+            scene.origin.OwnerInstanceID = "rebels";
+            scene.nearestSafeDestination.OwnerInstanceID = "rebels";
+            scene.fartherSafeDestination.OwnerInstanceID = "rebels";
+            scene.blockadedDestination.OwnerInstanceID = null;
+            AddBlockadingFleet(scene.game, carrierPlanet);
+            AddBlockadingFleet(scene.game, scene.blockadedDestination);
+            Assert.IsTrue(carrierPlanet.IsBlockadedFor(fighter.GetOwnerInstanceID()));
+
+            ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
+
+            Assert.AreSame(carrier, fighter.GetParent());
+            Assert.AreEqual(
+                carrierPlanet.InstanceID,
+                fighter.Movement.NextLeg.DestinationPlanetInstanceID
+            );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
         public void HandleResults_CombatDestroyedCarrierWithInboundFighter_PreservesUnfinishedLeg(
             bool continuedJourney
         )
