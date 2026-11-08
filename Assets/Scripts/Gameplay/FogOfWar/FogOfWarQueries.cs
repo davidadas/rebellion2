@@ -179,7 +179,7 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Adds stored mission intelligence from the latest snapshot.
+        /// Adds stored mission intelligence with at least one known participant.
         /// </summary>
         /// <param name="viewPlanet">The faction-view planet receiving mission copies.</param>
         /// <param name="snapshot">The latest intelligence snapshot, if any.</param>
@@ -191,8 +191,8 @@ namespace Rebellion.Gameplay
             foreach (Mission mission in snapshot.Missions)
             {
                 if (
-                    !snapshot.HasIntelligence(PlanetIntelligenceCategory.Missions)
-                    && mission.GetAllParticipants(includeDisabled: true).Count == 0
+                    mission.GetMainParticipants(includeDisabled: true).Count == 0
+                    && mission.GetDecoyParticipants(includeDisabled: true).Count == 0
                 )
                     continue;
 
