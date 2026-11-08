@@ -29,10 +29,11 @@ public sealed class ModelPreviewAtlas : MonoBehaviour
     /// <summary>
     /// Moves the loaded rigs into the shared view without changing their animation or selection state.
     /// Call after model loading and normalization have completed, before showing the preview images.
+    /// Leaves the source views untouched when their owner has suspended all preview rendering.
     /// </summary>
     public void Initialize()
     {
-        if (initialized)
+        if (initialized || !HasEnabledSource())
             return;
 
         RenderTexture atlas = atlasCamera.targetTexture;
@@ -42,6 +43,19 @@ public sealed class ModelPreviewAtlas : MonoBehaviour
 
         atlasCamera.enabled = true;
         initialized = true;
+    }
+
+    /// <summary>
+    /// Checks whether the scene owner still requests rendering after asynchronous model loading.
+    /// </summary>
+    /// <returns>True when at least one source camera is enabled.</returns>
+    private bool HasEnabledSource()
+    {
+        foreach (Preview preview in previews)
+            if (preview.SourceCamera.enabled)
+                return true;
+
+        return false;
     }
 
     /// <summary>

@@ -107,6 +107,39 @@ namespace Rebellion.Tests.UI.Components
             );
         }
 
+        [Test]
+        public void Initialize_DisabledSourcePreview_KeepsAtlasDisabled()
+        {
+            Configure(new Vector2Int(1700, 300));
+            sourceCamera.enabled = false;
+
+            subject.Initialize();
+
+            Assert.IsFalse(sourceCamera.enabled);
+            Assert.IsFalse(atlasCamera.enabled);
+            Assert.AreSame(sourceTexture, image.texture);
+            Assert.AreEqual(Vector3.one, rig.localScale);
+        }
+
+        [Test]
+        public void Initialize_SourceRenderingResumed_ConvertsThePreviewOnce()
+        {
+            Configure(new Vector2Int(1700, 300));
+            sourceCamera.enabled = false;
+            subject.Initialize();
+            sourceCamera.enabled = true;
+
+            subject.Initialize();
+            Vector3 scale = rig.localScale;
+            subject.Initialize();
+
+            Assert.IsFalse(sourceCamera.enabled);
+            Assert.IsTrue(atlasCamera.enabled);
+            Assert.AreSame(atlasTexture, image.texture);
+            Assert.AreEqual(Vector3.one * 0.703125f, scale);
+            Assert.AreEqual(scale, rig.localScale);
+        }
+
         [TestCase(-240f, true)]
         [TestCase(240f, true)]
         [TestCase(-120f, false)]
