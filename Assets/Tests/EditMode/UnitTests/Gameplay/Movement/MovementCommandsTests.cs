@@ -4051,6 +4051,64 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ReturnFromMission_PassengerEscortSpecified_ReturnsWithMatchingEscortGroup()
+        {
+            GameConfig config = new GameConfig();
+            config.Movement.DistanceDivisor = 5;
+            (
+                GameRoot game,
+                Planet firstOrigin,
+                Planet destination,
+                Officer firstEscort,
+                MovementCommands movement
+            ) = BuildScene(config);
+            Planet secondOrigin = new Planet
+            {
+                InstanceID = "second-origin",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 100,
+            };
+            game.AttachNode(secondOrigin, firstOrigin.GetParent());
+            Officer secondEscort = EntityFactory.CreateOfficer("second-escort", "empire");
+            game.AttachNode(secondEscort, secondOrigin);
+            StubMission mission = new StubMission("empire", destination.InstanceID);
+            game.AttachNode(mission, destination);
+            movement.SendToMission(
+                new IMissionParticipant[] { firstEscort, secondEscort },
+                mission
+            );
+            firstEscort.Movement = null;
+            secondEscort.Movement = null;
+            Officer passenger = EntityFactory.CreateOfficer("passenger", "rebels");
+            passenger.IsCaptured = true;
+            passenger.CaptorInstanceID = "empire";
+            game.AttachNode(passenger, destination);
+
+            List<IMovable> stranded = movement.ReturnFromMission(
+                new IMissionParticipant[] { firstEscort, secondEscort },
+                new IMovable[] { passenger },
+                out _,
+                new List<GameResult>(),
+                secondEscort.InstanceID
+            );
+
+            Assert.IsEmpty(stranded);
+            Assert.AreSame(firstOrigin, firstEscort.GetParent());
+            Assert.AreSame(secondOrigin, secondEscort.GetParent());
+            Assert.AreSame(secondOrigin, passenger.GetParent());
+            Assert.AreEqual(
+                secondEscort.Movement.MovementGroupID,
+                passenger.Movement.MovementGroupID
+            );
+            Assert.AreNotEqual(
+                firstEscort.Movement.MovementGroupID,
+                passenger.Movement.MovementGroupID
+            );
+        }
+
+        [Test]
         public void ReturnFromMission_OfficerNearHostileFleet_StartsReturnWithoutEncounter()
         {
             (GameRoot game, Planet missionPlanet, Planet returnPlanet, MovementCommands movement) =

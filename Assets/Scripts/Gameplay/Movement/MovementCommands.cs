@@ -507,15 +507,17 @@ namespace Rebellion.Gameplay
         /// preserving each unit's resolved destination container.
         /// </summary>
         /// <param name="participants">The mission participants that are free to return.</param>
-        /// <param name="additionalPassengers">Additional units that must travel with the first return group.</param>
+        /// <param name="additionalPassengers">Additional units that must travel with a return group.</param>
         /// <param name="returnLocation">Receives the planet paired with the first accepted return destination.</param>
         /// <param name="results">The owning operation's movement and encounter results.</param>
+        /// <param name="passengerEscortInstanceID">The participant whose return group carries additional passengers.</param>
         /// <returns>Units that could not be assigned to a return destination.</returns>
         internal List<IMovable> ReturnFromMission(
             IReadOnlyList<IMissionParticipant> participants,
             IReadOnlyList<IMovable> additionalPassengers,
             out Planet returnLocation,
-            ICollection<GameResult> results
+            ICollection<GameResult> results,
+            string passengerEscortInstanceID = null
         )
         {
             if (participants == null)
@@ -529,6 +531,10 @@ namespace Rebellion.Gameplay
 
             Dictionary<ContainerNode, List<IMovable>> returnGroups =
                 new Dictionary<ContainerNode, List<IMovable>>();
+            Dictionary<string, ContainerNode> participantDestinations = new Dictionary<
+                string,
+                ContainerNode
+            >(StringComparer.Ordinal);
             HashSet<IMovable> returningUnits = new HashSet<IMovable>();
             List<IMovable> strandedUnits = new List<IMovable>();
 
@@ -548,6 +554,8 @@ namespace Rebellion.Gameplay
                 }
 
                 AddToReturnGroup(returnGroups, destination, participant);
+                if (!string.IsNullOrEmpty(participant.InstanceID))
+                    participantDestinations[participant.InstanceID] = destination;
             }
 
             Dictionary<IMovable, MovementState> interruptedMovements = returningUnits
@@ -567,7 +575,18 @@ namespace Rebellion.Gameplay
                 }
             }
 
-            ContainerNode passengerDestination = returnGroups.Keys.FirstOrDefault();
+            ContainerNode passengerDestination;
+            if (string.IsNullOrEmpty(passengerEscortInstanceID))
+                passengerDestination = returnGroups.Keys.FirstOrDefault();
+            else
+            {
+                participantDestinations.TryGetValue(
+                    passengerEscortInstanceID,
+                    out passengerDestination
+                );
+                if (passengerDestination != null && !returnGroups.ContainsKey(passengerDestination))
+                    passengerDestination = null;
+            }
             List<IMovable> passengers = additionalPassengers
                 .Where(passenger => passenger != null && returningUnits.Add(passenger))
                 .ToList();

@@ -1491,7 +1491,10 @@ namespace Rebellion.Game.FogOfWar
             }
 
             if (!includePersonnel)
+            {
                 RemovePersonnelFromFleets(planetSnapshot.Fleets);
+                PreservePersonnelIntelligence(previousSnapshot, planetSnapshot);
+            }
 
             ReconcileEntityLocations(
                 faction,
@@ -1501,6 +1504,32 @@ namespace Rebellion.Game.FogOfWar
             );
             sectorSnapshot.Planets[planet.InstanceID] = planetSnapshot;
             return true;
+        }
+
+        /// <summary>
+        /// Carries remembered personnel through an observation that cannot reveal their presence or
+        /// absence, retaining their previous placement and observation age.
+        /// </summary>
+        /// <param name="previousSnapshot">The prior intelligence containing personnel records.</param>
+        /// <param name="snapshot">The replacement snapshot receiving remembered personnel.</param>
+        private static void PreservePersonnelIntelligence(
+            PlanetSnapshot previousSnapshot,
+            PlanetSnapshot snapshot
+        )
+        {
+            if (previousSnapshot == null)
+                return;
+
+            snapshot.FullyObservedAtTick = previousSnapshot.FullyObservedAtTick;
+            snapshot.Officers.AddRange(previousSnapshot.Officers.Select(CopyEntityForSnapshot));
+            snapshot.SpecialForces.AddRange(
+                previousSnapshot.SpecialForces.Select(CopyEntityForSnapshot)
+            );
+            PreserveUnrevealedFleetCargo(
+                previousSnapshot.Fleets,
+                snapshot.Fleets,
+                PlanetIntelligenceCategory.Regiments | PlanetIntelligenceCategory.Starfighters
+            );
         }
 
         /// <summary>

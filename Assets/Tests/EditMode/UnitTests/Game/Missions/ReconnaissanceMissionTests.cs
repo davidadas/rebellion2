@@ -270,6 +270,83 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void ResolveObjective_AfterEspionage_PreservesRememberedPersonnelPlacements()
+        {
+            (GameRoot game, Planet empirePlanet, Planet enemyPlanet, _, _) =
+                MissionSceneBuilder.Build();
+            Faction empire = game.GetFactionByOwnerInstanceID("empire");
+            PlanetSector sector = enemyPlanet.GetParentOfType<PlanetSector>();
+            Officer stationedOfficer = EntityFactory.CreateOfficer("stationed-officer", "rebels");
+            SpecialForces stationedForces = new SpecialForces
+            {
+                InstanceID = "stationed-forces",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Fleet fleet = EntityFactory.CreateFleet("enemy-fleet", "rebels");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "enemy-ship",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer embarkedOfficer = EntityFactory.CreateOfficer("embarked-officer", "rebels");
+            SpecialForces embarkedForces = new SpecialForces
+            {
+                InstanceID = "embarked-forces",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(stationedOfficer, enemyPlanet);
+            game.AttachNode(stationedForces, enemyPlanet);
+            game.AttachNode(fleet, enemyPlanet);
+            game.AttachNode(ship, fleet);
+            game.AttachNode(embarkedOfficer, ship);
+            game.AttachNode(embarkedForces, ship);
+            new FogOfWarRecorder().RecordEspionageSnapshot(empire, enemyPlanet, sector, 5);
+            SpecialForces reconTeam = CreateReconTeam("empire");
+            game.AttachNode(reconTeam, empirePlanet);
+            Mission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { reconTeam },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            game.CurrentTick = 20;
+
+            mission.ResolveObjective(game, new ThrowingRNG());
+
+            PlanetSnapshot snapshot = empire.Fog.Snapshots[sector.InstanceID].Planets[
+                enemyPlanet.InstanceID
+            ];
+            Assert.AreEqual(20, snapshot.TickCaptured);
+            Assert.AreEqual(5, snapshot.FullyObservedAtTick);
+            Assert.AreEqual(stationedOfficer.InstanceID, snapshot.Officers.Single().InstanceID);
+            Assert.AreEqual(stationedForces.InstanceID, snapshot.SpecialForces.Single().InstanceID);
+            CapitalShip observedShip = snapshot.Fleets.Single().GetChildren<CapitalShip>().Single();
+            Assert.AreEqual(
+                embarkedOfficer.InstanceID,
+                observedShip.GetChildren<Officer>().Single().InstanceID
+            );
+            Assert.AreEqual(
+                embarkedForces.InstanceID,
+                observedShip.GetChildren<SpecialForces>().Single().InstanceID
+            );
+            foreach (
+                string instanceID in new[]
+                {
+                    stationedOfficer.InstanceID,
+                    stationedForces.InstanceID,
+                    embarkedOfficer.InstanceID,
+                    embarkedForces.InstanceID,
+                }
+            )
+                Assert.AreEqual(enemyPlanet.InstanceID, empire.Fog.EntityLastSeenAt[instanceID]);
+        }
+
+        [Test]
         public void ProcessTick_EnemyDetectorSucceeds_FoilsReconnaissance()
         {
             (

@@ -288,6 +288,11 @@ namespace Rebellion.Game.Missions
         public bool DetectionResolved { get; set; }
         public bool PreObjectiveEncounterResolved { get; set; }
 
+        /// <summary>
+        /// Gets or sets the instance ID of the participant whose objective attempt succeeded.
+        /// </summary>
+        public string SuccessfulParticipantInstanceID { get; set; }
+
         internal virtual bool AppliesFoiledParticipantConsequences => true;
 
         internal virtual bool SuccessfulParticipantsRemainAtLocation => false;
@@ -359,6 +364,7 @@ namespace Rebellion.Game.Missions
             copy.CurrentProgress = CurrentProgress;
             copy.DetectionResolved = DetectionResolved;
             copy.PreObjectiveEncounterResolved = PreObjectiveEncounterResolved;
+            copy.SuccessfulParticipantInstanceID = SuccessfulParticipantInstanceID;
         }
 
         /// <summary>
@@ -802,8 +808,8 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Rolls the main participants' mission attempts until one succeeds.
         /// Officer probabilities are calculated before any attempts and ordered from lowest to
-        /// highest. Special forces then attempt the mission in their selected order if every
-        /// officer fails.
+        /// highest, with stable participant identity breaking ties. Special forces then attempt
+        /// in stable participant-identity order if every officer fails.
         /// </summary>
         /// <param name="provider">RNG provider for rolling against the success probability.</param>
         /// <param name="game">The current game state.</param>
@@ -818,28 +824,36 @@ namespace Rebellion.Game.Missions
             Func<IMissionParticipant, bool> resolveSuccessfulAttempt = null
         )
         {
+            SuccessfulParticipantInstanceID = null;
             List<(Officer Participant, double Probability)> officerAttempts = GetMainParticipants()
                 .OfType<Officer>()
                 .Select(officer =>
                     (Participant: officer, Probability: GetAgentProbability(officer, game))
                 )
                 .OrderBy(attempt => attempt.Probability)
+                .ThenBy(attempt => attempt.Participant.InstanceID, StringComparer.Ordinal)
                 .ToList();
             foreach ((Officer participant, double probability) in officerAttempts)
             {
                 if (!RollProbability(provider, probability))
                     continue;
 
+                SuccessfulParticipantInstanceID = participant.InstanceID;
                 if (resolveSuccessfulAttempt?.Invoke(participant) == true)
                     ImproveMissionParticipantRating(participant);
                 return participant;
             }
 
-            foreach (SpecialForces specialForces in GetMainParticipants().OfType<SpecialForces>())
+            foreach (
+                SpecialForces specialForces in GetMainParticipants()
+                    .OfType<SpecialForces>()
+                    .OrderBy(participant => participant.InstanceID, StringComparer.Ordinal)
+            )
             {
                 if (!RollParticipantSuccess(specialForces, provider, game))
                     continue;
 
+                SuccessfulParticipantInstanceID = specialForces.InstanceID;
                 if (resolveSuccessfulAttempt?.Invoke(specialForces) == true)
                     ImproveMissionParticipantRating(specialForces);
                 return specialForces;
