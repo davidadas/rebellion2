@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
@@ -22,6 +24,101 @@ namespace Rebellion.Tests.Gameplay
         public void SetUp()
         {
             _queries = new FogOfWarQueries(_game);
+        }
+
+        [TestCase(false, false)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(true, true)]
+        public void BuildFactionView_KnownMissionParticipant_PreservesRoster(
+            bool decoy,
+            bool disabled
+        )
+        {
+            Mission mission = CreateMission("MISSION", _empire, _coruscant);
+            _game.AttachNode(mission, _coruscant);
+            Officer officer = CreateOfficer("OFFICER", _empire);
+            officer.IsEnabled = !disabled;
+            if (decoy)
+                mission.AddDecoyParticipant(officer);
+            _game.AttachNode(officer, mission);
+            new FogOfWarRecorder().RecordSelectedObservations(
+                _game,
+                _alliance,
+                new[] { officer },
+                10
+            );
+
+            Mission observed = _queries
+                .BuildFactionView(_alliance)
+                .GetChildren<PlanetSector>()
+                .Single(sector => sector.InstanceID == _coreSector.InstanceID)
+                .GetChildren<Planet>()
+                .Single(planet => planet.InstanceID == _coruscant.InstanceID)
+                .GetChildren<Mission>()
+                .Single();
+
+            Assert.AreEqual(
+                officer.InstanceID,
+                observed.GetAllParticipants(includeDisabled: true).Single().InstanceID
+            );
+            Assert.AreEqual(
+                !disabled,
+                observed.GetAllParticipants(includeDisabled: true).Single().IsActive()
+            );
+            Assert.AreEqual(
+                decoy ? 1 : 0,
+                observed.GetDecoyParticipants(includeDisabled: true).Count
+            );
+        }
+
+        [TestCase(PlanetIntelligenceCategory.Officers, false)]
+        [TestCase(PlanetIntelligenceCategory.Missions, false)]
+        [TestCase(PlanetIntelligenceCategory.Missions, true)]
+        public void BuildFactionView_SoleEnemyDiplomatCaptured_HidesRememberedMission(
+            PlanetIntelligenceCategory category,
+            bool reload
+        )
+        {
+            _game.SetConfig(TestConfig.Create());
+            Officer officer = CreateOfficer("DIPLOMAT", _empire);
+            Mission mission = new DiplomacyMission
+            {
+                InstanceID = "DIPLOMACY",
+                OwnerInstanceID = _empire.InstanceID,
+                LocationInstanceID = _hoth.InstanceID,
+            };
+            _game.AttachNode(mission, _hoth);
+            _game.AttachNode(officer, mission);
+            mission.Initiate(10);
+            using GameSession session = new(_game, TestGameData.Create(_game.Config));
+            new FogOfWarRecorder().RecordIntelligenceSnapshot(
+                _alliance,
+                _hoth,
+                _outerRim,
+                10,
+                category
+            );
+
+            bool captured = session
+                .GetService<CaptiveCommands>()
+                .TryCaptureOfficer(officer, _alliance, canEscape: false);
+
+            Assert.IsTrue(captured);
+            Assert.IsNull(mission.GetParent());
+            GameRoot game = reload
+                ? SerializationHelper.Deserialize<GameRoot>(SerializationHelper.Serialize(_game))
+                : _game;
+            Faction observer = game.GetFactionByOwnerInstanceID(_alliance.InstanceID);
+
+            Planet viewPlanet = new FogOfWarQueries(game)
+                .BuildFactionView(observer)
+                .GetChildren<PlanetSector>()
+                .Single(sector => sector.InstanceID == _outerRim.InstanceID)
+                .GetChildren<Planet>()
+                .Single(planet => planet.InstanceID == _hoth.InstanceID);
+
+            Assert.IsEmpty(viewPlanet.GetChildren<Mission>(includeDisabled: true));
         }
 
         [Test]
@@ -1063,6 +1160,8 @@ namespace Rebellion.Tests.Gameplay
 
             Mission empireMission = CreateMission("M1", _empire, _coruscant);
             _game.AttachNode(empireMission, _coruscant);
+            Officer agent = CreateOfficer("MISSION_AGENT", _empire);
+            _game.AttachNode(agent, empireMission);
 
             FogOfWarRecorder recorder = new FogOfWarRecorder();
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
@@ -1750,6 +1849,8 @@ namespace Rebellion.Tests.Gameplay
         {
             Mission empireMission = CreateMission("M1", _empire, _coruscant);
             _game.AttachNode(empireMission, _coruscant);
+            Officer agent = CreateOfficer("MISSION_AGENT", _empire);
+            _game.AttachNode(agent, empireMission);
 
             FogOfWarRecorder recorder = new FogOfWarRecorder();
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
@@ -1955,6 +2056,8 @@ namespace Rebellion.Tests.Gameplay
         {
             Mission empireMission = CreateMission("M1", _empire, _coruscant);
             _game.AttachNode(empireMission, _coruscant);
+            Officer agent = CreateOfficer("MISSION_AGENT", _empire);
+            _game.AttachNode(agent, empireMission);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
 
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
@@ -1969,6 +2072,10 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(
                 empireMission.InstanceID,
                 viewCoruscant.GetChildren<Mission>()[0].InstanceID
+            );
+            Assert.AreEqual(
+                agent.InstanceID,
+                viewCoruscant.GetChildren<Mission>()[0].GetMainParticipants().Single().InstanceID
             );
         }
 

@@ -905,6 +905,8 @@ namespace Rebellion.Tests.Gameplay
             AddCapitalShip(fleet, _alliance, "OPPOSING_SHIP");
             Mission mission = CreateMission("OPPOSING_MISSION", _alliance, _coruscant);
             _game.AttachNode(mission, _coruscant);
+            Officer agent = CreateOfficer("MISSION_AGENT", _alliance);
+            _game.AttachNode(agent, mission);
             new FogOfWarRecorder().RecordEspionageSnapshot(_empire, _coruscant, _coreSector, 10);
             _coruscant.SetOwnerInstanceID(null);
 
