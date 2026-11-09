@@ -25,7 +25,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
-            target.Movement = new MovementState();
+            target.Movement = TestMovement.Create();
             game.AttachNode(target, enemyPlanet);
 
             Mission mission = CreateAbductionMission(
@@ -432,6 +432,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(target.IsCaptured);
             Assert.AreEqual(firstCombat + 1, officer.GetBaseRating(SkillRating.Combat));
             Assert.AreEqual(secondCombat, secondOfficer.GetBaseRating(SkillRating.Combat));
+            Assert.AreEqual(officer.InstanceID, mission.SuccessfulParticipantInstanceID);
         }
 
         [Test]

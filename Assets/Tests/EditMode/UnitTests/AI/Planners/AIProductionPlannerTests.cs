@@ -666,7 +666,7 @@ namespace Rebellion.Tests.AI.Planners
                     if (index == 0)
                         existing.ManufacturingStatus = ManufacturingStatus.Building;
                     else
-                        existing.Movement = new MovementState { TransitTicks = 10 };
+                        existing.Movement = TestMovement.Create(transitTicks: 10);
                 }
                 game.AttachNode(existing, fleet);
             }
@@ -1214,7 +1214,7 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(setup.Manufacturing.Enqueue(planet, defense, planet));
             defense.ManufacturingProgress = 3;
             Fleet hostile = EntityFactory.CreateFleet("hostile", enemy.InstanceID);
-            hostile.Movement = new MovementState { TransitTicks = 10 };
+            hostile.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(hostile, planet);
             game.AttachNode(
                 AITestSceneBuilder.CreateCapitalShip("hostile-ship", enemy.InstanceID),
@@ -3766,7 +3766,7 @@ namespace Rebellion.Tests.AI.Planners
                 ManufacturingType.Ship
             );
             shipyard.OwnerInstanceID = empire.InstanceID;
-            shipyard.Movement = new MovementState { TransitTicks = 10 };
+            shipyard.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(shipyard, pendingPlanet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             new AIProductionDemandGenerator().Generate(context);
@@ -4022,7 +4022,7 @@ namespace Rebellion.Tests.AI.Planners
             empire.HQInstanceID = planet.InstanceID;
             planet.SetPopularSupport(empire.InstanceID, 100);
             Fleet hostile = EntityFactory.CreateFleet("hostile", "rebels");
-            hostile.Movement = new MovementState { TransitTicks = 10 };
+            hostile.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(hostile, planet);
             game.AttachNode(
                 AITestSceneBuilder.CreateCapitalShip("hostile-ship", "rebels"),

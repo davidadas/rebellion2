@@ -357,7 +357,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 DisplayName = "Han",
                 OwnerInstanceID = _playerFactionId,
                 CurrentRank = OfficerRank.Admiral,
-                Movement = new MovementState(),
+                Movement = TestMovement.Create(),
             };
             CapitalShip ship = CreateCapitalShip("ship", "Ship", _playerFactionId);
             ship.AddTestChild(fleetOfficer);
@@ -611,7 +611,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                     InstanceID = "hidden-opponent",
                     DisplayName = "Hidden Opponent",
                     OwnerInstanceID = _opponentFactionId,
-                    Movement = new MovementState { TransitTicks = 10 },
+                    Movement = TestMovement.Create(transitTicks: 10),
                 }
             );
 

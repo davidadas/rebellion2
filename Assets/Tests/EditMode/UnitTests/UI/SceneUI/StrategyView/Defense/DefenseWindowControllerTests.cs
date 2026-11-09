@@ -246,6 +246,32 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             CollectionAssert.AreEquivalent(new[] { 0 }, _controller.GetSelectedItems(view));
         }
 
+        [Test]
+        public void OnPointerClick_ScrollbarWithMultipleSelectedUnits_PreservesSelection()
+        {
+            DefenseWindowView view = OpenSelectionGrid();
+            PressCard(view, 0);
+            _selectionModifiers = new SelectionModifierState(true, false);
+            PressCard(view, 2);
+            _selectionModifiers = default;
+            UnityEngine.UI.Scrollbar scrollbar =
+                view.GetComponentInChildren<UnityEngine.UI.Scrollbar>(true);
+            PointerEventData pointer = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                pointerPressRaycast = new RaycastResult { gameObject = scrollbar.gameObject },
+                pointerCurrentRaycast = new RaycastResult { gameObject = scrollbar.gameObject },
+            };
+
+            ExecuteEvents.ExecuteHierarchy(
+                scrollbar.gameObject,
+                pointer,
+                ExecuteEvents.pointerClickHandler
+            );
+
+            CollectionAssert.AreEquivalent(new[] { 0, 2 }, _controller.GetSelectedItems(view));
+        }
+
         [TestCase(false, false)]
         [TestCase(false, true)]
         [TestCase(true, false)]

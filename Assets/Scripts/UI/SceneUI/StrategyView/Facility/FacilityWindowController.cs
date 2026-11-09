@@ -17,6 +17,11 @@ using UnityEngine.EventSystems;
 public interface IFacilityWindowActions
 {
     /// <summary>
+    /// Rebuilds shared strategy state after an accepted facility request changes its destination.
+    /// </summary>
+    void RefreshFacilityState();
+
+    /// <summary>
     /// Opens the item currently under construction at its destination.
     /// </summary>
     /// <param name="destinationPlanetId">The containing destination planet identifier.</param>
@@ -911,7 +916,7 @@ public sealed class FacilityWindowController
             destinationPlanetId,
             destinationItemId
         );
-        markDirty();
+        actions.RefreshFacilityState();
     }
 
     /// <summary>

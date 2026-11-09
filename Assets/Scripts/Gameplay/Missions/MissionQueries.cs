@@ -117,6 +117,63 @@ namespace Rebellion.Gameplay
             out Mission mission
         )
         {
+            return TryCreateProjectedDepartureMission(
+                context,
+                departure,
+                requireArrival: true,
+                out mission
+            );
+        }
+
+        /// <summary>
+        /// Assesses mission eligibility for a team after its proposed relocation to one departure
+        /// planet, without changing the live participants.
+        /// </summary>
+        /// <param name="context">The observed objective and live participant identities.</param>
+        /// <param name="departure">The proposed common departure planet.</param>
+        /// <returns>True when the projected co-located team can create the mission.</returns>
+        internal bool CanCreateMissionFromDeparture(MissionContext context, Planet departure)
+        {
+            return TryCreateMissionFromDeparture(context, departure, out _);
+        }
+
+        /// <summary>
+        /// Creates a projected mission after relocating its complete team to one departure planet.
+        /// </summary>
+        /// <param name="context">The observed objective and live participant identities.</param>
+        /// <param name="departure">The proposed common departure planet.</param>
+        /// <param name="mission">Receives an unstarted mission containing detached participant projections.</param>
+        /// <returns>True when the projected co-located team can create the mission.</returns>
+        internal bool TryCreateMissionFromDeparture(
+            MissionContext context,
+            Planet departure,
+            out Mission mission
+        )
+        {
+            return TryCreateProjectedDepartureMission(
+                context,
+                departure,
+                requireArrival: false,
+                out mission
+            );
+        }
+
+        /// <summary>
+        /// Projects mission participants onto one departure planet and validates the resulting
+        /// mission without moving the live scene nodes.
+        /// </summary>
+        /// <param name="context">The mission context whose participants are projected.</param>
+        /// <param name="departure">The common departure planet used by every projection.</param>
+        /// <param name="requireArrival">Whether every live participant must already be at the departure.</param>
+        /// <param name="mission">Receives the unstarted mission containing projected participants.</param>
+        /// <returns>True when the projected context creates a valid mission.</returns>
+        private bool TryCreateProjectedDepartureMission(
+            MissionContext context,
+            Planet departure,
+            bool requireArrival,
+            out Mission mission
+        )
+        {
             mission = null;
             MissionContext resolved = ResolveMissionContext(context);
             if (resolved == null || departure?.GetOwnerInstanceID() != resolved.OwnerInstanceId)
@@ -129,8 +186,8 @@ namespace Rebellion.Gameplay
             )
             {
                 if (
-                    participant.GetParent() is not Planet origin
-                    || origin.InstanceID != departure.InstanceID
+                    participant.GetParentOfType<Planet>() == null
+                    || requireArrival && participant.GetParent()?.InstanceID != departure.InstanceID
                     || participant.IsOnMission()
                     || participant is not BaseSceneNode node
                 )

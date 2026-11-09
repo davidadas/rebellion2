@@ -119,6 +119,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
         }
 
         [Test]
+        public void Render_GalaxyTexture_PreservesFullIllustrationBounds()
+        {
+            _view.Render(
+                CreateRenderData(
+                    AdvisorReportMode.GalaxyOverview,
+                    "Galaxy Overview",
+                    Array.Empty<AdvisorReportRowRenderData>()
+                )
+            );
+
+            RectInt galaxyRect = UILayout.GetSourceRect(
+                FindComponent<RawImage>("GalaxyImage").rectTransform
+            );
+
+            Assert.AreEqual(new RectInt(244, 20, 126, 88), galaxyRect);
+        }
+
+        [Test]
         public void Render_ShorterSameMode_ReusesRowsAndHidesUnusedRows()
         {
             _view.Render(

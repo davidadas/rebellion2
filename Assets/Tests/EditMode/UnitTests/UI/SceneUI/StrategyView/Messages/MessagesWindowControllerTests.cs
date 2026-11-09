@@ -20,6 +20,41 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         private const string _strategyViewPrefabPath =
             "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
 
+        [TestCase(MessagesTab.All)]
+        [TestCase(MessagesTab.Fleet)]
+        public void TryCancel_MessageDetail_ReturnsToIndexBeforeClosingWindow(MessagesTab tab)
+        {
+            Message message = CreateMessage("report");
+            (GameObject root, _, MessagesWindowController controller, MessagesWindowView view) =
+                OpenMessagesWindow(new[] { message }, () => default);
+
+            try
+            {
+                UIWindowManager windowManager = root.GetComponentInChildren<UIWindowManager>(true);
+                windowManager.WindowCloseRequested += windowManager.DestroyWindow;
+                CancelStack cancelStack = new CancelStack();
+                cancelStack.Register(windowManager);
+                controller.OpenDetail(message, tab);
+                controller.RenderWindows();
+
+                bool returnedToIndex = cancelStack.TryCancel();
+
+                Assert.IsTrue(returnedToIndex);
+                Assert.IsTrue(controller.IsOpen);
+                controller.RenderWindows();
+                AssertMessageIndexVisible(controller, view, message.InstanceID);
+
+                bool closedWindow = cancelStack.TryCancel();
+
+                Assert.IsTrue(closedWindow);
+                Assert.IsFalse(controller.IsOpen);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
         [Test]
         public void GetDetailAudioPaths_MessageAndOfficerPaths_ReturnsBothPaths()
         {
@@ -267,6 +302,44 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
 
             Assert.IsFalse(available);
+        }
+
+        [Test]
+        public void TryCancel_MissionContinuationDetail_ReturnsToIndexWithoutAbortingMission()
+        {
+            Message message = CreateMessage("report");
+            message.MissionInstanceID = "mission";
+            message.MissionContinuationPending = true;
+            TestActions actions = new TestActions();
+            (GameObject root, _, MessagesWindowController controller, MessagesWindowView view) =
+                OpenMessagesWindow(
+                    new[] { message },
+                    () => default,
+                    game =>
+                        game.AddSceneNodeByInstanceID(CreateWorkingMission("mission", "FNALL1")),
+                    actions
+                );
+
+            try
+            {
+                UIWindowManager windowManager = root.GetComponentInChildren<UIWindowManager>(true);
+                CancelStack cancelStack = new CancelStack();
+                cancelStack.Register(windowManager);
+                controller.OpenDetail(message, MessagesTab.Fleet);
+                controller.RenderWindows();
+
+                bool handled = cancelStack.TryCancel();
+
+                Assert.IsTrue(handled);
+                controller.RenderWindows();
+                Assert.IsFalse(message.MissionContinuationPending);
+                Assert.IsNull(actions.AbortedMissionInstanceId);
+                AssertMessageIndexVisible(controller, view, message.InstanceID);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
         }
 
         [Test]
@@ -914,6 +987,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             IReadOnlyList<Button> buttons = view.GetComponentsInChildren<Button>(true);
 
             Assert.IsFalse(controller.IsDetailVisible(view));
+            Assert.IsTrue(
+                view.GetComponentInChildren<MessagesIndexPanelView>(true).gameObject.activeSelf
+            );
+            Assert.IsFalse(
+                view.GetComponentInChildren<MessagesDetailPanelView>(true).gameObject.activeSelf
+            );
             Assert.IsFalse(
                 buttons
                     .Single(button => button.name == "MissionContinueButton")

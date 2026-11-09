@@ -991,7 +991,7 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Improves the successful officer's espionage rating when operating against another faction.
+        /// Improves the successful officer's espionage rating when operating away from an owned planet.
         /// </summary>
         /// <param name="participant">The participant whose espionage attempt succeeded.</param>
         internal override void ImproveMissionParticipantRating(IMissionParticipant participant)
@@ -1003,12 +1003,10 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Returns whether this mission target allows participant rating improvement.
         /// </summary>
-        /// <returns>True when the target planet is owned by another faction.</returns>
+        /// <returns>True when the target planet is not owned by the mission faction.</returns>
         private bool CanImproveRatingsAgainstTarget()
         {
-            return GetParent() is Planet planet
-                && !string.IsNullOrEmpty(planet.GetOwnerInstanceID())
-                && planet.GetOwnerInstanceID() != OwnerInstanceID;
+            return GetParent() is Planet planet && planet.GetOwnerInstanceID() != OwnerInstanceID;
         }
 
         /// <summary>
@@ -1106,7 +1104,7 @@ namespace Rebellion.Game.Missions
             GameConfig.RandomCountConfig countConfig = config.CoreSectorBonus;
             bool includeOuterRim = false;
 
-            if (IsOpposingHeadquartersTarget(game, targetPlanet))
+            if (IsHeadquartersBonusTarget(game, targetPlanet))
             {
                 countConfig = config.HeadquartersBonus;
                 includeOuterRim = true;
@@ -1135,17 +1133,27 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns whether the target is currently another faction's headquarters planet.
+        /// Returns whether the target is its owning faction's current headquarters.
         /// </summary>
-        /// <param name="game">The game.</param>
+        /// <param name="game">The current game state.</param>
         /// <param name="targetPlanet">The target planet.</param>
-        /// <returns>True when the opposing headquarters target condition is met; otherwise false.</returns>
-        private bool IsOpposingHeadquartersTarget(GameRoot game, Planet targetPlanet)
+        /// <returns>True when a headquarters bonus condition is met; otherwise false.</returns>
+        private static bool IsHeadquartersBonusTarget(GameRoot game, Planet targetPlanet)
         {
+            if (game == null || string.IsNullOrEmpty(targetPlanet?.OwnerInstanceID))
+                return false;
+
             Faction owner = game.GetFactionByOwnerInstanceID(targetPlanet.OwnerInstanceID);
-            return owner != null
-                && owner.InstanceID != OwnerInstanceID
-                && owner.HQInstanceID == targetPlanet.InstanceID;
+            if (owner == null || owner.HQInstanceID != targetPlanet.InstanceID)
+                return false;
+            if (string.IsNullOrEmpty(owner.HeadquartersUnitInstanceID))
+                return true;
+
+            Building headquarters = game.GetSceneNodeByInstanceID<Building>(
+                owner.HeadquartersUnitInstanceID,
+                includeDisabled: true
+            );
+            return headquarters != null && headquarters.Movement == null;
         }
 
         /// <summary>
@@ -1911,7 +1919,7 @@ namespace Rebellion.Game.Missions
             Faction faction = game?.GetFactionByOwnerInstanceID(OwnerInstanceID);
             PlanetSector sector = planet.GetParentOfType<PlanetSector>();
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordPlanetSnapshot(faction, planet, sector, game?.CurrentTick ?? 0);
+            recorder.RecordReconnaissanceSnapshot(faction, planet, sector, game?.CurrentTick ?? 0);
 
             return new List<GameResult>();
         }

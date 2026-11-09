@@ -213,6 +213,11 @@ namespace Rebellion.Tests.Content
                 while (!menuCanvas.enabled && Time.realtimeSinceStartup < deadline)
                     yield return null;
                 Assert.IsTrue(menuCanvas.enabled, "The main menu never became interactive.");
+                Assert.IsFalse(
+                    menu.transform.root.GetComponentsInChildren<Camera>(true)
+                        .Any(camera => camera.enabled),
+                    "Menu initialization re-enabled rendering disabled by the scene owner."
+                );
                 GameObject planetRig = menu.transform.root.Find("PlanetRig").gameObject;
                 Assert.IsTrue(planetRig.activeInHierarchy);
 

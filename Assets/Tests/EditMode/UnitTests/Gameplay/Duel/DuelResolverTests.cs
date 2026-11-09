@@ -358,7 +358,7 @@ namespace Rebellion.Tests.Gameplay
         public void Resolve_OpposingOfficerInTransit_ReturnsNoResults()
         {
             (GameRoot game, Officer encountered, Officer opposing) = BuildEncounter();
-            opposing.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            opposing.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 1);
             DuelResolver commands = new DuelResolver(game, new FixedRandomProvider(new[] { 0.99 }));
 
             List<GameResult> results = commands.Resolve(encountered, opposing);
@@ -373,7 +373,7 @@ namespace Rebellion.Tests.Gameplay
         public void Resolve_EncounteredOfficerInTransit_ReturnsNoResults()
         {
             (GameRoot game, Officer encountered, Officer opposing) = BuildEncounter();
-            encountered.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            encountered.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 1);
             DuelResolver commands = new DuelResolver(game, new FixedRandomProvider(new[] { 0.99 }));
 
             List<GameResult> results = commands.Resolve(encountered, opposing);
@@ -411,7 +411,7 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(ship, fleet);
             game.MoveNode(passenger, ship);
             IMovable carrier = fleetTransit ? fleet : ship;
-            carrier.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            carrier.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 1);
             DuelResolver commands = new(game, new ThrowingRNG());
 
             List<GameResult> results = commands.Resolve(encountered, opposing);

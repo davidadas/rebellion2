@@ -260,7 +260,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         [Test]
         public async Task TryExecuteMoveAsync_UnitInTransit_PlaysAdvisorRejectionAsync()
         {
-            _officer.Movement = new Rebellion.Game.Units.MovementState { TransitTicks = 10 };
+            _officer.Movement = TestMovement.Create(transitTicks: 10);
 
             bool moved = await _controller.TryExecuteMoveAsync(
                 _sourceWindow,
@@ -791,7 +791,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 _sourceWindow,
                 new ISceneNode[] { firstMission, secondMission }
             );
-            secondOfficer.Movement = new MovementState { TransitTicks = 10 };
+            secondOfficer.Movement = TestMovement.Create(transitTicks: 10);
 
             ConfirmOpenDialog();
 

@@ -1826,7 +1826,7 @@ namespace Rebellion.Tests.AI.Phases
                 ManufacturingType.None
             );
             Fleet incoming = EntityFactory.CreateFleet("incoming", rebels.InstanceID);
-            incoming.Movement = new MovementState { TransitTicks = 10 };
+            incoming.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(incoming, origin);
             game.AttachNode(
                 AITestSceneBuilder.CreateCapitalShip("incoming-ship", rebels.InstanceID, 200),
@@ -2585,7 +2585,7 @@ namespace Rebellion.Tests.AI.Phases
             foreach (Building facility in strong.GetProductionFacilities(ManufacturingType.Ship))
             {
                 facility.ManufacturingStatus = ManufacturingStatus.Delivering;
-                facility.Movement = new MovementState { TransitTicks = 5 };
+                facility.Movement = TestMovement.Create(transitTicks: 5);
             }
             context.AddProposal(request);
 

@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
@@ -22,6 +24,101 @@ namespace Rebellion.Tests.Gameplay
         public void SetUp()
         {
             _queries = new FogOfWarQueries(_game);
+        }
+
+        [TestCase(false, false)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(true, true)]
+        public void BuildFactionView_KnownMissionParticipant_PreservesRoster(
+            bool decoy,
+            bool disabled
+        )
+        {
+            Mission mission = CreateMission("MISSION", _empire, _coruscant);
+            _game.AttachNode(mission, _coruscant);
+            Officer officer = CreateOfficer("OFFICER", _empire);
+            officer.IsEnabled = !disabled;
+            if (decoy)
+                mission.AddDecoyParticipant(officer);
+            _game.AttachNode(officer, mission);
+            new FogOfWarRecorder().RecordSelectedObservations(
+                _game,
+                _alliance,
+                new[] { officer },
+                10
+            );
+
+            Mission observed = _queries
+                .BuildFactionView(_alliance)
+                .GetChildren<PlanetSector>()
+                .Single(sector => sector.InstanceID == _coreSector.InstanceID)
+                .GetChildren<Planet>()
+                .Single(planet => planet.InstanceID == _coruscant.InstanceID)
+                .GetChildren<Mission>()
+                .Single();
+
+            Assert.AreEqual(
+                officer.InstanceID,
+                observed.GetAllParticipants(includeDisabled: true).Single().InstanceID
+            );
+            Assert.AreEqual(
+                !disabled,
+                observed.GetAllParticipants(includeDisabled: true).Single().IsActive()
+            );
+            Assert.AreEqual(
+                decoy ? 1 : 0,
+                observed.GetDecoyParticipants(includeDisabled: true).Count
+            );
+        }
+
+        [TestCase(PlanetIntelligenceCategory.Officers, false)]
+        [TestCase(PlanetIntelligenceCategory.Missions, false)]
+        [TestCase(PlanetIntelligenceCategory.Missions, true)]
+        public void BuildFactionView_SoleEnemyDiplomatCaptured_HidesRememberedMission(
+            PlanetIntelligenceCategory category,
+            bool reload
+        )
+        {
+            _game.SetConfig(TestConfig.Create());
+            Officer officer = CreateOfficer("DIPLOMAT", _empire);
+            Mission mission = new DiplomacyMission
+            {
+                InstanceID = "DIPLOMACY",
+                OwnerInstanceID = _empire.InstanceID,
+                LocationInstanceID = _hoth.InstanceID,
+            };
+            _game.AttachNode(mission, _hoth);
+            _game.AttachNode(officer, mission);
+            mission.Initiate(10);
+            using GameSession session = new(_game, TestGameData.Create(_game.Config));
+            new FogOfWarRecorder().RecordIntelligenceSnapshot(
+                _alliance,
+                _hoth,
+                _outerRim,
+                10,
+                category
+            );
+
+            bool captured = session
+                .GetService<CaptiveCommands>()
+                .TryCaptureOfficer(officer, _alliance, canEscape: false);
+
+            Assert.IsTrue(captured);
+            Assert.IsNull(mission.GetParent());
+            GameRoot game = reload
+                ? SerializationHelper.Deserialize<GameRoot>(SerializationHelper.Serialize(_game))
+                : _game;
+            Faction observer = game.GetFactionByOwnerInstanceID(_alliance.InstanceID);
+
+            Planet viewPlanet = new FogOfWarQueries(game)
+                .BuildFactionView(observer)
+                .GetChildren<PlanetSector>()
+                .Single(sector => sector.InstanceID == _outerRim.InstanceID)
+                .GetChildren<Planet>()
+                .Single(planet => planet.InstanceID == _hoth.InstanceID);
+
+            Assert.IsEmpty(viewPlanet.GetChildren<Mission>(includeDisabled: true));
         }
 
         [Test]
@@ -112,7 +209,7 @@ namespace Rebellion.Tests.Gameplay
                 new CapitalShip { InstanceID = "cs1", OwnerInstanceID = _alliance.InstanceID },
                 ownFleet
             );
-            ownFleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 0 };
+            ownFleet.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 0);
 
             GalaxyMap view = _queries.BuildFactionView(_alliance);
 
@@ -418,7 +515,7 @@ namespace Rebellion.Tests.Gameplay
                 new CapitalShip { InstanceID = "cs1", OwnerInstanceID = _alliance.InstanceID },
                 ownFleet
             );
-            ownFleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 0 };
+            ownFleet.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 0);
 
             GalaxyMap view = _queries.BuildFactionView(_alliance);
 
@@ -701,12 +798,11 @@ namespace Rebellion.Tests.Gameplay
             Officer vader = CreateOfficer("VADER", _empire);
             vader.IsCaptured = true;
             vader.CaptorInstanceID = _alliance.InstanceID;
-            vader.Movement = new MovementState
-            {
-                TransitTicks = 10,
-                TicksElapsed = 2,
-                MovementGroupID = "PRISONER_TRANSFER",
-            };
+            vader.Movement = TestMovement.Create(
+                transitTicks: 10,
+                ticksElapsed: 2,
+                movementGroupID: "PRISONER_TRANSFER"
+            );
             _game.AttachNode(vader, _coruscant);
             Regiment hiddenRegiment = CreateRegiment("HIDDEN_REGIMENT", _empire);
             _game.AttachNode(hiddenRegiment, _coruscant);
@@ -1064,6 +1160,8 @@ namespace Rebellion.Tests.Gameplay
 
             Mission empireMission = CreateMission("M1", _empire, _coruscant);
             _game.AttachNode(empireMission, _coruscant);
+            Officer agent = CreateOfficer("MISSION_AGENT", _empire);
+            _game.AttachNode(agent, empireMission);
 
             FogOfWarRecorder recorder = new FogOfWarRecorder();
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
@@ -1526,7 +1624,7 @@ namespace Rebellion.Tests.Gameplay
                     InstanceID = "incoming-ship",
                     OwnerInstanceID = _empire.InstanceID,
                     ManufacturingStatus = ManufacturingStatus.Complete,
-                    Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
+                    Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 5),
                 },
                 empireFleet
             );
@@ -1562,7 +1660,7 @@ namespace Rebellion.Tests.Gameplay
             Fleet empireFleet = CreateFleet("EMPIRE_FLEET", _empire);
             _game.AttachNode(empireFleet, _hoth);
             AddCapitalShip(empireFleet, _empire, "CS1");
-            empireFleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            empireFleet.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 5);
 
             GalaxyMap view = _queries.BuildFactionView(_alliance);
 
@@ -1586,11 +1684,11 @@ namespace Rebellion.Tests.Gameplay
             AddCapitalShip(observerFleet, _alliance, "ALLIANCE_SHIP");
 
             Officer officer = CreateOfficer("MOVING_OFFICER", _empire);
-            officer.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            officer.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 5);
             _game.AttachNode(officer, _coruscant);
 
             Regiment regiment = CreateRegiment("MOVING_REGIMENT", _empire);
-            regiment.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            regiment.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 5);
             _game.AttachNode(regiment, _coruscant);
 
             SpecialForces specialForces = new SpecialForces
@@ -1598,17 +1696,17 @@ namespace Rebellion.Tests.Gameplay
                 InstanceID = "MOVING_SPECIAL_FORCES",
                 OwnerInstanceID = _empire.InstanceID,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
+                Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 5),
             };
             _game.AttachNode(specialForces, _coruscant);
 
             Starfighter starfighter = CreateStarfighter("MOVING_STARFIGHTER", _empire);
-            starfighter.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            starfighter.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 5);
             _game.AttachNode(starfighter, _coruscant);
 
             _coruscant.EnergyCapacity = 1;
             Building building = CreateBuilding("MOVING_BUILDING", _empire);
-            building.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            building.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 5);
             _game.AttachNode(building, _coruscant);
 
             Planet viewCoruscant = _queries
@@ -1649,21 +1747,21 @@ namespace Rebellion.Tests.Gameplay
                 InstanceID = "MOVING_SHIP",
                 OwnerInstanceID = _empire.InstanceID,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
+                Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 5),
             };
             _game.AttachNode(movingShip, empireFleet);
             _game.AttachNode(CreateOfficer("CARRIED_OFFICER", _empire), movingShip);
 
             Officer movingOfficer = CreateOfficer("MOVING_OFFICER", _empire);
-            movingOfficer.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            movingOfficer.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 5);
             _game.AttachNode(movingOfficer, stationaryShip);
 
             Regiment movingRegiment = CreateRegiment("MOVING_REGIMENT", _empire);
-            movingRegiment.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            movingRegiment.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 5);
             _game.AttachNode(movingRegiment, stationaryShip);
 
             Starfighter movingStarfighter = CreateStarfighter("MOVING_STARFIGHTER", _empire);
-            movingStarfighter.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            movingStarfighter.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 5);
             _game.AttachNode(movingStarfighter, stationaryShip);
 
             Planet viewCoruscant = _queries
@@ -1695,7 +1793,7 @@ namespace Rebellion.Tests.Gameplay
                 new CapitalShip { InstanceID = "cs1", OwnerInstanceID = _alliance.InstanceID },
                 allianceFleet
             );
-            allianceFleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 4 };
+            allianceFleet.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 4);
 
             GalaxyMap view = _queries.BuildFactionView(_alliance);
 
@@ -1751,6 +1849,8 @@ namespace Rebellion.Tests.Gameplay
         {
             Mission empireMission = CreateMission("M1", _empire, _coruscant);
             _game.AttachNode(empireMission, _coruscant);
+            Officer agent = CreateOfficer("MISSION_AGENT", _empire);
+            _game.AttachNode(agent, empireMission);
 
             FogOfWarRecorder recorder = new FogOfWarRecorder();
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
@@ -1899,7 +1999,7 @@ namespace Rebellion.Tests.Gameplay
             Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
             _game.AttachNode(allianceFleet, _coruscant);
             AddCapitalShip(allianceFleet, _alliance, "CS1");
-            allianceFleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 3 };
+            allianceFleet.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 3);
 
             bool visible = _queries.IsPlanetVisible(_coruscant, _alliance);
 
@@ -1919,7 +2019,7 @@ namespace Rebellion.Tests.Gameplay
                 InstanceID = "CS1",
                 OwnerInstanceID = _alliance.InstanceID,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 3 },
+                Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 3),
             };
             _game.AttachNode(capitalShip, allianceFleet);
 
@@ -1956,6 +2056,8 @@ namespace Rebellion.Tests.Gameplay
         {
             Mission empireMission = CreateMission("M1", _empire, _coruscant);
             _game.AttachNode(empireMission, _coruscant);
+            Officer agent = CreateOfficer("MISSION_AGENT", _empire);
+            _game.AttachNode(agent, empireMission);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
 
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
@@ -1971,6 +2073,10 @@ namespace Rebellion.Tests.Gameplay
                 empireMission.InstanceID,
                 viewCoruscant.GetChildren<Mission>()[0].InstanceID
             );
+            Assert.AreEqual(
+                agent.InstanceID,
+                viewCoruscant.GetChildren<Mission>()[0].GetMainParticipants().Single().InstanceID
+            );
         }
 
         [Test]
@@ -1979,7 +2085,7 @@ namespace Rebellion.Tests.Gameplay
             Fleet empireFleet = CreateFleet("INCOMING_FLEET", _empire);
             _game.AttachNode(empireFleet, _coruscant);
             AddCapitalShip(empireFleet, _empire, "INCOMING_SHIP");
-            empireFleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            empireFleet.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 5);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
 
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);

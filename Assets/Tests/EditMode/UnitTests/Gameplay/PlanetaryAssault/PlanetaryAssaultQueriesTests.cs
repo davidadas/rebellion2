@@ -56,7 +56,7 @@ namespace Rebellion.Tests.Gameplay
                     .GetChildren<Regiment>()
                     .Skip(2)
             )
-                regiment.Movement = new MovementState();
+                regiment.Movement = TestMovement.Create();
             PlanetaryAssaultQueries system = new PlanetaryAssaultQueries(game);
 
             Assert.IsTrue(system.CanExecute(new List<Fleet> { fleet }, planet));
@@ -76,7 +76,7 @@ namespace Rebellion.Tests.Gameplay
             foreach (Building building in planet.GetAllBuildings())
                 building.ManufacturingStatus = ManufacturingStatus.Building;
             fleet.GetChildren<CapitalShip>()[0].GetChildren<Regiment>()[0].Movement =
-                new MovementState();
+                TestMovement.Create();
             bool noReadyRegiments = system.CanExecute(new List<Fleet> { fleet }, planet);
 
             Assert.IsFalse(shielded);

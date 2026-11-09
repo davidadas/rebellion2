@@ -4470,7 +4470,7 @@ public static class StrategyViewPrefabBuilder
             0
         );
         background.raycastTarget = true;
-        RawImage galaxy = CreateRawImage("GalaxyImage", window.transform, null, 244, 20);
+        RawImage galaxy = CreateRawImage("GalaxyImage", window.transform, null, 244, 20, 126, 88);
 
         TextMeshProUGUI title = CreateTextLabel("TitleTextField", window.transform);
         title.text = "Galaxy Overview";

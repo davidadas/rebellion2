@@ -159,7 +159,7 @@ namespace Rebellion.Tests.Game.Missions
             {
                 InstanceID = "moving-fleet",
                 OwnerInstanceID = "rebels",
-                Movement = new MovementState(),
+                Movement = TestMovement.Create(),
             };
             CapitalShip ship = new CapitalShip
             {
@@ -411,7 +411,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
             Regiment target = CreateSabotageTarget(game, planet);
-            officer.Movement = new MovementState { TransitTicks = 10 };
+            officer.Movement = TestMovement.Create(transitTicks: 10);
 
             bool created = factory.TryCreateMission(
                 CreateContext(
@@ -434,7 +434,7 @@ namespace Rebellion.Tests.Game.Missions
             (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
             planet.AddVisitor("empire");
             Fleet fleet = EntityFactory.CreateFleet("moving-fleet", "empire");
-            fleet.Movement = new MovementState { TransitTicks = 10 };
+            fleet.Movement = TestMovement.Create(transitTicks: 10);
             CapitalShip ship = new CapitalShip
             {
                 InstanceID = "carrier",
@@ -474,6 +474,37 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(created);
             Assert.IsNull(context.Game);
             Assert.IsNull(context.DecoyParticipants);
+        }
+
+        [Test]
+        public void TryCreateMission_ParticipantsOnDifferentPlanets_ReturnsFalse()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            Planet otherPlanet = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 10,
+                PositionY = 10,
+            };
+            game.AttachNode(otherPlanet, planet.GetParent());
+            Officer decoy = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(decoy, otherPlanet);
+            planet.AddVisitor("empire");
+            MissionContext context = CreateContext(
+                game,
+                EspionageMission.MissionTypeID,
+                "empire",
+                officer,
+                planet
+            );
+            context.DecoyParticipants.Add(decoy);
+
+            bool created = factory.TryCreateMission(context, out Mission mission);
+
+            Assert.IsFalse(created);
+            Assert.IsNull(mission);
         }
 
         [Test]
@@ -556,6 +587,7 @@ namespace Rebellion.Tests.Game.Missions
                 options.Any(option => option.MissionTypeID == DiplomacyMission.MissionTypeID)
             );
             Assert.AreEqual(EspionageMission.MissionTypeID, options.Last().MissionTypeID);
+            Assert.IsTrue(options.Last().CanRepeat);
         }
 
         [Test]

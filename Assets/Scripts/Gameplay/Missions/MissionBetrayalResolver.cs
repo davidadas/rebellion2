@@ -53,20 +53,19 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Rolls every eligible participant and returns the last officer who betrays the mission.
+        /// Rolls eligible participants in mission order and returns the first officer who betrays.
         /// </summary>
         /// <param name="mission">The mission.</param>
-        /// <returns>The last matching betraying officer, or null when nobody betrays.</returns>
+        /// <returns>The first matching betraying officer, or null when nobody betrays.</returns>
         private Officer FindBetrayingOfficer(Mission mission)
         {
-            Officer defector = null;
-            foreach (Officer officer in mission.GetAllParticipants().OfType<Officer>())
+            foreach (Officer officer in GetOfficersInResolutionOrder(mission))
             {
                 if (BetraysMission(officer))
-                    defector = officer;
+                    return officer;
             }
 
-            return defector;
+            return null;
         }
 
         /// <summary>
@@ -76,11 +75,27 @@ namespace Rebellion.Gameplay
         /// <param name="defector">The officer who betrayed the mission.</param>
         /// <returns>The discovering officer, or null when nobody discovers the traitor.</returns>
         private Officer FindOfficerWhoDiscoversBetrayal(Mission mission, Officer defector) =>
-            mission
-                .GetAllParticipants()
-                .OfType<Officer>()
+            GetOfficersInResolutionOrder(mission)
                 .Where(officer => officer != defector)
                 .FirstOrDefault(officer => _provider.NextInt(0, 100) < officer.ForceRank);
+
+        /// <summary>
+        /// Returns primary officers followed by decoy officers, using stable identity order within
+        /// each role group.
+        /// </summary>
+        /// <param name="mission">The mission whose participant roles are inspected.</param>
+        /// <returns>The officers in deterministic resolution order.</returns>
+        private static IEnumerable<Officer> GetOfficersInResolutionOrder(Mission mission) =>
+            mission
+                .GetMainParticipants()
+                .OfType<Officer>()
+                .OrderBy(officer => officer.InstanceID, StringComparer.Ordinal)
+                .Concat(
+                    mission
+                        .GetDecoyParticipants()
+                        .OfType<Officer>()
+                        .OrderBy(officer => officer.InstanceID, StringComparer.Ordinal)
+                );
 
         /// <summary>
         /// Determines whether an eligible officer betrays a mission using inverse loyalty as

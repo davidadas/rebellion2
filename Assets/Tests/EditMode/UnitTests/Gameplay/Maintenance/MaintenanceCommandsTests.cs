@@ -857,13 +857,12 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 MaintenanceCost = 1,
                 ConstructionCost = 1,
-                Movement = new MovementState
-                {
-                    TransitTicks = 10,
-                    TicksElapsed = 1,
-                    OriginPosition = new Point(0, 0),
-                    CurrentPosition = new Point(0, 0),
-                },
+                Movement = TestMovement.Create(
+                    transitTicks: 10,
+                    ticksElapsed: 1,
+                    originPosition: new Point(0, 0),
+                    currentPosition: new Point(0, 0)
+                ),
             };
             game.AttachNode(ship, fleet);
 

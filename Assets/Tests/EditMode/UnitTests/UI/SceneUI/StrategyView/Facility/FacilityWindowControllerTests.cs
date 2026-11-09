@@ -639,6 +639,47 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
+        public void OnTargetSelected_RemoteBuildingDestination_RefreshesSharedPlanetState()
+        {
+            FacilityWindowView view = OpenWindow(out UIWindow window);
+            Planet destination = new Planet
+            {
+                InstanceID = "destination-planet",
+                DisplayName = "Kessel",
+                OwnerInstanceID = _playerFactionId,
+                IsColonized = true,
+                EnergyCapacity = 10,
+            };
+            _game.AttachNode(destination, _planet.PlanetSector);
+            Building order = new Building
+            {
+                InstanceID = "building-order",
+                OwnerInstanceID = _playerFactionId,
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            _planet.Planet.EnergyCapacity = 10;
+            _game.AttachNode(order, _planet.Planet);
+            _planet.Planet.ManufacturingQueue[ManufacturingType.Building] =
+                new List<IManufacturable> { order };
+            GalaxyMapPlanet destinationProjection = new(
+                _planet.PlanetSector,
+                destination,
+                _playerFactionId
+            );
+            BeginManufacturingDestinationTargeting(view, window, FacilityWindowTab.Construction);
+
+            bool selected = _targetingController.TrySelectTarget(
+                new StrategyMissionTarget(destinationProjection, null)
+            );
+
+            Assert.IsTrue(selected);
+            Assert.AreSame(destination, order.GetParentOfType<Planet>());
+            Assert.AreEqual(1, destination.GetEnergyUsed());
+            Assert.AreEqual(1, _facilityActions.RefreshCount);
+        }
+
+        [Test]
         public void ManufacturingItemRequest_ActiveShip_RoutesItemAndWindowPosition()
         {
             FacilityWindowView view = OpenWindow(out UIWindow window);
@@ -834,18 +875,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         /// <summary>
-        /// Begins destination targeting from the training manufacturing card.
+        /// Begins destination targeting from a manufacturing card.
         /// </summary>
         /// <param name="view">The open facility view.</param>
         /// <param name="window">The open facility window.</param>
+        /// <param name="manufacturingTab">The manufacturing tab containing the target card.</param>
         private void BeginManufacturingDestinationTargeting(
             FacilityWindowView view,
-            UIWindow window
+            UIWindow window,
+            FacilityWindowTab manufacturingTab = FacilityWindowTab.Training
         )
         {
+            string cardName = manufacturingTab switch
+            {
+                FacilityWindowTab.Shipyards => "ShipyardsManufacturingLaneCard",
+                FacilityWindowTab.Training => "TrainingManufacturingLaneCard",
+                FacilityWindowTab.Construction => "ConstructionManufacturingLaneCard",
+                _ => throw new ArgumentOutOfRangeException(
+                    nameof(manufacturingTab),
+                    manufacturingTab,
+                    null
+                ),
+            };
             ManufacturingLaneCardView card =
                 view.GetComponentsInChildren<ManufacturingLaneCardView>(true)
-                    .Single(candidate => candidate.name == "TrainingManufacturingLaneCard");
+                    .Single(candidate => candidate.name == cardName);
             UIComponentTestHelper.InvokeLifecycle(card, "Awake");
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
             PointerEventData pointer = new PointerEventData(null)
@@ -864,7 +918,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 .Build(
                     _planet.Planet,
                     FacilityWindowTab.Manufacturing,
-                    FacilityWindowTab.Training,
+                    manufacturingTab,
                     null,
                     _playerFactionId
                 )
@@ -904,6 +958,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             public int DestinationSourceX { get; private set; }
 
             public int DestinationSourceY { get; private set; }
+
+            public int RefreshCount { get; private set; }
 
             /// <summary>
             /// Checks whether the retire condition is met.
@@ -996,6 +1052,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }
+
+            /// <summary>
+            /// Refreshes facility state.
+            /// </summary>
+            public void RefreshFacilityState()
+            {
+                RefreshCount++;
+            }
         }
 
         private sealed class ManufacturingTrackingActions : IIdleBarManufacturingTrackingActions

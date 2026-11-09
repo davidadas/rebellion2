@@ -40,7 +40,7 @@ namespace Rebellion.Tests.AI.Proposals
         {
             Officer officer = EntityFactory.CreateOfficer("officer", "empire");
             Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
-            fleet.Movement = new MovementState();
+            fleet.Movement = TestMovement.Create();
             CapitalShip capitalShip = new CapitalShip
             {
                 InstanceID = "ship",

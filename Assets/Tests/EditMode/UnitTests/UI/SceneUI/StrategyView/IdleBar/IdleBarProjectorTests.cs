@@ -38,7 +38,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         public void Project_AvailableEntities_ReturnsEveryEntityGroupedAndSorted()
         {
             Officer movingOfficer = CreateOfficer("A Moving Officer");
-            movingOfficer.Movement = new MovementState();
+            movingOfficer.Movement = TestMovement.Create();
             Officer secondOfficer = CreateOfficer("B Officer");
             Officer firstOfficer = CreateOfficer("A Officer");
             SpecialForces buildingSpecialForces = CreateSpecialForces("A Building Unit");
@@ -46,7 +46,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             SpecialForces secondSpecialForces = CreateSpecialForces("B Unit");
             SpecialForces firstSpecialForces = CreateSpecialForces("A Unit");
             GameFleet movingFleet = CreateFleet("A Moving Fleet");
-            movingFleet.Movement = new MovementState();
+            movingFleet.Movement = TestMovement.Create();
             CreateFleet("A Building Fleet", ManufacturingStatus.Building);
             GameFleet secondFleet = CreateFleet("B Fleet");
             GameFleet firstFleet = CreateFleet("A Fleet");

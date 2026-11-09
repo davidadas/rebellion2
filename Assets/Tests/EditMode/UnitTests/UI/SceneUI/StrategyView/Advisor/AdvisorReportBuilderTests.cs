@@ -112,7 +112,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             CapitalShip ship = new CapitalShip();
-            GameFleet fleet = new GameFleet { Movement = new MovementState() };
+            GameFleet fleet = new GameFleet { Movement = TestMovement.Create() };
             ship.SetParent(fleet);
             regiment.SetParent(ship);
             faction.AddOwnedUnit(regiment);

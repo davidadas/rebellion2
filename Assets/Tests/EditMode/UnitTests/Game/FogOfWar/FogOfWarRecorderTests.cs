@@ -672,7 +672,7 @@ namespace Rebellion.Tests.Game.FogOfWar
         public void RecordSelectedObservations_LaterUnrelatedObservation_PreservesMovementObservationTime()
         {
             Officer officer = CreateOfficer("traveller", _empire);
-            officer.Movement = new MovementState { TransitTicks = 20, TicksElapsed = 10 };
+            officer.Movement = TestMovement.Create(transitTicks: 20, ticksElapsed: 10);
             _game.AttachNode(officer, _coruscant);
             Officer another = CreateOfficer("another", _empire);
             _game.AttachNode(another, _coruscant);
@@ -1410,7 +1410,7 @@ namespace Rebellion.Tests.Game.FogOfWar
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
             _coruscant.IsColonized = false;
             _coruscant.IsDestroyed = true;
-            officer.Movement = new MovementState { TransitTicks = 20, TicksElapsed = 5 };
+            officer.Movement = TestMovement.Create(transitTicks: 20, ticksElapsed: 5);
 
             recorder.RecordIntelligenceSnapshot(
                 _alliance,

@@ -79,7 +79,7 @@ namespace Rebellion.Tests.Game.Units
         public void Movement_CompletedBetweenTicks_ArmsFromActualCompletionTick()
         {
             (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
-            officer.Movement = new MovementState();
+            officer.Movement = TestMovement.Create();
             game.CurrentTick = 70;
 
             officer.Movement = null;
@@ -130,7 +130,7 @@ namespace Rebellion.Tests.Game.Units
             ship.AddChild(officer);
             officer.SetParent(ship);
             IMovable transport = fleetTransit ? fleet : ship;
-            transport.Movement = new MovementState();
+            transport.Movement = TestMovement.Create();
             Assert.IsFalse(officer.IsDiscoveringForceUser);
             game.CurrentTick = 70;
 
@@ -722,7 +722,7 @@ namespace Rebellion.Tests.Game.Units
             Officer officer = new Officer
             {
                 DisplayName = "Test Officer",
-                Movement = new MovementState(),
+                Movement = TestMovement.Create(),
             };
             bool captured = officer.TryCapture(
                 "captor",
@@ -744,7 +744,7 @@ namespace Rebellion.Tests.Game.Units
                 OwnerInstanceID = "owner",
             };
             CapitalShip ship = new CapitalShip { OwnerInstanceID = "owner" };
-            Fleet fleet = new Fleet { OwnerInstanceID = "owner", Movement = new MovementState() };
+            Fleet fleet = new Fleet { OwnerInstanceID = "owner", Movement = TestMovement.Create() };
             officer.SetParent(ship);
             ship.SetParent(fleet);
             bool captured = officer.TryCapture(
@@ -789,7 +789,6 @@ namespace Rebellion.Tests.Game.Units
             originalOfficer.TraitGrants.Add(
                 new OfficerTraitGrant { TraitID = "leadership", SourceID = "event" }
             );
-
             string xml = SerializationHelper.Serialize(originalOfficer);
             Officer deserializedOfficer = SerializationHelper.Deserialize<Officer>(xml);
 

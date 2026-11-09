@@ -183,7 +183,7 @@ public sealed class MessagesWindowView : MonoBehaviour, ICancelable
     /// <returns>True when a panel inside the window handled cancellation.</returns>
     public bool TryCancel()
     {
-        if (!renderedDetail && !renderedComposer)
+        if ((!renderedDetail && !renderedComposer) || IndexRequested == null)
             return false;
         IndexRequested?.Invoke(this);
         return true;

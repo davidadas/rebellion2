@@ -75,7 +75,7 @@ namespace Rebellion.Tests.AI.Demands
                 );
                 committed.ManufacturingStatus = status;
                 if (status == ManufacturingStatus.Delivering)
-                    committed.Movement = new MovementState { TransitTicks = 10 };
+                    committed.Movement = TestMovement.Create(transitTicks: 10);
                 game.AttachNode(committed, fleet);
                 for (int regimentIndex = 0; regimentIndex < 10; regimentIndex++)
                 {
@@ -86,7 +86,7 @@ namespace Rebellion.Tests.AI.Demands
                     );
                     regiment.ManufacturingStatus = status;
                     if (status == ManufacturingStatus.Delivering)
-                        regiment.Movement = new MovementState { TransitTicks = 10 };
+                        regiment.Movement = TestMovement.Create(transitTicks: 10);
                     game.AttachNode(regiment, carrier);
                 }
             }
@@ -584,7 +584,7 @@ namespace Rebellion.Tests.AI.Demands
                 ManufacturingType.Ship
             );
             shipyard.OwnerInstanceID = empire.InstanceID;
-            shipyard.Movement = new MovementState { TransitTicks = 10 };
+            shipyard.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(shipyard, pendingPlanet);
             List<AIProductionDemand> demands = new AIProductionDemandGenerator()
                 .BuildDemands(AITestSceneBuilder.CreateContext(game, empire))
@@ -920,7 +920,7 @@ namespace Rebellion.Tests.AI.Demands
                 .Single(building => building.BuildingType == BuildingType.Shipyard)
                 .ManufacturingStatus = ManufacturingStatus.Building;
             Fleet hostile = EntityFactory.CreateFleet("hostile", "rebels");
-            hostile.Movement = new MovementState { TransitTicks = 10 };
+            hostile.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(hostile, planet);
             game.AttachNode(
                 AITestSceneBuilder.CreateCapitalShip("hostile-ship", "rebels"),
@@ -1272,7 +1272,7 @@ namespace Rebellion.Tests.AI.Demands
             AddMaintenanceCapacity(game, valuablePlanet, 1);
             Fleet hostileFleet = EntityFactory.CreateFleet("hostile-fleet", rebels.InstanceID);
             hostileFleet.RoleType = FleetRoleType.Battle;
-            hostileFleet.Movement = new MovementState { TransitTicks = 10 };
+            hostileFleet.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(hostileFleet, threatenedPlanet);
             game.AttachNode(
                 AITestSceneBuilder.CreateCapitalShip("hostile-ship", rebels.InstanceID),
@@ -1752,7 +1752,7 @@ namespace Rebellion.Tests.AI.Demands
                 );
                 regiment.ManufacturingStatus = status;
                 if (status == ManufacturingStatus.Delivering)
-                    regiment.Movement = new MovementState { TransitTicks = 10 };
+                    regiment.Movement = TestMovement.Create(transitTicks: 10);
                 game.AttachNode(regiment, carrier);
             }
             AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
@@ -1898,7 +1898,7 @@ namespace Rebellion.Tests.AI.Demands
                 Status = FleetOrderStatus.Staging,
                 TargetPlanetId = enemy.InstanceID,
             };
-            fleet.Movement = new MovementState { TransitTicks = 10 };
+            fleet.Movement = TestMovement.Create(transitTicks: 10);
             CapitalShip ship = AITestSceneBuilder.CreateCapitalShip(
                 "ship",
                 empire.InstanceID,
@@ -1933,7 +1933,7 @@ namespace Rebellion.Tests.AI.Demands
             );
             CapitalShip deliveringShip = fleet.GetChildren<CapitalShip>().Single();
             deliveringShip.ManufacturingStatus = ManufacturingStatus.Delivering;
-            deliveringShip.Movement = new MovementState { TransitTicks = 10 };
+            deliveringShip.Movement = TestMovement.Create(transitTicks: 10);
             Fleet hostileFleet = EntityFactory.CreateFleet("hostile-fleet", rebels.InstanceID);
             game.AttachNode(hostileFleet, owned);
             game.AttachNode(
@@ -2708,7 +2708,7 @@ namespace Rebellion.Tests.AI.Demands
                 empire.InstanceID,
                 combatStrength: 400
             );
-            inboundShip.Movement = new MovementState { TransitTicks = 10 };
+            inboundShip.Movement = TestMovement.Create(transitTicks: 10);
             fleet.AddChild(presentShip);
             presentShip.SetParent(fleet);
             fleet.AddChild(inboundShip);

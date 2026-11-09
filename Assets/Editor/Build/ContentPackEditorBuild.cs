@@ -59,11 +59,71 @@ public static class ContentPackEditorBuild
         bool enableDiagnostics
     )
     {
-        string directory = Path.GetDirectoryName(gamePlayerPath) ?? string.Empty;
         if (target == UnityEditor.BuildTarget.StandaloneOSX)
-            directory = Path.Combine(gamePlayerPath, "Contents", "Helpers");
+            return BuildEmbeddedMacEditor(gamePlayerPath, enableDiagnostics);
+
+        string directory = Path.GetDirectoryName(gamePlayerPath) ?? string.Empty;
         string editorPath = Path.Combine(directory, GetArtifactFileName(target));
         return BuildPlayer(target, editorPath, enableDiagnostics);
+    }
+
+    /// <summary>
+    /// Removes legacy companion compiler diagnostics from a host bundle before it is signed.
+    /// </summary>
+    /// <param name="target">The host player's desktop platform.</param>
+    /// <param name="gamePlayerPath">The normalized host player artifact path.</param>
+    internal static void PrepareGameBuild(UnityEditor.BuildTarget target, string gamePlayerPath)
+    {
+        if (target != UnityEditor.BuildTarget.StandaloneOSX)
+            return;
+
+        string diagnostics = Path.Combine(
+            gamePlayerPath,
+            "Contents",
+            "Helpers",
+            _editorProductName + "_BurstDebugInformation_DoNotShip"
+        );
+        if (Directory.Exists(diagnostics))
+            Directory.Delete(diagnostics, true);
+    }
+
+    /// <summary>
+    /// Builds the companion outside its host, embeds only the completed app, and signs the host again.
+    /// </summary>
+    /// <param name="gamePlayerPath">The completed host app bundle.</param>
+    /// <param name="enableDiagnostics">Whether engine diagnostics remain enabled.</param>
+    /// <returns>The embedded companion app path.</returns>
+    private static string BuildEmbeddedMacEditor(string gamePlayerPath, bool enableDiagnostics)
+    {
+        string stagingDirectory = Path.Combine(
+            Path.GetDirectoryName(gamePlayerPath) ?? string.Empty,
+            ".rebellion2-editor-" + Guid.NewGuid().ToString("N")
+        );
+        try
+        {
+            Directory.CreateDirectory(stagingDirectory);
+            string fileName = GetArtifactFileName(UnityEditor.BuildTarget.StandaloneOSX);
+            string builtPath = BuildPlayer(
+                UnityEditor.BuildTarget.StandaloneOSX,
+                Path.Combine(stagingDirectory, fileName),
+                enableDiagnostics
+            );
+            string helpers = Path.Combine(gamePlayerPath, "Contents", "Helpers");
+            Directory.CreateDirectory(helpers);
+            string embeddedPath = Path.Combine(helpers, fileName);
+            if (Directory.Exists(embeddedPath))
+                Directory.Delete(embeddedPath, true);
+            Directory.Move(builtPath, embeddedPath);
+#if UNITY_STANDALONE_OSX
+            UnityEditor.OSXStandalone.MacOSCodeSigning.CodeSignAppBundle(gamePlayerPath);
+#endif
+            return embeddedPath;
+        }
+        finally
+        {
+            if (Directory.Exists(stagingDirectory))
+                Directory.Delete(stagingDirectory, true);
+        }
     }
 
     /// <summary>
@@ -132,6 +192,10 @@ public static class ContentPackEditorBuild
                 new[] { _editorScriptingDefine }
             );
             CopyNativeDialogNotices(target, builtPath);
+#if UNITY_STANDALONE_OSX
+            if (target == UnityEditor.BuildTarget.StandaloneOSX)
+                UnityEditor.OSXStandalone.MacOSCodeSigning.CodeSignAppBundle(builtPath);
+#endif
             return builtPath;
         }
         finally

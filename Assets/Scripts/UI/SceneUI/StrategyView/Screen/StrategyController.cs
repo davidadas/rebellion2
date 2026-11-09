@@ -2476,6 +2476,14 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Rebuilds shared strategy state after an accepted facility request changes the game.
+    /// </summary>
+    void IFacilityWindowActions.RefreshFacilityState()
+    {
+        RefreshStrategyState();
+    }
+
+    /// <summary>
     /// Opens Encyclopedia information for one selected fleet item.
     /// </summary>
     /// <param name="items">The selected items.</param>

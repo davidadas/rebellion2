@@ -214,6 +214,7 @@ namespace Rebellion.AI.Proposals
                 return TryGetInterceptionTravelTicks(context, out travel);
             if (
                 context.MovementQueries == null
+                || context.MissionQueries == null
                 || Mission.MissionTypeID != MissionTypeIDs.Sabotage
                 || !Mission.IsTeamFinal
                 || Participants.Count == 0 && !IsWaiting
@@ -264,7 +265,13 @@ namespace Rebellion.AI.Proposals
                 return true;
             }
 
-            if (!Mission.CanExecute(context))
+            if (
+                !Mission.CanSelect(context)
+                || !context.MissionQueries.CanCreateMissionFromDeparture(
+                    Mission.CreateContext(),
+                    Destination
+                )
+            )
                 return false;
 
             int relocationTicks = 0;

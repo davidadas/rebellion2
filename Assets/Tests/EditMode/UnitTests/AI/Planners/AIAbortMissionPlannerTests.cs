@@ -89,7 +89,7 @@ namespace Rebellion.Tests.AI.Planners
             mission.ConfigKey = ReconnaissanceMission.MissionTypeID;
             game.AttachNode(mission, target);
             game.AttachNode(probe, mission);
-            probe.Movement = new Rebellion.Game.Units.MovementState { TransitTicks = 10 };
+            probe.Movement = TestMovement.Create(transitTicks: 10);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             bool hasAbortProposal = new AIAbortMissionPlanner()

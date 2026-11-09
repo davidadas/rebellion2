@@ -294,7 +294,7 @@ namespace Rebellion.Tests.Gameplay
         {
             _faction.ManageProduction = false;
             Regiment traveling = AddCompletedRegiment(_destination, "TRAVELING_DEFENSE");
-            traveling.Movement = new MovementState();
+            traveling.Movement = TestMovement.Create();
 
             _automation.ProcessFaction(_faction);
 

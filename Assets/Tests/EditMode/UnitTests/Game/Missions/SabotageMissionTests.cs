@@ -31,7 +31,7 @@ namespace Rebellion.Tests.Game.Missions
             {
                 InstanceID = "moving-fleet",
                 OwnerInstanceID = "rebels",
-                Movement = new MovementState(),
+                Movement = TestMovement.Create(),
             };
             CapitalShip ship = new CapitalShip
             {

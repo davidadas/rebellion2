@@ -26,7 +26,7 @@ namespace Rebellion.Tests.Game.Missions
             ) = MissionSceneBuilder.Build();
             Officer target = EntityFactory.CreateOfficer("target", "empire");
             target.IsCaptured = true;
-            target.Movement = new MovementState();
+            target.Movement = TestMovement.Create();
             game.AttachNode(target, enemyPlanet);
 
             Mission mission = CreateRescueMission(
@@ -625,7 +625,7 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, enemyPlanet);
             game.MoveNode(officer, mission);
             mission.Initiate(0);
-            captive.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            captive.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 1);
 
             MissionCommands missionSystem = TestSystems.CreateMissionCommands(
                 game,

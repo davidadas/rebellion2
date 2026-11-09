@@ -115,9 +115,6 @@ namespace Rebellion.Gameplay
                     return CompleteStep(mission, results);
             }
 
-            if (mission.IsWaitingForParticipants())
-                return results;
-
             MissionCompletionReason? abortReason = mission.GetAbortReason(game);
             if (abortReason.HasValue)
             {
@@ -137,6 +134,9 @@ namespace Rebellion.Gameplay
                 _resolver.FinishMission(mission, null, results);
                 return CompleteStep(mission, results);
             }
+
+            if (mission.IsWaitingForParticipants())
+                return results;
 
             List<IMissionParticipant> participantsBeforeDetection = mission.GetAllParticipants();
             bool wasDetected = false;

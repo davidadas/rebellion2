@@ -677,7 +677,7 @@ namespace Rebellion.Tests.Game.Factions
             {
                 InstanceID = "OFFICER2",
                 OwnerInstanceID = "FACTION1",
-                Movement = new MovementState(),
+                Movement = TestMovement.Create(),
             };
 
             SpecialForces availableSpecialForces = new SpecialForces
@@ -736,7 +736,7 @@ namespace Rebellion.Tests.Game.Factions
         public void GetAvailableMissionParticipants_OfficerAboardMovingFleet_ExcludesOfficer()
         {
             Fleet fleet = EntityFactory.CreateFleet("moving-fleet", _faction.InstanceID);
-            fleet.Movement = new MovementState { TransitTicks = 10 };
+            fleet.Movement = TestMovement.Create(transitTicks: 10);
             CapitalShip ship = new CapitalShip
             {
                 InstanceID = "carrier",

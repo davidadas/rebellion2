@@ -19,6 +19,9 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     private MainMenuView view;
 
     [SerializeField]
+    private ModelPreviewAtlas _iconPreviews;
+
+    [SerializeField]
     private OptionsMenuView _optionsMenuPrefab;
 
     [SerializeField]
@@ -128,6 +131,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             if (this == null || view == null || mainMenuCanvas == null)
                 return;
 
+            _iconPreviews.Initialize();
             ContentPack contentPack = bootstrap.GetContentPack();
             view.InitializeContent(bootstrap.GetContentAssets());
             view.RenderVictoryCondition(currentVictoryCondition);

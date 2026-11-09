@@ -618,7 +618,8 @@ namespace Rebellion.Gameplay
                 returnParticipants,
                 returnPassengers,
                 out Planet returnLocation,
-                results
+                results,
+                mission.SuccessfulParticipantInstanceID
             );
             strandedUnits.AddRange(failedReturns);
             if (completedResult != null)
