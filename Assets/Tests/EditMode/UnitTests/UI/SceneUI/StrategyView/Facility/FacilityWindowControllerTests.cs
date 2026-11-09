@@ -831,6 +831,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         /// </summary>
         /// <param name="view">The open facility view.</param>
         /// <param name="window">The open facility window.</param>
+        /// <param name="manufacturingTab">The manufacturing tab containing the target card.</param>
         private void BeginManufacturingDestinationTargeting(
             FacilityWindowView view,
             UIWindow window,
