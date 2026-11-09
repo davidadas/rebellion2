@@ -212,13 +212,15 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler, IDr
     }
 
     /// <summary>
-    /// Reports whether a pointer event originated from one rendered unit card.
+    /// Reports whether a pointer event belongs to a unit card or scroll control that must preserve
+    /// the current selection.
     /// </summary>
     /// <param name="eventData">The pointer event to inspect.</param>
-    /// <returns>True when a rendered unit card received the event.</returns>
-    internal bool IsSelectionItemClick(PointerEventData eventData)
+    /// <returns>True when the event belongs to a selection-preserving interaction.</returns>
+    internal bool IsSelectionInteractionClick(PointerEventData eventData)
     {
-        return TryGetItemIndex(eventData, out _);
+        GameObject target = GetRaycastTarget(eventData);
+        return TryGetItemIndex(eventData, out _) || itemsScrollArea.ContainsScrollControl(target);
     }
 
     /// <summary>

@@ -123,6 +123,21 @@ public sealed class ScrollAreaView : MonoBehaviour
     }
 
     /// <summary>
+    /// Reports whether one event target belongs to the authored scrollbar controls.
+    /// </summary>
+    /// <param name="target">The candidate event target.</param>
+    /// <returns>True when the target is the scrollbar or one of its descendants.</returns>
+    internal bool ContainsScrollControl(GameObject target)
+    {
+        VerifyRequiredReferences();
+        return target != null
+            && (
+                target.transform == scrollbar.transform
+                || target.transform.IsChildOf(scrollbar.transform)
+            );
+    }
+
+    /// <summary>
     /// Applies feature-specific source-coordinate bounds to the shared scroll controls.
     /// </summary>
     /// <param name="viewportPosition">The viewport's top-left position.</param>
