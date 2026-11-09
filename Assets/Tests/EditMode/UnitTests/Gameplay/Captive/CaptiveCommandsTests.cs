@@ -9,6 +9,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
 using UnityEngine;
 
@@ -17,6 +18,47 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class CaptiveCommandsTests
     {
+        [Test]
+        public void ProcessTick_FirstEscapeDestinationRejectsOfficer_DoesNotLogWarnings()
+        {
+            (GameRoot game, Planet origin, Officer captive, MovementCommands movement) =
+                BuildScene();
+            AddRejectingEscapeFleet(game, origin, "first");
+            CaptiveCommands commands = CreateCommands(game, new FixedRNG(0.0), movement);
+
+            List<string> warnings = CaptureWarnings(() =>
+                new CaptiveTickProcessor(commands).ProcessTick(game)
+            );
+
+            Assert.IsFalse(captive.IsCaptured);
+            Assert.AreEqual("emp_planet", captive.GetParent().InstanceID);
+            Assert.IsNotEmpty(movement.TakePendingResults().OfType<GameObjectEnrouteResult>());
+            Assert.IsEmpty(warnings);
+        }
+
+        [Test]
+        public void ProcessTick_AllEscapeDestinationsRejectOfficer_LogsOneFinalRejection()
+        {
+            (GameRoot game, Planet origin, Officer captive, MovementCommands movement) =
+                BuildScene();
+            game.ChangeOwnership(game.GetSceneNodeByInstanceID<Planet>("emp_planet"), "rebels");
+            AddRejectingEscapeFleet(game, origin, "first");
+            AddRejectingEscapeFleet(game, origin, "second");
+            CaptiveCommands commands = CreateCommands(game, new FixedRNG(0.0), movement);
+
+            List<string> warnings = CaptureWarnings(() =>
+                new CaptiveTickProcessor(commands).ProcessTick(game)
+            );
+
+            Assert.IsTrue(captive.IsCaptured);
+            Assert.AreEqual("rebels", captive.CaptorInstanceID);
+            Assert.AreSame(origin, captive.GetParent());
+            Assert.IsNull(captive.Movement);
+            Assert.IsEmpty(movement.TakePendingResults());
+            Assert.That(warnings, Has.Count.EqualTo(1));
+            StringAssert.Contains("no capacity", warnings.Single());
+        }
+
         [Test]
         public void TryCaptureOfficer_FreeOfficer_PublishesCaptureResult()
         {
@@ -558,6 +600,65 @@ namespace Rebellion.Tests.Gameplay
         )
         {
             return new CaptiveCommands(game, provider, movement);
+        }
+
+        /// <summary>
+        /// Adds an eligible escape fleet whose container refuses personnel.
+        /// </summary>
+        /// <param name="game">The active scene.</param>
+        /// <param name="planet">The fleet's location.</param>
+        /// <param name="id">The fleet identifier.</param>
+        private static void AddRejectingEscapeFleet(GameRoot game, Planet planet, string id)
+        {
+            Fleet fleet = EntityFactory.CreateFleet(id, "empire");
+            CapitalShip ship = new RejectingCapitalShip
+            {
+                InstanceID = id + "-ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            Assert.IsTrue(fleet.HasOperationalCapitalShips());
+        }
+
+        /// <summary>
+        /// Captures warning messages emitted by the supplied operation.
+        /// </summary>
+        /// <param name="action">The operation exercised with warnings enabled.</param>
+        /// <returns>The warning messages emitted while the operation runs.</returns>
+        private static List<string> CaptureWarnings(Action action)
+        {
+            List<string> warnings = new();
+            GameLogger.LogLevel originalLevel = GameLogger.MinimumLevel;
+            GameLogger.SetMinimumLevel(GameLogger.LogLevel.Warning);
+            Application.LogCallback handler = (message, _, type) =>
+            {
+                if (type == LogType.Warning)
+                    warnings.Add(message);
+            };
+            Application.logMessageReceived += handler;
+            try
+            {
+                action();
+            }
+            finally
+            {
+                Application.logMessageReceived -= handler;
+                GameLogger.SetMinimumLevel(originalLevel);
+            }
+            return warnings;
+        }
+
+        private sealed class RejectingCapitalShip : CapitalShip
+        {
+            /// <summary>
+            /// Refuses personnel so escape must consider its next destination.
+            /// </summary>
+            /// <param name="child">The proposed occupant.</param>
+            /// <returns>False for officers, otherwise the ordinary capacity decision.</returns>
+            public override bool CanAcceptChild(ISceneNode child) =>
+                child is not Officer && base.CanAcceptChild(child);
         }
 
         /// <summary>

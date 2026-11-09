@@ -21,6 +21,90 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class MovementCommandsTests
     {
+        [Test]
+        public void TryRequestMove_OrphanedUnitWithMultipleDestinations_LogsOneFinalRejection()
+        {
+            (_, Planet origin, Planet destination, _, MovementCommands movement) = BuildScene();
+            Officer orphan = EntityFactory.CreateOfficer("orphan", "empire");
+
+            List<string> warnings = CaptureWarnings(() =>
+                Assert.IsFalse(
+                    movement.TryRequestMove(orphan, new ContainerNode[] { origin, destination })
+                )
+            );
+
+            Assert.That(warnings, Has.Count.EqualTo(1));
+            StringAssert.Contains("not at a planet location", warnings.Single());
+            Assert.IsNull(orphan.Movement);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TrySetFleetWaypointRoute_CapitalShipInTransit_LogsRejectionReason(
+            bool useSnapshot
+        )
+        {
+            (_, _, Planet destination, _, Fleet fleet, MovementCommands movement) =
+                BuildWaypointScene();
+            CapitalShip ship = fleet.GetChildren<CapitalShip>().Single();
+            MovementState transit = TestMovement.Create(transitTicks: 10);
+            ship.Movement = transit;
+            ISceneNode selection = useSnapshot ? ship.CreateCopy() : ship;
+
+            List<string> warnings = CaptureWarnings(() =>
+                Assert.IsFalse(
+                    movement.TrySetFleetWaypointRoute(
+                        new[] { selection },
+                        new[] { destination.InstanceID },
+                        "empire"
+                    )
+                )
+            );
+
+            Assert.That(warnings, Has.Count.EqualTo(1));
+            StringAssert.Contains("already in transit", warnings.Single());
+            Assert.AreSame(transit, ship.Movement);
+            Assert.AreSame(fleet, ship.GetParent());
+            Assert.IsEmpty(fleet.Waypoints);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TrySetFleetWaypointRoute_MovingFleetWithStaleWaypoint_DoesNotLogShipRejection(
+            bool useSnapshot
+        )
+        {
+            (
+                GameRoot game,
+                _,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet fleet,
+                MovementCommands movement
+            ) = BuildWaypointScene();
+            Assert.IsTrue(
+                movement.TryRequestMove(new ISceneNode[] { fleet }, firstDestination, "empire")
+            );
+            MovementState transit = fleet.Movement;
+            ISceneNode selection = useSnapshot ? fleet.CreateCopy() : fleet;
+            game.DetachNode(secondDestination);
+
+            List<string> warnings = CaptureWarnings(() =>
+                Assert.IsFalse(
+                    movement.TrySetFleetWaypointRoute(
+                        new[] { selection },
+                        new[] { secondDestination.InstanceID },
+                        "empire"
+                    )
+                )
+            );
+
+            Assert.IsEmpty(warnings);
+            Assert.AreSame(transit, fleet.Movement);
+            Assert.AreSame(firstDestination, fleet.GetParent());
+            Assert.IsEmpty(fleet.Waypoints);
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void ProcessTick_ReloadedJourney_PreservesRemainingLegsAndArrivesOnce(
@@ -5620,14 +5704,18 @@ namespace Rebellion.Tests.Gameplay
                 "empire"
             );
 
-            bool routeSet = movement.TrySetFleetWaypointRoute(
-                new ISceneNode[] { fleet },
-                new[] { secondDestination.InstanceID },
-                "empire"
+            bool routeSet = false;
+            List<string> warnings = CaptureWarnings(() =>
+                routeSet = movement.TrySetFleetWaypointRoute(
+                    new ISceneNode[] { fleet },
+                    new[] { secondDestination.InstanceID },
+                    "empire"
+                )
             );
 
             Assert.IsTrue(moved);
             Assert.IsTrue(routeSet);
+            Assert.IsEmpty(warnings);
             CollectionAssert.AreEqual(
                 new[] { firstDestination.InstanceID, secondDestination.InstanceID },
                 fleet.Waypoints
