@@ -171,6 +171,73 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_WithCrossPlanetSabotageTeamLedFromNeutralPlanet_AddsRelocationProposal()
+        {
+            GameRoot game = CreateSabotageTeamScene(
+                out Faction empire,
+                out Planet origin,
+                out Planet target
+            );
+            PlanetSector sector = origin.GetParentOfType<PlanetSector>();
+            origin.PositionX = -100;
+            target.PositionX = 100;
+            Planet neutralOrigin = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "neutral-origin",
+                null,
+                positionX: 80
+            );
+            AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "assembly",
+                empire.InstanceID,
+                positionX: 90
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                target,
+                "second-yard",
+                BuildingType.TrainingFacility,
+                ManufacturingType.Troop
+            );
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            Fleet fleet = EntityFactory.CreateFleet("forward-fleet", empire.InstanceID);
+            game.AttachNode(fleet, neutralOrigin);
+            CapitalShip ship = AITestSceneBuilder.CreateCapitalShip(
+                "forward-ship",
+                empire.InstanceID
+            );
+            game.AttachNode(ship, fleet);
+            for (int index = 0; index < 4; index++)
+            {
+                SpecialForces agent = CreateSpecialForces(
+                    "agent-" + index,
+                    empire.InstanceID,
+                    MissionTypeIDs.Sabotage
+                );
+                game.AttachNode(agent, index < 2 ? ship : origin);
+            }
+
+            AIMissionStagingProposal[] proposals = new AIMissionPlanner()
+                .Plan(AITestSceneBuilder.CreateContext(game, empire))
+                .OfType<AIMissionStagingProposal>()
+                .ToArray();
+
+            Assert.IsTrue(
+                proposals.Any(proposal =>
+                    proposal.Mission.Participants.Any(participant =>
+                        participant.GetParentOfType<Planet>() == neutralOrigin
+                    )
+                    && proposal.Mission.Participants.Any(participant =>
+                        participant.GetParentOfType<Planet>() == origin
+                    )
+                )
+            );
+        }
+
+        [Test]
         public void Plan_WithNoObservedDefenders_PreservesSabotageDecoyProtection()
         {
             GameRoot game = CreateSabotageTeamScene(
