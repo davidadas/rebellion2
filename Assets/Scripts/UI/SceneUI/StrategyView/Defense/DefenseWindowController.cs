@@ -901,7 +901,7 @@ public sealed class DefenseWindowController
     {
         if (!TryGetSession(view, out DefenseWindowSession session))
             return;
-        if (TrySelectTarget(session, null) || view.IsSelectionItemClick(eventData))
+        if (TrySelectTarget(session, null) || view.IsSelectionInteractionClick(eventData))
             return;
 
         bool hasPoint = view.TryGetSelectionPoint(eventData, out Vector2 point);
