@@ -541,9 +541,10 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ProcessTick_DepletedSquadronAtFriendlyPlanet_ReplacesFast()
+        public void ProcessTick_DepletedSquadronWithoutShipyard_WaitsForNormalInterval()
         {
             (GameRoot game, Planet planet) = BuildScene();
+            game.CurrentTick = 10;
 
             Starfighter squadron = new Starfighter
             {
@@ -558,18 +559,110 @@ namespace Rebellion.Tests.Gameplay
             RecoveryTickProcessor system = new RecoveryTickProcessor();
 
             system.ProcessTick(game);
+            game.CurrentTick = 39;
+            system.ProcessTick(game);
+
+            Assert.AreEqual(8, squadron.CurrentSquadronSize);
+
+            game.CurrentTick = 40;
+            system.ProcessTick(game);
 
             Assert.AreEqual(
-                10,
+                9,
                 squadron.CurrentSquadronSize,
-                "Squadron at friendly planet should replace 2 fighters per tick"
+                "A friendly planet without a shipyard should use the normal interval"
             );
         }
 
         [Test]
-        public void ProcessTick_DepletedSquadronAtEnemyPlanet_ReplacesSlowly()
+        public void ProcessTick_DepletedSquadronAtFriendlyShipyard_UsesFastInterval()
         {
             (GameRoot game, Planet planet) = BuildScene();
+            game.CurrentTick = 10;
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "shipyard",
+                    OwnerInstanceID = "empire",
+                    BuildingType = BuildingType.Shipyard,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+            Starfighter squadron = new Starfighter
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 8,
+            };
+            game.AttachNode(squadron, planet);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
+
+            system.ProcessTick(game);
+            game.CurrentTick = 11;
+            system.ProcessTick(game);
+
+            Assert.AreEqual(8, squadron.CurrentSquadronSize);
+
+            game.CurrentTick = 12;
+            system.ProcessTick(game);
+
+            Assert.AreEqual(9, squadron.CurrentSquadronSize);
+        }
+
+        [Test]
+        public void ProcessTick_SquadronInTransitToFriendlyShipyard_UsesNormalInterval()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            game.CurrentTick = 10;
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "shipyard",
+                    OwnerInstanceID = "empire",
+                    BuildingType = BuildingType.Shipyard,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "f1",
+                OwnerInstanceID = "empire",
+                Movement = TestMovement.Create(transitTicks: 10),
+            };
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "carrier1",
+                OwnerInstanceID = "empire",
+                StarfighterCapacity = 20,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Starfighter squadron = new Starfighter
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 8,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(carrier, fleet);
+            game.AttachNode(squadron, carrier);
+
+            new RecoveryTickProcessor().ProcessTick(game);
+
+            Assert.AreEqual(30, squadron.ReplacementIntervalTicks);
+            Assert.AreEqual(40, squadron.NextReplacementTick);
+        }
+
+        [Test]
+        public void ProcessTick_DepletedSquadronAtEnemyPlanet_UsesNormalInterval()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            game.CurrentTick = 10;
             planet.OwnerInstanceID = "rebels";
 
             Fleet fleet = new Fleet { InstanceID = "f1", OwnerInstanceID = "empire" };
@@ -595,16 +688,52 @@ namespace Rebellion.Tests.Gameplay
             RecoveryTickProcessor system = new RecoveryTickProcessor();
 
             system.ProcessTick(game);
+            game.CurrentTick = 40;
+            system.ProcessTick(game);
 
             Assert.AreEqual(
                 9,
                 squadron.CurrentSquadronSize,
-                "Squadron at enemy planet should replace 1 fighter per tick"
+                "Squadron at enemy planet should replace one fighter after the normal interval"
             );
         }
 
         [Test]
-        public void ProcessTick_FullSquadron_NoChange()
+        public void ProcessTick_SquadronReachesFriendlyShipyard_ReschedulesForFastInterval()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            game.CurrentTick = 10;
+            Starfighter squadron = new Starfighter
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 8,
+            };
+            game.AttachNode(squadron, planet);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
+            system.ProcessTick(game);
+
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "shipyard",
+                    OwnerInstanceID = "empire",
+                    BuildingType = BuildingType.Shipyard,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+            game.CurrentTick = 11;
+            system.ProcessTick(game);
+
+            Assert.AreEqual(2, squadron.ReplacementIntervalTicks);
+            Assert.AreEqual(13, squadron.NextReplacementTick);
+        }
+
+        [Test]
+        public void ProcessTick_FullSquadron_ClearsReplacementSchedule()
         {
             (GameRoot game, Planet planet) = BuildScene();
 
@@ -615,6 +744,8 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 MaxSquadronSize = 12,
                 CurrentSquadronSize = 12,
+                NextReplacementTick = 20,
+                ReplacementIntervalTicks = 30,
             };
             game.AttachNode(squadron, planet);
 
@@ -622,13 +753,15 @@ namespace Rebellion.Tests.Gameplay
 
             system.ProcessTick(game);
 
-            Assert.AreEqual(12, squadron.CurrentSquadronSize, "Full squadron should not change");
+            Assert.AreEqual(0, squadron.NextReplacementTick);
+            Assert.AreEqual(0, squadron.ReplacementIntervalTicks);
         }
 
         [Test]
         public void ProcessTick_ReplacementClampsToMax_DoesNotExceedSquadronSize()
         {
             (GameRoot game, Planet planet) = BuildScene();
+            game.CurrentTick = 10;
 
             Starfighter squadron = new Starfighter
             {
@@ -637,6 +770,8 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 MaxSquadronSize = 12,
                 CurrentSquadronSize = 11,
+                NextReplacementTick = 10,
+                ReplacementIntervalTicks = 30,
             };
             game.AttachNode(squadron, planet);
 
@@ -655,6 +790,7 @@ namespace Rebellion.Tests.Gameplay
         public void ProcessTick_SquadronFullyReplaced_EmitsResult()
         {
             (GameRoot game, Planet planet) = BuildScene();
+            game.CurrentTick = 10;
 
             Starfighter squadron = new Starfighter
             {
@@ -663,6 +799,8 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 MaxSquadronSize = 12,
                 CurrentSquadronSize = 11,
+                NextReplacementTick = 10,
+                ReplacementIntervalTicks = 30,
             };
             game.AttachNode(squadron, planet);
 
@@ -680,6 +818,7 @@ namespace Rebellion.Tests.Gameplay
         public void ProcessTick_SquadronPartiallyReplaced_NoResult()
         {
             (GameRoot game, Planet planet) = BuildScene();
+            game.CurrentTick = 10;
 
             Starfighter squadron = new Starfighter
             {
@@ -688,6 +827,8 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 MaxSquadronSize = 12,
                 CurrentSquadronSize = 8,
+                NextReplacementTick = 10,
+                ReplacementIntervalTicks = 30,
             };
             game.AttachNode(squadron, planet);
 
@@ -769,8 +910,8 @@ namespace Rebellion.Tests.Gameplay
                 FastHealAmount = 3,
                 NormalRepairAmount = 1,
                 FastRepairAmount = 5,
-                NormalReplacementAmount = 1,
-                FastReplacementAmount = 2,
+                NormalReplacementIntervalTicks = 30,
+                FastReplacementIntervalTicks = 2,
             };
             GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });

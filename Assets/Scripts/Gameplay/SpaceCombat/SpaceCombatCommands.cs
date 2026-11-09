@@ -1054,12 +1054,23 @@ namespace Rebellion.Gameplay
         )
         {
             List<GameResult> events = new List<GameResult>();
+            bool needsReplacementSchedule = lossResults.Any(loss =>
+                loss.Fighter is Starfighter fighter
+                && !fighter.HasLosses()
+                && loss.SquadsAfter > 0
+                && loss.SquadsAfter < fighter.MaxSquadronSize
+            );
+            HashSet<(string PlanetInstanceId, string OwnerInstanceId)> shipyardLocations =
+                needsReplacementSchedule
+                    ? FighterRecoveryRules.BuildShipyardIndex(_game)
+                    : new HashSet<(string PlanetInstanceId, string OwnerInstanceId)>();
             foreach (FighterLossResult loss in lossResults)
             {
                 Starfighter fighter = loss.Fighter;
                 if (fighter == null)
                     continue;
 
+                bool hadLosses = fighter.HasLosses();
                 fighter.CurrentSquadronSize = loss.SquadsAfter;
 
                 if (loss.SquadsAfter <= 0)
@@ -1075,6 +1086,17 @@ namespace Rebellion.Gameplay
                         }
                     );
                     GameLogger.Log($"Fighter squadron destroyed: {fighter.GetDisplayName()}");
+                }
+                else if (!hadLosses && fighter.HasLosses())
+                {
+                    fighter.ScheduleReplacement(
+                        _game.CurrentTick,
+                        FighterRecoveryRules.GetReplacementInterval(
+                            _game,
+                            fighter,
+                            shipyardLocations
+                        )
+                    );
                 }
             }
 

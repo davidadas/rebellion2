@@ -338,8 +338,8 @@
     <NormalHealAmount>1</NormalHealAmount>
     <FastRepairAmount>2</FastRepairAmount>
     <NormalRepairAmount>1</NormalRepairAmount>
-    <FastReplacementAmount>2</FastReplacementAmount>
-    <NormalReplacementAmount>1</NormalReplacementAmount>
+    <FastReplacementIntervalTicks>2</FastReplacementIntervalTicks>
+    <NormalReplacementIntervalTicks>30</NormalReplacementIntervalTicks>
   </Recovery>
   <Captive>
     <EscapeAttemptInterval>

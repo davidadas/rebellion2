@@ -2361,9 +2361,9 @@ namespace Rebellion.Game
 
             public int NormalRepairAmount { get; set; }
 
-            public int FastReplacementAmount { get; set; }
+            public int FastReplacementIntervalTicks { get; set; }
 
-            public int NormalReplacementAmount { get; set; }
+            public int NormalReplacementIntervalTicks { get; set; }
 
             /// <summary>
             /// Creates an independent snapshot of these settings.
@@ -2377,8 +2377,8 @@ namespace Rebellion.Game
                     NormalHealAmount = NormalHealAmount,
                     FastRepairAmount = FastRepairAmount,
                     NormalRepairAmount = NormalRepairAmount,
-                    FastReplacementAmount = FastReplacementAmount,
-                    NormalReplacementAmount = NormalReplacementAmount,
+                    FastReplacementIntervalTicks = FastReplacementIntervalTicks,
+                    NormalReplacementIntervalTicks = NormalReplacementIntervalTicks,
                 };
         }
 
