@@ -2089,14 +2089,6 @@ namespace Rebellion.Game
 
             public double LaserCannonCapitalDamageMultiplier { get; set; }
 
-            public double AutoResolveWeaponDamagePerStrength { get; set; }
-
-            public double AutoResolveTorpedoDamagePerStrength { get; set; }
-
-            public double AutoResolveFighterHullPerCraft { get; set; }
-
-            public double AutoResolveFighterShieldRechargePerCraft { get; set; }
-
             public double AutoResolveFighterWeaponRechargeMultiplier { get; set; }
 
             public int AutoResolveMaximumIterations { get; set; }
@@ -2133,11 +2125,6 @@ namespace Rebellion.Game
                     AdmiralLeadershipDivisor = AdmiralLeadershipDivisor,
                     CommanderCombatDivisor = CommanderCombatDivisor,
                     LaserCannonCapitalDamageMultiplier = LaserCannonCapitalDamageMultiplier,
-                    AutoResolveWeaponDamagePerStrength = AutoResolveWeaponDamagePerStrength,
-                    AutoResolveTorpedoDamagePerStrength = AutoResolveTorpedoDamagePerStrength,
-                    AutoResolveFighterHullPerCraft = AutoResolveFighterHullPerCraft,
-                    AutoResolveFighterShieldRechargePerCraft =
-                        AutoResolveFighterShieldRechargePerCraft,
                     AutoResolveFighterWeaponRechargeMultiplier =
                         AutoResolveFighterWeaponRechargeMultiplier,
                     AutoResolveMaximumIterations = AutoResolveMaximumIterations,
