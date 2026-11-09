@@ -137,7 +137,13 @@
       <AdmiralLeadershipDivisor>10</AdmiralLeadershipDivisor>
       <CommanderCombatDivisor>20</CommanderCombatDivisor>
       <LaserCannonCapitalDamageMultiplier>0.1666666666666667</LaserCannonCapitalDamageMultiplier>
+      <TurbolaserFighterDamageMultiplier>0.5</TurbolaserFighterDamageMultiplier>
+      <FighterIonCannonFighterDamageMultiplier>0.5</FighterIonCannonFighterDamageMultiplier>
+      <AutoResolveWeaponDamagePerStrength>0.2666666666666667</AutoResolveWeaponDamagePerStrength>
+      <AutoResolveTorpedoDamagePerStrength>0.53333336</AutoResolveTorpedoDamagePerStrength>
       <AutoResolveFighterWeaponRechargeMultiplier>3.751</AutoResolveFighterWeaponRechargeMultiplier>
+      <AutoResolveFighterShieldRechargePerCraft>0.025</AutoResolveFighterShieldRechargePerCraft>
+      <AutoResolveFighterHullPerCraft>8</AutoResolveFighterHullPerCraft>
       <AutoResolveMaximumIterations>4096</AutoResolveMaximumIterations>
       <AutoResolveStagnationIterations>1200</AutoResolveStagnationIterations>
       <AutoResolveRetreatStrengthRatio>0.33</AutoResolveRetreatStrengthRatio>

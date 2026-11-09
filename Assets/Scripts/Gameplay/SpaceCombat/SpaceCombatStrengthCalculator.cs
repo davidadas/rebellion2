@@ -210,15 +210,21 @@ namespace Rebellion.Gameplay
         /// <param name="laserCannonCapitalDamageMultiplier">
         /// The configured capital-target damage multiplier for laser cannons.
         /// </param>
+        /// <param name="turbolaserFighterDamageMultiplier">
+        /// The configured fighter-target damage multiplier for turbolasers.
+        /// </param>
         /// <returns>The target-specific damage multiplier.</returns>
         internal static double GetPrimaryWeaponTargetMultiplier(
             PrimaryWeaponType weaponType,
             bool targetsFighters,
-            double laserCannonCapitalDamageMultiplier
+            double laserCannonCapitalDamageMultiplier,
+            double turbolaserFighterDamageMultiplier
         )
         {
             if (weaponType == PrimaryWeaponType.IonCannon && targetsFighters)
                 return 0;
+            if (weaponType == PrimaryWeaponType.Turbolaser && targetsFighters)
+                return Math.Max(0, turbolaserFighterDamageMultiplier);
             if (weaponType == PrimaryWeaponType.LaserCannon && !targetsFighters)
                 return Math.Max(0, laserCannonCapitalDamageMultiplier);
             return 1;
@@ -244,7 +250,8 @@ namespace Rebellion.Gameplay
                 * GetPrimaryWeaponTargetMultiplier(
                     weaponEntry.Key,
                     targetsFighters: false,
-                    config.LaserCannonCapitalDamageMultiplier
+                    config.LaserCannonCapitalDamageMultiplier,
+                    config.TurbolaserFighterDamageMultiplier
                 )
             );
             long durability = Math.Max(0L, hullStrength) + Math.Max(0L, ship.MaxShieldStrength);

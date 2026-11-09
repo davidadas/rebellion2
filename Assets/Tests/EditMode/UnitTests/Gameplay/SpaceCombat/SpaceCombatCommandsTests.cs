@@ -4295,7 +4295,13 @@ namespace Rebellion.Tests.Gameplay
                     {
                         AdmiralLeadershipDivisor = 10,
                         CommanderCombatDivisor = 20,
+                        TurbolaserFighterDamageMultiplier = 0.5,
+                        FighterIonCannonFighterDamageMultiplier = 0.5,
+                        AutoResolveWeaponDamagePerStrength = 4.0 / 15.0,
+                        AutoResolveTorpedoDamagePerStrength = 0.53333336,
                         AutoResolveFighterWeaponRechargeMultiplier = 3.751,
+                        AutoResolveFighterShieldRechargePerCraft = 0.025,
+                        AutoResolveFighterHullPerCraft = 8,
                         AutoResolveMaximumIterations = 4096,
                         AutoResolveStagnationIterations = 1200,
                         AutoResolveRetreatStrengthRatio = 0.33,
