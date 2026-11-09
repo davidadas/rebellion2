@@ -497,11 +497,113 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             );
         }
 
+        [Test]
+        public void RequestChoice_TakeCommandStarted_InvokesCallbackWithoutResolving()
+        {
+            int takeCommandCount = 0;
+            _controller = CreateController(() =>
+            {
+                takeCommandCount++;
+                return true;
+            });
+            _controller.Initialize(_actions);
+            BattleAlertWindowView view = OpenWindow(out UIWindow _);
+
+            view.RequestChoice(BattleAlertChoice.TakeCommand);
+
+            Assert.AreEqual(1, takeCommandCount);
+            Assert.IsFalse(_controller.HasCombatResult(view));
+            Assert.AreSame(view, _controller.FindWindow());
+            Assert.AreEqual(0, _actions.RebuildCount);
+        }
+
+        [Test]
+        public void RequestChoice_TakeCommandUnavailable_FallsBackToAutomaticResolution()
+        {
+            _controller = CreateController(() => false);
+            _controller.Initialize(_actions);
+            BattleAlertWindowView view = OpenWindow(out UIWindow _);
+
+            view.RequestChoice(BattleAlertChoice.TakeCommand);
+
+            Assert.IsTrue(_controller.HasCombatResult(view));
+            Assert.AreEqual(1, _actions.RebuildCount);
+        }
+
+        [Test]
+        public void RequestChoice_TakeCommandWithoutCallback_IgnoresRequest()
+        {
+            BattleAlertWindowView view = OpenWindow(out UIWindow _);
+
+            view.RequestChoice(BattleAlertChoice.TakeCommand);
+
+            Assert.IsFalse(_controller.HasCombatResult(view));
+            Assert.AreSame(view, _controller.FindWindow());
+            Assert.AreEqual(0, _actions.RebuildCount);
+        }
+
+        [Test]
+        public void CreateRenderData_TakeCommandCallback_EnablesTakeCommandButton()
+        {
+            _controller = CreateController(() => true);
+            _controller.Initialize(_actions);
+            BattleAlertWindowView view = OpenWindow(out UIWindow window);
+
+            BattleAlertWindowRenderData data = _controller.CreateRenderData(
+                view,
+                _playerFactionId,
+                window.X,
+                window.Y
+            );
+
+            Assert.IsTrue(data.Pending.CommandButtons[2].Interactable);
+        }
+
+        [Test]
+        public void CreateRenderData_WithoutTakeCommandCallback_DisablesTakeCommandButton()
+        {
+            BattleAlertWindowView view = OpenWindow(out UIWindow window);
+
+            BattleAlertWindowRenderData data = _controller.CreateRenderData(
+                view,
+                _playerFactionId,
+                window.X,
+                window.Y
+            );
+
+            Assert.IsFalse(data.Pending.CommandButtons[2].Interactable);
+        }
+
+        [Test]
+        public void ClosePendingWindow_PendingWindowOpen_ClosesWindow()
+        {
+            OpenWindow(out UIWindow window);
+
+            bool closed = _controller.ClosePendingWindow();
+
+            Assert.IsTrue(closed);
+            Assert.IsNull(_controller.FindWindow());
+            Assert.IsFalse(_windowManager.Windows.Contains(window));
+        }
+
+        [Test]
+        public void ClosePendingWindow_ResultWindow_KeepsWindow()
+        {
+            BattleAlertWindowView view = OpenWindow(out UIWindow _);
+            FindButton(view, "RetreatButtonImage").onClick.Invoke();
+
+            bool closed = _controller.ClosePendingWindow();
+
+            Assert.IsFalse(closed);
+            Assert.AreSame(view, _controller.FindWindow());
+        }
+
         /// <summary>
         /// Creates controller.
         /// </summary>
+        /// <param name="takeCommand">The optional tactical-command callback.</param>
         /// <returns>The created controller.</returns>
-        private BattleAlertWindowController CreateController()
+        private BattleAlertWindowController CreateController(Func<bool> takeCommand = null)
         {
             return new BattleAlertWindowController(
                 () => _pending,
@@ -519,7 +621,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _windowManager,
                 () => new Vector2Int(141, 73),
                 window => _windowManager.DestroyWindow(window),
-                () => _dirtyCount++
+                () => _dirtyCount++,
+                takeCommand
             );
         }
 

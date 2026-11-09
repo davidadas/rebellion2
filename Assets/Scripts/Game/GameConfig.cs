@@ -2089,6 +2089,16 @@ namespace Rebellion.Game
 
             public double LaserCannonCapitalDamageMultiplier { get; set; }
 
+            public double TacticalFighterHullStrength { get; set; } = 10;
+
+            public double TacticalFighterRechargeMultiplier { get; set; } = 0.6;
+
+            public double TacticalTurbolaserFighterHitChance { get; set; } = 0.2;
+
+            public double TacticalCapitalWeaponRangeMultiplier { get; set; } = 2;
+
+            public double TacticalShieldGeneratorHitChance { get; set; } = 0.03;
+
             public double AutoResolveFighterWeaponRechargeMultiplier { get; set; }
 
             public int AutoResolveMaximumIterations { get; set; }
@@ -2125,6 +2135,11 @@ namespace Rebellion.Game
                     AdmiralLeadershipDivisor = AdmiralLeadershipDivisor,
                     CommanderCombatDivisor = CommanderCombatDivisor,
                     LaserCannonCapitalDamageMultiplier = LaserCannonCapitalDamageMultiplier,
+                    TacticalFighterHullStrength = TacticalFighterHullStrength,
+                    TacticalTurbolaserFighterHitChance = TacticalTurbolaserFighterHitChance,
+                    TacticalFighterRechargeMultiplier = TacticalFighterRechargeMultiplier,
+                    TacticalCapitalWeaponRangeMultiplier = TacticalCapitalWeaponRangeMultiplier,
+                    TacticalShieldGeneratorHitChance = TacticalShieldGeneratorHitChance,
                     AutoResolveFighterWeaponRechargeMultiplier =
                         AutoResolveFighterWeaponRechargeMultiplier,
                     AutoResolveMaximumIterations = AutoResolveMaximumIterations,

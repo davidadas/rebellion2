@@ -43,6 +43,7 @@ public sealed class BattleAlertWindowController
     private readonly Func<string, Planet> findVisiblePlanet;
     private readonly Func<SpaceCombatResult> resolveRetreat;
     private readonly Func<SpaceCombatResult> autoResolve;
+    private readonly Func<bool> takeCommand;
     private readonly Func<UIContext> getUIContext;
     private readonly Func<Vector2Int> getWindowPosition;
     private readonly Action markDirty;
@@ -72,6 +73,10 @@ public sealed class BattleAlertWindowController
     /// <param name="getWindowPosition">Returns the authored battle-alert placement.</param>
     /// <param name="closeWindow">Closes a registered strategy window.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
+    /// <param name="takeCommand">
+    /// Opens the tactical battle for the pending encounter and returns whether it started, or
+    /// null when interactive command is unavailable.
+    /// </param>
     internal BattleAlertWindowController(
         Func<PendingCombatResult> getPendingCombat,
         Func<SpaceCombatResult> resolveRetreat,
@@ -85,9 +90,11 @@ public sealed class BattleAlertWindowController
         UIWindowManager windowManager,
         Func<Vector2Int> getWindowPosition,
         Action<UIWindow> closeWindow,
-        Action markDirty
+        Action markDirty,
+        Func<bool> takeCommand = null
     )
     {
+        this.takeCommand = takeCommand;
         this.getPendingCombat =
             getPendingCombat ?? throw new ArgumentNullException(nameof(getPendingCombat));
         this.resolveRetreat =
@@ -250,6 +257,21 @@ public sealed class BattleAlertWindowController
     }
 
     /// <summary>
+    /// Closes the battle-alert window while it still presents a pending encounter.
+    /// </summary>
+    /// <returns>True when a pending window was closed.</returns>
+    internal bool ClosePendingWindow()
+    {
+        BattleAlertWindowView view = FindWindow();
+        if (view == null || HasCombatResult(view))
+            return false;
+
+        CloseWindow(view);
+        markDirty();
+        return true;
+    }
+
+    /// <summary>
     /// Finds the registered battle-alert view.
     /// </summary>
     /// <returns>The open battle-alert view, or null when none is registered.</returns>
@@ -329,7 +351,8 @@ public sealed class BattleAlertWindowController
             x,
             y,
             getUIContext(),
-            pendingPlanet
+            pendingPlanet,
+            takeCommand != null
         );
     }
 
@@ -354,7 +377,24 @@ public sealed class BattleAlertWindowController
             case BattleAlertChoice.AutoResolve:
                 ResolveAutomatically(view);
                 break;
+            case BattleAlertChoice.TakeCommand:
+                BeginTacticalCommand(view);
+                break;
         }
+    }
+
+    /// <summary>
+    /// Opens the tactical battle, falling back to automatic resolution when the encounter can
+    /// no longer be fought.
+    /// </summary>
+    /// <param name="view">The requesting battle-alert view.</param>
+    private void BeginTacticalCommand(BattleAlertWindowView view)
+    {
+        if (takeCommand == null)
+            return;
+
+        if (!takeCommand())
+            ResolveAutomatically(view);
     }
 
     /// <summary>

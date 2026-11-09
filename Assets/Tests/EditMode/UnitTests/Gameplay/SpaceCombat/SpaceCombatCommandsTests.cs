@@ -3855,6 +3855,86 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void BeginTacticalCombat_PendingEncounter_ReturnsBattleForPlayerSide()
+        {
+            (_, SpaceCombatCommands commands, Fleet empireFleet, Fleet allianceFleet) =
+                CreatePendingEncounter();
+            Assert.IsTrue(commands.TryGetPendingCombat(out PendingCombatResult pending));
+            CombatSide expectedSide =
+                pending.AttackerOwnerInstanceID == "empire"
+                    ? CombatSide.Attacker
+                    : CombatSide.Defender;
+
+            TacticalSpaceBattle battle = commands.BeginTacticalCombat("empire");
+
+            Assert.IsNotNull(battle);
+            Assert.AreEqual(expectedSide, battle.PlayerSide);
+            Assert.AreEqual(2, battle.Units.Count);
+            Assert.IsFalse(battle.IsComplete);
+            Assert.IsTrue(commands.HasPendingDecision);
+            Assert.IsTrue(empireFleet.IsInCombat);
+            Assert.IsTrue(allianceFleet.IsInCombat);
+        }
+
+        [Test]
+        public void ResolvePendingTactical_IncompleteBattle_ThrowsInvalidOperationException()
+        {
+            (_, SpaceCombatCommands commands, _, _) = CreatePendingEncounter();
+            TacticalSpaceBattle battle = commands.BeginTacticalCombat("empire");
+
+            Assert.Throws<InvalidOperationException>(() => commands.ResolvePendingTactical(battle));
+            Assert.IsTrue(commands.HasPendingDecision);
+        }
+
+        [Test]
+        public void ResolvePendingTactical_CompletedBattle_AppliesDamageAndClearsPending()
+        {
+            (GameRoot game, SpaceCombatCommands commands, Fleet empireFleet, Fleet allianceFleet) =
+                CreatePendingEncounter();
+            game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 0;
+            CapitalShip empireShip = empireFleet.GetChildren<CapitalShip>()[0];
+            CapitalShip allianceShip = allianceFleet.GetChildren<CapitalShip>()[0];
+            allianceShip.CurrentHullStrength = 10;
+            // The test fleets have no sublight speed; give both ships drive so they close to range
+            // from the tactical spawn lines instead of stalemating out of reach.
+            empireShip.SublightSpeed = 3;
+            allianceShip.SublightSpeed = 3;
+            TacticalSpaceBattle battle = commands.BeginTacticalCombat("empire");
+            for (int step = 0; step < 40 && !battle.IsComplete; step++)
+                battle.Advance(30);
+            Assert.IsTrue(battle.IsComplete);
+
+            List<GameResult> results = commands.ResolvePendingTactical(battle);
+
+            SpaceCombatResult combatResult = GetCombatResult(results);
+            Assert.IsFalse(commands.HasPendingDecision);
+            Assert.IsFalse(empireFleet.IsInCombat);
+            Assert.LessOrEqual(empireShip.CurrentHullStrength, 100);
+            int empireHullAfter = combatResult
+                .ShipDamage.Where(damage => damage.Ship == empireShip)
+                .Select(damage => damage.HullAfter)
+                .DefaultIfEmpty(empireShip.MaxHullStrength)
+                .Single();
+            Assert.AreEqual(empireShip.CurrentHullStrength, empireHullAfter);
+            Assert.AreEqual(
+                0,
+                combatResult.ShipDamage.Single(damage => damage.Ship == allianceShip).HullAfter
+            );
+            Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>(allianceShip.InstanceID));
+            Assert.IsTrue(
+                results
+                    .OfType<GameObjectDestroyedResult>()
+                    .Any(result => result.DestroyedObject == allianceShip)
+            );
+            Assert.AreEqual(
+                combatResult.AttackerOwnerInstanceID == "empire"
+                    ? CombatSide.Attacker
+                    : CombatSide.Defender,
+                combatResult.Winner
+            );
+        }
+
+        [Test]
         public void TryGetPendingCombat_GravityWellActivated_RefreshesRetreatAvailability()
         {
             (GameRoot game, SpaceCombatCommands commands, Fleet empireFleet, Fleet allianceFleet) =

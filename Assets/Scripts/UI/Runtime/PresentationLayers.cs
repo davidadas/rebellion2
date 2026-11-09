@@ -4,6 +4,9 @@
 /// </summary>
 public static class PresentationLayers
 {
+    // The tactical battle's unit models and their isolated camera and lights.
+    public const int TacticalBattle = 25;
+
     // The loading shuttle, its exhaust, and its isolated camera and lights.
     public const int LoadingScreen = 26;
 

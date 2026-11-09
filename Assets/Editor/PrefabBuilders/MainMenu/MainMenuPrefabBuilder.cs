@@ -3267,7 +3267,9 @@ public static class MainMenuPrefabBuilder
         light.color = color;
         light.shadows = shadows;
         light.cullingMask = ~(
-            (1 << PresentationLayers.MainMenuPlanet) | (1 << PresentationLayers.LoadingScreen)
+            (1 << PresentationLayers.MainMenuPlanet)
+            | (1 << PresentationLayers.LoadingScreen)
+            | (1 << PresentationLayers.TacticalBattle)
         );
     }
 

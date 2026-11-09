@@ -648,6 +648,12 @@ namespace Rebellion.Game.Results
         public CapitalShip Ship { get; set; }
         public int HullBefore { get; set; }
         public int HullAfter { get; set; }
+
+        /// <summary>
+        /// Gets or sets the shield-generator repair ticks still owed after the battle, or null
+        /// when the battle leaves the generator's state alone.
+        /// </summary>
+        public int? ShieldGeneratorRepairDays { get; set; }
     }
 
     /// <summary>

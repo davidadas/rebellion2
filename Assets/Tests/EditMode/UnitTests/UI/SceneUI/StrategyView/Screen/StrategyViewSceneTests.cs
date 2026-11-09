@@ -75,6 +75,47 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
+        public void AuthoredPrefab_StrategyController_ReferencesHiddenTacticalBattleLayer()
+        {
+            GameObject prefabRoot = PrefabUtility.LoadPrefabContents(_prefabPath);
+
+            try
+            {
+                StrategyController controller =
+                    prefabRoot.GetComponentInChildren<StrategyController>(true);
+                TacticalBattleView assignedView = (TacticalBattleView)
+                    typeof(StrategyController)
+                        .GetField("tacticalBattle", BindingFlags.Instance | BindingFlags.NonPublic)
+                        .GetValue(controller);
+                TacticalBattleView authoredView =
+                    prefabRoot.GetComponentInChildren<TacticalBattleView>(true);
+
+                Assert.IsNotNull(authoredView);
+                Assert.AreSame(authoredView, assignedView);
+                Assert.IsFalse(authoredView.gameObject.activeSelf);
+                Assert.IsNotNull(authoredView.GetComponentInChildren<TacticalUnitView>(true));
+                Assert.Greater(authoredView.GetArenaSourceRect().height, 0);
+
+                TacticalBattleScene scene = prefabRoot.GetComponentInChildren<TacticalBattleScene>(
+                    true
+                );
+                Assert.IsNotNull(scene);
+                Assert.AreSame(scene, authoredView.Scene);
+                Assert.IsFalse(scene.gameObject.activeSelf);
+                Assert.IsFalse(scene.transform.IsChildOf(authoredView.transform));
+                Assert.IsFalse(scene.SceneCamera.orthographic);
+                Assert.AreEqual(
+                    1 << PresentationLayers.TacticalBattle,
+                    scene.SceneCamera.cullingMask
+                );
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(prefabRoot);
+            }
+        }
+
+        [Test]
         public void LoadStarting_AuthoredPrefab_ConcealsCompleteStrategyPresentation()
         {
             GameObject prefabRoot = PrefabUtility.LoadPrefabContents(_prefabPath);
