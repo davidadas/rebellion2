@@ -605,6 +605,42 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void Resolve_FighterTorpedoesAfterSamePhaseShieldDamage_DamageCapitalShipHull()
+        {
+            Starfighter torpedoAttacker = CreateFighter(
+                "torpedo-attacker",
+                squadronSize: 1,
+                weaponStrength: 0
+            );
+            torpedoAttacker.Torpedoes = 20;
+            torpedoAttacker.TorpedoRange = 100;
+            Starfighter shieldAttacker = CreateFighter(
+                "shield-attacker",
+                squadronSize: 1,
+                weaponStrength: 10
+            );
+            CapitalShip defender = CreatePassiveTarget("defender", hull: 100);
+            defender.MaxShieldStrength = 10;
+            defender.ShieldRechargeRate = 10;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.LaserCannonCapitalDamageMultiplier = 1;
+            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveTargetScanDivisor = 1;
+            config.AutoResolveStartingDistance = 0;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { torpedoAttacker, shieldAttacker },
+                new[] { defender },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(80, GetShipOutcome(result, defender).HullAfter);
+        }
+
+        [Test]
         public void Resolve_FighterTargetsCapitalShipWithStrongerAvailableAttack_DamagesCapitalShip()
         {
             Starfighter attacker = CreateFighter("attacker", squadronSize: 1, weaponStrength: 1);
@@ -1192,6 +1228,30 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void Resolve_DamagedFighterSquadron_StartsWithProportionalShields()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 12);
+            Starfighter defender = CreateFighter("defender", squadronSize: 12, weaponStrength: 0);
+            defender.CurrentSquadronSize = 6;
+            defender.ShieldStrength = 8;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveTargetScanDivisor = 1;
+            config.AutoResolveStartingDistance = 0;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new[] { attacker },
+                new List<Starfighter>(),
+                new List<CapitalShip>(),
+                new[] { defender },
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(5, GetFighterOutcome(result, defender).SquadronSizeAfter);
+        }
+
+        [Test]
         public void Resolve_DamagedCapitalShip_TakesLongerToDefeatEquivalentTarget()
         {
             CapitalShip undamaged = CreateShip("undamaged", hull: 100, weaponStrength: 10);
@@ -1483,6 +1543,32 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
             Assert.That(GetFighterOutcome(result, defender).SquadronSizeAfter, Is.InRange(1, 11));
+        }
+
+        [Test]
+        public void Resolve_TorpedoOnlyFighterAboveOpposingStrengthThreshold_DoesNotWithdraw()
+        {
+            Starfighter attacker = CreateFighter("attacker", squadronSize: 1, weaponStrength: 0);
+            attacker.Torpedoes = 60;
+            attacker.TorpedoRange = 100;
+            CapitalShip defender = CreateShip("defender", hull: 40, weaponStrength: 1);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveRetreatStrengthRatio = 0.33;
+            config.AutoResolveTargetScanDivisor = 1;
+            config.AutoResolveStartingDistance = 0;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { attacker },
+                new[] { defender },
+                new List<Starfighter>(),
+                attackerCanWithdraw: true,
+                defenderCanWithdraw: false
+            );
+
+            Assert.AreNotEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
         }
 
         [Test]

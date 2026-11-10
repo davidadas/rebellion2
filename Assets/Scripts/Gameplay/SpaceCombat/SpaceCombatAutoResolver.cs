@@ -185,8 +185,13 @@ namespace Rebellion.Gameplay
             Dictionary<TacticalUnit, PendingDamage> pendingDamage
         )
         {
+            IReadOnlyList<TacticalUnit> targets = targetForce.GetTargetableUnits();
             pendingDamage.Clear();
-            QueueAttacks(firingForce, targetForce, pendingDamage);
+            QueueAttacks(firingForce, targets, pendingDamage);
+            ApplyPendingDamage(pendingDamage);
+
+            pendingDamage.Clear();
+            QueueFollowUpAttacks(firingForce, targets, pendingDamage);
             ApplyPendingDamage(pendingDamage);
         }
 
@@ -262,15 +267,14 @@ namespace Rebellion.Gameplay
         /// Queues attacks from one force against another.
         /// </summary>
         /// <param name="firingForce">The force performing attacks.</param>
-        /// <param name="targetForce">The force receiving attacks.</param>
+        /// <param name="targets">The opposing units available at the start of the firing phase.</param>
         /// <param name="pendingDamage">Damage grouped by tactical target.</param>
         private void QueueAttacks(
             CombatForce firingForce,
-            CombatForce targetForce,
+            IReadOnlyList<TacticalUnit> targets,
             IDictionary<TacticalUnit, PendingDamage> pendingDamage
         )
         {
-            IReadOnlyList<TacticalUnit> targets = targetForce.GetTargetableUnits();
             int scanDivisor = Math.Max(_config.AutoResolveTargetScanDivisor, 1);
 
             foreach (TacticalUnit attacker in firingForce.Units)
@@ -287,6 +291,22 @@ namespace Rebellion.Gameplay
                     pendingDamage
                 );
             }
+        }
+
+        /// <summary>
+        /// Queues attacks that depend on damage resolved earlier in the same firing phase.
+        /// </summary>
+        /// <param name="firingForce">The force performing follow-up attacks.</param>
+        /// <param name="targets">The opposing units available at the start of the firing phase.</param>
+        /// <param name="pendingDamage">Damage grouped by tactical target.</param>
+        private static void QueueFollowUpAttacks(
+            CombatForce firingForce,
+            IReadOnlyList<TacticalUnit> targets,
+            IDictionary<TacticalUnit, PendingDamage> pendingDamage
+        )
+        {
+            foreach (StarfighterState fighter in firingForce.Fighters)
+                fighter.QueueAvailableTorpedoAttack(targets, pendingDamage);
         }
 
         /// <summary>
@@ -1776,6 +1796,9 @@ namespace Rebellion.Gameplay
             private double _currentHull;
             private double _currentShields;
             private double _currentWeaponCharge;
+            private double _followUpEngagementDistance;
+            private bool _queuesTorpedoFollowUp;
+            private bool _scansForTorpedoTarget;
 
             internal int CurrentSquadronSize =>
                 IsAlive
@@ -1833,7 +1856,7 @@ namespace Rebellion.Gameplay
                 _weaponDamagePerStrength = Math.Max(config.AutoResolveWeaponDamagePerStrength, 0);
                 _currentHull = InitialSquadronSize * _hullStrengthPerFighter;
                 _maximumShields = Math.Max(fighter.ShieldStrength, 0);
-                _currentShields = _maximumShields;
+                _currentShields = _maximumShields * GetRemainingSquadronStrength();
                 int maximumSquadronSize = Math.Max(fighter.MaxSquadronSize, 0);
                 _maximumWeaponCharge =
                     (double)ScaleWeaponStrength(fighter.LaserCannon, maximumSquadronSize)
@@ -1860,14 +1883,20 @@ namespace Rebellion.Gameplay
                 IDictionary<TacticalUnit, PendingDamage> pendingDamage
             )
             {
+                _queuesTorpedoFollowUp = false;
                 if (_currentWeaponCharge < _maximumWeaponCharge)
                     return;
 
                 if (scansForTarget)
-                    ScanForWeaponTargets(targets, engagementDistance);
+                    ScanForWeaponTargets(targets, engagementDistance, scansTorpedoLane: false);
+
+                _queuesTorpedoFollowUp =
+                    GetWeaponStrength(2, engagementDistance, requireRange: true) > 0;
+                _scansForTorpedoTarget = scansForTarget;
+                _followUpEngagementDistance = engagementDistance;
 
                 double consumedCharge = 0;
-                for (int weaponIndex = 0; weaponIndex < _weaponTargets.Length; weaponIndex++)
+                for (int weaponIndex = 0; weaponIndex < 2; weaponIndex++)
                 {
                     TacticalUnit target = _weaponTargets[weaponIndex];
                     if (target?.IsTargetable != true)
@@ -1894,16 +1923,69 @@ namespace Rebellion.Gameplay
             }
 
             /// <summary>
+            /// Queues torpedoes after conventional and ion damage has resolved against shields.
+            /// </summary>
+            /// <param name="targets">The opposing units available at the start of the firing phase.</param>
+            /// <param name="pendingDamage">Damage grouped by tactical target.</param>
+            internal void QueueAvailableTorpedoAttack(
+                IReadOnlyList<TacticalUnit> targets,
+                IDictionary<TacticalUnit, PendingDamage> pendingDamage
+            )
+            {
+                if (!_queuesTorpedoFollowUp)
+                    return;
+
+                _queuesTorpedoFollowUp = false;
+                if (_scansForTorpedoTarget)
+                    ScanForWeaponTargets(
+                        targets,
+                        _followUpEngagementDistance,
+                        scansTorpedoLane: true
+                    );
+
+                TacticalUnit target = _weaponTargets[2];
+                if (
+                    target?.IsTargetable != true
+                    || target is not CapitalShipState capitalShip
+                    || capitalShip.CurrentShields > 0
+                )
+                    return;
+
+                int weaponStrength = GetWeaponStrength(
+                    2,
+                    GetDistanceTo(target, _followUpEngagementDistance),
+                    requireRange: true
+                );
+                double damage =
+                    GetEffectiveWeaponDamage(weaponStrength, 2, targetsFighters: false)
+                    * GetManeuverMultiplier(target)
+                    * GetRemainingSquadronStrength();
+                if (damage <= 0)
+                    return;
+
+                AddPendingDamage(pendingDamage, target, damage, isIonDamage: false);
+                _currentWeaponCharge = Math.Max(_currentWeaponCharge - weaponStrength, 0);
+            }
+
+            /// <summary>
             /// Updates each fighter weapon lane with its strongest available target.
             /// </summary>
             /// <param name="targets">The surviving opposing units.</param>
             /// <param name="engagementDistance">The abstract distance between combat forces.</param>
+            /// <param name="scansTorpedoLane">Whether to scan the torpedo lane instead of the conventional weapon lanes.</param>
             private void ScanForWeaponTargets(
                 IReadOnlyList<TacticalUnit> targets,
-                double engagementDistance
+                double engagementDistance,
+                bool scansTorpedoLane
             )
             {
-                for (int weaponIndex = 0; weaponIndex < _weaponTargets.Length; weaponIndex++)
+                int firstWeaponIndex = scansTorpedoLane ? 2 : 0;
+                int weaponIndexLimit = scansTorpedoLane ? 3 : 2;
+                for (
+                    int weaponIndex = firstWeaponIndex;
+                    weaponIndex < weaponIndexLimit;
+                    weaponIndex++
+                )
                 {
                     _weaponTargets[weaponIndex] = null;
                     _weaponTargetDamage[weaponIndex] = 0;
@@ -1913,7 +1995,11 @@ namespace Rebellion.Gameplay
                 {
                     double engagementRange = GetDistanceTo(candidate, engagementDistance);
                     double maneuverMultiplier = GetManeuverMultiplier(candidate);
-                    for (int weaponIndex = 0; weaponIndex < _weaponTargets.Length; weaponIndex++)
+                    for (
+                        int weaponIndex = firstWeaponIndex;
+                        weaponIndex < weaponIndexLimit;
+                        weaponIndex++
+                    )
                     {
                         if (
                             weaponIndex == 2
@@ -1953,13 +2039,25 @@ namespace Rebellion.Gameplay
             /// <returns>The remaining tactical strength.</returns>
             internal override double GetEffectiveness(bool targetsFighters)
             {
-                return GetCombinedWeaponStrength(
+                double remainingStrength = GetRemainingSquadronStrength();
+                double effectiveness =
+                    GetCombinedWeaponStrength(
                         targetsFighters,
                         engagementDistance: 0,
                         requireRange: true
                     )
-                    * GetRemainingSquadronStrength()
+                    * remainingStrength
                     * _weaponDamagePerStrength;
+                if (!targetsFighters)
+                {
+                    effectiveness +=
+                        GetEffectiveWeaponDamage(
+                            GetWeaponStrength(2, engagementDistance: 0, requireRange: true),
+                            2,
+                            targetsFighters: false
+                        ) * remainingStrength;
+                }
+                return effectiveness;
             }
 
             /// <summary>
