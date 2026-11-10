@@ -8,12 +8,13 @@ using UnityEngine.InputSystem.LowLevel;
 /// <summary>
 /// Preserves mouse transitions between frames while retaining the shared UI gesture and navigation rules.
 /// </summary>
+[RequireComponent(typeof(MouseSnapshotInput))]
 public sealed class QueuedMouseInputModule : StandaloneInputModule
 {
     private static readonly int[] _pointerIds = { kMouseLeftId, kMouseRightId, kMouseMiddleId };
     private readonly List<MouseSample> _pending = new List<MouseSample>();
-    private readonly MouseState _mouseState = new MouseState();
     private readonly double[] _pressTimes = { double.NaN, double.NaN, double.NaN };
+    private MouseSnapshotInput _snapshotInput;
     private Mouse _mouse;
     private Vector2 _capturedPosition;
     private byte _capturedButtons;
@@ -30,6 +31,7 @@ public sealed class QueuedMouseInputModule : StandaloneInputModule
     protected override void OnEnable()
     {
         base.OnEnable();
+        _snapshotInput = GetComponent<MouseSnapshotInput>();
         ResetMouse(Mouse.current);
         if (Application.isPlaying)
         {
@@ -139,7 +141,7 @@ public sealed class QueuedMouseInputModule : StandaloneInputModule
     }
 
     /// <summary>
-    /// Creates the shared pointer presentation for the next ordered mouse sample.
+    /// Supplies one ordered sample through Unity's input hook and retains its event timing.
     /// </summary>
     /// <param name="id">The mouse device index requested by the shared dispatcher.</param>
     /// <returns>The mouse pointers and their individual button transitions.</returns>
@@ -148,32 +150,27 @@ public sealed class QueuedMouseInputModule : StandaloneInputModule
         if (!_processingSample)
             return base.GetMousePointerEventData(id);
 
-        bool created = GetPointerData(kMouseLeftId, out PointerEventData left, true);
-        left.Reset();
-        Vector2 position =
-            Cursor.lockState == CursorLockMode.Locked ? new Vector2(-1, -1) : _sample.Position;
-        left.delta =
-            created || Cursor.lockState == CursorLockMode.Locked
-                ? Vector2.zero
-                : position - left.position;
-        left.position = position;
-        left.scrollDelta = _scroll;
-        left.button = PointerEventData.InputButton.Left;
-        eventSystem.RaycastAll(left, m_RaycastResultCache);
-        left.pointerCurrentRaycast = FindFirstRaycast(m_RaycastResultCache);
-        m_RaycastResultCache.Clear();
-        SetButtonState(0, left);
-
-        for (int button = 1; button < _pointerIds.Length; button++)
+        _snapshotInput.SetSnapshot(_sample.Position, _scroll, _processedButtons, _sample.Buttons);
+        BaseInput previousInput = inputOverride;
+        inputOverride = _snapshotInput;
+        try
         {
-            GetPointerData(_pointerIds[button], out PointerEventData pointer, true);
-            pointer.Reset();
-            CopyFromTo(left, pointer);
-            pointer.button = (PointerEventData.InputButton)button;
-            SetButtonState(button, pointer);
+            MouseState state = base.GetMousePointerEventData(id);
+            for (int button = 0; button < _pointerIds.Length; button++)
+            {
+                PointerEventData pointer = state
+                    .GetButtonState((PointerEventData.InputButton)button)
+                    .eventData.buttonData;
+                PreserveClickTiming(button, pointer);
+            }
+            _processedButtons = _sample.Buttons;
+            return state;
         }
-        _processedButtons = _sample.Buttons;
-        return _mouseState;
+        finally
+        {
+            if (inputOverride == _snapshotInput)
+                inputOverride = previousInput;
+        }
     }
 
     /// <summary>
@@ -242,29 +239,19 @@ public sealed class QueuedMouseInputModule : StandaloneInputModule
     }
 
     /// <summary>
-    /// Supplies one edge and its elapsed input time to the shared click dispatcher.
+    /// Aligns the previous press time before Unity classifies a queued button press.
     /// </summary>
     /// <param name="button">The mouse button index.</param>
     /// <param name="pointer">The persistent pointer for this button.</param>
-    private void SetButtonState(int button, PointerEventData pointer)
+    private void PreserveClickTiming(int button, PointerEventData pointer)
     {
         int mask = 1 << button;
-        PointerEventData.FramePressState state = PointerEventData.FramePressState.NotChanged;
-        if (((_sample.Buttons ^ _processedButtons) & mask) != 0)
+        if (((_sample.Buttons ^ _processedButtons) & mask) != 0 && (_sample.Buttons & mask) != 0)
         {
-            bool pressed = (_sample.Buttons & mask) != 0;
-            state = pressed
-                ? PointerEventData.FramePressState.Pressed
-                : PointerEventData.FramePressState.Released;
-            if (pressed)
-            {
-                if (!double.IsNaN(_pressTimes[button]))
-                    pointer.clickTime =
-                        Time.unscaledTime - (float)(_sample.Time - _pressTimes[button]);
-                _pressTimes[button] = _sample.Time;
-            }
+            if (!double.IsNaN(_pressTimes[button]))
+                pointer.clickTime = Time.unscaledTime - (float)(_sample.Time - _pressTimes[button]);
+            _pressTimes[button] = _sample.Time;
         }
-        _mouseState.SetButtonState(pointer.button, state, pointer);
     }
 
     /// <summary>

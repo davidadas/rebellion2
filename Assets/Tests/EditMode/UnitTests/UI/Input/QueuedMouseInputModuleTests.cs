@@ -536,6 +536,77 @@ namespace Rebellion.Tests.UI.Input
             Assert.AreEqual(1, clicks);
         }
 
+        [UnityTest]
+        public IEnumerator Process_QueuedClick_RestoresExistingInputOverride()
+        {
+            Button button = CreateButton("Button", 30);
+            yield return null;
+
+            QueueMouse(Position(button), true);
+            QueueMouse(Position(button), false);
+            ProcessFrame();
+
+            Assert.AreSame(
+                _legacyInput,
+                _events.GetComponent<QueuedMouseInputModule>().inputOverride
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator Process_ClickCallback_ReceivesExistingInputOverride()
+        {
+            Button button = CreateButton("Button", 30);
+            BaseInput observedInput = null;
+            button.onClick.AddListener(() =>
+                observedInput = _events.GetComponent<QueuedMouseInputModule>().inputOverride
+            );
+            yield return null;
+
+            QueueMouse(Position(button), true);
+            QueueMouse(Position(button), false);
+            ProcessFrame();
+
+            Assert.AreSame(_legacyInput, observedInput);
+        }
+
+        [UnityTest]
+        public IEnumerator Process_RaycastFailure_RestoresExistingInputOverride()
+        {
+            Button button = CreateButton("Button", 30);
+            QueuedMouseTestRaycastFilter filter =
+                button.gameObject.AddComponent<QueuedMouseTestRaycastFilter>();
+            yield return null;
+            filter.ThrowOnRaycast = true;
+            QueueMouse(Position(button), true);
+
+            Assert.Throws<InvalidOperationException>(() => ProcessFrame());
+
+            Assert.AreSame(
+                _legacyInput,
+                _events.GetComponent<QueuedMouseInputModule>().inputOverride
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator OnEnable_ReenabledModule_ReusesRequiredSnapshotInput()
+        {
+            QueuedMouseInputModule module = _events.GetComponent<QueuedMouseInputModule>();
+            MouseSnapshotInput initial = _events.GetComponent<MouseSnapshotInput>();
+            yield return null;
+
+            for (int i = 0; i < 3; i++)
+            {
+                module.enabled = false;
+                module.enabled = true;
+                ProcessFrame();
+            }
+
+            CollectionAssert.AreEqual(
+                new[] { initial },
+                _events.GetComponents<MouseSnapshotInput>()
+            );
+        }
+
         /// <summary>
         /// Creates a raycastable button beneath the test canvas.
         /// </summary>
@@ -703,6 +774,24 @@ namespace Rebellion.Tests.UI.Input
         public void SetFocus(bool focus)
         {
             base.OnApplicationFocus(focus);
+        }
+    }
+
+    public sealed class QueuedMouseTestRaycastFilter : MonoBehaviour, ICanvasRaycastFilter
+    {
+        public bool ThrowOnRaycast;
+
+        /// <summary>
+        /// Allows the test target to fail while Unity builds pointer event data.
+        /// </summary>
+        /// <param name="screenPoint">The tested position in screen pixels.</param>
+        /// <param name="eventCamera">The camera used for the pointer raycast.</param>
+        /// <returns>True when the pointer hit is accepted.</returns>
+        public bool IsRaycastLocationValid(Vector2 screenPoint, Camera eventCamera)
+        {
+            if (ThrowOnRaycast)
+                throw new InvalidOperationException("Raycast probe failure.");
+            return true;
         }
     }
 
