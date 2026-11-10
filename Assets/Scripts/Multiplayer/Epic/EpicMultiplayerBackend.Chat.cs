@@ -62,11 +62,17 @@ namespace Rebellion.Multiplayer
         public event Action<MultiplayerChatMessage> GeneralChatReceived;
 
         /// <summary>
+        /// Occurs when channel membership or connection availability changes.
+        /// </summary>
+        public event Action GeneralChatStateChanged;
+
+        /// <summary>
         /// Releases the browser conversation when its native console closes.
         /// </summary>
         /// <returns>The pending service membership removal.</returns>
         public Task CloseGeneralChatAsync()
         {
+            bool wasConnected = _chatLobbyID != null || _chatMembers.Count > 0;
             _chatVersion++;
             Task opening = _openingChat;
             _openingChat = null;
@@ -84,6 +90,8 @@ namespace Rebellion.Multiplayer
             string lobbyID = _chatLobbyID;
             _chatLobbyID = null;
             _chatMembers.Clear();
+            if (wasConnected)
+                GeneralChatStateChanged?.Invoke();
             Task closing = lobbyID == null ? _closingChat : CloseLobbyAsync(lobbyID, false);
             _closingChat = FinishLeavingAsync(opening, closing);
             return _closingChat;
@@ -252,6 +260,7 @@ namespace Rebellion.Multiplayer
                 _lobbies.CopyLobbyDetailsHandle(ref options, out LobbyDetails details),
                 "Read chat members"
             );
+            int previousCount = _chatMembers.Count;
             try
             {
                 _chatMembers.Clear();
@@ -271,6 +280,8 @@ namespace Rebellion.Multiplayer
             {
                 details.Release();
             }
+            if (_chatMembers.Count != previousCount)
+                GeneralChatStateChanged?.Invoke();
         }
 
         /// <summary>
@@ -315,7 +326,11 @@ namespace Rebellion.Multiplayer
                     ) && info.TargetUserId.Equals(_localUser)
                 )
             )
+            {
                 _chatLobbyID = null;
+                _chatMembers.Clear();
+                GeneralChatStateChanged?.Invoke();
+            }
             else
                 RefreshChatMembers();
         }

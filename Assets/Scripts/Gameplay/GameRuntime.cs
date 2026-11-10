@@ -548,13 +548,16 @@ public sealed class GameRuntime
 
         ValidateGameContent(game);
         ReconcileStaticContent(game);
+        bool pendingMultiplayerStart =
+            _campaignAnalyticsTracker?.HasPendingMultiplayerStart == true
+            && _activeGameSession.Game.Metadata.CampaignID == game.Metadata?.CampaignID;
         _activeGameSession.ReplaceGame(game);
         StopCampaignAnalytics();
         _gameManager.Reset();
         _operationsBlocked = false;
         GameReplaced?.Invoke(_activeGameSession.Game);
         ReconcileLoadedSession();
-        StartCampaignAnalytics(_activeGameSession, false);
+        StartCampaignAnalytics(_activeGameSession, pendingMultiplayerStart);
     }
 
     /// <summary>
@@ -575,12 +578,21 @@ public sealed class GameRuntime
                 newCampaign
             );
             session.Tick.TickCompleted += _campaignAnalyticsTracker.RecordTickCompleted;
+            session.Pipeline.VictoryDeclared += _campaignAnalyticsTracker.RecordVictory;
         }
         catch (Exception exception)
         {
             _campaignAnalyticsTracker = null;
             Debug.LogWarning($"Campaign analytics could not start: {exception.Message}");
         }
+    }
+
+    /// <summary>
+    /// Records multiplayer creation only when the coordinator has admitted synchronized gameplay.
+    /// </summary>
+    internal void RecordMultiplayerCampaignStarted()
+    {
+        _campaignAnalyticsTracker?.RecordMultiplayerStarted();
     }
 
     /// <summary>
@@ -593,7 +605,10 @@ public sealed class GameRuntime
             return;
 
         if (_activeGameSession != null)
+        {
             _activeGameSession.Tick.TickCompleted -= tracker.RecordTickCompleted;
+            _activeGameSession.Pipeline.VictoryDeclared -= tracker.RecordVictory;
+        }
         _campaignAnalyticsTracker = null;
     }
 

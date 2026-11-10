@@ -522,6 +522,15 @@ public sealed class AppBootstrap : MonoBehaviour
     }
 
     /// <summary>
+    /// Returns the shared consent-aware analytics destination for application lifecycle events.
+    /// </summary>
+    /// <returns>The active analytics sink, or null before runtime initialization.</returns>
+    internal IAnalyticsEventSink GetAnalyticsEventSink()
+    {
+        return _analyticsManager;
+    }
+
+    /// <summary>
     /// Returns the application audio manager, creating one when needed.
     /// </summary>
     /// <returns>The active application audio manager.</returns>

@@ -116,6 +116,20 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
         }
 
+        [Test]
+        public void TryCancelLegalDocuments_OpenReader_ClosesReaderWithoutClosingOptions()
+        {
+            Button legal = _root
+                .transform.Find("ContentRoot/GameplayPage/LegalDocumentsButton")
+                .GetComponent<Button>();
+            LegalDocumentsView reader = _root.GetComponentInChildren<LegalDocumentsView>(true);
+            legal.onClick.Invoke();
+
+            Assert.IsTrue(reader.IsVisible);
+            Assert.IsTrue(_view.TryCancelLegalDocuments());
+            Assert.IsFalse(reader.IsVisible);
+        }
+
         /// <summary>
         /// Keeps the Graphics form and themed scrollbar inside the panel in either menu host.
         /// </summary>

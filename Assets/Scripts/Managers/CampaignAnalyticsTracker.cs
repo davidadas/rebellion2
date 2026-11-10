@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using UnityEngine;
 
@@ -17,8 +18,18 @@ internal sealed class CampaignAnalyticsTracker
     private readonly IAnalyticsEventSink _sink;
     private readonly string _playerFactionId;
     private readonly HashSet<string> _aiFactionIds;
+    private readonly bool _newCampaign;
+    private readonly bool _multiplayer;
+    private readonly bool _reportsCampaign;
+    private bool _started;
+    private bool _finished;
     private int _lastCheckpointTick = -1;
     private bool _failed;
+
+    /// <summary>
+    /// Gets whether initial synchronization still owes this new campaign its start event.
+    /// </summary>
+    internal bool HasPendingMultiplayerStart => _multiplayer && _newCampaign && !_started;
 
     /// <summary>
     /// Creates analytics tracking for one active campaign.
@@ -32,6 +43,10 @@ internal sealed class CampaignAnalyticsTracker
         _sink = sink ?? throw new ArgumentNullException(nameof(sink));
         EnsureCampaignId();
         _playerFactionId = ResolvePlayerFactionId(game);
+        _newCampaign = newCampaign;
+        _multiplayer = game.Metadata?.IsMultiplayer == true;
+        _reportsCampaign =
+            !_multiplayer || game.Metadata.MultiplayerCampaign.HostFactionID == _playerFactionId;
         _aiFactionIds = game.GetPlayers()
             .Where(player => player?.ControllerType == PlayerControllerType.AI)
             .Select(player => player.FactionID)
@@ -41,8 +56,42 @@ internal sealed class CampaignAnalyticsTracker
             )
             .ToHashSet(StringComparer.Ordinal);
 
-        if (newCampaign)
+        if (newCampaign && !_multiplayer)
             RecordCampaignStarted();
+    }
+
+    /// <summary>
+    /// Records a new multiplayer campaign only after its shared state has synchronized.
+    /// </summary>
+    internal void RecordMultiplayerStarted()
+    {
+        if (_multiplayer && _newCampaign)
+            RecordCampaignStarted();
+    }
+
+    /// <summary>
+    /// Records one terminal faction outcome through the same consent-aware campaign sink.
+    /// </summary>
+    /// <param name="result">The victory published by the active simulation.</param>
+    internal void RecordVictory(VictoryResult result)
+    {
+        if (_finished || result?.Winner == null || !CanRecord())
+            return;
+        try
+        {
+            Dictionary<string, object> parameters = BuildSnapshotParameters();
+            parameters["event_id"] = _game.Metadata.CampaignID + ":finished";
+            parameters["winner_faction_id"] = result.Winner.InstanceID;
+            parameters["winner_role"] = ResolveRole(result.Winner.InstanceID);
+            parameters["current_tick"] = result.Tick;
+            _sink.RecordEvent("campaign_finished", parameters);
+            _finished = true;
+            _sink.Flush();
+        }
+        catch (Exception exception)
+        {
+            DisableAfterFailure(exception);
+        }
     }
 
     /// <summary>
@@ -59,7 +108,9 @@ internal sealed class CampaignAnalyticsTracker
 
         try
         {
-            _sink.RecordEvent("campaign_checkpoint", BuildSnapshotParameters());
+            Dictionary<string, object> parameters = BuildSnapshotParameters();
+            parameters["event_id"] = _game.Metadata.CampaignID + ":checkpoint:" + tick;
+            _sink.RecordEvent("campaign_checkpoint", parameters);
             _lastCheckpointTick = tick;
         }
         catch (Exception exception)
@@ -73,12 +124,15 @@ internal sealed class CampaignAnalyticsTracker
     /// </summary>
     private void RecordCampaignStarted()
     {
-        if (!CanRecord())
+        if (_started || !CanRecord())
             return;
 
         try
         {
-            _sink.RecordEvent("campaign_started", BuildSnapshotParameters());
+            Dictionary<string, object> parameters = BuildSnapshotParameters();
+            parameters["event_id"] = _game.Metadata.CampaignID + ":started";
+            _sink.RecordEvent("campaign_started", parameters);
+            _started = true;
         }
         catch (Exception exception)
         {
@@ -92,7 +146,7 @@ internal sealed class CampaignAnalyticsTracker
     /// <returns>True when an analytics event may be recorded.</returns>
     private bool CanRecord()
     {
-        return !_failed && _sink.IsAvailable && _sink.IsCollectionEnabled;
+        return _reportsCampaign && !_failed && _sink.IsAvailable && _sink.IsCollectionEnabled;
     }
 
     /// <summary>
@@ -102,26 +156,55 @@ internal sealed class CampaignAnalyticsTracker
     private Dictionary<string, object> BuildSnapshotParameters()
     {
         EnsureCampaignId();
-        GameSummary summary = _game.Summary ?? new GameSummary();
-        Dictionary<string, object> parameters = new Dictionary<string, object>
-        {
-            ["campaign_id"] = _game.Metadata?.CampaignID ?? string.Empty,
-            ["content_pack_id"] = summary.PackID ?? string.Empty,
-            ["content_pack_version"] = summary.PackVersion ?? string.Empty,
-            ["player_faction_id"] = _playerFactionId ?? string.Empty,
-            ["difficulty"] = summary.Difficulty.ToString(),
-            ["galaxy_size"] = summary.GalaxySize.ToString(),
-            ["victory_condition"] = summary.VictoryCondition.ToString(),
-            ["resource_availability"] = summary.ResourceAvailability.ToString(),
-            ["custom_game"] = summary.IsCustomGame,
-            ["current_tick"] = _game.CurrentTick,
-        };
+        Dictionary<string, object> parameters = BuildGameSettings(_game.Summary);
+        parameters["campaign_id"] = _game.Metadata?.CampaignID ?? string.Empty;
+        parameters["player_faction_id"] = _playerFactionId ?? string.Empty;
+        parameters["player_role"] = ResolveRole(_playerFactionId);
+        parameters["multiplayer"] = _multiplayer;
+        parameters["current_tick"] = _game.CurrentTick;
         AddBalanceParameters(parameters);
         return parameters;
     }
 
     /// <summary>
-    /// Ensures the campaign has an anonymous identifier that persists with saves.
+    /// Shares the established campaign settings fields with multiplayer lifecycle events.
+    /// </summary>
+    /// <param name="summary">The selected campaign settings, when available.</param>
+    /// <returns>The common event fields without enumerating gameplay entities.</returns>
+    internal static Dictionary<string, object> BuildGameSettings(GameSummary summary)
+    {
+        summary ??= new GameSummary();
+        return new Dictionary<string, object>(24)
+        {
+            ["content_pack_id"] = summary.PackID ?? string.Empty,
+            ["content_pack_version"] = summary.PackVersion ?? string.Empty,
+            ["difficulty"] = summary.Difficulty.ToString(),
+            ["galaxy_size"] = summary.GalaxySize.ToString(),
+            ["victory_condition"] = summary.VictoryCondition.ToString(),
+            ["resource_availability"] = summary.ResourceAvailability.ToString(),
+            ["custom_game"] = summary.IsCustomGame,
+        };
+    }
+
+    /// <summary>
+    /// Identifies a result's participant role without transmitting another player's account identifier.
+    /// </summary>
+    /// <param name="factionID">The faction whose role is required.</param>
+    /// <returns>The admitted multiplayer role, local player, AI, or an empty value.</returns>
+    private string ResolveRole(string factionID)
+    {
+        MultiplayerCampaignIdentity identity = _game.Metadata?.MultiplayerCampaign;
+        if (identity != null)
+            return factionID == identity.HostFactionID ? "host"
+                : factionID == identity.GuestFactionID ? "guest"
+                : string.Empty;
+        return IsPlayer(factionID) ? "player"
+            : IsAI(factionID) ? "ai"
+            : string.Empty;
+    }
+
+    /// <summary>
+    /// Ensures the campaign has a stable identifier that persists with saves.
     /// </summary>
     private void EnsureCampaignId()
     {
@@ -184,6 +267,8 @@ internal sealed class CampaignAnalyticsTracker
     /// <returns>The human or saved player-faction identifier, or an empty string.</returns>
     private static string ResolvePlayerFactionId(GameRoot game)
     {
+        if (game.Metadata?.IsMultiplayer == true)
+            return game.LocalPlayerFactionID;
         return game.GetPlayers()
                 .FirstOrDefault(player => player?.ControllerType == PlayerControllerType.Human)
                 ?.FactionID

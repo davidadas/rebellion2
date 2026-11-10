@@ -781,7 +781,7 @@ public static class MenuPrefabBuilder
         text.text = string.Empty;
         text.color = Color.white;
         text.fontSize = 12;
-        text.alignment = TextAlignmentOptions.MidlineLeft;
+        text.alignment = TextAlignmentOptions.Left;
 
         TextMeshProUGUI placeholder = input.placeholder as TextMeshProUGUI;
         if (placeholder == null)
@@ -789,7 +789,7 @@ public static class MenuPrefabBuilder
         placeholder.text = placeholderText;
         placeholder.color = Color.white;
         placeholder.fontSize = 12;
-        placeholder.alignment = TextAlignmentOptions.MidlineLeft;
+        placeholder.alignment = TextAlignmentOptions.Left;
 
         input.enabled = true;
         input.targetGraphic = image;

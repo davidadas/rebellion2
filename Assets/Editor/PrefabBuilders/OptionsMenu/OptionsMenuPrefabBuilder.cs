@@ -120,6 +120,7 @@ public static class OptionsMenuPrefabBuilder
         BuildControlsPage(view, controlsPage, accent, textColor, textDim);
         BuildModsPage(view, modsPage, accent, textDim);
         BuildFooter(view, contentRoot, textColor, textDim);
+        AssignReference(view, "_legalDocumentsView", CreateLegalDocumentsView(window.transform));
 
         AssignReference(view, "_backgroundImage", background);
         AssignReference(view, "_headerTextField", header);
@@ -355,6 +356,16 @@ public static class OptionsMenuPrefabBuilder
         );
 
         AssignReferenceArray(view, "_gameplayRows", rows);
+        Button legalDocuments = CreateMenuActionButton(
+            gameplayPage,
+            "LegalDocumentsButton",
+            "LEGAL DOCUMENTS",
+            20,
+            new Color(0.875f, 0.910f, 0.941f),
+            180
+        );
+        SetSourceRect((RectTransform)legalDocuments.transform, 20, 320, 180, 18);
+        AssignReference(view, "_legalDocumentsButton", legalDocuments);
         AssignReference(view, "_analyticsRow", analyticsRow);
         AssignReference(view, "_gameLaunchSpeedDropdown", gameLaunchSpeedDropdown);
         AssignReference(view, "_autosaveIntervalInputField", autosaveIntervalInput);

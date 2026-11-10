@@ -493,6 +493,9 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         if (_window == null)
             return false;
 
+        if (_view.TryCancelLegalDocuments())
+            return true;
+
         if (_bindingSession.ListeningRow >= 0)
         {
             _bindingSession.CancelRebind();

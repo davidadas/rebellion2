@@ -347,6 +347,14 @@ namespace Rebellion.Multiplayer
             EnsurePersistenceSession();
             _runtime.BindPersistenceCoordinator(this);
             _persistence.NotifySynchronized();
+            _runtime.RecordMultiplayerCampaignStarted();
+            GetAnalyticsTracker()
+                ?.RecordGameConnected(
+                    _runtime.GetActiveGame(),
+                    _role,
+                    _initializationID,
+                    _waitingForRejoin || _returningToRecovery
+                );
             _waitingForRejoin = false;
             _returningToRecovery = false;
             _recoveryOfferSent = false;
@@ -394,6 +402,7 @@ namespace Rebellion.Multiplayer
         {
             if (!_synchronizationReady && ReferenceEquals(Failure, exception))
                 return;
+            _analyticsTracker?.RecordStopped(_runtime?.GetActiveGame()?.CurrentTick);
             _synchronizationReady = false;
             Failure = exception;
             if (_gameSession != null)

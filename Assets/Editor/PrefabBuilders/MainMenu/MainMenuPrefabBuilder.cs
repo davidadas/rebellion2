@@ -350,6 +350,11 @@ public static class MainMenuPrefabBuilder
             "_analyticsConsentView",
             FindRequiredComponent<AnalyticsConsentView>(root, "AnalyticsConsentCanvas")
         );
+        AssignReference(
+            FindRequiredComponent<MainMenuController>(root),
+            "_legalDocumentsView",
+            FindRequiredComponent<LegalDocumentsView>(root, "LegalDocuments")
+        );
     }
 
     /// <summary>
@@ -526,6 +531,7 @@ public static class MainMenuPrefabBuilder
         BuildControls(viewport.transform);
         BuildOptionsOverlay(ui.transform);
         BuildAnalyticsConsentOverlay(ui.transform);
+        MenuControlPrefabBuilder.CreateLegalDocumentsOverlay(ui.transform);
     }
 
     /// <summary>

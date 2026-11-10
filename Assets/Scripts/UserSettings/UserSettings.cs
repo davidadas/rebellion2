@@ -6,6 +6,8 @@ using System;
 [Serializable]
 public sealed class UserSettings
 {
+    public string AcceptedAgreementVersion = string.Empty;
+
     public UserGameplaySettings Gameplay = new UserGameplaySettings();
     public UserInterfaceSettings UserInterface = new UserInterfaceSettings();
     public UserAudioSettings Audio = new UserAudioSettings();
@@ -19,6 +21,7 @@ public sealed class UserSettings
     /// </summary>
     public void Normalize()
     {
+        AcceptedAgreementVersion ??= string.Empty;
         Gameplay ??= new UserGameplaySettings();
         UserInterface ??= new UserInterfaceSettings();
         Audio ??= new UserAudioSettings();

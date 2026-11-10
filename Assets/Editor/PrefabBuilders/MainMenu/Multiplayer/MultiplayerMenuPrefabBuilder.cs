@@ -42,18 +42,26 @@ public static class MultiplayerMenuPrefabBuilder
             "pageTitle",
             Label(console, "SERVER BROWSER", new RectInt(50, 86, 600, 21), 12, _muted)
         );
-        Bind(
-            view,
-            "identityText",
-            Label(
-                console,
-                "",
-                new RectInt(650, 55, 304, 25),
-                14,
-                _text,
-                TextAlignmentOptions.MidlineRight
-            )
+        TMP_Text identity = Label(
+            console,
+            "Sign in to play online",
+            new RectInt(650, 55, 304, 25),
+            14,
+            _accent,
+            TextAlignmentOptions.MidlineRight
         );
+        identity.name = "SignIn";
+        identity.raycastTarget = true;
+        Button signIn = identity.gameObject.AddComponent<Button>();
+        signIn.targetGraphic = identity;
+        ColorBlock signInColors = signIn.colors;
+        signInColors.normalColor = _accent;
+        signInColors.highlightedColor = signInColors.selectedColor = Color.white;
+        signInColors.pressedColor = _muted;
+        signInColors.disabledColor = _text;
+        signIn.colors = signInColors;
+        Bind(view, "identityText", identity);
+        Bind(view, "signInButton", signIn);
         Bind(
             view,
             "closeButton",
@@ -65,7 +73,6 @@ public static class MultiplayerMenuPrefabBuilder
         BuildCreateDialog(console, view);
         BuildSaveDialog(console, view);
         BuildPasswordDialog(console, view);
-        BuildAuthentication(console, view);
         RectTransform confirmation = Group(
             console,
             "LeaveConfirmation",
@@ -368,41 +375,6 @@ public static class MultiplayerMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Builds the store sign-in gate displayed only when no saved account session is available.
-    /// </summary>
-    /// <param name="parent">The console surface.</param>
-    /// <param name="view">The runtime controller.</param>
-    private static void BuildAuthentication(Transform parent, MultiplayerMenuOverlay view)
-    {
-        RectTransform dialog = Dialog(
-            parent,
-            "Authentication",
-            "PLAY ONLINE",
-            new RectInt(220, 190, 560, 320)
-        );
-        Bind(view, "authDialog", dialog.parent.gameObject);
-        Bind(view, "authStatusText", Label(dialog, "", new RectInt(26, 207, 508, 32), 13, _muted));
-        Label(
-            dialog,
-            "Continue with your Steam or GOG account. Your sign-in is remembered.",
-            new RectInt(26, 72, 508, 74),
-            17,
-            _text
-        );
-        Bind(
-            view,
-            "steamSignInButton",
-            Action(dialog, "Steam", "STEAM", new RectInt(26, 167, 242, 34))
-        );
-        Bind(view, "gogSignInButton", Action(dialog, "Gog", "GOG", new RectInt(292, 167, 242, 34)));
-        Bind(
-            view,
-            "authBackButton",
-            Action(dialog, "Back", "CANCEL", new RectInt(26, 266, 170, 30))
-        );
-    }
-
-    /// <summary>
     /// Creates a scrolling, plain-text transcript and an Enter-to-send input row.
     /// </summary>
     /// <param name="parent">The current page.</param>
@@ -597,11 +569,11 @@ public static class MultiplayerMenuPrefabBuilder
         );
         input.textComponent.fontSize = 15;
         input.textComponent.richText = false;
-        input.textComponent.alignment = TextAlignmentOptions.MidlineLeft;
+        input.textComponent.alignment = TextAlignmentOptions.Left;
         if (input.placeholder is TMP_Text hint)
         {
             hint.fontSize = 15;
-            hint.alignment = TextAlignmentOptions.MidlineLeft;
+            hint.alignment = TextAlignmentOptions.Left;
         }
         return input;
     }

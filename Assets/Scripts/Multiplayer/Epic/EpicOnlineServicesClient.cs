@@ -47,13 +47,12 @@ namespace Rebellion.Multiplayer
         /// <summary>
         /// Opens store sign-in before creating the account's multiplayer backend.
         /// </summary>
-        /// <param name="provider">The Steam or GOG provider identifier.</param>
         /// <returns>The authenticated store session.</returns>
-        public async Task<StorePlayerSession> SignInAsync(string provider)
+        public async Task<StorePlayerSession> SignInAsync()
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(EpicOnlineServicesClient));
-            StorePlayerSession session = await _authentication.SignInAsync(provider);
+            StorePlayerSession session = await _authentication.SignInAsync();
             _backend?.Dispose();
             _backend = null;
             _connecting = null;
@@ -70,9 +69,7 @@ namespace Rebellion.Multiplayer
             if (_disposed)
                 throw new ObjectDisposedException(nameof(EpicOnlineServicesClient));
             if (_authentication.Session == null)
-                throw new InvalidOperationException(
-                    "Choose Steam or GOG on the multiplayer sign-in screen."
-                );
+                throw new InvalidOperationException("Sign in using the launcher to play online.");
             if (_backend != null)
                 return Task.FromResult(_backend);
             if (_connecting?.IsFaulted != false || _connecting.IsCanceled)

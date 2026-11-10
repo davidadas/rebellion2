@@ -62,16 +62,13 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Opens the chosen store in the launcher and saves a successfully completed player sign-in.
+        /// Opens store selection in the launcher and saves a successfully completed player sign-in.
         /// </summary>
-        /// <param name="provider">The Steam or GOG provider identifier.</param>
         /// <returns>The newly authenticated store session.</returns>
-        public Task<StorePlayerSession> SignInAsync(string provider)
+        public Task<StorePlayerSession> SignInAsync()
         {
-            if (provider != "steam" && provider != "gog")
-                throw new ArgumentException("Choose Steam or GOG.", nameof(provider));
             if (_signingIn?.IsCompleted != false)
-                _signingIn = SignInCoreAsync(provider);
+                _signingIn = SignInCoreAsync();
             return _signingIn;
         }
 
@@ -87,9 +84,8 @@ namespace Rebellion.Multiplayer
         /// <summary>
         /// Waits for the authentication window without blocking the Unity main thread.
         /// </summary>
-        /// <param name="provider">The selected store.</param>
         /// <returns>The completed store session.</returns>
-        private async Task<StorePlayerSession> SignInCoreAsync(string provider)
+        private async Task<StorePlayerSession> SignInCoreAsync()
         {
             if (!File.Exists(_launcherPath))
                 throw new InvalidOperationException(
@@ -104,11 +100,7 @@ namespace Rebellion.Multiplayer
                     new ProcessStartInfo
                     {
                         FileName = _launcherPath,
-                        Arguments =
-                            "--auth-only --provider "
-                            + provider
-                            + " --session-file "
-                            + QuoteArgument(resultPath),
+                        Arguments = "--auth-only --session-file " + QuoteArgument(resultPath),
                         UseShellExecute = false,
                         WorkingDirectory = Path.GetDirectoryName(_launcherPath),
                     }
@@ -121,9 +113,9 @@ namespace Rebellion.Multiplayer
                 await Task.Run(process.WaitForExit, cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
                 StorePlayerSession session = ReadSession(resultPath);
-                if (process.ExitCode != 0 || session == null || session.Provider != provider)
+                if (process.ExitCode != 0 || session == null)
                     throw new InvalidOperationException(
-                        "Store sign-in was not completed. Choose Steam or GOG to try again."
+                        "Store sign-in was not completed. Please try again."
                     );
                 File.WriteAllText(_sessionPath, File.ReadAllText(resultPath));
                 _session = session;

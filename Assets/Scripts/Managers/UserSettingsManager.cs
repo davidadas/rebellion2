@@ -219,6 +219,28 @@ public sealed class UserSettingsManager
     }
 
     /// <summary>
+    /// Saves an explicit acceptance without retaining it in memory if persistence fails.
+    /// </summary>
+    /// <param name="agreement">The agreement the player explicitly accepted.</param>
+    public void AcceptAgreement(PlayerAgreement agreement)
+    {
+        if (agreement == null)
+            throw new ArgumentNullException(nameof(agreement));
+        Settings ??= CreateDefaults();
+        string previousVersion = Settings.AcceptedAgreementVersion;
+        try
+        {
+            Settings.AcceptedAgreementVersion = agreement.Version;
+            Save();
+        }
+        catch
+        {
+            Settings.AcceptedAgreementVersion = previousVersion;
+            throw;
+        }
+    }
+
+    /// <summary>
     /// Loads user settings from the settings file.
     /// </summary>
     /// <returns>The loaded settings, or default settings when no usable file exists.</returns>

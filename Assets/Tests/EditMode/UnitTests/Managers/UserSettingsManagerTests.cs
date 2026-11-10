@@ -282,6 +282,73 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void SaveThenLoad_AgreementAccepted_RestoresAcceptanceWithoutEnablingAnalytics()
+        {
+            string directory = Path.Combine(
+                Path.GetTempPath(),
+                $"rebellion2-agreement-{Guid.NewGuid():N}"
+            );
+            string path = Path.Combine(directory, "user-settings.json");
+            try
+            {
+                PlayerAgreement agreement = new PlayerAgreement("Agreement", "Privacy");
+                UserSettingsManager first = new UserSettingsManager(
+                    null,
+                    CreateDisplayManager(),
+                    null,
+                    path
+                );
+                first.Load();
+                first.AcceptAgreement(agreement);
+
+                UserSettingsManager second = new UserSettingsManager(
+                    null,
+                    CreateDisplayManager(),
+                    null,
+                    path
+                );
+                second.Load();
+
+                Assert.IsTrue(agreement.IsAccepted(second.Settings));
+                Assert.AreEqual(UserAnalyticsConsent.Undecided, second.Settings.Analytics.Consent);
+            }
+            finally
+            {
+                if (Directory.Exists(directory))
+                    Directory.Delete(directory, true);
+            }
+        }
+
+        [Test]
+        public void AcceptAgreement_SaveFails_DoesNotRetainAcceptance()
+        {
+            string directory = Path.Combine(
+                Path.GetTempPath(),
+                $"rebellion2-agreement-{Guid.NewGuid():N}"
+            );
+            Directory.CreateDirectory(directory);
+            try
+            {
+                UserSettingsManager manager = new UserSettingsManager(
+                    null,
+                    CreateDisplayManager(),
+                    null,
+                    directory
+                );
+                manager.Load();
+                PlayerAgreement agreement = new PlayerAgreement("Agreement", "Privacy");
+
+                Assert.Catch<SystemException>(() => manager.AcceptAgreement(agreement));
+
+                Assert.IsFalse(agreement.IsAccepted(manager.Settings));
+            }
+            finally
+            {
+                Directory.Delete(directory, true);
+            }
+        }
+
+        [Test]
         public void Apply_AnalyticsGranted_AppliesConsentToRuntime()
         {
             RecordingAnalyticsConsentRuntime analyticsRuntime =

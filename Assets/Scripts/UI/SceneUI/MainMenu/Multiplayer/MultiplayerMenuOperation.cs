@@ -13,7 +13,6 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
         Create,
         Password,
         Save,
-        Authentication,
     }
 
     /// <summary>

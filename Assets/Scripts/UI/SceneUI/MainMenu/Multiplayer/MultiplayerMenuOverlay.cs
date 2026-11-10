@@ -35,9 +35,6 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
         private GameObject passwordDialog;
 
         [SerializeField]
-        private GameObject authDialog;
-
-        [SerializeField]
         private GameObject gameRowTemplate;
 
         [SerializeField]
@@ -78,9 +75,6 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
 
         [SerializeField]
         private TMP_Text saveStatusText;
-
-        [SerializeField]
-        private TMP_Text authStatusText;
 
         [SerializeField]
         private Button saveLoadButton;
@@ -173,19 +167,13 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
         private Button confirmJoinButton;
 
         [SerializeField]
-        private Button steamSignInButton;
-
-        [SerializeField]
-        private Button gogSignInButton;
+        private Button signInButton;
 
         [SerializeField]
         private Button lobbySendButton;
 
         [SerializeField]
         private Button generalSendButton;
-
-        [SerializeField]
-        private Button authBackButton;
 
         [SerializeField]
         private ScrollAreaView gameScrollArea;
@@ -329,7 +317,6 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
                 return;
             _bound = true;
             closeButton.onClick.AddListener(RequestClose);
-            authBackButton.onClick.AddListener(RequestClose);
             hostButton.onClick.AddListener(ShowCreate);
             cancelCreateButton.onClick.AddListener(HideCreate);
             createButton.onClick.AddListener(CreateGame);
@@ -353,8 +340,7 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
             saveList.SlotSelected += SelectSaveIndex;
             leaveConfirmation.Confirmed += ConfirmLeave;
             leaveConfirmation.Canceled += CancelLeave;
-            steamSignInButton.onClick.AddListener(SignInSteam);
-            gogSignInButton.onClick.AddListener(SignInGog);
+            signInButton.onClick.AddListener(SignIn);
             lobbySendButton.onClick.AddListener(SendLobbyChat);
             generalSendButton.onClick.AddListener(SendGeneralChat);
             lobbyChatInput.onSubmit.AddListener(SubmitLobbyChat);
@@ -385,9 +371,12 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
                 && !_coordinator.IsConnecting
                 && !_coordinator.IsSigningIn
                 && !_coordinator.IsLoadingSave;
-            identityText.text = signedIn
-                ? _coordinator.PlayerSession.DisplayName + "  |  Online"
+            identityText.text =
+                signedIn ? _coordinator.PlayerSession.DisplayName + "  |  Online"
+                : _coordinator.IsSigningIn ? "Signing in..."
                 : "Sign in to play online";
+            identityText.fontStyle = signedIn ? FontStyles.Normal : FontStyles.Underline;
+            signInButton.interactable = !signedIn && idle;
             string error = FormatError(_operation.Error ?? _coordinator.Failure);
             statusText.text =
                 _operation.Page == MultiplayerMenuPage.Browser
@@ -410,18 +399,11 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
                 _operation.Page == MultiplayerMenuPage.Save
                     ? error ?? (_busy ? "Checking saved game..." : string.Empty)
                     : string.Empty;
-            authStatusText.text =
-                _operation.Page == MultiplayerMenuPage.Authentication
-                    ? error ?? (_busy ? _coordinator.Status : string.Empty)
-                    : string.Empty;
             statusText.gameObject.SetActive(
                 !inLobby && !createDialog.activeSelf && !passwordDialog.activeSelf
             );
             closeButton.gameObject.SetActive(!inLobby);
             saveLoadButton.interactable = idle && _selectedSave != null;
-            authDialog.SetActive(!signedIn);
-            steamSignInButton.interactable = gogSignInButton.interactable = idle;
-            authBackButton.interactable = true;
             browserPage.SetActive(!inLobby);
             lobbyPage.SetActive(inLobby);
             pageTitle.text = inLobby ? _coordinator.Lobby.gameName : "SERVER BROWSER";
@@ -925,30 +907,21 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
         }
 
         /// <summary>
-        /// Starts Steam authentication through the existing launcher workflow.
+        /// Opens store selection through the existing launcher workflow.
         /// </summary>
-        private void SignInSteam()
+        private void SignIn()
         {
-            Run(token => SignInAsync("steam", token), MultiplayerMenuPage.Authentication);
-        }
-
-        /// <summary>
-        /// Starts GOG authentication through the existing launcher workflow.
-        /// </summary>
-        private void SignInGog()
-        {
-            Run(token => SignInAsync("gog", token), MultiplayerMenuPage.Authentication);
+            Run(SignInAsync);
         }
 
         /// <summary>
         /// Completes store authentication and opens discovery with the resulting cached account.
         /// </summary>
-        /// <param name="provider">The selected store provider.</param>
         /// <param name="token">Cancels this form command.</param>
         /// <returns>The pending authentication and discovery.</returns>
-        private async Task SignInAsync(string provider, CancellationToken token)
+        private async Task SignInAsync(CancellationToken token)
         {
-            await _coordinator.SignInAsync(provider);
+            await _coordinator.SignInAsync();
             token.ThrowIfCancellationRequested();
             if (_coordinator.PlayerSession != null)
                 await RefreshBrowserAsync(token);
@@ -999,6 +972,13 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
         /// </summary>
         private void RenderGeneralChat()
         {
+            generalChatText
+                .GetComponentInParent<MenuChatPanelView>()
+                .SetTitle(
+                    _coordinator.IsGeneralChatConnected
+                        ? "GENERAL CHAT (" + _coordinator.GeneralChatMemberCount + " connected)"
+                        : "GENERAL CHAT"
+                );
             generalSendButton.interactable = _coordinator.IsGeneralChatConnected;
             if (_generalChatCount == _coordinator.GeneralChat.Count)
                 return;

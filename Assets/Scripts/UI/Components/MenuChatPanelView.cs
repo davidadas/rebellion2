@@ -28,6 +28,15 @@ public sealed class MenuChatPanelView : MonoBehaviour
     public Button SendButton => sendButton;
 
     /// <summary>
+    /// Updates the conversation heading without changing its layout or transcript.
+    /// </summary>
+    /// <param name="title">The current conversation title and connection information.</param>
+    public void SetTitle(string title)
+    {
+        heading.text = title;
+    }
+
+    /// <summary>
     /// Fits the same conversation controls to a browser, lobby, or another menu host.
     /// </summary>
     /// <param name="title">The conversation heading.</param>

@@ -452,6 +452,7 @@ namespace Rebellion.Multiplayer
                     "The agreed launch has no initialization identity."
                 );
             BeginInitialization(state.initializationID);
+            _analyticsTracker?.BeginGameLoad(state.initializationID);
             GameSummary summary = MultiplayerSnapshotCodec.DeserializeSummary(
                 MultiplayerSnapshotCodec.SerializeSummary(_hostSummary)
             );
@@ -525,8 +526,13 @@ namespace Rebellion.Multiplayer
         /// Reopens a waiting host or returns a disconnected guest to discovery.
         /// </summary>
         /// <param name="reason">The transport's departure message.</param>
-        private void HandlePeerDeparture(string reason)
+        /// <param name="peerEndedSession">Whether an explicit session-end packet was received.</param>
+        private void HandlePeerDeparture(string reason, bool peerEndedSession = false)
         {
+            _analyticsTracker?.RecordDisconnected(
+                _runtime?.GetActiveGame()?.CurrentTick,
+                peerEndedSession ? "peer_ended_session" : "transport_closed"
+            );
             if (_returningToRecovery && _launchConfiguration == null)
             {
                 _peer = OpenRecoveryPeer();

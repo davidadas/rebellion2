@@ -27,6 +27,7 @@ namespace Rebellion.Multiplayer
         private int _browseVersion;
         private MultiplayerLaunchConfiguration _launchConfiguration;
         private GameRuntime _runtime;
+        private MultiplayerAnalyticsTracker _analyticsTracker;
         private GameSummary _hostSummary;
         private ContentPack _identityContent;
         private string _gameplayContentIdentity;
@@ -118,18 +119,17 @@ namespace Rebellion.Multiplayer
         /// <summary>
         /// Authenticates a store account before hosting or browsing multiplayer games.
         /// </summary>
-        /// <param name="provider">The Steam or GOG provider identifier.</param>
         /// <returns>The pending store and online identity sign-in.</returns>
-        public async Task SignInAsync(string provider)
+        public async Task SignInAsync()
         {
             if (IsSigningIn)
                 return;
             Disconnect();
             IsSigningIn = true;
-            SetStatus("Signing in with " + (provider == "steam" ? "Steam" : "GOG"));
+            SetStatus("Signing in...");
             try
             {
-                StorePlayerSession session = await _onlineClient.SignInAsync(provider);
+                StorePlayerSession session = await _onlineClient.SignInAsync();
                 SetStatus("Signed in as " + session.DisplayName);
             }
             catch (Exception exception)
@@ -262,6 +262,8 @@ namespace Rebellion.Multiplayer
                 );
                 cancellationToken.ThrowIfCancellationRequested();
                 _peer = peer;
+                GetAnalyticsTracker()
+                    ?.RecordLobbyCreated(_backend.LobbyId, _backend.LocalUserID, _hostSummary);
                 SetStatus($"Listed as '{_gameName}'; waiting for a player");
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
@@ -393,6 +395,8 @@ namespace Rebellion.Multiplayer
         {
             if (_disposed)
                 return;
+            _analyticsTracker?.RecordClosed(_runtime?.GetActiveGame()?.CurrentTick);
+            _analyticsTracker?.Reset();
             if (!_browserOpen)
                 ReleaseBackgroundProcessing();
             _sessionCancellation.Cancel();
@@ -574,7 +578,7 @@ namespace Rebellion.Multiplayer
                         _gameSession.Receive(packet);
                         break;
                     case MultiplayerMessageType.Disconnect:
-                        HandlePeerDeparture("The other player ended the session");
+                        HandlePeerDeparture("The other player ended the session", true);
                         break;
                     case MultiplayerMessageType.LobbyState:
                         HandleLobbyState(packet);
@@ -694,6 +698,7 @@ namespace Rebellion.Multiplayer
             MarkListingFull();
             _admittedGuestUserID = _backend.RemoteUserID;
             _lobby.Join(NormalizePlayerName(hello.playerName));
+            GetAnalyticsTracker()?.RecordLobbyConnected();
             PublishLobby();
             AddLobbyNotice(_lobby.State.guestName + " joined the lobby.");
             SetStatus(string.Empty);
@@ -729,6 +734,8 @@ namespace Rebellion.Multiplayer
             _hostSummary = summary;
             _chat.Clear();
             _chat.AddRange(welcome.chat ?? Array.Empty<MultiplayerChatMessage>());
+            GetAnalyticsTracker()
+                ?.RecordLobbyJoined(_backend.LobbyId, _backend.LocalUserID, _hostSummary);
             SetStatus($"Connected to {_hostPlayerName}; preparing the lobby");
         }
 
@@ -998,6 +1005,21 @@ namespace Rebellion.Multiplayer
         {
             _status = status ?? string.Empty;
             StateChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// Resolves the application's existing consent-aware sink after startup initializes it.
+        /// </summary>
+        /// <returns>The session analytics tracker, or null before application services exist.</returns>
+        private MultiplayerAnalyticsTracker GetAnalyticsTracker()
+        {
+            if (_analyticsTracker == null)
+            {
+                IAnalyticsEventSink sink = AppBootstrap.Instance?.GetAnalyticsEventSink();
+                if (sink != null)
+                    _analyticsTracker = new MultiplayerAnalyticsTracker(sink);
+            }
+            return _analyticsTracker;
         }
 
         /// <summary>

@@ -44,9 +44,13 @@ namespace Rebellion.Multiplayer
                 if (!ReferenceEquals(_chatBackend, _backend))
                 {
                     if (_chatBackend != null)
+                    {
                         _chatBackend.GeneralChatReceived -= ReceiveGeneralChat;
+                        _chatBackend.GeneralChatStateChanged -= HandleGeneralChatStateChanged;
+                    }
                     _chatBackend = _backend;
                     _chatBackend.GeneralChatReceived += ReceiveGeneralChat;
+                    _chatBackend.GeneralChatStateChanged += HandleGeneralChatStateChanged;
                     _generalChat.Clear();
                 }
                 await _chatBackend.OpenGeneralChatAsync();
@@ -104,6 +108,14 @@ namespace Rebellion.Multiplayer
         private void ReceiveGeneralChat(MultiplayerChatMessage message)
         {
             _generalChat.Add(message);
+            StateChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// Refreshes browser presentation when the service reports a channel membership change.
+        /// </summary>
+        private void HandleGeneralChatStateChanged()
+        {
             StateChanged?.Invoke();
         }
     }

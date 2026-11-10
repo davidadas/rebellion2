@@ -94,6 +94,12 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     [SerializeField]
     private Button _quitButton;
 
+    [SerializeField]
+    private Button _legalDocumentsButton;
+
+    [SerializeField]
+    private LegalDocumentsView _legalDocumentsView;
+
     [Header("Settings actions")]
     [SerializeField]
     private GameObject _settingsActions;
@@ -1001,6 +1007,23 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
+    /// Opens the bundled documents for reading without changing agreement acceptance or analytics.
+    /// </summary>
+    private void ShowLegalDocuments()
+    {
+        _legalDocumentsView.Show(false);
+    }
+
+    /// <summary>
+    /// Gives an open document reader the first opportunity to consume menu cancellation.
+    /// </summary>
+    /// <returns>Whether the document reader consumed cancellation.</returns>
+    public bool TryCancelLegalDocuments()
+    {
+        return _legalDocumentsView.TryCancel();
+    }
+
+    /// <summary>
     /// Adds the Options menu listeners.
     /// </summary>
     private void BindControls()
@@ -1018,6 +1041,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         _backToGameButton.onClick.AddListener(() => ResumeRequested?.Invoke());
         _mainMenuButton.onClick.AddListener(() => MainMenuRequested?.Invoke());
         _quitButton.onClick.AddListener(() => QuitRequested?.Invoke());
+        _legalDocumentsButton.onClick.AddListener(ShowLegalDocuments);
         _saveListView.SaveRequested += HandleSaveRequested;
         _saveListView.LoadRequested += HandleLoadRequested;
         _saveListView.SlotSelected += HandleSlotSelected;
@@ -1116,6 +1140,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// </summary>
     private void UnbindControls()
     {
+        _legalDocumentsButton.onClick.RemoveListener(ShowLegalDocuments);
         _saveListView.SaveRequested -= HandleSaveRequested;
         _saveListView.LoadRequested -= HandleLoadRequested;
         _saveListView.SlotSelected -= HandleSlotSelected;
@@ -1442,6 +1467,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// </summary>
     private void VerifyReferences()
     {
+        if (_legalDocumentsButton == null || _legalDocumentsView == null)
+            throw new MissingReferenceException($"{name} is missing its legal document controls.");
         if (_backgroundImage == null)
             throw new MissingReferenceException($"{name}/BackgroundImage is missing.");
         if (_headerTextField == null || _pageTitleTextField == null)

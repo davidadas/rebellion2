@@ -23,6 +23,159 @@ public static class MenuControlPrefabBuilder
         "Pack/Shared/Strategy/UI/ContextMenus/context-menu-check-mark.png";
 
     /// <summary>
+    /// Hosts first-run documents above the scene using the existing menu canvas scale.
+    /// </summary>
+    /// <param name="parent">The startup or Main Menu root.</param>
+    /// <returns>The initially hidden reader.</returns>
+    internal static LegalDocumentsView CreateLegalDocumentsOverlay(Transform parent)
+    {
+        GameObject overlay = new GameObject(
+            "LegalDocumentsCanvas",
+            typeof(RectTransform),
+            typeof(Canvas),
+            typeof(CanvasScaler),
+            typeof(GraphicRaycaster)
+        );
+        overlay.transform.SetParent(parent, false);
+        FillParent(overlay.GetComponent<RectTransform>());
+        Canvas canvas = overlay.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 1150;
+        CanvasScaler scaler = overlay.GetComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(853.33f, 480f);
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
+        return CreateLegalDocumentsView(overlay.transform);
+    }
+
+    /// <summary>
+    /// Authors a document reader from the shared menu shell, buttons, and scroll area.
+    /// </summary>
+    /// <param name="parent">The overlay or Options menu hosting the reader.</param>
+    /// <returns>The initially hidden document reader.</returns>
+    internal static LegalDocumentsView CreateLegalDocumentsView(Transform parent)
+    {
+        GameObject root = new GameObject("LegalDocuments", typeof(RectTransform));
+        root.SetActive(false);
+        root.transform.SetParent(parent, false);
+        FillParent((RectTransform)root.transform);
+        LegalDocumentsView view = root.AddComponent<LegalDocumentsView>();
+
+        Image dimmer = new GameObject(
+            "InputBlocker",
+            typeof(RectTransform),
+            typeof(Image)
+        ).GetComponent<Image>();
+        dimmer.transform.SetParent(root.transform, false);
+        FillParent(dimmer.rectTransform);
+        dimmer.color = new Color(0f, 0f, 0f, 0.85f);
+
+        RectTransform panel = new GameObject(
+            "DocumentPanel",
+            typeof(RectTransform)
+        ).GetComponent<RectTransform>();
+        panel.SetParent(root.transform, false);
+        panel.anchorMin = panel.anchorMax = panel.pivot = new Vector2(0.5f, 0.5f);
+        panel.sizeDelta = new Vector2(640f, 448f);
+        RectTransform console = CreateWideWindow(panel);
+        console.name = "Console";
+        console.localScale = Vector3.one * 0.64f;
+
+        Color textColor = new Color(0.875f, 0.910f, 0.941f);
+        TMP_Text heading = CreateTextLabel("Heading", console);
+        heading.fontSize = 24f;
+        heading.color = new Color(0.373f, 0.659f, 0.925f);
+        SetSourceRect(heading.rectTransform, 50, 52, 904, 32);
+        Button agreementButton = CreateMenuActionButton(
+            console,
+            "AgreementButton",
+            "PLAYER AGREEMENT",
+            50,
+            textColor,
+            230
+        );
+        SetSourceRect((RectTransform)agreementButton.transform, 50, 96, 230, 28);
+        Button privacyButton = CreateMenuActionButton(
+            console,
+            "PrivacyButton",
+            "PRIVACY NOTICE",
+            292,
+            textColor,
+            210
+        );
+        SetSourceRect((RectTransform)privacyButton.transform, 292, 96, 210, 28);
+
+        ScrollAreaView scroll = CreateScrollAreaView(
+            console,
+            "DocumentScroll",
+            50,
+            142,
+            904,
+            444,
+            0,
+            0,
+            884,
+            444,
+            891,
+            0,
+            13,
+            444,
+            out RectTransform content
+        );
+        TMP_Text body = CreateTextLabel("DocumentText", content);
+        body.fontSize = 18f;
+        body.color = textColor;
+        body.alignment = TextAlignmentOptions.TopLeft;
+        body.textWrappingMode = TextWrappingModes.Normal;
+        body.overflowMode = TextOverflowModes.Overflow;
+        body.richText = false;
+        body.raycastTarget = false;
+        SetSourceRect(body.rectTransform, 0, 0, 884, 444);
+
+        TMP_Text status = CreateTextLabel("Status", console);
+        status.fontSize = 14f;
+        status.color = textColor;
+        status.richText = false;
+        SetSourceRect(status.rectTransform, 50, 599, 904, 24);
+        Button close = CreateMenuActionButton(console, "CloseButton", "QUIT", 50, textColor, 180);
+        SetSourceRect((RectTransform)close.transform, 50, 630, 180, 28);
+        Button accept = CreateMenuActionButton(
+            console,
+            "AcceptButton",
+            "AGREE",
+            770,
+            textColor,
+            180
+        );
+        SetSourceRect((RectTransform)accept.transform, 774, 630, 180, 28);
+
+        AssignReference(
+            view,
+            "_agreementText",
+            AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/Legal/EULA.txt")
+                ?? throw new FileNotFoundException("The bundled player agreement is missing.")
+        );
+        AssignReference(
+            view,
+            "_privacyNoticeText",
+            AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/Legal/Privacy.txt")
+                ?? throw new FileNotFoundException("The bundled privacy notice is missing.")
+        );
+        AssignReference(view, "_heading", heading);
+        AssignReference(view, "_body", body);
+        AssignReference(view, "_status", status);
+        AssignReference(view, "_scrollArea", scroll);
+        AssignReference(view, "_agreementButton", agreementButton);
+        AssignReference(view, "_privacyButton", privacyButton);
+        AssignReference(view, "_acceptButton", accept);
+        AssignReference(view, "_closeButton", close);
+        AssignReference(view, "_closeLabel", FindRequiredChild<TMP_Text>(close.transform, "Label"));
+        foreach (Button button in new[] { agreementButton, privacyButton, close, accept })
+            FindRequiredChild<TMP_Text>(button.transform, "Label").fontSize = 14f;
+        return view;
+    }
+
+    /// <summary>
     /// Rebuilds reusable controls before feature windows instantiate them.
     /// </summary>
     internal static void Rebuild()
@@ -788,11 +941,11 @@ public static class MenuControlPrefabBuilder
         );
         input.textComponent.fontSize = 15;
         input.textComponent.richText = false;
-        input.textComponent.alignment = TextAlignmentOptions.MidlineLeft;
+        input.textComponent.alignment = TextAlignmentOptions.Left;
         if (input.placeholder is TMP_Text hint)
         {
             hint.fontSize = 15;
-            hint.alignment = TextAlignmentOptions.MidlineLeft;
+            hint.alignment = TextAlignmentOptions.Left;
         }
         GameObject send = Object.Instantiate(
             AssetDatabase.LoadAssetAtPath<GameObject>(

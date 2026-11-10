@@ -106,6 +106,92 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void StartGame_VictoryPublished_RecordsFinishedCampaign()
+        {
+            RecordingAnalyticsSink sink = new RecordingAnalyticsSink();
+            _runtime = new GameRuntime(
+                _contentPack,
+                _saveGameManager,
+                () => _gameplaySettings,
+                sink
+            );
+            GameRoot game = CreateGame();
+            Faction winner = new Faction
+            {
+                InstanceID = _contentPack.Scenario.PlayableFactionIDs[0],
+            };
+            game.GetFactions().Add(winner);
+            GameSession session = _runtime.StartGame(game);
+
+            session.Pipeline.ProcessResults(
+                new[]
+                {
+                    new VictoryResult { Winner = winner, Tick = game.CurrentTick },
+                },
+                processMessages: false
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { "campaign_started", "campaign_finished" },
+                sink.EventNames
+            );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void RecordMultiplayerCampaignStarted_ReplacingSameCampaign_RecordsOneStart(
+            bool synchronizedBeforeReplacement
+        )
+        {
+            RecordingAnalyticsSink sink = new RecordingAnalyticsSink();
+            _runtime = new GameRuntime(
+                _contentPack,
+                _saveGameManager,
+                () => _gameplaySettings,
+                sink
+            );
+            GameRoot initial = CreateGame();
+            ConfigureMultiplayerPresentation(initial, "campaign");
+            initial.LocalPlayerFactionID = "FNALL1";
+            _runtime.StartGame(initial, new TestSessionOwner());
+            if (synchronizedBeforeReplacement)
+                _runtime.RecordMultiplayerCampaignStarted();
+            GameRoot synchronized = CreateGame();
+            ConfigureMultiplayerPresentation(synchronized, "campaign");
+            synchronized.LocalPlayerFactionID = "FNALL1";
+
+            _runtime.ReplaceGame(synchronized);
+            _runtime.RecordMultiplayerCampaignStarted();
+            _runtime.RecordMultiplayerCampaignStarted();
+
+            CollectionAssert.AreEqual(new[] { "campaign_started" }, sink.EventNames);
+        }
+
+        [Test]
+        public void RecordMultiplayerCampaignStarted_ReplacingDifferentCampaign_DoesNotCountCreation()
+        {
+            RecordingAnalyticsSink sink = new RecordingAnalyticsSink();
+            _runtime = new GameRuntime(
+                _contentPack,
+                _saveGameManager,
+                () => _gameplaySettings,
+                sink
+            );
+            GameRoot initial = CreateGame();
+            ConfigureMultiplayerPresentation(initial, "initial");
+            initial.LocalPlayerFactionID = "FNALL1";
+            _runtime.StartGame(initial, new TestSessionOwner());
+            GameRoot loaded = CreateGame();
+            ConfigureMultiplayerPresentation(loaded, "loaded");
+            loaded.LocalPlayerFactionID = "FNALL1";
+
+            _runtime.ReplaceGame(loaded);
+            _runtime.RecordMultiplayerCampaignStarted();
+
+            Assert.IsEmpty(sink.EventNames);
+        }
+
+        [Test]
         public void StartGame_DeclaredOwner_BindsBeforePresentationReadiness()
         {
             GameRoot game = CreateGame();
