@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -164,9 +165,7 @@ public sealed class GalacticInformationDisplayView : MonoBehaviour
     /// Applies projected categories to authored selector slots.
     /// </summary>
     /// <param name="categories">The category presentations in authored-slot order.</param>
-    private void RenderCategories(
-        System.Collections.Generic.IReadOnlyList<GalacticInformationCategoryRenderData> categories
-    )
+    private void RenderCategories(IReadOnlyList<GalacticInformationCategoryRenderData> categories)
     {
         int count = Mathf.Min(categories?.Count ?? 0, categoryHitAreas.Length);
         for (int i = 0; i < count; i++)

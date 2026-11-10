@@ -327,6 +327,6 @@ public sealed class UserSettingsManager
     [Serializable]
     private sealed class LegacyUserInterfaceSettings
     {
-        public GameLaunchSpeed GameLaunchSpeed = global::GameLaunchSpeed.Unchanged;
+        public GameLaunchSpeed GameLaunchSpeed = GameLaunchSpeed.Unchanged;
     }
 }

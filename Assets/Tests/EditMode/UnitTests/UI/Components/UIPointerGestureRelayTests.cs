@@ -26,7 +26,7 @@ namespace Rebellion.Tests.UI.Components
         [TearDown]
         public void TearDown()
         {
-            UnityEngine.Object.DestroyImmediate(_object);
+            Object.DestroyImmediate(_object);
         }
 
         [TestCase(PointerEventData.InputButton.Left)]

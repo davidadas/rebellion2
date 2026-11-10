@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -57,7 +58,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _secondFleet = new GameFleet(
                 _ownerId,
                 "Second Fleet",
-                new System.Collections.Generic.List<CapitalShip> { secondShip }
+                new List<CapitalShip> { secondShip }
             )
             {
                 InstanceID = "second-fleet",
@@ -537,11 +538,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _capitalShip.AddChild(_regiment);
             _capitalShip.AddChild(_officer);
             _capitalShip.AddChild(_specialForces);
-            return new GameFleet(
-                _ownerId,
-                "First Fleet",
-                new System.Collections.Generic.List<CapitalShip> { _capitalShip }
-            )
+            return new GameFleet(_ownerId, "First Fleet", new List<CapitalShip> { _capitalShip })
             {
                 InstanceID = "first-fleet",
             };

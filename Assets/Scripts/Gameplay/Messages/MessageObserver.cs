@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -39,8 +40,7 @@ namespace Rebellion.Gameplay
         public List<GameResult> ProcessResults(IEnumerable<GameResult> results)
         {
             GameResult[] resultBatch =
-                results?.Where(result => result != null).ToArray()
-                ?? System.Array.Empty<GameResult>();
+                results?.Where(result => result != null).ToArray() ?? Array.Empty<GameResult>();
             IEnumerable<GameResult> automaticResults = resultBatch.Where(result =>
                 result.ReportContext == null
                 && string.IsNullOrWhiteSpace(result.SourceEventInstanceID)

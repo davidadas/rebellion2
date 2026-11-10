@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using Rebellion.Game.Units;
@@ -64,7 +65,7 @@ namespace Rebellion.Game.Galaxy
             foreach (CapitalShip ship in _suppressionSources)
             {
                 if (ship.OwnerInstanceID == ownerInstanceID && IsActiveSuppressionSource(ship))
-                    divisor = System.Math.Max(divisor, ship.SectorSuppression);
+                    divisor = Math.Max(divisor, ship.SectorSuppression);
             }
             return divisor;
         }

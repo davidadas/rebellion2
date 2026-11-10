@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Units;
@@ -135,7 +136,7 @@ namespace Rebellion.Game
                     DecisionTickIntervals != null
                     && DecisionTickIntervals.TryGetValue(difficulty, out int interval)
                 )
-                    return System.Math.Max(1, interval);
+                    return Math.Max(1, interval);
                 return 1;
             }
 

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game.Galaxy;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
@@ -42,7 +43,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreSame(planet, sector.Planets[0]);
             Assert.AreSame(sector, planet.Sector);
             Assert.Throws<NotSupportedException>(() =>
-                ((System.Collections.Generic.IList<GalaxyMapPlanet>)sector.Planets)[0] = replacement
+                ((IList<GalaxyMapPlanet>)sector.Planets)[0] = replacement
             );
         }
 
