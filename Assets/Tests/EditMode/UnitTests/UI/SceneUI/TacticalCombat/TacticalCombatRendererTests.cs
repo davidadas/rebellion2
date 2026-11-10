@@ -902,6 +902,262 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             button.OnPointerUp(pointer);
         }
 
+        [UnityTest]
+        public IEnumerator PointerClick_ChangingEmpireObjectGroups_UpdatesSelectionAndInspection()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            TacticalCombatSession encounter = CreateEncounter(
+                pack.GameData,
+                playerSide: CombatSide.Defender
+            );
+            encounter.IsPaused = true;
+            yield return PrepareController(encounter, pack);
+            for (int frame = 0; frame < 9; frame++)
+                controller.Advance(0.5f);
+            Assert.IsFalse(encounter.IsArriving);
+            TacticalCombatGroup[] groups = encounter
+                .Units.Where(unit => unit.Side == encounter.PlayerSide && !unit.IsFighter)
+                .Select(encounter.GetGroup)
+                .Where(group => group != null)
+                .Take(2)
+                .ToArray();
+            Assert.AreEqual(2, groups.Length);
+            for (int slot = 0; slot < groups.Length; slot++)
+                encounter.SetObjectGroup(encounter.PlayerSide, slot, groups[slot]);
+            controller.Advance(0);
+            GameObject events = new("Group selection events", typeof(EventSystem));
+            try
+            {
+                Canvas.ForceUpdateCanvases();
+                foreach (bool paused in new[] { true, false })
+                {
+                    encounter.IsPaused = paused;
+                    foreach (int slot in new[] { 0, 1, 0, 1 })
+                    {
+                        TacticalCombatControl control = TacticalCombatControl.ObjectGroup1 + slot;
+                        TacticalCombatHudButton button =
+                            view.GetComponentsInChildren<TacticalCombatHudButton>(true)
+                                .Single(item => item.name == control.ToString());
+
+                        ClickGroupButton(button, events.GetComponent<EventSystem>());
+                        controller.Advance(0);
+
+                        Assert.AreEqual(
+                            TacticalCombatSelectionKind.ObjectGroup,
+                            encounter.Selection.Kind
+                        );
+                        Assert.AreEqual(slot, encounter.Selection.Category);
+                        Assert.AreSame(groups[slot], encounter.Selection.Group);
+                        string name = groups[slot].RequestedMembers[0].DisplayName;
+                        Assert.IsTrue(
+                            view.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true)
+                                .Any(label =>
+                                    label.gameObject.activeInHierarchy && label.text == name
+                                )
+                        );
+                    }
+                }
+            }
+            finally
+            {
+                Object.Destroy(events);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator PointerClick_EmptyEmpireObjectSlot_PreservesOccupiedGroup() =>
+            VerifyEmptyEmpireSlot(false);
+
+        [UnityTest]
+        public IEnumerator HandleKeyboardEvent_EmptyEmpireObjectSlot_PreservesOccupiedGroup() =>
+            VerifyEmptyEmpireSlot(true);
+
+        [UnityTest]
+        public IEnumerator PointerClick_EmptyEmpireSlot_AssignsSelectedCapital()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            TacticalCombatSession encounter = CreateEncounter(
+                pack.GameData,
+                playerSide: CombatSide.Defender
+            );
+            yield return PrepareEmpireGroupSelection(encounter, pack);
+            TacticalCombatUnit unit = encounter.GetUnit("CSEM006");
+            encounter.SetObjectGroup(encounter.PlayerSide, 7, null);
+            encounter.Selection.QueueObject(unit);
+            controller.Advance(0);
+            Assert.AreEqual(TacticalCombatSelectionKind.SingleObject, encounter.Selection.Kind);
+            GameObject events = new("Single assignment events", typeof(EventSystem));
+            try
+            {
+                Canvas.ForceUpdateCanvases();
+                TacticalCombatHudButton button =
+                    view.GetComponentsInChildren<TacticalCombatHudButton>(true)
+                        .Single(item => item.name == nameof(TacticalCombatControl.ObjectGroup8));
+
+                ClickGroupButton(button, events.GetComponent<EventSystem>());
+                controller.Advance(0);
+
+                Assert.AreEqual(TacticalCombatSelectionKind.ObjectGroup, encounter.Selection.Kind);
+                Assert.AreEqual(7, encounter.Selection.Category);
+                CollectionAssert.AreEqual(
+                    new[] { unit },
+                    encounter.Selection.Group.RequestedMembers
+                );
+            }
+            finally
+            {
+                Object.Destroy(events);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator PointerClick_MultipleEmpireSelection_AdmitsAssignmentBeforeAuthorityReturns()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            TacticalCombatSession encounter = CreateEncounter(
+                pack.GameData,
+                playerSide: CombatSide.Defender
+            );
+            yield return PrepareEmpireGroupSelection(encounter, pack);
+            TacticalCombatUnit first = encounter.GetUnit("CSEM006");
+            TacticalCombatUnit second = encounter.GetUnit("CSAL009");
+            encounter.SetObjectGroup(encounter.PlayerSide, 7, null);
+            encounter.Selection.QueueObject(first);
+            encounter.Selection.QueueObject(second, true);
+            controller.Advance(0);
+            Assert.AreEqual(TacticalCombatSelectionKind.MultipleObjects, encounter.Selection.Kind);
+            encounter.SetAutomated(encounter.PlayerSide, true);
+            controller.Advance(0);
+            GameObject events = new("Multiple assignment events", typeof(EventSystem));
+            try
+            {
+                Canvas.ForceUpdateCanvases();
+                TacticalCombatHudButton button =
+                    view.GetComponentsInChildren<TacticalCombatHudButton>(true)
+                        .Single(item => item.name == nameof(TacticalCombatControl.ObjectGroup8));
+
+                ClickGroupButton(button, events.GetComponent<EventSystem>());
+                encounter.SetAutomated(encounter.PlayerSide, false);
+                controller.Advance(0);
+
+                Assert.AreEqual(TacticalCombatSelectionKind.ObjectGroup, encounter.Selection.Kind);
+                Assert.AreEqual(7, encounter.Selection.Category);
+                CollectionAssert.AreEqual(
+                    new[] { first, second },
+                    encounter.Selection.Group.RequestedMembers
+                );
+            }
+            finally
+            {
+                Object.Destroy(events);
+            }
+        }
+
+        /// <summary>
+        /// Prepares the Empire controls while keeping deterministic input checks paused.
+        /// </summary>
+        /// <param name="encounter">The encounter whose controls are being tested.</param>
+        /// <param name="pack">The content supplying its presentation.</param>
+        /// <returns>The presentation preparation sequence.</returns>
+        private IEnumerator PrepareEmpireGroupSelection(
+            TacticalCombatSession encounter,
+            ContentPack pack
+        )
+        {
+            encounter.IsPaused = true;
+            yield return PrepareController(encounter, pack);
+            for (int frame = 0; frame < 9; frame++)
+                controller.Advance(0.5f);
+            Assert.IsFalse(encounter.IsArriving);
+        }
+
+        /// <summary>
+        /// Checks empty-slot rejection through the presented Empire controls.
+        /// </summary>
+        /// <param name="keyboard">Whether to activate the slot with a native key instead of a mouse click.</param>
+        /// <returns>The preparation, input, and verification sequence.</returns>
+        private IEnumerator VerifyEmptyEmpireSlot(bool keyboard)
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            TacticalCombatSession encounter = CreateEncounter(
+                pack.GameData,
+                playerSide: CombatSide.Defender
+            );
+            encounter.IsPaused = true;
+            yield return PrepareController(encounter, pack);
+            for (int frame = 0; frame < 9; frame++)
+                controller.Advance(0.5f);
+            TacticalCombatGroup group = encounter.GetGroup(encounter.GetUnit("CSEM006"));
+            encounter.SetObjectGroup(encounter.PlayerSide, 0, group);
+            encounter.SetObjectGroup(encounter.PlayerSide, 1, null);
+            controller.Advance(0);
+            Assert.IsNull(encounter.GetObjectGroup(encounter.PlayerSide, 1));
+            GameObject events = new("Empty group selection events", typeof(EventSystem));
+            try
+            {
+                Canvas.ForceUpdateCanvases();
+                TacticalCombatHudButton occupied =
+                    view.GetComponentsInChildren<TacticalCombatHudButton>(true)
+                        .Single(item => item.name == nameof(TacticalCombatControl.ObjectGroup1));
+                TacticalCombatHudButton empty =
+                    view.GetComponentsInChildren<TacticalCombatHudButton>(true)
+                        .Single(item => item.name == nameof(TacticalCombatControl.ObjectGroup2));
+                ClickGroupButton(occupied, events.GetComponent<EventSystem>());
+                controller.Advance(0);
+                Assert.AreSame(group, encounter.Selection.Group);
+
+                if (keyboard)
+                    Assert.IsTrue(
+                        view.HandleKeyboardEvent(
+                            new Event { type = EventType.KeyDown, keyCode = KeyCode.Alpha2 }
+                        )
+                    );
+                else
+                    ClickGroupButton(empty, events.GetComponent<EventSystem>());
+                controller.Advance(0);
+
+                Assert.AreEqual(TacticalCombatSelectionKind.ObjectGroup, encounter.Selection.Kind);
+                Assert.AreEqual(0, encounter.Selection.Category);
+                Assert.AreSame(group, encounter.Selection.Group);
+                Assert.IsNull(encounter.GetObjectGroup(encounter.PlayerSide, 1));
+            }
+            finally
+            {
+                Object.Destroy(events);
+            }
+        }
+
+        /// <summary>
+        /// Sends a completed mouse click through the visible control's raycast and pointer handlers.
+        /// </summary>
+        /// <param name="button">The numbered category button.</param>
+        /// <param name="events">The event system resolving the visible pointer target.</param>
+        private static void ClickGroupButton(TacticalCombatHudButton button, EventSystem events)
+        {
+            RectTransform rect = (RectTransform)button.transform;
+            PointerEventData pointer = new(events)
+            {
+                button = PointerEventData.InputButton.Left,
+                position = RectTransformUtility.WorldToScreenPoint(
+                    null,
+                    rect.TransformPoint(rect.rect.center)
+                ),
+            };
+            List<RaycastResult> hits = new();
+            events.RaycastAll(pointer, hits);
+            Assert.IsNotEmpty(hits);
+            pointer.pointerPressRaycast = hits[0];
+            GameObject pressed = ExecuteEvents.ExecuteHierarchy(
+                hits[0].gameObject,
+                pointer,
+                ExecuteEvents.pointerDownHandler
+            );
+            Assert.AreSame(button.gameObject, pressed);
+            pointer.pointerPress = pressed;
+            ExecuteEvents.Execute(pressed, pointer, ExecuteEvents.pointerUpHandler);
+            ExecuteEvents.Execute(pressed, pointer, ExecuteEvents.pointerClickHandler);
+        }
+
         /// <summary>
         /// Checks the camera against a presented unit's independently observable middle-model boundary.
         /// </summary>
@@ -1042,11 +1298,13 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         /// <param name="catalog">The selected pack's typed data.</param>
         /// <param name="fighterCategory">The fighter group's authored category, or four for an uncategorized group.</param>
         /// <param name="allCapitalsPlayer">Whether all capitals belong to the player for multiple-category ownership tests.</param>
+        /// <param name="playerSide">The side whose faction artwork and controls are presented.</param>
         /// <returns>The isolated encounter.</returns>
         private static TacticalCombatSession CreateEncounter(
             GameDataCatalog catalog,
             int fighterCategory = 4,
-            bool allCapitalsPlayer = false
+            bool allCapitalsPlayer = false,
+            CombatSide playerSide = CombatSide.Attacker
         )
         {
             Dictionary<string, TacticalCombatUnitDefinition> definitions =
@@ -1107,7 +1365,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 groups,
                 CreateSide(CombatSide.Attacker),
                 CreateSide(CombatSide.Defender),
-                CombatSide.Attacker,
+                playerSide,
                 100,
                 random,
                 catalog.TacticalCombat,

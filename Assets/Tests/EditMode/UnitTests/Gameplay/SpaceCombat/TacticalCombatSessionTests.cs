@@ -897,6 +897,61 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(1, group.Members.Count);
         }
 
+        [TestCase(CombatSide.Attacker)]
+        [TestCase(CombatSide.Defender)]
+        public void CreateGroup_LowInitialIDs_RetainsFactionRegistrationBase(
+            CombatSide factionOneSide
+        )
+        {
+            CombatSide factionZeroSide =
+                factionOneSide == CombatSide.Attacker ? CombatSide.Defender : CombatSide.Attacker;
+            TacticalCombatUnit first = new(CreateShip("first", 100, 0), factionZeroSide, 1);
+            TacticalCombatUnit selected = new(CreateShip("selected", 100, 0), factionOneSide, 2);
+            TacticalCombatUnit fighter = new(
+                new Starfighter
+                {
+                    InstanceID = "fighter",
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                },
+                factionZeroSide,
+                3
+            );
+            TacticalCombatGroup firstGroup = new(101, new[] { first }, Vector3.UnitZ);
+            TacticalCombatGroup previous = new(104, new[] { selected }, -Vector3.UnitZ);
+            TacticalCombatGroup fighterGroup = new(105, new[] { fighter }, Vector3.UnitZ);
+            TacticalCombatSession session = new(
+                new[] { first, selected, fighter },
+                new[] { firstGroup, previous, fighterGroup },
+                CreateSide(
+                    CombatSide.Attacker,
+                    factionOneSide == CombatSide.Attacker ? 1 : 0,
+                    Vector3.UnitZ
+                ),
+                CreateSide(
+                    CombatSide.Defender,
+                    factionOneSide == CombatSide.Defender ? 1 : 0,
+                    -Vector3.UnitZ
+                ),
+                factionOneSide,
+                100,
+                new SystemRandomProvider(42)
+            );
+
+            TacticalCombatGroup requested = session.CreateGroup(new[] { selected });
+
+            Assert.AreEqual(1000001, requested.ID);
+            Assert.AreSame(previous, session.GetGroup(selected));
+            Assert.AreSame(requested, session.GetRequestedGroup(selected));
+            Assert.AreSame(fighterGroup, session.GetGroup(fighter));
+            AdvanceSeconds(session, 8);
+            Assert.AreSame(requested, session.GetGroup(selected));
+            Assert.AreSame(fighterGroup, session.GetGroup(fighter));
+            Assert.AreEqual(105, fighter.GroupID);
+            Assert.IsEmpty(previous.Members);
+            CollectionAssert.DoesNotContain(session.Groups, previous);
+        }
+
         [Test]
         public void CreateGroup_QueuedOrderForReplacedGroup_DoesNotAffectReplacement()
         {

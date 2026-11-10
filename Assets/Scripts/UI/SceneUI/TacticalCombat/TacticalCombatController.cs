@@ -407,9 +407,17 @@ public sealed class TacticalCombatController : IDisposable
             is >= TacticalCombatControl.ObjectGroup1
                 and <= TacticalCombatControl.ObjectGroup8
         )
-            _session.Selection.QueueObjectCategory(
-                (int)control - (int)TacticalCombatControl.ObjectGroup1
-            );
+        {
+            int category = (int)control - (int)TacticalCombatControl.ObjectGroup1;
+            TacticalCombatSelectionKind kind = _session.Selection.Kind;
+            if (
+                _session.GetObjectGroup(_session.PlayerSide, category) != null
+                || kind == TacticalCombatSelectionKind.MultipleObjects
+                || kind == TacticalCombatSelectionKind.SingleObject
+                    && _session.IsDirectControlEnabled
+            )
+                _session.Selection.QueueObjectCategory(category);
+        }
         else if (
             control
             is >= TacticalCombatControl.FighterGroup1
@@ -584,15 +592,6 @@ public sealed class TacticalCombatController : IDisposable
             && _session.PendingAttackRunMovie == null;
         foreach (TacticalCombatHudControl definition in TacticalCombatHudLayout.Controls)
             _view.SetControlEnabled(definition.Control, active);
-        for (int category = 0; category < 8; category++)
-            _view.SetControlEnabled(
-                (TacticalCombatControl)((int)TacticalCombatControl.ObjectGroup1 + category),
-                active
-                    && (
-                        _session.GetObjectGroup(_session.PlayerSide, category) != null
-                        || _session.Selection.CanIssueCommands
-                    )
-            );
         for (int category = 0; category < 4; category++)
             _view.SetControlEnabled(
                 (TacticalCombatControl)((int)TacticalCombatControl.FighterGroup1 + category),
@@ -746,11 +745,13 @@ public sealed class TacticalCombatController : IDisposable
 
     /// <summary>
     /// Releases battle sounds before hiding and permits new sounds after the battle reactivates.
-    /// Its view-owned input context follows the same visibility transition.
+    /// A disposed controller or destroyed screen cannot resume battle presentation.
     /// </summary>
     /// <param name="active">Whether battle presentation is visible.</param>
     private void SetBattlePresentation(bool active)
     {
+        if (_disposed || _view == null)
+            return;
         if (!active)
             _session.Audio.SetPlaybackAvailable(false);
         _view.gameObject.SetActive(active);
@@ -834,6 +835,7 @@ public sealed class TacticalCombatController : IDisposable
         _session.DestructionEffectRequested -= HandleDestructionEffect;
         _session.SuperlaserFired -= HandleSuperlaser;
         _session.UnitDestroyed -= HandleDestroyed;
-        UnityEngine.Object.Destroy(_view.gameObject);
+        if (_view != null)
+            UnityEngine.Object.Destroy(_view.gameObject);
     }
 }

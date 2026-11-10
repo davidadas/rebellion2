@@ -274,6 +274,8 @@ namespace Rebellion.Gameplay
                 else if (objectCategories[(int)group.Side] < 8)
                     _objectGroups[(int)group.Side, objectCategories[(int)group.Side]++] = group;
             }
+            for (int side = 0; side < _sides.Length; side++)
+                _nextGroupID[side] = _sides[side].FactionIndex * 1000000;
             foreach (TacticalCombatUnit unit in this._units)
                 _nextGroupID[(int)unit.Side] = Math.Max(_nextGroupID[(int)unit.Side], unit.Index);
             foreach (TacticalCombatGroup group in this._groups)
