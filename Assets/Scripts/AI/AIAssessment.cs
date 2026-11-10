@@ -6,6 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Gameplay.Scripting;
@@ -115,7 +116,7 @@ namespace Rebellion.AI
                 string Owner,
                 ISceneNode Location,
                 ISceneNode Target,
-                Rebellion.Game.Research.ResearchDiscipline? Discipline,
+                ResearchDiscipline? Discipline,
                 string MainParticipants,
                 string Decoys,
                 bool OperationalOnly,

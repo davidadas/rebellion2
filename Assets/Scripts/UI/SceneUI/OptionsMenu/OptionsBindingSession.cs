@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.Controls;
 
 /// <summary>
 /// Manages the controls list and input rebinding against authored binding slots.
@@ -281,17 +282,11 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <returns>The binding path to apply.</returns>
     private static string GetRebindPath(InputControl control)
     {
-        if (
-            control?.path == "/Mouse/scroll"
-            && control is UnityEngine.InputSystem.Controls.Vector2Control vector
-        )
+        if (control?.path == "/Mouse/scroll" && control is Vector2Control vector)
         {
             return vector.ReadValue().y < 0 ? "<Mouse>/scroll/down" : "<Mouse>/scroll/up";
         }
-        if (
-            control?.path == "/Mouse/scroll/y"
-            && control is UnityEngine.InputSystem.Controls.AxisControl axis
-        )
+        if (control?.path == "/Mouse/scroll/y" && control is AxisControl axis)
         {
             return axis.ReadValue() < 0 ? "<Mouse>/scroll/down" : "<Mouse>/scroll/up";
         }

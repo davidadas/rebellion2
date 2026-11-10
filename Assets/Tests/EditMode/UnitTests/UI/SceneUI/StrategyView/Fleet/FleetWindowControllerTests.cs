@@ -402,7 +402,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         [Test]
         public void WindowDrop_WithoutSelectedFleet_SelectsRepresentedPlanet()
         {
-            _planet.Planet.RemoveChildren<Rebellion.Game.Units.Fleet>(_ => true);
+            _planet.Planet.RemoveChildren<GameFleet>(_ => true);
             FleetWindowView view = OpenWindow(out UIWindow window);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
             _controller.RenderWindow(view, window, true);

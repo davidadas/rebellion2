@@ -432,7 +432,7 @@ namespace Rebellion.AI.Proposals
                         outboundTicks,
                         out _,
                         out _,
-                        System.Math.Max(0, participant.Movement.TicksRemaining())
+                        Math.Max(0, participant.Movement.TicksRemaining())
                     )
                 )
                     return true;

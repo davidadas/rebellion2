@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Xml.Linq;
 using System.Xml.Schema;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -643,6 +644,74 @@ namespace Rebellion.Tests.Content
             );
         }
 
+        [TestCase("Production", "ScrapRefundDivisor", 0)]
+        [TestCase("AI", "TickInterval", 0)]
+        [TestCase("AI.Garrison", "ResourceFacilitiesPerGarrison", 0)]
+        [TestCase("Combat.PlanetaryAssault", "GeneralLeadershipDivisor", 0)]
+        [TestCase("Combat.PlanetaryAssault", "DefenseFireDivisor", 0)]
+        [TestCase("Combat.Bombardment", "AttackerLeadershipDivisor", 0)]
+        [TestCase("Combat.Bombardment", "DefenderLeadershipDivisor", 0)]
+        [TestCase("Uprising", "MissionLeadershipDivisor", 0)]
+        [TestCase("Uprising", "DiceRange", -2)]
+        [TestCase("Research", "RefreshIntervalSpread", -2)]
+        public void LoadGameConfig_InvalidRuleOverride_RejectsDocument(
+            string section,
+            string member,
+            int value
+        )
+        {
+            XElement config = new XElement("GameConfig");
+            XElement container = config;
+            foreach (string name in section.Split('.'))
+            {
+                XElement child = new XElement(name);
+                container.Add(child);
+                container = child;
+            }
+            container.SetElementValue(member, value);
+
+            Assert.Throws<XmlSchemaValidationException>(() =>
+                LoadApplicationGameConfig(config.ToString())
+            );
+        }
+
+        [TestCase(10, 5)]
+        [TestCase(0, int.MaxValue)]
+        public void LoadGameConfig_InvalidBombardmentRange_RejectsDocument(int minimum, int maximum)
+        {
+            InvalidDataException error = Assert.Throws<InvalidDataException>(() =>
+                LoadApplicationGameConfig(
+                    $"<GameConfig><Combat><Bombardment><StrikeRollMinimum>{minimum}</StrikeRollMinimum><StrikeRollMaximum>{maximum}</StrikeRollMaximum></Bombardment></Combat></GameConfig>"
+                )
+            );
+
+            StringAssert.Contains("Combat / Bombardment", error.Message);
+        }
+
+        [Test]
+        public void LoadGameConfig_InheritedBombardmentBound_RejectsInvertedOverride()
+        {
+            Assert.Throws<InvalidDataException>(() =>
+                LoadApplicationGameConfig(
+                    "<GameConfig><Combat><Bombardment><StrikeRollMaximum>0</StrikeRollMaximum></Bombardment></Combat></GameConfig>"
+                )
+            );
+        }
+
+        [TestCase(0, 0)]
+        [TestCase(5, 5)]
+        [TestCase(1, 10)]
+        [TestCase(int.MaxValue - 1, int.MaxValue - 1)]
+        public void LoadGameConfig_ValidBombardmentRange_PreservesValues(int minimum, int maximum)
+        {
+            GameConfig config = LoadApplicationGameConfig(
+                $"<GameConfig><Combat><Bombardment><StrikeRollMinimum>{minimum}</StrikeRollMinimum><StrikeRollMaximum>{maximum}</StrikeRollMaximum></Bombardment></Combat></GameConfig>"
+            );
+
+            Assert.AreEqual(minimum, config.Combat.Bombardment.StrikeRollMinimum);
+            Assert.AreEqual(maximum, config.Combat.Bombardment.StrikeRollMaximum);
+        }
+
         [Test]
         public void LoadGameConfig_FixtureMissionExecutionSpeedIncrease_DeserializesValue()
         {
@@ -696,14 +765,31 @@ namespace Rebellion.Tests.Content
         }
 
         /// <summary>
+        /// Loads an override against the application's complete rules and schema.
+        /// </summary>
+        /// <param name="packOverrideXml">The pack's sparse rule overrides.</param>
+        /// <returns>The validated merged rules.</returns>
+        private static GameConfig LoadApplicationGameConfig(string packOverrideXml)
+        {
+            string application = Path.Combine(TestContent.Pack.ContentRootPath, "Application");
+            return LoadGameConfigFromFixture(
+                File.ReadAllText(Path.Combine(application, "Rules", "game.xml")),
+                packOverrideXml,
+                File.ReadAllText(Path.Combine(application, "Schemas", "game-config.xsd"))
+            );
+        }
+
+        /// <summary>
         /// Loads game config from fixture.
         /// </summary>
         /// <param name="applicationDefaultsXml">The application defaults xml.</param>
         /// <param name="packOverrideXml">The pack override xml.</param>
+        /// <param name="schemaXml">The schema used to validate the merged rules.</param>
         /// <returns>The loaded game config from fixture.</returns>
         private static GameConfig LoadGameConfigFromFixture(
             string applicationDefaultsXml,
-            string packOverrideXml
+            string packOverrideXml,
+            string schemaXml = _fixtureSchemaXml
         )
         {
             string contentRoot = Path.Combine(
@@ -719,7 +805,7 @@ namespace Rebellion.Tests.Content
                 Directory.CreateDirectory(schemasRoot);
                 Directory.CreateDirectory(Path.Combine(packRoot, "Rules"));
                 File.WriteAllText(Path.Combine(rulesRoot, "game.xml"), applicationDefaultsXml);
-                File.WriteAllText(Path.Combine(schemasRoot, "game-config.xsd"), _fixtureSchemaXml);
+                File.WriteAllText(Path.Combine(schemasRoot, "game-config.xsd"), schemaXml);
                 string packOverridePath = null;
                 if (packOverrideXml != null)
                 {

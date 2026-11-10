@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Xml;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
 
@@ -520,7 +521,7 @@ public sealed class ContentFileResolver
                 or IOException
                 or UnauthorizedAccessException
                 or InvalidOperationException
-                or System.Xml.XmlException
+                or XmlException
                 or FormatException;
     }
 }

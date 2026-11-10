@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game.Galaxy;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using UnityEngine;
@@ -15,7 +16,7 @@ public sealed class AdvisorReportWindowController
     private readonly Action<UIWindow> closeWindow;
     private readonly Func<Vector2Int> getWindowPosition;
     private readonly Func<UIContext> getUIContext;
-    private readonly Func<Rebellion.Game.Galaxy.GalaxyMap> getFactionView;
+    private readonly Func<GalaxyMap> getFactionView;
     private readonly Func<VictoryQueries> getVictoryQueries;
     private readonly Action markDirty;
     private readonly Dictionary<AdvisorReportWindowView, AdvisorReportWindowSession> sessions =
@@ -36,7 +37,7 @@ public sealed class AdvisorReportWindowController
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
     public AdvisorReportWindowController(
         Func<UIContext> getUIContext,
-        Func<Rebellion.Game.Galaxy.GalaxyMap> getFactionView,
+        Func<GalaxyMap> getFactionView,
         Func<VictoryQueries> getVictoryQueries,
         StrategyWindowLayerView windowLayer,
         UIWindowManager windowManager,

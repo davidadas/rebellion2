@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Tests.ContentEditor.Integration
@@ -62,11 +63,9 @@ namespace Rebellion.Tests.ContentEditor.Integration
             );
             CollectionAssert.AreEqual(
                 new[] { faction },
-                created is Rebellion.Game.Units.Officer officer
+                created is Officer officer
                     ? officer.RecruitingFactionInstanceIDs
-                    : (
-                        (Rebellion.Game.Units.IManufacturable)created
-                    ).ManufacturingFactionInstanceIDs
+                    : ((IManufacturable)created).ManufacturingFactionInstanceIDs
             );
         }
 

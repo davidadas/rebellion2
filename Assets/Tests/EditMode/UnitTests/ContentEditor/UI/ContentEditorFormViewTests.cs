@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
@@ -971,7 +972,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             ContentPackEditorCatalog catalog = project
                 .GetCatalogs()
                 .First(item => item.Name == "Officers");
-            System.Xml.Linq.XDocument xml = System.Xml.Linq.XDocument.Parse(catalog.Document.Text);
+            XDocument xml = XDocument.Parse(catalog.Document.Text);
             xml.Root.Elements().First().SetElementValue("CanBetray", "not-a-bool");
             project.SetDocumentText(catalog.Document, xml.ToString());
 
@@ -996,7 +997,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             ContentPackEditorCatalog catalog = project
                 .GetCatalogs()
                 .First(item => item.Name == "Officers");
-            System.Xml.Linq.XDocument xml = System.Xml.Linq.XDocument.Parse(catalog.Document.Text);
+            XDocument xml = XDocument.Parse(catalog.Document.Text);
             xml.Root.Elements()
                 .First()
                 .SetElementValue("EncyclopediaImagePath", "unscoped/image.png");
@@ -1422,8 +1423,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .Element("Foil")
                 .Elements("Entry")
                 .SingleOrDefault(entry =>
-                    entry.Element("Key").Value
-                    == score.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    entry.Element("Key").Value == score.ToString(CultureInfo.InvariantCulture)
                 )
                 ?.Element("Value")
                 ?.Value

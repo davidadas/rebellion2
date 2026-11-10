@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using GLTFast;
 using UnityEngine;
 
 /// <summary>
@@ -23,10 +24,8 @@ public static class ContentModelLoader
         if (string.IsNullOrWhiteSpace(filePath))
             throw new ArgumentException("A GLB file path is required.", nameof(filePath));
 
-        GLTFast.IDeferAgent deferAgent = Application.isPlaying
-            ? null
-            : new GLTFast.UninterruptedDeferAgent();
-        GLTFast.GltfImport gltf = new GLTFast.GltfImport(deferAgent: deferAgent);
+        IDeferAgent deferAgent = Application.isPlaying ? null : new UninterruptedDeferAgent();
+        GltfImport gltf = new GltfImport(deferAgent: deferAgent);
         try
         {
             bool loaded = await gltf.LoadFile(filePath, null, null, cancellationToken);
@@ -51,7 +50,7 @@ public static class ContentModelLoader
 /// </summary>
 internal sealed class ContentModelResource : IDisposable
 {
-    private GLTFast.GltfImport importer;
+    private GltfImport importer;
     private readonly string filePath;
 
     /// <summary>
@@ -59,7 +58,7 @@ internal sealed class ContentModelResource : IDisposable
     /// </summary>
     /// <param name="gltfImporter">The gltf importer.</param>
     /// <param name="loadedFilePath">The loaded file path.</param>
-    internal ContentModelResource(GLTFast.GltfImport gltfImporter, string loadedFilePath)
+    internal ContentModelResource(GltfImport gltfImporter, string loadedFilePath)
     {
         importer = gltfImporter ?? throw new ArgumentNullException(nameof(gltfImporter));
         filePath = loadedFilePath;
@@ -81,10 +80,7 @@ internal sealed class ContentModelResource : IDisposable
         if (parent == null)
             throw new ArgumentNullException(nameof(parent));
 
-        GLTFast.GameObjectInstantiator instantiator = new GLTFast.GameObjectInstantiator(
-            importer,
-            parent
-        );
+        GameObjectInstantiator instantiator = new GameObjectInstantiator(importer, parent);
         Transform sceneRoot = null;
         bool ownershipTransferred = false;
         try

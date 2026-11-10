@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -270,8 +271,8 @@ namespace Rebellion.Tests.Gameplay
             BindTravelTrait(officer);
             Assert.IsTrue(missions.InitiateMission(context));
             Mission mission = game.GetSceneNodesByType<Mission>().Single();
-            officer.Movement.SetPosition(new System.Drawing.Point(100, 0));
-            decoy.Movement.SetPosition(new System.Drawing.Point(40, 0));
+            officer.Movement.SetPosition(new Point(100, 0));
+            decoy.Movement.SetPosition(new Point(40, 0));
             MovementQueries queries = new MovementQueries(game);
             int expectedOfficerTicks = queries.CalculateTransitTicks(
                 officer,

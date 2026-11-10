@@ -2,11 +2,12 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.Gameplay
 {
     /// <summary>
-    /// Routes headquarters losses to victory resolution in batch order.
+    /// Converts ordered victory-relevant game results into one terminal victory result.
     /// </summary>
     public sealed class VictoryObserver : IResultObserver, IDisposable
     {
@@ -26,41 +27,73 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Registers the headquarters-loss callback with the result bus.
+        /// Registers the ordered victory callback with the result bus.
         /// </summary>
-        /// <param name="results">The bus that delivers headquarters losses.</param>
+        /// <param name="results">The bus that delivers completed game results.</param>
         public void Connect(GameResultBus results)
         {
             if (_subscription != null)
                 throw new InvalidOperationException("Victory observer is already connected.");
             _subscription = (
                 results ?? throw new ArgumentNullException(nameof(results))
-            ).Subscribe<HeadquartersLostResult>(HandleResults);
+            ).Subscribe<GameResult>(HandleResults);
         }
 
         /// <summary>
-        /// Stops receiving headquarters losses.
+        /// Stops receiving completed game results.
         /// </summary>
         public void Dispose() => _subscription?.Dispose();
 
         /// <summary>
-        /// Applies the configured victory condition after a faction loses its headquarters.
+        /// Applies the configured victory condition immediately after a relevant state change.
         /// </summary>
-        /// <param name="results">The headquarters loss results.</param>
-        /// <returns>Any victories caused by the headquarters losses.</returns>
-        public List<GameResult> HandleResults(IReadOnlyList<HeadquartersLostResult> results)
+        /// <param name="results">The ordered completed game results.</param>
+        /// <returns>The first victory caused by this result wave, when present.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<GameResult> results)
         {
-            if (_commands.IsDeclared)
-                return new List<GameResult>();
+            List<GameResult> reactions = new();
+            if (_commands.IsDeclared || results == null)
+                return reactions;
 
-            if (results == null || results.Count == 0)
-                return new List<GameResult>();
+            foreach (GameResult result in results)
+            {
+                Faction candidate = ResolveCandidate(result);
+                if (candidate == null || !_queries.HasDefeatedEveryOpponent(candidate))
+                    continue;
 
-            Faction winner = _queries.FindWinner();
-            if (winner != null)
-                _commands.TryDeclareVictory(winner);
+                VictoryResult victory = _commands.TryDeclareVictory(candidate);
+                if (victory == null)
+                    continue;
 
-            return new List<GameResult>();
+                reactions.Add(victory);
+                GameLogger.Log($"Victory condition met: {victory.Winner.GetDisplayName()} won.");
+                break;
+            }
+
+            return reactions;
+        }
+
+        /// <summary>
+        /// Resolves the faction whose completed action may have satisfied victory requirements.
+        /// </summary>
+        /// <param name="result">The completed game result.</param>
+        /// <returns>The affected victory candidate, or null for unrelated or ambiguous results.</returns>
+        private Faction ResolveCandidate(GameResult result)
+        {
+            if (result is HeadquartersLostResult headquarters)
+            {
+                return _queries.GetFaction(headquarters.Attacker?.InstanceID)
+                    ?? _queries.GetSoleOpponent(headquarters.Defender);
+            }
+
+            if (result is not OfficerCaptureStateResult { IsCaptured: true } capture)
+                return null;
+
+            return _queries.GetFaction(
+                !string.IsNullOrEmpty(capture.CaptorInstanceID)
+                    ? capture.CaptorInstanceID
+                    : capture.TargetOfficer?.CaptorInstanceID
+            );
         }
     }
 }

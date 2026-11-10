@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Rebellion.AI;
 using Rebellion.AI.Demands;
@@ -291,9 +292,7 @@ namespace Rebellion.Tests.AI.Helpers
             order.ShieldStrength = 80;
             AITurnContext context = CreateContext(game, faction);
             if (!context.Manufacturing.Enqueue(producer, order, producer))
-                throw new System.InvalidOperationException(
-                    "Could not arrange the existing shield order."
-                );
+                throw new InvalidOperationException("Could not arrange the existing shield order.");
             return CreateContext(game, faction);
         }
 
@@ -515,7 +514,7 @@ namespace Rebellion.Tests.AI.Helpers
             int starfighterCapacity = 1
         )
         {
-            int durabilityStrength = System.Math.Max(1, combatStrength);
+            int durabilityStrength = Math.Max(1, combatStrength);
             CapitalShip ship = new CapitalShip
             {
                 InstanceID = instanceId,

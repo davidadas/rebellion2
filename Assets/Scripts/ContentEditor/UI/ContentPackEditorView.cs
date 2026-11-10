@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Xml;
+using System.Xml.Schema;
 using Rebellion.Game;
 using Rebellion.Game.Messages;
 using TMPro;
@@ -1658,14 +1660,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         catch (Exception exception)
         {
             int line =
-                exception is System.Xml.XmlException xml ? xml.LineNumber
-                : exception is System.Xml.Schema.XmlSchemaException schema ? schema.LineNumber
+                exception is XmlException xml ? xml.LineNumber
+                : exception is XmlSchemaException schema ? schema.LineNumber
                 : 0;
-            if (
-                selectedRecord.Kind == "GameEvent"
-                && exception is System.Xml.Schema.XmlSchemaException
-                && line > 1
-            )
+            if (selectedRecord.Kind == "GameEvent" && exception is XmlSchemaException && line > 1)
                 line--;
             RenderStatus(
                 (line > 0 ? "Line " + line + ": " : string.Empty) + exception.Message,

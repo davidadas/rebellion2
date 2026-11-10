@@ -106,7 +106,7 @@ public sealed class ContentEditorRecordRowView : SelectableListRowView
         {
             thumbnail.texture = string.IsNullOrEmpty(address) ? null : assets.GetTexture(address);
         }
-        catch (System.ArgumentException)
+        catch (ArgumentException)
         {
             thumbnail.texture = null;
         }

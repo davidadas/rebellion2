@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Xml.Linq;
+using Rebellion.Game;
+using Rebellion.Util.Serialization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -385,8 +388,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
         if (
             !int.TryParse(
                 scoreInput.text,
-                System.Globalization.NumberStyles.Integer,
-                System.Globalization.CultureInfo.InvariantCulture,
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
                 out int score
             )
         )
@@ -484,7 +487,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         curveGraphic.gameObject.SetActive(true);
         curveGraphic.Render(points);
         PlaceLabel(
-            high.ToString("0", System.Globalization.CultureInfo.InvariantCulture),
+            high.ToString("0", CultureInfo.InvariantCulture),
             labelIndex++,
             x,
             y + 38,
@@ -492,7 +495,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             false
         );
         PlaceLabel(
-            low.ToString("0", System.Globalization.CultureInfo.InvariantCulture),
+            low.ToString("0", CultureInfo.InvariantCulture),
             labelIndex++,
             x,
             y + 208,
@@ -500,7 +503,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             false
         );
         PlaceLabel(
-            minimum.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            minimum.ToString(CultureInfo.InvariantCulture),
             labelIndex++,
             x + 44,
             y + 232,
@@ -508,7 +511,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             false
         );
         PlaceLabel(
-            maximum.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            maximum.ToString(CultureInfo.InvariantCulture),
             labelIndex++,
             x + width - 70,
             y + 232,
@@ -934,9 +937,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     y += imageHeight + 12;
                 }
             }
-            IReadOnlyDictionary<System.Xml.Linq.XElement, string> poolTitles = GetNamePoolTitles(
-                record
-            );
+            IReadOnlyDictionary<XElement, string> poolTitles = GetNamePoolTitles(record);
             IReadOnlyList<string> previous = Array.Empty<string>();
             foreach (ContentPackEditorField field in group)
             {
@@ -955,7 +956,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     && field.Group is "Settings" or "ShipNamePools" or "Messages"
                 )
                     sections = sections.Skip(1).ToArray();
-                System.Xml.Linq.XElement pool = field
+                XElement pool = field
                     .XmlElement.AncestorsAndSelf()
                     .FirstOrDefault(element => element.Name.LocalName == "NamePool");
                 if (pool != null && poolTitles.TryGetValue(pool, out string poolTitle))
@@ -1003,13 +1004,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// </summary>
     /// <param name="record">The faction whose pools are being edited.</param>
     /// <returns>The usage captions keyed by their exact collection entries.</returns>
-    private IReadOnlyDictionary<System.Xml.Linq.XElement, string> GetNamePoolTitles(
-        ContentPackEditorRecord record
-    )
+    private IReadOnlyDictionary<XElement, string> GetNamePoolTitles(ContentPackEditorRecord record)
     {
-        System.Xml.Linq.XElement[] pools =
+        XElement[] pools =
             record.Element.Element("ShipNamePools")?.Elements().ToArray()
-            ?? Array.Empty<System.Xml.Linq.XElement>();
+            ?? Array.Empty<XElement>();
         string owner = record.Element.Element("InstanceID")?.Value;
         ContentPackEditorRecord[] ships =
             pools.Length == 0
@@ -1094,16 +1093,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
             : owner == null ? null
             : ContentPackEditorFieldSchema.GetValueType(selectedRecord.Element, owner);
         Type memberType =
-            ownerType == null
-                ? null
-                : Rebellion.Util.Serialization.SerializationMetadata.GetElementType(
-                    ownerType,
-                    memberName
-                );
+            ownerType == null ? null : SerializationMetadata.GetElementType(ownerType, memberName);
         if (
             memberType != null
             && ContentPackEditorFieldSchema.GetItemType(memberType) is Type item
-            && !Rebellion.Util.Serialization.TypeHelper.IsScalar(item)
+            && !TypeHelper.IsScalar(item)
         )
             RenderSetupCollection(
                 project.GetCollection(selectedRecord, selectedRecord.Element, path),
@@ -1165,9 +1159,9 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     ? null
                     : ContentPackEditorFieldSchema.GetValueType(selectedRecord.Element, parent);
             if (
-                type == typeof(Rebellion.Game.DiceFormula)
-                || type == typeof(Rebellion.Game.SupportFormula)
-                || type == typeof(Rebellion.Game.PlanetSizeProfile)
+                type == typeof(DiceFormula)
+                || type == typeof(SupportFormula)
+                || type == typeof(PlanetSizeProfile)
             )
             {
                 if (!ranges.Add(parent))
@@ -1220,7 +1214,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         ref int unitIndex
     )
     {
-        if (collection.ItemType == typeof(Rebellion.Game.UnitEntry))
+        if (collection.ItemType == typeof(UnitEntry))
         {
             string title = collection.Name == "Cargo" ? "Cargo" : "Units";
             y += PlaceLabel(title, labelIndex++, 4, y + 8, width - 8, true) + 8;
@@ -1562,7 +1556,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 row.transform.SetAsFirstSibling();
                 row.gameObject.SetActive(true);
                 PlaceLabel(
-                    score.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    score.ToString(CultureInfo.InvariantCulture),
                     groupIndex++,
                     4,
                     y + 6,

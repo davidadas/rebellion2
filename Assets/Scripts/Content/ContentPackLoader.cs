@@ -749,8 +749,19 @@ public static class ContentPackLoader
                     )
                 )
             );
-        return gameConfig as GameConfig
+        GameConfig config =
+            gameConfig as GameConfig
             ?? throw new InvalidDataException("Failed to deserialize the merged game config.");
+        GameConfig.BombardmentConfig bombardment = config.Combat?.Bombardment;
+        if (bombardment != null && bombardment.StrikeRollMinimum > bombardment.StrikeRollMaximum)
+            throw new InvalidDataException(
+                "Combat / Bombardment: strike roll minimum must not exceed strike roll maximum."
+            );
+        if (bombardment?.StrikeRollMaximum == int.MaxValue)
+            throw new InvalidDataException(
+                $"Combat / Bombardment: strike roll maximum must be less than {int.MaxValue}."
+            );
+        return config;
     }
 
     /// <summary>
