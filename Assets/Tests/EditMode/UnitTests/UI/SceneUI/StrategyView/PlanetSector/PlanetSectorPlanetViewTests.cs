@@ -69,117 +69,123 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.Throws<ArgumentNullException>(() => _view.Render(null, Vector2Int.zero));
         }
 
-        [TestCase("EnergyBar", 1)]
-        [TestCase("EnergyBar", 22)]
-        [TestCase("RawBar", 1)]
-        [TestCase("RawBar", 22)]
-        public void Render_ResourceCountBeyondAuthoredCells_RendersEveryCell(
-            string barName,
-            int additional
+        [TestCase(1)]
+        [TestCase(15)]
+        public void Render_ResourceCountsThroughFifteen_KeepsTheCellBars(int count)
+        {
+            _view.Render(
+                CreateData(
+                    energyBar: CreateSegmentedBar(true, count, count - 1),
+                    rawBar: CreateSegmentedBar(true, count, count - 1)
+                ),
+                Vector2Int.zero
+            );
+
+            foreach (string rowName in new[] { "EnergyBar", "RawBar" })
+            {
+                Transform row = _rootObject.transform.Find(rowName);
+                Image[] cells = row.GetComponentsInChildren<Image>()
+                    .Where(image => image.name.StartsWith("Segment", StringComparison.Ordinal))
+                    .ToArray();
+                Assert.IsTrue(row.gameObject.activeSelf);
+                Assert.AreEqual(count, cells.Length);
+                Assert.AreEqual(new Color32(255, 0, 0, 255), (Color32)cells[count - 1].color);
+                Assert.AreEqual(count * 3, UILayout.GetSourceRect(row as RectTransform).width);
+            }
+            Assert.IsFalse(
+                _rootObject.transform.Find("EnergyValueTextField").gameObject.activeSelf
+            );
+            Assert.IsFalse(_rootObject.transform.Find("RawValueTextField").gameObject.activeSelf);
+            Assert.AreEqual(
+                50,
+                UILayout
+                    .GetSourceRect(
+                        _rootObject.transform.Find("PlanetNameTextField") as RectTransform
+                    )
+                    .y
+            );
+        }
+
+        [TestCase(16, 4, 15, 3, "15/16", "3/4")]
+        [TestCase(4, 16, 2, 15, "2/4", "15/16")]
+        [TestCase(53, 11, 53, 11, "53/53", "11/11")]
+        public void Render_ResourceCountAboveFifteen_ReplacesPlanetBarsWithValues(
+            int energyTotal,
+            int rawTotal,
+            int energyUsed,
+            int rawUsed,
+            string expectedEnergy,
+            string expectedRaw
         )
         {
-            RectTransform bar = _rootObject.transform.Find(barName) as RectTransform;
-            Image[] original = bar.GetComponentsInChildren<Image>(true)
-                .Where(image => image.name.StartsWith("Segment", StringComparison.Ordinal))
-                .ToArray();
-            int count = original.Length + additional;
-            PlanetSectorBarRenderData data = CreateSegmentedBar(true, count, count - 1);
-            PlanetSectorPlanetRenderData presentation =
-                barName == "EnergyBar" ? CreateData(energyBar: data) : CreateData(rawBar: data);
-
-            _view.Render(presentation, Vector2Int.zero);
-
-            Image[] cells = bar.GetComponentsInChildren<Image>()
-                .Where(image => image.name.StartsWith("Segment", StringComparison.Ordinal))
-                .ToArray();
-            Assert.AreEqual(count, cells.Length);
-            Assert.AreSame(original[0], cells[0]);
-            Assert.AreEqual(new Color32(0, 255, 0, 255), (Color32)cells[count - 2].color);
-            Assert.AreEqual(new Color32(255, 0, 0, 255), (Color32)cells[count - 1].color);
-            RectInt first = UILayout.GetSourceRect(cells[0].rectTransform);
-            RectInt second = UILayout.GetSourceRect(cells[1].rectTransform);
-            RectInt last = UILayout.GetSourceRect(cells[count - 1].rectTransform);
-            Assert.AreEqual(first.x + (second.x - first.x) * (count - 1), last.x);
-            Assert.AreEqual(first.size, last.size);
-        }
-
-        [TestCase("EnergyBar")]
-        [TestCase("RawBar")]
-        public void Render_ResourceCountShrinksAndGrows_ReusesTheExpandedCellPool(string barName)
-        {
-            RectTransform bar = _rootObject.transform.Find(barName) as RectTransform;
-            int count =
-                bar.GetComponentsInChildren<Image>(true)
-                    .Count(image => image.name.StartsWith("Segment", StringComparison.Ordinal))
-                + 22;
-            PlanetSectorBarRenderData expanded = CreateSegmentedBar(true, count, count);
             _view.Render(
-                barName == "EnergyBar"
-                    ? CreateData(energyBar: expanded)
-                    : CreateData(rawBar: expanded),
-                Vector2Int.zero
-            );
-            Image[] pool = bar.GetComponentsInChildren<Image>(true)
-                .Where(image => image.name.StartsWith("Segment", StringComparison.Ordinal))
-                .ToArray();
-            PlanetSectorBarRenderData smaller = CreateSegmentedBar(true, 3, 2);
-
-            _view.Render(
-                barName == "EnergyBar"
-                    ? CreateData(energyBar: smaller)
-                    : CreateData(rawBar: smaller),
+                CreateData(
+                    energyBar: CreateSegmentedBar(true, energyTotal, energyUsed),
+                    rawBar: CreateSegmentedBar(true, rawTotal, rawUsed)
+                ),
                 Vector2Int.zero
             );
 
+            Assert.IsFalse(_rootObject.transform.Find("EnergyBar").gameObject.activeSelf);
+            Assert.IsFalse(_rootObject.transform.Find("RawBar").gameObject.activeSelf);
+            TMP_Text energy = _rootObject
+                .transform.Find("EnergyValueTextField")
+                .GetComponent<TMP_Text>();
+            TMP_Text raw = _rootObject.transform.Find("RawValueTextField").GetComponent<TMP_Text>();
+            Assert.IsTrue(energy.gameObject.activeSelf);
+            Assert.IsTrue(raw.gameObject.activeSelf);
+            Assert.AreEqual(expectedEnergy, energy.text);
+            Assert.AreEqual(expectedRaw, raw.text);
+            energy.ForceMeshUpdate(true);
+            raw.ForceMeshUpdate(true);
+            Assert.IsFalse(energy.isTextOverflowing);
+            Assert.IsFalse(raw.isTextOverflowing);
+            RectInt energyBounds = UILayout.GetSourceRect(energy.rectTransform);
+            RectInt rawBounds = UILayout.GetSourceRect(raw.rectTransform);
+            Assert.GreaterOrEqual(energyBounds.xMin, 10);
+            Assert.LessOrEqual(rawBounds.xMax, 47);
+            Assert.LessOrEqual(energyBounds.yMax, 47);
+            Assert.LessOrEqual(rawBounds.yMax, 47);
             Assert.AreEqual(
-                3,
-                bar.GetComponentsInChildren<Image>()
-                    .Count(image => image.name.StartsWith("Segment", StringComparison.Ordinal))
-            );
-            _view.Render(
-                barName == "EnergyBar"
-                    ? CreateData(energyBar: expanded)
-                    : CreateData(rawBar: expanded),
-                Vector2Int.zero
-            );
-            CollectionAssert.AreEqual(
-                pool,
-                bar.GetComponentsInChildren<Image>(true)
-                    .Where(image => image.name.StartsWith("Segment", StringComparison.Ordinal))
-                    .ToArray()
+                50,
+                UILayout
+                    .GetSourceRect(
+                        _rootObject.transform.Find("PlanetNameTextField") as RectTransform
+                    )
+                    .y
             );
         }
 
-        [TestCase("EnergyBar")]
-        [TestCase("RawBar")]
-        public void Render_ExpandedBarBecomesContinuous_HidesEverySegment(string barName)
+        [Test]
+        public void Render_ResourceCountDropsToFifteen_RestoresTheCellBars()
         {
-            RectTransform bar = _rootObject.transform.Find(barName) as RectTransform;
-            int count =
-                bar.GetComponentsInChildren<Image>(true)
-                    .Count(image => image.name.StartsWith("Segment", StringComparison.Ordinal))
-                + 22;
-            PlanetSectorBarRenderData expanded = CreateSegmentedBar(true, count, count);
+            _view.Render(CreateData(energyBar: CreateSegmentedBar(true, 53, 53)), Vector2Int.zero);
+
+            _view.Render(CreateData(energyBar: CreateSegmentedBar(true, 15, 14)), Vector2Int.zero);
+
+            Assert.IsTrue(_rootObject.transform.Find("EnergyBar").gameObject.activeSelf);
+            Assert.IsTrue(_rootObject.transform.Find("RawBar").gameObject.activeSelf);
+            Assert.IsFalse(
+                _rootObject.transform.Find("EnergyValueTextField").gameObject.activeSelf
+            );
+            Assert.IsFalse(_rootObject.transform.Find("RawValueTextField").gameObject.activeSelf);
+        }
+
+        [Test]
+        public void Render_NumericResourcesBecomeHidden_HidesBothValueLabels()
+        {
             _view.Render(
-                barName == "EnergyBar"
-                    ? CreateData(energyBar: expanded)
-                    : CreateData(rawBar: expanded),
+                CreateData(
+                    energyBar: CreateSegmentedBar(false, 53, 53),
+                    rawBar: CreateSegmentedBar(false, 11, 7)
+                ),
                 Vector2Int.zero
             );
-            PlanetSectorBarRenderData continuous = CreateContinuousBar(true, 0.5f);
 
-            _view.Render(
-                barName == "EnergyBar"
-                    ? CreateData(energyBar: continuous)
-                    : CreateData(rawBar: continuous),
-                Vector2Int.zero
+            Assert.IsFalse(
+                _rootObject.transform.Find("EnergyValueTextField").gameObject.activeSelf
             );
-
-            Assert.IsEmpty(
-                bar.GetComponentsInChildren<Image>()
-                    .Where(image => image.name.StartsWith("Segment", StringComparison.Ordinal))
-            );
-            Assert.IsTrue(bar.Find("FillImage").gameObject.activeSelf);
+            Assert.IsFalse(_rootObject.transform.Find("RawValueTextField").gameObject.activeSelf);
         }
 
         [Test]

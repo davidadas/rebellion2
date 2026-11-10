@@ -390,6 +390,38 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNull(presentation.GalacticInformationTexture);
         }
 
+        [TestCase(53, 53, 11, 7)]
+        [TestCase(1, 2, 16, 2)]
+        [TestCase(0, 2, 16, 1)]
+        public void CreateRenderData_OversizedResourceBars_PreservesExactUsedCounts(
+            int energyCapacity,
+            int buildings,
+            int rawNodes,
+            int mines
+        )
+        {
+            Planet planet = CreatePlanet("planet", _playerFactionId, 13, 25);
+            planet.EnergyCapacity = energyCapacity;
+            planet.NumRawResourceNodes = rawNodes;
+            for (int index = 0; index < buildings; index++)
+                planet.AddTestChild(
+                    CreateBuilding(index < mines ? BuildingType.Mine : BuildingType.Defense)
+                );
+
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                CreateSector(new GalaxyMapPlanet(_planetSector, planet, string.Empty)),
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            Assert.IsTrue(data.Planets[0].UseResourceValues);
+            Assert.AreEqual(buildings, data.Planets[0].EnergyBar.LitCells);
+            Assert.AreEqual(energyCapacity, data.Planets[0].EnergyBar.CellCount);
+            Assert.AreEqual(mines, data.Planets[0].RawResourceBar.LitCells);
+        }
+
         [Test]
         public void CreateRenderData_IdleShipyardFilter_ReturnsEvaluatedMarkerTexture()
         {
