@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
 using TMPro;
@@ -66,6 +67,119 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null, Vector2Int.zero));
+        }
+
+        [TestCase("EnergyBar", 1)]
+        [TestCase("EnergyBar", 22)]
+        [TestCase("RawBar", 1)]
+        [TestCase("RawBar", 22)]
+        public void Render_ResourceCountBeyondAuthoredCells_RendersEveryCell(
+            string barName,
+            int additional
+        )
+        {
+            RectTransform bar = _rootObject.transform.Find(barName) as RectTransform;
+            Image[] original = bar.GetComponentsInChildren<Image>(true)
+                .Where(image => image.name.StartsWith("Segment", StringComparison.Ordinal))
+                .ToArray();
+            int count = original.Length + additional;
+            PlanetSectorBarRenderData data = CreateSegmentedBar(true, count, count - 1);
+            PlanetSectorPlanetRenderData presentation =
+                barName == "EnergyBar" ? CreateData(energyBar: data) : CreateData(rawBar: data);
+
+            _view.Render(presentation, Vector2Int.zero);
+
+            Image[] cells = bar.GetComponentsInChildren<Image>()
+                .Where(image => image.name.StartsWith("Segment", StringComparison.Ordinal))
+                .ToArray();
+            Assert.AreEqual(count, cells.Length);
+            Assert.AreSame(original[0], cells[0]);
+            Assert.AreEqual(new Color32(0, 255, 0, 255), (Color32)cells[count - 2].color);
+            Assert.AreEqual(new Color32(255, 0, 0, 255), (Color32)cells[count - 1].color);
+            RectInt first = UILayout.GetSourceRect(cells[0].rectTransform);
+            RectInt second = UILayout.GetSourceRect(cells[1].rectTransform);
+            RectInt last = UILayout.GetSourceRect(cells[count - 1].rectTransform);
+            Assert.AreEqual(first.x + (second.x - first.x) * (count - 1), last.x);
+            Assert.AreEqual(first.size, last.size);
+        }
+
+        [TestCase("EnergyBar")]
+        [TestCase("RawBar")]
+        public void Render_ResourceCountShrinksAndGrows_ReusesTheExpandedCellPool(string barName)
+        {
+            RectTransform bar = _rootObject.transform.Find(barName) as RectTransform;
+            int count =
+                bar.GetComponentsInChildren<Image>(true)
+                    .Count(image => image.name.StartsWith("Segment", StringComparison.Ordinal))
+                + 22;
+            PlanetSectorBarRenderData expanded = CreateSegmentedBar(true, count, count);
+            _view.Render(
+                barName == "EnergyBar"
+                    ? CreateData(energyBar: expanded)
+                    : CreateData(rawBar: expanded),
+                Vector2Int.zero
+            );
+            Image[] pool = bar.GetComponentsInChildren<Image>(true)
+                .Where(image => image.name.StartsWith("Segment", StringComparison.Ordinal))
+                .ToArray();
+            PlanetSectorBarRenderData smaller = CreateSegmentedBar(true, 3, 2);
+
+            _view.Render(
+                barName == "EnergyBar"
+                    ? CreateData(energyBar: smaller)
+                    : CreateData(rawBar: smaller),
+                Vector2Int.zero
+            );
+
+            Assert.AreEqual(
+                3,
+                bar.GetComponentsInChildren<Image>()
+                    .Count(image => image.name.StartsWith("Segment", StringComparison.Ordinal))
+            );
+            _view.Render(
+                barName == "EnergyBar"
+                    ? CreateData(energyBar: expanded)
+                    : CreateData(rawBar: expanded),
+                Vector2Int.zero
+            );
+            CollectionAssert.AreEqual(
+                pool,
+                bar.GetComponentsInChildren<Image>(true)
+                    .Where(image => image.name.StartsWith("Segment", StringComparison.Ordinal))
+                    .ToArray()
+            );
+        }
+
+        [TestCase("EnergyBar")]
+        [TestCase("RawBar")]
+        public void Render_ExpandedBarBecomesContinuous_HidesEverySegment(string barName)
+        {
+            RectTransform bar = _rootObject.transform.Find(barName) as RectTransform;
+            int count =
+                bar.GetComponentsInChildren<Image>(true)
+                    .Count(image => image.name.StartsWith("Segment", StringComparison.Ordinal))
+                + 22;
+            PlanetSectorBarRenderData expanded = CreateSegmentedBar(true, count, count);
+            _view.Render(
+                barName == "EnergyBar"
+                    ? CreateData(energyBar: expanded)
+                    : CreateData(rawBar: expanded),
+                Vector2Int.zero
+            );
+            PlanetSectorBarRenderData continuous = CreateContinuousBar(true, 0.5f);
+
+            _view.Render(
+                barName == "EnergyBar"
+                    ? CreateData(energyBar: continuous)
+                    : CreateData(rawBar: continuous),
+                Vector2Int.zero
+            );
+
+            Assert.IsEmpty(
+                bar.GetComponentsInChildren<Image>()
+                    .Where(image => image.name.StartsWith("Segment", StringComparison.Ordinal))
+            );
+            Assert.IsTrue(bar.Find("FillImage").gameObject.activeSelf);
         }
 
         [Test]

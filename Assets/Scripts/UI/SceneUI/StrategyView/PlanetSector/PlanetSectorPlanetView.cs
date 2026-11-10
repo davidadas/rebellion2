@@ -1044,7 +1044,7 @@ public sealed class PlanetSectorPlanetView
         private readonly RectInt backgroundTemplate;
         private readonly RectInt cellTemplate;
         private readonly int cellStride;
-        private readonly IReadOnlyList<Image> cells;
+        private readonly List<Image> cells;
         private readonly Image fill;
         private readonly RectInt fillTemplate;
         private readonly RectTransform root;
@@ -1067,7 +1067,7 @@ public sealed class PlanetSectorPlanetView
             this.root = root;
             this.background = background;
             this.fill = fill;
-            this.cells = cells ?? Array.Empty<Image>();
+            this.cells = new List<Image>(cells ?? Array.Empty<Image>());
             rootTemplate = UILayout.GetSourceRect(root);
             backgroundTemplate = UILayout.GetSourceRect(background.rectTransform);
             fillTemplate = UILayout.GetSourceRect(fill.rectTransform);
@@ -1121,6 +1121,7 @@ public sealed class PlanetSectorPlanetView
             }
 
             fill.gameObject.SetActive(false);
+            EnsureCellCount(data.CellCount);
             for (int index = 0; index < data.CellCount; index++)
             {
                 Image cell = cells[index];
@@ -1130,6 +1131,20 @@ public sealed class PlanetSectorPlanetView
                 cell.gameObject.SetActive(true);
             }
             HideCells(data.CellCount);
+        }
+
+        /// <summary>
+        /// Extends the authored cell pool for larger runtime resource counts and retains it for reuse.
+        /// </summary>
+        /// <param name="count">The number of cells required by the current presentation.</param>
+        private void EnsureCellCount(int count)
+        {
+            while (cells.Count < count)
+            {
+                Image cell = Instantiate(cells[0], root, false);
+                cell.name = $"Segment{cells.Count}Image";
+                cells.Add(cell);
+            }
         }
 
         /// <summary>
