@@ -207,7 +207,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.IsTrue(bombardment.PlanetDestroyed);
             Assert.IsInstanceOf<HeadquartersDestroyedResult>(loss);
-            Assert.AreSame(loss, bombardment.Events.OfType<HeadquartersDestroyedResult>().Single());
+            Assert.IsEmpty(bombardment.Events.OfType<HeadquartersLostResult>());
             Assert.AreSame(headquarters, ((HeadquartersDestroyedResult)loss).Headquarters);
             Assert.AreSame(_faction, loss.Defender);
             Assert.AreSame(attacker, loss.Attacker);

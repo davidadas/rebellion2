@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
-using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
@@ -111,7 +110,7 @@ namespace Rebellion.Gameplay
                 if (destroysPlanet)
                 {
                     result.PlanetDestroyerTypeID = planetDestroyer.TypeID;
-                    DestroyPlanet(targetPlanet, result);
+                    DestroyPlanet(targetPlanet, planetDestroyer, result);
                 }
 
                 ResolveBombardmentDefenseFire(fleets, targetPlanet, result);
@@ -381,7 +380,7 @@ namespace Rebellion.Gameplay
                 if (!RollStrike(target.Resistance))
                     continue;
 
-                ApplyStrike(planet, defenderId, target, result);
+                ApplyStrike(planet, target, result);
             }
         }
 
@@ -400,7 +399,7 @@ namespace Rebellion.Gameplay
             if (!RollStrike(target.Resistance))
                 return;
 
-            ApplyStrike(planet, planet.GetOwnerInstanceID(), target, result);
+            ApplyStrike(planet, target, result);
         }
 
         /// <summary>
@@ -562,15 +561,9 @@ namespace Rebellion.Gameplay
         /// Applies a successful strike and records its outcome.
         /// </summary>
         /// <param name="planet">Planet containing the target.</param>
-        /// <param name="defenderId">Defending faction instance ID.</param>
         /// <param name="target">Target selected for the strike.</param>
         /// <param name="result">Bombardment result receiving the strike details.</param>
-        private void ApplyStrike(
-            Planet planet,
-            string defenderId,
-            BombardmentTarget target,
-            BombardmentResult result
-        )
+        private void ApplyStrike(Planet planet, BombardmentTarget target, BombardmentResult result)
         {
             switch (target.Type)
             {
@@ -592,7 +585,7 @@ namespace Rebellion.Gameplay
                     }
                     break;
                 case BombardmentTargetType.Headquarters:
-                    result.Events.Add(DestroyHeadquarters(planet, defenderId, result));
+                    result.HeadquartersDestroyed = true;
                     break;
                 case BombardmentTargetType.EnergyCapacity:
                     planet.EnergyCapacity--;
@@ -605,40 +598,6 @@ namespace Rebellion.Gameplay
             }
 
             result.SuccessfulStrikes++;
-        }
-
-        /// <summary>
-        /// Removes a faction headquarters from its planet and owning faction.
-        /// </summary>
-        /// <param name="planet">Planet containing the headquarters.</param>
-        /// <param name="defenderId">Owning faction instance ID.</param>
-        /// <param name="result">Bombardment result receiving the destruction flag.</param>
-        /// <returns>The canonical headquarters-loss result.</returns>
-        private HeadquartersDestroyedResult DestroyHeadquarters(
-            Planet planet,
-            string defenderId,
-            BombardmentResult result
-        )
-        {
-            planet.IsHeadquarters = false;
-            Faction defender = null;
-            if (!string.IsNullOrEmpty(defenderId))
-            {
-                defender = _game.GetFactionByOwnerInstanceID(defenderId);
-                defender.HQInstanceID = null;
-                defender.HasLostHeadquarters = true;
-            }
-            result.HeadquartersDestroyed = true;
-            return new HeadquartersDestroyedResult
-            {
-                Headquarters = result.DestroyedBuildings.FirstOrDefault(building =>
-                    building.BuildingType == BuildingType.Headquarters
-                ),
-                Planet = planet,
-                Defender = defender,
-                Attacker = result.AttackingFaction,
-                Tick = _game.CurrentTick,
-            };
         }
 
         /// <summary>
@@ -660,8 +619,13 @@ namespace Rebellion.Gameplay
         /// Destroys stationed planetary assets and resolves effects on eligible personnel.
         /// </summary>
         /// <param name="planet">Planet being destroyed.</param>
+        /// <param name="planetDestroyer">The ship responsible for the destruction.</param>
         /// <param name="result">Bombardment result receiving personnel consequences.</param>
-        private void DestroyPlanet(Planet planet, BombardmentResult result)
+        private void DestroyPlanet(
+            Planet planet,
+            CapitalShip planetDestroyer,
+            BombardmentResult result
+        )
         {
             planet.IsDestroyed = true;
             result.PlanetDestroyed = true;
@@ -688,6 +652,7 @@ namespace Rebellion.Gameplay
                     new GameObjectDestroyedResult
                     {
                         DestroyedObject = unit,
+                        DestroyedBy = planetDestroyer,
                         Context = planet,
                         Reason = UnitDestructionReason.Combat,
                         Tick = _game.CurrentTick,
@@ -700,11 +665,7 @@ namespace Rebellion.Gameplay
             }
 
             if (planet.IsHeadquarters)
-            {
-                result.Events.Add(
-                    DestroyHeadquarters(planet, result.DefenderOwnerInstanceID, result)
-                );
-            }
+                result.HeadquartersDestroyed = true;
 
             _game.NeutralizeDestroyedPlanet(planet);
 
