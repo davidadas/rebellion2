@@ -1931,6 +1931,8 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(sector, game.Galaxy);
             game.AttachNode(capturePlanet, sector);
             game.AttachNode(custodyPlanet, sector);
+            attacker.HQInstanceID = custodyPlanet.InstanceID;
+            custodyPlanet.IsHeadquarters = true;
             Officer leader = EntityFactory.CreateOfficer("LEADER", defender.InstanceID);
             game.AttachNode(leader, capturePlanet);
             GameSession manager = TestContent.CreateGameSession(game);

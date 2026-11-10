@@ -110,7 +110,9 @@ namespace Rebellion.Gameplay
 
             Faction[] opponents = _game
                 .GetFactions()
-                .Where(faction => faction != null && faction != liveDefender)
+                .Where(faction =>
+                    faction != null && faction != liveDefender && HasActiveHeadquarters(faction)
+                )
                 .Take(2)
                 .ToArray();
             return opponents.Length == 1 ? opponents[0] : null;
@@ -125,7 +127,7 @@ namespace Rebellion.Gameplay
         public bool HasDefeatedEveryOpponent(Faction candidate)
         {
             Faction liveCandidate = GetFaction(candidate?.InstanceID);
-            if (liveCandidate == null)
+            if (!HasActiveHeadquarters(liveCandidate))
                 return false;
 
             Faction[] opponents = _game
@@ -145,6 +147,17 @@ namespace Rebellion.Gameplay
                     && officer.IsCaptured
                 )
             );
+        }
+
+        /// <summary>
+        /// Determines whether a faction remains eligible to win by retaining its headquarters.
+        /// </summary>
+        /// <param name="faction">The faction whose headquarters state is evaluated.</param>
+        /// <returns>True when the faction has not lost and still controls its headquarters.</returns>
+        private bool HasActiveHeadquarters(Faction faction)
+        {
+            return faction is { HasLostHeadquarters: false }
+                && IsHeadquartersOwnedByFaction(faction.InstanceID);
         }
 
         /// <summary>

@@ -32,6 +32,48 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void HasDefeatedEveryOpponent_CandidateHeadquartersLost_ReturnsFalse()
+        {
+            (GameRoot game, _, Faction attacker, _) = BuildScene();
+            attacker.HasLostHeadquarters = true;
+
+            bool result = new VictoryQueries(game).HasDefeatedEveryOpponent(attacker);
+
+            Assert.IsFalse(result);
+        }
+
+        [Test]
+        public void HasDefeatedEveryOpponent_CandidateHeadquartersNotOwned_ReturnsFalse()
+        {
+            (GameRoot game, Faction defender, Faction attacker, _) = BuildScene();
+            Planet attackerHeadquarters = game.GetSceneNodeByInstanceID<Planet>(
+                attacker.HQInstanceID
+            );
+            game.ChangeOwnership(attackerHeadquarters, defender.InstanceID);
+
+            bool result = new VictoryQueries(game).HasDefeatedEveryOpponent(attacker);
+
+            Assert.IsFalse(result);
+        }
+
+        [Test]
+        public void GetSoleOpponent_OneActiveAndOneDefeatedOpponent_ReturnsActiveOpponent()
+        {
+            (GameRoot game, Faction defender, Faction attacker, _) = BuildScene();
+            Faction defeated = new Faction
+            {
+                InstanceID = "defeated",
+                HQInstanceID = "hq-defeated",
+                HasLostHeadquarters = true,
+            };
+            game.GetFactions().Add(defeated);
+
+            Faction result = new VictoryQueries(game).GetSoleOpponent(defender);
+
+            Assert.AreSame(attacker, result);
+        }
+
+        [Test]
         public void HasDefeatedEveryOpponent_ConquestOfficerRemainsFree_ReturnsFalse()
         {
             (GameRoot game, Faction defender, Faction attacker, Planet headquarters) = BuildScene(

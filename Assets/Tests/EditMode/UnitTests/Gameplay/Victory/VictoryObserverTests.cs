@@ -54,7 +54,54 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void HandleResults_OrderedQualifyingChanges_UsesFirstResult()
+        public void HandleResults_AttackerlessHeadquartersLossWithDefeatedThirdFaction_ProducesVictory()
+        {
+            (GameRoot game, Faction defender, Faction attacker, Planet headquarters) = BuildScene();
+            game.GetFactions()
+                .Add(
+                    new Faction
+                    {
+                        InstanceID = "defeated",
+                        HQInstanceID = "hq-defeated",
+                        HasLostHeadquarters = true,
+                    }
+                );
+            VictoryObserver observer = CreateObserver(game);
+
+            List<GameResult> results = observer.HandleResults(
+                new GameResult[]
+                {
+                    new HeadquartersDestroyedResult { Planet = headquarters, Defender = defender },
+                }
+            );
+
+            Assert.AreSame(attacker, results.OfType<VictoryResult>().Single().Winner);
+        }
+
+        [Test]
+        public void HandleResults_CandidateHeadquartersAlreadyLost_DoesNotProduceVictory()
+        {
+            (GameRoot game, Faction defender, Faction attacker, Planet headquarters) = BuildScene();
+            attacker.HasLostHeadquarters = true;
+            VictoryObserver observer = CreateObserver(game);
+
+            List<GameResult> results = observer.HandleResults(
+                new GameResult[]
+                {
+                    new HeadquartersCapturedResult
+                    {
+                        Planet = headquarters,
+                        Defender = defender,
+                        Attacker = attacker,
+                    },
+                }
+            );
+
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
+        public void HandleResults_OrderedHeadquartersLossesWithDefeatedCandidates_ProducesNoVictory()
         {
             (GameRoot game, Faction empire, Faction rebels, Planet empireHeadquarters) =
                 BuildScene();
@@ -80,7 +127,7 @@ namespace Rebellion.Tests.Gameplay
                 }
             );
 
-            Assert.AreSame(rebels, results.OfType<VictoryResult>().Single().Winner);
+            Assert.IsEmpty(results);
         }
 
         [Test]
