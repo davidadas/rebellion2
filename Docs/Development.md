@@ -203,6 +203,12 @@ texture, alpha clipping, and exposure-independent emission, so they need no auth
 contested planet as soon as the battle alert appears, and the battle holds at its opening positions
 (the clock reads "Fleets deploying", for at most eight seconds) while models are still loading. Those models currently live on
 the media branch `feature-3d-combat`.
+A system holds at most one capital ship that can destroy planets (one Death Star), whoever owns
+it, counting ships still under construction and fleets on their way there. `Planet` refuses a
+fleet that carries a second and `Fleet` refuses the ship itself, both in `CanAcceptChild` (which
+movement, evacuation, withdrawal and manufacturing destinations consult) and when a node is added
+directly; a manufacturing order for one is limited to a single ship bound for a system that has
+none.
 A capital ship that can destroy planets (the Death Star) does not join the battle line. It stands
 off beyond its own edge of the arena as a `TacticalBattleStation`, where nothing can shoot at it,
 and takes part in two ways. Its superlaser opens the battle charged: the owning player clicks the

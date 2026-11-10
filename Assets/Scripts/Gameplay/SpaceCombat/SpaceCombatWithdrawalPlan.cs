@@ -199,7 +199,11 @@ namespace Rebellion.Gameplay
                     )
                 )
                 .ToList();
-            Fleet representativeFleet = mobileFleets.FirstOrDefault();
+            // The fleets leave together for one planet. A fleet with a planet destroyer has the
+            // fewest places it can go, since a system holds only one, so it picks for them all.
+            Fleet representativeFleet =
+                mobileFleets.FirstOrDefault(fleet => fleet.HasPlanetDestroyer)
+                ?? mobileFleets.FirstOrDefault();
             if (representativeFleet == null)
                 return;
 

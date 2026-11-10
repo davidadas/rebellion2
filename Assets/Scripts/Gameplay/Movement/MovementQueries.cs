@@ -1540,6 +1540,22 @@ namespace Rebellion.Gameplay
                 return false;
             }
 
+            CapitalShip presentDestroyer = unit switch
+            {
+                Fleet { HasPlanetDestroyer: true } fleet => destinationPlanet.FindPlanetDestroyer(
+                    excludedFleet: fleet
+                ),
+                CapitalShip { CanDestroyPlanets: true } ship =>
+                    destinationPlanet.FindPlanetDestroyer(excludedShip: ship),
+                _ => null,
+            };
+            if (presentDestroyer != null)
+            {
+                rejectionReason =
+                    $"{destinationPlanet.GetDisplayName()} already holds {presentDestroyer.GetDisplayName()}, and a system can hold only one planet destroyer.";
+                return false;
+            }
+
             if (CanAcceptReservedChild(resolvedDestination, unit, reservedChildren))
                 return true;
 
