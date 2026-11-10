@@ -85,12 +85,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
                 CreateButton("RosterSideButton", roster, out TextMeshProUGUI rosterSideLabel)
             );
             Set(view, "rosterSideLabel", rosterSideLabel);
-            Set(
-                view,
-                "rosterClassButton",
-                CreateButton("RosterClassButton", roster, out TextMeshProUGUI rosterClassLabel)
-            );
-            Set(view, "rosterClassLabel", rosterClassLabel);
             Set(view, "rosterSlotTemplate", CreateRosterSlotTemplate(roster));
             Set(
                 view,
@@ -98,6 +92,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
                 CreateButton("TargetPriorityButton", panel, out TextMeshProUGUI targetPriorityLabel)
             );
             Set(view, "targetPriorityLabel", targetPriorityLabel);
+            Button superlaser = CreateButton(
+                "SuperlaserButton",
+                panel,
+                out TextMeshProUGUI superlaserLabel
+            );
+            Set(view, "superlaserButton", superlaser);
+            Set(
+                view,
+                "superlaserBarImage",
+                CreateImage("SuperlaserBarImage", superlaser.transform)
+            );
+            Set(view, "superlaserLabel", superlaserLabel);
+            Set(view, "portraitFrameImage", CreateImage("PortraitFrameImage", panel));
             Set(view, "portraitImage", CreateImage("PortraitImage", panel));
             Set(view, "nameTextField", CreateText("NameTextField", panel));
             Set(view, "subtitleTextField", CreateText("SubtitleTextField", panel));

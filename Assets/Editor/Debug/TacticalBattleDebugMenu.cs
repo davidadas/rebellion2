@@ -7,6 +7,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Generation;
+using Rebellion.SceneGraph;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -26,6 +27,24 @@ public static class TacticalBattleDebugMenu
         "Rebellion/Debug/Play Tactical Battle Test (Alliance, automated)";
     private const string _empireAutomatedMenuPath =
         "Rebellion/Debug/Play Tactical Battle Test (Empire, automated)";
+    private const string _allianceManyFightersMenuPath =
+        "Rebellion/Debug/Play Tactical Battle Test (Alliance, 100 fighters)";
+    private const string _allianceManyFightersAutomatedMenuPath =
+        "Rebellion/Debug/Play Tactical Battle Test (Alliance, 100 fighters, automated)";
+    private const string _allianceVersusStationMenuPath =
+        "Rebellion/Debug/Play Tactical Battle Test (Alliance vs Death Star)";
+    private const string _allianceVersusStationAutomatedMenuPath =
+        "Rebellion/Debug/Play Tactical Battle Test (Alliance vs Death Star, automated)";
+    private const string _empireWithStationMenuPath =
+        "Rebellion/Debug/Play Tactical Battle Test (Empire with Death Star)";
+    private const string _empireWithStationAutomatedMenuPath =
+        "Rebellion/Debug/Play Tactical Battle Test (Empire with Death Star, automated)";
+    private const int _manyFighterSquadronCount = 100;
+    private const int _stationTestSquadronCount = 8;
+    private const double _stationShotDelaySeconds = 2.5;
+    private const double _handOverDelaySeconds = 12.0;
+    private const string _stationKey = "Rebellion.TacticalBattleDebug.Station";
+    private const string _autoButtonName = "AutoButton";
     private const string _allianceFactionId = "FNALL1";
     private const string _empireFactionId = "FNEMP1";
     private const string _saveFileName = "tactical-battle-test";
@@ -45,6 +64,10 @@ public static class TacticalBattleDebugMenu
     private static int _screenshotsTaken;
     private static bool _explosionShotTaken;
     private static bool _tractorShotTaken;
+    private static bool _superlaserShotTaken;
+    private static bool _stationShotTaken;
+    private static bool _stationGoneShotTaken;
+    private static bool _handedOver;
     private static string _pendingEventShot;
 
     /// <summary>
@@ -97,13 +120,81 @@ public static class TacticalBattleDebugMenu
     }
 
     /// <summary>
+    /// Creates and plays a contested campaign as the Alliance with the home fleet topped up to a
+    /// hundred squadrons, to exercise the roster and the arena with many fighters.
+    /// </summary>
+    [MenuItem(_allianceManyFightersMenuPath, false, 304)]
+    public static void PlayTacticalBattleTestAsAllianceWithManyFighters()
+    {
+        PlayTacticalBattleTest(_allianceFactionId, automated: false, _manyFighterSquadronCount);
+    }
+
+    /// <summary>
+    /// The automated form of the hundred-squadron Alliance battle.
+    /// </summary>
+    [MenuItem(_allianceManyFightersAutomatedMenuPath, false, 305)]
+    public static void PlayTacticalBattleTestAsAllianceWithManyFightersAutomated()
+    {
+        PlayTacticalBattleTest(_allianceFactionId, automated: true, _manyFighterSquadronCount);
+    }
+
+    /// <summary>
+    /// Creates and plays a contested campaign as the Alliance against an Imperial fleet that
+    /// brings a Death Star, to exercise the enemy superlaser and the trench run.
+    /// </summary>
+    [MenuItem(_allianceVersusStationMenuPath, false, 306)]
+    public static void PlayTacticalBattleTestAsAllianceVersusStation()
+    {
+        PlayTacticalBattleTest(_allianceFactionId, automated: false, withStation: true);
+    }
+
+    /// <summary>
+    /// The automated form of the Alliance battle against a Death Star.
+    /// </summary>
+    [MenuItem(_allianceVersusStationAutomatedMenuPath, false, 307)]
+    public static void PlayTacticalBattleTestAsAllianceVersusStationAutomated()
+    {
+        PlayTacticalBattleTest(_allianceFactionId, automated: true, withStation: true);
+    }
+
+    /// <summary>
+    /// Creates and plays a contested campaign as the Empire with a Death Star in the home fleet,
+    /// to exercise the superlaser charge bar and an enemy trench run.
+    /// </summary>
+    [MenuItem(_empireWithStationMenuPath, false, 308)]
+    public static void PlayTacticalBattleTestAsEmpireWithStation()
+    {
+        PlayTacticalBattleTest(_empireFactionId, automated: false, withStation: true);
+    }
+
+    /// <summary>
+    /// The automated form of the Imperial battle with a Death Star.
+    /// </summary>
+    [MenuItem(_empireWithStationAutomatedMenuPath, false, 309)]
+    public static void PlayTacticalBattleTestAsEmpireWithStationAutomated()
+    {
+        PlayTacticalBattleTest(_empireFactionId, automated: true, withStation: true);
+    }
+
+    /// <summary>
     /// Generates a fresh campaign, moves an enemy fleet into the player's home system, and
     /// returns the game ready to save.
     /// </summary>
     /// <param name="pack">The active content pack.</param>
     /// <param name="playerFactionId">The faction the player commands.</param>
+    /// <param name="playerSquadronCount">
+    /// The squadron count to top the player's home fleet up to, or zero to leave it as generated.
+    /// </param>
+    /// <param name="withStation">
+    /// Whether a planet-destroying battle station joins the fleet of the faction that builds it.
+    /// </param>
     /// <returns>The generated game with a contested home system.</returns>
-    internal static GameRoot CreateContestedGame(ContentPack pack, string playerFactionId)
+    internal static GameRoot CreateContestedGame(
+        ContentPack pack,
+        string playerFactionId,
+        int playerSquadronCount = 0,
+        bool withStation = false
+    )
     {
         if (pack == null)
             throw new ArgumentNullException(nameof(pack));
@@ -151,6 +242,10 @@ public static class TacticalBattleDebugMenu
                 "The opposing faction has no fleet to attack with."
             );
         game.MoveNode(enemyFleet, home);
+        if (playerSquadronCount > 0)
+            AddSquadrons(game, pack, homeFleet, home, playerSquadronCount);
+        if (withStation)
+            AddStation(game, pack, homeFleet, enemyFleet, home);
         Debug.Log(
             $"Tactical battle test: {enemyFleet.GetDisplayName()} ({enemyFleet.GetChildren<CapitalShip>().Count} ships) now contests {home.GetDisplayName()} against {homeFleet.GetDisplayName()} ({homeShipCount} ships)."
         );
@@ -163,11 +258,25 @@ public static class TacticalBattleDebugMenu
     /// </summary>
     /// <param name="playerFactionId">The faction the player commands.</param>
     /// <param name="automated">Whether to take command and photograph the battle automatically.</param>
-    private static void PlayTacticalBattleTest(string playerFactionId, bool automated)
+    /// <param name="playerSquadronCount">
+    /// The squadron count to top the player's home fleet up to, or zero to leave it as generated.
+    /// </param>
+    /// <param name="withStation">Whether a battle station joins the battle.</param>
+    private static void PlayTacticalBattleTest(
+        string playerFactionId,
+        bool automated,
+        int playerSquadronCount = 0,
+        bool withStation = false
+    )
     {
         StrategyViewPrefabBuilder.Rebuild();
         ContentPack pack = ContentPackLoader.OpenActive();
-        GameRoot game = CreateContestedGame(pack, playerFactionId);
+        GameRoot game = CreateContestedGame(
+            pack,
+            playerFactionId,
+            playerSquadronCount,
+            withStation
+        );
         SaveGameManager.Instance.SaveGameData(game, _saveFileName, _saveDisplayName);
         Debug.Log(
             $"Tactical battle test save written to {SaveGameManager.Instance.GetSaveFilePath(_saveFileName)}."
@@ -175,12 +284,17 @@ public static class TacticalBattleDebugMenu
 
         SessionState.SetString(_pendingLoadKey, _saveFileName);
         SessionState.SetBool(_automatedKey, automated);
+        SessionState.SetBool(_stationKey, withStation);
         _mainMenuReadyTime = 0;
         _strategyReadyTime = 0;
         _commandedTime = 0;
         _screenshotsTaken = 0;
         _explosionShotTaken = false;
         _tractorShotTaken = false;
+        _superlaserShotTaken = false;
+        _stationShotTaken = false;
+        _stationGoneShotTaken = false;
+        _handedOver = false;
         _pendingEventShot = null;
         SceneAsset bootScene = AssetDatabase.LoadAssetAtPath<SceneAsset>(_bootScenePath);
         if (bootScene != null)
@@ -211,6 +325,181 @@ public static class TacticalBattleDebugMenu
             .OrderBy(fleet => Math.Abs(fleet.GetChildren<CapitalShip>().Count - targetShipCount))
             .ThenByDescending(fleet => fleet.GetChildren<CapitalShip>().Count)
             .FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Tops a fleet up with squadrons until it carries a given number, cycling through the
+    /// fighter types it already has (or the ones its faction can build) so the roster shows
+    /// several groups. Ships take squadrons up to their hangar capacity; the rest garrison the
+    /// planet, which fights alongside the fleet as planetary fighters.
+    /// </summary>
+    /// <param name="game">The generated game.</param>
+    /// <param name="pack">The content pack whose templates the squadrons are built from.</param>
+    /// <param name="fleet">The fleet receiving squadrons.</param>
+    /// <param name="planet">The planet that garrisons the squadrons the ships cannot hold.</param>
+    /// <param name="squadronCount">The squadron count to reach.</param>
+    /// <param name="everyBuildableType">
+    /// Whether to cycle through every fighter type the faction builds as well as the ones the
+    /// fleet already has.
+    /// </param>
+    private static void AddSquadrons(
+        GameRoot game,
+        ContentPack pack,
+        Fleet fleet,
+        Planet planet,
+        int squadronCount,
+        bool everyBuildableType = false
+    )
+    {
+        IReadOnlyList<CapitalShip> ships = fleet.GetChildren<CapitalShip>();
+        if (ships.Count == 0)
+            return;
+
+        string owner = fleet.GetOwnerInstanceID();
+        List<Starfighter> existing = ships
+            .SelectMany(ship => ship.GetChildren<Starfighter>())
+            .ToList();
+        List<string> typeIds = existing
+            .Select(squadron => squadron.TypeID)
+            .Where(typeId => !string.IsNullOrEmpty(typeId))
+            .Distinct()
+            .ToList();
+        if (typeIds.Count == 0 || everyBuildableType)
+        {
+            typeIds = typeIds
+                .Concat(
+                    pack.GameData.Starfighters.Where(template =>
+                            template.ManufacturingFactionInstanceIDs?.Contains(owner) == true
+                        )
+                        .Select(template => template.TypeID)
+                )
+                .Distinct()
+                .ToList();
+        }
+
+        if (typeIds.Count == 0)
+            return;
+
+        UnitFactory factory = new UnitFactory(
+            pack.GameData.Buildings,
+            pack.GameData.CapitalShips,
+            pack.GameData.Starfighters,
+            pack.GameData.Regiments,
+            pack.GameData.SpecialForces
+        );
+        // Only the planet's owner can garrison it; a visiting fleet that runs out of hangar
+        // space gets another carrier instead.
+        bool canGarrison = planet.OwnerInstanceID == owner;
+        for (int index = existing.Count; index < squadronCount; index++)
+        {
+            CapitalShip hangar = fleet
+                .GetChildren<CapitalShip>()
+                .FirstOrDefault(ship => ship.GetExcessStarfighterCapacity() > 0);
+            if (hangar == null && !canGarrison)
+            {
+                hangar = AddCarrier(game, pack, factory, fleet);
+                if (hangar == null)
+                    break;
+            }
+
+            Starfighter squadron = factory.Create<Starfighter>(
+                typeIds[index % typeIds.Count],
+                owner
+            );
+            game.AttachNode(squadron, hangar ?? (ISceneNode)planet);
+        }
+
+        Debug.Log(
+            $"Tactical battle test: {fleet.GetDisplayName()} now carries {Math.Max(existing.Count, squadronCount)} squadrons of {typeIds.Count} types."
+        );
+    }
+
+    /// <summary>
+    /// Adds the roomiest carrier a fleet's faction builds to the fleet.
+    /// </summary>
+    /// <param name="game">The generated game.</param>
+    /// <param name="pack">The content pack whose templates the carrier is built from.</param>
+    /// <param name="factory">The factory that builds units from the pack's templates.</param>
+    /// <param name="fleet">The fleet receiving the carrier.</param>
+    /// <returns>The new carrier, or null when the faction builds no ship with a hangar.</returns>
+    private static CapitalShip AddCarrier(
+        GameRoot game,
+        ContentPack pack,
+        UnitFactory factory,
+        Fleet fleet
+    )
+    {
+        string owner = fleet.GetOwnerInstanceID();
+        CapitalShip template = pack
+            .GameData.CapitalShips.Where(ship =>
+                ship.StarfighterCapacity > 0
+                && !ship.CanDestroyPlanets
+                && ship.ManufacturingFactionInstanceIDs?.Contains(owner) == true
+            )
+            .OrderByDescending(ship => ship.StarfighterCapacity)
+            .FirstOrDefault();
+        if (template == null)
+            return null;
+
+        CapitalShip carrier = factory.Create<CapitalShip>(template.TypeID, owner);
+        game.AttachNode(carrier, fleet);
+        return carrier;
+    }
+
+    /// <summary>
+    /// Adds a planet-destroying battle station to whichever of the two fleets belongs to a
+    /// faction that builds one, and gives the other fleet squadrons of every fighter type its
+    /// faction builds, so it has the torpedoes a trench run needs.
+    /// </summary>
+    /// <param name="game">The generated game.</param>
+    /// <param name="pack">The content pack whose templates the units are built from.</param>
+    /// <param name="homeFleet">The player's fleet at the contested planet.</param>
+    /// <param name="enemyFleet">The opposing fleet at the contested planet.</param>
+    /// <param name="planet">The contested planet.</param>
+    private static void AddStation(
+        GameRoot game,
+        ContentPack pack,
+        Fleet homeFleet,
+        Fleet enemyFleet,
+        Planet planet
+    )
+    {
+        CapitalShip template =
+            pack.GameData.CapitalShips.FirstOrDefault(ship => ship.CanDestroyPlanets)
+            ?? throw new InvalidOperationException(
+                "The content pack has no planet-destroying capital ship."
+            );
+        bool homeBuildsIt =
+            template.ManufacturingFactionInstanceIDs?.Contains(homeFleet.GetOwnerInstanceID())
+            == true;
+        Fleet stationFleet = homeBuildsIt ? homeFleet : enemyFleet;
+        Fleet opposingFleet = homeBuildsIt ? enemyFleet : homeFleet;
+        UnitFactory factory = new UnitFactory(
+            pack.GameData.Buildings,
+            pack.GameData.CapitalShips,
+            pack.GameData.Starfighters,
+            pack.GameData.Regiments,
+            pack.GameData.SpecialForces
+        );
+        CapitalShip station = factory.Create<CapitalShip>(
+            template.TypeID,
+            stationFleet.GetOwnerInstanceID()
+        );
+        game.AttachNode(station, stationFleet);
+        int opposingSquadrons = opposingFleet
+            .GetChildren<CapitalShip>()
+            .Sum(ship => ship.GetChildren<Starfighter>().Count);
+        AddSquadrons(
+            game,
+            pack,
+            opposingFleet,
+            planet,
+            opposingSquadrons + _stationTestSquadronCount,
+            everyBuildableType: true
+        );
+        Debug.Log(
+            $"Tactical battle test: {station.GetDisplayName()} joined {stationFleet.GetDisplayName()}."
+        );
     }
 
     /// <summary>
@@ -313,6 +602,28 @@ public static class TacticalBattleDebugMenu
             return;
         }
 
+        // A battle-station run hands the player's side to automatic control once the opening
+        // shots are taken, so nobody has to click for the superlaser to fire or a trench run to
+        // be flown.
+        if (
+            !_handedOver
+            && SessionState.GetBool(_stationKey, false)
+            && now - _commandedTime > _handOverDelaySeconds
+        )
+        {
+            _handedOver = true;
+            TacticalBattleView view =
+                UnityEngine.Object.FindFirstObjectByType<TacticalBattleView>();
+            UnityEngine.UI.Button auto = view
+                ?.GetComponentsInChildren<UnityEngine.UI.Button>(true)
+                .FirstOrDefault(button => button.name == _autoButtonName);
+            if (auto?.interactable == true)
+            {
+                auto.onClick.Invoke();
+                Debug.Log("TACTICAL-AUTO handed the player's side to automatic control.");
+            }
+        }
+
         TacticalBattleScene scene = UnityEngine.Object.FindFirstObjectByType<TacticalBattleScene>(
             FindObjectsInactive.Include
         );
@@ -334,6 +645,35 @@ public static class TacticalBattleDebugMenu
             _tractorShotTaken = true;
             _pendingEventShot = "event-tractor";
             scene.FrameArena();
+        }
+        else if (!_superlaserShotTaken && scene?.HasActiveSuperlaserBeams == true)
+        {
+            _superlaserShotTaken = true;
+            _pendingEventShot = "event-superlaser";
+            scene.FrameArena();
+        }
+        else if (
+            !_stationShotTaken
+            && now - _commandedTime > _stationShotDelaySeconds
+            && scene?.HasVisibleStation == true
+        )
+        {
+            // A battle station stands beyond the arena, so it gets a shot framed on it.
+            _stationShotTaken = true;
+            _pendingEventShot = "station";
+            scene.FrameStation();
+        }
+        else if (
+            _stationShotTaken
+            && !_stationGoneShotTaken
+            && Time.timeScale > 0f
+            && scene?.HasVisibleStation == false
+        )
+        {
+            // The station has blown up or jumped out, and any movie over it has finished.
+            _stationGoneShotTaken = true;
+            _pendingEventShot = "event-station-gone";
+            scene.FrameStation();
         }
 
         if (now - _commandedTime < _screenshotDelays[_screenshotsTaken])
@@ -379,6 +719,7 @@ public static class TacticalBattleDebugMenu
 
         SessionState.EraseString(_pendingLoadKey);
         SessionState.EraseBool(_automatedKey);
+        SessionState.EraseBool(_stationKey);
         EditorSceneManager.playModeStartScene = null;
     }
 }

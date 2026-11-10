@@ -98,8 +98,13 @@ internal sealed class TacticalBattleAudio
             switch (battleEvent.Kind)
             {
                 case TacticalBattleEventKind.UnitDestroyed:
+                case TacticalBattleEventKind.StationDestroyed:
                     if (explosions < _maximumExplosionsPerUpdate && Play(ExplosionPath))
                         explosions++;
+                    break;
+                case TacticalBattleEventKind.SuperlaserFired:
+                    // The content has no superlaser recording yet; a weapon cue marks the shot.
+                    PlayNext(WeaponFirePaths, ref _fireIndex);
                     break;
                 case TacticalBattleEventKind.UnitWithdrew:
                     if (_withdrawalCooldown <= 0f && Play(HyperspacePath))

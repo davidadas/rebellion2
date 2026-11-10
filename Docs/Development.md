@@ -128,9 +128,15 @@ through the same camera and clicks are cast back onto the plane, so picking stay
 or plus and minus zoom, right-drag orbits (Q/E turn, R/F tilt between a low angle and top-down),
 middle-drag or WASD and the
 arrow keys pan, Home reframes the fleet, and Tab
-selects and frames the next friendly ship, and Space pauses. A roster bar under the title lists one side's capital
-ships, a fighter-class selector, and that class's squadrons; clicking a slot inspects (and, for your
-own ships, selects and frames) the unit, and the side toggle switches the listed side. Clicks pick
+selects and frames the next friendly ship, and Space pauses; the Speed button steps playback through
+1x, 2x, 4x and 8x. Clicking a unit (or picking it with
+Tab or the roster) snaps the camera onto it and follows it as it moves, so a fighter stays in view;
+panning or Home hands the camera back, while zooming and orbiting keep following. A roster bar under the title lists one side's capital
+ships and every one of its squadrons, grouped by fighter type with a gap between groups; when the
+squadrons do not fit beside the ships they take rows of their own, shrinking to a readable minimum
+and wrapping, and the bar grows to hold them. Ships shrink to stay on the first row and wrap
+once they reach the smallest size that still shows their number. Clicking a slot inspects (and, for your own units,
+selects and frames) the unit, and the side toggle switches the listed side. Clicks pick
 units against their drawn hulls. Units choose automatic targets by a priority class: ships whose
 turbolasers and ion cannons outweigh their laser cannons hunt capital ships first, laser-heavy ships
 screen against fighters, and squadrons dogfight before turning on capital ships. A unit takes the
@@ -144,20 +150,40 @@ beams fight from weapon range, close to beam range only on a capital ship that i
 it while its hull stays in range: a held
 ship crawls at a fifth of its speed and cannot complete a hyperspace jump, and a beam ship keeps
 hold of a running ship, following it, until the beam ship dies or the hull slips out of range.
-Withdrawing ships stay under fire until they are gone. Every fighter has an airframe worth of
+Withdrawing ships stay under fire until they are gone. Whether a side may retreat is judged live
+each frame: an enemy ship with a gravity well holds it in the system until that ship is destroyed
+or jumps out, and a side with no hyperdrive-capable unit left, or no safe system to jump to, cannot
+leave either. The Retreat button names the reason while it is greyed (Interdicted, No Hyperdrive,
+No Escape) and the hint spells it out; the strategic layer hands the battle only the escape route
+(`SpaceCombatWithdrawalResolver.HasEscapeRoute`) and leaves the gravity-well check to the
+simulation. A battle in which neither side loses hull or fighters, nor is driven to a new low on
+shields, for `AutoResolveStagnationIterations` rounds ends as a stalemate: shields that dip and heal
+back do not count as progress, and the weaker side withdraws when it can and is destroyed otherwise.
+Every fighter has an airframe worth of
 durability on top of its shields, fighter weapons recharge more slowly than in auto-resolution,
 turbolasers mostly miss fighters (each turbolaser shot at a squadron rolls against
 `TacticalTurbolaserFighterHitChance`, and a miss flies wide past it; laser cannons always hit), and
 capital-ship weapon ranges are doubled for the larger arena; these are tactical-only settings in the
 space-combat config (`TacticalFighterHullStrength`, `TacticalFighterRechargeMultiplier`,
-`TacticalTurbolaserFighterHitChance`, `TacticalCapitalWeaponRangeMultiplier`) with code defaults,
-since `game.xml` lives in the media repository. Squadron torpedoes are held for capital ships whose
+`TacticalTurbolaserFighterHitChance`, `TacticalCapitalWeaponRangeMultiplier`,
+`TacticalShieldRechargeMultiplier`, `TacticalShieldGeneratorRepairMultiplier`) with code defaults,
+since `game.xml` lives in the media repository. Capital-ship shields recharge at half their
+strategic rate, because arcs recharge one at a time and full-rate shields healed completely between
+a Star Destroyer's volleys, and a knocked-out generator takes twice as long to come back
+during a battle than other components (the repair days it carries out are unchanged). Squadron
+torpedoes are held for capital ships whose
 shields are down (at or below a twentieth of their maximum) and are drawn as slower, heavier grey
 bolts; ion fire is blue and other fire takes the faction color. Hull bars over ships use the faction theme color, so
 Alliance bars are red and Imperial bars green whichever side the player commands. Torpedoes
 crawl: at least two seconds in flight and well under a bolt's speed. Each squadron in a force
 circles on its own ring (a golden-ratio spread of orbit radii, with alternating directions), so
-squadrons attacking the same ship do not fly stacked on top of each other. Squadrons always fly at full speed, and a
+squadrons attacking the same ship do not fly stacked on top of each other. Your squadrons can be
+selected and sent after an enemy with a right-click; a directed squadron holds that target until it
+is gone, then goes back to choosing its own, and a selected squadron carries the selection overlay.
+The panel shows a squadron's weapon lanes with their power in the system slots and their ranges and
+charge below. Torpedoes burst in a small explosion where they land, and capital energy bolts are
+drawn thicker the heavier the battery behind them, while ion fire and fighter bolts keep a fixed
+width and no bolt drops below a visible floor. Squadrons always fly at full speed, and a
 squadron waiting to be recovered circles its carrier until the carrier jumps. Every hit on a capital
 ship also has a small chance (`TacticalShieldGeneratorHitChance`) of knocking its shield generator
 offline, so a strafing squadron's many light hits threaten it more than a few broadsides: the shields
@@ -173,14 +199,43 @@ and smoke particles where a unit is destroyed and streams blue particles onto a 
 tractor beam; both use the render pipeline's default lit material with a generated soft-disc
 texture, alpha clipping, and exposure-independent emission, so they need no authored assets. Each unit's model is
 `Units/<ID>/Models/model.glb` beside its display image, loaded through the application
-`ContentModelCache`; units without a model show a placeholder hull. Those models currently live on
+`ContentModelCache`; units without a model show a placeholder hull. The strategy screen starts parsing the models at a
+contested planet as soon as the battle alert appears, and the battle holds at its opening positions
+(the clock reads "Fleets deploying", for at most eight seconds) while models are still loading. Those models currently live on
 the media branch `feature-3d-combat`.
+A capital ship that can destroy planets (the Death Star) does not join the battle line. It stands
+off beyond its own edge of the arena as a `TacticalBattleStation`, where nothing can shoot at it,
+and takes part in two ways. Its superlaser opens the battle charged: the owning player clicks the
+charge bar at the top of the information panel and then an enemy capital ship (in the arena or on
+the roster), the beam destroys that ship outright a second later, and the laser recharges over
+`TacticalSuperlaserRechargeSeconds` (three minutes). The other side destroys the station by
+selecting squadrons and right-clicking it, which sends them off the battlefield to fly its trench;
+the run is decided once every squadron sent has arrived or been lost on the way. A run needs
+torpedoes. With them it succeeds at `TacticalTrenchRunBaseChance` (90%) while the fighters flying
+it at least match the enemy fighters still alive, and less in proportion when outnumbered, never
+below `TacticalTrenchRunMinimumChance` (25%). Success destroys the station; failure costs every
+squadron that flew the run. No run is possible while a completed shield generator on the planet
+lists the station's type (`Building.ProtectedUnitTypeIDs`, the Death Star Shield). The outcome's
+movie comes from the viewing faction's theme (`TrenchRunCutscenes`, keyed by ship type) and the
+battle holds while it plays. An automatic side uses both mechanics: it fires its superlaser at the
+toughest enemy capital ship once the opening seconds have passed, and it sends its torpedo
+squadrons at an unshielded station. A side with a station in the fight does not retreat at the
+strength threshold, a station is never the loser of a stalemate, and an automatic side with
+nothing left to fight but a station it cannot attack withdraws. Automatic resolution (battles the
+player does not command) follows the same rules, read from the same `BattleStationRules` and
+`BattleStationState`: the station stays out of the line, fires on the same schedule, and torpedo
+squadrons leave the fight for about as long as the flight across the tactical battlefield takes
+(six starting distances) before their run is rolled.
 Weapon fire is drawn as short bolts that fly from the muzzle to the target at a fixed speed, so
 long shots stay visible longer. Laser colors come from each faction's theme primary color. Battle
 sounds use the shared tactical
 effects under `Pack/Shared/Tactical/Audio` (weapon fire, impacts, fighter launch, hyperspace);
 sounds missing from the installed content are skipped silently. The editor menu
 **Rebellion > Debug > Play Tactical Battle Test** writes a save with a contested home system and plays it;
+the **100 fighters** variants first top the Alliance home fleet up to a hundred squadrons, the
+**Death Star** variants add a Death Star to the Imperial fleet and torpedo squadrons to its opponent
+(their automated forms hand the player's side to automatic control after twelve seconds, so the
+superlaser fires and the trench run is flown without a click), and
 the **automated** variants also dismiss the loading screen, take command, and write Game-view and
 arena screenshots to `Logs/TacticalShots`, including shots framed on the whole arena when the first
 explosion and the first tractor beam appear. Loaded models get their own child under each unit so the

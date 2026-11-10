@@ -745,7 +745,8 @@ public sealed class StrategyController
                 PlaySfx,
                 MarkDirty,
                 IsTacticalSoundAvailable,
-                GetTacticalModelCache
+                GetTacticalModelCache,
+                PlayTacticalCutscene
             );
         }
         battleAlertWindowController = new BattleAlertWindowController(
@@ -1163,7 +1164,10 @@ public sealed class StrategyController
                     .TryGetPendingCombat(out PendingCombatResult pendingCombat)
                 && pendingCombat != null
             )
+            {
                 PauseForGameplayOption(UserGameplayOption.PauseWhenSpaceBattleBegins);
+                PreloadTacticalModels(pendingCombat);
+            }
         }
 
         Faction playerFaction = session.Game.GetPlayerFaction();
@@ -2703,9 +2707,41 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Opens the interactive tactical battle for the pending encounter.
+    /// Starts parsing the hull and fighter models at a contested planet while the battle alert
+    /// is on screen, so taking command does not open on placeholders and a loading hitch.
     /// </summary>
-    /// <returns>True when the battle started.</returns>
+    /// <param name="pending">The pending encounter.</param>
+    private void PreloadTacticalModels(PendingCombatResult pending)
+    {
+        ContentModelCache cache = tacticalBattleController == null ? null : GetTacticalModelCache();
+        Planet planet = session.Game.GetSceneNodeByInstanceID<Planet>(pending.PlanetInstanceID);
+        if (cache == null || planet == null)
+            return;
+
+        List<string> addresses = planet
+            .GetChildren<CapitalShip>(recursive: true)
+            .Cast<ISceneNode>()
+            .Concat(planet.GetChildren<Starfighter>(recursive: true))
+            .Select(TacticalBattleScene.GetNodeModelAddress)
+            .Where(address => !string.IsNullOrEmpty(address))
+            .Distinct()
+            .ToList();
+        if (addresses.Count == 0)
+            return;
+
+        // A model that fails to parse falls back to a placeholder when the battle opens, which
+        // reports it; here the failure only needs to be observed.
+        _ = cache
+            .PreloadAsync(addresses)
+            .ContinueWith(
+                task => _ = task.Exception,
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted
+                    | TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default
+            );
+    }
+
     /// <summary>
     /// Takes command of the pending space battle, as the battle alert's Take Command button
     /// does. Used by editor debug tooling to reach the tactical battle without clicking.
@@ -2716,6 +2752,10 @@ public sealed class StrategyController
         return BeginTacticalBattle();
     }
 
+    /// <summary>
+    /// Opens the interactive tactical battle for the pending encounter.
+    /// </summary>
+    /// <returns>True when the battle started.</returns>
     private bool BeginTacticalBattle()
     {
         if (session == null || tacticalBattleController?.IsActive != false)
@@ -2834,6 +2874,16 @@ public sealed class StrategyController
     private static ContentModelCache GetTacticalModelCache()
     {
         return AppBootstrap.Instance?.GetContentModelCache();
+    }
+
+    /// <summary>
+    /// Plays a full-screen movie over the tactical battle, such as a trench run's outcome.
+    /// </summary>
+    /// <param name="path">The movie's content address.</param>
+    /// <param name="finished">Invoked once the movie has ended or been skipped.</param>
+    private static void PlayTacticalCutscene(string path, Action finished)
+    {
+        AppBootstrap.EnsureExists().GetCutsceneManager().Play(path, finished);
     }
 
     /// <summary>

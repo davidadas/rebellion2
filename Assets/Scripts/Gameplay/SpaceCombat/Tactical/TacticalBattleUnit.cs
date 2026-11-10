@@ -60,7 +60,14 @@ namespace Rebellion.Gameplay
         /// Gets whether enemies can still engage this unit: a ship running for hyperspace stays
         /// under fire until it is gone.
         /// </summary>
-        public bool IsTargetable => IsAlive && !_hasWithdrawn;
+        public bool IsTargetable => IsAlive && !_hasWithdrawn && !IsOffField;
+
+        /// <summary>
+        /// Gets whether the unit has flown off the battlefield without leaving the battle, as a
+        /// squadron does inside a battle station's trench. An off-field unit cannot be shot at,
+        /// ordered, or drawn, but its side is not beaten while it is still out there.
+        /// </summary>
+        public virtual bool IsOffField => false;
 
         public string DisplayName => Node?.GetDisplayName();
 
@@ -82,6 +89,13 @@ namespace Rebellion.Gameplay
         internal abstract double Speed { get; }
 
         internal abstract double RemainingDurability { get; }
+
+        /// <summary>
+        /// Gets the durability that cannot come back during the battle: hull and airframes, not
+        /// shields. The stalemate check watches this, so shield recharge alone never looks like
+        /// progress.
+        /// </summary>
+        internal virtual double LastingDurability => RemainingDurability;
 
         internal virtual bool IsAttackDelayed => false;
 
@@ -230,6 +244,7 @@ namespace Rebellion.Gameplay
         /// <param name="damage">The positive damage to add.</param>
         /// <param name="isIonDamage">Whether the damage comes from an ion weapon.</param>
         /// <param name="shotDisplaySeconds">How long the shot remains visible.</param>
+        /// <param name="strength">The raw weapon strength behind the shot.</param>
         /// <param name="isTorpedo">Whether the shot is a torpedo rather than an energy bolt.</param>
         private protected void QueueHit(
             TacticalHitSink hitSink,
@@ -238,6 +253,7 @@ namespace Rebellion.Gameplay
             double damage,
             bool isIonDamage,
             double shotDisplaySeconds,
+            int strength,
             bool isTorpedo = false
         )
         {
@@ -252,6 +268,7 @@ namespace Rebellion.Gameplay
                     isIonDamage,
                     IsStarfighter,
                     isTorpedo,
+                    strength,
                     shotDisplaySeconds
                 )
             );
@@ -264,12 +281,14 @@ namespace Rebellion.Gameplay
         /// <param name="target">The unit the shot was aimed at.</param>
         /// <param name="isIonDamage">Whether the shot came from an ion weapon.</param>
         /// <param name="shotDisplaySeconds">How long the shot remains visible.</param>
+        /// <param name="strength">The raw weapon strength behind the shot.</param>
         /// <param name="random">The combat random-number stream that scatters the shot.</param>
         private protected void QueueMiss(
             ICollection<TacticalShot> shots,
             TacticalBattleUnit target,
             bool isIonDamage,
             double shotDisplaySeconds,
+            int strength,
             IRandomNumberProvider random
         )
         {
@@ -286,6 +305,7 @@ namespace Rebellion.Gameplay
                     isIonDamage,
                     IsStarfighter,
                     false,
+                    strength,
                     shotDisplaySeconds
                 )
             );

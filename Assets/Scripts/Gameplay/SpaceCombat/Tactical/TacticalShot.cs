@@ -32,6 +32,8 @@ namespace Rebellion.Gameplay
 
         public bool IsTorpedo { get; }
 
+        public int Strength { get; }
+
         public double TotalSeconds { get; }
 
         public double RemainingSeconds { get; internal set; }
@@ -61,6 +63,7 @@ namespace Rebellion.Gameplay
         /// <param name="isIon">Whether the shot came from an ion weapon.</param>
         /// <param name="isStarfighterShot">Whether a fighter squadron fired the shot.</param>
         /// <param name="isTorpedo">Whether the shot is a torpedo, which flies slower than a bolt.</param>
+        /// <param name="strength">The raw weapon strength behind the shot, for presentation.</param>
         /// <param name="remainingSeconds">
         /// The shortest time the shot remains visible; longer flights take longer.
         /// </param>
@@ -73,6 +76,7 @@ namespace Rebellion.Gameplay
             bool isIon,
             bool isStarfighterShot,
             bool isTorpedo,
+            int strength,
             double remainingSeconds
         )
         {
@@ -84,6 +88,7 @@ namespace Rebellion.Gameplay
             IsIon = isIon;
             IsStarfighterShot = isStarfighterShot;
             IsTorpedo = isTorpedo;
+            Strength = Math.Max(strength, 0);
             double distance = TacticalBattleGeometry.GetDistance(startX, startY, endX, endY);
             // Torpedoes crawl: slow in flight and never a flash across the gap like a bolt.
             TotalSeconds = isTorpedo

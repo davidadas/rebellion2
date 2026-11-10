@@ -540,12 +540,42 @@ namespace Rebellion.Tests.Gameplay
             bool offlineAtStart = unit.ShieldGeneratorOffline;
             int daysAtStart = unit.ShieldGeneratorRepairDays;
 
+            // Generator repair runs several times slower than other component recovery.
             unit.AdvanceState(25, config);
+            int daysAfterComponentDelay = unit.ShieldGeneratorRepairDays;
+            unit.AdvanceState(25 * (config.TacticalShieldGeneratorRepairMultiplier - 1), config);
 
             Assert.IsTrue(offlineAtStart);
             Assert.AreEqual(3, daysAtStart);
+            Assert.AreEqual(3, daysAfterComponentDelay);
             Assert.IsTrue(unit.ShieldGeneratorOffline);
             Assert.AreEqual(2, unit.ShieldGeneratorRepairDays);
+        }
+
+        [Test]
+        public void AdvanceState_ShieldRecharge_RunsAtAFractionOfTheStrategicRate()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.TacticalShieldGeneratorHitChance = 0;
+            CapitalShip ship = CreateShip("ship", 400, 10);
+            ship.MaxShieldStrength = 1000;
+            ship.ShieldRechargeRate = 10;
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { ship },
+                new[] { CreateShip("defender", 100000, 0) },
+                config: config
+            );
+            TacticalCapitalShipUnit unit = GetShip(battle, ship);
+            unit.ApplyDamage(500, 0, config, new SystemRandomProvider(_seed));
+
+            unit.AdvanceState(10, config);
+
+            Assert.Less(config.TacticalShieldRechargeMultiplier, 1);
+            Assert.AreEqual(
+                500 + 100 * config.TacticalShieldRechargeMultiplier,
+                unit.CurrentShields,
+                0.0001
+            );
         }
 
         [Test]
@@ -757,6 +787,39 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void Advance_ShieldsRegenerateEveryVolley_EndsAsAStalemateInsteadOfRunningOn()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveStagnationIterations = 40;
+            config.TacticalShieldGeneratorHitChance = 0;
+            CapitalShip attacker = CreateShip("attacker", 100, 5);
+            CapitalShip defender = CreateShip("defender", 100, 10);
+            foreach (CapitalShip ship in new[] { attacker, defender })
+            {
+                ship.MaxShieldStrength = 1000;
+                ship.ShieldRechargeRate = 100;
+            }
+
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { attacker },
+                new[] { defender },
+                attackerCanWithdraw: true,
+                config: config
+            );
+
+            // Both ships hit shields every round and the shields heal straight back: durability
+            // keeps moving, but nothing lasting is lost, so the weaker side breaks off.
+            battle.Advance(120);
+
+            Assert.IsTrue(battle.IsComplete);
+            // 240 rounds were on offer; the stalemate is called soon after the stagnation window.
+            Assert.Less(battle.RoundsCompleted, 120);
+            SpaceCombatResult result = battle.CreateResult();
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.DefenderOutcome);
+        }
+
+        [Test]
         public void OrderWithdrawal_PlayerSideCanWithdraw_WithdrawsAllShipsAndEndsBattle()
         {
             CapitalShip attacker = CreateShip("attacker", 100, 0);
@@ -791,6 +854,66 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.IsFalse(battle.OrderWithdrawal(CombatSide.Attacker));
             Assert.IsFalse(battle.HasOrderedWithdrawal(CombatSide.Attacker));
+            Assert.AreEqual(
+                TacticalWithdrawalStatus.NoEscapeRoute,
+                battle.GetWithdrawalStatus(CombatSide.Attacker)
+            );
+        }
+
+        [Test]
+        public void GetWithdrawalStatus_NoHyperdriveLeft_ReportsNoHyperdrive()
+        {
+            CapitalShip attacker = CreateShip("attacker", 100, 10);
+            attacker.Hyperdrive = 0;
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { attacker },
+                new[] { CreateShip("defender", 100, 10) },
+                attackerCanWithdraw: true
+            );
+
+            Assert.AreEqual(
+                TacticalWithdrawalStatus.NoHyperdrive,
+                battle.GetWithdrawalStatus(CombatSide.Attacker)
+            );
+            Assert.IsFalse(battle.CanWithdraw(CombatSide.Attacker));
+            Assert.IsFalse(battle.OrderWithdrawal(CombatSide.Attacker));
+        }
+
+        [Test]
+        public void GetWithdrawalStatus_EnemyGravityWell_HoldsTheSideUntilTheInterdictorIsGone()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            CapitalShip interdictorShip = CreateShip("interdictor", 100, 0);
+            interdictorShip.HasGravityWell = true;
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { CreateShip("attacker", 100, 0) },
+                new[] { interdictorShip, CreateShip("escort", 100, 0) },
+                attackerCanWithdraw: true,
+                defenderCanWithdraw: true,
+                config: config
+            );
+            TacticalCapitalShipUnit interdictor = GetShip(battle, interdictorShip);
+
+            TacticalWithdrawalStatus statusWhileHeld = battle.GetWithdrawalStatus(
+                CombatSide.Attacker
+            );
+            bool orderedWhileHeld = battle.OrderWithdrawal(CombatSide.Attacker);
+            interdictor.ApplyDamage(1000, 0, config, new SystemRandomProvider(_seed));
+            TacticalWithdrawalStatus statusAfterKill = battle.GetWithdrawalStatus(
+                CombatSide.Attacker
+            );
+            bool orderedAfterKill = battle.OrderWithdrawal(CombatSide.Attacker);
+
+            Assert.AreEqual(TacticalWithdrawalStatus.Interdicted, statusWhileHeld);
+            Assert.IsFalse(orderedWhileHeld);
+            Assert.AreEqual(TacticalWithdrawalStatus.Available, statusAfterKill);
+            Assert.IsTrue(orderedAfterKill);
+            Assert.IsTrue(battle.HasOrderedWithdrawal(CombatSide.Attacker));
+            // The defender's own gravity well never holds the defender.
+            Assert.AreEqual(
+                TacticalWithdrawalStatus.Available,
+                battle.GetWithdrawalStatus(CombatSide.Defender)
+            );
         }
 
         [Test]
@@ -833,6 +956,47 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(TacticalShipOrder.Attack, ship.Order);
             Assert.AreSame(target, ship.Target);
             Assert.Less(ship.GetDistanceTo(target), startDistance - 5);
+        }
+
+        [Test]
+        public void IssueAttackOrder_PlayerSquadron_HoldsTheTargetUntilItIsGone()
+        {
+            CapitalShip carrier = CreateShip("carrier", 500, 0);
+            carrier.StarfighterCapacity = 2;
+            Starfighter fighter = CreateFighter("fighter", 12, 5);
+            carrier.AddChild(fighter);
+            fighter.SetParent(carrier);
+            CapitalShip defender = CreateShip("defender", 400, 0);
+            Starfighter enemyFighter = CreateFighter("enemy", 12, 5);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { carrier },
+                new[] { defender },
+                attackerFighters: new[] { fighter },
+                defenderFighters: new[] { enemyFighter }
+            );
+            TacticalStarfighterUnit squadron = battle
+                .Units.OfType<TacticalStarfighterUnit>()
+                .Single(unit => unit.Fighter == fighter);
+            TacticalStarfighterUnit enemySquadron = battle
+                .Units.OfType<TacticalStarfighterUnit>()
+                .Single(unit => unit.Fighter == enemyFighter);
+            TacticalCapitalShipUnit target = GetShip(battle, defender);
+
+            battle.Advance(1);
+            TacticalBattleUnit automaticTarget = squadron.Target;
+            battle.IssueAttackOrder(new[] { squadron }, target);
+            battle.Advance(20);
+            TacticalBattleUnit heldTarget = squadron.Target;
+            bool directedWhileHeld = squadron.IsDirected;
+            target.Destroy();
+            battle.Advance(1);
+
+            Assert.IsTrue(battle.CanCommand(squadron));
+            Assert.AreSame(enemySquadron, automaticTarget);
+            Assert.AreSame(target, heldTarget);
+            Assert.IsTrue(directedWhileHeld);
+            Assert.IsFalse(squadron.IsDirected);
+            Assert.AreSame(enemySquadron, squadron.Target);
         }
 
         [Test]
@@ -1033,6 +1197,439 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(1, shots.Count);
             shot = shots[0];
             return damage;
+        }
+
+        [Test]
+        public void Constructor_PlanetDestroyer_StandsOffBeyondTheArenaInsteadOfJoiningTheLine()
+        {
+            CapitalShip station = CreateStation("station");
+            TacticalSpaceBattle battle = CreateStationBattle(
+                new[] { CreateShip("attacker", 100, 0) },
+                new[] { station, CreateShip("escort", 100, 0) },
+                playerSide: CombatSide.Defender
+            );
+
+            TacticalBattleStation unit = battle.Stations.Single();
+            Assert.AreSame(station, unit.Ship);
+            Assert.AreEqual(CombatSide.Defender, unit.Side);
+            Assert.IsFalse(
+                battle.Units.OfType<TacticalCapitalShipUnit>().Any(ship => ship.Ship == station)
+            );
+            Assert.Greater(unit.X - unit.Radius, battle.HalfWidth);
+            Assert.AreEqual(1, unit.SuperlaserCharge);
+            Assert.IsTrue(unit.IsSuperlaserReady);
+            Assert.AreSame(unit, battle.GetStation(CombatSide.Defender));
+            Assert.IsNull(battle.GetStation(CombatSide.Attacker));
+            Assert.AreEqual(1, battle.CountShips(CombatSide.Defender));
+        }
+
+        [Test]
+        public void FireSuperlaser_ChargedStation_DestroysTheShipAndRecharges()
+        {
+            CapitalShip victim = CreateShip("victim", 100000, 0);
+            CapitalShip other = CreateShip("other", 100000, 0);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.TacticalSuperlaserRechargeSeconds = 20;
+            TacticalSpaceBattle battle = CreateStationBattle(
+                new[] { CreateStation("station"), CreateShip("escort", 100, 0) },
+                new[] { victim, other },
+                playerSide: CombatSide.Attacker,
+                config: config
+            );
+            TacticalBattleStation station = battle.Stations.Single();
+            TacticalCapitalShipUnit victimUnit = GetShip(battle, victim);
+
+            bool fired = battle.FireSuperlaser(station, victimUnit);
+            bool firedAgain = battle.FireSuperlaser(station, GetShip(battle, other));
+            TacticalBattleEvent shot = battle
+                .TakeEvents()
+                .Single(battleEvent => battleEvent.Kind == TacticalBattleEventKind.SuperlaserFired);
+            bool aliveWhileTheBeamBurns = victimUnit.IsAlive;
+            battle.Advance(2);
+            bool destroyed = !victimUnit.IsAlive;
+            double chargeAfterTheShot = station.SuperlaserCharge;
+            battle.Advance(22);
+
+            Assert.IsTrue(fired);
+            Assert.IsFalse(firedAgain);
+            Assert.AreSame(station, shot.Station);
+            Assert.AreSame(victimUnit, shot.Unit);
+            Assert.IsTrue(aliveWhileTheBeamBurns);
+            Assert.IsTrue(destroyed);
+            Assert.Less(chargeAfterTheShot, 0.2);
+            Assert.IsTrue(station.IsSuperlaserReady);
+            Assert.IsTrue(GetShip(battle, other).IsAlive);
+            Assert.IsFalse(battle.IsComplete);
+        }
+
+        [Test]
+        public void FireSuperlaser_SquadronOrFriendlyShip_IsRefused()
+        {
+            CapitalShip escort = CreateShip("escort", 100, 0);
+            Starfighter enemySquadron = CreateFighter("enemy-squadron", 12, 5);
+            TacticalSpaceBattle battle = CreateStationBattle(
+                new[] { CreateStation("station"), escort },
+                new[] { CreateShip("defender", 100000, 0) },
+                defenderFighters: new[] { enemySquadron },
+                playerSide: CombatSide.Attacker
+            );
+            TacticalBattleStation station = battle.Stations.Single();
+            TacticalStarfighterUnit squadron = battle
+                .Units.OfType<TacticalStarfighterUnit>()
+                .Single();
+
+            Assert.IsFalse(battle.FireSuperlaser(station, squadron));
+            Assert.IsFalse(battle.FireSuperlaser(station, GetShip(battle, escort)));
+            Assert.IsFalse(battle.FireSuperlaser(station, null));
+            Assert.IsTrue(station.IsSuperlaserReady);
+        }
+
+        [Test]
+        public void Advance_AutomaticStation_BurnsTheToughestEnemyShipAfterTheOpening()
+        {
+            CapitalShip small = CreateShip("small", 100, 0);
+            CapitalShip big = CreateShip("big", 5000, 0);
+            TacticalSpaceBattle battle = CreateStationBattle(
+                new[] { CreateStation("station"), CreateShip("escort", 100, 0) },
+                new[] { small, big },
+                playerSide: CombatSide.Defender
+            );
+
+            battle.Advance(4);
+            bool heldFire = GetShip(battle, big).IsAlive && battle.Stations[0].IsSuperlaserReady;
+            battle.Advance(4);
+
+            Assert.IsTrue(heldFire);
+            Assert.IsFalse(GetShip(battle, big).IsAlive);
+            Assert.IsTrue(GetShip(battle, small).IsAlive);
+            Assert.Less(battle.Stations[0].SuperlaserCharge, 1);
+        }
+
+        [Test]
+        public void IssueTrenchRunOrder_TorpedoSquadron_DestroysTheStationAndComesBack()
+        {
+            CapitalShip station = CreateStation("station");
+            Starfighter fighter = CreateTorpedoFighter("x-wing", 12);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.TacticalTrenchRunBaseChance = 1;
+            TacticalSpaceBattle battle = CreateStationBattle(
+                new[] { CreateShip("attacker", 100, 0) },
+                new[] { station },
+                attackerFighters: new[] { fighter },
+                playerSide: CombatSide.Attacker,
+                config: config
+            );
+            TacticalBattleStation stationUnit = battle.Stations.Single();
+            TacticalStarfighterUnit squadron = battle
+                .Units.OfType<TacticalStarfighterUnit>()
+                .Single();
+
+            bool ordered = battle.IssueTrenchRunOrder(new[] { squadron }, stationUnit);
+            bool onItsWay = squadron.TrenchRunTarget == stationUnit;
+            battle.Advance(15);
+            List<TacticalBattleEventKind> kinds = battle
+                .TakeEvents()
+                .Select(battleEvent => battleEvent.Kind)
+                .ToList();
+
+            Assert.IsTrue(ordered);
+            Assert.IsTrue(onItsWay);
+            Assert.IsFalse(stationUnit.IsAlive);
+            Assert.IsTrue(squadron.IsAlive);
+            Assert.IsFalse(squadron.IsOffField);
+            Assert.IsNull(squadron.TrenchRunTarget);
+            CollectionAssert.Contains(kinds, TacticalBattleEventKind.TrenchRunSucceeded);
+            CollectionAssert.Contains(kinds, TacticalBattleEventKind.StationDestroyed);
+            Assert.IsTrue(battle.IsComplete);
+            SpaceCombatResult result = battle.CreateResult();
+            Assert.AreEqual(CombatSide.Attacker, result.Winner);
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
+            ShipDamageResult damage = result.ShipDamage.Single(entry => entry.Ship == station);
+            Assert.AreEqual(0, damage.HullAfter);
+        }
+
+        [Test]
+        public void IssueTrenchRunOrder_SquadronWithoutTorpedoes_FailsAndIsLost()
+        {
+            Starfighter fighter = CreateFighter("a-wing", 12, 5);
+            TacticalSpaceBattle battle = CreateStationBattle(
+                new[] { CreateShip("attacker", 100, 0) },
+                new[] { CreateStation("station"), CreateShip("escort", 100000, 0) },
+                attackerFighters: new[] { fighter },
+                playerSide: CombatSide.Attacker
+            );
+            TacticalBattleStation station = battle.Stations.Single();
+            TacticalStarfighterUnit squadron = battle
+                .Units.OfType<TacticalStarfighterUnit>()
+                .Single();
+
+            double chance = battle.EstimateTrenchRunChance(new[] { squadron }, station);
+            battle.IssueTrenchRunOrder(new[] { squadron }, station);
+            battle.Advance(15);
+
+            Assert.AreEqual(0, chance);
+            Assert.IsFalse(squadron.IsAlive);
+            Assert.IsTrue(station.IsAlive);
+            CollectionAssert.Contains(
+                battle.TakeEvents().Select(battleEvent => battleEvent.Kind).ToList(),
+                TacticalBattleEventKind.TrenchRunFailed
+            );
+        }
+
+        [Test]
+        public void IssueTrenchRunOrder_ShieldedStation_IsRefused()
+        {
+            CapitalShip station = CreateStation("station");
+            TacticalSpaceBattle battle = CreateStationBattle(
+                new[] { CreateShip("attacker", 100, 0) },
+                new[] { station },
+                attackerFighters: new[] { CreateTorpedoFighter("x-wing", 12) },
+                playerSide: CombatSide.Attacker,
+                shieldedStations: new[] { station }
+            );
+            TacticalBattleStation stationUnit = battle.Stations.Single();
+            TacticalStarfighterUnit squadron = battle
+                .Units.OfType<TacticalStarfighterUnit>()
+                .Single();
+
+            bool ordered = battle.IssueTrenchRunOrder(new[] { squadron }, stationUnit);
+
+            Assert.IsTrue(stationUnit.IsShielded);
+            Assert.IsFalse(battle.CanOrderTrenchRun(stationUnit));
+            Assert.IsFalse(ordered);
+            Assert.IsNull(squadron.TrenchRunTarget);
+            Assert.AreEqual(0, battle.EstimateTrenchRunChance(new[] { squadron }, stationUnit));
+        }
+
+        [TestCase(0, 0.9)]
+        [TestCase(1, 0.9)]
+        [TestCase(2, 0.45)]
+        [TestCase(6, 0.25)]
+        public void EstimateTrenchRunChance_DefendingFighters_LowerTheOddsOnlyWhenTheyOutnumberTheRun(
+            int defendingSquadrons,
+            double expected
+        )
+        {
+            List<Starfighter> defenders = Enumerable
+                .Range(0, defendingSquadrons)
+                .Select(index => CreateFighter($"tie-{index}", 12, 5))
+                .ToList();
+            TacticalSpaceBattle battle = CreateStationBattle(
+                new[] { CreateShip("attacker", 100, 0) },
+                new[] { CreateStation("station") },
+                attackerFighters: new[] { CreateTorpedoFighter("x-wing", 12) },
+                defenderFighters: defenders,
+                playerSide: CombatSide.Attacker
+            );
+            TacticalStarfighterUnit squadron = battle
+                .Units.OfType<TacticalStarfighterUnit>()
+                .Single(unit => unit.Side == CombatSide.Attacker);
+
+            double chance = battle.EstimateTrenchRunChance(new[] { squadron }, battle.Stations[0]);
+
+            Assert.AreEqual(expected, chance, 0.0001);
+        }
+
+        [Test]
+        public void Advance_AutomaticAttackers_SendOnlyTheirTorpedoSquadronsAtTheStation()
+        {
+            Starfighter torpedoFighter = CreateTorpedoFighter("y-wing", 12);
+            Starfighter escortFighter = CreateFighter("a-wing", 12, 5);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.TacticalTrenchRunBaseChance = 1;
+            TacticalSpaceBattle battle = CreateStationBattle(
+                new[] { CreateShip("attacker", 100, 0) },
+                new[] { CreateStation("station"), CreateShip("escort", 100000, 0) },
+                attackerFighters: new[] { torpedoFighter, escortFighter },
+                playerSide: CombatSide.Defender,
+                config: config
+            );
+            TacticalBattleStation station = battle.Stations.Single();
+            TacticalStarfighterUnit torpedoSquadron = battle
+                .Units.OfType<TacticalStarfighterUnit>()
+                .Single(unit => unit.Fighter == torpedoFighter);
+            TacticalStarfighterUnit escortSquadron = battle
+                .Units.OfType<TacticalStarfighterUnit>()
+                .Single(unit => unit.Fighter == escortFighter);
+
+            battle.Advance(1);
+            bool torpedoesSent = torpedoSquadron.TrenchRunTarget == station;
+            bool escortSent = escortSquadron.TrenchRunTarget != null;
+            battle.Advance(15);
+
+            Assert.IsTrue(torpedoesSent);
+            Assert.IsFalse(escortSent);
+            Assert.IsFalse(station.IsAlive);
+            Assert.IsTrue(torpedoSquadron.IsAlive);
+        }
+
+        [Test]
+        public void Advance_OutgunnedAutomaticAttackers_FlyTheTrenchRunBeforeTheyThinkOfLeaving()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveRetreatStrengthRatio = 0.33;
+            Starfighter torpedoFighter = CreateTorpedoFighter("x-wing", 12);
+            TacticalSpaceBattle outgunned = CreateStationBattle(
+                new[] { CreateShip("attacker", 100, 1) },
+                new[] { CreateShip("defender", 100000, 500) },
+                playerSide: CombatSide.Defender,
+                config: config,
+                canWithdraw: true
+            );
+            TacticalSpaceBattle committed = CreateStationBattle(
+                new[] { CreateShip("attacker", 100, 1) },
+                new[] { CreateStation("station"), CreateShip("defender", 100000, 500) },
+                attackerFighters: new[] { torpedoFighter },
+                playerSide: CombatSide.Defender,
+                config: config,
+                canWithdraw: true
+            );
+
+            outgunned.Advance(0.5);
+            committed.Advance(0.5);
+
+            Assert.IsTrue(outgunned.HasOrderedWithdrawal(CombatSide.Attacker));
+            Assert.IsFalse(committed.HasOrderedWithdrawal(CombatSide.Attacker));
+            Assert.AreSame(
+                committed.Stations[0],
+                committed.Units.OfType<TacticalStarfighterUnit>().Single().TrenchRunTarget
+            );
+        }
+
+        [Test]
+        public void OrderWithdrawal_SideWithAStation_TheStationJumpsOutWithTheFleet()
+        {
+            CapitalShip station = CreateStation("station");
+            TacticalSpaceBattle battle = CreateStationBattle(
+                new[] { station, CreateShip("escort", 100, 0) },
+                new[] { CreateShip("defender", 100, 0) },
+                playerSide: CombatSide.Attacker,
+                canWithdraw: true
+            );
+            TacticalBattleStation stationUnit = battle.Stations.Single();
+
+            bool ordered = battle.OrderWithdrawal(CombatSide.Attacker);
+            bool spoolingUp = stationUnit.IsWithdrawing && !stationUnit.HasWithdrawn;
+            bool lockedOut = battle.FireSuperlaser(
+                stationUnit,
+                battle.Units.First(unit => unit.Side == CombatSide.Defender)
+            );
+            battle.Advance(120);
+
+            Assert.IsTrue(ordered);
+            Assert.IsTrue(spoolingUp);
+            Assert.IsFalse(lockedOut);
+            Assert.IsTrue(battle.IsComplete);
+            Assert.IsTrue(stationUnit.HasWithdrawn);
+            SpaceCombatResult result = battle.CreateResult();
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
+            CollectionAssert.Contains(result.WithdrawnUnits, station);
+            Assert.IsFalse(result.ShipDamage.Any(entry => entry.Ship == station));
+        }
+
+        [Test]
+        public void Advance_StationOutlastsItsFleet_TheBattleGoesOn()
+        {
+            TacticalSpaceBattle battle = CreateStationBattle(
+                new[] { CreateShip("attacker", 1000, 50) },
+                new[] { CreateStation("station"), CreateShip("escort", 10, 0) },
+                playerSide: CombatSide.Defender
+            );
+
+            battle.Advance(30);
+
+            Assert.AreEqual(0, battle.CountShips(CombatSide.Defender));
+            Assert.IsFalse(battle.IsComplete);
+            Assert.AreEqual(SpaceCombatSideOutcome.Active, battle.GetOutcome(CombatSide.Defender));
+        }
+
+        [Test]
+        public void Advance_AutomaticSideFacingOnlyAStationItCannotAttack_Withdraws()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.TacticalSuperlaserRechargeSeconds = 100000;
+            TacticalSpaceBattle battle = CreateStationBattle(
+                new[] { CreateShip("first", 1000, 50), CreateShip("second", 1000, 50) },
+                new[] { CreateStation("station"), CreateShip("escort", 10, 0) },
+                playerSide: CombatSide.Defender,
+                config: config,
+                canWithdraw: true
+            );
+
+            battle.Advance(120);
+
+            Assert.IsTrue(battle.IsComplete);
+            SpaceCombatResult result = battle.CreateResult();
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
+            Assert.AreEqual(CombatSide.Defender, result.Winner);
+            Assert.IsTrue(battle.Stations[0].IsAlive);
+        }
+
+        /// <summary>
+        /// Creates a battle that may include planet destroyers and a chosen player side.
+        /// </summary>
+        /// <param name="attackerShips">The attacking capital ships.</param>
+        /// <param name="defenderShips">The defending capital ships.</param>
+        /// <param name="attackerFighters">The attacking fighter squadrons.</param>
+        /// <param name="defenderFighters">The defending fighter squadrons.</param>
+        /// <param name="playerSide">The side the player commands.</param>
+        /// <param name="config">The space-combat parameters.</param>
+        /// <param name="shieldedStations">The planet destroyers under a planetary shield.</param>
+        /// <param name="canWithdraw">Whether both sides have a route out.</param>
+        /// <returns>The created battle.</returns>
+        private static TacticalSpaceBattle CreateStationBattle(
+            IReadOnlyList<CapitalShip> attackerShips,
+            IReadOnlyList<CapitalShip> defenderShips,
+            IReadOnlyList<Starfighter> attackerFighters = null,
+            IReadOnlyList<Starfighter> defenderFighters = null,
+            CombatSide? playerSide = CombatSide.Attacker,
+            GameConfig.SpaceCombatConfig config = null,
+            IReadOnlyCollection<CapitalShip> shieldedStations = null,
+            bool canWithdraw = false
+        )
+        {
+            return new TacticalSpaceBattle(
+                config ?? CreateConfig(),
+                new SystemRandomProvider(_seed),
+                attackerShips,
+                attackerFighters ?? new List<Starfighter>(),
+                defenderShips,
+                defenderFighters ?? new List<Starfighter>(),
+                canWithdraw,
+                canWithdraw,
+                default,
+                default,
+                playerSide,
+                shieldedStations
+            );
+        }
+
+        /// <summary>
+        /// Creates a planet-destroying capital ship, which fights as a battle station.
+        /// </summary>
+        /// <param name="instanceId">The instance identifier.</param>
+        /// <returns>The created ship.</returns>
+        private static CapitalShip CreateStation(string instanceId)
+        {
+            CapitalShip station = CreateShip(instanceId, 25000, 0);
+            station.TypeID = "station";
+            station.CanDestroyPlanets = true;
+            return station;
+        }
+
+        /// <summary>
+        /// Creates a hyperdrive-equipped fighter squadron that carries torpedoes.
+        /// </summary>
+        /// <param name="instanceId">The instance identifier.</param>
+        /// <param name="squadronSize">The squadron size.</param>
+        /// <returns>The created squadron.</returns>
+        private static Starfighter CreateTorpedoFighter(string instanceId, int squadronSize)
+        {
+            Starfighter fighter = CreateFighter(instanceId, squadronSize, 5);
+            fighter.Hyperdrive = 1;
+            fighter.Torpedoes = 4;
+            fighter.TorpedoRange = 7;
+            return fighter;
         }
 
         /// <summary>

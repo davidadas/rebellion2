@@ -3877,6 +3877,83 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void BeginTacticalCombat_EnemyGravityWell_HoldsThePlayerUntilTheShipIsDestroyed()
+        {
+            (GameRoot game, SpaceCombatCommands commands, _, Fleet allianceFleet) =
+                CreatePendingEncounter();
+            CapitalShip interdictorShip = allianceFleet.GetChildren<CapitalShip>()[0];
+            interdictorShip.HasGravityWell = true;
+            CapitalShip escort = new CapitalShip
+            {
+                InstanceID = "alliance-escort",
+                OwnerInstanceID = "alliance",
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                WeaponRecharge = 1,
+            };
+            game.AttachNode(escort, allianceFleet);
+
+            TacticalSpaceBattle battle = commands.BeginTacticalCombat("empire");
+            CombatSide playerSide = battle.PlayerSide.Value;
+            CombatSide allianceSide =
+                playerSide == CombatSide.Attacker ? CombatSide.Defender : CombatSide.Attacker;
+            TacticalWithdrawalStatus statusWhileHeld = battle.GetWithdrawalStatus(playerSide);
+            TacticalCapitalShipUnit interdictor = battle
+                .Units.OfType<TacticalCapitalShipUnit>()
+                .Single(unit => unit.Ship == interdictorShip);
+            interdictor.ApplyDamage(1000, 0, game.Config.Combat.SpaceCombat, game.Random);
+
+            Assert.AreEqual(TacticalWithdrawalStatus.Interdicted, statusWhileHeld);
+            Assert.AreEqual(
+                TacticalWithdrawalStatus.Available,
+                battle.GetWithdrawalStatus(allianceSide)
+            );
+            Assert.AreEqual(
+                TacticalWithdrawalStatus.Available,
+                battle.GetWithdrawalStatus(playerSide)
+            );
+            Assert.IsTrue(battle.OrderWithdrawal(playerSide));
+        }
+
+        [Test]
+        public void IsShieldedByPlanet_OwnersCompletedGeneratorListsTheShipType_ReturnsTrue()
+        {
+            Planet planet = new Planet { InstanceID = "shield-planet", OwnerInstanceID = "empire" };
+            CapitalShip station = new CapitalShip
+            {
+                InstanceID = "station",
+                TypeID = "station-type",
+                OwnerInstanceID = "empire",
+            };
+            CapitalShip otherType = new CapitalShip
+            {
+                InstanceID = "cruiser",
+                TypeID = "cruiser-type",
+                OwnerInstanceID = "empire",
+            };
+            Building shield = new Building
+            {
+                InstanceID = "station-shield",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                ProtectedUnitTypeIDs = { "station-type" },
+            };
+            planet.AddTestChild(shield);
+
+            bool shielded = SpaceCombatQueries.IsShieldedByPlanet(station, planet);
+            bool otherTypeShielded = SpaceCombatQueries.IsShieldedByPlanet(otherType, planet);
+            shield.ManufacturingStatus = ManufacturingStatus.Building;
+            bool shieldedWhileBuilding = SpaceCombatQueries.IsShieldedByPlanet(station, planet);
+
+            Assert.IsTrue(shielded);
+            Assert.IsFalse(otherTypeShielded);
+            Assert.IsFalse(shieldedWhileBuilding);
+            Assert.IsFalse(SpaceCombatQueries.IsShieldedByPlanet(station, null));
+        }
+
+        [Test]
         public void ResolvePendingTactical_IncompleteBattle_ThrowsInvalidOperationException()
         {
             (_, SpaceCombatCommands commands, _, _) = CreatePendingEncounter();

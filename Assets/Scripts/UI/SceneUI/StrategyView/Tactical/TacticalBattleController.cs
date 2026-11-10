@@ -18,17 +18,20 @@ internal sealed class TacticalBattleController : ICancelable
     private const float _minimumPickRadius = 10f;
     private const float _keyboardPanRate = 0.6f;
     private const float _maximumEffectStep = 0.1f;
+    private const float _maximumDeployHoldSeconds = 8f;
+    private const float _maximumDeployHoldStep = 1f;
     private const float _keyboardYawDegreesPerSecond = 90f;
     private const float _dragYawDegreesPerPixel = 0.4f;
     private const float _dragPitchDegreesPerPixel = 0.3f;
     private const float _keyboardPitchDegreesPerSecond = 45f;
-    private static readonly float[] _speeds = { 1f, 2f, 4f };
+    private static readonly float[] _speeds = { 1f, 2f, 4f, 8f };
 
     private readonly TacticalBattleView _view;
     private readonly Func<UIContext> _getUIContext;
     private readonly Action<string> _playSfx;
     private readonly Action _markDirty;
     private readonly Func<ContentModelCache> _getModelCache;
+    private readonly Action<string, Action> _playCutscene;
     private readonly TacticalBattleProjector _projector = new TacticalBattleProjector();
     private readonly TacticalBattleAudio _audio;
     private readonly List<TacticalBattleUnit> _selection = new List<TacticalBattleUnit>();
@@ -40,8 +43,9 @@ internal sealed class TacticalBattleController : ICancelable
     private string _defenderName;
     private Action<TacticalSpaceBattle> _completed;
     private TacticalBattleUnit _inspected;
+    private TacticalBattleUnit _followed;
+    private float _deployHoldRemaining;
     private CombatSide _rosterSide;
-    private int _rosterClassIndex;
     private bool _paused;
     private int _speedIndex;
     private bool _pressed;
@@ -56,6 +60,8 @@ internal sealed class TacticalBattleController : ICancelable
     private Vector2 _panLastPoint;
     private float _completionCountdown;
     private bool _completionReported;
+    private bool _superlaserArmed;
+    private bool _cutscenePlaying;
 
     internal bool IsActive => _battle != null;
 
@@ -66,6 +72,16 @@ internal sealed class TacticalBattleController : ICancelable
     internal IReadOnlyList<TacticalBattleUnit> Selection => _selection;
 
     internal TacticalBattleUnit Inspected => _inspected;
+
+    /// <summary>
+    /// Gets whether the player has armed the superlaser and is choosing its target.
+    /// </summary>
+    internal bool IsSuperlaserArmed => _superlaserArmed;
+
+    /// <summary>
+    /// Gets whether a trench-run movie is playing over the battle, which holds it.
+    /// </summary>
+    internal bool IsCutscenePlaying => _cutscenePlaying;
 
     /// <summary>
     /// Creates a tactical battle controller bound to an authored battle view.
@@ -80,13 +96,18 @@ internal sealed class TacticalBattleController : ICancelable
     /// <param name="getModelCache">
     /// Returns the cache that loads unit models, or null to present placeholder hulls only.
     /// </param>
+    /// <param name="playCutscene">
+    /// Plays a full-screen movie from a content address and invokes the callback when it ends,
+    /// or null to show trench-run outcomes without a movie.
+    /// </param>
     internal TacticalBattleController(
         TacticalBattleView view,
         Func<UIContext> getUIContext,
         Action<string> playSfx,
         Action markDirty,
         Func<string, bool> isSoundAvailable = null,
-        Func<ContentModelCache> getModelCache = null
+        Func<ContentModelCache> getModelCache = null,
+        Action<string, Action> playCutscene = null
     )
     {
         _view = view ?? throw new ArgumentNullException(nameof(view));
@@ -94,6 +115,7 @@ internal sealed class TacticalBattleController : ICancelable
         _playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
         _markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
         _getModelCache = getModelCache;
+        _playCutscene = playCutscene;
         _audio = new TacticalBattleAudio(_playSfx, isSoundAvailable);
         _view.RetreatRequested += HandleRetreatRequested;
         _view.AutoToggleRequested += HandleAutoToggleRequested;
@@ -106,9 +128,9 @@ internal sealed class TacticalBattleController : ICancelable
         _view.ArenaScrolled += HandleArenaScrolled;
         _view.TargetPriorityToggleRequested += HandleTargetPriorityToggleRequested;
         _view.RosterSidePressed += HandleRosterSidePressed;
-        _view.RosterClassPressed += HandleRosterClassPressed;
         _view.RosterShipPressed += HandleRosterShipPressed;
         _view.RosterSquadronPressed += HandleRosterSquadronPressed;
+        _view.SuperlaserPressed += HandleSuperlaserPressed;
     }
 
     /// <summary>
@@ -146,20 +168,28 @@ internal sealed class TacticalBattleController : ICancelable
         _completed = completed;
         _selection.Clear();
         _inspected = null;
+        _followed = null;
         _paused = false;
         _speedIndex = 0;
         _pressed = false;
         _dragActive = false;
         _completionCountdown = _completionDelaySeconds;
         _completionReported = false;
+        _superlaserArmed = false;
+        _cutscenePlaying = false;
         _rosterSide = battle.PlayerSide ?? CombatSide.Attacker;
-        _rosterClassIndex = 0;
+        _deployHoldRemaining = _maximumDeployHoldSeconds;
         scene.Begin(_getModelCache?.Invoke());
         _view.Show();
         _audio.Begin(battle.Units.Any(unit => unit.IsStarfighter));
         Render();
         _markDirty();
     }
+
+    /// <summary>
+    /// Gets whether the battle is holding at its opening positions while hull models load.
+    /// </summary>
+    internal bool IsDeploying => IsActive && _deployHoldRemaining > 0f;
 
     /// <summary>
     /// Advances playback and redraws the battle without keyboard camera input.
@@ -180,10 +210,28 @@ internal sealed class TacticalBattleController : ICancelable
         if (!IsActive)
             return;
 
+        // The fight holds at its opening positions while hull models are still loading, so it
+        // never starts on placeholders or loses time to a loading hitch. A long frame counts for
+        // at most one step, and the hold as a whole is capped.
+        if (_deployHoldRemaining > 0f && (_battle.IsComplete || !_view.Scene.HasPendingModelLoads))
+            _deployHoldRemaining = 0f;
+
+        // A trench-run movie holds everything beneath it: the fight, its ending, and the
+        // keys the player presses to skip the movie.
+        if (_cutscenePlaying)
+        {
+            deltaTime = 0f;
+            cameraInput = default;
+        }
+
         if (_battle.IsComplete)
         {
             _battle.Advance(deltaTime);
             _completionCountdown -= deltaTime;
+        }
+        else if (_deployHoldRemaining > 0f)
+        {
+            _deployHoldRemaining -= Mathf.Min(deltaTime, _maximumDeployHoldStep);
         }
         else if (!_paused)
         {
@@ -196,11 +244,18 @@ internal sealed class TacticalBattleController : ICancelable
         IReadOnlyList<TacticalBattleEvent> events = _battle.TakeEvents();
         _audio.Handle(events);
         _view.Scene.Handle(events);
+        HandleStationEvents(events);
         PruneSelection();
+        FollowInspectedUnit();
         ApplyCameraInput(cameraInput, deltaTime);
         Render();
 
-        if (_battle.IsComplete && _completionCountdown <= 0f && !_completionReported)
+        if (
+            _battle.IsComplete
+            && _completionCountdown <= 0f
+            && !_completionReported
+            && !_cutscenePlaying
+        )
         {
             _completionReported = true;
             _completed?.Invoke(_battle);
@@ -230,11 +285,14 @@ internal sealed class TacticalBattleController : ICancelable
         _completed = null;
         _selection.Clear();
         _inspected = null;
+        _followed = null;
         _pressed = false;
         _dragActive = false;
         _rotatePressed = false;
         _rotateDragActive = false;
         _panPressed = false;
+        _superlaserArmed = false;
+        _cutscenePlaying = false;
         _view.Scene.End();
         _view.Hide();
         _markDirty();
@@ -249,8 +307,169 @@ internal sealed class TacticalBattleController : ICancelable
         if (!IsActive)
             return false;
 
+        // Cancel does nothing under a movie, and backs out of superlaser targeting before it
+        // pauses.
+        if (_cutscenePlaying)
+            return true;
+        if (_superlaserArmed)
+        {
+            _superlaserArmed = false;
+            return true;
+        }
+
         HandlePauseToggleRequested();
         return true;
+    }
+
+    /// <summary>
+    /// Arms the charged superlaser so the next click on an enemy capital ship fires it, or
+    /// disarms it when it is already armed.
+    /// </summary>
+    private void HandleSuperlaserPressed()
+    {
+        if (!IsActive || _cutscenePlaying || _battle.PlayerSide == null)
+            return;
+
+        TacticalBattleStation station = _battle.GetStation(_battle.PlayerSide.Value);
+        _superlaserArmed =
+            !_superlaserArmed
+            && station?.IsSuperlaserReady == true
+            && _battle.CanCommandStation(station);
+    }
+
+    /// <summary>
+    /// Fires the armed superlaser at a unit and disarms it when the shot is taken.
+    /// </summary>
+    /// <param name="target">The unit the player picked.</param>
+    /// <returns>True when the superlaser fired.</returns>
+    private bool TryFireSuperlaser(TacticalBattleUnit target)
+    {
+        TacticalBattleStation station =
+            _battle.PlayerSide == null ? null : _battle.GetStation(_battle.PlayerSide.Value);
+        if (station == null || !_battle.FireSuperlaser(station, target))
+            return false;
+
+        _superlaserArmed = false;
+        return true;
+    }
+
+    /// <summary>
+    /// Finds the enemy battle station drawn under a source-space point.
+    /// </summary>
+    /// <param name="point">The source-space position.</param>
+    /// <returns>The station under the point, or null.</returns>
+    private TacticalBattleStation FindEnemyStationAt(Vector2 point)
+    {
+        RectInt arena = _view.GetArenaSourceRect();
+        foreach (TacticalBattleStation station in _battle.Stations)
+        {
+            if (!station.IsInBattle || station.Side == _battle.PlayerSide)
+                continue;
+            if (
+                !_view.Scene.TryProjectStation(
+                    station,
+                    arena,
+                    out Vector2 center,
+                    out float diameter
+                )
+            )
+                continue;
+
+            if (Vector2.Distance(point, center) <= Mathf.Max(diameter * 0.5f, _minimumPickRadius))
+                return station;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Reacts to trench-run outcomes: the camera turns to a station that is about to blow, and
+    /// the outcome's movie plays.
+    /// </summary>
+    /// <param name="events">The events raised since the previous update.</param>
+    private void HandleStationEvents(IReadOnlyList<TacticalBattleEvent> events)
+    {
+        foreach (TacticalBattleEvent battleEvent in events)
+        {
+            bool succeeded = battleEvent.Kind == TacticalBattleEventKind.TrenchRunSucceeded;
+            if (!succeeded && battleEvent.Kind != TacticalBattleEventKind.TrenchRunFailed)
+                continue;
+
+            if (succeeded)
+            {
+                // Leave the camera on the station so its end is on screen when the movie closes.
+                _followed = null;
+                _view.Scene.LookToward(battleEvent.Station);
+            }
+
+            PlayTrenchRunCutscene(battleEvent.Station, succeeded);
+        }
+    }
+
+    /// <summary>
+    /// Plays the movie for a trench run's outcome over the battle, holding the battle until it
+    /// ends. Without a movie for the station's ship type the battle simply carries on.
+    /// </summary>
+    /// <param name="station">The attacked station.</param>
+    /// <param name="succeeded">Whether the run destroyed the station.</param>
+    private void PlayTrenchRunCutscene(TacticalBattleStation station, bool succeeded)
+    {
+        string path = GetTrenchRunCutscenePath(
+            _getUIContext()?.GetPlayerFactionTheme(),
+            station.Ship.TypeID,
+            succeeded
+        );
+        Debug.Log(
+            $"Tactical battle: the trench run on {station.DisplayName} {(succeeded ? "succeeded" : "failed")}; movie '{path}'."
+        );
+        if (_playCutscene == null || string.IsNullOrWhiteSpace(path))
+            return;
+
+        _cutscenePlaying = true;
+        _superlaserArmed = false;
+        _pressed = false;
+        _dragActive = false;
+        _rotatePressed = false;
+        _rotateDragActive = false;
+        _panPressed = false;
+        TacticalSpaceBattle battle = _battle;
+        try
+        {
+            _playCutscene(
+                path,
+                () =>
+                {
+                    if (ReferenceEquals(_battle, battle))
+                        _cutscenePlaying = false;
+                }
+            );
+        }
+        catch (Exception exception)
+        {
+            _cutscenePlaying = false;
+            Debug.LogWarning(
+                $"Tactical battle: movie '{path}' could not play. {exception.Message}"
+            );
+        }
+    }
+
+    /// <summary>
+    /// Returns the movie a theme shows for a trench run on one ship type.
+    /// </summary>
+    /// <param name="theme">The viewing player's theme.</param>
+    /// <param name="shipTypeId">The attacked station's ship type.</param>
+    /// <param name="succeeded">Whether the run destroyed the station.</param>
+    /// <returns>The movie's content address, or null when the theme has none.</returns>
+    internal static string GetTrenchRunCutscenePath(
+        FactionTheme theme,
+        string shipTypeId,
+        bool succeeded
+    )
+    {
+        TrenchRunCutscene cutscene = theme?.TrenchRunCutscenes?.FirstOrDefault(entry =>
+            entry?.ShipTypeID == shipTypeId
+        );
+        return succeeded ? cutscene?.SuccessPath : cutscene?.FailurePath;
     }
 
     /// <summary>
@@ -315,7 +534,7 @@ internal sealed class TacticalBattleController : ICancelable
     /// <param name="button">The pressed pointer button.</param>
     private void HandleArenaPressed(Vector2 point, PointerEventData.InputButton button)
     {
-        if (!IsActive)
+        if (!IsActive || _cutscenePlaying)
             return;
 
         switch (button)
@@ -367,6 +586,7 @@ internal sealed class TacticalBattleController : ICancelable
                 _rotateLastPoint = point;
                 break;
             case PointerEventData.InputButton.Middle when _panPressed:
+                _followed = null;
                 _view.Scene.Pan(_view.GetArenaSourceRect(), _panLastPoint, point);
                 _panLastPoint = point;
                 break;
@@ -380,13 +600,19 @@ internal sealed class TacticalBattleController : ICancelable
     /// <param name="button">The released pointer button.</param>
     private void HandleArenaReleased(Vector2 point, PointerEventData.InputButton button)
     {
+        if (_cutscenePlaying)
+            return;
+
         switch (button)
         {
             case PointerEventData.InputButton.Left when _pressed:
                 _pressed = false;
                 if (!IsActive)
                     return;
-                if (_dragActive)
+                // While the superlaser is armed a click picks its target and nothing else.
+                if (_superlaserArmed)
+                    TryFireSuperlaser(FindUnitAt(point));
+                else if (_dragActive)
                     SelectInBox(_pressPoint, point);
                 else
                     SelectAt(point);
@@ -395,7 +621,14 @@ internal sealed class TacticalBattleController : ICancelable
             case PointerEventData.InputButton.Right when _rotatePressed:
                 _rotatePressed = false;
                 if (IsActive && !_rotateDragActive && !_battle.IsComplete)
-                    IssueOrderAt(point);
+                {
+                    // A right-click backs out of superlaser targeting instead of giving an order.
+                    if (_superlaserArmed)
+                        _superlaserArmed = false;
+                    else
+                        IssueOrderAt(point);
+                }
+
                 _rotateDragActive = false;
                 break;
             case PointerEventData.InputButton.Middle:
@@ -428,13 +661,22 @@ internal sealed class TacticalBattleController : ICancelable
 
         TacticalBattleScene scene = _view.Scene;
         if (input.ResetView)
+        {
+            _followed = null;
             scene.ResetView(_battle);
+        }
+
         if (input.CycleShips)
             CycleFriendlyShip();
         if (input.TogglePause)
             HandlePauseToggleRequested();
         if (input.Pan != Vector2.zero)
+        {
+            // Panning hands the camera back to the player.
+            _followed = null;
             scene.PanBy(input.Pan * (_keyboardPanRate * deltaTime));
+        }
+
         if (input.Yaw != 0f || input.Pitch != 0f)
             scene.Rotate(
                 input.Yaw * _keyboardYawDegreesPerSecond * deltaTime,
@@ -455,6 +697,7 @@ internal sealed class TacticalBattleController : ICancelable
         _inspected = unit;
         if (unit != null && _battle.CanCommand(unit))
             _selection.Add(unit);
+        Follow(unit);
     }
 
     /// <summary>
@@ -481,6 +724,7 @@ internal sealed class TacticalBattleController : ICancelable
         }
 
         _inspected = _selection.Count > 0 ? _selection[0] : null;
+        Follow(_selection.Count == 1 ? _selection[0] : null);
     }
 
     /// <summary>
@@ -489,20 +733,26 @@ internal sealed class TacticalBattleController : ICancelable
     /// <param name="point">The source-space position.</param>
     private void IssueOrderAt(Vector2 point)
     {
-        if (
-            _selection.Count == 0
-            || !_view.Scene.TryPickGround(
-                _view.GetArenaSourceRect(),
-                point,
-                out Vector2 battlePoint
-            )
-        )
+        if (_selection.Count == 0)
             return;
 
         TacticalBattleUnit target = FindUnitAt(point);
         if (target != null && target.Side != _battle.PlayerSide)
+        {
             _battle.IssueAttackOrder(_selection, target);
-        else
+            return;
+        }
+
+        // An enemy battle station stands beyond the arena: a click on it sends the selected
+        // squadrons to fly its trench, and never moves the ships selected with them.
+        TacticalBattleStation station = target == null ? FindEnemyStationAt(point) : null;
+        if (station != null)
+        {
+            _battle.IssueTrenchRunOrder(_selection, station);
+            return;
+        }
+
+        if (_view.Scene.TryPickGround(_view.GetArenaSourceRect(), point, out Vector2 battlePoint))
             _battle.IssueMoveOrder(_selection, battlePoint.x, battlePoint.y);
     }
 
@@ -518,7 +768,22 @@ internal sealed class TacticalBattleController : ICancelable
         }
 
         if (_inspected != null && (!_inspected.IsAlive || _inspected.HasWithdrawn))
+        {
             _inspected = null;
+            _followed = null;
+        }
+
+        // The camera lets go of a squadron that has flown off the battlefield into a trench.
+        if (_followed?.IsOffField == true)
+            _followed = null;
+
+        if (_superlaserArmed)
+        {
+            TacticalBattleStation station =
+                _battle.PlayerSide == null ? null : _battle.GetStation(_battle.PlayerSide.Value);
+            if (station?.IsSuperlaserReady != true || !_battle.CanCommandStation(station))
+                _superlaserArmed = false;
+        }
     }
 
     /// <summary>
@@ -534,7 +799,7 @@ internal sealed class TacticalBattleController : ICancelable
         float bestScore = float.MaxValue;
         foreach (TacticalBattleUnit unit in _battle.Units)
         {
-            if (!unit.IsAlive || unit.HasWithdrawn)
+            if (!unit.IsAlive || unit.HasWithdrawn || unit.IsOffField)
                 continue;
             if (!scene.TryProjectUnit(unit, arena, out Vector2 center, out float diameter))
                 continue;
@@ -583,7 +848,35 @@ internal sealed class TacticalBattleController : ICancelable
     }
 
     /// <summary>
-    /// Inspects a unit, selects it when the player can command it, and frames it.
+    /// Snaps the camera onto a unit and keeps following it until the player pans or reframes.
+    /// </summary>
+    /// <param name="unit">The unit to follow, or null to stop following.</param>
+    private void Follow(TacticalBattleUnit unit)
+    {
+        _followed = unit?.IsAlive == true && !unit.HasWithdrawn ? unit : null;
+        if (_followed != null)
+            _view.Scene.TrackUnit(_followed);
+    }
+
+    /// <summary>
+    /// Keeps the camera centered on the followed unit while it is still the inspected unit and
+    /// still in the battle; a fighter would otherwise fly out of view within a second.
+    /// </summary>
+    private void FollowInspectedUnit()
+    {
+        if (_followed == null)
+            return;
+        if (_followed != _inspected || !_followed.IsAlive || _followed.HasWithdrawn)
+        {
+            _followed = null;
+            return;
+        }
+
+        _view.Scene.TrackUnit(_followed);
+    }
+
+    /// <summary>
+    /// Inspects a unit, selects it when the player can command it, frames it, and follows it.
     /// </summary>
     /// <param name="unit">The unit to focus.</param>
     private void FocusUnit(TacticalBattleUnit unit)
@@ -592,7 +885,8 @@ internal sealed class TacticalBattleController : ICancelable
         _selection.Clear();
         if (_battle.CanCommand(unit))
             _selection.Add(unit);
-        if (unit.IsAlive && !unit.HasWithdrawn)
+        _followed = unit.IsAlive && !unit.HasWithdrawn ? unit : null;
+        if (_followed != null)
             _view.Scene.FocusOn(unit);
     }
 
@@ -629,19 +923,6 @@ internal sealed class TacticalBattleController : ICancelable
 
         _rosterSide =
             _rosterSide == CombatSide.Attacker ? CombatSide.Defender : CombatSide.Attacker;
-        _rosterClassIndex = 0;
-    }
-
-    /// <summary>
-    /// Shows the roster's next fighter class.
-    /// </summary>
-    private void HandleRosterClassPressed()
-    {
-        if (!IsActive)
-            return;
-
-        int classCount = TacticalBattleProjector.GetFighterClasses(_battle, _rosterSide).Count;
-        _rosterClassIndex = classCount == 0 ? 0 : (_rosterClassIndex + 1) % classCount;
     }
 
     /// <summary>
@@ -661,31 +942,31 @@ internal sealed class TacticalBattleController : ICancelable
             return;
 
         HandleControlPressed();
+        // While the superlaser is armed, an enemy ship's roster slot picks its target.
+        if (_superlaserArmed && TryFireSuperlaser(ships[index]))
+            return;
+
         FocusUnit(ships[index]);
     }
 
     /// <summary>
     /// Inspects the squadron in a roster slot.
     /// </summary>
-    /// <param name="index">The squadron slot index within the chosen fighter class.</param>
+    /// <param name="index">The squadron slot index, counted across every fighter type.</param>
     private void HandleRosterSquadronPressed(int index)
     {
         if (!IsActive)
             return;
 
-        List<List<TacticalStarfighterUnit>> classes = TacticalBattleProjector.GetFighterClasses(
+        List<TacticalStarfighterUnit> squadrons = TacticalBattleProjector.GetRosterSquadrons(
             _battle,
             _rosterSide
         );
-        if (classes.Count == 0)
-            return;
-
-        List<TacticalStarfighterUnit> members = classes[_rosterClassIndex % classes.Count];
-        if (index < 0 || index >= members.Count)
+        if (index < 0 || index >= squadrons.Count)
             return;
 
         HandleControlPressed();
-        FocusUnit(members[index]);
+        FocusUnit(squadrons[index]);
     }
 
     /// <summary>
@@ -726,7 +1007,8 @@ internal sealed class TacticalBattleController : ICancelable
                 _paused,
                 Speed,
                 _rosterSide,
-                _rosterClassIndex
+                IsDeploying,
+                _superlaserArmed
             )
         );
     }

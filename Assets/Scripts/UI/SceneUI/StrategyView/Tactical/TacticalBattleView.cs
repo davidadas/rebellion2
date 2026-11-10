@@ -23,12 +23,19 @@ public sealed class TacticalBattleView
     private static readonly Color _hullHealthyColor = new Color(0.35f, 0.9f, 0.35f, 1f);
     private static readonly Color _hullCriticalColor = new Color(0.95f, 0.3f, 0.25f, 1f);
     private static readonly Color _starfieldTint = new Color(0.4f, 0.43f, 0.52f, 1f);
+    private static readonly Color _disabledLabelColor = new Color(1f, 1f, 1f, 0.38f);
+    private static readonly Color _superlaserReadyColor = new Color(0.25f, 0.8f, 0.3f, 1f);
+    private static readonly Color _superlaserArmedColor = new Color(0.95f, 0.75f, 0.2f, 1f);
+    private static readonly Color _superlaserChargingColor = new Color(0.16f, 0.42f, 0.2f, 1f);
     private const int _rosterSlotWidth = 34;
     private const int _rosterSlotHeight = 30;
     private const int _rosterSlotGap = 3;
     private const int _rosterGroupGap = 10;
     private const int _rosterControlWidth = 64;
-    private const int _rosterClassWidth = 108;
+    private const int _rosterMinimumSlotWidth = 16;
+    private const int _rosterLabelMinimumWidth = 24;
+    private const int _superlaserStripHeight = 24;
+    private const int _compactHeaderTrim = 22;
 
     [Header("Arena")]
     [SerializeField]
@@ -78,15 +85,21 @@ public sealed class TacticalBattleView
     private TextMeshProUGUI rosterSideLabel;
 
     [SerializeField]
-    private Button rosterClassButton;
-
-    [SerializeField]
-    private TextMeshProUGUI rosterClassLabel;
-
-    [SerializeField]
     private TacticalRosterSlotView rosterSlotTemplate;
 
     [Header("Panel")]
+    [SerializeField]
+    private Button superlaserButton;
+
+    [SerializeField]
+    private RawImage superlaserBarImage;
+
+    [SerializeField]
+    private TextMeshProUGUI superlaserLabel;
+
+    [SerializeField]
+    private RawImage portraitFrameImage;
+
     [SerializeField]
     private RawImage portraitImage;
 
@@ -190,6 +203,12 @@ public sealed class TacticalBattleView
     private readonly List<(Button button, UnityAction listener)> _buttonListeners =
         new List<(Button, UnityAction)>();
     private bool _bound;
+    private bool _headerMeasured;
+    private bool _headerCompact;
+    private RectInt _portraitFrameBounds;
+    private RectInt _portraitBounds;
+    private RectInt _nameBounds;
+    private RectInt _subtitleBounds;
 
     /// <summary>
     /// Gets the 3D scene that draws the units into the arena.
@@ -254,11 +273,6 @@ public sealed class TacticalBattleView
     internal event Action RosterSidePressed;
 
     /// <summary>
-    /// Raised when the roster's fighter-class selector is pressed.
-    /// </summary>
-    internal event Action RosterClassPressed;
-
-    /// <summary>
     /// Raised when a roster ship slot is pressed, with the slot index.
     /// </summary>
     internal event Action<int> RosterShipPressed;
@@ -267,6 +281,11 @@ public sealed class TacticalBattleView
     /// Raised when a roster squadron slot is pressed, with the slot index.
     /// </summary>
     internal event Action<int> RosterSquadronPressed;
+
+    /// <summary>
+    /// Raised when the superlaser charge bar is pressed.
+    /// </summary>
+    internal event Action SuperlaserPressed;
 
     /// <summary>
     /// Occurs when a pointer button is released over the arena at a source-space point.
@@ -382,9 +401,9 @@ public sealed class TacticalBattleView
         UILayout.SetTextContent(statusTextField, data.ClockStatus);
         UILayout.SetTextContent(selectionTextField, data.Hint);
         UILayout.SetTextContent(retreatLabel, data.RetreatLabel);
-        retreatButton.interactable = data.RetreatInteractable;
+        SetButtonState(retreatButton, retreatLabel, data.RetreatInteractable);
         UILayout.SetTextContent(autoLabel, data.AutoLabel);
-        autoButton.interactable = data.AutoInteractable;
+        SetButtonState(autoButton, autoLabel, data.AutoInteractable);
         UILayout.SetTextContent(pauseLabel, data.PauseLabel);
         UILayout.SetTextContent(speedLabel, data.SpeedLabel);
 
@@ -409,11 +428,111 @@ public sealed class TacticalBattleView
         RenderSelectionBox(data.SelectionBox);
         RenderPanel(data.Panel);
         RenderRoster(data.Roster);
+        RenderSuperlaser(data.Superlaser);
     }
 
     /// <summary>
-    /// Lays out the roster bar: the side toggle, the ship slots, the fighter-class selector, and
-    /// the squadron slots, left to right.
+    /// Shows the superlaser charge bar at the top of the panel while the player commands a
+    /// battle station, and makes room for it by drawing the inspected unit's header smaller
+    /// beneath it.
+    /// </summary>
+    /// <param name="superlaser">The bar presentation, or null to hide the bar.</param>
+    private void RenderSuperlaser(TacticalSuperlaserRenderData superlaser)
+    {
+        bool shown = superlaser != null;
+        if (superlaserButton.gameObject.activeSelf != shown)
+            superlaserButton.gameObject.SetActive(shown);
+        LayoutHeader(shown);
+        if (!shown)
+            return;
+
+        UILayout.SetTextContent(superlaserLabel, superlaser.Label);
+        superlaserButton.interactable = superlaser.Ready;
+        RectInt bounds = UILayout.GetSourceRect(superlaserButton.transform as RectTransform);
+        int width = Mathf.RoundToInt(bounds.width * Mathf.Clamp01(superlaser.ChargeFraction));
+        UILayout.SetSourceRect(superlaserBarImage.rectTransform, 0, 0, width, bounds.height);
+        superlaserBarImage.enabled = width > 0;
+        superlaserBarImage.color =
+            superlaser.Armed ? _superlaserArmedColor
+            : superlaser.Ready ? _superlaserReadyColor
+            : _superlaserChargingColor;
+    }
+
+    /// <summary>
+    /// Moves the inspected unit's portrait and name down and shrinks the portrait while the
+    /// superlaser bar occupies the top of the panel, and restores them when it does not.
+    /// </summary>
+    /// <param name="compact">Whether the superlaser bar is shown.</param>
+    private void LayoutHeader(bool compact)
+    {
+        if (!_headerMeasured)
+        {
+            _portraitFrameBounds = UILayout.GetSourceRect(portraitFrameImage.rectTransform);
+            _portraitBounds = UILayout.GetSourceRect(portraitImage.rectTransform);
+            _nameBounds = UILayout.GetSourceRect(nameTextField.rectTransform);
+            _subtitleBounds = UILayout.GetSourceRect(subtitleTextField.rectTransform);
+            _headerMeasured = true;
+        }
+        else if (compact == _headerCompact)
+        {
+            return;
+        }
+
+        _headerCompact = compact;
+        int shift = compact ? _superlaserStripHeight : 0;
+        int trim = compact ? _compactHeaderTrim : 0;
+        SetHeaderRect(portraitFrameImage.rectTransform, _portraitFrameBounds, 0, shift, 0, -trim);
+        SetHeaderRect(portraitImage.rectTransform, _portraitBounds, 0, shift, -trim, -trim);
+        SetHeaderRect(nameTextField.rectTransform, _nameBounds, -trim, shift, trim, 0);
+        SetHeaderRect(subtitleTextField.rectTransform, _subtitleBounds, -trim, shift, trim, 0);
+    }
+
+    /// <summary>
+    /// Places one header element at its authored rectangle, moved and resized by an offset.
+    /// </summary>
+    /// <param name="rect">The element to place.</param>
+    /// <param name="bounds">The element's authored source-space rectangle.</param>
+    /// <param name="x">The horizontal offset.</param>
+    /// <param name="y">The vertical offset.</param>
+    /// <param name="width">The change in width.</param>
+    /// <param name="height">The change in height.</param>
+    private static void SetHeaderRect(
+        RectTransform rect,
+        RectInt bounds,
+        int x,
+        int y,
+        int width,
+        int height
+    )
+    {
+        UILayout.SetSourceRect(
+            rect,
+            bounds.x + x,
+            bounds.y + y,
+            Mathf.Max(bounds.width + width, 1),
+            Mathf.Max(bounds.height + height, 1)
+        );
+    }
+
+    /// <summary>
+    /// Enables or disables a panel button and dims its caption while it is disabled, so a greyed
+    /// button cannot be mistaken for a live one.
+    /// </summary>
+    /// <param name="button">The button.</param>
+    /// <param name="label">The button's caption.</param>
+    /// <param name="interactable">Whether the button accepts input.</param>
+    private static void SetButtonState(Button button, TextMeshProUGUI label, bool interactable)
+    {
+        button.interactable = interactable;
+        label.color = interactable ? Color.white : _disabledLabelColor;
+    }
+
+    /// <summary>
+    /// Lays out the roster bar: the side toggle, the ship slots, then every squadron grouped by
+    /// fighter type. Ships shrink to stay on the first row and wrap once they reach the smallest
+    /// size that still shows their number. The squadrons share the ships' row while they fit
+    /// beside them; otherwise they take rows of their own, shrinking to a readable minimum and
+    /// wrapping. The bar grows to hold every row.
     /// </summary>
     /// <param name="roster">The roster presentation, or null to clear the bar.</param>
     private void RenderRoster(TacticalRosterRenderData roster)
@@ -425,74 +544,206 @@ public sealed class TacticalBattleView
         }
 
         rosterLayer.gameObject.SetActive(true);
-        int x = 0;
+        RectInt bounds = UILayout.GetSourceRect(rosterLayer);
         UILayout.SetSourceRect(
             rosterSideButton.transform as RectTransform,
-            x,
+            0,
             0,
             _rosterControlWidth,
             _rosterSlotHeight
         );
         UILayout.SetTextContent(rosterSideLabel, roster.SideLabel);
-        x += _rosterControlWidth + _rosterGroupGap;
-        x = RenderRosterSlots(_rosterShipSlots, roster.Ships, x, RosterShipPressed);
-        x += _rosterGroupGap;
-        UILayout.SetSourceRect(
-            rosterClassButton.transform as RectTransform,
-            x,
+
+        // Ships: wrapped rows start under the first ship, clear of the side toggle.
+        int shipStart = _rosterControlWidth + _rosterGroupGap;
+        int x = shipStart;
+        int y = 0;
+        int shipWidth = FitSlotWidth(
+            roster.Ships.Count,
             0,
-            _rosterClassWidth,
-            _rosterSlotHeight
+            bounds.width - shipStart,
+            _rosterLabelMinimumWidth
         );
-        UILayout.SetTextContent(rosterClassLabel, roster.FighterClassLabel);
-        rosterClassButton.interactable = roster.FighterClassInteractable;
-        x += _rosterClassWidth + _rosterSlotGap;
-        RenderRosterSlots(_rosterSquadronSlots, roster.Squadrons, x, RosterSquadronPressed);
+        int shipHeight = GetSlotHeight(shipWidth);
+        int slotIndex = 0;
+        RenderSlotGroup(
+            _rosterShipSlots,
+            roster.Ships,
+            ref slotIndex,
+            ref x,
+            ref y,
+            shipStart,
+            bounds.width,
+            shipWidth,
+            shipHeight,
+            RosterShipPressed
+        );
+        HideUnusedSlots(_rosterShipSlots, slotIndex);
+        bool shipsOnOneRow = y == 0;
+        int height = Mathf.Max(roster.Ships.Count > 0 ? y + shipHeight : 0, _rosterSlotHeight);
+
+        int squadronCount = 0;
+        foreach (IReadOnlyList<TacticalRosterSlotRenderData> group in roster.SquadronGroups)
+            squadronCount += group.Count;
+        slotIndex = 0;
+        if (squadronCount > 0)
+        {
+            int groupGaps = (roster.SquadronGroups.Count - 1) * _rosterGroupGap;
+            int slotGaps = (squadronCount - 1) * _rosterSlotGap;
+            int slotWidth = _rosterSlotWidth;
+            int rowStart = x + _rosterGroupGap;
+            bool fitsBesideShips =
+                shipsOnOneRow
+                && rowStart + squadronCount * slotWidth + slotGaps + groupGaps <= bounds.width;
+            if (fitsBesideShips)
+            {
+                x = rowStart;
+            }
+            else
+            {
+                // Too many to sit beside the ships: give them rows of their own, as wide as the
+                // bar, and shrink them so the rows stay few.
+                rowStart = 0;
+                x = 0;
+                y = height + _rosterSlotGap;
+                slotWidth = FitSlotWidth(
+                    squadronCount,
+                    groupGaps,
+                    bounds.width,
+                    _rosterMinimumSlotWidth
+                );
+            }
+
+            int slotHeight = GetSlotHeight(slotWidth);
+            for (int groupIndex = 0; groupIndex < roster.SquadronGroups.Count; groupIndex++)
+            {
+                if (groupIndex > 0 && x > rowStart)
+                    x += _rosterGroupGap;
+                RenderSlotGroup(
+                    _rosterSquadronSlots,
+                    roster.SquadronGroups[groupIndex],
+                    ref slotIndex,
+                    ref x,
+                    ref y,
+                    rowStart,
+                    bounds.width,
+                    slotWidth,
+                    slotHeight,
+                    RosterSquadronPressed
+                );
+            }
+
+            height = Mathf.Max(height, y + slotHeight);
+        }
+
+        HideUnusedSlots(_rosterSquadronSlots, slotIndex);
+        UILayout.SetSourceRect(rosterLayer, bounds.x, bounds.y, bounds.width, height);
     }
 
     /// <summary>
-    /// Renders one group of roster slots from a pool, left to right from a starting position.
+    /// Returns the widest slot that lets a number of slots share one row, within the roster's
+    /// full size and a minimum.
     /// </summary>
-    /// <param name="pool">The pooled slot views for this group.</param>
+    /// <param name="count">The number of slots.</param>
+    /// <param name="extraGaps">The width of the gaps between groups.</param>
+    /// <param name="available">The row width available.</param>
+    /// <param name="minimumWidth">The smallest slot width allowed.</param>
+    /// <returns>The slot width.</returns>
+    private static int FitSlotWidth(int count, int extraGaps, int available, int minimumWidth)
+    {
+        if (count <= 0)
+            return _rosterSlotWidth;
+
+        int width = (available - extraGaps - (count - 1) * _rosterSlotGap) / count;
+        return Mathf.Clamp(width, minimumWidth, _rosterSlotWidth);
+    }
+
+    /// <summary>
+    /// Returns the slot height that keeps the roster slot's proportions at a given width.
+    /// </summary>
+    /// <param name="slotWidth">The slot width.</param>
+    /// <returns>The slot height.</returns>
+    private static int GetSlotHeight(int slotWidth)
+    {
+        return Mathf.Max(
+            Mathf.RoundToInt(slotWidth * (float)_rosterSlotHeight / _rosterSlotWidth),
+            1
+        );
+    }
+
+    /// <summary>
+    /// Renders one group of roster slots from a pool, left to right from a cursor, wrapping onto
+    /// a new row whenever the current one is full.
+    /// </summary>
+    /// <param name="pool">The pooled slot views.</param>
     /// <param name="entries">The entries to show.</param>
-    /// <param name="x">The source-space position of the first slot.</param>
+    /// <param name="slotIndex">The next slot index in the pool, advanced past the group.</param>
+    /// <param name="x">The source-space cursor position, advanced past the group.</param>
+    /// <param name="y">The source-space cursor row, advanced when the group wraps.</param>
+    /// <param name="rowStart">The position a wrapped row starts from.</param>
+    /// <param name="rowWidth">The width available to a row.</param>
+    /// <param name="slotWidth">The slot width.</param>
+    /// <param name="slotHeight">The slot height.</param>
     /// <param name="pressed">The event raised with a slot's index when it is clicked.</param>
-    /// <returns>The source-space position just past the last slot.</returns>
-    private int RenderRosterSlots(
+    private void RenderSlotGroup(
         List<TacticalRosterSlotView> pool,
         IReadOnlyList<TacticalRosterSlotRenderData> entries,
-        int x,
+        ref int slotIndex,
+        ref int x,
+        ref int y,
+        int rowStart,
+        int rowWidth,
+        int slotWidth,
+        int slotHeight,
         Action<int> pressed
     )
     {
-        while (pool.Count < entries.Count)
+        bool showLabel = slotWidth >= _rosterLabelMinimumWidth;
+        foreach (TacticalRosterSlotRenderData entry in entries)
+        {
+            if (x > rowStart && x + slotWidth > rowWidth)
+            {
+                x = rowStart;
+                y += slotHeight + _rosterSlotGap;
+            }
+
+            int pressedIndex = slotIndex;
+            TacticalRosterSlotView slot = GetRosterSlot(pool, slotIndex);
+            UILayout.SetSourceRect(slot.transform as RectTransform, x, y, slotWidth, slotHeight);
+            slot.Resize(slotWidth, slotHeight, showLabel);
+            slot.Render(entry, () => pressed?.Invoke(pressedIndex));
+            x += slotWidth + _rosterSlotGap;
+            slotIndex++;
+        }
+    }
+
+    /// <summary>
+    /// Returns a pooled roster slot, cloning the template when the pool is short.
+    /// </summary>
+    /// <param name="pool">The slot pool.</param>
+    /// <param name="index">The slot index.</param>
+    /// <returns>The slot view.</returns>
+    private TacticalRosterSlotView GetRosterSlot(List<TacticalRosterSlotView> pool, int index)
+    {
+        while (pool.Count <= index)
         {
             TacticalRosterSlotView slot = Instantiate(rosterSlotTemplate, rosterLayer);
             slot.name = $"{rosterSlotTemplate.name}{pool.Count}";
             pool.Add(slot);
         }
 
-        for (int index = 0; index < pool.Count; index++)
-        {
-            if (index >= entries.Count)
-            {
-                pool[index].gameObject.SetActive(false);
-                continue;
-            }
+        return pool[index];
+    }
 
-            int slotIndex = index;
-            UILayout.SetSourceRect(
-                pool[index].transform as RectTransform,
-                x,
-                0,
-                _rosterSlotWidth,
-                _rosterSlotHeight
-            );
-            pool[index].Render(entries[index], () => pressed?.Invoke(slotIndex));
-            x += _rosterSlotWidth + _rosterSlotGap;
-        }
-
-        return x;
+    /// <summary>
+    /// Hides the pooled slots past the ones in use.
+    /// </summary>
+    /// <param name="pool">The slot pool.</param>
+    /// <param name="usedCount">The number of slots in use.</param>
+    private static void HideUnusedSlots(List<TacticalRosterSlotView> pool, int usedCount)
+    {
+        for (int index = usedCount; index < pool.Count; index++)
+            pool[index].gameObject.SetActive(false);
     }
 
     /// <summary>
@@ -812,7 +1063,7 @@ public sealed class TacticalBattleView
         Bind(speedButton, () => SpeedCycleRequested?.Invoke());
         Bind(targetPriorityButton, () => TargetPriorityToggleRequested?.Invoke());
         Bind(rosterSideButton, () => RosterSidePressed?.Invoke());
-        Bind(rosterClassButton, () => RosterClassPressed?.Invoke());
+        Bind(superlaserButton, () => SuperlaserPressed?.Invoke());
     }
 
     /// <summary>
@@ -851,9 +1102,11 @@ public sealed class TacticalBattleView
         Require(rosterLayer, nameof(rosterLayer));
         Require(rosterSideButton, nameof(rosterSideButton));
         Require(rosterSideLabel, nameof(rosterSideLabel));
-        Require(rosterClassButton, nameof(rosterClassButton));
-        Require(rosterClassLabel, nameof(rosterClassLabel));
         Require(rosterSlotTemplate, nameof(rosterSlotTemplate));
+        Require(superlaserButton, nameof(superlaserButton));
+        Require(superlaserBarImage, nameof(superlaserBarImage));
+        Require(superlaserLabel, nameof(superlaserLabel));
+        Require(portraitFrameImage, nameof(portraitFrameImage));
         Require(portraitImage, nameof(portraitImage));
         Require(nameTextField, nameof(nameTextField));
         Require(subtitleTextField, nameof(subtitleTextField));

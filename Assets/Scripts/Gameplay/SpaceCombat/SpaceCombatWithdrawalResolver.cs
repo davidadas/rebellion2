@@ -45,22 +45,40 @@ namespace Rebellion.Gameplay
             string ownerInstanceId
         )
         {
+            return !SpaceCombatQueries.IsRetreatBlockedByGravityWell(planet, opponents)
+                && HasEscapeRoute(fleets, planet, ownerInstanceId);
+        }
+
+        /// <summary>
+        /// Determines whether a combat side has a hyperspace route out of the system: a unit with
+        /// a hyperdrive, a safe destination, and no standing order to hold the planet. Enemy
+        /// gravity wells are judged separately, because the tactical battle tracks them live.
+        /// </summary>
+        /// <param name="fleets">The fleets on the withdrawing side.</param>
+        /// <param name="planet">The combat planet.</param>
+        /// <param name="ownerInstanceId">The withdrawing owner identifier.</param>
+        /// <returns>True when the side could jump out if nothing held it.</returns>
+        internal bool HasEscapeRoute(
+            IReadOnlyList<Fleet> fleets,
+            Planet planet,
+            string ownerInstanceId
+        )
+        {
             Faction faction =
                 planet == null || string.IsNullOrEmpty(ownerInstanceId)
                     ? null
                     : _game.GetFactionByOwnerInstanceID(ownerInstanceId);
             if (
-                (
-                    faction != null
-                    && _game.IsFactionAIControlled(faction)
-                    && planet.GetOwnerInstanceID() == faction.InstanceID
-                    && planet.GetInstanceID() == faction.HQInstanceID
-                )
-                || !_spaceCombatQueries.CanRetreatForces(fleets, opponents, planet, ownerInstanceId)
+                faction != null
+                && _game.IsFactionAIControlled(faction)
+                && planet.GetOwnerInstanceID() == faction.InstanceID
+                && planet.GetInstanceID() == faction.HQInstanceID
             )
                 return false;
 
-            return true;
+            return _spaceCombatQueries
+                .GetWithdrawalPlan(fleets, planet, ownerInstanceId)
+                .CanWithdraw;
         }
 
         /// <summary>

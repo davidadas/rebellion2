@@ -38,6 +38,30 @@ namespace Rebellion.Gameplay
         public TacticalBattleUnit Target { get; private set; }
 
         /// <summary>
+        /// Gets whether the player chose the current target, so automatic scans leave it alone
+        /// until it is gone.
+        /// </summary>
+        public bool IsDirected { get; private set; }
+
+        /// <summary>
+        /// Gets the battle station whose trench the squadron has been sent to fly, or null.
+        /// </summary>
+        public TacticalBattleStation TrenchRunTarget { get; private set; }
+
+        /// <summary>
+        /// Gets whether the squadron has reached the station and is inside its trench, waiting
+        /// for the attack run to be decided.
+        /// </summary>
+        public bool IsInTrench { get; private set; }
+
+        /// <summary>
+        /// Gets whether the squadron carries the torpedoes a trench run needs.
+        /// </summary>
+        public bool HasTorpedoes => Fighter.Torpedoes > 0;
+
+        public override bool IsOffField => IsInTrench;
+
+        /// <summary>
         /// Gets or sets the direction the squadron circles its target: 1 counterclockwise,
         /// -1 clockwise. Alternating directions across a force keeps squadrons from stacking.
         /// </summary>
@@ -129,7 +153,53 @@ namespace Rebellion.Gameplay
         internal void SetTarget(TacticalBattleUnit target, double scanInterval)
         {
             Target = target;
+            IsDirected = false;
             _scanCooldown = scanInterval;
+        }
+
+        /// <summary>
+        /// Takes a player-chosen target and holds it until it is destroyed or withdraws.
+        /// </summary>
+        /// <param name="target">The opposing unit to engage.</param>
+        internal void SetDirectedTarget(TacticalBattleUnit target)
+        {
+            Target = target ?? throw new ArgumentNullException(nameof(target));
+            IsDirected = true;
+            TrenchRunTarget = null;
+            IsInTrench = false;
+            _scanCooldown = 0;
+        }
+
+        /// <summary>
+        /// Sends the squadron to fly a battle station's trench; it drops its current target and
+        /// flies straight for the station.
+        /// </summary>
+        /// <param name="station">The station to attack.</param>
+        internal void SetTrenchRun(TacticalBattleStation station)
+        {
+            TrenchRunTarget = station ?? throw new ArgumentNullException(nameof(station));
+            IsInTrench = false;
+            Target = null;
+            IsDirected = false;
+        }
+
+        /// <summary>
+        /// Takes the squadron off the battlefield and into the trench of the station it reached.
+        /// </summary>
+        internal void EnterTrench()
+        {
+            if (TrenchRunTarget != null)
+                IsInTrench = true;
+        }
+
+        /// <summary>
+        /// Ends the squadron's trench run and returns it to ordinary engagement.
+        /// </summary>
+        internal void ClearTrenchRun()
+        {
+            TrenchRunTarget = null;
+            IsInTrench = false;
+            _scanCooldown = 0;
         }
 
         /// <summary>
@@ -245,6 +315,7 @@ namespace Rebellion.Gameplay
                     damage,
                     lane == _ionLane,
                     shotDisplaySeconds,
+                    weaponStrength,
                     isTorpedo: lane == _torpedoLane
                 );
                 consumedCharge += weaponStrength;

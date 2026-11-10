@@ -196,9 +196,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
                     new TacticalRosterSlotRenderData("1", null, true, true),
                     new TacticalRosterSlotRenderData("2", null, false, false),
                 },
-                "X-Wing Squadron",
-                true,
-                new[] { new TacticalRosterSlotRenderData("12", null, false, true) }
+                new[] { new[] { new TacticalRosterSlotRenderData("12", null, false, true) } }
             );
 
             _view.Render(CreateData(unitCount: 0, shotCount: 0, roster: roster));
@@ -212,7 +210,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
 
             Assert.AreEqual(3, slots.Length);
             Assert.AreEqual("Alliance", FindText("RosterSideButtonLabel").text);
-            Assert.AreEqual("X-Wing Squadron", FindText("RosterClassButtonLabel").text);
             Assert.Less(
                 UILayout.GetSourceRect(slots[0].transform as RectTransform).x,
                 UILayout.GetSourceRect(slots[1].transform as RectTransform).x
@@ -224,6 +221,133 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
             Assert.AreEqual(1, pressedShip);
             Assert.AreEqual(0, pressedSquadron);
             Assert.IsFalse(FindObject("Roster").activeSelf);
+        }
+
+        [Test]
+        public void Render_Roster_ManySquadrons_TakeTheirOwnRowsAndShrinkToFit()
+        {
+            TacticalRosterSlotRenderData[] ships =
+            {
+                new TacticalRosterSlotRenderData("1", null, false, true),
+            };
+            TacticalRosterSlotRenderData[][] groups =
+            {
+                Enumerable
+                    .Range(0, 60)
+                    .Select(_ => new TacticalRosterSlotRenderData("12", null, false, true))
+                    .ToArray(),
+                Enumerable
+                    .Range(0, 40)
+                    .Select(_ => new TacticalRosterSlotRenderData("8", null, false, true))
+                    .ToArray(),
+            };
+            RectInt before = UILayout.GetSourceRect(
+                FindObject("Roster").GetComponent<RectTransform>()
+            );
+
+            _view.Render(
+                CreateData(
+                    unitCount: 0,
+                    shotCount: 0,
+                    roster: new TacticalRosterRenderData("Alliance", ships, groups)
+                )
+            );
+
+            TacticalRosterSlotView[] slotViews = _view
+                .GetComponentsInChildren<TacticalRosterSlotView>(false)
+                .Where(slot => slot.name != "RosterSlotTemplate")
+                .ToArray();
+            RectInt[] slots = slotViews
+                .Select(slot => UILayout.GetSourceRect(slot.transform as RectTransform))
+                .ToArray();
+            bool[] labelsShown = slotViews
+                .Select(slot =>
+                    slot.GetComponentInChildren<TMPro.TextMeshProUGUI>(true).gameObject.activeSelf
+                )
+                .ToArray();
+            RectInt after = UILayout.GetSourceRect(
+                FindObject("Roster").GetComponent<RectTransform>()
+            );
+            RectInt[] squadronSlots = slots.Where(rect => rect.y > 0).ToArray();
+            Assert.AreEqual(101, slots.Length);
+            Assert.AreEqual(100, squadronSlots.Length);
+            Assert.Greater(squadronSlots.Select(rect => rect.y).Distinct().Count(), 1);
+            Assert.Less(squadronSlots[0].width, 34);
+            Assert.GreaterOrEqual(squadronSlots[0].width, 16);
+            Assert.IsTrue(squadronSlots.All(rect => rect.xMax <= before.width));
+            // Narrow slots drop their labels; the full-size ship slot keeps its number.
+            Assert.AreEqual(1, labelsShown.Count(shown => shown));
+            Assert.IsTrue(labelsShown[Array.IndexOf(slots, slots.First(rect => rect.y == 0))]);
+            Assert.Greater(after.height, before.height);
+            Assert.AreEqual(before.width, after.width);
+        }
+
+        [Test]
+        public void Render_Roster_ManyShips_ShrinkToFitThenWrapClearOfTheSideToggle()
+        {
+            RectInt bar = UILayout.GetSourceRect(
+                FindObject("Roster").GetComponent<RectTransform>()
+            );
+
+            RectInt[] twenty = RenderShipRoster(20);
+            RectInt[] sixty = RenderShipRoster(60);
+            RectInt grown = UILayout.GetSourceRect(
+                FindObject("Roster").GetComponent<RectTransform>()
+            );
+
+            Assert.AreEqual(20, twenty.Length);
+            Assert.IsTrue(twenty.All(rect => rect.xMax <= bar.width));
+            Assert.IsTrue(twenty.All(rect => rect.width >= 24 && rect.width <= 34));
+            Assert.AreEqual(60, sixty.Length);
+            Assert.IsTrue(sixty.All(rect => rect.xMax <= bar.width && rect.width >= 24));
+            Assert.Greater(sixty.Select(rect => rect.y).Distinct().Count(), 1);
+            Assert.IsTrue(sixty.All(rect => rect.x >= 64));
+            Assert.Greater(grown.height, bar.height);
+        }
+
+        [Test]
+        public void Render_DisabledButton_DimsItsCaption()
+        {
+            _view.Render(CreateData(unitCount: 0, shotCount: 0));
+
+            Assert.IsFalse(
+                TacticalBattleViewTestFactory.FindButton(_view, "RetreatButton").interactable
+            );
+            Assert.Less(FindText("RetreatButtonLabel").color.a, 0.5f);
+            Assert.IsTrue(
+                TacticalBattleViewTestFactory.FindButton(_view, "AutoButton").interactable
+            );
+            Assert.AreEqual(1f, FindText("AutoButtonLabel").color.a, 0.001f);
+        }
+
+        /// <summary>
+        /// Renders a roster holding only ships and returns the bounds of its visible slots.
+        /// </summary>
+        /// <param name="shipCount">The number of ships to list.</param>
+        /// <returns>The source-space bounds of every visible roster slot.</returns>
+        private RectInt[] RenderShipRoster(int shipCount)
+        {
+            TacticalRosterSlotRenderData[] ships = Enumerable
+                .Range(0, shipCount)
+                .Select(index => new TacticalRosterSlotRenderData(
+                    (index + 1).ToString(),
+                    null,
+                    false,
+                    true
+                ))
+                .ToArray();
+            _view.Render(
+                CreateData(
+                    unitCount: 0,
+                    shotCount: 0,
+                    roster: new TacticalRosterRenderData("Empire", ships, null)
+                )
+            );
+            return _view
+                .GetComponentsInChildren<TacticalRosterSlotView>(false)
+                .Where(slot => slot.name != "RosterSlotTemplate")
+                .Select(slot => UILayout.GetSourceRect(slot.transform as RectTransform))
+                .ToArray();
         }
 
         [Test]
@@ -281,6 +405,71 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
         }
 
         [Test]
+        public void Render_Superlaser_ShowsTheChargeBarAndMakesRoomForItInTheHeader()
+        {
+            Button button = TacticalBattleViewTestFactory.FindButton(_view, "SuperlaserButton");
+            RawImage bar = _view
+                .GetComponentsInChildren<RawImage>(true)
+                .Single(image => image.name == "SuperlaserBarImage");
+            RawImage frame = _view
+                .GetComponentsInChildren<RawImage>(true)
+                .Single(image => image.name == "PortraitFrameImage");
+            _view.Render(CreateData(0, 0));
+            bool hiddenWithoutAStation = !button.gameObject.activeSelf;
+            int frameTop = UILayout.GetSourceRect(frame.rectTransform).y;
+            int pressCount = 0;
+            _view.SuperlaserPressed += () => pressCount++;
+
+            _view.Render(
+                CreateData(
+                    0,
+                    0,
+                    superlaser: new TacticalSuperlaserRenderData(
+                        "Superlaser charging 50%",
+                        0.5f,
+                        false,
+                        false
+                    )
+                )
+            );
+            bool chargingInteractable = button.interactable;
+            int halfWidth = UILayout.GetSourceRect(bar.rectTransform).width;
+            int loweredFrameTop = UILayout.GetSourceRect(frame.rectTransform).y;
+            _view.Render(
+                CreateData(
+                    0,
+                    0,
+                    superlaser: new TacticalSuperlaserRenderData(
+                        "Superlaser ready: click to aim",
+                        1f,
+                        true,
+                        false
+                    )
+                )
+            );
+            button.onClick.Invoke();
+            int fullWidth = UILayout.GetSourceRect(bar.rectTransform).width;
+            _view.Render(CreateData(0, 0));
+
+            Assert.IsTrue(hiddenWithoutAStation);
+            Assert.IsFalse(chargingInteractable);
+            Assert.AreEqual(
+                UILayout.GetSourceRect(button.transform as RectTransform).width,
+                fullWidth
+            );
+            Assert.AreEqual(fullWidth / 2, halfWidth);
+            Assert.Greater(loweredFrameTop, frameTop);
+            Assert.AreEqual(1, pressCount);
+            Assert.IsTrue(button.interactable);
+            Assert.AreEqual(
+                "Superlaser ready: click to aim",
+                FindText("SuperlaserButtonLabel").text
+            );
+            Assert.IsFalse(button.gameObject.activeSelf);
+            Assert.AreEqual(frameTop, UILayout.GetSourceRect(frame.rectTransform).y);
+        }
+
+        [Test]
         public void GetArenaSourceRect_AuthoredLayout_ExcludesInformationPanel()
         {
             RectInt arena = _view.GetArenaSourceRect();
@@ -306,13 +495,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
         /// <param name="selectionBox">The optional selection bounds.</param>
         /// <param name="panel">The optional information panel.</param>
         /// <param name="roster">The optional roster bar.</param>
+        /// <param name="superlaser">The optional superlaser charge bar.</param>
         /// <returns>The frame data.</returns>
         private static TacticalBattleRenderData CreateData(
             int unitCount,
             int shotCount,
             RectInt? selectionBox = null,
             TacticalPanelRenderData panel = null,
-            TacticalRosterRenderData roster = null
+            TacticalRosterRenderData roster = null,
+            TacticalSuperlaserRenderData superlaser = null
         )
         {
             TacticalUnitRenderData[] units = Enumerable
@@ -362,7 +553,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
                 units,
                 shots,
                 selectionBox,
-                roster
+                roster,
+                superlaser
             );
         }
 

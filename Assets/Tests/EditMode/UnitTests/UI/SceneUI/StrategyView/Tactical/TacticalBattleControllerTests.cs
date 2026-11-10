@@ -134,6 +134,27 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
         }
 
         [Test]
+        public void SpeedButton_ClickedThroughEveryStep_ReachesEightTimesThenWraps()
+        {
+            TacticalSpaceBattle battle = CreateBattle(out _, out _);
+            Begin(battle);
+            Button speedButton = TacticalBattleViewTestFactory.FindButton(_view, "SpeedButton");
+
+            speedButton.onClick.Invoke();
+            speedButton.onClick.Invoke();
+            float fourTimes = _controller.Speed;
+            speedButton.onClick.Invoke();
+            float eightTimes = _controller.Speed;
+            _controller.Update(0.5f);
+            speedButton.onClick.Invoke();
+
+            Assert.AreEqual(4f, fourTimes);
+            Assert.AreEqual(8f, eightTimes);
+            Assert.AreEqual(4, battle.ElapsedSeconds, 0.0001);
+            Assert.AreEqual(1f, _controller.Speed);
+        }
+
+        [Test]
         public void PointerClick_OnFriendlyShip_SelectsIt()
         {
             TacticalSpaceBattle battle = CreateBattle(
@@ -221,6 +242,38 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
             Assert.AreSame(friendly, _controller.Inspected);
             Assert.AreEqual((float)friendly.X, _view.Scene.Focus.x, 0.001f);
             Assert.AreEqual((float)friendly.Y, _view.Scene.Focus.y, 0.001f);
+        }
+
+        [Test]
+        public void PointerClick_OnUnit_SnapsTheCameraOntoItAndFollowsUntilAPan()
+        {
+            TacticalSpaceBattle battle = CreateBattle(out TacticalCapitalShipUnit friendly, out _);
+            Begin(battle);
+            TacticalCameraInput pan = new TacticalCameraInput(
+                Vector2.right,
+                0f,
+                0f,
+                0f,
+                false,
+                false,
+                false
+            );
+
+            Click(friendly, PointerEventData.InputButton.Left);
+            Vector2 focusAtClick = _view.Scene.Focus;
+            friendly.X += 15;
+            friendly.Y += 5;
+            _controller.Update(0f);
+            Vector2 focusWhileFollowing = _view.Scene.Focus;
+            _controller.Update(0.1f, pan);
+            friendly.X += 15;
+            _controller.Update(0f);
+
+            Assert.AreEqual((float)(friendly.X - 30), focusAtClick.x, 0.01f);
+            Assert.AreEqual((float)(friendly.Y - 5), focusAtClick.y, 0.01f);
+            Assert.AreEqual((float)(friendly.X - 15), focusWhileFollowing.x, 0.01f);
+            Assert.AreEqual((float)friendly.Y, focusWhileFollowing.y, 0.01f);
+            Assert.Greater(Mathf.Abs(_view.Scene.Focus.x - (float)friendly.X), 0.5f);
         }
 
         [Test]
@@ -405,6 +458,177 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
             Assert.IsFalse(
                 new TacticalBattleController(_view, () => null, _ => { }, () => { }).TryCancel()
             );
+        }
+
+        [Test]
+        public void SuperlaserButton_ArmedThenEnemyShipClicked_FiresAndDisarms()
+        {
+            TacticalSpaceBattle battle = CreateStationBattle(
+                playerHasStation: true,
+                out _,
+                out TacticalCapitalShipUnit enemy,
+                out _
+            );
+            Begin(battle);
+            TacticalBattleStation station = battle.Stations.Single();
+
+            TacticalBattleViewTestFactory.FindButton(_view, "SuperlaserButton").onClick.Invoke();
+            bool armed = _controller.IsSuperlaserArmed;
+            _controller.Update(0f);
+            string armedHint = FindText("SelectionTextField").text;
+            Click(enemy, PointerEventData.InputButton.Left);
+
+            Assert.IsTrue(armed);
+            StringAssert.StartsWith("Superlaser armed.", armedHint);
+            Assert.AreSame(enemy, station.StrikeTarget);
+            Assert.IsFalse(_controller.IsSuperlaserArmed);
+            Assert.IsNull(_controller.Inspected);
+        }
+
+        [Test]
+        public void RightClick_WhileSuperlaserArmed_DisarmsWithoutGivingAnOrder()
+        {
+            TacticalSpaceBattle battle = CreateStationBattle(
+                playerHasStation: true,
+                out TacticalCapitalShipUnit friendly,
+                out _,
+                out _
+            );
+            Begin(battle);
+            Click(friendly, PointerEventData.InputButton.Left);
+            TacticalBattleViewTestFactory.FindButton(_view, "SuperlaserButton").onClick.Invoke();
+
+            Press(
+                ToSource(battle, friendly.X + 10, friendly.Y),
+                PointerEventData.InputButton.Right
+            );
+            bool disarmedByRightClick = !_controller.IsSuperlaserArmed;
+            TacticalBattleViewTestFactory.FindButton(_view, "SuperlaserButton").onClick.Invoke();
+            bool cancelHandled = _controller.TryCancel();
+
+            Assert.IsTrue(disarmedByRightClick);
+            Assert.AreEqual(TacticalShipOrder.None, friendly.Order);
+            Assert.IsTrue(battle.Stations.Single().IsSuperlaserReady);
+            Assert.IsTrue(cancelHandled);
+            Assert.IsFalse(_controller.IsSuperlaserArmed);
+            Assert.IsFalse(_controller.IsPaused);
+        }
+
+        [Test]
+        public void RightClick_OnEnemyStation_SendsTheSelectedSquadronToItsTrench()
+        {
+            TacticalSpaceBattle battle = CreateStationBattle(
+                playerHasStation: false,
+                out _,
+                out _,
+                out TacticalStarfighterUnit squadron
+            );
+            Begin(battle);
+            TacticalBattleStation station = battle.Stations.Single();
+            FindRosterSlot(1).GetComponent<Button>().onClick.Invoke();
+            bool selected = _controller.Selection.Contains(squadron);
+            _view.Scene.LookToward(station);
+            Assert.IsTrue(
+                _view.Scene.TryProjectStation(
+                    station,
+                    _view.GetArenaSourceRect(),
+                    out Vector2 stationPoint,
+                    out float stationDiameter
+                ),
+                "The station must be in front of the camera."
+            );
+
+            Press(stationPoint, PointerEventData.InputButton.Right);
+
+            Assert.IsTrue(selected);
+            Assert.Greater(stationDiameter, 0f);
+            Assert.AreSame(station, squadron.TrenchRunTarget);
+        }
+
+        [Test]
+        public void GetTrenchRunCutscenePath_ThemeListsTheShipType_ReturnsTheOutcomeMovie()
+        {
+            FactionTheme theme = new FactionTheme();
+            theme.TrenchRunCutscenes.Add(
+                new TrenchRunCutscene
+                {
+                    ShipTypeID = "station",
+                    SuccessPath = "Movies/success",
+                    FailurePath = "Movies/fail",
+                }
+            );
+
+            Assert.AreEqual(
+                "Movies/success",
+                TacticalBattleController.GetTrenchRunCutscenePath(theme, "station", true)
+            );
+            Assert.AreEqual(
+                "Movies/fail",
+                TacticalBattleController.GetTrenchRunCutscenePath(theme, "station", false)
+            );
+            Assert.IsNull(TacticalBattleController.GetTrenchRunCutscenePath(theme, "other", true));
+            Assert.IsNull(TacticalBattleController.GetTrenchRunCutscenePath(null, "station", true));
+        }
+
+        /// <summary>
+        /// Creates a battle with a battle station on one side: the player's ship and torpedo
+        /// squadron against a passive enemy ship.
+        /// </summary>
+        /// <param name="playerHasStation">Whether the station fights for the player or the enemy.</param>
+        /// <param name="friendly">Receives the player's ship.</param>
+        /// <param name="enemy">Receives the enemy ship.</param>
+        /// <param name="squadron">Receives the player's torpedo squadron.</param>
+        /// <returns>The created battle.</returns>
+        private TacticalSpaceBattle CreateStationBattle(
+            bool playerHasStation,
+            out TacticalCapitalShipUnit friendly,
+            out TacticalCapitalShipUnit enemy,
+            out TacticalStarfighterUnit squadron
+        )
+        {
+            CapitalShip attackerShip = CreateShip("attacker", 100, 0);
+            // A small enemy hull leaves the station behind it clear to click.
+            CapitalShip defenderShip = CreateShip("defender", playerHasStation ? 100000 : 100, 0);
+            CapitalShip station = CreateShip("station", 25000, 0);
+            station.TypeID = "station";
+            station.CanDestroyPlanets = true;
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "x-wing",
+                DisplayName = "x-wing",
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                Hyperdrive = 1,
+                SublightSpeed = 8,
+                Agility = 4,
+                LaserCannon = 5,
+                LaserRange = 12,
+                Torpedoes = 4,
+                TorpedoRange = 7,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            TacticalSpaceBattle battle = new TacticalSpaceBattle(
+                CreateConfig(),
+                new SystemRandomProvider(7),
+                playerHasStation ? new[] { attackerShip, station } : new[] { attackerShip },
+                new[] { fighter },
+                playerHasStation ? new[] { defenderShip } : new[] { defenderShip, station },
+                new List<Starfighter>(),
+                false,
+                false,
+                default,
+                default,
+                CombatSide.Attacker
+            );
+            friendly = battle
+                .Units.OfType<TacticalCapitalShipUnit>()
+                .Single(unit => unit.Ship == attackerShip);
+            enemy = battle
+                .Units.OfType<TacticalCapitalShipUnit>()
+                .Single(unit => unit.Ship == defenderShip);
+            squadron = battle.Units.OfType<TacticalStarfighterUnit>().Single();
+            _activeBattle = battle;
+            return battle;
         }
 
         /// <summary>

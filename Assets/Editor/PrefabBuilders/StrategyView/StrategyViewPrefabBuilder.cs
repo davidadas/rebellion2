@@ -88,6 +88,8 @@ public static class StrategyViewPrefabBuilder
     private const int _tacticalHudMargin = 8;
     private const int _tacticalRosterTop = 24;
     private const int _tacticalRosterHeight = 30;
+    private const int _tacticalHintHeight = 42;
+    private const int _tacticalHudFirstRow = 420;
     private const string _contextMenuPanelTemplateName = "PanelTemplate";
     private const string _contextMenuCommandTemplateName = "CommandTemplate";
     private const string _galaxyBackgroundImageName = "BackgroundImage";
@@ -7372,7 +7374,7 @@ public static class StrategyViewPrefabBuilder
         title.alignment = TextAlignmentOptions.TopLeft;
         SetSourceRect(title.rectTransform, _tacticalHudMargin, 6, 400, 16);
 
-        // Roster bar under the title: side toggle, ship slots, fighter-class selector, squadrons.
+        // Roster bar under the title: side toggle, ship slots, then every squadron grouped by type.
         RectTransform roster = CreateSourceRectLayer(
             "Roster",
             layer.transform,
@@ -7396,15 +7398,6 @@ public static class StrategyViewPrefabBuilder
             "Side",
             out TextMeshProUGUI rosterSideLabel
         );
-        Button rosterClass = CreateTacticalHudButton(
-            "RosterClassButton",
-            roster,
-            80,
-            0,
-            108,
-            "Fighters",
-            out TextMeshProUGUI rosterClassLabel
-        );
         TacticalRosterSlotView rosterSlotTemplate = CreateTacticalRosterSlotTemplate(roster);
 
         RectTransform panel = CreateSourceRectLayer(
@@ -7425,6 +7418,28 @@ public static class StrategyViewPrefabBuilder
         int contentWidth = _tacticalPanelWidth - 2 * margin;
         Color frameColor = new Color(0.2f, 0.22f, 0.28f, 1f);
         Color dimText = new Color(0.78f, 0.82f, 0.9f, 1f);
+
+        // The superlaser charge bar sits above the unit header and shows only while the player
+        // commands a battle station; the view makes room by drawing the header smaller under it.
+        Button superlaser = CreateTacticalHudButton(
+            "SuperlaserButton",
+            panel,
+            margin,
+            4,
+            contentWidth,
+            "Superlaser",
+            out TextMeshProUGUI superlaserLabel
+        );
+        RawImage superlaserBackground = (RawImage)superlaser.targetGraphic;
+        superlaserBackground.color = new Color(0.07f, 0.09f, 0.11f, 1f);
+        RawImage superlaserBar = CreatePanelImage(
+            "SuperlaserBarImage",
+            superlaser.transform,
+            new Color(0.25f, 0.8f, 0.3f, 1f)
+        );
+        SetSourceRect(superlaserBar.rectTransform, 0, 0, contentWidth, _tacticalHudButtonHeight);
+        superlaserBar.transform.SetAsFirstSibling();
+        superlaser.gameObject.SetActive(false);
 
         RawImage portraitFrame = CreatePanelImage("PortraitFrameImage", panel, frameColor);
         SetSourceRect(portraitFrame.rectTransform, margin, 8, contentWidth, 64);
@@ -7721,21 +7736,24 @@ public static class StrategyViewPrefabBuilder
             margin,
             376,
             contentWidth,
-            26,
+            _tacticalHintHeight,
             9,
             dimText,
             TextAlignmentOptions.TopLeft
         );
         hint.textWrappingMode = TextWrappingModes.Normal;
+        // Four lines fit; anything longer ends in an ellipsis instead of drawing over the buttons.
+        hint.overflowMode = TextOverflowModes.Ellipsis;
 
         int buttonWidth = (contentWidth - _tacticalHudButtonGap) / 2;
         int secondColumn = margin + buttonWidth + _tacticalHudButtonGap;
-        int secondRow = 404 + _tacticalHudButtonHeight + _tacticalHudButtonGap;
+        int firstRow = _tacticalHudFirstRow;
+        int secondRow = firstRow + _tacticalHudButtonHeight + _tacticalHudButtonGap;
         Button retreat = CreateTacticalHudButton(
             "RetreatButton",
             panel,
             margin,
-            404,
+            firstRow,
             buttonWidth,
             "Retreat",
             out TextMeshProUGUI retreatLabel
@@ -7744,7 +7762,7 @@ public static class StrategyViewPrefabBuilder
             "AutoButton",
             panel,
             secondColumn,
-            404,
+            firstRow,
             buttonWidth,
             "Auto: Off",
             out TextMeshProUGUI autoLabel
@@ -7783,9 +7801,11 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "rosterLayer", roster);
         AssignReference(view, "rosterSideButton", rosterSide);
         AssignReference(view, "rosterSideLabel", rosterSideLabel);
-        AssignReference(view, "rosterClassButton", rosterClass);
-        AssignReference(view, "rosterClassLabel", rosterClassLabel);
         AssignReference(view, "rosterSlotTemplate", rosterSlotTemplate);
+        AssignReference(view, "superlaserButton", superlaser);
+        AssignReference(view, "superlaserBarImage", superlaserBar);
+        AssignReference(view, "superlaserLabel", superlaserLabel);
+        AssignReference(view, "portraitFrameImage", portraitFrame);
         AssignReference(view, "portraitImage", portrait);
         AssignReference(view, "nameTextField", nameLabel);
         AssignReference(view, "subtitleTextField", subtitleLabel);
@@ -7927,6 +7947,10 @@ public static class StrategyViewPrefabBuilder
         image.raycastTarget = true;
         Button button = image.gameObject.AddComponent<Button>();
         button.targetGraphic = image;
+        // A disabled button reads as clearly off: darker and half transparent.
+        ColorBlock colors = button.colors;
+        colors.disabledColor = new Color(0.45f, 0.45f, 0.5f, 0.55f);
+        button.colors = colors;
         label = CreateTextLabel(name + "Label", image.transform);
         FillParent(label.rectTransform);
         label.alignment = TextAlignmentOptions.Center;

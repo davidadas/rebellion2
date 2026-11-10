@@ -2093,11 +2093,21 @@ namespace Rebellion.Game
 
             public double TacticalFighterRechargeMultiplier { get; set; } = 0.6;
 
-            public double TacticalTurbolaserFighterHitChance { get; set; } = 0.2;
+            public double TacticalTurbolaserFighterHitChance { get; set; } = 0.15;
 
             public double TacticalCapitalWeaponRangeMultiplier { get; set; } = 2;
 
             public double TacticalShieldGeneratorHitChance { get; set; } = 0.03;
+
+            public double TacticalShieldRechargeMultiplier { get; set; } = 0.5;
+
+            public double TacticalShieldGeneratorRepairMultiplier { get; set; } = 2;
+
+            public double TacticalSuperlaserRechargeSeconds { get; set; } = 180;
+
+            public double TacticalTrenchRunBaseChance { get; set; } = 0.9;
+
+            public double TacticalTrenchRunMinimumChance { get; set; } = 0.25;
 
             public double AutoResolveFighterWeaponRechargeMultiplier { get; set; }
 
@@ -2140,6 +2150,12 @@ namespace Rebellion.Game
                     TacticalFighterRechargeMultiplier = TacticalFighterRechargeMultiplier,
                     TacticalCapitalWeaponRangeMultiplier = TacticalCapitalWeaponRangeMultiplier,
                     TacticalShieldGeneratorHitChance = TacticalShieldGeneratorHitChance,
+                    TacticalShieldRechargeMultiplier = TacticalShieldRechargeMultiplier,
+                    TacticalShieldGeneratorRepairMultiplier =
+                        TacticalShieldGeneratorRepairMultiplier,
+                    TacticalSuperlaserRechargeSeconds = TacticalSuperlaserRechargeSeconds,
+                    TacticalTrenchRunBaseChance = TacticalTrenchRunBaseChance,
+                    TacticalTrenchRunMinimumChance = TacticalTrenchRunMinimumChance,
                     AutoResolveFighterWeaponRechargeMultiplier =
                         AutoResolveFighterWeaponRechargeMultiplier,
                     AutoResolveMaximumIterations = AutoResolveMaximumIterations,

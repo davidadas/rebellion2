@@ -12,6 +12,10 @@ public sealed class TacticalRosterSlotView : MonoBehaviour
 {
     private static readonly Color _liveColor = Color.white;
     private static readonly Color _goneColor = new Color(0.4f, 0.4f, 0.45f, 0.6f);
+    private const int _portraitInset = 2;
+    private const int _labelHeight = 12;
+    private const int _fullHeight = 30;
+    private const float _minimumLabelFontSize = 6f;
 
     [SerializeField]
     private Button button;
@@ -26,6 +30,8 @@ public sealed class TacticalRosterSlotView : MonoBehaviour
     private TextMeshProUGUI label;
 
     private UnityAction _listener;
+    private float _labelFontSize = -1f;
+    private bool _labelVisible = true;
 
     /// <summary>
     /// Validates the authored references.
@@ -66,8 +72,44 @@ public sealed class TacticalRosterSlotView : MonoBehaviour
         portraitImage.color = data.Alive ? _liveColor : _goneColor;
         highlightImage.gameObject.SetActive(data.Highlighted);
         UILayout.SetTextContent(label, data.Label);
+        label.gameObject.SetActive(_labelVisible);
         label.color = data.Alive ? _liveColor : _goneColor;
         gameObject.SetActive(true);
+    }
+
+    /// <summary>
+    /// Fits the portrait and label to a slot size, hiding the label when the slot is too narrow
+    /// to read it. The slot's own rectangle is laid out by the roster bar.
+    /// </summary>
+    /// <param name="width">The slot width in source units.</param>
+    /// <param name="height">The slot height in source units.</param>
+    /// <param name="showLabel">Whether the label is shown.</param>
+    internal void Resize(int width, int height, bool showLabel)
+    {
+        VerifyReferences();
+        if (_labelFontSize < 0f)
+            _labelFontSize = label.fontSize;
+
+        int inset = Math.Clamp(width / 12, 1, _portraitInset);
+        UILayout.SetSourceRect(
+            portraitImage.rectTransform,
+            inset,
+            inset,
+            Math.Max(width - 2 * inset, 1),
+            Math.Max(height - 2 * inset, 1)
+        );
+        // The label keeps its layout even while hidden, so a slot that grows back shows it in
+        // place; Render re-applies the visibility because setting text activates the label.
+        _labelVisible = showLabel;
+        label.gameObject.SetActive(showLabel);
+        UILayout.SetSourceRect(
+            label.rectTransform,
+            inset,
+            Math.Max(height - _labelHeight - inset, 0),
+            Math.Max(width - 2 * inset, 1),
+            _labelHeight
+        );
+        label.fontSize = Math.Max(_labelFontSize * height / _fullHeight, _minimumLabelFontSize);
     }
 
     /// <summary>

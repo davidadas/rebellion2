@@ -12,6 +12,11 @@ namespace Rebellion.Gameplay
         UnitHit,
         UnitDestroyed,
         UnitWithdrew,
+        SuperlaserFired,
+        StationDestroyed,
+        StationWithdrew,
+        TrenchRunSucceeded,
+        TrenchRunFailed,
     }
 
     /// <summary>
@@ -24,6 +29,11 @@ namespace Rebellion.Gameplay
         public TacticalBattleUnit Unit { get; }
 
         /// <summary>
+        /// Gets the battle station the event concerns, or null for an event about a unit alone.
+        /// </summary>
+        public TacticalBattleStation Station { get; }
+
+        /// <summary>
         /// Creates one battle event.
         /// </summary>
         /// <param name="kind">What happened.</param>
@@ -32,6 +42,23 @@ namespace Rebellion.Gameplay
         {
             Kind = kind;
             Unit = unit ?? throw new ArgumentNullException(nameof(unit));
+        }
+
+        /// <summary>
+        /// Creates one battle event about a battle station.
+        /// </summary>
+        /// <param name="kind">What happened.</param>
+        /// <param name="station">The station that fired, was destroyed, withdrew, or was attacked.</param>
+        /// <param name="unit">The capital ship a superlaser shot was fired at, or null.</param>
+        internal TacticalBattleEvent(
+            TacticalBattleEventKind kind,
+            TacticalBattleStation station,
+            TacticalBattleUnit unit = null
+        )
+        {
+            Kind = kind;
+            Station = station ?? throw new ArgumentNullException(nameof(station));
+            Unit = unit;
         }
     }
 }

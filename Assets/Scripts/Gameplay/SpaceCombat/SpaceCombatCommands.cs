@@ -205,11 +205,12 @@ namespace Rebellion.Gameplay
                 forces.AttackerFighters,
                 forces.DefenderShips,
                 forces.DefenderFighters,
-                forces.AttackerCanWithdraw,
-                forces.DefenderCanWithdraw,
+                forces.AttackerHasEscapeRoute,
+                forces.DefenderHasEscapeRoute,
                 forces.AttackerCommand,
                 forces.DefenderCommand,
-                playerSide
+                playerSide,
+                forces.ShieldedStations
             );
         }
 
@@ -774,7 +775,8 @@ namespace Rebellion.Gameplay
                     forces.AttackerCanWithdraw,
                     forces.DefenderCanWithdraw,
                     forces.AttackerCommand,
-                    forces.DefenderCommand
+                    forces.DefenderCommand,
+                    forces.ShieldedStations
                 );
             }
 
@@ -870,6 +872,16 @@ namespace Rebellion.Gameplay
                     planet,
                     defenderOwnerInstanceId
                 ),
+                AttackerHasEscapeRoute = _withdrawalResolver.HasEscapeRoute(
+                    attackerFleets,
+                    planet,
+                    attackerOwnerInstanceId
+                ),
+                DefenderHasEscapeRoute = _withdrawalResolver.HasEscapeRoute(
+                    defenderFleets,
+                    planet,
+                    defenderOwnerInstanceId
+                ),
                 AttackerCommand = GetCommandModifiers(
                     attackerFleets,
                     planet,
@@ -880,6 +892,10 @@ namespace Rebellion.Gameplay
                     planet,
                     defenderOwnerInstanceId
                 ),
+                ShieldedStations = attackerShips
+                    .Concat(defenderShips)
+                    .Where(ship => SpaceCombatQueries.IsShieldedByPlanet(ship, planet))
+                    .ToList(),
             };
         }
 
@@ -1221,9 +1237,26 @@ namespace Rebellion.Gameplay
 
             internal bool DefenderCanWithdraw { get; set; }
 
+            /// <summary>
+            /// Gets or sets whether the attacker could jump out if no gravity well held it; the
+            /// tactical battle judges interdiction live from the ships in play.
+            /// </summary>
+            internal bool AttackerHasEscapeRoute { get; set; }
+
+            /// <summary>
+            /// Gets or sets whether the defender could jump out if no gravity well held it.
+            /// </summary>
+            internal bool DefenderHasEscapeRoute { get; set; }
+
             internal SpaceCombatCommandModifiers AttackerCommand { get; set; }
 
             internal SpaceCombatCommandModifiers DefenderCommand { get; set; }
+
+            /// <summary>
+            /// Gets or sets the ships on either side that a shield generator on the planet
+            /// protects from fighter attack, as a Death Star Shield protects a Death Star.
+            /// </summary>
+            internal List<CapitalShip> ShieldedStations { get; set; }
         }
     }
 }

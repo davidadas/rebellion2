@@ -444,6 +444,63 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
         }
 
         [Test]
+        public void Sync_TorpedoLands_PlaysASmallExplosionWhereItHit()
+        {
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "squadron",
+                DisplayName = "squadron",
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                ShieldStrength = 1,
+                SublightSpeed = 8,
+                Agility = 4,
+                LaserCannon = 5,
+                LaserRange = 12,
+                Torpedoes = 4,
+                TorpedoRange = 7,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            CapitalShip carrier = CreateShip("Carrier", 500);
+            CapitalShip target = CreateShip("Target", 100000);
+            TacticalSpaceBattle battle = new TacticalSpaceBattle(
+                CreateConfig(),
+                new SystemRandomProvider(5),
+                new[] { carrier },
+                new[] { fighter },
+                new[] { target },
+                new List<Starfighter>(),
+                false,
+                false,
+                default,
+                default,
+                CombatSide.Attacker
+            );
+            TacticalStarfighterUnit squadron = battle
+                .Units.OfType<TacticalStarfighterUnit>()
+                .Single();
+            TacticalCapitalShipUnit targetUnit = battle
+                .Units.OfType<TacticalCapitalShipUnit>()
+                .Single(unit => unit.Ship == target);
+            squadron.X = targetUnit.X - targetUnit.HullFootprint - 2;
+            squadron.Y = targetUnit.Y;
+            _scene.Begin(null);
+            _scene.Sync(battle, _arena);
+
+            battle.Advance(TacticalSpaceBattle.RoundSeconds / 4);
+            bool torpedoFired = battle.Shots.Any(shot => shot.IsTorpedo);
+            _scene.Sync(battle, _arena);
+            bool explodedInFlight = _scene.HasActiveExplosions;
+            battle.Advance(4);
+            _scene.Sync(battle, _arena);
+
+            Assert.IsTrue(torpedoFired);
+            Assert.IsFalse(explodedInFlight);
+            Assert.IsTrue(_scene.HasActiveExplosions);
+            Assert.IsTrue(targetUnit.IsAlive);
+        }
+
+        [Test]
         public void Sync_NullBattle_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _scene.Sync(null, _arena));

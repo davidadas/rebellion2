@@ -118,6 +118,11 @@ namespace Rebellion.Gameplay
         public bool HasHyperdrive => Ship.Hyperdrive > 0;
 
         /// <summary>
+        /// Gets whether the ship projects a gravity well that holds enemy ships in the system.
+        /// </summary>
+        public bool HasGravityWell => Ship.HasGravityWell;
+
+        /// <summary>
         /// Gets the ship's tractor beam strength, or zero when it carries no beam.
         /// </summary>
         public int TractorBeamPower => Math.Max(Ship.TractorBeamPower, 0);
@@ -153,6 +158,8 @@ namespace Rebellion.Gameplay
         internal override bool CanWithdrawIndependently => Ship.Hyperdrive > 0;
 
         internal override double RemainingDurability => CurrentHull + CurrentShields;
+
+        internal override double LastingDurability => CurrentHull;
 
         internal override bool IsAttackDelayed => _attackDelay > 0;
 
@@ -440,9 +447,17 @@ namespace Rebellion.Gameplay
 
                     bool isIon = type == PrimaryWeaponType.IonCannon;
                     if (hitChance >= 1 || random.NextDouble() < hitChance)
-                        QueueHit(hitSink, shots, target, damage, isIon, shotDisplaySeconds);
+                        QueueHit(
+                            hitSink,
+                            shots,
+                            target,
+                            damage,
+                            isIon,
+                            shotDisplaySeconds,
+                            weaponStrength
+                        );
                     else
-                        QueueMiss(shots, target, isIon, shotDisplaySeconds, random);
+                        QueueMiss(shots, target, isIon, shotDisplaySeconds, weaponStrength, random);
                     consumedCharge += weaponStrength;
                 }
 
@@ -506,8 +521,12 @@ namespace Rebellion.Gameplay
             double delayRecovery = Math.Max(config.AutoResolveComponentDelayRecovery, 1) * rounds;
             _attackDelay = Math.Max(_attackDelay - delayRecovery, 0);
             _movementDelay = Math.Max(_movementDelay - delayRecovery, 0);
-            _shieldDelay = Math.Max(_shieldDelay - delayRecovery, 0);
-            RechargeShields(rounds);
+            // A knocked-out generator takes far longer to bring back than other components, so
+            // the loss shapes the rest of the battle rather than a few volleys.
+            double generatorRecovery =
+                delayRecovery / Math.Max(config.TacticalShieldGeneratorRepairMultiplier, 1);
+            _shieldDelay = Math.Max(_shieldDelay - generatorRecovery, 0);
+            RechargeShields(rounds, config);
             RechargeWeapons(rounds);
         }
 
@@ -744,19 +763,22 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Recharges shields according to current hull condition.
+        /// Recharges shields according to current hull condition, at a fraction of the strategic
+        /// rate: arcs recharge one at a time, so a ship's volleys are spread out and full-rate
+        /// shields would heal completely between them.
         /// </summary>
         /// <param name="rounds">The elapsed combat rounds.</param>
-        private void RechargeShields(double rounds)
+        /// <param name="config">The space-combat parameters.</param>
+        private void RechargeShields(double rounds, GameConfig.SpaceCombatConfig config)
         {
             if (_shieldDelay > 0)
                 return;
 
             double condition = CurrentHull / _maximumHull;
-            CurrentShields = Math.Min(
-                _maximumShields,
-                CurrentShields + Math.Max(Ship.ShieldRechargeRate, 0) * condition * rounds
-            );
+            double rate =
+                Math.Max(Ship.ShieldRechargeRate, 0)
+                * Math.Max(config.TacticalShieldRechargeMultiplier, 0);
+            CurrentShields = Math.Min(_maximumShields, CurrentShields + rate * condition * rounds);
         }
 
         /// <summary>

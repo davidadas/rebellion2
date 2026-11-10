@@ -266,6 +266,36 @@ internal sealed class TacticalPanelRenderData
 }
 
 /// <summary>
+/// Describes the superlaser charge bar shown at the top of the information panel while the
+/// player commands a battle station.
+/// </summary>
+internal sealed class TacticalSuperlaserRenderData
+{
+    public string Label { get; }
+
+    public float ChargeFraction { get; }
+
+    public bool Ready { get; }
+
+    public bool Armed { get; }
+
+    /// <summary>
+    /// Creates the superlaser bar presentation.
+    /// </summary>
+    /// <param name="label">The caption drawn over the bar.</param>
+    /// <param name="chargeFraction">How charged the superlaser is, from 0 to 1.</param>
+    /// <param name="ready">Whether the player can arm the superlaser now.</param>
+    /// <param name="armed">Whether the player is choosing a target.</param>
+    public TacticalSuperlaserRenderData(string label, float chargeFraction, bool ready, bool armed)
+    {
+        Label = label ?? string.Empty;
+        ChargeFraction = chargeFraction;
+        Ready = ready;
+        Armed = armed;
+    }
+}
+
+/// <summary>
 /// Describes the complete tactical battle presentation for one frame.
 /// </summary>
 internal sealed class TacticalBattleRenderData
@@ -308,6 +338,11 @@ internal sealed class TacticalBattleRenderData
 
     public TacticalRosterRenderData Roster { get; }
 
+    /// <summary>
+    /// Gets the superlaser charge bar, or null when the player commands no battle station.
+    /// </summary>
+    public TacticalSuperlaserRenderData Superlaser { get; }
+
     public string Status => $"{AttackerStatus}   vs   {DefenderStatus}   |   {ClockStatus}";
 
     /// <summary>
@@ -332,6 +367,7 @@ internal sealed class TacticalBattleRenderData
     /// <param name="shots">The weapon-fire presentations.</param>
     /// <param name="selectionBox">The source-space drag-selection bounds, when dragging.</param>
     /// <param name="roster">The roster bar, or null to hide it.</param>
+    /// <param name="superlaser">The superlaser charge bar, or null to hide it.</param>
     public TacticalBattleRenderData(
         string title,
         string attackerStatus,
@@ -351,7 +387,8 @@ internal sealed class TacticalBattleRenderData
         IReadOnlyList<TacticalUnitRenderData> units,
         IReadOnlyList<TacticalShotRenderData> shots,
         RectInt? selectionBox,
-        TacticalRosterRenderData roster
+        TacticalRosterRenderData roster,
+        TacticalSuperlaserRenderData superlaser = null
     )
     {
         Title = title ?? string.Empty;
@@ -373,6 +410,7 @@ internal sealed class TacticalBattleRenderData
         Shots = shots ?? System.Array.Empty<TacticalShotRenderData>();
         SelectionBox = selectionBox;
         Roster = roster;
+        Superlaser = superlaser;
     }
 }
 
@@ -411,8 +449,8 @@ public sealed class TacticalRosterSlotRenderData
 }
 
 /// <summary>
-/// The roster bar across the top of the arena: one side's capital ships, a fighter-class
-/// selector, and the squadrons of the chosen class.
+/// The roster bar across the top of the arena: one side's capital ships, then every one of its
+/// squadrons grouped by fighter type.
 /// </summary>
 public sealed class TacticalRosterRenderData
 {
@@ -421,31 +459,26 @@ public sealed class TacticalRosterRenderData
     /// </summary>
     /// <param name="sideLabel">The listed side's name, shown on the side toggle.</param>
     /// <param name="ships">The side's capital ships in roster order.</param>
-    /// <param name="fighterClassLabel">The chosen fighter class, or a placeholder.</param>
-    /// <param name="fighterClassInteractable">Whether another fighter class can be chosen.</param>
-    /// <param name="squadrons">The squadrons of the chosen class.</param>
+    /// <param name="squadronGroups">The side's squadrons, one group per fighter type.</param>
     public TacticalRosterRenderData(
         string sideLabel,
         IReadOnlyList<TacticalRosterSlotRenderData> ships,
-        string fighterClassLabel,
-        bool fighterClassInteractable,
-        IReadOnlyList<TacticalRosterSlotRenderData> squadrons
+        IReadOnlyList<IReadOnlyList<TacticalRosterSlotRenderData>> squadronGroups
     )
     {
         SideLabel = sideLabel ?? string.Empty;
         Ships = ships ?? System.Array.Empty<TacticalRosterSlotRenderData>();
-        FighterClassLabel = fighterClassLabel ?? string.Empty;
-        FighterClassInteractable = fighterClassInteractable;
-        Squadrons = squadrons ?? System.Array.Empty<TacticalRosterSlotRenderData>();
+        SquadronGroups =
+            squadronGroups ?? System.Array.Empty<IReadOnlyList<TacticalRosterSlotRenderData>>();
     }
 
     public string SideLabel { get; }
 
     public IReadOnlyList<TacticalRosterSlotRenderData> Ships { get; }
 
-    public string FighterClassLabel { get; }
-
-    public bool FighterClassInteractable { get; }
-
-    public IReadOnlyList<TacticalRosterSlotRenderData> Squadrons { get; }
+    /// <summary>
+    /// Gets the squadrons grouped by fighter type in first-seen order; slot indexes count across
+    /// the groups, matching the side's squadron list in group order.
+    /// </summary>
+    public IReadOnlyList<IReadOnlyList<TacticalRosterSlotRenderData>> SquadronGroups { get; }
 }

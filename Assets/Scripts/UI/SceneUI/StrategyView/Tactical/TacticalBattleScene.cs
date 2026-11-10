@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
+using Rebellion.SceneGraph;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
@@ -60,6 +61,9 @@ public sealed class TacticalBattleScene : MonoBehaviour
     private const float _explosionFireSpeed = 1.6f;
     private const float _explosionFireLifetime = 0.8f;
     private const int _explosionSmokeCount = 14;
+    private const float _torpedoBlastDiameter = 3f;
+    private const int _torpedoBlastFireCount = 8;
+    private const int _torpedoBlastSmokeCount = 4;
     private const float _explosionSmokeSize = 0.5f;
     private const float _explosionSmokeSpeed = 0.6f;
     private const float _explosionSmokeLifetime = 1.4f;
@@ -77,12 +81,22 @@ public sealed class TacticalBattleScene : MonoBehaviour
     private const float _jumpDepartureSeconds = 1.2f;
     private const float _jumpDistanceScale = 1.5f;
     private const float _jumpStretch = 3f;
+    private const float _superlaserBeamSeconds = 1.2f;
+    private const float _superlaserBeamWidth = 3f;
+    private const float _superlaserBeamRise = 0.15f;
+    private const float _superlaserEmission = 6f;
+    private const int _stationExplosionBursts = 12;
+    private const float _stationExplosionSpread = 0.8f;
+    private const float _stationExplosionBurstScale = 0.7f;
+    private const float _stationViewPitchDegrees = 20f;
+    private const float _stationViewDistanceRadii = 5f;
     private static readonly Color _attackerPlaceholderColor = new Color(0.55f, 0.58f, 0.66f, 1f);
     private static readonly Color _defenderPlaceholderColor = new Color(0.64f, 0.6f, 0.52f, 1f);
     private static readonly Color _flashColor = new Color(1f, 0.95f, 0.8f, 1f);
     private static readonly Color _fireColor = new Color(1f, 0.45f, 0.1f, 1f);
     private static readonly Color _smokeColor = new Color(0.25f, 0.24f, 0.22f, 1f);
     private static readonly Color _tractorColor = new Color(0.3f, 0.6f, 1f, 1f);
+    private static readonly Color _superlaserColor = new Color(0.35f, 1f, 0.3f, 1f);
 
     [SerializeField]
     private Camera sceneCamera;
@@ -98,14 +112,22 @@ public sealed class TacticalBattleScene : MonoBehaviour
     private readonly HashSet<string> _reportedAddresses = new HashSet<string>();
     private readonly List<Material> _replacedMaterials = new List<Material>();
     private readonly List<ExplosionEffect> _explosions = new List<ExplosionEffect>();
+    private readonly HashSet<TacticalShot> _torpedoesInFlight = new HashSet<TacticalShot>();
+    private readonly List<TacticalShot> _landedTorpedoes = new List<TacticalShot>();
+    private readonly Dictionary<TacticalBattleStation, UnitPresentation> _stations =
+        new Dictionary<TacticalBattleStation, UnitPresentation>();
+    private readonly List<SuperlaserBeam> _beams = new List<SuperlaserBeam>();
     private Material _flashMaterial;
     private Material _fireMaterial;
     private Material _smokeMaterial;
     private Material _tractorMaterial;
+    private Material _superlaserMaterial;
     private Texture2D _particleTexture;
     private float _jumpDistance = 600f;
     private ContentModelCache _modelCache;
     private CancellationTokenSource _loading;
+    private int _pendingModelLoads;
+    private int _loadGeneration;
     private RenderTexture _renderTexture;
     private Material _attackerMaterial;
     private Material _defenderMaterial;
@@ -160,7 +182,18 @@ public sealed class TacticalBattleScene : MonoBehaviour
     /// <returns>The model address, or null when the unit has no display image folder.</returns>
     internal static string GetModelAddress(TacticalBattleUnit unit)
     {
-        string imagePath = unit?.Node?.GetDisplayImagePath();
+        return GetNodeModelAddress(unit?.Node);
+    }
+
+    /// <summary>
+    /// Returns the content address of a game unit's 3D model, derived from its display image
+    /// folder. It takes the strategic node so models can be preloaded before a battle exists.
+    /// </summary>
+    /// <param name="node">The capital ship or squadron whose model is wanted.</param>
+    /// <returns>The model address, or null when the node has no display image folder.</returns>
+    internal static string GetNodeModelAddress(ISceneNode node)
+    {
+        string imagePath = node?.GetDisplayImagePath();
         if (string.IsNullOrEmpty(imagePath))
             return null;
 
@@ -207,6 +240,12 @@ public sealed class TacticalBattleScene : MonoBehaviour
         Vector3 forward = new Vector3((float)Math.Cos(heading), 0f, (float)Math.Sin(heading));
         return Quaternion.LookRotation(forward, Vector3.up);
     }
+
+    /// <summary>
+    /// Gets whether any unit's model is still loading, so the battle can hold at its opening
+    /// positions instead of starting on placeholders.
+    /// </summary>
+    internal bool HasPendingModelLoads => _pendingModelLoads > 0;
 
     /// <summary>
     /// Prepares the scene for a new battle, discarding any previous presentation. The camera is
@@ -269,7 +308,7 @@ public sealed class TacticalBattleScene : MonoBehaviour
             }
 
             bool departing = presentation.Jump == JumpPhase.Departing;
-            bool visible = unit.IsAlive && (!unit.HasWithdrawn || departing);
+            bool visible = unit.IsAlive && !unit.IsOffField && (!unit.HasWithdrawn || departing);
             if (presentation.Holder.gameObject.activeSelf != visible)
                 presentation.Holder.gameObject.SetActive(visible);
             if (!visible)
@@ -278,6 +317,21 @@ public sealed class TacticalBattleScene : MonoBehaviour
             PoseHolder(unit, presentation);
             UpdateTractorEffect(unit, presentation);
         }
+
+        foreach (TacticalBattleStation station in battle.Stations)
+        {
+            if (!_stations.TryGetValue(station, out UnitPresentation presentation))
+            {
+                presentation = CreateStationPresentation(station);
+                _stations.Add(station, presentation);
+            }
+
+            if (presentation.Holder.gameObject.activeSelf != station.IsInBattle)
+                presentation.Holder.gameObject.SetActive(station.IsInBattle);
+        }
+
+        SyncSuperlaserBeams();
+        SyncTorpedoImpacts(battle.Shots);
     }
 
     /// <summary>
@@ -293,6 +347,12 @@ public sealed class TacticalBattleScene : MonoBehaviour
         {
             if (presentation.Jump != JumpPhase.None)
                 presentation.JumpElapsed += deltaTime;
+        }
+
+        foreach (SuperlaserBeam beam in _beams)
+        {
+            if (beam.Active)
+                beam.Elapsed += deltaTime;
         }
     }
 
@@ -327,6 +387,12 @@ public sealed class TacticalBattleScene : MonoBehaviour
                     break;
                 case TacticalBattleEventKind.UnitWithdrew:
                     StartDeparture(battleEvent.Unit);
+                    break;
+                case TacticalBattleEventKind.SuperlaserFired:
+                    StartSuperlaserBeam(battleEvent.Station, battleEvent.Unit);
+                    break;
+                case TacticalBattleEventKind.StationDestroyed:
+                    PlayStationExplosion(battleEvent.Station);
                     break;
             }
         }
@@ -368,6 +434,46 @@ public sealed class TacticalBattleScene : MonoBehaviour
     }
 
     /// <summary>
+    /// Gets whether a superlaser beam is being drawn; the debug automation screenshots it.
+    /// </summary>
+    public bool HasActiveSuperlaserBeams
+    {
+        get
+        {
+            foreach (SuperlaserBeam beam in _beams)
+            {
+                if (beam.Active)
+                    return true;
+            }
+
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Gets whether a battle station's model is on show; the debug automation watches for it to
+    /// go.
+    /// </summary>
+    public bool HasVisibleStation
+    {
+        get
+        {
+            foreach (UnitPresentation presentation in _stations.Values)
+            {
+                if (presentation.Holder?.gameObject.activeSelf == true)
+                    return true;
+            }
+
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Gets the number of battle stations presented, whether or not they are still shown.
+    /// </summary>
+    internal int StationCount => _stations.Count;
+
+    /// <summary>
     /// Returns whether a unit is currently shown held in a tractor beam.
     /// </summary>
     /// <param name="unit">The unit to inspect.</param>
@@ -405,8 +511,19 @@ public sealed class TacticalBattleScene : MonoBehaviour
         VerifyReferences();
         _panLimit = new Vector2((float)battle.HalfWidth, (float)battle.HalfHeight);
         float arenaRadius = Mathf.Sqrt(_panLimit.x * _panLimit.x + _panLimit.y * _panLimit.y);
+        // A battle station stands off beyond the arena; let the camera back out far enough to
+        // take it in along with the battlefield.
+        float viewRadius = arenaRadius;
+        foreach (TacticalBattleStation station in battle.Stations)
+        {
+            viewRadius = Mathf.Max(
+                viewRadius,
+                ToScenePosition(station.X, station.Y).magnitude + (float)station.Radius
+            );
+        }
+
         _distanceLimit = Mathf.Clamp(
-            GetFramingDistance(arenaRadius, _arenaFramingPadding),
+            GetFramingDistance(viewRadius, _arenaFramingPadding),
             MinimumDistance,
             MaximumDistance
         );
@@ -416,7 +533,7 @@ public sealed class TacticalBattleScene : MonoBehaviour
         List<TacticalBattleUnit> playerUnits = new List<TacticalBattleUnit>();
         foreach (TacticalBattleUnit unit in battle.Units)
         {
-            if (!unit.IsAlive || unit.HasWithdrawn)
+            if (!unit.IsAlive || unit.HasWithdrawn || unit.IsOffField)
                 continue;
             framed.Add(unit);
             if (battle.PlayerSide != null && unit.Side == battle.PlayerSide.Value)
@@ -483,6 +600,44 @@ public sealed class TacticalBattleScene : MonoBehaviour
     }
 
     /// <summary>
+    /// Turns the camera to a battle station beyond the arena's edge: the focus goes to the edge
+    /// nearest the station and the camera looks out across it, low enough to take the station in.
+    /// </summary>
+    /// <param name="station">The station to look at.</param>
+    internal void LookToward(TacticalBattleStation station)
+    {
+        if (station == null)
+            throw new ArgumentNullException(nameof(station));
+
+        VerifyReferences();
+        Vector3 position = ToScenePosition(station.X, station.Y);
+        _focus = ClampFocus(position);
+        Vector3 toStation = position - _focus;
+        if (toStation.sqrMagnitude > 0.0001f)
+            _yawDegrees = Mathf.Atan2(toStation.x, toStation.z) * Mathf.Rad2Deg;
+        _pitchDegrees = _stationViewPitchDegrees;
+        _distance = ClampDistance((float)station.Radius * _stationViewDistanceRadii);
+        _viewInitialized = true;
+        ApplyCamera();
+    }
+
+    /// <summary>
+    /// Turns the camera to the first battle station presented; the debug automation frames its
+    /// station screenshots this way.
+    /// </summary>
+    /// <returns>True when a station was framed.</returns>
+    public bool FrameStation()
+    {
+        foreach (TacticalBattleStation station in _stations.Keys)
+        {
+            LookToward(station);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Moves the camera focus to a unit and closes in on it.
     /// </summary>
     /// <param name="unit">The unit to focus on.</param>
@@ -495,6 +650,21 @@ public sealed class TacticalBattleScene : MonoBehaviour
         _focus = ClampFocus(ToScenePosition(unit.X, unit.Y));
         _distance = ClampDistance(GetModelDiameter(unit) * _focusDistanceDiameters);
         _viewInitialized = true;
+        ApplyCamera();
+    }
+
+    /// <summary>
+    /// Centers the camera on a unit without changing its distance or angle, so a followed unit
+    /// stays in view as it moves.
+    /// </summary>
+    /// <param name="unit">The unit to keep centered.</param>
+    internal void TrackUnit(TacticalBattleUnit unit)
+    {
+        if (unit == null)
+            throw new ArgumentNullException(nameof(unit));
+
+        VerifyReferences();
+        _focus = ClampFocus(ToScenePosition(unit.X, unit.Y));
         ApplyCamera();
     }
 
@@ -629,6 +799,39 @@ public sealed class TacticalBattleScene : MonoBehaviour
     }
 
     /// <summary>
+    /// Projects a battle station's position and on-screen diameter through the scene camera.
+    /// Unlike a unit, a station is projected wherever it falls, since it stands beyond the arena.
+    /// </summary>
+    /// <param name="station">The station to project.</param>
+    /// <param name="arena">The source-space arena bounds.</param>
+    /// <param name="sourcePoint">Receives the source-space center.</param>
+    /// <param name="diameter">Receives the source-space diameter.</param>
+    /// <returns>True when the station is in front of the camera.</returns>
+    internal bool TryProjectStation(
+        TacticalBattleStation station,
+        RectInt arena,
+        out Vector2 sourcePoint,
+        out float diameter
+    )
+    {
+        if (station == null)
+            throw new ArgumentNullException(nameof(station));
+
+        VerifyReferences();
+        diameter = 0f;
+        Vector3 center = modelRoot.TransformPoint(ToScenePosition(station.X, station.Y));
+        if (!TryProjectWorld(center, arena, out sourcePoint))
+            return false;
+
+        Vector3 edge = center + sceneCamera.transform.right * (float)station.Radius;
+        if (!TryProjectWorld(edge, arena, out Vector2 edgePoint))
+            return false;
+
+        diameter = Mathf.Abs(edgePoint.x - sourcePoint.x) * 2f;
+        return true;
+    }
+
+    /// <summary>
     /// Finds the battle position under a source-space point by casting onto the ground plane.
     /// </summary>
     /// <param name="arena">The source-space arena bounds.</param>
@@ -680,6 +883,7 @@ public sealed class TacticalBattleScene : MonoBehaviour
     internal void End()
     {
         ReleaseUnits();
+        _torpedoesInFlight.Clear();
         if (sceneCamera != null)
             sceneCamera.enabled = false;
         gameObject.SetActive(false);
@@ -771,6 +975,7 @@ public sealed class TacticalBattleScene : MonoBehaviour
         DestroyMaterial(ref _fireMaterial);
         DestroyMaterial(ref _smokeMaterial);
         DestroyMaterial(ref _tractorMaterial);
+        DestroyMaterial(ref _superlaserMaterial);
         if (_particleTexture != null)
             DestroyObject(_particleTexture);
         _particleTexture = null;
@@ -795,6 +1000,8 @@ public sealed class TacticalBattleScene : MonoBehaviour
         _loading?.Cancel();
         _loading?.Dispose();
         _loading = null;
+        _pendingModelLoads = 0;
+        _loadGeneration++;
         foreach (UnitPresentation presentation in _units.Values)
         {
             presentation.Model?.Dispose();
@@ -803,6 +1010,21 @@ public sealed class TacticalBattleScene : MonoBehaviour
         }
 
         _units.Clear();
+        foreach (UnitPresentation presentation in _stations.Values)
+        {
+            presentation.Model?.Dispose();
+            if (presentation.Holder != null)
+                DestroyObject(presentation.Holder.gameObject);
+        }
+
+        _stations.Clear();
+        foreach (SuperlaserBeam beam in _beams)
+        {
+            if (beam.Root != null)
+                DestroyObject(beam.Root.gameObject);
+        }
+
+        _beams.Clear();
         foreach (ExplosionEffect effect in _explosions)
         {
             if (effect.Root != null)
@@ -987,10 +1209,65 @@ public sealed class TacticalBattleScene : MonoBehaviour
     /// <returns>The new presentation.</returns>
     private UnitPresentation CreatePresentation(TacticalBattleUnit unit)
     {
-        GameObject holder = new GameObject(unit.DisplayName ?? "Unit");
+        float diameter = GetModelDiameter(unit);
+        return CreatePresentation(
+            unit.DisplayName ?? "Unit",
+            diameter,
+            "Cube.fbx",
+            new Vector3(
+                diameter * _placeholderWidth,
+                diameter * _placeholderHeight,
+                diameter * _placeholderLength
+            ),
+            unit.Side,
+            GetModelAddress(unit)
+        );
+    }
+
+    /// <summary>
+    /// Creates a battle station's holder beyond the arena's edge, facing the battlefield, with a
+    /// placeholder sphere, and starts loading its model.
+    /// </summary>
+    /// <param name="station">The station to present.</param>
+    /// <returns>The new presentation.</returns>
+    private UnitPresentation CreateStationPresentation(TacticalBattleStation station)
+    {
+        float diameter = (float)station.Radius * 2f;
+        UnitPresentation presentation = CreatePresentation(
+            station.DisplayName ?? "Station",
+            diameter,
+            "Sphere.fbx",
+            Vector3.one * diameter,
+            station.Side,
+            GetNodeModelAddress(station.Ship)
+        );
+        presentation.Holder.localPosition = ToScenePosition(station.X, station.Y);
+        presentation.Holder.localRotation = ToSceneRotation(Math.Atan2(-station.Y, -station.X));
+        return presentation;
+    }
+
+    /// <summary>
+    /// Creates a holder with a placeholder shape and starts loading the model that replaces it.
+    /// </summary>
+    /// <param name="holderName">The holder object's name.</param>
+    /// <param name="diameter">The scene diameter the model is scaled to.</param>
+    /// <param name="placeholderMesh">The built-in mesh shown until the model loads.</param>
+    /// <param name="placeholderScale">The placeholder's scale.</param>
+    /// <param name="side">The side whose placeholder color is used.</param>
+    /// <param name="address">The model content address, or null for a placeholder only.</param>
+    /// <returns>The new presentation.</returns>
+    private UnitPresentation CreatePresentation(
+        string holderName,
+        float diameter,
+        string placeholderMesh,
+        Vector3 placeholderScale,
+        CombatSide side,
+        string address
+    )
+    {
+        GameObject holder = new GameObject(holderName);
         holder.layer = PresentationLayers.TacticalBattle;
         holder.transform.SetParent(modelRoot, false);
-        float diameter = GetModelDiameter(unit);
 
         GameObject placeholder = new GameObject(
             "Placeholder",
@@ -999,15 +1276,11 @@ public sealed class TacticalBattleScene : MonoBehaviour
         );
         placeholder.layer = PresentationLayers.TacticalBattle;
         placeholder.transform.SetParent(holder.transform, false);
-        placeholder.transform.localScale = new Vector3(
-            diameter * _placeholderWidth,
-            diameter * _placeholderHeight,
-            diameter * _placeholderLength
-        );
+        placeholder.transform.localScale = placeholderScale;
         placeholder.GetComponent<MeshFilter>().sharedMesh = Resources.GetBuiltinResource<Mesh>(
-            "Cube.fbx"
+            placeholderMesh
         );
-        placeholder.GetComponent<MeshRenderer>().sharedMaterial = GetPlaceholderMaterial(unit.Side);
+        placeholder.GetComponent<MeshRenderer>().sharedMaterial = GetPlaceholderMaterial(side);
 
         // The model gets its own child so fitting measures the mesh alone, never the placeholder.
         GameObject modelParent = new GameObject("Model");
@@ -1020,9 +1293,11 @@ public sealed class TacticalBattleScene : MonoBehaviour
             placeholder,
             diameter
         );
-        string address = GetModelAddress(unit);
         if (_modelCache != null && !string.IsNullOrEmpty(address))
-            _ = LoadModelAsync(presentation, address, _loading.Token);
+        {
+            _pendingModelLoads++;
+            _ = LoadModelAsync(presentation, address, _loadGeneration, _loading.Token);
+        }
         return presentation;
     }
 
@@ -1138,6 +1413,8 @@ public sealed class TacticalBattleScene : MonoBehaviour
         effect.layer = PresentationLayers.TacticalBattle;
         effect.transform.SetParent(presentation.Holder, false);
         ParticleSystem system = effect.GetComponent<ParticleSystem>();
+        // A new system is already playing, and its duration cannot be set until it stops.
+        system.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         float radius = presentation.Diameter * _tractorRadiusScale;
         float speed = presentation.Diameter * _tractorInwardSpeed;
 
@@ -1178,6 +1455,23 @@ public sealed class TacticalBattleScene : MonoBehaviour
     /// <param name="unit">The destroyed unit.</param>
     private void PlayExplosion(TacticalBattleUnit unit)
     {
+        PlayExplosion(
+            ToScenePosition(unit.X, unit.Y),
+            GetModelDiameter(unit),
+            _explosionFireCount,
+            _explosionSmokeCount
+        );
+    }
+
+    /// <summary>
+    /// Fires a burst at a scene position, reusing a finished burst when one exists.
+    /// </summary>
+    /// <param name="position">The burst center.</param>
+    /// <param name="diameter">The burst's size, in scene units.</param>
+    /// <param name="fireCount">The number of fire particles.</param>
+    /// <param name="smokeCount">The number of smoke particles.</param>
+    private void PlayExplosion(Vector3 position, float diameter, int fireCount, int smokeCount)
+    {
         ExplosionEffect effect = null;
         foreach (ExplosionEffect candidate in _explosions)
         {
@@ -1195,10 +1489,193 @@ public sealed class TacticalBattleScene : MonoBehaviour
         }
 
         // The burst is authored at unit scale and the root scales it to the hull.
-        effect.Root.localPosition = ToScenePosition(unit.X, unit.Y);
-        effect.Root.localScale = Vector3.one * GetModelDiameter(unit);
+        effect.Root.localPosition = position;
+        effect.Root.localScale = Vector3.one * diameter;
         effect.Root.gameObject.SetActive(true);
-        effect.Emit(_explosionFireCount, _explosionSmokeCount);
+        effect.Emit(fireCount, smokeCount);
+    }
+
+    /// <summary>
+    /// Starts drawing a superlaser beam from a station to the capital ship it fired at.
+    /// </summary>
+    /// <param name="station">The firing station.</param>
+    /// <param name="target">The ship being destroyed.</param>
+    private void StartSuperlaserBeam(TacticalBattleStation station, TacticalBattleUnit target)
+    {
+        if (station == null || target == null)
+            return;
+
+        SuperlaserBeam beam = null;
+        foreach (SuperlaserBeam candidate in _beams)
+        {
+            if (candidate.Root != null && !candidate.Active)
+            {
+                beam = candidate;
+                break;
+            }
+        }
+
+        if (beam == null)
+        {
+            GameObject root = new GameObject(
+                "SuperlaserBeam",
+                typeof(MeshFilter),
+                typeof(MeshRenderer)
+            );
+            root.layer = PresentationLayers.TacticalBattle;
+            root.transform.SetParent(modelRoot, false);
+            root.GetComponent<MeshFilter>().sharedMesh = Resources.GetBuiltinResource<Mesh>(
+                "Cube.fbx"
+            );
+            MeshRenderer beamRenderer = root.GetComponent<MeshRenderer>();
+            beamRenderer.sharedMaterial = GetSuperlaserMaterial();
+            beamRenderer.shadowCastingMode = ShadowCastingMode.Off;
+            beamRenderer.receiveShadows = false;
+            beam = new SuperlaserBeam(root.transform);
+            _beams.Add(beam);
+        }
+
+        beam.Station = station;
+        beam.Target = target;
+        beam.End = ToScenePosition(target.X, target.Y);
+        beam.Elapsed = 0f;
+        beam.Active = true;
+        beam.Root.gameObject.SetActive(true);
+        PoseSuperlaserBeam(beam);
+    }
+
+    /// <summary>
+    /// Poses every beam being drawn and retires those that have burned out.
+    /// </summary>
+    private void SyncSuperlaserBeams()
+    {
+        foreach (SuperlaserBeam beam in _beams)
+        {
+            if (!beam.Active)
+                continue;
+
+            if (beam.Elapsed >= _superlaserBeamSeconds || beam.Root == null)
+            {
+                beam.Active = false;
+                if (beam.Root != null)
+                    beam.Root.gameObject.SetActive(false);
+                continue;
+            }
+
+            PoseSuperlaserBeam(beam);
+        }
+    }
+
+    /// <summary>
+    /// Stretches a beam from its station's surface to its target. The beam follows the ship
+    /// while it lives, swells as it fires, and thins as it burns out.
+    /// </summary>
+    /// <param name="beam">The beam to pose.</param>
+    private static void PoseSuperlaserBeam(SuperlaserBeam beam)
+    {
+        if (beam.Target.IsAlive && !beam.Target.HasWithdrawn)
+            beam.End = ToScenePosition(beam.Target.X, beam.Target.Y);
+
+        float radius = (float)beam.Station.Radius;
+        Vector3 center = ToScenePosition(beam.Station.X, beam.Station.Y);
+        Vector3 direction = beam.End - center;
+        float distance = direction.magnitude;
+        if (distance <= radius)
+        {
+            beam.Root.gameObject.SetActive(false);
+            return;
+        }
+
+        direction /= distance;
+        Vector3 start = center + direction * radius;
+        float progress = Mathf.Clamp01(beam.Elapsed / _superlaserBeamSeconds);
+        float envelope =
+            progress < _superlaserBeamRise
+                ? progress / _superlaserBeamRise
+                : 1f - (progress - _superlaserBeamRise) / (1f - _superlaserBeamRise);
+        float width = Mathf.Max(_superlaserBeamWidth * envelope, 0.05f);
+        beam.Root.localPosition = (start + beam.End) * 0.5f;
+        beam.Root.localRotation = Quaternion.LookRotation(direction, Vector3.up);
+        beam.Root.localScale = new Vector3(width, width, distance - radius);
+    }
+
+    /// <summary>
+    /// Returns the superlaser beam material, creating it on first use: the pipeline's lit
+    /// material glowing green whatever the scene exposure.
+    /// </summary>
+    /// <returns>The beam material.</returns>
+    private Material GetSuperlaserMaterial()
+    {
+        if (_superlaserMaterial != null)
+            return _superlaserMaterial;
+
+        _superlaserMaterial = CreatePlaceholderMaterial(_superlaserColor);
+        _superlaserMaterial.name = "Tactical Superlaser";
+        if (_superlaserMaterial.HasProperty(_emissiveColorProperty))
+            _superlaserMaterial.SetColor(
+                _emissiveColorProperty,
+                _superlaserColor * _superlaserEmission
+            );
+        if (_superlaserMaterial.HasProperty(_emissiveExposureWeightProperty))
+            _superlaserMaterial.SetFloat(_emissiveExposureWeightProperty, 0f);
+        return _superlaserMaterial;
+    }
+
+    /// <summary>
+    /// Blows a battle station apart: a cluster of bursts scattered through its volume, each a
+    /// good fraction of its size, rather than one burst stretched over the whole of it.
+    /// </summary>
+    /// <param name="station">The destroyed station.</param>
+    private void PlayStationExplosion(TacticalBattleStation station)
+    {
+        float radius = (float)station.Radius;
+        Vector3 center = ToScenePosition(station.X, station.Y);
+        for (int index = 0; index < _stationExplosionBursts; index++)
+        {
+            PlayExplosion(
+                center + UnityEngine.Random.insideUnitSphere * (radius * _stationExplosionSpread),
+                radius * _stationExplosionBurstScale,
+                _explosionFireCount,
+                _explosionSmokeCount
+            );
+        }
+    }
+
+    /// <summary>
+    /// Fires a small burst where each torpedo that was in flight last frame has now landed.
+    /// </summary>
+    /// <param name="shots">The battle's current shots.</param>
+    private void SyncTorpedoImpacts(IReadOnlyList<TacticalShot> shots)
+    {
+        _landedTorpedoes.Clear();
+        foreach (TacticalShot torpedo in _torpedoesInFlight)
+        {
+            bool inFlight = false;
+            for (int index = 0; index < shots.Count && !inFlight; index++)
+                inFlight = ReferenceEquals(shots[index], torpedo);
+            if (!inFlight)
+                _landedTorpedoes.Add(torpedo);
+        }
+
+        foreach (TacticalShot torpedo in _landedTorpedoes)
+        {
+            _torpedoesInFlight.Remove(torpedo);
+            if (modelRoot != null)
+            {
+                PlayExplosion(
+                    ToScenePosition(torpedo.EndX, torpedo.EndY),
+                    _torpedoBlastDiameter,
+                    _torpedoBlastFireCount,
+                    _torpedoBlastSmokeCount
+                );
+            }
+        }
+
+        foreach (TacticalShot shot in shots)
+        {
+            if (shot.IsTorpedo)
+                _torpedoesInFlight.Add(shot);
+        }
     }
 
     /// <summary>
@@ -1261,6 +1738,8 @@ public sealed class TacticalBattleScene : MonoBehaviour
         effect.layer = PresentationLayers.TacticalBattle;
         effect.transform.SetParent(parent, false);
         ParticleSystem system = effect.GetComponent<ParticleSystem>();
+        // A new system is already playing, and its duration cannot be set until it stops.
+        system.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
 
         ParticleSystem.MainModule main = system.main;
         main.playOnAwake = false;
@@ -1386,6 +1865,10 @@ public sealed class TacticalBattleScene : MonoBehaviour
             material.SetFloat(_emissiveExposureWeightProperty, 0f);
         if (material.HasProperty(_smoothnessProperty))
             material.SetFloat(_smoothnessProperty, 0f);
+        // HDRP honors the cutout only once the material's passes, keywords and render queue are
+        // validated; set by hand alone, the particles draw as opaque squares.
+        if (material.HasProperty(_alphaCutoffEnableProperty))
+            UnityEngine.Rendering.HighDefinition.HDMaterial.ValidateMaterial(material);
         Debug.Log(
             $"Tactical effect material {materialName}: shader {material.shader.name}, "
                 + $"baseColorMap={material.HasProperty(_baseColorMapProperty)}, "
@@ -1483,11 +1966,13 @@ public sealed class TacticalBattleScene : MonoBehaviour
     /// </summary>
     /// <param name="presentation">The unit presentation receiving the model.</param>
     /// <param name="address">The model content address.</param>
+    /// <param name="generation">The battle the load belongs to, for the pending-load count.</param>
     /// <param name="cancellationToken">Cancels the load when the battle ends.</param>
     /// <returns>A task completing when the model is shown or the load was abandoned.</returns>
     private async Task LoadModelAsync(
         UnitPresentation presentation,
         string address,
+        int generation,
         CancellationToken cancellationToken
     )
     {
@@ -1521,6 +2006,12 @@ public sealed class TacticalBattleScene : MonoBehaviour
                 Debug.LogWarning(
                     $"Tactical battle model '{address}' is unavailable; using a placeholder. {exception.Message}"
                 );
+        }
+        finally
+        {
+            // A load that outlives its battle must not count against the next one.
+            if (generation == _loadGeneration)
+                _pendingModelLoads = Math.Max(_pendingModelLoads - 1, 0);
         }
     }
 
@@ -1719,6 +2210,33 @@ public sealed class TacticalBattleScene : MonoBehaviour
         internal Vector3 JumpOrigin { get; set; }
 
         internal Vector3 JumpForward { get; set; }
+    }
+
+    /// <summary>
+    /// Tracks one pooled superlaser beam.
+    /// </summary>
+    private sealed class SuperlaserBeam
+    {
+        /// <summary>
+        /// Creates a beam around its stretched mesh.
+        /// </summary>
+        /// <param name="root">The beam's transform.</param>
+        internal SuperlaserBeam(Transform root)
+        {
+            Root = root;
+        }
+
+        internal Transform Root { get; }
+
+        internal TacticalBattleStation Station { get; set; }
+
+        internal TacticalBattleUnit Target { get; set; }
+
+        internal Vector3 End { get; set; }
+
+        internal float Elapsed { get; set; }
+
+        internal bool Active { get; set; }
     }
 
     /// <summary>

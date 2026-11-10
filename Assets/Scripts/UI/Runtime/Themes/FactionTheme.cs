@@ -28,6 +28,8 @@ public class FactionTheme
 
     public List<PlanetDestructionCutscene> PlanetDestructionCutscenes { get; set; } = new();
 
+    public List<TrenchRunCutscene> TrenchRunCutscenes { get; set; } = new();
+
     public TacticalHUDLayout TacticalHUDLayout { get; set; }
 
     public StrategyAdvisorTheme StrategyAdvisor { get; set; }
@@ -100,4 +102,20 @@ public sealed class PlanetDestructionCutscene
 
     [PersistableAttribute]
     public string Path { get; set; }
+}
+
+/// <summary>
+/// Maps one battle-station ship type to the movies shown when fighters fly its trench.
+/// </summary>
+[PersistableObject(Name = "TrenchRunCutscene")]
+public sealed class TrenchRunCutscene
+{
+    [PersistableAttribute]
+    public string ShipTypeID { get; set; }
+
+    [PersistableAttribute]
+    public string SuccessPath { get; set; }
+
+    [PersistableAttribute]
+    public string FailurePath { get; set; }
 }

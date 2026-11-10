@@ -21,6 +21,9 @@ internal sealed class TacticalBattleProjector
     private const float _capitalShotThickness = 2f;
     private const float _fighterShotThickness = 1f;
     private const float _torpedoShotThickness = 3f;
+    private const float _minimumCapitalShotThickness = 1.5f;
+    private const float _maximumCapitalShotThickness = 7f;
+    private const float _boltStrengthPerPixel = 25f;
     private const float _minimumBoltLength = 2f;
     private const float _shotBrightening = 0.25f;
     private const int _planetSizeDivisor = 3;
@@ -63,7 +66,8 @@ internal sealed class TacticalBattleProjector
     /// <param name="paused">Whether playback is paused.</param>
     /// <param name="speed">The playback speed multiplier.</param>
     /// <param name="rosterSide">The side listed in the roster bar.</param>
-    /// <param name="rosterClassIndex">The chosen fighter class in the roster bar.</param>
+    /// <param name="deploying">Whether the battle is holding while hull models load.</param>
+    /// <param name="superlaserArmed">Whether the player is choosing a superlaser target.</param>
     /// <returns>The complete frame presentation.</returns>
     internal TacticalBattleRenderData Project(
         TacticalSpaceBattle battle,
@@ -81,7 +85,8 @@ internal sealed class TacticalBattleProjector
         bool paused,
         float speed,
         CombatSide rosterSide,
-        int rosterClassIndex
+        bool deploying = false,
+        bool superlaserArmed = false
     )
     {
         if (battle == null)
@@ -104,9 +109,14 @@ internal sealed class TacticalBattleProjector
         List<TacticalUnitRenderData> units = new List<TacticalUnitRenderData>(battle.Units.Count);
         foreach (TacticalBattleUnit unit in battle.Units)
         {
-            // Fighter squadrons carry no overlay: they cannot be commanded and their models stay
+            // Fighter squadrons carry an overlay only while selected, so their models stay
             // readable without bars.
-            if (!unit.IsAlive || unit.HasWithdrawn || unit.IsStarfighter)
+            if (
+                !unit.IsAlive
+                || unit.HasWithdrawn
+                || unit.IsOffField
+                || (unit.IsStarfighter && selection?.Contains(unit) != true)
+            )
                 continue;
             if (!scene.TryProjectUnit(unit, arena, out Vector2 point, out float diameter))
                 continue;
@@ -151,6 +161,7 @@ internal sealed class TacticalBattleProjector
         CombatSide playerSide = battle.PlayerSide ?? CombatSide.Attacker;
         bool canCommand = battle.PlayerSide != null && !battle.IsComplete;
         bool withdrawing = battle.HasOrderedWithdrawal(playerSide);
+        TacticalWithdrawalStatus withdrawalStatus = battle.GetWithdrawalStatus(playerSide);
         Texture2D planetTexture = GetPlanetTexture(planet, uiContext);
         int planetSize = Mathf.Max(Mathf.Min(arena.width, arena.height) / _planetSizeDivisor, 1);
         string attackerLabel = GetFactionLabel(
@@ -168,13 +179,13 @@ internal sealed class TacticalBattleProjector
             $"Battle at {planet?.GetDisplayName() ?? "Deep Space"}",
             DescribeForce(battle, CombatSide.Attacker, attackerLabel),
             DescribeForce(battle, CombatSide.Defender, defenderLabel),
-            BuildClock(battle, paused),
-            BuildHint(battle, selection, focus),
+            BuildClock(battle, paused, deploying),
+            BuildHint(battle, selection, focus, superlaserArmed),
             focus?.IsAlive != true || focus.HasWithdrawn
                 ? null
                 : ProjectPanel(battle, focus, uiContext, attackerLabel, defenderLabel),
-            withdrawing ? "Retreating" : "Retreat",
-            canCommand && !withdrawing && battle.CanWithdraw(playerSide),
+            GetRetreatCaption(battle.IsComplete, withdrawing, withdrawalStatus),
+            canCommand && !withdrawing && withdrawalStatus == TacticalWithdrawalStatus.Available,
             battle.PlayerSide != null && battle.IsAutomatic(playerSide) ? "Auto: On" : "Auto: Off",
             canCommand && !withdrawing,
             paused ? "Resume" : "Pause",
@@ -194,11 +205,53 @@ internal sealed class TacticalBattleProjector
                 battle,
                 uiContext,
                 rosterSide,
-                rosterClassIndex,
                 selection,
                 focus,
                 rosterSide == CombatSide.Attacker ? attackerLabel : defenderLabel
-            )
+            ),
+            ProjectSuperlaser(battle, superlaserArmed)
+        );
+    }
+
+    /// <summary>
+    /// Builds the superlaser charge bar for the player's battle station.
+    /// </summary>
+    /// <param name="battle">The battle being presented.</param>
+    /// <param name="armed">Whether the player is choosing a target.</param>
+    /// <returns>The bar presentation, or null when the player has no station in the battle.</returns>
+    internal static TacticalSuperlaserRenderData ProjectSuperlaser(
+        TacticalSpaceBattle battle,
+        bool armed
+    )
+    {
+        if (battle.PlayerSide == null)
+            return null;
+
+        TacticalBattleStation station = battle.GetStation(battle.PlayerSide.Value);
+        if (station == null)
+            return null;
+
+        bool ready = station.IsSuperlaserReady && battle.CanCommandStation(station);
+        bool choosing = armed && ready;
+        string label;
+        if (station.StrikeTarget != null)
+            label = "Superlaser firing";
+        else if (station.IsWithdrawing)
+            label = "Superlaser: jumping out";
+        else if (choosing)
+            label = "Superlaser: pick a target";
+        else if (ready)
+            label = "Superlaser ready: click to aim";
+        else if (station.IsSuperlaserReady)
+            label = "Superlaser charged";
+        else
+            label =
+                $"Superlaser charging {Mathf.FloorToInt((float)station.SuperlaserCharge * 100f)}%";
+        return new TacticalSuperlaserRenderData(
+            label,
+            (float)station.SuperlaserCharge,
+            ready,
+            choosing
         );
     }
 
@@ -257,12 +310,30 @@ internal sealed class TacticalBattleProjector
     }
 
     /// <summary>
-    /// Builds the roster bar for one side.
+    /// Returns one side's squadrons in roster order: grouped by fighter type, each group in
+    /// first-seen order. Roster squadron slots index this list.
+    /// </summary>
+    /// <param name="battle">The battle being presented.</param>
+    /// <param name="side">The side to list.</param>
+    /// <returns>The side's squadrons, including destroyed and withdrawn ones.</returns>
+    internal static List<TacticalStarfighterUnit> GetRosterSquadrons(
+        TacticalSpaceBattle battle,
+        CombatSide side
+    )
+    {
+        List<TacticalStarfighterUnit> squadrons = new List<TacticalStarfighterUnit>();
+        foreach (List<TacticalStarfighterUnit> members in GetFighterClasses(battle, side))
+            squadrons.AddRange(members);
+        return squadrons;
+    }
+
+    /// <summary>
+    /// Builds the roster bar for one side: its capital ships, then every squadron grouped by
+    /// fighter type.
     /// </summary>
     /// <param name="battle">The battle being presented.</param>
     /// <param name="uiContext">The current strategy UI context.</param>
     /// <param name="side">The side to list.</param>
-    /// <param name="classIndex">The chosen fighter class, wrapped into range.</param>
     /// <param name="selection">The selected units.</param>
     /// <param name="focus">The inspected unit, or null.</param>
     /// <param name="sideLabel">The side's display name.</param>
@@ -271,7 +342,6 @@ internal sealed class TacticalBattleProjector
         TacticalSpaceBattle battle,
         UIContext uiContext,
         CombatSide side,
-        int classIndex,
         IReadOnlyCollection<TacticalBattleUnit> selection,
         TacticalBattleUnit focus,
         string sideLabel
@@ -292,35 +362,29 @@ internal sealed class TacticalBattleProjector
             );
         }
 
-        List<List<TacticalStarfighterUnit>> classes = GetFighterClasses(battle, side);
-        List<TacticalRosterSlotRenderData> squadrons = new List<TacticalRosterSlotRenderData>();
-        string classLabel = "No fighters";
-        if (classes.Count > 0)
+        List<IReadOnlyList<TacticalRosterSlotRenderData>> squadronGroups =
+            new List<IReadOnlyList<TacticalRosterSlotRenderData>>();
+        foreach (List<TacticalStarfighterUnit> members in GetFighterClasses(battle, side))
         {
-            List<TacticalStarfighterUnit> members = classes[
-                ((classIndex % classes.Count) + classes.Count) % classes.Count
-            ];
-            classLabel = members[0].DisplayName ?? "Fighters";
+            List<TacticalRosterSlotRenderData> group = new List<TacticalRosterSlotRenderData>(
+                members.Count
+            );
             foreach (TacticalStarfighterUnit squadron in members)
             {
-                squadrons.Add(
+                group.Add(
                     new TacticalRosterSlotRenderData(
                         squadron.CurrentSquadronSize.ToString(),
                         GetPortrait(squadron.Node, uiContext),
-                        ReferenceEquals(squadron, focus),
+                        ReferenceEquals(squadron, focus) || selection?.Contains(squadron) == true,
                         squadron.IsAlive && !squadron.HasWithdrawn
                     )
                 );
             }
+
+            squadronGroups.Add(group);
         }
 
-        return new TacticalRosterRenderData(
-            sideLabel,
-            ships,
-            classLabel,
-            classes.Count > 1,
-            squadrons
-        );
+        return new TacticalRosterRenderData(sideLabel, ships, squadronGroups);
     }
 
     /// <summary>
@@ -390,6 +454,28 @@ internal sealed class TacticalBattleProjector
     }
 
     /// <summary>
+    /// Returns a bolt's drawn thickness: fighter bolts stay thin, torpedoes heavy, ion fire
+    /// fixed, and capital energy bolts grow with the battery behind them so a Star Destroyer's
+    /// volley lands with weight, though never below a visible floor.
+    /// </summary>
+    /// <param name="shot">The shot to draw.</param>
+    /// <returns>The source-space line thickness.</returns>
+    internal static float GetBoltThickness(TacticalShot shot)
+    {
+        if (shot.IsTorpedo)
+            return _torpedoShotThickness;
+        if (shot.IsStarfighterShot)
+            return _fighterShotThickness;
+        if (shot.IsIon)
+            return _capitalShotThickness;
+        return Mathf.Clamp(
+            _minimumCapitalShotThickness + shot.Strength / _boltStrengthPerPixel,
+            _minimumCapitalShotThickness,
+            _maximumCapitalShotThickness
+        );
+    }
+
+    /// <summary>
     /// Builds the information panel for an inspected unit.
     /// </summary>
     /// <param name="battle">The battle being presented.</param>
@@ -428,12 +514,12 @@ internal sealed class TacticalBattleProjector
                     : "—",
                 fighter.CurrentSquadronSize / (float)maximumSquadron,
                 $"{fighter.CurrentSquadronSize} / {maximumSquadron} fighters",
-                Array.Empty<TacticalSystemRenderData>(),
+                BuildFighterWeapons(fighter),
                 Array.Empty<float>(),
                 Array.Empty<TacticalPersonnelRenderData>(),
                 "No personnel aboard",
                 DescribeFighterOrders(fighter),
-                tactics,
+                DescribeFighterWeapons(fighter),
                 DescribeTargetPriority(unit),
                 battle.CanSetTargetPriority(unit)
             );
@@ -571,9 +657,7 @@ internal sealed class TacticalBattleProjector
             (start.x + end.x) / 2f - arena.x,
             (start.y + end.y) / 2f - arena.y,
             Mathf.Max(delta.magnitude, _minimumBoltLength),
-            shot.IsTorpedo ? _torpedoShotThickness
-                : shot.IsStarfighterShot ? _fighterShotThickness
-                : _capitalShotThickness,
+            GetBoltThickness(shot),
             Mathf.Atan2(-delta.y, delta.x) * Mathf.Rad2Deg,
             GetBoltColor(shot, conventionalColor)
         );
@@ -592,6 +676,64 @@ internal sealed class TacticalBattleProjector
         string level =
             $"{Mathf.RoundToInt((float)ship.CurrentShields)} / {Mathf.RoundToInt((float)ship.MaximumShields)}";
         return ship.ShieldGeneratorOffline ? $"{level} — generator down" : level;
+    }
+
+    /// <summary>
+    /// Fills the system slots with a squadron's weapon lanes: each lane it carries lights up
+    /// with its power, and its hyperdrive shows whether it can jump out on its own.
+    /// </summary>
+    /// <param name="fighter">The inspected squadron.</param>
+    /// <returns>The weapon indicators in panel order.</returns>
+    private static IReadOnlyList<TacticalSystemRenderData> BuildFighterWeapons(
+        TacticalStarfighterUnit fighter
+    )
+    {
+        Starfighter type = fighter.Fighter;
+        return new[]
+        {
+            DescribeFighterLane("Lasers", type.LaserCannon),
+            DescribeFighterLane("Ion", type.IonCannon),
+            DescribeFighterLane("Torp", type.Torpedoes),
+            new TacticalSystemRenderData(
+                "Hyperdrive",
+                type.Hyperdrive > 0 ? TacticalSystemState.Online : TacticalSystemState.Absent
+            ),
+        };
+    }
+
+    /// <summary>
+    /// Describes one squadron weapon lane as a lit indicator carrying its power.
+    /// </summary>
+    /// <param name="label">The lane name.</param>
+    /// <param name="power">The lane's weapon rating.</param>
+    /// <returns>The indicator.</returns>
+    private static TacticalSystemRenderData DescribeFighterLane(string label, int power)
+    {
+        return power > 0
+            ? new TacticalSystemRenderData($"{label} {power}", TacticalSystemState.Online)
+            : new TacticalSystemRenderData(label, TacticalSystemState.Absent);
+    }
+
+    /// <summary>
+    /// Describes a squadron's weapon ranges and how charged its weapons are.
+    /// </summary>
+    /// <param name="fighter">The inspected squadron.</param>
+    /// <returns>The weapons text.</returns>
+    private static string DescribeFighterWeapons(TacticalStarfighterUnit fighter)
+    {
+        Starfighter type = fighter.Fighter;
+        List<string> ranges = new List<string>();
+        if (type.LaserCannon > 0)
+            ranges.Add($"lasers {type.LaserRange}");
+        if (type.IonCannon > 0)
+            ranges.Add($"ion {type.IonRange}");
+        if (type.Torpedoes > 0)
+            ranges.Add($"torpedoes {type.TorpedoRange}");
+        if (ranges.Count == 0)
+            return "Weapons: None";
+
+        int charge = Mathf.RoundToInt((float)(fighter.WeaponChargeFraction * 100));
+        return $"Ranges: {string.Join(", ", ranges)} · {charge}% charged";
     }
 
     /// <summary>
@@ -705,9 +847,15 @@ internal sealed class TacticalBattleProjector
     {
         if (fighter.IsWithdrawing)
             return "Orders: Return and withdraw";
+        if (fighter.IsInTrench)
+            return $"Orders: In the {fighter.TrenchRunTarget.DisplayName} trench";
+        if (fighter.TrenchRunTarget != null)
+            return $"Orders: Trench run on {fighter.TrenchRunTarget.DisplayName}";
 
-        return fighter.Target == null
-            ? "Orders: Patrolling"
+        if (fighter.Target == null)
+            return "Orders: Patrolling";
+        return fighter.IsDirected
+            ? $"Orders: Attack {fighter.Target.DisplayName}"
             : $"Orders: Engaging {fighter.Target.DisplayName}";
     }
 
@@ -804,13 +952,16 @@ internal sealed class TacticalBattleProjector
     /// </summary>
     /// <param name="battle">The battle being presented.</param>
     /// <param name="paused">Whether playback is paused.</param>
+    /// <param name="deploying">Whether the battle is holding while hull models load.</param>
     /// <returns>The clock text.</returns>
-    private static string BuildClock(TacticalSpaceBattle battle, bool paused)
+    private static string BuildClock(TacticalSpaceBattle battle, bool paused, bool deploying)
     {
         TimeSpan elapsed = TimeSpan.FromSeconds(battle.ElapsedSeconds);
         string clock = $"{(int)elapsed.TotalMinutes}:{elapsed.Seconds:00}";
         if (battle.IsComplete)
             return $"{clock}   Battle over";
+        if (deploying)
+            return $"{clock}   Fleets deploying";
         return paused ? $"{clock}   PAUSED" : clock;
     }
 
@@ -840,7 +991,14 @@ internal sealed class TacticalBattleProjector
     private static string DescribeForce(TacticalSpaceBattle battle, CombatSide side, string label)
     {
         int strength = Mathf.RoundToInt((float)battle.GetStrengthFraction(side) * 100f);
-        return $"{label}: {battle.CountShips(side)} ships, {battle.CountFighters(side)} squadrons ({strength}%)";
+        int ships = battle.CountShips(side);
+        int squadrons = battle.CountFighters(side);
+        string shipText = ships == 1 ? "1 ship" : $"{ships} ships";
+        string squadronText = squadrons == 1 ? "1 squadron" : $"{squadrons} squadrons";
+        // A battle station is named ahead of the fleet it stands behind.
+        TacticalBattleStation station = battle.GetStation(side);
+        string stationText = station == null ? string.Empty : $"{station.DisplayName}, ";
+        return $"{label}: {stationText}{shipText}, {squadronText} ({strength}%)";
     }
 
     /// <summary>
@@ -849,8 +1007,91 @@ internal sealed class TacticalBattleProjector
     /// <param name="battle">The battle being presented.</param>
     /// <param name="selection">The selected units.</param>
     /// <param name="focus">The inspected unit.</param>
-    /// <returns>The hint text.</returns>
+    /// <param name="superlaserArmed">Whether the player is choosing a superlaser target.</param>
+    /// <returns>The hint text, led by the reason retreat is unavailable when it is.</returns>
     private static string BuildHint(
+        TacticalSpaceBattle battle,
+        IReadOnlyCollection<TacticalBattleUnit> selection,
+        TacticalBattleUnit focus,
+        bool superlaserArmed
+    )
+    {
+        if (superlaserArmed && !battle.IsComplete)
+            return "Superlaser armed. Click an enemy capital ship to fire. Right-click cancels.";
+
+        string hint = BuildControlHint(battle, selection, focus);
+        if (
+            battle.IsComplete
+            || battle.PlayerSide == null
+            || battle.IsAutomatic(battle.PlayerSide.Value)
+            || battle.HasOrderedWithdrawal(battle.PlayerSide.Value)
+        )
+            return hint;
+
+        string block = DescribeWithdrawalBlock(battle.GetWithdrawalStatus(battle.PlayerSide.Value));
+        return block == null ? hint : $"{block} {hint}";
+    }
+
+    /// <summary>
+    /// Captions the retreat button for the current frame: the withdrawal in progress, the reason
+    /// retreat is unavailable, or the plain caption once the battle is over and the reason no
+    /// longer means anything.
+    /// </summary>
+    /// <param name="battleOver">Whether the battle has ended.</param>
+    /// <param name="withdrawing">Whether the player has ordered a withdrawal.</param>
+    /// <param name="status">The player's withdrawal status.</param>
+    /// <returns>The button caption.</returns>
+    internal static string GetRetreatCaption(
+        bool battleOver,
+        bool withdrawing,
+        TacticalWithdrawalStatus status
+    )
+    {
+        if (withdrawing)
+            return "Retreating";
+        return battleOver ? "Retreat" : GetRetreatLabel(status);
+    }
+
+    /// <summary>
+    /// Names the retreat button for the player's withdrawal status, so a greyed button says why.
+    /// </summary>
+    /// <param name="status">The player's withdrawal status.</param>
+    /// <returns>The button caption.</returns>
+    internal static string GetRetreatLabel(TacticalWithdrawalStatus status)
+    {
+        return status switch
+        {
+            TacticalWithdrawalStatus.Interdicted => "Interdicted",
+            TacticalWithdrawalStatus.NoHyperdrive => "No Hyperdrive",
+            TacticalWithdrawalStatus.NoEscapeRoute => "No Escape",
+            _ => "Retreat",
+        };
+    }
+
+    /// <summary>
+    /// Explains why retreat is unavailable, or returns null when it is available.
+    /// </summary>
+    /// <param name="status">The player's withdrawal status.</param>
+    /// <returns>The explanation, or null.</returns>
+    internal static string DescribeWithdrawalBlock(TacticalWithdrawalStatus status)
+    {
+        return status switch
+        {
+            TacticalWithdrawalStatus.Interdicted => "Retreat blocked by an enemy gravity well.",
+            TacticalWithdrawalStatus.NoHyperdrive => "No retreat: no hyperdrive in your force.",
+            TacticalWithdrawalStatus.NoEscapeRoute => "No retreat: no safe system to jump to.",
+            _ => null,
+        };
+    }
+
+    /// <summary>
+    /// Builds the control hint for the current selection and inspection state.
+    /// </summary>
+    /// <param name="battle">The battle being presented.</param>
+    /// <param name="selection">The selected units.</param>
+    /// <param name="focus">The inspected unit.</param>
+    /// <returns>The hint text.</returns>
+    private static string BuildControlHint(
         TacticalSpaceBattle battle,
         IReadOnlyCollection<TacticalBattleUnit> selection,
         TacticalBattleUnit focus
@@ -862,13 +1103,95 @@ internal sealed class TacticalBattleProjector
             return "Both sides are under automatic control.";
         if (battle.IsAutomatic(battle.PlayerSide.Value))
             return "Your forces are under automatic control.";
+        string stationHint = DescribeStationHint(battle, selection);
+        if (stationHint != null)
+            return stationHint;
         if (selection?.Count > 1)
-            return $"{selection.Count} ships selected. Right-click to move or attack.";
+            return DescribeSelectionHint(selection);
         if (selection?.Count == 1)
-            return "Right-click to move or attack.";
+            return selection.First().IsStarfighter
+                ? "Right-click an enemy to send the squadron after it."
+                : "Right-click to move or attack.";
         if (focus != null)
-            return "Click one of your ships to command it. Tab cycles your ships.";
-        return "Click a ship to inspect it. Drag to select several. Wheel zooms, right-drag orbits, middle-drag or WASD pans, Home reframes, Space pauses.";
+            return HasPlayerShips(battle)
+                ? "Click one of your units to command it. Tab cycles your ships."
+                : "Click one of your squadrons to command it.";
+        return "Click a unit to inspect and follow it. Drag to select several. Wheel zooms, right-drag orbits, WASD pans, Home reframes, Space pauses.";
+    }
+
+    /// <summary>
+    /// Tells the player what the selected squadrons can do about an enemy battle station: fly
+    /// its trench, with the chance of success, or nothing while a planetary shield protects it.
+    /// </summary>
+    /// <param name="battle">The battle being presented.</param>
+    /// <param name="selection">The selected units.</param>
+    /// <returns>
+    /// The hint, or null when no squadron is selected or no enemy station is in the battle.
+    /// </returns>
+    internal static string DescribeStationHint(
+        TacticalSpaceBattle battle,
+        IReadOnlyCollection<TacticalBattleUnit> selection
+    )
+    {
+        if (battle.PlayerSide == null || selection?.Any(unit => unit.IsStarfighter) != true)
+            return null;
+
+        TacticalBattleStation station = battle.GetStation(
+            battle.PlayerSide.Value == CombatSide.Attacker
+                ? CombatSide.Defender
+                : CombatSide.Attacker
+        );
+        if (station == null)
+            return null;
+        if (station.IsShielded)
+            return $"Right-click an enemy to attack. The {station.DisplayName} is shielded from fighters.";
+
+        int chance = Mathf.RoundToInt(
+            (float)battle.EstimateTrenchRunChance(selection, station) * 100f
+        );
+        return chance > 0
+            ? $"Right-click an enemy to attack, or the {station.DisplayName} for a trench run ({chance}% success)."
+            : $"Right-click an enemy to attack. A trench run on the {station.DisplayName} needs torpedoes.";
+    }
+
+    /// <summary>
+    /// Describes a multi-unit selection by what is in it and what a right-click will do.
+    /// </summary>
+    /// <param name="selection">The selected units.</param>
+    /// <returns>The hint text.</returns>
+    private static string DescribeSelectionHint(IReadOnlyCollection<TacticalBattleUnit> selection)
+    {
+        int squadrons = 0;
+        foreach (TacticalBattleUnit unit in selection)
+        {
+            if (unit.IsStarfighter)
+                squadrons++;
+        }
+
+        int ships = selection.Count - squadrons;
+        string shipText = ships == 1 ? "1 ship" : $"{ships} ships";
+        string squadronText = squadrons == 1 ? "1 squadron" : $"{squadrons} squadrons";
+        if (ships == 0)
+            return $"{squadronText} selected. Right-click an enemy to attack.";
+        if (squadrons == 0)
+            return $"{shipText} selected. Right-click to move or attack.";
+        return $"{shipText} and {squadronText} selected. Right-click to move or attack.";
+    }
+
+    /// <summary>
+    /// Returns whether the player still has a capital ship in the battle.
+    /// </summary>
+    /// <param name="battle">The battle being presented.</param>
+    /// <returns>True when a player capital ship is still in the battle.</returns>
+    private static bool HasPlayerShips(TacticalSpaceBattle battle)
+    {
+        foreach (TacticalBattleUnit unit in battle.Units)
+        {
+            if (unit.Side == battle.PlayerSide && !unit.IsStarfighter && unit.IsTargetable)
+                return true;
+        }
+
+        return false;
     }
 
     /// <summary>
