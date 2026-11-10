@@ -6,10 +6,22 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.SceneGraph
 {
     /// <summary>
+    /// Identifies the runtime fact changed by a scene node.
+    /// </summary>
+    internal enum SceneNodeChangeKind
+    {
+        Hierarchy,
+        Availability,
+        Ownership,
+    }
+
+    /// <summary>
     /// Base implementation of the <see cref="ISceneNode"/> interface.
     /// </summary>
     public abstract class BaseSceneNode : BaseGameEntity, ISceneNode
     {
+        internal event Action<BaseSceneNode, SceneNodeChangeKind> RuntimeStateChanged;
+
         // Parent Info.
         public string ParentInstanceID { get; set; }
 
@@ -81,6 +93,7 @@ namespace Rebellion.SceneGraph
         /// </summary>
         protected virtual void OnHierarchyChanged()
         {
+            RuntimeStateChanged?.Invoke(this, SceneNodeChangeKind.Hierarchy);
             foreach (ISceneNode child in EnumerateChildren())
                 ((BaseSceneNode)child).OnHierarchyChanged();
         }
@@ -90,6 +103,7 @@ namespace Rebellion.SceneGraph
         /// </summary>
         protected virtual void OnAvailabilityChanged()
         {
+            RuntimeStateChanged?.Invoke(this, SceneNodeChangeKind.Availability);
             foreach (ISceneNode child in EnumerateChildren())
                 ((BaseSceneNode)child).OnAvailabilityChanged();
         }
@@ -191,7 +205,10 @@ namespace Rebellion.SceneGraph
         /// <param name="ownerInstanceId">The owner Instance ID to set.</param>
         public void SetOwnerInstanceID(string ownerInstanceId)
         {
+            if (_ownerInstanceId == ownerInstanceId)
+                return;
             _ownerInstanceId = ownerInstanceId;
+            RuntimeStateChanged?.Invoke(this, SceneNodeChangeKind.Ownership);
         }
 
         /// <summary>

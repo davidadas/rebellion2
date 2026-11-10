@@ -79,7 +79,7 @@ public enum TacticalCombatControl
 /// Exposes authored tactical controls and viewport input without owning battle rules.
 /// </summary>
 [DisallowMultipleComponent]
-public sealed class TacticalCombatView : MonoBehaviour, IPointerDownHandler, IScrollHandler
+public sealed class TacticalCombatView : MonoBehaviour, IPointerDownHandler
 {
     [Serializable]
     public sealed class ControlBinding
@@ -104,6 +104,9 @@ public sealed class TacticalCombatView : MonoBehaviour, IPointerDownHandler, ISc
 
         [NonSerialized]
         public bool Selected;
+
+        [NonSerialized]
+        public bool Occupied = true;
     }
 
     [Serializable]
@@ -199,7 +202,7 @@ public sealed class TacticalCombatView : MonoBehaviour, IPointerDownHandler, ISc
     public TacticalCombatRenderer Renderer => _battleRenderer;
     public event Action<TacticalCombatControl> ControlRequested;
     public event Action<PointerEventData> PointerPressed;
-    public event Action<float> ZoomRequested;
+    public event Func<KeyCode, bool, bool> KeyboardRequested;
 
     /// <summary>
     /// Verifies authored references and subscribes each semantic control exactly once.
@@ -300,6 +303,76 @@ public sealed class TacticalCombatView : MonoBehaviour, IPointerDownHandler, ISc
                 return;
             }
     }
+
+    /// <summary>
+    /// Presents a native keyboard press or release on its frame-level image button.
+    /// </summary>
+    /// <param name="control">The addressed frame image.</param>
+    /// <param name="pressed">Whether this is a key press rather than a release.</param>
+    public void ApplyFrameKeyboardActivation(TacticalCombatControl control, bool pressed)
+    {
+        foreach (ControlBinding binding in _controls)
+            if (binding.Panel == TacticalCombatHudPanel.Frame && binding.Control == control)
+            {
+                binding.Button.ApplyKeyboardActivation(pressed);
+                return;
+            }
+    }
+
+    /// <summary>
+    /// Clears the two category strips before a new direct category activation.
+    /// </summary>
+    public void ClearCategoryKeyboardState()
+    {
+        foreach (ControlBinding binding in _controls)
+            if (
+                binding.Control
+                is >= TacticalCombatControl.ObjectGroup1
+                    and <= TacticalCombatControl.ObjectGroup8
+                    or >= TacticalCombatControl.FighterGroup1
+                    and <= TacticalCombatControl.FighterGroup4
+            )
+            {
+                binding.Button.ClearKeyboardArtwork();
+                binding.Selected = false;
+                if (_assets != null)
+                    SetButtonState(binding);
+            }
+    }
+
+    /// <summary>
+    /// Admits native frame and direct-command keys, including repeated key-down events, while the controller owns them.
+    /// </summary>
+    /// <param name="key">The native GUI event.</param>
+    /// <returns>Whether the battle consumed the keyboard transition.</returns>
+    public bool HandleKeyboardEvent(Event key)
+    {
+        if (
+            !isActiveAndEnabled
+            || key?.alt != false
+            || key.type is not EventType.KeyDown and not EventType.KeyUp
+        )
+            return false;
+        bool camera = TacticalCombatKeyboard.TryGetCameraControl(key.keyCode, out _);
+        bool category =
+            key.type == EventType.KeyDown
+            && TacticalCombatKeyboard.TryGetCameraCategory(key.keyCode, out _);
+        bool direct =
+            key.keyCode is KeyCode.Space or KeyCode.Tab
+            || TacticalCombatKeyboard.TryGetObjectCategoryControl(key.keyCode, out _);
+        if (
+            (!camera && !category && !direct)
+            || KeyboardRequested?.Invoke(key.keyCode, key.type == EventType.KeyDown) != true
+        )
+            return false;
+        key.Use();
+        return true;
+    }
+
+    /// <summary>
+    /// Forwards native battle keyboard events without synthesizing operating-system repeat intervals.
+    /// </summary>
+    private void OnGUI() => HandleKeyboardEvent(Event.current);
 
     /// <summary>
     /// Enables one semantic control according to the controller's live encounter assessment.
@@ -547,8 +620,9 @@ public sealed class TacticalCombatView : MonoBehaviour, IPointerDownHandler, ISc
             if (binding.Control == control)
             {
                 binding.Selected = selected;
+                binding.Occupied = occupied;
                 if (_assets != null)
-                    SetButtonState(binding, occupied);
+                    SetButtonState(binding);
             }
     }
 
@@ -556,10 +630,9 @@ public sealed class TacticalCombatView : MonoBehaviour, IPointerDownHandler, ISc
     /// Assigns one control's normal, selected, pressed, and disabled sprites.
     /// </summary>
     /// <param name="binding">The authored control.</param>
-    /// <param name="occupied">Whether a task-force category is populated.</param>
-    private static void SetButtonState(ControlBinding binding, bool occupied = true)
+    private static void SetButtonState(ControlBinding binding)
     {
-        bool empty = binding.ArtworkKey == "object-slot" && !occupied;
+        bool empty = binding.ArtworkKey == "object-slot" && !binding.Occupied;
         Sprite normal =
             empty ? binding.Disabled
             : binding.Selected ? binding.Down
@@ -669,11 +742,4 @@ public sealed class TacticalCombatView : MonoBehaviour, IPointerDownHandler, ISc
         )
             PointerPressed?.Invoke(eventData);
     }
-
-    /// <summary>
-    /// Routes zoom input while the pointer is over the battle viewport.
-    /// </summary>
-    /// <param name="eventData">The viewport scroll event.</param>
-    public void OnScroll(PointerEventData eventData) =>
-        ZoomRequested?.Invoke(eventData.scrollDelta.y);
 }

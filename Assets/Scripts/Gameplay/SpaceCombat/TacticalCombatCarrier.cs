@@ -48,15 +48,28 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Adds a squadron that enters the encounter inside this carrier.
+        /// Reserves an initial berth and schedules the first launch when a squadron enters the carrier.
         /// </summary>
         /// <param name="fighter">The initially docked squadron.</param>
-        public void AddDocked(TacticalCombatUnit fighter)
+        /// <param name="systemTime">The captured command time at attachment.</param>
+        /// <param name="random">The encounter's shared launch-timing stream.</param>
+        /// <returns>Whether the carrier has capacity for the squadron.</returns>
+        public bool AddDocked(
+            TacticalCombatUnit fighter,
+            float systemTime,
+            IRandomNumberProvider random
+        )
         {
+            if (_reserved >= Unit.FighterCapacity)
+                return false;
             _launchQueue.Add(fighter);
             _occupied++;
             _reserved++;
             fighter.CarrierID = Unit.InstanceID;
+            fighter.Status = TacticalCombatUnitStatus.Docked;
+            if (_nextLaunch == 0 || float.IsNaN(_nextLaunch))
+                _nextLaunch = (float)(5d + random.NextInt(0, 9) + systemTime);
+            return true;
         }
 
         /// <summary>
@@ -68,16 +81,16 @@ namespace Rebellion.Gameplay
         {
             if (_launchQueue.Count == 0 || !IsAvailable)
                 return;
-            if (_nextLaunch == 0)
+            if (_nextLaunch == 0 || float.IsNaN(_nextLaunch))
             {
-                _nextLaunch = systemTime + 5 + random.NextInt(0, 9);
+                _nextLaunch = (float)(5d + random.NextInt(0, 9) + systemTime);
                 return;
             }
             if (systemTime < _nextLaunch)
                 return;
             LaunchRequested?.Invoke(this, _launchQueue[0]);
             if (_occupied > 0)
-                _nextLaunch = systemTime + 5 + random.NextInt(0, 9);
+                _nextLaunch = (float)(5d + random.NextInt(0, 9) + systemTime);
         }
 
         /// <summary>

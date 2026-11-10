@@ -21,14 +21,18 @@ or otherwise redistribute `rebellion2-media`, `Assets/Content`, or any copyright
 4. Overlay `rebellion2-media/UnityAssets/` onto `rebellion2/Assets/`, preserving `.meta` files.
    This installs native Unity packages, including the main-menu planet, at their logical art
    paths.
-5. Open `rebellion2` in Unity.
-6. Run **Rebellion > Build > Build All UI**.
+5. Build the host vector library using the instructions in [Native vector math](NativeMath.md).
+6. Open `rebellion2` in Unity.
+7. Run **Rebellion > Build > Build All UI**.
 
 The copied content, models, Unity assets, all generated prefabs, and all generated scenes are local
 development artifacts and are ignored by Git. This includes the boot scene and cutscene playback
 assets. Manage the media checkout and refresh these local copies outside Unity.
 
 CI installs clean media mirrors automatically with `rsync --delete` before Unity builds and tests.
+The revision in `.github/media-revision` pins the content expected by this branch. Use that revision
+when refreshing local content; `Pack/` addresses resolve beneath the selected directory in
+`Assets/Content/Packs/`.
 
 ## Commands
 
@@ -63,11 +67,14 @@ runs. Closing a completed encounter applies its losses, component damage, fighte
 withdrawals through the shared combat-result pipeline. Surviving fighters without a carrier may
 remain at the encounter planet without changing its surface ownership or colonization.
 
-Select friendly groups with a click or drag. Right-click an enemy to designate a target, or show a
-navigation ring and right-click one of its markers to plot movement. Hold Shift to add or remove
-queued targets and waypoints. Drag with the right mouse button to orbit, drag with the middle button
-to pan, and scroll to zoom. Space or Escape pauses the battle; F focuses the selection and G groups
-selected units. Capital ships and starfighters form separate groups.
+The tactical frame uses a fixed 640x480 layout. Left-click to replace the current selection; hold
+Ctrl to extend or toggle it. Right-click addresses an object or visible navigation marker within
+the current command context. Use the category buttons or number keys 1-8 for object groups and
+Space for the nearest opposing object. The Pause button pauses and resumes the battle.
+
+The camera buttons and arrow keys rotate or tilt the view. Page Up and Page Down zoom; Home saves
+the primary camera and End restores it. Return focuses the current selection. F1-F12 open category
+camera views. Opening Options isolates battle input and returns to a paused encounter.
 
 `TacticalCombatSession` owns battle state and queued commands independently of Unity objects.
 `TacticalCombatFactory` captures campaign participants and the pack's shared definitions at entry.

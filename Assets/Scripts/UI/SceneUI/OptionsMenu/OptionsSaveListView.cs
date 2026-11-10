@@ -76,6 +76,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     private bool _suppressRenameCommit;
     private bool _pendingRenameFocus;
     private bool _canSaveGame;
+    private bool _canLoadGame;
     private bool _existingSaveSelected;
     private bool _controlsBound;
 
@@ -188,7 +189,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         if (data == null)
             throw new ArgumentNullException(nameof(data));
 
-        Render(data.SaveSlots, data.SelectedSlot, data.CanSave, resetScroll);
+        Render(data.SaveSlots, data.SelectedSlot, data.CanSave, resetScroll, data.CanLoad);
     }
 
     /// <summary>
@@ -198,11 +199,13 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <param name="selected">The selected row index, or -1.</param>
     /// <param name="canSaveState">Whether the host can save its current state.</param>
     /// <param name="resetScroll">Whether to show the top of the rebuilt list.</param>
+    /// <param name="canLoadState">Whether the host permits loading saved games.</param>
     public void Render(
         IReadOnlyList<OptionsSaveSlot> slots,
         int selected,
         bool canSaveState,
-        bool resetScroll
+        bool resetScroll,
+        bool canLoadState = true
     )
     {
         BindControls();
@@ -210,9 +213,10 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         bool existingSelected =
             selected >= 0 && selected < slots.Count && !slots[selected].IsCreateNew;
         _canSaveGame = canSaveState;
+        _canLoadGame = canLoadState;
         _existingSaveSelected = existingSelected;
         bool canSave = CanSaveCurrentEntry();
-        bool canLoad = existingSelected;
+        bool canLoad = canLoadState && existingSelected;
         _saveButton.interactable = canSave;
         _loadButton.interactable = canLoad;
         SetButtonDisabledVisual(_saveButton, _saveDisabledImage, canSave);
@@ -245,6 +249,8 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
             );
             row.sprite = index == selected ? _rowActiveSprite : _rowIdleSprite;
             row.color = Color.white;
+            if (row.TryGetComponent(out Button rowButton))
+                rowButton.interactable = canSaveState || canLoadState;
 
             RawImage icon = GetIcon(index);
             icon.texture = slot.FactionIcon;
@@ -314,6 +320,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
             date.alignment = TextAlignmentOptions.TopRight;
 
             Button delete = GetDelete(index);
+            delete.interactable = canSaveState || canLoadState;
             delete.gameObject.SetActive(!slot.IsCreateNew);
             UILayout.SetSourceRect(
                 (RectTransform)delete.transform,
@@ -669,6 +676,8 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// </summary>
     private void HandleLoadRequested()
     {
+        if (!_canLoadGame || !_existingSaveSelected)
+            return;
         LoadRequested?.Invoke();
     }
 

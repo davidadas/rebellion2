@@ -149,7 +149,19 @@ namespace Rebellion.Game.Units
 
         // Manufacturing Info.
         public int ManufacturingProgress { get; set; } = 0;
-        public ManufacturingStatus ManufacturingStatus { get; set; } = ManufacturingStatus.Building;
+        public ManufacturingStatus ManufacturingStatus
+        {
+            get => _manufacturingStatus;
+            set
+            {
+                if (_manufacturingStatus == value)
+                    return;
+                _manufacturingStatus = value;
+                OnAvailabilityChanged();
+            }
+        }
+
+        private ManufacturingStatus _manufacturingStatus = ManufacturingStatus.Building;
 
         public int RefinedMaterialProgress { get; set; }
         public int ProductionCapacity { get; set; }
@@ -691,6 +703,12 @@ namespace Rebellion.Game.Units
             }
             _starfighters.Add(starfighter);
         }
+
+        /// <summary>
+        /// Captures the current fighter roster for an admitted relationship transaction.
+        /// </summary>
+        /// <returns>A snapshot that can restore this roster if destination admission fails.</returns>
+        internal StarfighterRosterSnapshot CaptureStarfighterRoster() => new(_starfighters);
 
         /// <summary>
         /// Adds a regiment to the capital ship.

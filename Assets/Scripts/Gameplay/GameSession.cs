@@ -75,6 +75,7 @@ namespace Rebellion.Gameplay
                 throw new InvalidOperationException("Cannot manage a null game.");
 
             Game = game;
+            Game.ConfigureSpaceCombatEntries(_gameData.TacticalCombat);
             if (Game.Config == null)
             {
                 GameConfig config = _gameData.GameConfig.CreateCopy();

@@ -73,8 +73,8 @@ namespace Rebellion.Gameplay
         internal int CollisionRecoveryPhase { get; set; }
         public float Proximity =>
             (float)(
-                TacticalCombatGeometry.GetLength(Velocity) * 0.5
-                + CollisionRadius * 0.5555555820465088f
+                TacticalCombatGeometry.GetMovementLength(Velocity) * 0.5
+                + (double)CollisionRadius * 0.5555555820465088f
             );
 
         /// <summary>
@@ -165,9 +165,12 @@ namespace Rebellion.Gameplay
                 ship.StarfighterCapacity
                 - ship.GetChildren<Starfighter>(includeDisabled: true).Count
                 + ship.GetChildren<Starfighter>().Count(SpaceCombatQueries.IsActiveStarfighter);
-            MaximumTurnRate = definition?.MaximumTurnRate ?? 0;
+            MaximumTurnRate =
+                definition?.PresentationIndex == 21
+                    ? (float)((double)1.5707964f * 0.033333335f)
+                    : 0;
             HalfHeight = 3;
-            CollisionRadius = 3.6f;
+            CollisionRadius = definition?.PresentationIndex == 21 ? 19 : 3.6f;
             Heading = Vector3.UnitZ;
             Status =
                 IsBattleStation && ship.ManufacturingStatus != ManufacturingStatus.Complete
@@ -180,15 +183,6 @@ namespace Rebellion.Gameplay
                     definition.HullWidth,
                     definition.HullHeight,
                     definition.HullDepth
-                );
-                HalfHeight = Math.Max(definition.HullHeight * 0.5f, 0.5f);
-                CollisionRadius = Math.Max(
-                    (float)
-                        Math.Sqrt(
-                            (double)definition.HullWidth * definition.HullWidth
-                                + (double)definition.HullDepth * definition.HullDepth
-                        ),
-                    0.5f
                 );
             }
             DesiredHeading = Heading;
@@ -241,7 +235,8 @@ namespace Rebellion.Gameplay
             Weapons = new TacticalCombatWeapons(
                 strengths,
                 new float[] { fighter.LaserRange, fighter.IonRange, 0 },
-                0
+                0,
+                true
             );
             _torpedoStrength = fighter.Torpedoes * fighter.MaxSquadronSize;
             TorpedoRange = fighter.TorpedoRange;

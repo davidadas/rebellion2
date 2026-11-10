@@ -57,8 +57,16 @@ namespace Rebellion.Gameplay
         public TacticalShipSystem System { get; }
         public TacticalSystemEventKind Kind { get; }
         public bool IsRepair => Kind == TacticalSystemEventKind.Repair;
-        public float AttackDelay { get; }
-        public float MovementDelay { get; }
+
+        /// <summary>
+        /// Gets the attack timer increment, or null when its value is unresolved.
+        /// </summary>
+        public float? AttackDelay { get; }
+
+        /// <summary>
+        /// Gets the movement timer increment, or null when its value is unresolved.
+        /// </summary>
+        public float? MovementDelay { get; }
         public int DischargedArcMask { get; }
 
         /// <summary>
@@ -70,13 +78,13 @@ namespace Rebellion.Gameplay
         {
             System = system;
             Kind = isRepair ? TacticalSystemEventKind.Repair : TacticalSystemEventKind.Damage;
-            AttackDelay = 0;
-            MovementDelay = 0;
+            AttackDelay = null;
+            MovementDelay = null;
             DischargedArcMask = 0;
         }
 
         /// <summary>
-        /// Creates an ion disruption event with temporary delays and discharged batteries.
+        /// Creates a disruption event with explicit timer increments and discharged batteries.
         /// </summary>
         /// <param name="attackDelay">The additional attack delay in seconds.</param>
         /// <param name="movementDelay">The additional movement delay in seconds.</param>
@@ -87,6 +95,19 @@ namespace Rebellion.Gameplay
             Kind = TacticalSystemEventKind.Disruption;
             AttackDelay = attackDelay;
             MovementDelay = movementDelay;
+            DischargedArcMask = dischargedArcMask;
+        }
+
+        /// <summary>
+        /// Creates a disruption event with known battery changes and unresolved timer increments.
+        /// </summary>
+        /// <param name="dischargedArcMask">The batteries whose charge must be cleared.</param>
+        public TacticalSystemEvent(int dischargedArcMask)
+        {
+            System = TacticalShipSystem.Weapons;
+            Kind = TacticalSystemEventKind.Disruption;
+            AttackDelay = null;
+            MovementDelay = null;
             DischargedArcMask = dischargedArcMask;
         }
     }
@@ -396,7 +417,7 @@ namespace Rebellion.Gameplay
         /// <returns>The unit's maneuver rating, capped at nine.</returns>
         public float GetTurnBudget(float commandBudget, float tractorRestraint)
         {
-            if (GetMovementBudget(commandBudget, tractorRestraint) == 0)
+            if (GetAvailableMovement(commandBudget, tractorRestraint) == 0)
                 return 1;
             double value = IsFighter ? (double)_turnBonus + 1 : (double)commandBudget + _turnBonus;
             return (float)Math.Min(value, 9);
@@ -491,7 +512,7 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Reduces a positive disruption delay before storing the remaining seconds.
+        /// Stores elapsed seconds before reducing a positive disruption delay.
         /// </summary>
         /// <param name="delay">The stored disruption delay in seconds.</param>
         /// <param name="elapsedMilliseconds">The elapsed repair interval in milliseconds.</param>
@@ -500,8 +521,9 @@ namespace Rebellion.Gameplay
         {
             if (!(delay > 0))
                 return delay;
-            double remaining = delay - (double)elapsedMilliseconds * 0.001f;
-            return remaining < 0 || double.IsNaN(remaining) ? 0 : (float)remaining;
+            float seconds = (float)((double)elapsedMilliseconds * 0.001f);
+            float remaining = delay - seconds;
+            return remaining < 0 || float.IsNaN(remaining) ? 0 : remaining;
         }
 
         /// <summary>
@@ -575,7 +597,7 @@ namespace Rebellion.Gameplay
             {
                 double progress = 100.0 / previousShields * ((double)previousShields - Shields);
                 float chance = progress < 1 ? 1 : (float)progress;
-                if (random.NextInt(0, 101) <= chance)
+                if (!(random.NextInt(0, 101) > chance))
                     SystemEventRequested?.Invoke(
                         new TacticalSystemEvent(TacticalShipSystem.Shields, false)
                     );
@@ -650,18 +672,18 @@ namespace Rebellion.Gameplay
         /// <param name="random">The battle's random-number stream.</param>
         private void RequestHullHitEvent(float previousHull, IRandomNumberProvider random)
         {
-            float score = (float)(
-                ((double)Hull - previousHull) * 100 / previousHull + random.NextInt(0, 101)
-            );
-            if (score <= 50)
+            double score =
+                ((double)Hull - previousHull) * 100 / previousHull + random.NextInt(0, 101);
+            if (!(score > 50))
                 return;
+            float roundedScore = (float)score;
             TacticalShipSystem system =
-                score <= 65 ? TacticalShipSystem.Shields
-                : score <= 80 ? TacticalShipSystem.Weapons
-                : score <= 90 ? TacticalShipSystem.TractorBeam
-                : score <= 95 ? TacticalShipSystem.Engines
+                roundedScore <= 65 ? TacticalShipSystem.Shields
+                : roundedScore <= 80 ? TacticalShipSystem.Weapons
+                : roundedScore <= 90 ? TacticalShipSystem.TractorBeam
+                : roundedScore <= 95 ? TacticalShipSystem.Engines
                 : TacticalShipSystem.Hyperdrive;
-            if (score > 100)
+            if (roundedScore > 100)
             {
                 Hull = 0;
                 return;
@@ -670,27 +692,31 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Requests a temporary disruption for each point of ion damage past the shields.
+        /// Requests known battery changes after ion damage while retaining unresolved timer increments.
         /// </summary>
         /// <param name="excessDamage">The ion strength past the shields.</param>
         /// <param name="random">The battle's random-number stream.</param>
         private void RequestIonDisruption(float excessDamage, IRandomNumberProvider random)
         {
-            float attackDelay = 0;
-            float movementDelay = 0;
+            float firstAccumulator = 0;
+            float secondAccumulator = 0;
             int arcs = 0;
             while (excessDamage > 0)
             {
                 int component = random.NextInt(1, 11);
                 if (component == 1)
-                    attackDelay += random.NextInt(30, 51);
+                    firstAccumulator = (float)((double)random.NextInt(30, 51) + firstAccumulator);
                 else if (component == 2)
-                    movementDelay += random.NextInt(30, 51);
+                    secondAccumulator = (float)((double)random.NextInt(30, 51) + secondAccumulator);
                 else
                     arcs |= 1 << ((component - 3) >> 1);
-                excessDamage -= 1;
+                excessDamage = (float)((double)excessDamage - 1);
             }
-            SystemEventRequested?.Invoke(new TacticalSystemEvent(attackDelay, movementDelay, arcs));
+            int dischargedArcMask =
+                (unchecked((uint)BitConverter.SingleToInt32Bits(firstAccumulator)) == 1 ? 1 : 0)
+                | (unchecked((uint)BitConverter.SingleToInt32Bits(secondAccumulator)) == 1 ? 2 : 0)
+                | ((arcs & 3) << 2);
+            SystemEventRequested?.Invoke(new TacticalSystemEvent(dischargedArcMask));
         }
 
         /// <summary>

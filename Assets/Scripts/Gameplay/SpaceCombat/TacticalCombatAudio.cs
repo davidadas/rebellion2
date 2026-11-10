@@ -14,6 +14,7 @@ namespace Rebellion.Gameplay
     public sealed class TacticalCombatAudio : IDisposable
     {
         private readonly HashSet<int> _authoredMessages;
+        private bool _playbackAvailable = true;
         public TacticalCombatNotifications Notifications { get; }
         public IReadOnlyList<TacticalCombatSoundClip> Clips { get; }
         public Func<
@@ -88,7 +89,7 @@ namespace Rebellion.Gameplay
             Notifications = new TacticalCombatNotifications(
                 messages.Values.ToArray(),
                 random,
-                clock ?? (() => unchecked((uint)Environment.TickCount)),
+                clock ?? CreatePresentationClock(),
                 isPaused ?? (() => false),
                 Play
             );
@@ -118,12 +119,36 @@ namespace Rebellion.Gameplay
         public void Update() => Notifications.Update();
 
         /// <summary>
+        /// Releases active sounds when playback becomes unavailable and permits future sounds on return.
+        /// Pending notifications retain their queue state and continue their normal status updates.
+        /// </summary>
+        /// <param name="available">Whether this encounter can acquire sound playback.</param>
+        public void SetPlaybackAvailable(bool available)
+        {
+            if (_playbackAvailable == available)
+                return;
+            _playbackAvailable = available;
+            if (!available)
+                Notifications.ReleasePlaybacks();
+        }
+
+        /// <summary>
         /// Stops the encounter's active notification playbacks and discards pending requests.
         /// </summary>
         public void Dispose()
         {
             Notifications.Dispose();
             Playback = null;
+        }
+
+        /// <summary>
+        /// Starts an unscaled monotonic millisecond clock for this notification queue.
+        /// </summary>
+        /// <returns>The provider used for relative pending-message lifetimes.</returns>
+        private static Func<uint> CreatePresentationClock()
+        {
+            System.Diagnostics.Stopwatch clock = System.Diagnostics.Stopwatch.StartNew();
+            return () => unchecked((uint)clock.ElapsedMilliseconds);
         }
 
         /// <summary>
@@ -134,7 +159,7 @@ namespace Rebellion.Gameplay
         /// <returns>The owned playback, or null when audio playback is unavailable.</returns>
         private ITacticalCombatNotificationPlayback Play(TacticalCombatSoundClip clip, bool loop)
         {
-            return Playback?.Invoke(clip, loop);
+            return _playbackAvailable ? Playback?.Invoke(clip, loop) : null;
         }
 
         /// <summary>

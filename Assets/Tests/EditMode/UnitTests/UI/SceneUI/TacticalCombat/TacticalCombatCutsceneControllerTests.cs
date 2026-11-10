@@ -190,6 +190,213 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         /// <summary>
         /// Records release of a fake video owned through the public playback contract.
         /// </summary>
+        [Test]
+        public void Dispose_ActiveModalInput_ReleasesBeforeBattleReactivation()
+        {
+            TacticalCombatSession session = CreateSession();
+            List<string> events = new();
+            using TacticalCombatMoviePresentation presentation = new(
+                active => events.Add(active ? "show" : "hide"),
+                () => events.Add("enter"),
+                () => events.Add("leave")
+            );
+            Playback playback = new();
+            TacticalCombatCutsceneController controller = new(
+                session,
+                (_, _) => playback,
+                presentation.SetActive,
+                _ => Assert.Fail("Playback should not fail."),
+                completed => completed()
+            );
+            session.ActiveAttackRun.ApplyState(TacticalCombatAttackRunState.Succeeded);
+            events.Clear();
+
+            controller.Dispose();
+
+            CollectionAssert.AreEqual(new[] { "leave", "show" }, events);
+            Assert.AreEqual(1, playback.DisposeCount);
+            Assert.IsFalse(session.IsPaused);
+        }
+
+        [Test]
+        public void TacticalCombatCutsceneController_PlaybackFailure_RetainsModalInputUntilDeferredAcknowledgement()
+        {
+            TacticalCombatSession session = CreateSession();
+            List<string> events = new();
+            using TacticalCombatMoviePresentation presentation = new(
+                active => events.Add(active ? "show" : "hide"),
+                () => events.Add("enter"),
+                () => events.Add("leave")
+            );
+            Queue<Action> posted = new();
+            Exception reported = null;
+            using TacticalCombatCutsceneController controller = new(
+                session,
+                (_, _) => throw new InvalidOperationException("Decoder unavailable."),
+                presentation.SetActive,
+                failure => reported = failure,
+                posted.Enqueue
+            );
+            session.ActiveAttackRun.ApplyState(TacticalCombatAttackRunState.Succeeded);
+            Assert.IsNotNull(reported);
+            Assert.IsTrue(presentation.IsActive);
+            Assert.IsTrue(session.IsPaused);
+            events.Clear();
+
+            posted.Dequeue()();
+
+            CollectionAssert.AreEqual(new[] { "leave", "show" }, events);
+            Assert.IsFalse(presentation.IsActive);
+            Assert.IsFalse(session.IsPaused);
+        }
+
+        [Test]
+        public void TacticalCombatCutsceneController_PlaybackCompletion_ReleasesModalInputBeforeBattleReactivation()
+        {
+            TacticalCombatSession session = CreateSession();
+            List<string> events = new();
+            using TacticalCombatMoviePresentation presentation = new(
+                active => events.Add(active ? "show" : "hide"),
+                () => events.Add("enter"),
+                () => events.Add("leave")
+            );
+            Action completed = null;
+            using TacticalCombatCutsceneController controller = new(
+                session,
+                (_, callback) =>
+                {
+                    completed = callback;
+                    return new Playback();
+                },
+                presentation.SetActive,
+                _ => Assert.Fail("Playback should not fail."),
+                callback => callback()
+            );
+            session.ActiveAttackRun.ApplyState(TacticalCombatAttackRunState.Succeeded);
+            events.Clear();
+
+            completed();
+
+            CollectionAssert.AreEqual(new[] { "leave", "show" }, events);
+            Assert.IsFalse(presentation.IsActive);
+        }
+
+        [Test]
+        public void Dispose_PendingFailedMovie_ReleasesInputOnceBeforeStaleAcknowledgement()
+        {
+            TacticalCombatSession session = CreateSession();
+            List<string> events = new();
+            using TacticalCombatMoviePresentation presentation = new(
+                active => events.Add(active ? "show" : "hide"),
+                () => events.Add("enter"),
+                () => events.Add("leave")
+            );
+            Queue<Action> posted = new();
+            Exception reported = null;
+            TacticalCombatCutsceneController controller = new(
+                session,
+                (_, _) => throw new InvalidOperationException("Decoder unavailable."),
+                presentation.SetActive,
+                failure => reported = failure,
+                posted.Enqueue
+            );
+            session.ActiveAttackRun.ApplyState(TacticalCombatAttackRunState.Succeeded);
+            Assert.IsNotNull(reported);
+            events.Clear();
+
+            controller.Dispose();
+            posted.Dequeue()();
+
+            CollectionAssert.AreEqual(new[] { "leave", "show" }, events);
+            Assert.IsFalse(presentation.IsActive);
+            Assert.IsFalse(session.IsPaused);
+        }
+
+        [TestCase("completed")]
+        [TestCase("cancelled")]
+        [TestCase("failed")]
+        public void TacticalCombatCutsceneController_MovieReleasePath_DoesNotResumePreMovieAudio(
+            string releasePath
+        )
+        {
+            TacticalCombatSession session = CreateSession();
+            using TacticalCombatAudio audio = new(
+                Array.Empty<TacticalCombatSoundDefinition>(),
+                new SystemRandomProvider(42),
+                new[]
+                {
+                    new TacticalCombatNotificationDefinition
+                    {
+                        MessageID = 32,
+                        Variants = new() { new() { Path = "voice" } },
+                    },
+                },
+                clock: () => 0
+            );
+            List<NotificationPlayback> sounds = new();
+            audio.Playback = (_, _) =>
+            {
+                NotificationPlayback sound = new();
+                sounds.Add(sound);
+                return sound;
+            };
+            audio.EnqueueNotification(32);
+            using TacticalCombatMoviePresentation presentation = new(
+                active => audio.SetPlaybackAvailable(active),
+                () => { },
+                () => { }
+            );
+            Action completed = null;
+            Queue<Action> posted = new();
+            using TacticalCombatCutsceneController controller = new(
+                session,
+                (_, done) =>
+                {
+                    if (releasePath == "failed")
+                        throw new InvalidOperationException("Decoder unavailable.");
+                    completed = done;
+                    return new Playback();
+                },
+                presentation.SetActive,
+                _ => Assert.AreEqual("failed", releasePath),
+                posted.Enqueue
+            );
+
+            session.ActiveAttackRun.ApplyState(TacticalCombatAttackRunState.Succeeded);
+
+            Assert.IsFalse(sounds[0].IsPlaying);
+            Assert.AreEqual(1, sounds[0].StopCount);
+            audio.EnqueueNotification(32);
+            Assert.AreEqual(1, sounds.Count);
+            if (releasePath == "completed")
+                completed();
+            else if (releasePath == "cancelled")
+                controller.Dispose();
+            else
+                posted.Dequeue()();
+            Assert.IsFalse(presentation.IsActive);
+            audio.EnqueueNotification(32);
+            Assert.AreEqual(2, sounds.Count);
+            Assert.IsFalse(sounds[0].IsPlaying);
+            Assert.IsTrue(sounds[1].IsPlaying);
+            Assert.AreEqual(1, sounds[0].StopCount);
+        }
+
+        private sealed class NotificationPlayback : ITacticalCombatNotificationPlayback
+        {
+            public bool IsPlaying { get; private set; } = true;
+            public int StopCount { get; private set; }
+
+            /// <summary>
+            /// Stops this independently owned notification playback.
+            /// </summary>
+            public void Stop()
+            {
+                StopCount++;
+                IsPlaying = false;
+            }
+        }
+
         private sealed class Playback : IDisposable
         {
             public int DisposeCount { get; private set; }

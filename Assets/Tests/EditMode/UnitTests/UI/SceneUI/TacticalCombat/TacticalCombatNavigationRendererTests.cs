@@ -84,6 +84,17 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             Assert.IsFalse(_subject.TryPick(ray, 10, out _));
         }
 
+        [UnityTest]
+        public IEnumerator TryGetWorldPosition_HiddenRegisteredPoint_ResolvesWithoutShowingItsRing()
+        {
+            Assert.IsTrue(_subject.TryGetWorldPosition(Vector3N.Zero, out Vector3 world));
+
+            Assert.AreEqual(_root.transform.position, world);
+            Assert.AreEqual(0, _root.GetComponentsInChildren<MeshRenderer>().Length);
+            Assert.IsFalse(_subject.TryGetWorldPosition(new Vector3N(1, 2, 3), out _));
+            yield return null;
+        }
+
         [Test]
         public void UpdateSelection_RequestedRoute_HighlightsSelectedNavigationPoint()
         {

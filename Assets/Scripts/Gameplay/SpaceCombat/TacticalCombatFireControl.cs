@@ -123,9 +123,10 @@ namespace Rebellion.Gameplay
                 TacticalWeaponArc arc = GetFiringArc(unit, candidate.Position - unit.Position);
                 if (!unit.Weapons.IsReady(arc))
                     continue;
-                float distance = TacticalCombatGeometry.GetLength(
-                    candidate.Position - unit.Position
-                );
+                float distance = (float)
+                    TacticalCombatGeometry.MeasureTargetDistance(
+                        candidate.Position - unit.Position
+                    );
                 ScoreOpportunity(unit, candidate, arc, TacticalWeaponType.LaserCannon, distance);
                 ScoreOpportunity(unit, candidate, arc, TacticalWeaponType.Turbolaser, distance);
             }
@@ -207,7 +208,8 @@ namespace Rebellion.Gameplay
                 (double)delta.X * delta.X + (double)delta.Y * delta.Y + (double)delta.Z * delta.Z
             );
             float range = GetMaximumRange(unit);
-            if (!((double)range * range >= squaredDistance))
+            double squaredRange = (double)range * range;
+            if (double.IsNaN(squaredRange) || squaredRange < squaredDistance)
                 return 2;
             ClearScores();
             TacticalWeaponArc arc = GetFiringArc(unit, delta);
@@ -217,9 +219,11 @@ namespace Rebellion.Gameplay
             for (int weapon = 0; weapon < 3; weapon++)
             {
                 TacticalWeaponType type = (TacticalWeaponType)weapon;
+                float weaponRange = unit.Weapons.GetRange(type);
                 if (
                     unit.Weapons.GetStrength(arc, type) == 0
-                    || !(unit.Weapons.GetRange(type) >= distance)
+                    || float.IsNaN(weaponRange)
+                    || weaponRange < distance
                 )
                     continue;
                 _scores[(int)arc, weapon] = unit.Weapons.GetTargetDamage(
@@ -322,9 +326,7 @@ namespace Rebellion.Gameplay
                 weapon == TacticalWeaponType.LaserCannon
                 && unit.IsFighter
                 && !target.IsFighter
-                && target.Systems.Shields == 0
-                && TacticalCombatGeometry.GetLength(target.Position - unit.Position)
-                    <= unit.TorpedoRange
+                && CanFireTorpedo(unit, target)
             )
                 ShotRequested?.Invoke(
                     new TacticalCombatShot(
@@ -335,6 +337,23 @@ namespace Rebellion.Gameplay
                     )
                 );
             unit.Weapons.Discharge((TacticalWeaponArc)arc, weapon);
+        }
+
+        /// <summary>
+        /// Checks the target's shield ratio and retained distance before a squadron's torpedo discharge.
+        /// </summary>
+        /// <param name="unit">The firing squadron.</param>
+        /// <param name="target">The capital ship receiving the laser discharge.</param>
+        /// <returns>Whether the shield and range comparisons admit an accompanying torpedo.</returns>
+        private static bool CanFireTorpedo(TacticalCombatUnit unit, TacticalCombatUnit target)
+        {
+            double shields = target.Systems.GetShieldFraction();
+            if (shields != 0 && !double.IsNaN(shields))
+                return false;
+            double distance = TacticalCombatGeometry.MeasureTargetDistance(
+                target.Position - unit.Position
+            );
+            return double.IsNaN(distance) || !(distance > unit.TorpedoRange);
         }
 
         /// <summary>

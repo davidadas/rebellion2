@@ -3886,6 +3886,26 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsNull(empireFleet.Movement);
         }
 
+        [TestCase(0, 1)]
+        [TestCase(1, 0)]
+        [TestCase(2, 1)]
+        [TestCase(3, 1)]
+        public void BeginTacticalCombat_RetainedEntryFaction_CapturesEnteringForce(
+            int factionSelector,
+            int expectedFaction
+        )
+        {
+            (_, SpaceCombatCommands commands, CapitalShip attacker) = CreateTacticalEncounter();
+            attacker.GetParentOfType<Planet>().SpaceCombatEntryFaction = factionSelector;
+
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+
+            Assert.AreEqual(
+                expectedFaction,
+                battle.GetSide(battle.EnteringSide.Value).FactionIndex
+            );
+        }
+
         [Test]
         public void BeginTacticalCombat_AuthoredEncounter_KeepsCampaignPendingAndUnitsUnchanged()
         {
@@ -4320,6 +4340,7 @@ namespace Rebellion.Tests.Gameplay
             (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
                 CreateTacticalEncounter();
             TacticalCombatSession battle = commands.BeginTacticalCombat();
+            PrepareBatteries(battle);
             TacticalCombatUnit target = battle.Units.Single(unit => unit.Side != battle.PlayerSide);
             battle.SetTarget(
                 battle.Groups.Single(group => group.Side == battle.PlayerSide),
@@ -4354,6 +4375,7 @@ namespace Rebellion.Tests.Gameplay
         {
             (_, SpaceCombatCommands commands, _) = CreateTacticalEncounter();
             TacticalCombatSession battle = commands.BeginTacticalCombat();
+            PrepareBatteries(battle);
             TacticalCombatUnit target = battle.Units.Single(unit => unit.Side != battle.PlayerSide);
             battle.SetTarget(
                 battle.Groups.Single(group => group.Side == battle.PlayerSide),
@@ -4480,6 +4502,7 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(fighter, attacker);
             attacker.StarfighterCapacity = 0;
             TacticalCombatSession battle = commands.BeginTacticalCombat();
+            PrepareBatteries(battle);
             TacticalCombatGroup group = battle.GetGroup(battle.GetUnit(attacker.InstanceID));
             battle.SetOrder(group, TacticalCombatOrder.HoldFire);
             for (
@@ -4511,6 +4534,69 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsNull(
                 result.FighterRecovery.Single(recovery => recovery.Fighter == fighter).Carrier
             );
+        }
+
+        [Test]
+        public void CompleteTacticalCombat_OutgoingCarrierPayload_AdmitsFinalIncomingSurvivor()
+        {
+            (GameRoot game, SpaceCombatCommands commands, CapitalShip first) =
+                CreateTacticalEncounter();
+            Planet planet = first.GetParentOfType<Planet>();
+            CapitalShip second = (CapitalShip)first.CreateCopy();
+            second.InstanceID = "survivor-carrier";
+            second.TypeID = first.TypeID;
+            second.StarfighterCapacity = 1;
+            game.AttachNode(second, first.GetParent());
+            Starfighter[] fighters = new Starfighter[2];
+            for (int index = 0; index < fighters.Length; index++)
+            {
+                Starfighter fighter = (Starfighter)
+                    TestContent.Data.Starfighters.First().CreateCopy();
+                fighter.InstanceID = $"surviving-fighter-{index}";
+                fighter.OwnerInstanceID = first.OwnerInstanceID;
+                fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+                fighter.CurrentSquadronSize = fighter.MaxSquadronSize;
+                fighter.Hyperdrive = 1;
+                fighter.LaserCannon = 0;
+                fighter.Torpedoes = 0;
+                fighters[index] = fighter;
+            }
+            first.StarfighterCapacity = 1;
+            game.AttachNode(fighters[0], first);
+            first.StarfighterCapacity = 0;
+            game.AttachNode(fighters[1], second);
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+            PrepareBatteries(battle);
+            battle.SetTarget(
+                battle.GetGroup(battle.GetUnit(first.InstanceID)),
+                battle.Units.Single(unit => unit.Side != battle.PlayerSide)
+            );
+            for (int frame = 0; frame < 12000 && !battle.IsComplete; frame++)
+                battle.Advance(50);
+            Assert.IsTrue(battle.IsComplete);
+            SpaceCombatResult pending = battle.CreateResult();
+            Assert.AreSame(
+                second,
+                pending.FighterRecovery.Single(item => item.Fighter == fighters[0]).Carrier
+            );
+            Assert.IsNull(
+                pending.FighterRecovery.Single(item => item.Fighter == fighters[1]).Carrier
+            );
+
+            commands.CompleteTacticalCombat(battle);
+
+            Assert.AreSame(second, fighters[0].GetParent());
+            Assert.AreSame(planet, fighters[1].GetParent());
+            CollectionAssert.AreEqual(new[] { fighters[0] }, second.GetChildren<Starfighter>());
+            Assert.AreSame(
+                fighters[0],
+                game.GetSceneNodeByInstanceID<Starfighter>(fighters[0].InstanceID)
+            );
+            Assert.AreSame(
+                fighters[1],
+                game.GetSceneNodeByInstanceID<Starfighter>(fighters[1].InstanceID)
+            );
+            Assert.IsFalse(commands.HasPendingDecision);
         }
 
         [Test]
@@ -4669,6 +4755,20 @@ namespace Rebellion.Tests.Gameplay
                 0,
                 range,
             };
+        }
+
+        /// <summary>
+        /// Establishes ready batteries for campaign-result scenarios that require queued weapon hits.
+        /// </summary>
+        /// <param name="battle">The captured encounter whose firing precondition is required.</param>
+        private static void PrepareBatteries(TacticalCombatSession battle)
+        {
+            foreach (TacticalCombatUnit unit in battle.Units)
+            {
+                for (int arc = 0; arc < 4; arc++)
+                    unit.Weapons.ClearBattery((TacticalWeaponArc)arc);
+                unit.Weapons.Advance(1, 1);
+            }
         }
 
         /// <summary>

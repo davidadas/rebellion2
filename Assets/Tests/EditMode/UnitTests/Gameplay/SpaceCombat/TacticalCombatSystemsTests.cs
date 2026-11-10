@@ -143,16 +143,75 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(100, systems.Hull);
         }
 
-        [Test]
-        public void ApplyHit_IonDamagePastShields_RequestsBatteryDisruption()
+        [TestCase(1, 0)]
+        [TestCase(2, 0)]
+        [TestCase(3, 4)]
+        [TestCase(4, 4)]
+        [TestCase(5, 8)]
+        [TestCase(6, 8)]
+        [TestCase(7, 0)]
+        [TestCase(8, 0)]
+        [TestCase(9, 0)]
+        [TestCase(10, 0)]
+        public void ApplyHit_IonComponentSelection_RequestsKnownBatteriesWithoutTimerValues(
+            int selector,
+            int expectedMask
+        )
         {
             TacticalCombatSystems systems = CreateSystems();
             List<TacticalSystemEvent> events = new();
             systems.SystemEventRequested += events.Add;
-            systems.ApplyHit(TacticalWeaponType.IonCannon, 101, 1, 1, new SequenceRandom(3), null);
+            SequenceRandom random =
+                selector <= 2 ? new SequenceRandom(selector, 35) : new SequenceRandom(selector);
+
+            systems.ApplyHit(TacticalWeaponType.IonCannon, 101, 1, 1, random, null);
 
             Assert.AreEqual(1, events.Count);
-            Assert.AreEqual(1, events[0].DischargedArcMask);
+            Assert.AreEqual(TacticalSystemEventKind.Disruption, events[0].Kind);
+            Assert.AreEqual(expectedMask, events[0].DischargedArcMask);
+            Assert.IsNull(events[0].AttackDelay);
+            Assert.IsNull(events[0].MovementDelay);
+            CollectionAssert.AreEqual(
+                selector <= 2 ? new[] { (1, 11), (30, 51) } : new[] { (1, 11) },
+                random.Requests
+            );
+        }
+
+        [Test]
+        public void ApplyHit_MixedIonComponentSelections_PreservesDrawOrderAndKnownBatteryMask()
+        {
+            TacticalCombatSystems systems = CreateSystems();
+            List<TacticalSystemEvent> events = new();
+            systems.SystemEventRequested += events.Add;
+            SequenceRandom random = new(1, 30, 2, 50, 3, 5, 7, 10);
+
+            systems.ApplyHit(TacticalWeaponType.IonCannon, 106, 1, 1, random, null);
+
+            Assert.AreEqual(1, events.Count);
+            Assert.AreEqual(12, events[0].DischargedArcMask);
+            Assert.IsNull(events[0].AttackDelay);
+            Assert.IsNull(events[0].MovementDelay);
+            CollectionAssert.AreEqual(
+                new[] { (1, 11), (30, 51), (1, 11), (30, 51), (1, 11), (1, 11), (1, 11), (1, 11) },
+                random.Requests
+            );
+        }
+
+        [Test]
+        public void ApplyHit_UnorderedIonExcess_RequestsUnresolvedDisruptionWithoutComponentDraws()
+        {
+            TacticalCombatSystems systems = CreateSystems();
+            List<TacticalSystemEvent> events = new();
+            systems.SystemEventRequested += events.Add;
+            SequenceRandom random = new();
+
+            systems.ApplyHit(TacticalWeaponType.IonCannon, float.NaN, 1, 1, random, null);
+
+            Assert.AreEqual(1, events.Count);
+            Assert.AreEqual(0, events[0].DischargedArcMask);
+            Assert.IsNull(events[0].AttackDelay);
+            Assert.IsNull(events[0].MovementDelay);
+            Assert.IsEmpty(random.Requests);
         }
 
         [Test]
@@ -231,6 +290,23 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(0d, systems.GetMovementRatio(9, 0));
             Assert.AreEqual(9d, systems.GetMovementBudget(9, 0));
+        }
+
+        [TestCase(false, 5f)]
+        [TestCase(true, 6f)]
+        public void GetTurnBudget_PositiveMovementBelowStoredPrecision_RetainsManeuverability(
+            bool isFighter,
+            float expected
+        )
+        {
+            TacticalCombatSystems systems = new(isFighter, 100, 100, 0, 0, 0, 0, 5, 0, 1, 0);
+            for (int index = 0; index < 3; index++)
+                systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+
+            float turnBudget = systems.GetTurnBudget(float.Epsilon, 0);
+
+            Assert.AreEqual(0, systems.GetMovementBudget(float.Epsilon, 0));
+            Assert.AreEqual(expected, turnBudget);
         }
 
         [Test]
@@ -431,7 +507,19 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Advance_RepeatedDisruptionDecay_RetainsElapsedProductBeforeSubtraction()
+        public void ApplyDisruption_ExplicitEvent_UsesDefinedTimerIncrements()
+        {
+            TacticalCombatSystems systems = CreateSystems();
+            TacticalSystemEvent change = new(11, 17, 4);
+
+            systems.ApplyDisruption(change.AttackDelay.Value, change.MovementDelay.Value);
+
+            Assert.AreEqual(11, systems.AttackDelay);
+            Assert.AreEqual(17, systems.MovementDelay);
+        }
+
+        [Test]
+        public void Advance_RepeatedDisruptionDecay_UsesStoredSinglePrecisionElapsedProduct()
         {
             TacticalCombatSystems systems = CreateSystems();
             systems.ApplyDisruption(30, 30);
@@ -439,8 +527,119 @@ namespace Rebellion.Tests.Gameplay
             for (int index = 0; index < 29; index++)
                 systems.Advance(1000, new SequenceRandom());
 
-            Assert.AreEqual(0x3f7fffff, BitConverter.SingleToInt32Bits(systems.AttackDelay));
-            Assert.AreEqual(0x3f7fffff, BitConverter.SingleToInt32Bits(systems.MovementDelay));
+            Assert.AreEqual(1, systems.AttackDelay);
+            Assert.AreEqual(1, systems.MovementDelay);
+        }
+
+        [Test]
+        public void Advance_DisruptionSecondsProduct_RoundsBeforeSubtractingDelay()
+        {
+            TacticalCombatSystems systems = CreateSystems();
+            systems.ApplyDisruption(2, 2);
+
+            systems.Advance(1000, new SequenceRandom());
+
+            Assert.AreEqual(1, systems.AttackDelay);
+            Assert.AreEqual(1, systems.MovementDelay);
+        }
+
+        [TestCase(TacticalWeaponType.LaserCannon)]
+        [TestCase(TacticalWeaponType.IonCannon)]
+        [TestCase(TacticalWeaponType.Turbolaser)]
+        [TestCase(TacticalWeaponType.Torpedo)]
+        public void ApplyHit_UnorderedShieldDamageProgress_RequestsShieldDamage(
+            TacticalWeaponType weapon
+        )
+        {
+            TacticalCombatSystems systems = new(
+                false,
+                100,
+                100,
+                float.PositiveInfinity,
+                0,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0
+            );
+            List<TacticalSystemEvent> events = new();
+            systems.SystemEventRequested += events.Add;
+
+            TacticalCombatImpactKind impact = systems.ApplyHit(
+                weapon,
+                1,
+                1,
+                1,
+                new SequenceRandom(100),
+                null
+            );
+
+            Assert.AreEqual(TacticalCombatImpactKind.Shield, impact);
+            Assert.AreEqual(1, events.Count);
+            Assert.AreEqual(TacticalShipSystem.Shields, events[0].System);
+            Assert.AreEqual(TacticalSystemEventKind.Damage, events[0].Kind);
+            Assert.IsNull(events[0].AttackDelay);
+            Assert.IsNull(events[0].MovementDelay);
+        }
+
+        [Test]
+        public void ApplyHit_HullDamageScoreJustAboveThreshold_RequestsShieldDamage()
+        {
+            TacticalCombatSystems systems = new(
+                false,
+                100.00001f,
+                100.00001f,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0
+            );
+            List<TacticalSystemEvent> events = new();
+            systems.SystemEventRequested += events.Add;
+
+            systems.ApplyHit(TacticalWeaponType.LaserCannon, 1, 1, 1, new SequenceRandom(51), null);
+
+            Assert.AreEqual(1, events.Count);
+            Assert.AreEqual(TacticalShipSystem.Shields, events[0].System);
+            Assert.AreEqual(TacticalSystemEventKind.Damage, events[0].Kind);
+        }
+
+        [Test]
+        public void ApplyHit_UnorderedHullDamageScore_DoesNotRequestComponentDamage()
+        {
+            TacticalCombatSystems systems = new(
+                false,
+                float.PositiveInfinity,
+                float.PositiveInfinity,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0
+            );
+            List<TacticalSystemEvent> events = new();
+            systems.SystemEventRequested += events.Add;
+
+            systems.ApplyHit(
+                TacticalWeaponType.LaserCannon,
+                1,
+                1,
+                1,
+                new SequenceRandom(100),
+                null
+            );
+
+            Assert.IsEmpty(events);
+            Assert.AreEqual(float.PositiveInfinity, systems.Hull);
         }
 
         [Test]
@@ -682,6 +881,12 @@ namespace Rebellion.Tests.Gameplay
         private sealed class SequenceRandom : IRandomNumberProvider
         {
             private readonly Queue<int> values;
+            private readonly List<(int Minimum, int Maximum)> _requests = new();
+
+            /// <summary>
+            /// Gets the ordered bounds requested for integer draws.
+            /// </summary>
+            public IReadOnlyList<(int Minimum, int Maximum)> Requests => _requests;
 
             /// <summary>
             /// Captures a test's ordered integer draws.
@@ -709,6 +914,7 @@ namespace Rebellion.Tests.Gameplay
             /// <returns>The next authored value.</returns>
             public int NextInt(int min, int max)
             {
+                _requests.Add((min, max));
                 int value = values.Dequeue();
                 Assert.That(value, Is.GreaterThanOrEqualTo(min).And.LessThan(max));
                 return value;

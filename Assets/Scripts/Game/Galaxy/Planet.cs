@@ -1260,6 +1260,12 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
+        /// Captures the current fighter roster for an admitted relationship transaction.
+        /// </summary>
+        /// <returns>A snapshot that can restore this roster if destination admission fails.</returns>
+        internal StarfighterRosterSnapshot CaptureStarfighterRoster() => new(_starfighters);
+
+        /// <summary>
         /// Returns all officers on the planet.
         /// </summary>
         /// <returns>A list of officers currently on this planet.</returns>

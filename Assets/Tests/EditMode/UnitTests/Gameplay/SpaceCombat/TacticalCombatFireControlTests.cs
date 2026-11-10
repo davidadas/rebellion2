@@ -138,6 +138,8 @@ namespace Rebellion.Tests.Gameplay
             };
             ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 137, 0, 0, 0, 100 };
             TacticalCombatUnit source = new(ship, CombatSide.Attacker, 1);
+            source.Weapons.ClearBattery(TacticalWeaponArc.Forward);
+            source.Weapons.Advance(1, 1);
             TacticalCombatUnit target = new(
                 new Starfighter
                 {
@@ -161,6 +163,116 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(0x41b86b98, BitConverter.SingleToInt32Bits(shots.Single().Strength));
         }
+
+        [Test]
+        public void AcquireTargets_TorpedoDistanceJustAboveRange_DoesNotRoundIntoRange()
+        {
+            TacticalCombatUnit source = CreateTorpedoFighter(10);
+            TacticalCombatUnit target = CreateCapitalUnit(0, 0, 0);
+            target.Position = new Vector3(10, 0.001f, 0);
+            TacticalCombatGroup group = new(10, new[] { source }, Vector3.UnitZ);
+            group.SetTarget(target);
+            TacticalCombatSpatialIndex index = new(new[] { source, target });
+            TacticalCombatFireControl fireControl = new();
+            List<TacticalCombatShot> shots = new();
+            fireControl.ShotRequested += shots.Add;
+
+            fireControl.AcquireTargets(source, group, index, new FixedRandomProvider(new[] { 0d }));
+
+            Assert.AreEqual(TacticalWeaponType.LaserCannon, shots.Single().Weapon);
+        }
+
+        [TestCase(0f, 0)]
+        [TestCase(5f, 0)]
+        [TestCase(float.NaN, 100)]
+        public void AcquireTargets_ZeroOrUnorderedShieldRatio_AllowsAccompanyingTorpedo(
+            float shields,
+            int shieldLimit
+        )
+        {
+            TacticalCombatUnit source = CreateTorpedoFighter(10);
+            TacticalCombatUnit target = CreateCapitalUnit(0, 0, 0, shieldLimit);
+            target.Position = new Vector3(0, 0, 10);
+            target.Systems.RestorePools(1000, shields);
+            TacticalCombatGroup group = new(10, new[] { source }, Vector3.UnitZ);
+            group.SetTarget(target);
+            TacticalCombatSpatialIndex index = new(new[] { source, target });
+            TacticalCombatFireControl fireControl = new();
+            List<TacticalCombatShot> shots = new();
+            fireControl.ShotRequested += shots.Add;
+
+            fireControl.AcquireTargets(source, group, index, new FixedRandomProvider(new[] { 0d }));
+
+            CollectionAssert.AreEqual(
+                new[] { TacticalWeaponType.LaserCannon, TacticalWeaponType.Torpedo },
+                shots.Select(shot => shot.Weapon).ToArray()
+            );
+        }
+
+        [Test]
+        public void AcquireTargets_FreshArmedCapitalBatteries_DoNotConsumeFiringOpportunity()
+        {
+            CapitalShip ship = new()
+            {
+                InstanceID = "source",
+                MaxHullStrength = 1000,
+                CurrentHullStrength = 1000,
+            };
+            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 3, 3, 3, 3, 100 };
+            TacticalCombatUnit source = new(ship, CombatSide.Attacker, 1);
+            TacticalCombatUnit target = CreateFighter(1000001, new Vector3(0, 0, 10));
+            TacticalCombatGroup group = new(10, new[] { source }, Vector3.UnitZ);
+            group.SetTarget(target);
+            TacticalCombatSpatialIndex index = new(new[] { source, target });
+            TacticalCombatFireControl fireControl = new();
+            List<TacticalCombatShot> shots = new();
+            fireControl.ShotRequested += shots.Add;
+            SystemRandomProvider random = new(42);
+
+            fireControl.AcquireTargets(source, group, index, random);
+
+            Assert.IsEmpty(shots);
+            Assert.AreEqual(0, random.CallCount);
+        }
+
+        [Test]
+        public void AcquireTargets_UnorderedDesignatedDistance_RetainsTargetForWeaponLanes()
+        {
+            TacticalCombatUnit source = CreateFiringFighter();
+            TacticalCombatUnit target = CreateFighter(1000001, new Vector3(0, float.NaN, 10));
+            TacticalCombatGroup group = new(10, new[] { source }, Vector3.UnitZ);
+            group.SetTarget(target);
+            TacticalCombatSpatialIndex index = new(new[] { source, target });
+            TacticalCombatFireControl fireControl = new();
+            List<TacticalCombatShot> shots = new();
+            fireControl.ShotRequested += shots.Add;
+
+            fireControl.AcquireTargets(source, group, index, new FixedRandomProvider(new[] { 0d }));
+
+            Assert.AreSame(target, shots.Single().Target);
+            Assert.AreEqual(TacticalWeaponType.LaserCannon, shots[0].Weapon);
+        }
+
+        /// <summary>
+        /// Creates a squadron with laser cannons and a finite torpedo range.
+        /// </summary>
+        /// <param name="range">The torpedo range in tactical distance units.</param>
+        /// <returns>The armed tactical squadron.</returns>
+        private static TacticalCombatUnit CreateTorpedoFighter(int range) =>
+            new(
+                new Starfighter
+                {
+                    InstanceID = "source",
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                    LaserCannon = 3,
+                    LaserRange = 100,
+                    Torpedoes = 1,
+                    TorpedoRange = range,
+                },
+                CombatSide.Attacker,
+                2
+            );
 
         /// <summary>
         /// Captures an active armed squadron without directional secondary batteries.
@@ -186,14 +298,21 @@ namespace Rebellion.Tests.Gameplay
         /// <param name="lasers">The laser count per battery.</param>
         /// <param name="ions">The ion count per battery.</param>
         /// <param name="turbolasers">The turbolaser count per battery.</param>
+        /// <param name="shieldLimit">The complete shield pool.</param>
         /// <returns>The campaign-backed tactical capital ship.</returns>
-        private static TacticalCombatUnit CreateCapitalUnit(int lasers, int ions, int turbolasers)
+        private static TacticalCombatUnit CreateCapitalUnit(
+            int lasers,
+            int ions,
+            int turbolasers,
+            int shieldLimit = 0
+        )
         {
             CapitalShip ship = new()
             {
                 InstanceID = "source",
                 MaxHullStrength = 1000,
                 CurrentHullStrength = 1000,
+                MaxShieldStrength = shieldLimit,
             };
             ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[]
             {
@@ -219,7 +338,11 @@ namespace Rebellion.Tests.Gameplay
                 turbolasers,
                 100,
             };
-            return new TacticalCombatUnit(ship, CombatSide.Attacker, 1);
+            TacticalCombatUnit unit = new(ship, CombatSide.Attacker, 1);
+            for (int arc = 0; arc < 4; arc++)
+                unit.Weapons.ClearBattery((TacticalWeaponArc)arc);
+            unit.Weapons.Advance(1, 1);
+            return unit;
         }
 
         /// <summary>

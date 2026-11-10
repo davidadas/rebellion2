@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using Rebellion.Util.Mathematics;
 
 namespace Rebellion.Gameplay
 {
@@ -97,7 +98,7 @@ namespace Rebellion.Gameplay
             );
             if (dot > 1)
                 dot = 1;
-            if (!(dot >= -1))
+            if (dot < -1)
                 dot = -1;
             return (float)Math.Acos(dot);
         }
@@ -120,33 +121,23 @@ namespace Rebellion.Gameplay
             out float appliedAngle
         )
         {
+            if (elapsedMilliseconds == 0 || float.IsNaN(elapsedMilliseconds))
+            {
+                appliedAngle = 0;
+                return heading;
+            }
             float angle = GetHeadingAngle(heading, targetHeading);
             appliedAngle = angle;
             if (angle == 0 || float.IsNaN(angle))
                 return heading;
 
-            double side =
-                -(double)heading.Z * targetHeading.X
-                + (double)targetHeading.Z * heading.X
-                + (double)targetHeading.Y * heading.Y;
-            double signedAngle = side < 0 || double.IsNaN(side) ? -angle : angle;
-            double ratio = (double)turnRate * elapsedMilliseconds / ((double)angle * 1000);
-            if (ratio >= 1)
-            {
-                appliedAngle = (float)signedAngle;
-                return targetHeading;
-            }
-
-            double turn = ratio * signedAngle;
-            appliedAngle = (float)turn;
-            float cosine = (float)Math.Cos(turn);
-            float sine = (float)Math.Sin(turn);
-            return Normalize(
-                new Vector3(
-                    (float)((double)heading.X * cosine - (double)sine * heading.Z),
-                    heading.Y,
-                    (float)((double)heading.X * sine + (double)cosine * heading.Z)
-                )
+            return NativeVectorMath.Turn(
+                heading,
+                targetHeading,
+                turnRate,
+                angle,
+                elapsedMilliseconds,
+                out appliedAngle
             );
         }
 
@@ -158,6 +149,16 @@ namespace Rebellion.Gameplay
         public static Vector3 Normalize(Vector3 vector)
         {
             return Normalize(vector, GetLength(vector));
+        }
+
+        /// <summary>
+        /// Normalizes a movement vector with a 53-bit magnitude and a retained reciprocal scale.
+        /// </summary>
+        /// <param name="vector">The movement vector to normalize.</param>
+        /// <returns>The normalized vector, preserving a zero or unordered magnitude.</returns>
+        internal static Vector3 NormalizeMovement(Vector3 vector)
+        {
+            return Normalize(vector, GetMovementLength(vector));
         }
 
         /// <summary>
@@ -185,13 +186,22 @@ namespace Rebellion.Gameplay
         /// <returns>The normalized direction, preserving a zero or unordered direction.</returns>
         internal static Vector3 NormalizeWithStoredScale(Vector3 heading)
         {
-            float length = (float)
+            return NormalizeWithStoredScale(heading, GetMovementLength(heading));
+        }
+
+        /// <summary>
+        /// Measures movement magnitude with 53-bit arithmetic, adding Y and Z squares before X.
+        /// </summary>
+        /// <param name="vector">The movement vector to measure.</param>
+        /// <returns>The magnitude rounded to a float.</returns>
+        internal static float GetMovementLength(Vector3 vector)
+        {
+            return (float)
                 Math.Sqrt(
-                    (double)heading.Y * heading.Y
-                        + (double)heading.Z * heading.Z
-                        + (double)heading.X * heading.X
+                    (double)vector.Y * vector.Y
+                        + (double)vector.Z * vector.Z
+                        + (double)vector.X * vector.X
                 );
-            return NormalizeWithStoredScale(heading, length);
         }
 
         /// <summary>
@@ -226,18 +236,60 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Measures a target separation in coordinate order without storing the resulting magnitude.
+        /// </summary>
+        /// <param name="delta">The target position relative to the firing unit.</param>
+        /// <returns>The retained target distance before single-precision rounding.</returns>
+        internal static double MeasureTargetDistance(Vector3 delta)
+        {
+            return Math.Sqrt(
+                (double)delta.X * delta.X + (double)delta.Y * delta.Y + (double)delta.Z * delta.Z
+            );
+        }
+
+        /// <summary>
+        /// Measures a tractor separation with retained differences and stored horizontal scratch values.
+        /// </summary>
+        /// <param name="source">The tractor source position.</param>
+        /// <param name="target">The target position.</param>
+        /// <returns>The float distance after 53-bit products, ordered Y/Z/X addition, and square root.</returns>
+        public static float GetTractorDistance(Vector3 source, Vector3 target)
+        {
+            double z = (double)source.Z - target.Z;
+            float storedZ = (float)z;
+            double y = (double)source.Y - target.Y;
+            double x = (double)source.X - target.X;
+            float storedX = (float)x;
+            return (float)Math.Sqrt(y * y + z * storedZ + x * storedX);
+        }
+
+        /// <summary>
+        /// Measures recovery separation with float stores after differences, squares, and ordered sums.
+        /// </summary>
+        /// <param name="position">The recovering unit's position.</param>
+        /// <param name="destination">The carrier entrance position.</param>
+        /// <returns>The single-precision square root of the stored Y/Z/X squared distance.</returns>
+        public static float GetRecoveryDistance(Vector3 position, Vector3 destination)
+        {
+            float x = (float)((double)position.X - destination.X);
+            float y = (float)((double)position.Y - destination.Y);
+            float z = (float)((double)position.Z - destination.Z);
+            float squaredY = (float)((double)y * y);
+            float squaredZ = (float)((double)z * z);
+            float squaredX = (float)((double)x * x);
+            float yz = (float)((double)squaredY + squaredZ);
+            float squaredDistance = (float)((double)yz + squaredX);
+            return MathF.Sqrt(squaredDistance);
+        }
+
+        /// <summary>
         /// Measures a vector's three-dimensional length with a single final float rounding.
         /// </summary>
         /// <param name="vector">The vector to measure.</param>
         /// <returns>The vector's length.</returns>
         public static float GetLength(Vector3 vector)
         {
-            return (float)
-                Math.Sqrt(
-                    (double)vector.X * vector.X
-                        + (double)vector.Z * vector.Z
-                        + (double)vector.Y * vector.Y
-                );
+            return ExtendedVectorLength.Measure(vector.X, vector.Y, vector.Z);
         }
     }
 }

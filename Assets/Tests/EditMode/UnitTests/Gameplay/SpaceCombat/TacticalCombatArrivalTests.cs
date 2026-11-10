@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -233,6 +234,102 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(initialZ, presentation.Poses[0].Position.Z);
             Assert.AreEqual(100, presentation.Poses.Last().Position.Z);
             Assert.IsFalse(arrival.IsComplete);
+        }
+
+        [TestCase(0, 2, 1f, unchecked((int)0xc387c71c))]
+        [TestCase(1, 3, 1f, unchecked((int)0xc3ab4290))]
+        [TestCase(2, 4, 1f, unchecked((int)0xc3ac9188))]
+        [TestCase(3, 3, 1f, unchecked((int)0xc3130852))]
+        [TestCase(0, 2, -0.3f, unchecked((int)0x43537778))]
+        [TestCase(1, 3, -0.3f, unchecked((int)0x4368c18a))]
+        [TestCase(2, 4, -0.3f, unchecked((int)0x43698a85))]
+        [TestCase(3, 3, -0.3f, unchecked((int)0x432e1c19))]
+        public void Advance_StoredScalarStages_ProducesExactPresentationPosition(
+            int selector,
+            int frames,
+            float laneZ,
+            int expectedBits
+        )
+        {
+            Presentation presentation = new();
+            TacticalCombatArrival arrival = new(
+                CombatSide.Attacker,
+                new[] { Member(4 + selector) },
+                new Vector3(0, 0, laneZ),
+                presentation,
+                _ => { }
+            );
+
+            for (int frame = 0; frame < frames; frame++)
+                Assert.IsFalse(arrival.Advance(500));
+
+            Vector4 position = presentation.Poses.Last().Position;
+            Assert.AreEqual(expectedBits, BitConverter.SingleToInt32Bits(position.Z));
+            Assert.AreEqual(10, position.X);
+            Assert.AreEqual(20, position.Y);
+            Assert.AreEqual(-1, position.W);
+        }
+
+        [Test]
+        public void Advance_FractionalFrames_StoresScaledDeltaAndAccumulatedTime()
+        {
+            Presentation presentation = new();
+            TacticalCombatArrival arrival = Create(presentation, CombatSide.Attacker, Member(4));
+
+            for (int frame = 0; frame < 10; frame++)
+                Assert.IsFalse(arrival.Advance(0.1f));
+
+            Assert.AreEqual(
+                0x3ecccccd,
+                BitConverter.SingleToInt32Bits(arrival.ElapsedMilliseconds)
+            );
+            Assert.AreEqual(
+                unchecked((int)0xc395ffff),
+                BitConverter.SingleToInt32Bits(presentation.Poses.Last().Position.Z)
+            );
+        }
+
+        [Test]
+        public void Advance_TimeRoundsToCompletion_SnapsBeforeClearingStrobe()
+        {
+            Presentation presentation = new();
+            TacticalCombatArrivalMember member = Member(4);
+            TacticalCombatArrival arrival = Create(presentation, CombatSide.Attacker, member);
+            for (int frame = 0; frame < 7; frame++)
+                Assert.IsFalse(arrival.Advance(500));
+
+            bool complete = arrival.Advance(BitConverter.Int32BitsToSingle(0x4379ffff));
+
+            Assert.IsTrue(complete);
+            Assert.AreEqual(1500, arrival.ElapsedMilliseconds);
+            Assert.AreEqual(member.Position, presentation.Poses.Last().Position);
+            Assert.AreEqual("strobe:False", presentation.Events.Last());
+        }
+
+        [TestCase(1f, true)]
+        [TestCase(-1f, false)]
+        public void Advance_UnorderedTime_PreservesLaneDependentPositionComparison(
+            float laneZ,
+            bool unorderedPosition
+        )
+        {
+            Presentation presentation = new();
+            TacticalCombatArrival arrival = new(
+                CombatSide.Attacker,
+                new[] { Member(4) },
+                new Vector3(0, 0, laneZ),
+                presentation,
+                _ => { }
+            );
+
+            Assert.IsFalse(arrival.Advance(float.NaN));
+
+            Assert.IsTrue(float.IsNaN(arrival.ElapsedMilliseconds));
+            float z = presentation.Poses.Last().Position.Z;
+            if (unorderedPosition)
+                Assert.IsTrue(float.IsNaN(z));
+            else
+                Assert.AreEqual(100, z);
         }
 
         /// <summary>

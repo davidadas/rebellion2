@@ -234,6 +234,62 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(1, _played[0].StopCount);
         }
 
+        [Test]
+        public void ReleasePlaybacks_ActiveGroups_StopsResourcesBeforeRemovingQueueRecords()
+        {
+            uint effect = _notifications.Enqueue(0);
+            uint advisor = _notifications.Enqueue(32);
+            uint message = _notifications.Enqueue(286);
+
+            _notifications.ReleasePlaybacks();
+
+            Assert.AreEqual(3, _played.Count);
+            foreach (Playback playback in _played)
+            {
+                Assert.AreEqual(1, playback.StopCount);
+                Assert.IsFalse(playback.IsPlaying);
+            }
+            Assert.IsTrue(_notifications.IsActive(effect));
+            Assert.IsTrue(_notifications.IsActive(advisor));
+            Assert.IsTrue(_notifications.IsActive(message));
+            _notifications.Update();
+            Assert.IsFalse(_notifications.IsActive(effect));
+            Assert.IsFalse(_notifications.IsActive(advisor));
+            Assert.IsFalse(_notifications.IsActive(message));
+        }
+
+        [Test]
+        public void ReleasePlaybacks_RepeatedRelease_DoesNotStopReleasedHandleTwice()
+        {
+            _notifications.Enqueue(32);
+
+            _notifications.ReleasePlaybacks();
+            _notifications.ReleasePlaybacks();
+            _notifications.Dispose();
+
+            Assert.AreEqual(1, _played[0].StopCount);
+        }
+
+        [Test]
+        public void ReleasePlaybacks_DeferredRequest_PreservesPendingQueueAndSchedulingState()
+        {
+            _notifications.Enqueue(32);
+            uint pending = _notifications.Enqueue(33);
+            _notifications.Enabled = false;
+
+            _notifications.ReleasePlaybacks();
+            _notifications.Update();
+
+            Assert.AreEqual(1, _played.Count);
+            Assert.IsFalse(_notifications.IsActive(pending));
+            Assert.IsFalse(_notifications.Enabled);
+            _notifications.Enabled = true;
+            _notifications.Update();
+            Assert.AreEqual(2, _played.Count);
+            Assert.IsTrue(_notifications.IsActive(pending));
+            StringAssert.StartsWith("33-", _played[1].Path);
+        }
+
         /// <summary>
         /// Starts and records an owned playback through the scheduler's public playback boundary.
         /// </summary>

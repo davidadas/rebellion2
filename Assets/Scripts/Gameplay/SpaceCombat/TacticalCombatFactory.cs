@@ -334,7 +334,11 @@ namespace Rebellion.Gameplay
                     random,
                     () => TacticalCombatRandom.GetCalendarSeed(_localClock())
                 ),
-                personnelHostInstanceIDs: personnelHostInstanceIDs
+                personnelHostInstanceIDs: personnelHostInstanceIDs,
+                enteringSide: factionDefinitions[0].FactionIndex
+                == (planet.SpaceCombatEntryFaction == 1 ? 0 : 1)
+                    ? CombatSide.Attacker
+                    : CombatSide.Defender
             );
         }
 

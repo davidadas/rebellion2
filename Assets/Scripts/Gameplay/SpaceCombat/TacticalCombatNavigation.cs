@@ -32,7 +32,7 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Finds the closest authored lattice point with registration order resolving equal distances.
+        /// Finds an authored lattice point using retained distances and a stored winning threshold.
         /// </summary>
         /// <param name="position">The requested navigation position.</param>
         /// <returns>The nearest lattice position.</returns>
@@ -42,15 +42,14 @@ namespace Rebellion.Gameplay
             Vector3 selected = Vector3.Zero;
             foreach (Vector3 point in _waypoints)
             {
-                Vector3 delta = point - position;
-                float distance = (float)(
-                    (double)delta.Y * delta.Y
-                    + (double)delta.Z * delta.Z
-                    + (double)delta.X * delta.X
-                );
-                if (distance < best)
+                double deltaZ = (double)point.Z - position.Z;
+                double deltaY = (double)point.Y - position.Y;
+                float deltaX = (float)((double)point.X - position.X);
+                double distance =
+                    (deltaY * deltaY + deltaZ * (float)deltaZ) + (double)deltaX * deltaX;
+                if (double.IsNaN(distance) || float.IsNaN(best) || distance < best)
                 {
-                    best = distance;
+                    best = (float)distance;
                     selected = point;
                 }
             }
@@ -111,13 +110,13 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Selects the furthest positive projection along a maneuver direction.
+        /// Selects a positive designated projection or the greatest opposing spatial projection.
         /// </summary>
         /// <param name="candidates">The ordered target candidates.</param>
         /// <param name="group">The requesting group.</param>
         /// <param name="direction">The maneuver's directional projection.</param>
         /// <param name="fighters">The required category, or null for designated targets.</param>
-        /// <returns>The directional target, or null when no projection is positive.</returns>
+        /// <returns>The directional target, or null when the candidate root has no qualifying projection.</returns>
         private static TacticalCombatUnit SelectDirectional(
             IReadOnlyList<TacticalCombatUnit> candidates,
             TacticalCombatGroup group,
@@ -126,26 +125,52 @@ namespace Rebellion.Gameplay
         )
         {
             TacticalCombatUnit selected = null;
-            float best = 0;
+            float best = fighters.HasValue ? -float.MaxValue : 0;
             if (direction == Vector3.Zero)
                 direction = group.SideLane;
-            direction = TacticalCombatGeometry.Normalize(direction);
+            if (fighters.HasValue)
+                direction = TacticalCombatGeometry.NormalizeWithStoredScale(
+                    direction,
+                    TacticalCombatGeometry.GetLength(direction)
+                );
+            else
+            {
+                double length = Math.Sqrt(
+                    ((double)direction.Z * direction.Z + (double)direction.Y * direction.Y)
+                        + (double)direction.X * direction.X
+                );
+                if (length > 0)
+                {
+                    double inverse = 1.0 / length;
+                    direction = new Vector3(
+                        (float)(inverse * direction.X),
+                        (float)(inverse * direction.Y),
+                        (float)(inverse * direction.Z)
+                    );
+                }
+            }
             foreach (TacticalCombatUnit candidate in candidates)
             {
                 if (
-                    !candidate.IsTargetable
-                    || candidate.Side == group.Side
-                    || fighters.HasValue && candidate.IsFighter != fighters.Value
+                    fighters.HasValue
+                    && (
+                        !candidate.IsTargetable
+                        || candidate.IsBattleStation
+                        || candidate.Side == group.Side
+                        || candidate.IsFighter != fighters.Value
+                    )
                 )
                     continue;
-                float score = (float)(
-                    (double)candidate.Position.X * direction.X
-                    + (double)candidate.Position.Y * direction.Y
-                    + (double)candidate.Position.Z * direction.Z
-                );
+                double score = fighters.HasValue
+                    ? candidate.Position.X * direction.X
+                        + candidate.Position.Y * direction.Y
+                        + candidate.Position.Z * direction.Z
+                    : (double)candidate.Position.X * direction.X
+                        + (double)candidate.Position.Y * direction.Y
+                        + (double)candidate.Position.Z * direction.Z;
                 if (score > best)
                 {
-                    best = score;
+                    best = (float)score;
                     selected = candidate;
                 }
             }

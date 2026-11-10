@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
@@ -86,6 +87,108 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 Assert.AreEqual(new Vector2(22, 15), icon.sizeDelta);
                 Assert.IsNotNull(icon.GetComponent<HoverTooltipRegion>());
             }
+        }
+
+        [TestCase(KeyCode.PageUp)]
+        [TestCase(KeyCode.Space)]
+        [TestCase(KeyCode.Alpha1)]
+        [TestCase(KeyCode.Alpha8)]
+        [TestCase(KeyCode.Tab)]
+        public void HandleKeyboardEvent_RepeatedNativePresses_PreservesEveryPressAndTheRelease(
+            KeyCode nativeKey
+        )
+        {
+            TacticalCombatView view = _prefab.GetComponent<TacticalCombatView>();
+            int presses = 0;
+            int releases = 0;
+            view.KeyboardRequested += (key, pressed) =>
+            {
+                Assert.AreEqual(nativeKey, key);
+                if (pressed)
+                    presses++;
+                else
+                    releases++;
+                return true;
+            };
+            for (int index = 0; index < 3; index++)
+            {
+                Event key = new() { type = EventType.KeyDown, keyCode = nativeKey };
+                Assert.IsTrue(view.HandleKeyboardEvent(key));
+                Assert.AreEqual(EventType.Used, key.type);
+            }
+
+            Assert.IsTrue(
+                view.HandleKeyboardEvent(new Event { type = EventType.KeyUp, keyCode = nativeKey })
+            );
+
+            Assert.AreEqual(3, presses);
+            Assert.AreEqual(1, releases);
+        }
+
+        [Test]
+        public void HandleKeyboardEvent_ControllerDeclinesOwnership_LeavesNativeEventUnconsumed()
+        {
+            TacticalCombatView view = _prefab.GetComponent<TacticalCombatView>();
+            view.KeyboardRequested += (_, _) => false;
+            Event key = new() { type = EventType.KeyDown, keyCode = KeyCode.F1 };
+
+            Assert.IsFalse(view.HandleKeyboardEvent(key));
+
+            Assert.AreEqual(EventType.KeyDown, key.type);
+        }
+
+        [Test]
+        public void HandleKeyboardEvent_OtherBattleKey_LeavesItsExistingInputOwnerUntouched()
+        {
+            TacticalCombatView view = _prefab.GetComponent<TacticalCombatView>();
+            int calls = 0;
+            view.KeyboardRequested += (_, _) =>
+            {
+                calls++;
+                return true;
+            };
+            Event key = new() { type = EventType.KeyDown, keyCode = KeyCode.A };
+
+            Assert.IsFalse(view.HandleKeyboardEvent(key));
+
+            Assert.AreEqual(0, calls);
+            Assert.AreEqual(EventType.KeyDown, key.type);
+        }
+
+        [TestCase(KeyCode.PageUp)]
+        [TestCase(KeyCode.Space)]
+        [TestCase(KeyCode.Alpha1)]
+        [TestCase(KeyCode.Tab)]
+        public void HandleKeyboardEvent_SystemKey_LeavesEventUnconsumed(KeyCode nativeKey)
+        {
+            TacticalCombatView view = _prefab.GetComponent<TacticalCombatView>();
+            int calls = 0;
+            view.KeyboardRequested += (_, _) =>
+            {
+                calls++;
+                return true;
+            };
+            Event key = new()
+            {
+                type = EventType.KeyDown,
+                keyCode = nativeKey,
+                modifiers = EventModifiers.Alt,
+            };
+
+            Assert.IsFalse(view.HandleKeyboardEvent(key));
+
+            Assert.AreEqual(0, calls);
+            Assert.AreEqual(EventType.KeyDown, key.type);
+        }
+
+        [Test]
+        public void TacticalCombatView_ScrollEvent_DoesNotOwnWheelCameraInput()
+        {
+            PointerEventData pointer = new(EventSystem.current) { scrollDelta = Vector2.up };
+
+            bool handled = ExecuteEvents.Execute(_prefab, pointer, ExecuteEvents.scrollHandler);
+
+            Assert.IsFalse(handled);
         }
     }
 }

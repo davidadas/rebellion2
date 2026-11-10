@@ -237,11 +237,14 @@ namespace Rebellion.Gameplay
             );
             if (dot < 0.25f || float.IsNaN(dot))
                 dot = 0.25f;
-            float speed = unit.GetSpeed();
-            float distance = (float)((double)speed * dot * elapsed * 0.001f);
+            double speed = unit.Systems.GetAvailableMovement(
+                unit.CommandBudget,
+                unit.TractorRestraint
+            );
+            float distance = (float)(speed * dot * elapsed * 0.001f);
             index.QueryCollision(unit, distance, _neighbors);
             ResolveVerticalBounds(unit);
-            float verticalSpeed = (float)((double)speed * 0.4f);
+            float verticalSpeed = (float)(speed * 0.4f);
             float step = (float)((double)verticalSpeed * elapsed * 0.001f);
             if (_moveDown)
             {
@@ -257,9 +260,9 @@ namespace Rebellion.Gameplay
             else if (_moveUp)
                 MoveY(unit, (double)_lower - unit.Position.Y, step);
             unit.Velocity = new Vector3(
-                (float)((double)speed * unit.Heading.X * dot),
-                (float)((double)speed * unit.Heading.Y * dot),
-                (float)((double)speed * unit.Heading.Z * dot)
+                (float)(speed * unit.Heading.X * dot),
+                (float)(speed * unit.Heading.Y * dot),
+                (float)(speed * unit.Heading.Z * dot)
             );
             unit.Position = TacticalCombatGeometry.Integrate(unit.Position, unit.Velocity, elapsed);
         }
@@ -273,7 +276,13 @@ namespace Rebellion.Gameplay
         private static Vector3 TurnFighter(TacticalCombatUnit unit, float elapsed)
         {
             float angle = TacticalCombatGeometry.GetHeadingAngle(unit.Heading, unit.DesiredHeading);
-            if (unit.GetSpeed() == 0 || angle == 0 || float.IsNaN(angle) || elapsed == 0)
+            if (
+                unit.Systems.GetAvailableMovement(unit.CommandBudget, unit.TractorRestraint) == 0
+                || angle == 0
+                || float.IsNaN(angle)
+                || elapsed == 0
+                || float.IsNaN(elapsed)
+            )
                 return unit.Heading;
             double ratio = (double)unit.TurnRate * elapsed / ((double)angle * 1000);
             if (ratio >= 1)
@@ -295,7 +304,7 @@ namespace Rebellion.Gameplay
                 turn = -turn;
             double cosine = Math.Cos(turn);
             double sine = Math.Sin(turn);
-            return TacticalCombatGeometry.Normalize(
+            return TacticalCombatGeometry.NormalizeMovement(
                 new Vector3(
                     (float)((double)(float)cosine * unit.Heading.X - sine * unit.Heading.Z),
                     (float)(

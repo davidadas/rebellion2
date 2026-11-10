@@ -63,9 +63,14 @@ namespace Rebellion.Gameplay
         private int _progress;
         private int _phase;
         private float _elapsedInTick;
+        private int _systemTime = 3;
+        private bool _legacyTimeAdvanced;
+        private TacticalCombatScheduler _scheduler;
         private readonly TacticalCombatDirector _director;
         private readonly TacticalCombatEnding _ending;
         private bool _completionStarted;
+        private TacticalCombatArrival _arrival;
+        private bool _arrivalStarting;
         private bool _userPaused;
         private bool _directCommandsSuspended;
         private int _moviePauses;
@@ -81,8 +86,11 @@ namespace Rebellion.Gameplay
         public TacticalCombatNavigation Navigation { get; }
         public TacticalCombatAudio Audio { get; }
         public TacticalCombatSelection Selection { get; }
-        public int SystemTime { get; private set; } = 3;
+        public int SystemTime =>
+            _scheduler == null ? _systemTime : unchecked((int)_scheduler.SystemTime);
         public bool IsComplete { get; private set; }
+        public CombatSide? EnteringSide { get; }
+        public bool IsArriving => _arrival?.IsComplete == false;
         public IReadOnlyList<bool> TerminalFlags => _ending.Flags;
         public CombatSide Winner { get; private set; } = CombatSide.Draw;
         public bool IsPaused
@@ -119,7 +127,8 @@ namespace Rebellion.Gameplay
         public event Action Completed;
         public event Action GroupCategoryChanged;
         public bool IsDirectControlEnabled =>
-            !_directCommandsSuspended && !GetSide(PlayerSide).IsAutomated;
+            !_directCommandsSuspended && !IsArriving && !GetSide(PlayerSide).IsAutomated;
+
         public event Action<TacticalCombatUnit, TacticalCombatUnit> SuperlaserFired;
         public event Action<TacticalCombatAttackRun> AttackRunChanged;
         public event Action<TacticalCombatMovieRequest> AttackRunMovieRequested;
@@ -139,6 +148,7 @@ namespace Rebellion.Gameplay
         /// <param name="sceneryRandom">The encounter-owned scenery stream, when presentation is available.</param>
         /// <param name="presentationClock">An optional unscaled millisecond clock for encounter replay.</param>
         /// <param name="personnelHostInstanceIDs">The captured host identity for each available embarked officer.</param>
+        /// <param name="enteringSide">The force selected by retained space-presence activation for arrival presentation.</param>
         public TacticalCombatSession(
             IReadOnlyList<TacticalCombatUnit> units,
             IReadOnlyList<TacticalCombatGroup> groups,
@@ -151,7 +161,8 @@ namespace Rebellion.Gameplay
             Rebellion.Game.SpaceCombat.TacticalCombatEnvironmentDefinition environment = null,
             TacticalCombatSceneryRandom sceneryRandom = null,
             Func<uint> presentationClock = null,
-            IReadOnlyList<string> personnelHostInstanceIDs = null
+            IReadOnlyList<string> personnelHostInstanceIDs = null,
+            CombatSide? enteringSide = null
         )
         {
             this._units = new(units ?? throw new ArgumentNullException(nameof(units)));
@@ -171,6 +182,7 @@ namespace Rebellion.Gameplay
             Environment = environment;
             SceneryRandom = sceneryRandom;
             PlayerSide = playerSide;
+            EnteringSide = enteringSide;
             BattleDepth = battleDepth;
             Navigation = new TacticalCombatNavigation(battleDepth);
             string playerFactionID = definition
@@ -246,7 +258,7 @@ namespace Rebellion.Gameplay
                     && _carriers.TryGetValue(unit.CarrierID, out TacticalCombatCarrier carrier)
                 )
                 {
-                    carrier.AddDocked(unit);
+                    carrier.AddDocked(unit, SystemTime, _random);
                     _initiallyDockedFighters.Add(unit);
                 }
             _initiallyDockedFighters.Sort(CompareUnits);
@@ -918,11 +930,119 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Advances one presentation frame without tying movement to whole-second weapon updates.
+        /// Starts the captured entering force's presentation before admitting battle commands or clocks.
+        /// </summary>
+        /// <param name="presentation">The renderer that owns arrival poses and the pause-control strobe.</param>
+        public void BeginArrival(ITacticalCombatArrivalPresentation presentation)
+        {
+            if (!EnteringSide.HasValue)
+                throw new InvalidOperationException(
+                    "The encounter has no captured entering force."
+                );
+            if (_arrival != null || SystemTime != 3)
+                throw new InvalidOperationException(
+                    "Arrival can only begin once before combat starts."
+                );
+
+            List<TacticalCombatArrivalMember> members = new();
+            foreach (TacticalCombatGroup group in _groups)
+            {
+                if (group.Side != EnteringSide.Value)
+                    continue;
+                foreach (TacticalCombatUnit unit in group.Members)
+                    members.Add(
+                        new TacticalCombatArrivalMember(
+                            unit.Index,
+                            unit.Definition.PresentationIndex,
+                            unit.Side,
+                            unit.IsFighter,
+                            unit.Status == TacticalCombatUnitStatus.Docked,
+                            new Vector4(unit.Position, -1),
+                            new Vector4(unit.Heading, -1)
+                        )
+                    );
+            }
+            _arrival = new TacticalCombatArrival(
+                EnteringSide.Value,
+                members,
+                GetSide(EnteringSide.Value).Forward,
+                presentation,
+                messageID => Audio.EnqueueNotification(messageID)
+            );
+            _arrivalStarting = true;
+        }
+
+        /// <summary>
+        /// Binds the explicit millisecond provider used by the production battle scheduler.
+        /// This clock remains live during pause and is sampled only after arrival admits scheduling.
+        /// </summary>
+        /// <param name="clock">The wrapping unsigned monotonic playback clock.</param>
+        public void ConfigureClockedAdvance(Func<uint> clock)
+        {
+            if (clock == null)
+                throw new ArgumentNullException(nameof(clock));
+            if (_scheduler != null || _legacyTimeAdvanced)
+                throw new InvalidOperationException(
+                    "The battle clock must be bound once before delta-driven time advances."
+                );
+            _scheduler = new TacticalCombatScheduler(clock, new SchedulerSteps(this));
+        }
+
+        /// <summary>
+        /// Advances entry and briefing frame time separately from the explicitly bound battle clock.
+        /// Pausing suspends scheduler calls without resetting or stopping its supplied clock.
+        /// </summary>
+        /// <param name="elapsedMilliseconds">The frame interval for entry, briefing, and continuous-work admission.</param>
+        public void AdvanceClocked(float elapsedMilliseconds)
+        {
+            if (_scheduler == null)
+                throw new InvalidOperationException(
+                    "The battle requires an explicit clock before clocked advancement."
+                );
+            if (!AdvanceArrival(elapsedMilliseconds) || IsComplete)
+                return;
+            _director.Advance(elapsedMilliseconds, CaptureDirectorState());
+            if (IsPaused)
+            {
+                Selection.ProcessPendingCommands();
+                return;
+            }
+            if (_scheduler.Advance(elapsedMilliseconds * 0.4f))
+                Complete();
+        }
+
+        /// <summary>
+        /// Presents entry before either battle-advancement contract admits commands or clocks.
+        /// </summary>
+        /// <param name="elapsedMilliseconds">The frame interval used by the entry owner.</param>
+        /// <returns>Whether entry has released the subsequent battle operations.</returns>
+        private bool AdvanceArrival(float elapsedMilliseconds)
+        {
+            if (!IsArriving)
+                return true;
+            if (_arrivalStarting)
+            {
+                _arrivalStarting = false;
+                return false;
+            }
+            return _arrival.Advance(elapsedMilliseconds);
+        }
+
+        /// <summary>
+        /// Advances a delta-driven encounter used without a bound production clock.
+        /// A zero interval can still drain pending commands after entry has completed.
         /// </summary>
         /// <param name="elapsedMilliseconds">The elapsed unpaused frame duration.</param>
         public void Advance(float elapsedMilliseconds)
         {
+            if (_scheduler != null && elapsedMilliseconds != 0)
+                throw new InvalidOperationException(
+                    "Clock-bound encounters require clocked advancement."
+                );
+            if (elapsedMilliseconds != 0)
+                _legacyTimeAdvanced = true;
+            if (!AdvanceArrival(elapsedMilliseconds))
+                return;
             Selection.ProcessPendingCommands();
             if (IsComplete || elapsedMilliseconds <= 0)
                 return;
@@ -953,7 +1073,7 @@ namespace Rebellion.Gameplay
             {
                 if (!_completionStarted)
                     AdvanceSystems();
-                SystemTime++;
+                _systemTime++;
                 _phase = 5;
             }
             if (_progress >= 3 && !_completionStarted && elapsedMilliseconds > 0)
@@ -1226,7 +1346,7 @@ namespace Rebellion.Gameplay
             bool valid =
                 target?.IsTargetable == true
                 && unit.Systems.GetTractorBudget() > 0
-                && TacticalCombatGeometry.GetLength(target.Position - unit.Position)
+                && TacticalCombatGeometry.GetTractorDistance(unit.Position, target.Position)
                     <= unit.TractorRange;
             if (unit.TractorTargetID != null)
             {
@@ -1387,6 +1507,7 @@ namespace Rebellion.Gameplay
             {
                 if (unit.Status == TacticalCombatUnitStatus.EnteringHyperspace)
                 {
+                    unit.Heading = -GetSide(unit.Side).Forward;
                     if (
                         unit.HyperspaceMilliseconds == 0
                         || float.IsNaN(unit.HyperspaceMilliseconds)
@@ -1395,6 +1516,7 @@ namespace Rebellion.Gameplay
                     unit.HyperspaceMilliseconds += elapsedMilliseconds;
                     if (unit.HyperspaceMilliseconds >= 4000)
                     {
+                        unit.HyperspaceMilliseconds = 0;
                         unit.Status = TacticalCombatUnitStatus.AwaitingWithdrawal;
                         QueueCommand(new Command(CommandKind.Withdraw, unit));
                     }
@@ -1578,15 +1700,19 @@ namespace Rebellion.Gameplay
                     _recoveries.Add(fighter, recovery);
                     QueueCommand(new Command(CommandKind.SetRecovery, fighter, carrier.Unit));
                 }
-                if (
-                    recovery.State == 2
-                    && TacticalCombatGeometry.GetLength(
-                        fighter.Position - recovery.Carrier.HangarPosition
-                    ) < 2
-                )
+                if (recovery.State == 2)
                 {
-                    recovery.State = 3;
-                    QueueCommand(new Command(CommandKind.Recover, recovery.Carrier.Unit, fighter));
+                    float distance = TacticalCombatGeometry.GetRecoveryDistance(
+                        fighter.Position,
+                        recovery.Carrier.HangarPosition
+                    );
+                    if (distance < 2 || float.IsNaN(distance))
+                    {
+                        recovery.State = 3;
+                        QueueCommand(
+                            new Command(CommandKind.Recover, recovery.Carrier.Unit, fighter)
+                        );
+                    }
                 }
             }
         }
@@ -1774,7 +1900,11 @@ namespace Rebellion.Gameplay
                     TacticalSystemEvent change = command.Change;
                     if (change.Kind == TacticalSystemEventKind.Disruption)
                     {
-                        source.Systems.ApplyDisruption(change.AttackDelay, change.MovementDelay);
+                        if (change.AttackDelay.HasValue && change.MovementDelay.HasValue)
+                            source.Systems.ApplyDisruption(
+                                change.AttackDelay.Value,
+                                change.MovementDelay.Value
+                            );
                         for (int arc = 0; arc < 4; arc++)
                             if ((change.DischargedArcMask & (1 << arc)) != 0)
                                 source.Weapons.ClearBattery((TacticalWeaponArc)arc);
@@ -2168,7 +2298,7 @@ namespace Rebellion.Gameplay
                         || group.ActiveOrder == TacticalCombatOrder.AttackBattleStation;
             }
             return new TacticalCombatDirectorState(
-                false,
+                IsArriving,
                 BattleStation != null,
                 BattleStation?.IsOperational == true,
                 BattleStation?.HasPlanetaryProtection == true,
@@ -2272,7 +2402,8 @@ namespace Rebellion.Gameplay
                 Winner = Winner,
                 AttackerOutcome = _outcomes[0],
                 DefenderOutcome = _outcomes[1],
-                IterationsCompleted = _progress,
+                IterationsCompleted =
+                    _scheduler == null ? _progress : unchecked((int)_scheduler.Progress),
             };
             foreach (TacticalCombatUnit unit in _units)
             {
@@ -2299,23 +2430,20 @@ namespace Rebellion.Gameplay
                             SquadsAfter = GetFighterResultCount(unit),
                         }
                     );
-                    if (unit.Systems.IsAlive)
-                    {
-                        TacticalCombatUnit carrier = unit.Status
-                            is TacticalCombatUnitStatus.Docked
-                                or TacticalCombatUnitStatus.Recovered
-                            ? GetUnit(unit.CarrierID)
-                            : null;
-                        result.FighterRecovery.Add(
-                            new FighterRecoveryResult
-                            {
-                                Fighter = fighter,
-                                Carrier = carrier?.Source as CapitalShip,
-                            }
-                        );
-                    }
+                    TacticalCombatUnit carrier = unit.Status
+                        is TacticalCombatUnitStatus.Docked
+                            or TacticalCombatUnitStatus.Recovered
+                        ? GetUnit(unit.CarrierID)
+                        : null;
+                    result.FighterRecovery.Add(
+                        new FighterRecoveryResult
+                        {
+                            Fighter = fighter,
+                            Carrier = carrier?.Source as CapitalShip,
+                        }
+                    );
                 }
-                if (unit.Systems.IsAlive && HasDeparted(unit))
+                if (HasDeparted(unit))
                     result.WithdrawnUnits.Add(unit.Source);
             }
             return result;
@@ -2401,22 +2529,34 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Assigns surviving fighters to available surviving carriers before exposing the completed result.
+        /// Assigns retained fighters to ordinary carriers in registration order, then to the eligible station.
         /// </summary>
         private void AssignSurvivors()
         {
-            foreach (TacticalCombatUnit fighter in _units)
+            _directCommandsSuspended = true;
+            foreach (WithdrawalMember fighterMember in _orderedWithdrawalMembers)
             {
-                if (!fighter.IsFighter || !fighter.Systems.IsAlive)
+                TacticalCombatUnit fighter = fighterMember.Unit;
+                if (
+                    !fighter.IsFighter
+                    || !(
+                        fighter.IsActiveDisplayObject
+                        || fighter.Status
+                            is TacticalCombatUnitStatus.Docked
+                                or TacticalCombatUnitStatus.Recovered
+                                or TacticalCombatUnitStatus.Withdrawn
+                    )
+                )
                     continue;
-                foreach (TacticalCombatUnit carrier in _units)
+                bool attached = false;
+                foreach (WithdrawalMember carrierMember in _orderedWithdrawalMembers)
+                {
+                    TacticalCombatUnit carrier = carrierMember.Unit;
                     if (
                         !carrier.IsFighter
                         && carrier.Side == fighter.Side
-                        && carrier.Systems.IsAlive
                         && (
-                            carrier.IsTargetable
-                            || carrier.IsBattleStation && BattleStation.IsOperational
+                            carrier.IsActiveDisplayObject
                             || carrier.Status
                                 is TacticalCombatUnitStatus.EnteringHyperspace
                                     or TacticalCombatUnitStatus.AwaitingWithdrawal
@@ -2424,7 +2564,18 @@ namespace Rebellion.Gameplay
                         )
                         && _carriers[carrier.InstanceID].AttachSurvivor(fighter)
                     )
+                    {
+                        attached = true;
                         break;
+                    }
+                }
+                if (
+                    !attached
+                    && GetSide(fighter.Side).FactionIndex == 1
+                    && BattleStation != null
+                    && (BattleStation.IsOperational || BattleStation.HasDeparted)
+                )
+                    _carriers[BattleStation.Unit.InstanceID].AttachSurvivor(fighter);
             }
         }
 
@@ -2435,6 +2586,53 @@ namespace Rebellion.Gameplay
         {
             IsComplete = true;
             Completed?.Invoke();
+        }
+
+        /// <summary>
+        /// Connects detailed clock phases to the encounter's existing command, system, and movement owners.
+        /// </summary>
+        private sealed class SchedulerSteps : ITacticalCombatSchedulerSteps
+        {
+            private readonly TacticalCombatSession _session;
+            public bool IsRunning => !_session._completionStarted;
+            public bool HasTerminalResult => _session._ending.Flags[6];
+
+            /// <summary>
+            /// Borrows the encounter that owns every scheduled operation.
+            /// </summary>
+            /// <param name="session">The encounter being advanced.</param>
+            public SchedulerSteps(TacticalCombatSession session) => _session = session;
+
+            /// <summary>
+            /// Applies queued display mutations and their ordered audio refreshes.
+            /// </summary>
+            public void DrainCommands() => _session.Selection.ProcessPendingCommands();
+
+            /// <summary>
+            /// Dispatches the completed progress interval through the encounter command queue.
+            /// </summary>
+            /// <param name="iteration">The admitted completed interval.</param>
+            public void DispatchCommands(uint iteration) =>
+                _session.DispatchCommands(unchecked((int)iteration));
+
+            /// <summary>
+            /// Advances the ordered side, group, and unit operations for one whole second.
+            /// </summary>
+            public void AdvanceSystems() => _session.AdvanceSystems();
+
+            /// <summary>
+            /// Consumes one terminal second through the ending owner.
+            /// </summary>
+            /// <returns>Whether the terminal interval has finished.</returns>
+            public bool AdvanceEndingTick() => _session._ending.AdvanceTerminalTick();
+
+            /// <summary>
+            /// Advances the current movement owners using the separately admitted clock duration.
+            /// </summary>
+            /// <param name="_">The interval-start timestamp retained by the scheduler callback contract.</param>
+            /// <param name="elapsedMilliseconds">The admitted continuous duration.</param>
+            public void AdvanceMovement(float _, float elapsedMilliseconds) =>
+                _session.AdvanceMovement(elapsedMilliseconds);
         }
 
         /// <summary>

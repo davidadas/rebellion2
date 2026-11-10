@@ -4,12 +4,151 @@ using NUnit.Framework;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Util.Mathematics;
 
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
     public sealed class TacticalCombatFormationTests
     {
+        [Test]
+        public void GetMemberMovement_RotatedOffsetAtTranslatedReference_PreservesHeadingInput()
+        {
+            TacticalCombatUnit first = CreateTurningUnit(1);
+            TacticalCombatUnit second = CreateTurningUnit(2);
+            first.Position = new Vector3(5, -10, -50);
+            second.Position = new Vector3(15, -10, -50);
+            TacticalCombatFormation formation = new(
+                TacticalCombatFormationKind.Line,
+                new[] { first, second },
+                Vector3.UnitZ
+            );
+            formation.Refresh(0);
+            formation.MoveTowards(
+                formation.Position,
+                32,
+                0,
+                new Vector3(-0.37139067f, 0, 0.9284767f)
+            );
+            formation.SetPosition(new Vector3(4.9875807762146f, -10, -49.96895217895508f));
+
+            Vector3 movement = formation.GetMemberMovement(second);
+            Vector3 heading = TacticalCombatGeometry.Normalize(movement);
+
+            Assert.AreEqual(unchecked((int)0xbe2e15b7), BitConverter.SingleToInt32Bits(movement.Z));
+            Assert.AreEqual(unchecked((int)0xbbfd1550), BitConverter.SingleToInt32Bits(heading.Z));
+        }
+
+        [Test]
+        public void GetMemberMovement_LargeReferencePosition_RetainsBothSubtractions()
+        {
+            TacticalCombatUnit first = CreateTurningUnit(1);
+            TacticalCombatUnit second = CreateTurningUnit(2);
+            first.Position = second.Position = new Vector3(100000000, 0, 0);
+            TacticalCombatFormation formation = new(
+                TacticalCombatFormationKind.Line,
+                new[] { first, second },
+                Vector3.UnitZ
+            );
+
+            Assert.AreEqual(new Vector3(-12, 0, 0), formation.GetMemberMovement(second));
+        }
+
+        [Test]
+        public void GetMemberMovement_DirectThresholdWithSmallThirdCoordinate_UsesNativePrecision()
+        {
+            TacticalCombatUnit unit = CreateUnit();
+            TacticalCombatFormation formation = new(
+                TacticalCombatFormationKind.Direct,
+                new[] { unit },
+                Vector3.UnitZ
+            );
+            unit.Position = new Vector3(-2, 0, -9.313225746154785e-10f);
+
+            Vector3 movement = formation.GetMemberMovement(unit);
+
+            Assert.AreEqual(
+                NativeVectorMath.SignificandBits == 53
+                    ? Vector3.Zero
+                    : new Vector3(2, 0, 9.313225746154785e-10f),
+                movement
+            );
+        }
+
+        [Test]
+        public void MoveTowards_UnorderedLineOrientation_UsesUnorderedDotBranch()
+        {
+            TacticalCombatFormation formation = new(
+                TacticalCombatFormationKind.Line,
+                new[] { CreateUnit() },
+                Vector3.UnitZ
+            );
+
+            formation.MoveTowards(Vector3.Zero, 1000, 0, new Vector3(float.NaN, 0, 1));
+
+            Assert.AreEqual(-Vector3.UnitZ, formation.Heading);
+        }
+
+        [Test]
+        public void MoveTowards_StoredTurnMidpoint_RotatesMemberOffsetWithTheStoredAppliedAngle()
+        {
+            TacticalCombatUnit first = CreateTurningUnit(1);
+            TacticalCombatUnit second = CreateTurningUnit(2);
+            TacticalCombatFormation formation = new(
+                TacticalCombatFormationKind.Line,
+                new[] { first, second },
+                new Vector3(0.2613515853881836f, 0, 0.9652436971664429f)
+            );
+            formation.Refresh(0);
+            Assert.AreEqual(0.5235988f, formation.TurnRate);
+
+            bool moved = formation.MoveTowards(
+                Vector3.Zero,
+                625,
+                0,
+                new Vector3(-0.8426551818847656f, 0, 0.5384535789489746f)
+            );
+            Vector3 movement = formation.GetMemberMovement(second);
+
+            Assert.IsFalse(moved);
+            Assert.AreEqual(Vector3.Zero, formation.Position);
+            Assert.AreEqual(
+                new Vector3(-0.06278574466705322f, 0, 0.9980270266532898f),
+                formation.Heading
+            );
+            Assert.AreEqual(unchecked((int)0xc13f9f06), BitConverter.SingleToInt32Bits(movement.X));
+            if (NativeVectorMath.SignificandBits == 64)
+                Assert.AreEqual(
+                    unchecked((int)0xbf40e0b5),
+                    BitConverter.SingleToInt32Bits(movement.Z)
+                );
+        }
+
+        [Test]
+        public void Refresh_EmptyRoster_PreservesStoredLimitsAndStability()
+        {
+            TacticalCombatUnit unit = CreateUnit();
+            TacticalCombatFormation formation = new(
+                TacticalCombatFormationKind.Line,
+                new[] { unit },
+                Vector3.UnitZ
+            );
+            formation.Refresh(0);
+            formation.Refresh(0);
+            float speed = formation.MovementSpeed;
+            float turn = formation.TurnRate;
+            int stable = formation.StableUpdates;
+            formation.RemoveMember(unit);
+
+            formation.Refresh(10);
+
+            Assert.AreEqual(0, formation.MovementSpeed);
+            Assert.AreEqual(turn, formation.TurnRate);
+            Assert.AreEqual(stable, formation.StableUpdates);
+            formation.AddMember(unit);
+            Assert.AreEqual(speed, formation.MovementSpeed);
+        }
+
         [TestCase(TacticalCombatFormationKind.Line)]
         [TestCase(TacticalCombatFormationKind.Surround)]
         public void GetMemberMovement_VerticalDeltaRoundsToThreshold_RetainsLiveDistance(
@@ -215,6 +354,24 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(new Vector3(20, 0, 0), next.GetMemberMovement(unit));
         }
+
+        /// <summary>
+        /// Captures a mobile capital ship with an initialized three-point maneuver budget.
+        /// </summary>
+        /// <param name="index">The unit's distinct battle registration identifier.</param>
+        /// <returns>The initialized turning unit.</returns>
+        private static TacticalCombatUnit CreateTurningUnit(int index) =>
+            new(
+                new CapitalShip
+                {
+                    InstanceID = "turning-" + index,
+                    MaxHullStrength = 100,
+                    CurrentHullStrength = 100,
+                    Maneuverability = 2,
+                },
+                CombatSide.Attacker,
+                index
+            );
 
         /// <summary>
         /// Captures a mobile unit with one unit of movement budget and a deterministic recovery phase.

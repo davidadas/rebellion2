@@ -11,6 +11,7 @@ internal sealed class TacticalCombatSelectionBox : IDisposable
     private readonly Material _material;
     private readonly Color _factionColor;
     private int _state = 1;
+    public Bounds Bounds { get; }
 
     /// <summary>
     /// Captures the middle-detail model's bounds in the unit's coordinate system.
@@ -52,6 +53,7 @@ internal sealed class TacticalCombatSelectionBox : IDisposable
         }
         if (!populated)
             throw new ArgumentException("A selection box requires model geometry.", nameof(model));
+        Bounds = new Bounds((minimum + maximum) * 0.5f, maximum - minimum);
         Vector3[] vertices = new Vector3[8];
         for (int index = 0; index < vertices.Length; index++)
             vertices[index] = new Vector3(

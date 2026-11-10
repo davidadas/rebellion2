@@ -28,12 +28,15 @@ public sealed class TacticalCombatController : IDisposable
     public event Action<TacticalCombatControl> MenuControlRequested;
     private ContentAssets _assets;
     private TacticalCombatCutsceneController _cutscenes;
+    private TacticalCombatMoviePresentation _moviePresentation;
     private bool _ready;
     private bool _disposed;
     private bool _completing;
     private bool _stationControlsVisible;
+    private bool _applicationMenuOpen;
     private float _hudRefresh;
     private readonly TacticalCombatInspection _inspection;
+    private readonly TacticalCombatRenderSettings _videoSettings;
 
     /// <summary>
     /// Owns the authored view and its input subscriptions for one isolated battle.
@@ -42,15 +45,18 @@ public sealed class TacticalCombatController : IDisposable
     /// <param name="view">The instantiated battle view owned by this controller.</param>
     /// <param name="complete">Commits the completed encounter.</param>
     /// <param name="cancellationToken">The campaign screen lifetime.</param>
+    /// <param name="videoSettings">The active video settings, or null to use their authored defaults for an isolated encounter.</param>
     public TacticalCombatController(
         TacticalCombatSession session,
         TacticalCombatView view,
         Action<TacticalCombatSession> complete,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        UserVideoSettings videoSettings = null
     )
     {
         this._session = session ?? throw new ArgumentNullException(nameof(session));
         _inspection = new TacticalCombatInspection(session);
+        _videoSettings = new TacticalCombatRenderSettings(videoSettings ?? new UserVideoSettings());
         this._view = view != null ? view : throw new ArgumentNullException(nameof(view));
         this._complete = complete ?? throw new ArgumentNullException(nameof(complete));
         _cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -65,7 +71,8 @@ public sealed class TacticalCombatController : IDisposable
             session.GetSide(session.PlayerSide).FactionIndex == 1 && session.BattleStation != null;
         _hud.ReplaceContext(session.Selection.Kind);
         view.PointerPressed += HandlePointerDown;
-        view.ZoomRequested += HandleZoom;
+        view.KeyboardRequested += HandleKeyboardEvent;
+        view.Renderer.ArrivalStrobeChanged += HandleArrivalStrobe;
         session.ShotFired += HandleShot;
         session.Audio.Playback = PlayNotification;
         session.ImpactApplied += HandleImpact;
@@ -121,10 +128,16 @@ public sealed class TacticalCombatController : IDisposable
                 "Tactical combat HUD requires a definition for the player's faction."
             );
         _view.PrepareArtwork(_session.Definition, faction, assets);
-        await _view.Renderer.PrepareAsync(_session, models, assets, _lifetime);
+        await _view.Renderer.PrepareAsync(_session, models, assets, _lifetime, _videoSettings);
         _lifetime.ThrowIfCancellationRequested();
-        if (!string.IsNullOrWhiteSpace(_session.Definition?.BackgroundImagePath))
+        if (
+            _videoSettings.ShowStarfield
+            && !string.IsNullOrWhiteSpace(_session.Definition?.BackgroundImagePath)
+        )
             _view.SetBackgroundTexture(assets.GetTexture(_session.Definition.BackgroundImagePath));
+        System.Diagnostics.Stopwatch clock = System.Diagnostics.Stopwatch.StartNew();
+        _session.ConfigureClockedAdvance(() => unchecked((uint)clock.ElapsedMilliseconds));
+        _session.BeginArrival(_view.Renderer);
         _ready = true;
         RefreshHud();
         RefreshControls();
@@ -138,9 +151,7 @@ public sealed class TacticalCombatController : IDisposable
     {
         if (_disposed || !_ready)
             return;
-        if (_session.PendingAttackRunMovie == null)
-            ReadKeyboard();
-        _session.Advance(elapsedSeconds * 1000);
+        _session.AdvanceClocked(elapsedSeconds * 1000);
         if (_session.IsComplete && !_completing)
         {
             _completing = true;
@@ -165,38 +176,73 @@ public sealed class TacticalCombatController : IDisposable
     }
 
     /// <summary>
-    /// Routes immediate camera shortcuts and queues contextual battle commands.
+    /// Transfers battle input ownership to or from the application menu without changing pause state.
     /// </summary>
-    private void ReadKeyboard()
+    /// <param name="open">Whether an application menu currently owns user input.</param>
+    public void SetApplicationMenuOpen(bool open)
     {
-        Keyboard keyboard = Keyboard.current;
-        if (keyboard == null)
-            return;
-        foreach (UnityEngine.InputSystem.Controls.KeyControl key in keyboard.allKeys)
+        _applicationMenuOpen = open;
+        if (open)
+            foreach (TacticalCombatHudControl definition in TacticalCombatHudLayout.Controls)
+                if (TryCameraControl(definition.Control, out _))
+                    _view.ApplyFrameKeyboardActivation(definition.Control, false);
+        RefreshControls();
+    }
+
+    /// <summary>
+    /// Routes native camera and direct-command transitions while preserving their distinct release semantics.
+    /// </summary>
+    /// <param name="key">The native keyboard key.</param>
+    /// <param name="pressed">Whether this is a key-down event.</param>
+    /// <returns>Whether the battle currently owns the addressed transition.</returns>
+    private bool HandleKeyboardEvent(KeyCode key, bool pressed)
+    {
+        if (
+            !_ready
+            || _disposed
+            || _completing
+            || _applicationMenuOpen
+            || _session.IsComplete
+            || _session.PendingAttackRunMovie != null
+        )
+            return false;
+        if (TacticalCombatKeyboard.TryGetCameraControl(key, out TacticalCombatControl control))
         {
-            if (key.keyCode == Key.Tab)
-            {
-                bool shift = keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed;
-                if (key.wasPressedThisFrame)
-                    _view.HandleInspectionKey(key.keyCode, true, shift);
-                if (key.wasReleasedThisFrame)
-                    _view.HandleInspectionKey(key.keyCode, false, shift);
-                continue;
-            }
-            if (!key.wasPressedThisFrame)
-                continue;
-            if (
-                TacticalCombatKeyboard.TryGetCameraCommand(
-                    key.keyCode,
-                    out TacticalCombatCameraCommand camera
-                )
-            )
-                ApplyCameraCommand(camera);
-            else if (key.keyCode == Key.Space)
-                _session.Selection.QueueNearestTarget();
-            else if (key.keyCode is >= Key.Digit1 and <= Key.Digit8)
-                _session.Selection.QueueObjectCategory((int)key.keyCode - (int)Key.Digit1);
+            _view.ApplyFrameKeyboardActivation(control, pressed);
+            return true;
         }
+        if (key == KeyCode.Tab)
+        {
+            Keyboard keyboard = Keyboard.current;
+            bool shift =
+                keyboard != null
+                && (keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed);
+            _view.HandleInspectionKey(Key.Tab, pressed, shift);
+            if (pressed)
+                _view.HandleInspectionKey(Key.Tab, false, shift);
+            return true;
+        }
+        if (key == KeyCode.Space)
+        {
+            if (pressed)
+                _session.Selection.QueueNearestTarget();
+            return true;
+        }
+        if (TacticalCombatKeyboard.TryGetObjectCategoryControl(key, out control))
+        {
+            if (pressed)
+            {
+                _view.ClearCategoryKeyboardState();
+                _view.ApplyFrameKeyboardActivation(control, true);
+            }
+            return true;
+        }
+        if (pressed && TacticalCombatKeyboard.TryGetCameraCategory(key, out int category))
+        {
+            _view.Renderer.ShowCategory(category);
+            return true;
+        }
+        return false;
     }
 
     /// <summary>
@@ -239,7 +285,13 @@ public sealed class TacticalCombatController : IDisposable
     /// <param name="eventData">The source viewport press.</param>
     private void HandlePointerDown(PointerEventData eventData)
     {
-        if (!_ready || _session.IsComplete || _session.PendingAttackRunMovie != null)
+        if (
+            !_ready
+            || _applicationMenuOpen
+            || _session.IsArriving
+            || _session.IsComplete
+            || _session.PendingAttackRunMovie != null
+        )
             return;
         bool right = eventData.button == PointerEventData.InputButton.Right;
         if (!right && eventData.button != PointerEventData.InputButton.Left)
@@ -252,7 +304,11 @@ public sealed class TacticalCombatController : IDisposable
             out Vector3N waypoint
         );
         if (!right && !extend)
+        {
+            if (hit)
+                _view.ClearCategoryKeyboardState();
             _session.Selection.QueueClear();
+        }
         if (hit)
         {
             if (unit != null)
@@ -269,7 +325,13 @@ public sealed class TacticalCombatController : IDisposable
     /// <param name="control">The requested control.</param>
     private void HandleControl(TacticalCombatControl control)
     {
-        if (!_ready || _disposed || _completing || _session.PendingAttackRunMovie != null)
+        if (
+            !_ready
+            || _disposed
+            || _completing
+            || _applicationMenuOpen
+            || _session.PendingAttackRunMovie != null
+        )
             return;
         if (_session.IsComplete)
             return;
@@ -324,8 +386,6 @@ public sealed class TacticalCombatController : IDisposable
             control is TacticalCombatControl.ResolveImmediately or TacticalCombatControl.OpenOptions
         )
         {
-            if (control == TacticalCombatControl.OpenOptions && !_session.IsPaused)
-                _session.IsPaused = true;
             MenuControlRequested?.Invoke(control);
         }
         else if (
@@ -400,6 +460,7 @@ public sealed class TacticalCombatController : IDisposable
     /// <param name="kind">The newly installed selection context.</param>
     private void HandleContextReplaced(TacticalCombatSelectionKind kind)
     {
+        _view.ClearCategoryKeyboardState();
         _hud.ReplaceContext(kind);
         _hudRefresh = 0;
     }
@@ -489,7 +550,10 @@ public sealed class TacticalCombatController : IDisposable
                 _navigationSelected[index]
             );
         }
-        _view.SetControlSelected(TacticalCombatControl.Pause, _session.IsPaused);
+        _view.SetControlSelected(
+            TacticalCombatControl.Pause,
+            _session.IsPaused || _view.Renderer.IsPresentingArrival
+        );
         _view.SetControlSelected(
             TacticalCombatControl.ToggleAutomation,
             _session.GetSide(_session.PlayerSide).IsAutomated
@@ -502,11 +566,22 @@ public sealed class TacticalCombatController : IDisposable
     }
 
     /// <summary>
+    /// Projects the arrival pause image independently of the user's current pause state.
+    /// </summary>
+    /// <param name="active">Whether the arrival sequence currently owns the pause strobe.</param>
+    private void HandleArrivalStrobe(bool active) =>
+        _view.SetControlSelected(TacticalCombatControl.Pause, active || _session.IsPaused);
+
+    /// <summary>
     /// Projects context-specific controls without adding actions to unrelated inspection surfaces.
     /// </summary>
     private void RefreshControls()
     {
-        bool active = _ready && !_session.IsComplete && _session.PendingAttackRunMovie == null;
+        bool active =
+            _ready
+            && !_applicationMenuOpen
+            && !_session.IsComplete
+            && _session.PendingAttackRunMovie == null;
         foreach (TacticalCombatHudControl definition in TacticalCombatHudLayout.Controls)
             _view.SetControlEnabled(definition.Control, active);
         for (int category = 0; category < 8; category++)
@@ -553,16 +628,6 @@ public sealed class TacticalCombatController : IDisposable
             TacticalCombatControl.ToggleAutomation,
             active && !_session.GetSide(_session.PlayerSide).IsWithdrawing
         );
-    }
-
-    /// <summary>
-    /// Routes viewport wheel input to camera zoom.
-    /// </summary>
-    /// <param name="steps">The signed wheel displacement.</param>
-    private void HandleZoom(float steps)
-    {
-        if (_ready)
-            _view.Renderer.Zoom(steps);
     }
 
     /// <summary>
@@ -667,7 +732,30 @@ public sealed class TacticalCombatController : IDisposable
     /// <param name="active">Whether the movie owns presentation.</param>
     private void SetMoviePresentation(bool active)
     {
-        _view.gameObject.SetActive(!active);
+        if (_moviePresentation == null)
+        {
+            AppInputController input = AppBootstrap.Instance.GetInputController();
+            _moviePresentation = new TacticalCombatMoviePresentation(
+                SetBattlePresentation,
+                () => input.PushContext(InputContext.Cutscene),
+                input.PopContext
+            );
+        }
+        _moviePresentation.SetActive(active);
+    }
+
+    /// <summary>
+    /// Releases battle sounds before hiding and permits new sounds after the battle reactivates.
+    /// Its view-owned input context follows the same visibility transition.
+    /// </summary>
+    /// <param name="active">Whether battle presentation is visible.</param>
+    private void SetBattlePresentation(bool active)
+    {
+        if (!active)
+            _session.Audio.SetPlaybackAvailable(false);
+        _view.gameObject.SetActive(active);
+        if (active)
+            _session.Audio.SetPlaybackAvailable(true);
     }
 
     /// <summary>
@@ -725,6 +813,8 @@ public sealed class TacticalCombatController : IDisposable
         _disposed = true;
         _cutscenes?.Dispose();
         _cutscenes = null;
+        _moviePresentation?.Dispose();
+        _moviePresentation = null;
         _cancellation.Cancel();
         _cancellation.Dispose();
         _view.ControlRequested -= HandleControl;
@@ -734,7 +824,8 @@ public sealed class TacticalCombatController : IDisposable
         _session.Selection.WithdrawalDispatched -= _hud.CompleteWithdrawal;
         _session.UnitWithdrawn -= HandleStationDeparture;
         _view.PointerPressed -= HandlePointerDown;
-        _view.ZoomRequested -= HandleZoom;
+        _view.KeyboardRequested -= HandleKeyboardEvent;
+        _view.Renderer.ArrivalStrobeChanged -= HandleArrivalStrobe;
         _session.ShotFired -= HandleShot;
         _session.Audio.Playback = null;
         _session.Selection.Dispose();

@@ -12,6 +12,7 @@ public sealed class TacticalCombatHudButton : Button, ICanvasRaycastFilter
     private int _repeatMilliseconds;
     private Texture2D _hitMask;
     private bool _held;
+    private bool _keyboardPressed;
     private bool _cancelPendingPointerClick;
     private double _nextRepeat;
     private int _repeatCounter;
@@ -64,6 +65,7 @@ public sealed class TacticalCombatHudButton : Button, ICanvasRaycastFilter
     /// <param name="eventData">The button pointer event.</param>
     public override void OnPointerDown(PointerEventData eventData)
     {
+        _keyboardPressed = false;
         base.OnPointerDown(eventData);
         if (
             eventData.button != PointerEventData.InputButton.Left
@@ -83,6 +85,7 @@ public sealed class TacticalCombatHudButton : Button, ICanvasRaycastFilter
     /// <param name="eventData">The button pointer event.</param>
     public override void OnPointerUp(PointerEventData eventData)
     {
+        _keyboardPressed = false;
         _held = false;
         base.OnPointerUp(eventData);
     }
@@ -98,25 +101,61 @@ public sealed class TacticalCombatHudButton : Button, ICanvasRaycastFilter
     }
 
     /// <summary>
-    /// Completes an available keyboard click or cancels the addressed control's pending pointer activation on key release.
+    /// Posts an active control's keyboard command independently of pointer eligibility.
+    /// Pressed artwork is retained until the corresponding release or category-state replacement.
     /// </summary>
     /// <param name="activate">Whether to dispatch a completed click rather than only release press ownership.</param>
     public void ApplyKeyboardActivation(bool activate)
     {
-        if (activate && (!IsActive() || !IsInteractable()))
+        if (activate && !IsActive())
         {
             _cancelPendingPointerClick = true;
             return;
         }
         _cancelPendingPointerClick = !activate;
-        _held = false;
-        _repeatCounter = 0;
-        base.OnPointerUp(
-            new PointerEventData(EventSystem.current) { button = PointerEventData.InputButton.Left }
-        );
+        _keyboardPressed = activate;
         if (activate)
+        {
+            DoStateTransition(
+                IsInteractable() ? SelectionState.Pressed : SelectionState.Disabled,
+                false
+            );
             onClick.Invoke();
+        }
+        else
+        {
+            _repeatCounter = 0;
+            base.OnPointerUp(
+                new PointerEventData(EventSystem.current)
+                {
+                    button = PointerEventData.InputButton.Left,
+                }
+            );
+        }
     }
+
+    /// <summary>
+    /// Clears keyboard press artwork without canceling an independently held pointer click.
+    /// </summary>
+    public void ClearKeyboardArtwork()
+    {
+        _keyboardPressed = false;
+        DoStateTransition(
+            IsInteractable() ? SelectionState.Normal : SelectionState.Disabled,
+            false
+        );
+    }
+
+    /// <summary>
+    /// Retains a keyboard press when live sprite bindings refresh during the held key.
+    /// </summary>
+    /// <param name="state">The selectable's current visual state.</param>
+    /// <param name="instant">Whether to apply the state without a transition interval.</param>
+    protected override void DoStateTransition(SelectionState state, bool instant) =>
+        base.DoStateTransition(
+            _keyboardPressed && state != SelectionState.Disabled ? SelectionState.Pressed : state,
+            instant
+        );
 
     /// <summary>
     /// Starts the view's shared delayed tooltip.
@@ -143,6 +182,7 @@ public sealed class TacticalCombatHudButton : Button, ICanvasRaycastFilter
     /// </summary>
     protected override void OnDisable()
     {
+        _keyboardPressed = false;
         _held = false;
         HoverChanged?.Invoke(false);
         base.OnDisable();

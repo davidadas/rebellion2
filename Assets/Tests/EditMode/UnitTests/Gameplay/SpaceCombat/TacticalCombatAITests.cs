@@ -81,8 +81,9 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsTrue(groups.All(group => group.Members.Count == 2));
         }
 
-        [Test]
-        public void GetTargetMetric_DistantTarget_RetainsTravelDistanceUntilFinalScoreStore()
+        [TestCase(1000f)]
+        [TestCase(999.9990234375f)]
+        public void GetTargetMetric_DistantTarget_StoresTravelArithmeticBeforeAddingPenalty(float x)
         {
             TacticalCombatUnit attacker = CreateUnit(
                 "metric-attacker",
@@ -101,12 +102,109 @@ namespace Rebellion.Tests.Gameplay
             target.Systems.ApplyHullLoss(99999);
             TacticalCombatGroup group = new(2, new[] { attacker }, Vector3.UnitZ);
             group.Formation.Refresh(0);
-            target.Position = group.Formation.Position + new Vector3(1000, 1234, 5678);
+            target.Position = group.Formation.Position + new Vector3(x, 1234, 5678);
             float attack = 0;
 
             float metric = TacticalCombatAI.GetTargetMetric(group, target, ref attack);
 
-            Assert.AreEqual(0x4043b8af, System.BitConverter.SingleToInt32Bits(metric));
+            Assert.AreEqual(0x4043b8ae, System.BitConverter.SingleToInt32Bits(metric));
+        }
+
+        [Test]
+        public void GetTargetMetric_HullAndShields_StoresWeightedHullBeforeAddingShields()
+        {
+            TacticalCombatUnit attacker = CreateUnit("attacker", CombatSide.Attacker, 1, 0, false);
+            TacticalCombatGroup group = new(10, new[] { attacker }, Vector3.UnitZ);
+            TacticalCombatUnit target = new(
+                new CapitalShip
+                {
+                    InstanceID = "target",
+                    MaxHullStrength = 7,
+                    CurrentHullStrength = 7,
+                    MaxShieldStrength = 4,
+                },
+                CombatSide.Defender,
+                1000001
+            )
+            {
+                Position = group.Formation.Position,
+            };
+            float attack = 1;
+
+            float metric = TacticalCombatAI.GetTargetMetric(group, target, ref attack);
+
+            Assert.AreEqual(0x4108cccc, System.BitConverter.SingleToInt32Bits(metric));
+            Assert.AreEqual(1, attack);
+        }
+
+        [Test]
+        public void GetTargetMetric_RechargeRoundsToAccumulatedAttack_RejectsExhaustedAttack()
+        {
+            TacticalCombatUnit attacker = CreateUnit("attacker", CombatSide.Attacker, 1, 0, false);
+            TacticalCombatGroup group = new(10, new[] { attacker }, Vector3.UnitZ);
+            TacticalCombatUnit target = new(
+                new Starfighter
+                {
+                    InstanceID = "target",
+                    MaxSquadronSize = 1,
+                    CurrentSquadronSize = 1,
+                    Hyperdrive = 1,
+                },
+                CombatSide.Defender,
+                1000001
+            );
+            target.Systems.ApplyHullLoss(5);
+            float attack = (float)target.Systems.GetShieldRecharge();
+
+            float metric = TacticalCombatAI.GetTargetMetric(group, target, ref attack);
+
+            Assert.AreEqual(-1, metric);
+        }
+
+        [TestCase(float.NaN, 0f, 0f)]
+        [TestCase(float.NaN, float.NaN, float.NaN)]
+        public void GetTargetMetric_OnlyZeroOrUnorderedSeparationComponents_OmitsTravelPenalty(
+            float x,
+            float y,
+            float z
+        )
+        {
+            TacticalCombatUnit attacker = CreateUnit("attacker", CombatSide.Attacker, 1, 0, false);
+            TacticalCombatGroup group = new(10, new[] { attacker }, Vector3.UnitZ);
+            TacticalCombatUnit target = CreateUnit(
+                "target",
+                CombatSide.Defender,
+                1000001,
+                0,
+                false
+            );
+            target.Position = group.Formation.Position + new Vector3(x, y, z);
+            float attack = 1;
+
+            float metric = TacticalCombatAI.GetTargetMetric(group, target, ref attack);
+
+            Assert.AreEqual(64999.99609375f, metric);
+        }
+
+        [Test]
+        public void GetTargetMetric_LargeFiniteSeparation_StoresOverflowedSquaredDistance()
+        {
+            TacticalCombatUnit attacker = CreateUnit("attacker", CombatSide.Attacker, 1, 0, false);
+            TacticalCombatGroup group = new(10, new[] { attacker }, Vector3.UnitZ);
+            group.Formation.Refresh(0);
+            TacticalCombatUnit target = CreateUnit(
+                "target",
+                CombatSide.Defender,
+                1000001,
+                0,
+                false
+            );
+            target.Position = group.Formation.Position + Vector3.UnitX * float.MaxValue;
+            float attack = 1;
+
+            float metric = TacticalCombatAI.GetTargetMetric(group, target, ref attack);
+
+            Assert.AreEqual(float.PositiveInfinity, metric);
         }
 
         [Test]

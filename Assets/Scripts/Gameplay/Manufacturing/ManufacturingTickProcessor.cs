@@ -564,6 +564,7 @@ namespace Rebellion.Gameplay
         /// <param name="item">The completed item.</param>
         private void MarkCompleteAndDispatch(Planet productionPlanet, IManufacturable item)
         {
+            using var sceneUpdate = _game.BeginSceneUpdate();
             item.ManufacturingQueueSequence = 0;
 
             ContainerNode destination = item.GetParent() as ContainerNode;

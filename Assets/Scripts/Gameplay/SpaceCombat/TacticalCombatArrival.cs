@@ -138,7 +138,7 @@ namespace Rebellion.Gameplay
         /// <returns>Whether the complete arrival interval has elapsed.</returns>
         public bool Advance(float elapsedMilliseconds)
         {
-            float delta = elapsedMilliseconds * 0.4f;
+            float delta = (float)((double)elapsedMilliseconds * (double)0.4f);
             if (delta > 200)
                 delta = 200;
             _presentation.SetPauseStrobe(true);
@@ -155,8 +155,8 @@ namespace Rebellion.Gameplay
                 Present(member, GetAnimatedPosition(member, delta));
             }
 
-            double elapsed = (double)ElapsedMilliseconds + delta;
-            ElapsedMilliseconds = (float)elapsed;
+            float elapsed = (float)((double)ElapsedMilliseconds + delta);
+            ElapsedMilliseconds = elapsed;
             if (elapsed >= 1500)
             {
                 for (int index = 0; index < _members.Count; index++)
@@ -186,11 +186,15 @@ namespace Rebellion.Gameplay
                     continue;
                 int selector = GetSelector(member);
                 if (selector < 3)
-                    offset = _lane * -_distances[selector];
+                    offset = new Vector3(
+                        (float)((double)_lane.X * -_distances[selector]),
+                        (float)((double)_lane.Y * -_distances[selector]),
+                        (float)((double)_lane.Z * -_distances[selector])
+                    );
                 Vector4 position = member.Position;
-                position.X += offset.X;
-                position.Y += offset.Y;
-                position.Z += offset.Z;
+                position.X = (float)((double)position.X + offset.X);
+                position.Y = (float)((double)position.Y + offset.Y);
+                position.Z = (float)((double)position.Z + offset.Z);
                 position.W = -1;
                 _presentation.Reset(member.UnitIndex);
                 Present(member, position);
@@ -205,16 +209,16 @@ namespace Rebellion.Gameplay
         /// <returns>The interpolated presentation position.</returns>
         private Vector4 GetAnimatedPosition(TacticalCombatArrivalMember member, float delta)
         {
-            double elapsed = (double)ElapsedMilliseconds + delta;
+            float elapsed = (float)((double)ElapsedMilliseconds + delta);
             if (elapsed > 1500)
                 elapsed = 1500;
             float seconds = (float)(elapsed * (double)0.001f);
             int selector = GetSelector(member);
-            float distance = (float)(
-                (double)seconds * seconds * _coefficients[selector] - _distances[selector]
-            );
-            float displacement = _lane.Z * distance;
-            double z = (double)member.Position.Z + displacement;
+            float squaredSeconds = (float)((double)seconds * seconds);
+            float product = (float)((double)squaredSeconds * _coefficients[selector]);
+            float distance = (float)((double)product - _distances[selector]);
+            float displacement = (float)((double)_lane.Z * distance);
+            float z = (float)((double)member.Position.Z + displacement);
             if (!(_lane.Z > 0))
             {
                 if (!(z > member.Position.Z))
@@ -222,7 +226,7 @@ namespace Rebellion.Gameplay
             }
             else if (member.Position.Z <= z)
                 z = member.Position.Z;
-            return new Vector4(member.Position.X, member.Position.Y, (float)z, -1);
+            return new Vector4(member.Position.X, member.Position.Y, z, -1);
         }
 
         /// <summary>

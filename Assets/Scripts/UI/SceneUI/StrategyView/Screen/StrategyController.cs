@@ -98,6 +98,7 @@ public sealed class StrategyController
     private TacticalCombatView tacticalCombatPrefab;
 
     private TacticalCombatController tacticalCombatController;
+    private TacticalCombatOptionsHost tacticalOptionsHost;
     private bool tacticalCombatStarting;
     private IDisposable tacticalShortcutSuppression;
     private CancelStack cancelStack;
@@ -1067,6 +1068,7 @@ public sealed class StrategyController
     /// </summary>
     private void OnDestroy()
     {
+        DisposeTacticalOptions();
         tacticalShortcutSuppression?.Dispose();
         tacticalShortcutSuppression = null;
         tacticalCombatController?.Dispose();
@@ -1114,6 +1116,7 @@ public sealed class StrategyController
 
         if (tacticalCombatController != null)
         {
+            tacticalOptionsHost?.Render();
             tacticalCombatController.Advance(Time.unscaledDeltaTime);
             return;
         }
@@ -4028,9 +4031,34 @@ public sealed class StrategyController
                 battle,
                 view,
                 completed => CompleteTacticalCombat(origin, completed),
-                presentationCancellationToken
+                presentationCancellationToken,
+                AppBootstrap.Instance.GetUserSettingsManager().Settings.Video
             );
             tacticalCombatController = controller;
+            AppBootstrap bootstrap = AppBootstrap.Instance;
+            tacticalOptionsHost = new TacticalCombatOptionsHost(
+                controller,
+                battle,
+                view,
+                (RectTransform)strategyWindowManager.transform,
+                bootstrap.GetContentAssets(),
+                (parent, windows, invalidate) =>
+                    new OptionsMenuController(
+                        strategyWindowLayerView.OptionsMenuWindowPrefab,
+                        parent,
+                        windows,
+                        windowPlacementController.GetOptionsWindowPosition,
+                        windows.DestroyWindow,
+                        bootstrap,
+                        bootstrap.GetRuntime().SaveGame,
+                        bootstrap.LoadSave,
+                        invalidate,
+                        saveGameManager,
+                        showModsTab: false,
+                        allowSaveLoad: false
+                    )
+            );
+            tacticalOptionsHost.VisibilityChanged += HandleTacticalOptionsVisibility;
             await controller.PrepareAsync(
                 AppBootstrap.Instance.GetContentModelCache(),
                 AppBootstrap.Instance.GetContentAssets()
@@ -4038,6 +4066,7 @@ public sealed class StrategyController
         }
         catch (Exception exception)
         {
+            DisposeTacticalOptions();
             controller?.Dispose();
             tacticalCombatController = null;
             if (battle != null)
@@ -4061,11 +4090,39 @@ public sealed class StrategyController
     private void CompleteTacticalCombat(BattleAlertWindowView origin, TacticalCombatSession battle)
     {
         SpaceCombatResult result = session.Tick.CompleteTacticalCombat(battle);
+        DisposeTacticalOptions();
         tacticalCombatController.Dispose();
         tacticalCombatController = null;
         SetTacticalInteraction(false);
         battleAlertWindowController.ShowTacticalResult(origin, result);
         MarkDirty();
+    }
+
+    /// <summary>
+    /// Transfers application shortcuts to Options while preserving battle ownership of campaign input.
+    /// </summary>
+    /// <param name="visible">Whether the application Options menu owns modal input.</param>
+    private void HandleTacticalOptionsVisibility(bool visible)
+    {
+        if (visible)
+        {
+            tacticalShortcutSuppression?.Dispose();
+            tacticalShortcutSuppression = null;
+        }
+        else if (tacticalCombatController != null)
+            SetTacticalInteraction(true);
+    }
+
+    /// <summary>
+    /// Releases the battle's application-menu surface before its input owner is destroyed.
+    /// </summary>
+    private void DisposeTacticalOptions()
+    {
+        if (tacticalOptionsHost == null)
+            return;
+        tacticalOptionsHost.VisibilityChanged -= HandleTacticalOptionsVisibility;
+        tacticalOptionsHost.Dispose();
+        tacticalOptionsHost = null;
     }
 
     /// <summary>

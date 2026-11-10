@@ -142,20 +142,38 @@ namespace Rebellion.Gameplay
         )
         {
             attack = (float)((double)attack + group.GetAttackRate(target));
-            float durability = Math.Max(
-                (float)((double)target.Systems.Hull * 0.65f + target.Systems.Shields),
-                1
-            );
-            double remaining = (double)attack - target.Systems.GetShieldRecharge();
+            float weightedHull = (float)((double)target.Systems.Hull * 0.65f);
+            float durability = (float)((double)weightedHull + target.Systems.Shields);
+            if (durability < 1)
+                durability = 1;
+            float recharge = (float)target.Systems.GetShieldRecharge();
+            float remaining = (float)((double)attack - recharge);
             if (!(remaining > 0))
                 return -1;
-            float metric = (float)(durability / remaining);
+            float metric = (float)((double)durability / remaining);
             Vector3 delta = target.Position - group.Formation.Position;
-            if (delta == System.Numerics.Vector3.Zero)
+            if (
+                (delta.X == 0 || float.IsNaN(delta.X))
+                && (delta.Y == 0 || float.IsNaN(delta.Y))
+                && (delta.Z == 0 || float.IsNaN(delta.Z))
+            )
                 return metric;
             float speed = group.Formation.MovementSpeed;
-            double distance = speed != 0 ? TacticalCombatGeometry.MeasureLength(delta) / speed : 0;
-            return (float)(metric + Math.Max(distance, 1) * 0.001f);
+            float distanceRatio = 0;
+            if (speed < 0 || speed > 0)
+            {
+                float squaredY = (float)((double)delta.Y * delta.Y);
+                float squaredZ = (float)((double)delta.Z * delta.Z);
+                float squaredX = (float)((double)delta.X * delta.X);
+                float yz = (float)((double)squaredY + squaredZ);
+                float squaredDistance = (float)((double)yz + squaredX);
+                float distance = MathF.Sqrt(squaredDistance);
+                distanceRatio = (float)((double)distance / speed);
+            }
+            if (distanceRatio < 1)
+                distanceRatio = 1;
+            float penalty = (float)((double)distanceRatio * 0.001f);
+            return (float)((double)metric + penalty);
         }
 
         /// <summary>

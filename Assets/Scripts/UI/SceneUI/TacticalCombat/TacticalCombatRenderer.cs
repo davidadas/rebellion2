@@ -9,7 +9,7 @@ using Vector3N = System.Numerics.Vector3;
 /// <summary>
 /// Owns tactical model instances, fighter billboards, and the isolated battle camera.
 /// </summary>
-public sealed class TacticalCombatRenderer : MonoBehaviour
+public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArrivalPresentation
 {
     [SerializeField]
     private Camera _battleCamera;
@@ -20,6 +20,7 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
     [SerializeField]
     private Shader _fighterShader;
     private readonly List<Visual> _visuals = new();
+    private readonly Dictionary<int, Visual> _visualsByIndex = new();
     private readonly HashSet<TacticalCombatUnit> _yellowBoxes = new();
     private readonly HashSet<TacticalCombatUnit> _factionBoxes = new();
     private readonly HashSet<TacticalCombatUnit> _whiteBoxes = new();
@@ -34,6 +35,7 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
     private TacticalCombatEffects _effects;
     private TacticalCombatImpactEffects _impacts;
     private TacticalCombatNavigationRenderer _navigation;
+    private TacticalCombatHolocube _holocube;
     private readonly Dictionary<Material, Material> _environmentMaterials = new();
     private readonly Dictionary<string, Texture2D> _environmentTextures = new(
         StringComparer.Ordinal
@@ -42,8 +44,13 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
     private TacticalCombatCameraState _cameraState;
     private float _field => _cameraState.Field;
     private float _distance;
+    private bool _showPyro;
+    private bool _highDetail;
+    private TacticalCombatDetailProjection _detailProjection;
     public Camera Camera => _battleCamera;
     public RenderTexture Target => _renderTarget;
+    public bool IsPresentingArrival { get; private set; }
+    public event Action<bool> ArrivalStrobeChanged;
 
     /// <summary>
     /// Loads required content into an isolated scene without advancing battle time.
@@ -52,17 +59,45 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
     /// <param name="models">The shared parsed model cache.</param>
     /// <param name="assets">The active pack's addressed textures.</param>
     /// <param name="cancellationToken">The owning screen's cancellation token.</param>
+    /// <param name="videoSettings">The encounter's video settings, or null to use their authored defaults for isolated presentation.</param>
+    /// <returns>The asynchronous presentation preparation.</returns>
+    public Task PrepareAsync(
+        TacticalCombatSession session,
+        ContentModelCache models,
+        ContentAssets assets,
+        CancellationToken cancellationToken,
+        UserVideoSettings videoSettings = null
+    ) =>
+        PrepareAsync(
+            session,
+            models,
+            assets,
+            cancellationToken,
+            new TacticalCombatRenderSettings(videoSettings ?? new UserVideoSettings())
+        );
+
+    /// <summary>
+    /// Loads battle resources using the immutable video options captured at encounter entry.
+    /// </summary>
+    /// <param name="session">The deployed encounter.</param>
+    /// <param name="models">The shared parsed model cache.</param>
+    /// <param name="assets">The active pack's addressed textures.</param>
+    /// <param name="cancellationToken">The owning screen's cancellation token.</param>
+    /// <param name="videoSettings">The encounter's captured video options.</param>
     /// <returns>The asynchronous presentation preparation.</returns>
     public async Task PrepareAsync(
         TacticalCombatSession session,
         ContentModelCache models,
         ContentAssets assets,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        TacticalCombatRenderSettings videoSettings
     )
     {
         if (_battleCamera == null || _modelRoot == null || _fighterShader == null)
             throw new MissingReferenceException($"{name} is missing battle rendering references.");
         _session = session;
+        _showPyro = videoSettings.ShowPyro;
+        _highDetail = videoSettings.HighDetail;
         _sceneryRandom =
             session.SceneryRandom
             ?? throw new InvalidOperationException(
@@ -78,7 +113,9 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
             _modelRoot,
             _battleCamera,
             _fighterShader,
-            session.Definition.Effects,
+            _showPyro
+                ? session.Definition.Effects
+                : Array.Empty<Rebellion.Game.SpaceCombat.TacticalCombatEffectDefinition>(),
             assets
         );
         _navigation = new TacticalCombatNavigationRenderer(
@@ -86,8 +123,14 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
             _fighterShader,
             session.Navigation
         );
+        _holocube = new TacticalCombatHolocube(
+            _modelRoot,
+            _fighterShader,
+            session.BattleDepth,
+            videoSettings.ShowHolocube
+        );
         UpdateFieldOfView();
-        PrepareEnvironment(session, assets);
+        PrepareEnvironment(session, assets, videoSettings.ShowPlanet);
         _battleCamera.farClipPlane = _distance * 2.5f;
         _battleCamera.nearClipPlane = 1;
         foreach (TacticalCombatUnit unit in session.Units)
@@ -97,6 +140,7 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
             root.transform.SetParent(_modelRoot, false);
             Visual visual = new Visual(unit, root);
             _visuals.Add(visual);
+            _visualsByIndex.Add(unit.Index, visual);
             if (unit.IsFighter)
                 CreateFighter(visual, assets, session);
             else if (unit.IsBattleStation)
@@ -171,13 +215,21 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
         TacticalCombatUnit unit,
         TacticalWeaponType weapon,
         TacticalCombatImpactKind impact
-    ) => _impacts.ShowImpact(unit, weapon, impact);
+    )
+    {
+        if (_showPyro)
+            _impacts.ShowImpact(unit, weapon, impact);
+    }
 
     /// <summary>
     /// Begins the capital model's authored destruction sequence.
     /// </summary>
     /// <param name="unit">The destroyed encounter participant.</param>
-    public void ShowDestruction(TacticalCombatUnit unit) => _impacts.ShowDestruction(unit);
+    public void ShowDestruction(TacticalCombatUnit unit)
+    {
+        if (_showPyro)
+            _impacts.ShowDestruction(unit);
+    }
 
     /// <summary>
     /// Fires the station's superlaser from its rendered emitter position.
@@ -208,7 +260,12 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
     /// </summary>
     /// <param name="session">The captured encounter environment.</param>
     /// <param name="assets">The addressed content source.</param>
-    private void PrepareEnvironment(TacticalCombatSession session, ContentAssets assets)
+    /// <param name="showPlanet">Whether the planet image and its scenery-position draws are enabled.</param>
+    private void PrepareEnvironment(
+        TacticalCombatSession session,
+        ContentAssets assets,
+        bool showPlanet
+    )
     {
         Rebellion.Game.SpaceCombat.TacticalCombatEnvironmentDefinition environment =
             session.Environment;
@@ -224,7 +281,7 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
                         "A tactical environment texture is missing: " + replacement.ImagePath
                     )
             );
-        if (string.IsNullOrWhiteSpace(environment.PlanetImagePath))
+        if (!showPlanet || string.IsNullOrWhiteSpace(environment.PlanetImagePath))
             return;
         Texture2D texture =
             assets.GetTexture(environment.PlanetImagePath)
@@ -293,6 +350,8 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
     /// </summary>
     private void UpdateFieldOfView()
     {
+        if (_detailProjection?.Field.Equals(_field) != true)
+            _detailProjection = new TacticalCombatDetailProjection(_field);
         float vertical = _field / Mathf.Max(_battleCamera.aspect, 1);
         _battleCamera.fieldOfView = 2 * Mathf.Atan(vertical) * Mathf.Rad2Deg;
     }
@@ -427,44 +486,136 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
         if (_planet != null)
             _planet.rotation = _battleCamera.transform.rotation;
         foreach (Visual visual in _visuals)
+            RefreshVisual(visual);
+    }
+
+    /// <summary>
+    /// Retains arrival transforms until the final snap and projects its pause-control state.
+    /// </summary>
+    /// <param name="active">Whether arrival presentation owns the affected transforms.</param>
+    public void SetPauseStrobe(bool active)
+    {
+        IsPresentingArrival = active;
+        if (!active)
+            foreach (Visual visual in _visuals)
+            {
+                visual.ArrivalPosition = null;
+                visual.ArrivalDirection = null;
+                visual.ArrivalVisible = false;
+            }
+        ArrivalStrobeChanged?.Invoke(active);
+    }
+
+    /// <summary>
+    /// Restores an addressed arrival member's base presentation before its first transform.
+    /// </summary>
+    /// <param name="unitIndex">The battle registration identifier.</param>
+    public void Reset(int unitIndex)
+    {
+        if (!_visualsByIndex.TryGetValue(unitIndex, out Visual visual))
+            return;
+        visual.ArrivalVisible = true;
+        visual.Root.SetActive(true);
+        visual.SelectionBox?.SetState(1, false);
+    }
+
+    /// <summary>
+    /// Applies an encounter-local arrival transform without changing simulation state.
+    /// </summary>
+    /// <param name="unitIndex">The battle registration identifier.</param>
+    /// <param name="position">The presentation position.</param>
+    /// <param name="direction">The participant's presentation direction.</param>
+    public void SetTransform(
+        int unitIndex,
+        System.Numerics.Vector4 position,
+        System.Numerics.Vector4 direction
+    )
+    {
+        if (!_visualsByIndex.TryGetValue(unitIndex, out Visual visual))
+            return;
+        visual.ArrivalPosition = new Vector3(position.X, position.Y, position.Z);
+        visual.ArrivalDirection = new Vector3(direction.X, direction.Y, direction.Z);
+        ApplyTransform(visual);
+    }
+
+    /// <summary>
+    /// Refreshes an addressed member's current visibility, selection state, and detail level.
+    /// </summary>
+    /// <param name="unitIndex">The battle registration identifier.</param>
+    public void Refresh(int unitIndex)
+    {
+        if (_visualsByIndex.TryGetValue(unitIndex, out Visual visual))
+            RefreshVisual(visual);
+    }
+
+    /// <summary>
+    /// Projects one participant's owned presentation state without enumerating its hierarchy.
+    /// </summary>
+    /// <param name="visual">The participant's presentation.</param>
+    private void RefreshVisual(Visual visual)
+    {
+        TacticalCombatUnit unit = visual.Unit;
+        bool visible =
+            visual.ArrivalVisible
+            || _cameraState.IsCategoryView && _cameraState.TrackedObjectIndex == unit.Index
+            || unit.Systems.IsAlive
+                && unit.Status
+                    is TacticalCombatUnitStatus.Active
+                        or TacticalCombatUnitStatus.PreparingHyperspace
+                        or TacticalCombatUnitStatus.EnteringHyperspace
+                        or TacticalCombatUnitStatus.UnderConstruction
+            || _impacts.KeepsModelVisible(unit);
+        visual.Root.SetActive(visible);
+        if (visual.SelectionBox != null)
         {
-            TacticalCombatUnit unit = visual.Unit;
-            bool visible =
-                unit.Systems.IsAlive
-                    && unit.Status
-                        is TacticalCombatUnitStatus.Active
-                            or TacticalCombatUnitStatus.PreparingHyperspace
-                            or TacticalCombatUnitStatus.EnteringHyperspace
-                            or TacticalCombatUnitStatus.UnderConstruction
-                || _impacts.KeepsModelVisible(unit);
-            visual.Root.SetActive(visible);
-            if (visual.SelectionBox != null)
-            {
-                int state =
-                    !unit.IsEngaged ? 1
-                    : _yellowBoxes.Contains(unit) ? 2
-                    : _whiteBoxes.Contains(unit) ? 4
-                    : _factionBoxes.Contains(unit)
-                    || _factionHighlight[_session.GetSide(unit.Side).FactionIndex]
-                        ? 3
-                    : 1;
-                visual.SelectionBox.SetState(state, _cameraState.TrackedObjectIndex == unit.Index);
-            }
-            if (!visible)
-                continue;
-            visual.Root.transform.localPosition = visual.StationPosition ?? ToUnity(unit.Position);
-            Vector3 heading = ToUnity(unit.Heading);
-            if (heading.sqrMagnitude > 0)
-                visual.Root.transform.localRotation = Quaternion.LookRotation(-heading, Vector3.up);
-            if (visual.Billboard != null)
-            {
-                visual.Billboard.rotation = _battleCamera.transform.rotation;
-                if (unit.IsFighter)
-                    UpdateFighter(visual);
-            }
-            else if (visual.ModelDetails != null)
-                UpdateModelDetail(visual);
+            int state =
+                !unit.IsEngaged ? 1
+                : _yellowBoxes.Contains(unit) ? 2
+                : _whiteBoxes.Contains(unit) ? 4
+                : _factionBoxes.Contains(unit)
+                || _factionHighlight[_session.GetSide(unit.Side).FactionIndex]
+                    ? 3
+                : 1;
+            visual.SelectionBox.SetState(state, _cameraState.TrackedObjectIndex == unit.Index);
         }
+        if (!visible)
+            return;
+        ApplyTransform(visual);
+        if (visual.Billboard != null)
+        {
+            visual.Billboard.rotation = _battleCamera.transform.rotation;
+            if (unit.IsFighter)
+                UpdateFighter(visual);
+        }
+        else if (visual.ModelDetails != null)
+            UpdateModelDetail(visual);
+    }
+
+    /// <summary>
+    /// Chooses the arrival transform while it is owned, or the participant's ordinary pose.
+    /// </summary>
+    /// <param name="visual">The participant's presentation.</param>
+    private void ApplyTransform(Visual visual)
+    {
+        Vector3N position = visual.Unit.Position;
+        Vector3N direction = visual.Unit.Heading;
+        if (visual.Unit.Status == TacticalCombatUnitStatus.EnteringHyperspace)
+        {
+            TacticalCombatDeparturePose departure = TacticalCombatDeparturePose.Evaluate(
+                visual.Unit.Index,
+                visual.Unit.Definition.PresentationIndex,
+                position,
+                _session.GetSide(visual.Unit.Side).Forward,
+                visual.Unit.HyperspaceMilliseconds
+            );
+            position = departure.Position;
+            direction = departure.Heading;
+        }
+        visual.Root.transform.localPosition =
+            visual.ArrivalPosition ?? visual.StationPosition ?? ToUnity(position);
+        Vector3 heading = visual.ArrivalDirection ?? ToUnity(direction);
+        if (heading.sqrMagnitude > 0)
+            visual.Root.transform.localRotation = Quaternion.LookRotation(-heading, Vector3.up);
     }
 
     /// <summary>
@@ -520,15 +671,13 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
     /// <param name="visual">The active capital visual.</param>
     private void UpdateModelDetail(Visual visual)
     {
-        float metric =
-            Mathf.Abs(
-                _battleCamera.transform.InverseTransformPoint(visual.Root.transform.position).z
-            ) * _field;
-        int selected =
-            metric > 40 ? 2
-            : metric > 15 && metric < 40 ? 1
-            : metric < 15 ? 0
-            : visual.DetailLevel;
+        float distance = GetDetailDistance(visual);
+        int selected = TacticalCombatDetailLevels.SelectCapital(
+            distance,
+            _field,
+            _highDetail,
+            visual.DetailLevel
+        );
         visual.DetailLevel = Mathf.Min(selected, visual.ModelDetails.Length - 1);
         for (int index = 0; index < visual.ModelDetails.Length; index++)
             visual.ModelDetails[index].gameObject.SetActive(index == visual.DetailLevel);
@@ -541,14 +690,12 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
     private void UpdateFighter(Visual visual)
     {
         visual.Billboard.rotation = _battleCamera.transform.rotation;
-        float depth = Mathf.Abs(
-            _battleCamera.transform.InverseTransformPoint(visual.Root.transform.position).z
+        int lod = _detailProjection.SelectFighter(
+            GetDetailDistance(visual),
+            _highDetail,
+            visual.DetailLevel
         );
-        float metric = Mathf.Tan(_field * 0.5f) * depth;
-        int lod =
-            metric < 5 ? 0
-            : metric < 10 ? 1
-            : 2;
+        visual.DetailLevel = lod;
         Texture2D texture = visual.FighterTextures[lod];
         if (!_fighterMaterials.TryGetValue(texture, out Material material))
         {
@@ -556,6 +703,23 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
             _fighterMaterials.Add(texture, material);
         }
         visual.FighterRenderer.sharedMaterial = material;
+    }
+
+    /// <summary>
+    /// Projects the camera-relative position onto the camera's direction in the battle frame.
+    /// </summary>
+    /// <param name="visual">The participant's owned presentation.</param>
+    /// <returns>The rounded nonnegative detail distance, retaining unordered values.</returns>
+    private float GetDetailDistance(Visual visual)
+    {
+        Vector3 position = _battleCamera.transform.InverseTransformPoint(
+            visual.Root.transform.position
+        );
+        Vector3 direction = _modelRoot.InverseTransformDirection(_battleCamera.transform.forward);
+        double dot = (double)position.z * direction.z + (double)position.y * direction.y;
+        dot += (double)position.x * direction.x;
+        float distance = (float)dot;
+        return !(dot >= 0) ? -distance : distance;
     }
 
     /// <summary>
@@ -630,15 +794,83 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
     }
 
     /// <summary>
-    /// Changes the viewport field by discrete wheel steps without affecting tactical movement.
+    /// Opens an occupied object or fighter category without changing its command selection.
     /// </summary>
-    /// <param name="steps">The signed count of wheel steps.</param>
-    public void Zoom(float steps)
+    /// <param name="category">The object category from zero through seven, or fighter category from eight through eleven.</param>
+    /// <returns>Whether the category has a registered owner.</returns>
+    public bool ShowCategory(int category)
     {
-        TacticalCombatCameraCommand command =
-            steps >= 0 ? TacticalCombatCameraCommand.ZoomIn : TacticalCombatCameraCommand.ZoomOut;
-        for (int index = 0; index < Mathf.RoundToInt(Mathf.Abs(steps)); index++)
-            ApplyCameraCommand(command);
+        if ((uint)category >= 12)
+            throw new ArgumentOutOfRangeException(nameof(category));
+        if (GetCameraGroup(category) == null)
+            return false;
+        _cameraState.OpenCategory(category, () => ResolveCameraFocus(category));
+        UpdateCamera();
+        return true;
+    }
+
+    /// <summary>
+    /// Resolves the current owner of one camera category independently of its prior slot contents.
+    /// </summary>
+    /// <param name="category">The camera category from zero through eleven.</param>
+    /// <returns>The current category owner, or null for an empty slot.</returns>
+    private TacticalCombatGroup GetCameraGroup(int category) =>
+        category < 8
+            ? _session.GetObjectGroup(_session.PlayerSide, category)
+            : _session.GetFighterGroup(_session.PlayerSide, category - 8);
+
+    /// <summary>
+    /// Resolves applied members, route points, and targets against the screen's cached presentations.
+    /// </summary>
+    /// <param name="category">The live category slot.</param>
+    /// <returns>The current close-up references, or null when no primary render object resolves.</returns>
+    private TacticalCombatCameraFocus? ResolveCameraFocus(int category)
+    {
+        TacticalCombatGroup group = GetCameraGroup(category);
+        if (group == null)
+            return null;
+        TacticalCombatUnit primary = group.PrimaryMember;
+        if (category < 8 && _session.Selection.Kind == TacticalCombatSelectionKind.ObjectGroup)
+            primary = _session.Selection.PrimaryUnit ?? primary;
+        if (primary == null || !_visualsByIndex.TryGetValue(primary.Index, out Visual visual))
+            return null;
+        Vector3? secondaryPosition = null;
+        TacticalCombatUnit secondary = null;
+        if (group.PrimaryWaypoint is Vector3N waypoint)
+        {
+            if (_navigation.TryGetWorldPosition(waypoint, out Vector3 markerPosition))
+                secondaryPosition = markerPosition;
+        }
+        else if (group.Targets.Count > 0)
+            secondary = group.Targets[0];
+        if (
+            category >= 8
+            && !group.PrimaryWaypoint.HasValue
+            && secondary == null
+            && group.Order == TacticalCombatOrder.Recover
+            && group.Members.Count > 0
+        )
+            secondary = _session.GetUnit(group.Members[0].CarrierID);
+        if (
+            secondary != null
+            && !ReferenceEquals(primary, secondary)
+            && _visualsByIndex.TryGetValue(secondary.Index, out Visual secondaryVisual)
+        )
+        {
+            ApplyTransform(secondaryVisual);
+            secondaryPosition = GetCameraPosition(secondaryVisual);
+        }
+        ApplyTransform(visual);
+        visual.Root.SetActive(true);
+        visual.SelectionBox?.SetState(1, false);
+        Vector3 span = visual.SelectionBox?.Bounds.size ?? Vector3.zero;
+        return new TacticalCombatCameraFocus(
+            primary.Index,
+            GetCameraPosition(visual),
+            primary.IsBattleStation ? _modelRoot.rotation : visual.Root.transform.rotation,
+            span.x > span.y ? span.x : span.y,
+            secondaryPosition
+        );
     }
 
     /// <summary>
@@ -647,24 +879,29 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
     /// <param name="unit">The selected participant, or null to clear tracking.</param>
     public void Focus(TacticalCombatUnit unit)
     {
-        if (unit == null)
+        if (unit == null || !_visualsByIndex.TryGetValue(unit.Index, out Visual visual))
             _cameraState.Track(null);
         else
         {
-            Vector3? stationPosition = null;
-            foreach (Visual visual in _visuals)
-                if (ReferenceEquals(visual.Unit, unit))
-                {
-                    stationPosition = visual.StationPosition;
-                    break;
-                }
             _cameraState.Track(
-                () => _modelRoot.TransformPoint(stationPosition ?? ToUnity(unit.Position)),
+                () =>
+                {
+                    ApplyTransform(visual);
+                    return GetCameraPosition(visual);
+                },
                 unit.Index
             );
         }
         UpdateCamera();
     }
+
+    /// <summary>
+    /// Resolves the logical object frame independently of any offset background billboard.
+    /// </summary>
+    /// <param name="visual">The registered object's presentation.</param>
+    /// <returns>The logical render frame's world position.</returns>
+    private Vector3 GetCameraPosition(Visual visual) =>
+        visual.Unit.IsBattleStation ? _modelRoot.position : visual.Root.transform.position;
 
     /// <summary>
     /// Aims the primary camera at an addressed navigation marker without moving its orbit.
@@ -691,6 +928,8 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
     {
         _cameraState.GetPose(_modelRoot.position, out Vector3 position, out Quaternion rotation);
         _battleCamera.transform.SetPositionAndRotation(position, rotation);
+        _battleCamera.nearClipPlane = _cameraState.NearPlane;
+        UpdateFieldOfView();
     }
 
     /// <summary>
@@ -701,6 +940,7 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
         _effects?.Dispose();
         _impacts?.Dispose();
         _navigation?.Dispose();
+        _holocube?.Dispose();
         foreach (Visual visual in _visuals)
             visual.SelectionBox?.Dispose();
         foreach (ContentModelInstance instance in _instances)
@@ -762,6 +1002,9 @@ public sealed class TacticalCombatRenderer : MonoBehaviour
         public int DetailLevel { get; set; } = 1;
         public TacticalCombatSelectionBox SelectionBox { get; set; }
         public Vector3? StationPosition { get; set; }
+        public Vector3? ArrivalPosition { get; set; }
+        public Vector3? ArrivalDirection { get; set; }
+        public bool ArrivalVisible { get; set; }
 
         /// <summary>
         /// Owns one unit's instantiated presentation.

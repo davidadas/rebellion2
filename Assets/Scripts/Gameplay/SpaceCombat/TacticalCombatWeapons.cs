@@ -13,7 +13,7 @@ namespace Rebellion.Gameplay
         private readonly float[] _ranges;
         private readonly float[] _charge = new float[4];
         private readonly float[] _maximumCharge = new float[4];
-        private readonly bool[] _ready = new bool[4];
+        private readonly uint[] _ready = new uint[4];
         private readonly int[] _rechargeOrder = new int[4];
         private int _rechargeCount;
 
@@ -23,10 +23,12 @@ namespace Rebellion.Gameplay
         /// <param name="batteryStrengths">The four-by-three battery strength matrix.</param>
         /// <param name="weaponRanges">The laser, ion, and turbolaser ranges.</param>
         /// <param name="weaponDamage">The initial weapon-system damage level.</param>
+        /// <param name="isFighter">Whether to initialize shared squadron battery state.</param>
         public TacticalCombatWeapons(
             int[,] batteryStrengths,
             float[] weaponRanges,
-            uint weaponDamage
+            uint weaponDamage,
+            bool isFighter = false
         )
         {
             if (batteryStrengths == null)
@@ -50,14 +52,14 @@ namespace Rebellion.Gameplay
                 float total = (float)(
                     (double)_strengths[arc, 0] + _strengths[arc, 1] + _strengths[arc, 2]
                 );
-                _maximumCharge[arc] = total;
+                _charge[arc] = total;
+                _ready[arc] = 1;
                 _rechargeOrder[arc] = -1;
-                if (total <= 0)
+                if (isFighter || total <= 0)
                     continue;
                 if (weaponDamage < 4)
                 {
-                    _charge[arc] = total;
-                    _ready[arc] = true;
+                    _ready[arc] = unchecked((uint)BitConverter.SingleToInt32Bits(total));
                 }
                 else
                 {
@@ -73,7 +75,7 @@ namespace Rebellion.Gameplay
         /// <returns>Whether its recharge is complete.</returns>
         public bool IsReady(TacticalWeaponArc arc)
         {
-            return _ready[(int)arc];
+            return _ready[(int)arc] == 1;
         }
 
         /// <summary>
@@ -87,10 +89,10 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Gets the complete charge required by one battery.
+        /// Gets the stored target used when recharging one battery.
         /// </summary>
         /// <param name="arc">The battery to inspect.</param>
-        /// <returns>The full weapon charge.</returns>
+        /// <returns>The battery's recharge target.</returns>
         public float GetMaximumCharge(TacticalWeaponArc arc)
         {
             return _maximumCharge[(int)arc];
@@ -189,7 +191,7 @@ namespace Rebellion.Gameplay
         {
             int index = (int)arc;
             _charge[index] = (float)((double)_charge[index] - GetStrength(arc, weapon));
-            _ready[index] = false;
+            _ready[index] = 0;
             QueueRecharge(index);
         }
 
@@ -200,7 +202,7 @@ namespace Rebellion.Gameplay
         public void ClearBattery(TacticalWeaponArc arc)
         {
             int index = (int)arc;
-            _ready[index] = false;
+            _ready[index] = 0;
             _charge[index] = 0;
             QueueRecharge(index);
         }
@@ -223,13 +225,13 @@ namespace Rebellion.Gameplay
                 {
                     _charge[arc] = _maximumCharge[arc];
                     available -= remaining;
-                    _ready[arc] = true;
+                    _ready[arc] = 1;
                 }
             }
 
             for (int order = 0; order < _rechargeCount; order++)
             {
-                if (!_ready[_rechargeOrder[order]])
+                if (_ready[_rechargeOrder[order]] != 1)
                     continue;
                 for (int shift = order; shift < 3; shift++)
                     _rechargeOrder[shift] = _rechargeOrder[shift + 1];

@@ -62,18 +62,64 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         }
 
         [Test]
-        public void ApplyKeyboardActivation_Click_DispatchesWithReleasedArtwork()
+        public void ClearKeyboardArtwork_PointerHeld_PreservesIndependentClick()
+        {
+            int presses = 0;
+            _button.onClick.AddListener(() => presses++);
+            PointerEventData pointer = new(_events) { button = PointerEventData.InputButton.Left };
+            _button.OnPointerDown(pointer);
+
+            _button.ClearKeyboardArtwork();
+            _button.OnPointerUp(pointer);
+            _button.OnPointerClick(pointer);
+
+            Assert.AreEqual(1, presses);
+        }
+
+        [Test]
+        public void ApplyKeyboardActivation_Click_DispatchesWithPressedArtwork()
         {
             int presses = 0;
             _button.onClick.AddListener(() =>
             {
-                Assert.AreSame(_up, ((Image)_button.targetGraphic).overrideSprite);
+                Assert.AreSame(_down, ((Image)_button.targetGraphic).overrideSprite);
                 presses++;
             });
 
             _button.ApplyKeyboardActivation(true);
 
             Assert.AreEqual(1, presses);
+            Assert.AreSame(_down, ((Image)_button.targetGraphic).overrideSprite);
+        }
+
+        [Test]
+        public void ApplyKeyboardActivation_RepeatedKeyDown_DispatchesEachNativePress()
+        {
+            int presses = 0;
+            _button.onClick.AddListener(() => presses++);
+
+            _button.ApplyKeyboardActivation(true);
+            _button.ApplyKeyboardActivation(true);
+            _button.ApplyKeyboardActivation(true);
+
+            Assert.AreEqual(3, presses);
+            Assert.AreSame(_down, ((Image)_button.targetGraphic).overrideSprite);
+        }
+
+        [Test]
+        public void ApplyKeyboardActivation_SpriteBindingsRefreshed_RetainsPressedArtwork()
+        {
+            _button.ApplyKeyboardActivation(true);
+
+            _button.spriteState = new SpriteState
+            {
+                pressedSprite = _down,
+                highlightedSprite = _down,
+                selectedSprite = _up,
+                disabledSprite = _up,
+            };
+
+            Assert.AreSame(_down, ((Image)_button.targetGraphic).overrideSprite);
         }
 
         [Test]
@@ -86,10 +132,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             _button.ApplyKeyboardActivation(false);
 
             Assert.AreEqual(1, presses);
+            Assert.AreSame(_up, ((Image)_button.targetGraphic).overrideSprite);
         }
 
         [Test]
-        public void ApplyKeyboardActivation_DisabledControl_DoesNotDispatchClick()
+        public void ApplyKeyboardActivation_DisabledControl_DispatchesKeyboardCommand()
         {
             int presses = 0;
             _button.onClick.AddListener(() => presses++);
@@ -97,11 +144,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
 
             _button.ApplyKeyboardActivation(true);
 
-            Assert.AreEqual(0, presses);
+            Assert.AreEqual(1, presses);
         }
 
         [Test]
-        public void ApplyKeyboardActivation_DisabledDuringPointerPress_CancelsClickAfterReenabling()
+        public void ApplyKeyboardActivation_DisabledDuringPointerPress_PreservesIndependentCompletedClick()
         {
             int presses = 0;
             _button.onClick.AddListener(() => presses++);
@@ -114,7 +161,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             _button.OnPointerUp(pointer);
             _button.OnPointerClick(pointer);
 
-            Assert.AreEqual(0, presses);
+            Assert.AreEqual(2, presses);
         }
 
         [Test]

@@ -15,6 +15,7 @@ internal sealed class TacticalCombatNavigationRenderer : IDisposable
     private readonly int[] _triangles = { 2, 1, 0, 3, 0, 1, 3, 1, 2, 3, 2, 0 };
     private readonly Material[] _materials = new Material[4];
     private readonly List<Point> _points = new();
+    private readonly Dictionary<Vector3N, Transform> _positions = new();
     private HashSet<Vector3N> _selected = new();
     private HashSet<Vector3N> _nextSelected = new();
     private readonly bool[] _rings = new bool[4];
@@ -85,6 +86,7 @@ internal sealed class TacticalCombatNavigationRenderer : IDisposable
             marker.layer = PresentationLayers.TacticalCombat;
             marker.transform.SetParent(_root.transform, false);
             marker.transform.localPosition = new Vector3(position.X, position.Y, position.Z);
+            _positions.Add(position, marker.transform);
             marker.GetComponent<MeshFilter>().sharedMesh = _mesh;
             MeshRenderer renderer = marker.GetComponent<MeshRenderer>();
             renderer.sharedMaterial = _materials[color];
@@ -107,6 +109,23 @@ internal sealed class TacticalCombatNavigationRenderer : IDisposable
         foreach (Point point in _points)
             if (point.Ring == ring)
                 point.Root.SetActive(_rings[ring]);
+    }
+
+    /// <summary>
+    /// Resolves a registered navigation marker's position even when its ring is hidden.
+    /// </summary>
+    /// <param name="position">The encounter-local navigation point.</param>
+    /// <param name="worldPosition">Receives the registered marker's world position.</param>
+    /// <returns>Whether the point belongs to the authored navigation lattice.</returns>
+    public bool TryGetWorldPosition(Vector3N position, out Vector3 worldPosition)
+    {
+        if (_positions.TryGetValue(position, out Transform marker))
+        {
+            worldPosition = marker.position;
+            return true;
+        }
+        worldPosition = default;
+        return false;
     }
 
     /// <summary>

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <IsTestProject>true</IsTestProject>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NativeTarget Condition="'$(NativeTarget)' == ''">win-x64</NativeTarget>
+    <NativeRoot Condition="'$(NativeRoot)' == ''">../../../Assets/Plugins/TacticalMath</NativeRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../Assets/Scripts/Gameplay/SpaceCombat/TacticalCombatGeometry.cs" />
+    <Compile Include="../../../Assets/Scripts/Util/Mathematics/ExtendedVectorLength.cs" />
+    <Compile Include="../../../Assets/Scripts/Util/Mathematics/NativeVectorMath.cs" />
+    <Compile Include="../../../Assets/Tests/EditMode/UnitTests/Gameplay/SpaceCombat/TacticalCombatGeometryTests.cs" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+  </ItemGroup>
+  <Target Name="CopyNativeMath" AfterTargets="Build">
+    <ItemGroup>
+      <NativeMathFiles Include="$(NativeRoot)/$(NativeTarget)/*.dll;$(NativeRoot)/$(NativeTarget)/*.so;$(NativeRoot)/$(NativeTarget)/*.dylib" />
+    </ItemGroup>
+    <Error Condition="'@(NativeMathFiles)' == ''" Text="The target native vector library has not been built." />
+    <Copy SourceFiles="@(NativeMathFiles)" DestinationFolder="$(TargetDir)" />
+  </Target>
+</Project>

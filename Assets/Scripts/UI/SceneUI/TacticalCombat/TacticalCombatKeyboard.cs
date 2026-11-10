@@ -1,3 +1,4 @@
+using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
@@ -5,6 +6,83 @@ using UnityEngine.InputSystem;
 /// </summary>
 public static class TacticalCombatKeyboard
 {
+    /// <summary>
+    /// Resolves the eight top-row object-category keys to their frame image controls.
+    /// </summary>
+    /// <param name="key">The native keyboard key.</param>
+    /// <param name="control">Receives the addressed category control.</param>
+    /// <returns>Whether the key addresses an object-category image.</returns>
+    public static bool TryGetObjectCategoryControl(KeyCode key, out TacticalCombatControl control)
+    {
+        if (key is >= KeyCode.Alpha1 and <= KeyCode.Alpha8)
+        {
+            control = (TacticalCombatControl)(
+                (int)TacticalCombatControl.ObjectGroup1 + (int)key - (int)KeyCode.Alpha1
+            );
+            return true;
+        }
+        control = default;
+        return false;
+    }
+
+    /// <summary>
+    /// Resolves a native key transition to its camera image button without introducing a repeat timer.
+    /// </summary>
+    /// <param name="key">The native keyboard key.</param>
+    /// <param name="control">Receives the addressed camera image button.</param>
+    /// <returns>Whether the key addresses a camera image button.</returns>
+    public static bool TryGetCameraControl(KeyCode key, out TacticalCombatControl control)
+    {
+        control = key switch
+        {
+            KeyCode.PageUp or KeyCode.Keypad9 or KeyCode.KeypadPlus =>
+                TacticalCombatControl.CameraZoomIn,
+            KeyCode.PageDown or KeyCode.Keypad3 or KeyCode.KeypadMinus =>
+                TacticalCombatControl.CameraZoomOut,
+            KeyCode.LeftArrow or KeyCode.Keypad4 => TacticalCombatControl.CameraRotateLeft,
+            KeyCode.RightArrow or KeyCode.Keypad6 => TacticalCombatControl.CameraRotateRight,
+            KeyCode.UpArrow or KeyCode.Keypad8 => TacticalCombatControl.CameraTiltUp,
+            KeyCode.DownArrow or KeyCode.Keypad2 => TacticalCombatControl.CameraTiltDown,
+            KeyCode.Home or KeyCode.Keypad7 => TacticalCombatControl.SaveCamera,
+            KeyCode.End or KeyCode.Keypad1 => TacticalCombatControl.RestoreCamera,
+            _ => TacticalCombatControl.FocusCamera,
+        };
+        return key
+            is KeyCode.PageUp
+                or KeyCode.Keypad9
+                or KeyCode.KeypadPlus
+                or KeyCode.PageDown
+                or KeyCode.Keypad3
+                or KeyCode.KeypadMinus
+                or KeyCode.LeftArrow
+                or KeyCode.Keypad4
+                or KeyCode.RightArrow
+                or KeyCode.Keypad6
+                or KeyCode.UpArrow
+                or KeyCode.Keypad8
+                or KeyCode.DownArrow
+                or KeyCode.Keypad2
+                or KeyCode.Home
+                or KeyCode.Keypad7
+                or KeyCode.End
+                or KeyCode.Keypad1
+                or KeyCode.Return
+                or KeyCode.KeypadEnter
+                or KeyCode.KeypadPeriod;
+    }
+
+    /// <summary>
+    /// Resolves the twelve live category-view shortcuts without changing command selection.
+    /// </summary>
+    /// <param name="key">The native keyboard key.</param>
+    /// <param name="category">Receives the zero-based object or fighter category.</param>
+    /// <returns>Whether the key addresses a category camera.</returns>
+    public static bool TryGetCameraCategory(KeyCode key, out int category)
+    {
+        category = key - KeyCode.F1;
+        return key is >= KeyCode.F1 and <= KeyCode.F12;
+    }
+
     /// <summary>
     /// Resolves inspection traversal from the currently visible panel and the current Shift state.
     /// </summary>
@@ -50,7 +128,7 @@ public static class TacticalCombatKeyboard
             Key.DownArrow or Key.Numpad2 => TacticalCombatCameraCommand.TiltDown,
             Key.Home or Key.Numpad7 => TacticalCombatCameraCommand.Save,
             Key.End or Key.Numpad1 => TacticalCombatCameraCommand.Restore,
-            Key.Enter or Key.NumpadPeriod => TacticalCombatCameraCommand.Focus,
+            Key.Enter or Key.NumpadEnter or Key.NumpadPeriod => TacticalCombatCameraCommand.Focus,
             _ => default,
         };
         return key
@@ -73,6 +151,7 @@ public static class TacticalCombatKeyboard
                 or Key.End
                 or Key.Numpad1
                 or Key.Enter
+                or Key.NumpadEnter
                 or Key.NumpadPeriod;
     }
 }

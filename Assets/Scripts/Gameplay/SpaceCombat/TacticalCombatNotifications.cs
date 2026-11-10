@@ -202,6 +202,20 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Releases active playback resources while retaining their records for the next status refresh.
+        /// Pending requests, scheduling eligibility, and queue handles remain unchanged.
+        /// </summary>
+        public void ReleasePlaybacks()
+        {
+            ThrowIfDisposed();
+            foreach (Notification record in _active)
+            {
+                record.Playback?.Stop();
+                record.Playback = null;
+            }
+        }
+
+        /// <summary>
         /// Stops every active owned playback before discarding pending requests.
         /// </summary>
         public void Dispose()

@@ -34,5 +34,52 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(new Vector3(-100 * 0.6666667f), unit.Position);
         }
+
+        [Test]
+        public void Advance_FighterWithPositiveMovementBelowStoredPrecision_StillTurns()
+        {
+            TacticalCombatUnit unit = CreateFighter();
+            unit.CommandBudget = float.Epsilon;
+            for (int index = 0; index < 3; index++)
+                unit.Systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+            TacticalCombatGroup group = new(2, new[] { unit }, Vector3.UnitX);
+            TacticalCombatSpatialIndex spatial = new(new[] { unit });
+            TacticalCombatMotion motion = new();
+
+            motion.Advance(unit, group, null, 100, spatial, 1000);
+
+            Assert.AreEqual(0, unit.GetSpeed());
+            Assert.That(unit.Heading.X, Is.GreaterThan(0));
+        }
+
+        [Test]
+        public void Advance_FighterWithUnorderedElapsed_PreservesHeading()
+        {
+            TacticalCombatUnit unit = CreateFighter();
+            TacticalCombatGroup group = new(2, new[] { unit }, Vector3.UnitX);
+            TacticalCombatSpatialIndex spatial = new(new[] { unit });
+            TacticalCombatMotion motion = new();
+
+            motion.Advance(unit, group, null, 100, spatial, float.NaN);
+
+            Assert.AreEqual(Vector3.UnitZ, unit.Heading);
+        }
+
+        /// <summary>
+        /// Creates a squadron whose stored direction can turn toward a group heading.
+        /// </summary>
+        /// <returns>The complete tactical squadron.</returns>
+        private static TacticalCombatUnit CreateFighter() =>
+            new(
+                new Starfighter
+                {
+                    InstanceID = "fighter",
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                    Agility = 5,
+                },
+                CombatSide.Attacker,
+                1
+            );
     }
 }

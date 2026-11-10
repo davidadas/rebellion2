@@ -72,6 +72,193 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        public void MoveStarfighters_FullCarrierExchange_UsesFinalCapacity()
+        {
+            CapitalShip first = CreateStarfighterHost("first", 1);
+            CapitalShip second = CreateStarfighterHost("second", 1);
+            Starfighter firstFighter = CreateHostedStarfighter(first, "first-fighter");
+            Starfighter secondFighter = CreateHostedStarfighter(second, "second-fighter");
+
+            _game.MoveStarfighters(
+                new[]
+                {
+                    new StarfighterHostAssignment(firstFighter, second),
+                    new StarfighterHostAssignment(secondFighter, first),
+                }
+            );
+
+            CollectionAssert.AreEqual(new[] { secondFighter }, first.GetChildren<Starfighter>());
+            CollectionAssert.AreEqual(new[] { firstFighter }, second.GetChildren<Starfighter>());
+            Assert.AreSame(second, firstFighter.GetParent());
+            Assert.AreSame(first, firstFighter.GetLastParent());
+            Assert.AreEqual(second.InstanceID, firstFighter.ParentInstanceID);
+            Assert.AreEqual(first.InstanceID, firstFighter.LastParentInstanceID);
+            Assert.AreSame(first, secondFighter.GetParent());
+        }
+
+        [Test]
+        public void MoveStarfighters_OrderedIncomingSquadrons_AppendsInAssignmentOrder()
+        {
+            CapitalShip host = CreateStarfighterHost("host", 3);
+            Starfighter resident = CreateHostedStarfighter(host, "resident");
+            Starfighter first = CreateHostedStarfighter(_planet, "first");
+            Starfighter second = CreateHostedStarfighter(_planet, "second");
+
+            _game.MoveStarfighters(
+                new[]
+                {
+                    new StarfighterHostAssignment(second, host),
+                    new StarfighterHostAssignment(first, host),
+                }
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { resident, second, first },
+                host.GetChildren<Starfighter>()
+            );
+            Assert.IsEmpty(_planet.GetChildren<Starfighter>());
+        }
+
+        [Test]
+        public void MoveStarfighters_OverCapacityDestination_RestoresOverfullSourceAndParentHistory()
+        {
+            CapitalShip source = CreateStarfighterHost("source", 3);
+            CapitalShip target = CreateStarfighterHost("target", 1);
+            Starfighter first = CreateHostedStarfighter(source, "first");
+            Starfighter second = CreateHostedStarfighter(source, "second");
+            Starfighter third = CreateHostedStarfighter(source, "third");
+            ISceneNode previous = first.GetLastParent();
+            string previousID = first.LastParentInstanceID;
+            source.StarfighterCapacity = 0;
+
+            Assert.Throws<InvalidOperationException>(() =>
+                _game.MoveStarfighters(
+                    new[]
+                    {
+                        new StarfighterHostAssignment(first, target),
+                        new StarfighterHostAssignment(third, target),
+                    }
+                )
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { first, second, third },
+                source.GetChildren<Starfighter>()
+            );
+            Assert.IsEmpty(target.GetChildren<Starfighter>());
+            Assert.AreSame(source, first.GetParent());
+            Assert.AreSame(previous, first.GetLastParent());
+            Assert.AreEqual(previousID, first.LastParentInstanceID);
+            Assert.AreSame(source, third.GetParent());
+            Assert.AreSame(first, _game.GetSceneNodeByInstanceID<Starfighter>(first.InstanceID));
+            CollectionAssert.Contains(_faction1.GetOwnedUnitsByType<Starfighter>(), first);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void MoveStarfighters_UnavailableDestination_RestoresSource(bool destroyedPlanet)
+        {
+            CapitalShip source = CreateStarfighterHost("source", 1);
+            Starfighter fighter = CreateHostedStarfighter(source, "fighter");
+            ContainerNode target;
+            if (destroyedPlanet)
+            {
+                _planet.IsDestroyed = true;
+                target = _planet;
+            }
+            else
+            {
+                CapitalShip ship = CreateStarfighterHost("target", 1);
+                ship.ManufacturingStatus = ManufacturingStatus.Building;
+                target = ship;
+            }
+
+            Assert.Throws<InvalidOperationException>(() =>
+                _game.MoveStarfighters(new[] { new StarfighterHostAssignment(fighter, target) })
+            );
+
+            Assert.AreSame(source, fighter.GetParent());
+            CollectionAssert.AreEqual(new[] { fighter }, source.GetChildren<Starfighter>());
+            Assert.IsEmpty(target.GetChildren<Starfighter>());
+        }
+
+        [Test]
+        public void MoveStarfighters_UnchangedOverfullHost_PreservesParentHistoryAndOrder()
+        {
+            CapitalShip host = CreateStarfighterHost("host", 1);
+            Starfighter fighter = CreateHostedStarfighter(host, "fighter");
+            ISceneNode previous = fighter.GetLastParent();
+            host.StarfighterCapacity = 0;
+
+            _game.MoveStarfighters(new[] { new StarfighterHostAssignment(fighter, host) });
+
+            Assert.AreSame(previous, fighter.GetLastParent());
+            CollectionAssert.AreEqual(new[] { fighter }, host.GetChildren<Starfighter>());
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void MoveStarfighters_InvalidAssignment_LeavesEarlierAssignmentsUnchanged(
+            bool duplicate
+        )
+        {
+            CapitalShip source = CreateStarfighterHost("source", 1);
+            CapitalShip target = CreateStarfighterHost("target", 2);
+            Starfighter fighter = CreateHostedStarfighter(source, "fighter");
+            StarfighterHostAssignment assignment = new(fighter, target);
+
+            Assert.Throws<ArgumentException>(() =>
+                _game.MoveStarfighters(new[] { assignment, duplicate ? assignment : default })
+            );
+
+            Assert.AreSame(source, fighter.GetParent());
+            CollectionAssert.AreEqual(new[] { fighter }, source.GetChildren<Starfighter>());
+            Assert.IsEmpty(target.GetChildren<Starfighter>());
+        }
+
+        [Test]
+        public void MoveStarfighters_UnsupportedHost_LeavesSourceUnchanged()
+        {
+            CapitalShip source = CreateStarfighterHost("source", 1);
+            Starfighter fighter = CreateHostedStarfighter(source, "fighter");
+
+            Assert.Throws<ArgumentException>(() =>
+                _game.MoveStarfighters(new[] { new StarfighterHostAssignment(fighter, _fleet) })
+            );
+
+            Assert.AreSame(source, fighter.GetParent());
+            CollectionAssert.AreEqual(new[] { fighter }, source.GetChildren<Starfighter>());
+        }
+
+        [Test]
+        public void MoveStarfighters_DisabledSquadron_PreservesRegistrationAndAvailability()
+        {
+            CapitalShip source = CreateStarfighterHost("source", 1);
+            CapitalShip target = CreateStarfighterHost("target", 1);
+            Starfighter fighter = CreateHostedStarfighter(source, "fighter");
+            fighter.IsEnabled = false;
+
+            _game.MoveStarfighters(new[] { new StarfighterHostAssignment(fighter, target) });
+
+            Assert.IsFalse(fighter.IsEnabled);
+            Assert.AreSame(
+                fighter,
+                _game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID, true)
+            );
+            CollectionAssert.AreEqual(
+                new[] { fighter },
+                target.GetChildren<Starfighter>(includeDisabled: true)
+            );
+            CollectionAssert.Contains(_faction1.GetOwnedUnitsByType<Starfighter>(true), fighter);
+        }
+
+        [Test]
+        public void MoveStarfighters_NullAssignments_RejectsInput()
+        {
+            Assert.Throws<ArgumentNullException>(() => _game.MoveStarfighters(null));
+        }
+
+        [Test]
         public void DeleteNode_AssignedTrainer_DoesNotRestartRemovedScanner()
         {
             Officer officer = CreateAssignedTrainer();
@@ -1195,6 +1382,49 @@ namespace Rebellion.Tests.Game
                     .GetFactionByOwnerInstanceID(_faction1.InstanceID)
                     .GetOwnedUnitsByType<Planet>()
             );
+        }
+
+        /// <summary>
+        /// Creates a registered carrier under the fixture's fleet.
+        /// </summary>
+        /// <param name="id">The carrier identifier.</param>
+        /// <param name="capacity">The available squadron berths.</param>
+        /// <returns>The attached carrier.</returns>
+        private CapitalShip CreateStarfighterHost(string id, int capacity)
+        {
+            if (_planet.GetParent() == null)
+            {
+                _game.AttachNode(_planetSector, _game.Galaxy);
+                _game.AttachNode(_planet, _planetSector);
+                _game.AttachNode(_fleet, _planet);
+            }
+            CapitalShip host = new()
+            {
+                InstanceID = id,
+                OwnerInstanceID = _faction1.InstanceID,
+                StarfighterCapacity = capacity,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(host, _fleet);
+            return host;
+        }
+
+        /// <summary>
+        /// Creates a registered squadron in its initial host.
+        /// </summary>
+        /// <param name="host">The squadron's initial host.</param>
+        /// <param name="id">The squadron identifier.</param>
+        /// <returns>The attached squadron.</returns>
+        private Starfighter CreateHostedStarfighter(ContainerNode host, string id)
+        {
+            Starfighter fighter = new()
+            {
+                InstanceID = id,
+                OwnerInstanceID = _faction1.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(fighter, host);
+            return fighter;
         }
 
         /// <summary>

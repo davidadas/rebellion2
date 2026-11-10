@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Rebellion.Game.Results;
+using Rebellion.Util.Mathematics;
 
 namespace Rebellion.Gameplay
 {
@@ -47,6 +48,11 @@ namespace Rebellion.Gameplay
         public TacticalCombatFormationKind RequestedFormation { get; private set; }
         public bool IsAutomated { get; internal set; }
         public bool HasWaypoints => _waypoints.Count != 0;
+
+        /// <summary>
+        /// Gets the first applied navigation point without exposing later requested route changes.
+        /// </summary>
+        public Vector3? PrimaryWaypoint => _waypoints.Count > 0 ? _waypoints[0] : null;
         public TacticalCombatUnit PrimaryTarget => _targets.Count > 0 ? _targets[0] : null;
         public IReadOnlyList<TacticalCombatUnit> ComputedTargets { get; }
         public IReadOnlyList<TacticalCombatUnit> Targets { get; }
@@ -608,7 +614,7 @@ namespace Rebellion.Gameplay
             if (!unit.IsFighter && ActiveOrder == TacticalCombatOrder.Withdraw)
                 return -SideLane;
             Vector3 heading = unit.DesiredMovement;
-            if (heading == Vector3.Zero)
+            if (IsZeroOrUnordered(heading))
             {
                 TacticalCombatUnit target = PrimaryTarget;
                 if (unit.IsFighter)
@@ -619,7 +625,7 @@ namespace Rebellion.Gameplay
                 }
                 else if (
                     target?.IsFighter == false
-                    && Formation.Velocity == Vector3.Zero
+                    && IsZeroOrUnordered(Formation.Velocity)
                     && Formation.StableUpdates >= 5
                 )
                 {
@@ -628,32 +634,38 @@ namespace Rebellion.Gameplay
                         ?? TacticalWeaponArc.Forward
                     );
                     Vector3 delta = target.Position - unit.Position;
-                    double angle = (double)arc * 3.1415927f * 0.5f;
-                    double cosine = Math.Cos(angle);
-                    double sine = Math.Sin(angle);
-                    heading = new Vector3(
-                        (float)(delta.X * (double)(float)cosine - sine * delta.Z),
-                        delta.Y,
-                        (float)(delta.X * sine + cosine * delta.Z)
-                    );
+                    heading = NativeVectorMath.RotateBatteryDirection(delta, (uint)arc);
                 }
                 else
                     heading = unit.Heading;
             }
             if (unit.IsFighter)
             {
-                if (heading == Vector3.Zero)
+                if (IsZeroOrUnordered(heading))
                     return Formation.Heading;
                 return TacticalCombatGeometry.NormalizeWithStoredScale(heading);
             }
             else
             {
-                if (heading.X == 0 && heading.Z == 0)
+                if (
+                    (heading.X == 0 || float.IsNaN(heading.X))
+                    && (heading.Z == 0 || float.IsNaN(heading.Z))
+                )
                     heading = unit.Heading;
                 heading.Y = 0;
             }
             return TacticalCombatGeometry.Normalize(heading);
         }
+
+        /// <summary>
+        /// Classifies a direction whose components are all zero or unordered.
+        /// </summary>
+        /// <param name="value">The direction to classify.</param>
+        /// <returns>Whether no component is ordered and nonzero.</returns>
+        private static bool IsZeroOrUnordered(Vector3 value) =>
+            (value.X == 0 || float.IsNaN(value.X))
+            && (value.Y == 0 || float.IsNaN(value.Y))
+            && (value.Z == 0 || float.IsNaN(value.Z));
 
         /// <summary>
         /// Calculates the group's sustained attack against a candidate.
@@ -717,7 +729,7 @@ namespace Rebellion.Gameplay
             }
             else
                 heading = TacticalCombatGeometry.NormalizeWithStoredScale(delta);
-            float distance = TacticalCombatGeometry.GetLength(delta);
+            float distance = TacticalCombatGeometry.GetMovementLength(delta);
             double buffered = (double)distance + 2;
             if (buffered >= Engagement.MinimumRange && buffered <= Engagement.MaximumRange)
             {
@@ -744,8 +756,8 @@ namespace Rebellion.Gameplay
                 if (!CloseAttack && IsAutomated && Members.Count >= 8)
                     SetAttackMode(true);
             }
-            Vector3 direction = TacticalCombatGeometry.NormalizeWithStoredScale(delta);
-            float scalar;
+            Vector3 direction = TacticalCombatGeometry.NormalizeMovement(delta);
+            double scalar;
             if (ActiveCloseAttack)
                 scalar = Engagement.MovementDistance;
             else
@@ -755,14 +767,14 @@ namespace Rebellion.Gameplay
                     : Members.Count >= 3 ? 0.75f
                     : 0.5f;
                 float span = Engagement.MaximumRange - Engagement.MinimumRange;
-                scalar = Math.Max((float)((double)ratio * span + Engagement.MinimumRange), 2);
+                scalar = Math.Max((double)ratio * span + Engagement.MinimumRange, 2);
             }
-            Formation.MoveTowards(
-                Formation.Position + direction * scalar,
-                elapsedMilliseconds,
-                2,
-                heading
+            Vector3 step = new(
+                (float)(scalar * direction.X),
+                (float)(scalar * direction.Y),
+                (float)(scalar * direction.Z)
             );
+            Formation.MoveTowards(Formation.Position + step, elapsedMilliseconds, 2, heading);
         }
 
         /// <summary>
@@ -773,24 +785,26 @@ namespace Rebellion.Gameplay
         private void AdvanceFighterEngagement(TacticalCombatUnit target, float elapsedMilliseconds)
         {
             Vector3 delta = target.Position - Formation.Position;
-            Vector3 direction = TacticalCombatGeometry.Normalize(
+            Vector3 direction = TacticalCombatGeometry.NormalizeMovement(
                 delta == Vector3.Zero ? SideLane : delta
             );
             Vector3 point = Formation.Position + direction * Engagement.MovementDistance;
             if (Formation.MoveTowards(point, elapsedMilliseconds, 2, direction))
                 return;
-            _orbitPhase = (float)((double)elapsedMilliseconds * 3.1415927f * 0.0002f + _orbitPhase);
+            double orbitPhase = (double)elapsedMilliseconds * 3.1415927f * 0.0002f + _orbitPhase;
+            _orbitPhase = (float)orbitPhase;
             double fullTurn = (double)3.1415927f + 3.1415927f;
-            if (_orbitPhase >= fullTurn)
-                _orbitPhase = (float)(_orbitPhase - fullTurn);
+            if (orbitPhase >= fullTurn)
+                _orbitPhase = (float)(orbitPhase - fullTurn);
             float radius = Math.Max((float)((double)target.CollisionRadius * 2.4f), 1.5f);
             if (SideLane.Z < 0)
                 _orbitPhase = -_orbitPhase;
             double cosine = Math.Cos(_orbitPhase) * radius;
             double sine = Math.Sin(_orbitPhase) * radius;
+            float offsetX = (float)(cosine - (float)sine);
             Formation.SetPosition(
                 new Vector3(
-                    (float)(target.Position.X + cosine - (float)sine),
+                    (float)((double)target.Position.X + offsetX),
                     (float)((double)target.Position.Y + (float)((double)radius * 0.5f)),
                     (float)(
                         (double)target.Position.Z + (float)((double)(float)cosine + (float)sine)

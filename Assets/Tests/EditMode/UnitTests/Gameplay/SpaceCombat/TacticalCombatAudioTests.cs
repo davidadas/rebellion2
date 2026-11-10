@@ -150,6 +150,81 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(2, requested);
         }
 
+        [Test]
+        public void SetPlaybackAvailable_Unavailable_StopsOwnedSoundBeforeStatusSweep()
+        {
+            Harness harness = new(new SystemRandomProvider(42), 1, 1000);
+            uint queueID = harness.Audio.EnqueueNotification(0);
+
+            harness.Audio.SetPlaybackAvailable(false);
+
+            Assert.IsFalse(harness.Playbacks[0].IsPlaying);
+            Assert.IsTrue(harness.Audio.Notifications.IsActive(queueID));
+            harness.Audio.Update();
+            Assert.IsFalse(harness.Audio.Notifications.IsActive(queueID));
+        }
+
+        [Test]
+        public void SetPlaybackAvailable_Returning_DoesNotResumeReleasedSound()
+        {
+            Harness harness = new(new SystemRandomProvider(42), 1, 1000);
+            harness.Audio.Enqueue(TacticalCombatSound.CapitalLaser);
+            harness.Audio.SetPlaybackAvailable(false);
+
+            harness.Audio.SetPlaybackAvailable(true);
+
+            Assert.AreEqual(1, harness.Playbacks.Count);
+            Assert.IsFalse(harness.Playbacks[0].IsPlaying);
+            harness.Audio.Enqueue(TacticalCombatSound.CapitalLaser);
+            Assert.AreEqual(2, harness.Playbacks.Count);
+            Assert.IsTrue(harness.Playbacks[1].IsPlaying);
+        }
+
+        [Test]
+        public void SetPlaybackAvailable_Unavailable_RetainsVariantDrawWithoutAcquiringPlayback()
+        {
+            SystemRandomProvider random = new(42);
+            Harness harness = new(random, 4, 1000);
+            harness.Audio.SetPlaybackAvailable(false);
+
+            uint queueID = harness.Audio.EnqueueNotification(0);
+
+            Assert.AreEqual(1, random.CallCount);
+            Assert.IsEmpty(harness.Playbacks);
+            Assert.IsTrue(harness.Audio.Notifications.IsActive(queueID));
+            harness.Audio.Update();
+            Assert.IsFalse(harness.Audio.Notifications.IsActive(queueID));
+        }
+
+        [Test]
+        public void SetPlaybackAvailable_Returning_PreservesDeferredRequests()
+        {
+            Harness harness = new(new SystemRandomProvider(42), 1, 1000);
+            for (int index = 0; index < 6; index++)
+                harness.Audio.Enqueue(TacticalCombatSound.CapitalLaser);
+            harness.Audio.SetPlaybackAvailable(false);
+
+            harness.Audio.SetPlaybackAvailable(true);
+            harness.Audio.Update();
+
+            Assert.AreEqual(6, harness.Playbacks.Count);
+            Assert.IsTrue(harness.Playbacks[5].IsPlaying);
+            for (int index = 0; index < 5; index++)
+                Assert.IsFalse(harness.Playbacks[index].IsPlaying);
+        }
+
+        [Test]
+        public void SetPlaybackAvailable_SchedulingDisabled_PreservesEnabledFlag()
+        {
+            Harness harness = new(new SystemRandomProvider(42), 1, 1000);
+            harness.Audio.Notifications.Enabled = false;
+
+            harness.Audio.SetPlaybackAvailable(false);
+            harness.Audio.SetPlaybackAvailable(true);
+
+            Assert.IsFalse(harness.Audio.Notifications.Enabled);
+        }
+
         /// <summary>
         /// Creates one addressed notification bank for an optional faction.
         /// </summary>

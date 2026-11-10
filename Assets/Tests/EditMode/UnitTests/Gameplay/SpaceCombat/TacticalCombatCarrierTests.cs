@@ -2,6 +2,7 @@ using NUnit.Framework;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -9,11 +10,65 @@ namespace Rebellion.Tests.Gameplay
     public sealed class TacticalCombatCarrierTests
     {
         [Test]
+        public void AddDocked_FirstSquadron_ConsumesItsLaunchDrawDuringAttachment()
+        {
+            TacticalCombatCarrier carrier = CreateCarrier(1);
+            SystemRandomProvider random = new(42);
+
+            carrier.AddDocked(CreateFighter(), 3, random);
+
+            Assert.AreEqual(1, random.CallCount);
+        }
+
+        [Test]
+        public void AddDocked_AdditionalSquadron_RetainsScheduledLaunch()
+        {
+            TacticalCombatCarrier carrier = CreateCarrier(2);
+            SystemRandomProvider random = new(42);
+            carrier.AddDocked(CreateFighter(), 3, random);
+
+            carrier.AddDocked(CreateFighter("second"), 4, random);
+
+            Assert.AreEqual(1, random.CallCount);
+        }
+
+        [Test]
+        public void AddDocked_FullCarrier_RejectsSquadronWithoutDrawingAnotherDelay()
+        {
+            TacticalCombatCarrier carrier = CreateCarrier(1);
+            SystemRandomProvider random = new(42);
+            carrier.AddDocked(CreateFighter(), 3, random);
+
+            bool accepted = carrier.AddDocked(CreateFighter("second"), 3, random);
+
+            Assert.IsFalse(accepted);
+            Assert.AreEqual(1, carrier.Docked.Count);
+            Assert.AreEqual(1, random.CallCount);
+        }
+
+        [Test]
+        public void Advance_InitialLaunchBecomesDue_UsesAttachmentTime()
+        {
+            TacticalCombatCarrier carrier = CreateCarrier(1);
+            SystemRandomProvider random = new(42);
+            int delay = new SystemRandomProvider(42).NextInt(0, 9);
+            int requests = 0;
+            carrier.LaunchRequested += (_, _) => requests++;
+            carrier.AddDocked(CreateFighter(), 3, random);
+            carrier.Advance(3 + 5 + delay - 1, random);
+            Assert.AreEqual(0, requests);
+
+            carrier.Advance(3 + 5 + delay, random);
+
+            Assert.AreEqual(1, requests);
+        }
+
+        [Test]
         public void Launch_DockedFighter_ReleasesBayReservation()
         {
             TacticalCombatCarrier carrier = CreateCarrier(1);
             TacticalCombatUnit fighter = CreateFighter();
-            carrier.AddDocked(fighter);
+            carrier.AddDocked(fighter, 3, new SystemRandomProvider(42));
             Assert.IsTrue(carrier.Launch(fighter));
             Assert.AreEqual(0, carrier.Reserved);
             Assert.AreEqual(0, carrier.Occupied);
@@ -25,7 +80,7 @@ namespace Rebellion.Tests.Gameplay
         {
             TacticalCombatCarrier carrier = CreateCarrier(1);
             TacticalCombatUnit fighter = CreateFighter();
-            carrier.AddDocked(fighter);
+            carrier.AddDocked(fighter, 3, new SystemRandomProvider(42));
             carrier.Launch(fighter);
             Assert.AreEqual(carrier.HangarPosition, fighter.Position);
         }
@@ -34,7 +89,7 @@ namespace Rebellion.Tests.Gameplay
         public void Reserve_FullCarrier_RejectsAdditionalFighter()
         {
             TacticalCombatCarrier carrier = CreateCarrier(1);
-            carrier.AddDocked(CreateFighter());
+            carrier.AddDocked(CreateFighter(), 3, new SystemRandomProvider(42));
             Assert.IsFalse(carrier.Reserve(CreateFighter("second")));
         }
 
@@ -65,7 +120,7 @@ namespace Rebellion.Tests.Gameplay
         {
             TacticalCombatCarrier carrier = CreateCarrier(1);
             TacticalCombatUnit fighter = CreateFighter();
-            carrier.AddDocked(fighter);
+            carrier.AddDocked(fighter, 3, new SystemRandomProvider(42));
             carrier.Unit.Status = TacticalCombatUnitStatus.Destroyed;
             Assert.IsFalse(carrier.Launch(fighter));
         }

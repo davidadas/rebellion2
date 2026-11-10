@@ -136,6 +136,98 @@ namespace Rebellion.Tests.UI.Input
         }
 
         [Test]
+        public void QuickLoad_MenuContext_BlocksLoadingUntilPreviousContextIsRestored()
+        {
+            InputTestFixture inputFixture = new();
+            inputFixture.Setup();
+            GameObject root = new("AppInputControllerUnderTest");
+            InputManager inputManager = root.AddComponent<InputManager>();
+            AppInputController controller = root.AddComponent<AppInputController>();
+            Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+            int loads = 0;
+            try
+            {
+                controller.Initialize(
+                    inputManager,
+                    new CancelStack(),
+                    null,
+                    _ =>
+                    {
+                        loads++;
+                        return true;
+                    }
+                );
+                controller.SetContext(InputContext.Strategy);
+                controller.PushContext(InputContext.Menu);
+
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.F9));
+                InputSystem.Update();
+
+                Assert.AreEqual(0, loads);
+                controller.PopContext();
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                InputSystem.Update();
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.F9));
+                InputSystem.Update();
+                Assert.AreEqual(1, loads);
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+                inputFixture.TearDown();
+            }
+        }
+
+        [Test]
+        public void QuickLoad_OverlappingShortcutOwners_BlocksUntilBothRelease()
+        {
+            InputTestFixture inputFixture = new();
+            inputFixture.Setup();
+            GameObject root = new("AppInputControllerUnderTest");
+            InputManager inputManager = root.AddComponent<InputManager>();
+            AppInputController controller = root.AddComponent<AppInputController>();
+            Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+            int loads = 0;
+            System.IDisposable first = null;
+            System.IDisposable second = null;
+            try
+            {
+                controller.Initialize(
+                    inputManager,
+                    new CancelStack(),
+                    null,
+                    _ =>
+                    {
+                        loads++;
+                        return true;
+                    }
+                );
+                first = inputManager.SuppressApplicationShortcuts();
+                second = inputManager.SuppressApplicationShortcuts();
+                first.Dispose();
+                first.Dispose();
+
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.F9));
+                InputSystem.Update();
+
+                Assert.AreEqual(0, loads);
+                second.Dispose();
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                InputSystem.Update();
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.F9));
+                InputSystem.Update();
+                Assert.AreEqual(1, loads);
+            }
+            finally
+            {
+                first?.Dispose();
+                second?.Dispose();
+                Object.DestroyImmediate(root);
+                inputFixture.TearDown();
+            }
+        }
+
+        [Test]
         public void GetSlowerGameSpeed_SupportedSpeeds_StepsTowardPaused()
         {
             Assert.AreEqual(
