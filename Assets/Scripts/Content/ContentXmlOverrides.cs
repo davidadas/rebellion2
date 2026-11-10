@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Xml;
 using System.Xml.Linq;
+using Rebellion.Game;
 using Rebellion.Game.Messages;
 using Rebellion.Util.Serialization;
 
@@ -37,7 +39,7 @@ public static class ContentXmlOverrides
                 overlays.Add(authored);
             else
             {
-                result = authored;
+                result = defaults == null ? authored : MergeRules(defaults, authored);
                 break;
             }
         }
@@ -53,6 +55,23 @@ public static class ContentXmlOverrides
     /// <returns>True for an explicit setting overlay.</returns>
     public static bool IsOverlay(string text) =>
         text != null && (bool?)XElement.Parse(text).Attribute(_inherit) == true;
+
+    /// <summary>
+    /// Resolves either legacy sparse rules or explicit setting directives over their defaults.
+    /// </summary>
+    /// <param name="defaults">The applicable resolved rules defaults.</param>
+    /// <param name="authored">The authored rules layer.</param>
+    /// <returns>The resolved rules without authoring directives.</returns>
+    public static string MergeRules(string defaults, string authored)
+    {
+        if (IsOverlay(authored))
+            return Merge(defaults, authored);
+        XmlDocument baseline = new XmlDocument();
+        baseline.LoadXml(defaults);
+        XmlDocument overlay = new XmlDocument();
+        overlay.LoadXml(authored);
+        return new GameSerializer(typeof(GameConfig)).Compose(baseline, overlay).OuterXml;
+    }
 
     /// <summary>
     /// Applies one sparse document over its resolved base.
@@ -436,7 +455,19 @@ public static class ContentXmlOverrides
     /// <returns>The identity member name, or null for an ordered item.</returns>
     private static XName IdentityName(XElement element)
     {
-        string name = element.Name.LocalName switch
+        string name = IdentityMemberName(element.Name.LocalName);
+        return name != null && (element.Element(name) != null || element.Attribute(name) != null)
+            ? name
+            : null;
+    }
+
+    /// <summary>
+    /// Identifies the stable selector declared by a supported record kind even in empty lists.
+    /// </summary>
+    /// <param name="elementName">The serialized record name.</param>
+    /// <returns>The stable selector name, or null for ordered records.</returns>
+    private static string IdentityMemberName(string elementName) =>
+        elementName switch
         {
             "Officer"
             or "CapitalShip"
@@ -452,10 +483,6 @@ public static class ContentXmlOverrides
             "Entry" => "Key",
             _ => null,
         };
-        return name != null && (element.Element(name) != null || element.Attribute(name) != null)
-            ? name
-            : null;
-    }
 
     /// <summary>
     /// Reads one record's stable identity.
@@ -518,6 +545,13 @@ public static class ContentXmlOverrides
         if (children.Length > 0 && children.All(child => Identity(child) != null))
             return false;
         Type type = ElementType(element);
+        Type itemType = SerializationMetadata.GetCollectionItemType(type);
+        if (
+            type != null && TypeHelper.IsDictionary(type)
+            || itemType != null
+                && IdentityMemberName(SerializationMetadata.GetElementName(itemType)) != null
+        )
+            return false;
         return type != null && TypeHelper.IsEnumerable(type)
             || children.GroupBy(child => child.Name).Any(group => group.Count() > 1);
     }

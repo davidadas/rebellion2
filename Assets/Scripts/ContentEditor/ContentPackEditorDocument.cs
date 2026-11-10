@@ -30,6 +30,7 @@ public sealed class ContentPackEditorDocument
     public bool IsDirty { get; private set; }
     public string Text => text;
     internal string AuthoredText => authoredText;
+    internal bool IsApplicationRulesOverride { get; }
     internal bool IsRemoved => authoredText == null;
     internal string SavedText => savedText;
     internal bool InheritsAll =>
@@ -68,13 +69,15 @@ public sealed class ContentPackEditorDocument
     /// <param name="sourceText">The highest layer's authored XML.</param>
     /// <param name="inheritedText">The effective XML beneath the local pack.</param>
     /// <param name="sources">The observed source files, including inherited dependencies.</param>
+    /// <param name="isApplicationRulesOverride">Whether only application rules exist beneath this rules path.</param>
     internal ContentPackEditorDocument(
         string address,
         string sourcePath,
         string targetPath,
         string sourceText,
         string inheritedText,
-        IReadOnlyDictionary<string, string> sources
+        IReadOnlyDictionary<string, string> sources,
+        bool isApplicationRulesOverride = false
     )
     {
         Address = address ?? throw new ArgumentNullException(nameof(address));
@@ -85,6 +88,7 @@ public sealed class ContentPackEditorDocument
             targetPath ?? throw new ArgumentNullException(nameof(targetPath))
         );
         this.inheritedText = inheritedText;
+        IsApplicationRulesOverride = isApplicationRulesOverride;
         string relative = address.StartsWith("Pack/", StringComparison.Ordinal)
             ? address[5..]
             : address;

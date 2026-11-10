@@ -152,7 +152,24 @@ public sealed class ContentPackEditorProject
         if (!field.CanInherit)
             throw new InvalidOperationException("This setting cannot inherit independently.");
         using (BeginEdit("Reset to inherited"))
+        {
+            if (
+                field.Record.Kind == "Building"
+                && field.MemberName == nameof(Building.BuildingType)
+            )
+            {
+                ContentPackEditorField production = field.Record.GetField(
+                    nameof(Building.ProductionType)
+                );
+                field.Document.ResetSetting(
+                    production.XmlElement,
+                    production.XmlAttributeName,
+                    production.Container
+                );
+            }
             field.Document.ResetSetting(field.XmlElement, field.XmlAttributeName, field.Container);
+            LinkRulesOverride(field.Document);
+        }
         catalogs = null;
         RefreshDefinition();
     }
@@ -1226,16 +1243,22 @@ public sealed class ContentPackEditorProject
         if (
             !document.IsDirty
             || document.Address != "Pack/Shared/Data/game-config.xml"
-            || !document.SourcePath.StartsWith(
-                Path.Combine(ContentRootPath, "Application") + Path.DirectorySeparatorChar,
-                StringComparison.OrdinalIgnoreCase
-            )
+            || !document.IsApplicationRulesOverride
         )
             return;
         ContentPackEditorDocument manifest = documents.Single(candidate =>
             candidate.Address == _packDefinitionAddress
         );
         XDocument xml = XDocument.Parse(manifest.Text);
+        if (document.InheritsAll)
+        {
+            if (xml.Root.Element("GameConfigPath")?.Value == "Shared/Data/game-config.xml")
+            {
+                xml.Root.Element("GameConfigPath").Remove();
+                manifest.SetText(xml.ToString());
+            }
+            return;
+        }
         if (!string.IsNullOrWhiteSpace(xml.Root.Element("GameConfigPath")?.Value))
             return;
         xml.Root.SetElementValue("GameConfigPath", "Shared/Data/game-config.xml");

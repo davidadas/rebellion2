@@ -205,16 +205,22 @@ public static class ContentPackEditorStorage
         {
             string defaultRules = resolver.ResolveFile("Application/Rules/game.xml");
             if (defaultRules != null)
+            {
+                string defaults = ContentXmlOverrides.Load(resolver, "Application/Rules/game.xml");
                 result.Add(
                     new ContentPackEditorDocument(
                         "Pack/Shared/Data/game-config.xml",
                         defaultRules,
                         Path.Combine(resolver.PackRootPath, "Shared", "Data", "game-config.xml"),
                         File.ReadAllText(defaultRules),
-                        File.ReadAllText(defaultRules),
-                        null
+                        defaults,
+                        resolver
+                            .ResolveFileLayers("Application/Rules/game.xml")
+                            .ToDictionary(path => path, File.ReadAllText),
+                        true
                     )
                 );
+            }
         }
         return result;
     }
@@ -238,19 +244,33 @@ public static class ContentPackEditorStorage
             .ResolveFileLayers(address)
             .ToDictionary(path => path, File.ReadAllText, StringComparer.Ordinal);
         string baseline = null;
+        string applicationDefaults = null;
+        bool hasInheritedPackDocument = sources.Keys.Any(path =>
+            !string.Equals(path, targetPath, StringComparison.OrdinalIgnoreCase)
+        );
+        if (System.Xml.Linq.XElement.Parse(sources[sourcePath]).Name.LocalName == "GameConfig")
+        {
+            applicationDefaults = ContentXmlOverrides.Load(resolver, "Application/Rules/game.xml");
+            baseline = applicationDefaults;
+            foreach (string path in resolver.ResolveFileLayers("Application/Rules/game.xml"))
+                sources[path] = File.ReadAllText(path);
+        }
         if (address != _packDefinitionAddress)
             foreach (string path in resolver.ResolveFileLayers(address))
                 if (!string.Equals(path, targetPath, StringComparison.OrdinalIgnoreCase))
-                    baseline = ContentXmlOverrides.IsOverlay(sources[path])
-                        ? ContentXmlOverrides.Merge(baseline, sources[path])
-                        : sources[path];
+                    baseline =
+                        ContentXmlOverrides.IsOverlay(sources[path])
+                            ? ContentXmlOverrides.Merge(baseline, sources[path])
+                        : applicationDefaults == null ? sources[path]
+                        : ContentXmlOverrides.MergeRules(applicationDefaults, sources[path]);
         return new ContentPackEditorDocument(
             address,
             sourcePath,
             targetPath,
             File.ReadAllText(sourcePath),
             baseline,
-            sources
+            sources,
+            applicationDefaults != null && !hasInheritedPackDocument
         );
     }
 

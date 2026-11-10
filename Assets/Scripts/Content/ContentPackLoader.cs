@@ -741,7 +741,6 @@ public static class ContentPackLoader
         object gameConfig = string.IsNullOrWhiteSpace(packGameConfigPath)
             ? serializer.Deserialize(defaults)
             : serializer.Deserialize(
-                defaults,
                 LoadXmlText(
                     ContentXmlOverrides.Load(
                         fileResolver,

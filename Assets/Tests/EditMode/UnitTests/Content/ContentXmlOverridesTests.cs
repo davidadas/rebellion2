@@ -310,6 +310,60 @@ namespace Rebellion.Tests.Content
             Assert.IsEmpty(XElement.Parse(authored).Elements());
         }
 
+        [Test]
+        public void Merge_EmptyIdentifiedCollection_DoesNotCreateRemovedRecords()
+        {
+            string resolved = ContentXmlOverrides.Merge(
+                "<FactionThemes/>",
+                "<FactionThemes Inherit='true'><FactionTheme Remove='true'><FactionInstanceID>FNEMP1</FactionInstanceID></FactionTheme></FactionThemes>"
+            );
+            Assert.IsEmpty(XElement.Parse(resolved).Elements());
+        }
+
+        [Test]
+        public void Update_EmptyIdentifiedCollection_PreservesRecordRemovalIntent()
+        {
+            string previous =
+                "<FactionThemes Inherit='true'><FactionTheme Remove='true'><FactionInstanceID>FNEMP1</FactionInstanceID></FactionTheme></FactionThemes>";
+            string updated = ContentXmlOverrides.Update(
+                "<FactionThemes/>",
+                "<FactionThemes/>",
+                previous
+            );
+            Assert.AreEqual(
+                "true",
+                (string)XElement.Parse(updated).Element("FactionTheme")?.Attribute("Remove")
+            );
+        }
+
+        [Test]
+        public void Load_RulesOverlayAboveLegacySparseRules_InheritsDefaultsBeforeApplyingRemovals()
+        {
+            string inherited = WriteLayer(
+                "Base",
+                "<GameConfig><Movement><DistanceDivisor>7</DistanceDivisor></Movement></GameConfig>"
+            );
+            string local = WriteLayer(
+                "Local",
+                "<GameConfig Inherit='true'><DifficultyModifiers Remove='true'/></GameConfig>"
+            );
+            ContentFileResolver resolver = new ContentFileResolver(
+                folder,
+                local,
+                fallbackPackRootPaths: new[] { inherited }
+            );
+            XElement resolved = XElement.Parse(
+                ContentXmlOverrides.Load(
+                    resolver,
+                    "Pack/theme.xml",
+                    "<GameConfig><Movement><DistanceDivisor>5</DistanceDivisor></Movement><Research><BaseResearchPoints>1</BaseResearchPoints></Research><DifficultyModifiers/></GameConfig>"
+                )
+            );
+            Assert.AreEqual("7", resolved.Element("Movement").Element("DistanceDivisor").Value);
+            Assert.AreEqual("1", resolved.Element("Research").Element("BaseResearchPoints").Value);
+            Assert.IsNull(resolved.Element("DifficultyModifiers"));
+        }
+
         /// <summary>
         /// Writes one isolated layer without installing a global content selection.
         /// </summary>

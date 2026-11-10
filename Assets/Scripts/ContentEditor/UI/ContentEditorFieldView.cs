@@ -79,9 +79,13 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     public void SetCellLayout()
     {
         RectTransform value = (RectTransform)input.transform;
-        value.anchorMin = value.anchorMax = value.pivot = new Vector2(0.5f, 0.5f);
-        value.anchoredPosition = Vector2.zero;
-        value.sizeDelta = new Vector2(((RectTransform)transform).rect.width - 8, 32);
+        UILayout.SetSourceRect(
+            value,
+            4,
+            6,
+            Mathf.RoundToInt(((RectTransform)transform).rect.width - 8),
+            32
+        );
         UILayout.ConfigureCenteredNumericInput(
             input,
             input.textComponent.color,
@@ -155,6 +159,8 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             )
             : 0;
         bounds.height = height + (HasError ? errorHeight + 8 : 0) + (field.CanInherit ? 36 : 0);
+        inheritanceButton.gameObject.SetActive(field.CanInherit);
+        inheritanceButton.interactable = !field.IsInherited;
         if (field.CanInherit)
         {
             float available = Mathf.Max(1, bounds.width - valueLeft - 8);

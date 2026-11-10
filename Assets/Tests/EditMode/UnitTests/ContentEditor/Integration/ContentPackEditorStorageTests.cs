@@ -228,6 +228,134 @@ namespace Rebellion.Tests.ContentEditor.Integration
             );
         }
 
+        [Test]
+        public void Save_ApplicationRulesOverride_ReopensWithResolvedDefaults()
+        {
+            ContentPackEditorProject project = CreateApplicationRulesProject();
+            project.SetField(RulesField(project), "9");
+            ContentPackEditorStorage.Save(project);
+
+            ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                project.PackRootPath
+            );
+
+            Assert.AreEqual("9", RulesField(reopened).Value);
+            Assert.IsFalse(RulesField(reopened).IsInherited);
+        }
+
+        [Test]
+        public async Task WriteSnapshotAsync_ResetLastApplicationRulesOverride_OmitsTheManifestLinkAsync()
+        {
+            ContentPackEditorProject project = CreateApplicationRulesProject();
+            project.SetField(RulesField(project), "9");
+            ContentPackEditorStorage.Save(project);
+            project = ContentPackEditorStorage.OpenFolder(contentRoot, project.PackRootPath);
+            project.ResetFieldToInherited(RulesField(project));
+            string snapshot = Path.Combine(contentRoot, "RulesSnapshot");
+            Directory.CreateDirectory(snapshot);
+
+            await ContentPackEditorExporter.WriteSnapshotAsync(
+                project,
+                snapshot,
+                CancellationToken.None
+            );
+
+            ContentPackEditorProject exported = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                snapshot
+            );
+            Assert.IsTrue(string.IsNullOrWhiteSpace(exported.Definition.GameConfigPath));
+            Assert.AreEqual("5", RulesField(exported).Value);
+            Assert.IsTrue(project.Undo());
+            Assert.AreEqual("9", RulesField(project).Value);
+            Assert.AreEqual("Shared/Data/game-config.xml", project.Definition.GameConfigPath);
+        }
+
+        [Test]
+        public void Save_ResetLastApplicationRulesOverride_RemovesTheManifestLink()
+        {
+            ContentPackEditorProject project = CreateApplicationRulesProject();
+            project.SetField(RulesField(project), "9");
+            ContentPackEditorStorage.Save(project);
+            project.ResetFieldToInherited(RulesField(project));
+
+            ContentPackEditorStorage.Save(project);
+
+            ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                project.PackRootPath
+            );
+            Assert.IsTrue(string.IsNullOrWhiteSpace(reopened.Definition.GameConfigPath));
+            Assert.AreEqual("5", RulesField(reopened).Value);
+        }
+
+        [Test]
+        public void OpenFolder_LowestRulesLayerInheritsApplicationDefaults_ResolvesTheLayer()
+        {
+            CreateApplicationRulesProject();
+            WriteFixtureFile(
+                "Data/rules.xml",
+                "<GameConfig Inherit='true'><Movement><DistanceDivisor>7</DistanceDivisor></Movement></GameConfig>"
+            );
+            string manifest = Path.Combine(contentRoot, "Packs/BasePack/pack.xml");
+            ContentPackDefinition definition =
+                ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(manifest);
+            definition.GameConfigPath = "Data/rules.xml";
+            ContentDefinitionSerializer.Serialize(manifest, definition);
+            ContentPackEditorProject derived = ContentPackEditorStorage.Create(
+                contentRoot,
+                "base-pack",
+                "second-pack",
+                "Second pack",
+                "1.0.0"
+            );
+            Assert.AreEqual("7", RulesField(derived).Value);
+        }
+
+        [Test]
+        public void Save_ChangedApplicationRules_RejectsTheStaleRulesOverride()
+        {
+            ContentPackEditorProject project = CreateApplicationRulesProject();
+            project.SetField(RulesField(project), "9");
+            ContentPackEditorStorage.Save(project);
+            project = ContentPackEditorStorage.OpenFolder(contentRoot, project.PackRootPath);
+            project.SetField(RulesField(project), "11");
+            File.WriteAllText(
+                Path.Combine(contentRoot, "Application/Rules/game.xml"),
+                "<GameConfig/>"
+            );
+            Assert.Throws<IOException>(() => ContentPackEditorStorage.Save(project));
+        }
+
+        /// <summary>
+        /// Creates editable rules whose only inherited source is the application document.
+        /// </summary>
+        /// <returns>The temporary derived project.</returns>
+        private ContentPackEditorProject CreateApplicationRulesProject()
+        {
+            string path = Path.Combine(contentRoot, "Application/Rules/game.xml");
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
+            File.WriteAllText(
+                path,
+                "<GameConfig><Movement><DistanceDivisor>5</DistanceDivisor></Movement></GameConfig>"
+            );
+            return CreateWorkingProject();
+        }
+
+        /// <summary>
+        /// Gets the editable distance divisor from the public catalog contract.
+        /// </summary>
+        /// <param name="project">The project owning the rules.</param>
+        /// <returns>The distance-divisor setting.</returns>
+        private static ContentPackEditorField RulesField(ContentPackEditorProject project) =>
+            project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Rules")
+                .Records.Single()
+                .GetFields()
+                .Single(field => field.MemberName == "DistanceDivisor");
+
         /// <summary>
         /// Opens an inherited theme with two independently editable settings.
         /// </summary>

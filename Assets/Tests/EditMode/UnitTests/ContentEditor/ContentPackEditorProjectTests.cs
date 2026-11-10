@@ -13,6 +13,37 @@ namespace Rebellion.Tests.ContentEditor
     [TestFixture]
     public sealed class ContentPackEditorProjectTests : ContentPackEditorTestBase
     {
+        [Test]
+        public void ResetFieldToInherited_BuildingCategory_RestoresProductionAndUndoesTogether()
+        {
+            WriteFixtureFile(
+                "Data/units.xml",
+                "<Buildings><Building><TypeID>MINE</TypeID><BuildingType>Mine</BuildingType><ProductionType>None</ProductionType></Building></Buildings>"
+            );
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorRecord building = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Buildings")
+                .Records.Single();
+            project.SetField(building.GetField("BuildingType"), "Shipyard");
+
+            project.ResetFieldToInherited(building.GetField("BuildingType"));
+
+            building = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Buildings")
+                .Records.Single();
+            Assert.AreEqual("Mine", building.GetField("BuildingType").Value);
+            Assert.AreEqual("None", building.GetField("ProductionType").Value);
+            Assert.IsTrue(project.Undo());
+            building = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Buildings")
+                .Records.Single();
+            Assert.AreEqual("Shipyard", building.GetField("BuildingType").Value);
+            Assert.AreEqual("Ship", building.GetField("ProductionType").Value);
+        }
+
         [TestCase(BuildingType.Mine, ManufacturingType.None)]
         [TestCase(BuildingType.Shipyard, ManufacturingType.Ship)]
         [TestCase(BuildingType.TrainingFacility, ManufacturingType.Troop)]

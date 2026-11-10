@@ -685,6 +685,16 @@ namespace Rebellion.Tests.Content
             );
         }
 
+        [Test]
+        public void LoadGameConfig_RemovedOptionalDefaults_DoesNotRestoreTheRemovedMember()
+        {
+            GameConfig config = LoadGameConfigFromFixture(
+                _fixtureDifficultyDefaultsXml,
+                "<GameConfig Inherit='true'><DifficultyModifiers Remove='true'/></GameConfig>"
+            );
+            Assert.IsEmpty(config.DifficultyModifiers);
+        }
+
         /// <summary>
         /// Loads game config from fixture.
         /// </summary>
