@@ -307,6 +307,75 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ProcessTick_FighterArrivesAtFriendlyShipyard_StartsFastIntervalOnArrivalTick()
+        {
+            const string factionId = "RECOVERY_FACTION";
+            _game.Config.Recovery.FastReplacementIntervalTicks = 2;
+            _game.Config.Recovery.NormalReplacementIntervalTicks = 30;
+            AddHumanFaction(factionId);
+            PlanetSector sector = new PlanetSector { InstanceID = "RECOVERY_SECTOR" };
+            Planet origin = new Planet
+            {
+                InstanceID = "RECOVERY_ORIGIN",
+                OwnerInstanceID = factionId,
+                IsColonized = true,
+                PositionX = 0,
+            };
+            Planet destination = new Planet
+            {
+                InstanceID = "RECOVERY_DESTINATION",
+                OwnerInstanceID = factionId,
+                IsColonized = true,
+                EnergyCapacity = 10,
+                PositionX = 10,
+            };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(origin, sector);
+            _game.AttachNode(destination, sector);
+            origin.SetFullPopularSupport(factionId);
+            destination.SetFullPopularSupport(factionId);
+            _game.AttachNode(
+                new Building
+                {
+                    InstanceID = "RECOVERY_SHIPYARD",
+                    OwnerInstanceID = factionId,
+                    BuildingType = BuildingType.Shipyard,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                destination
+            );
+            Fleet fleet = AttachOperationalFleet(origin, factionId, "RECOVERY_FLEET");
+            CapitalShip carrier = fleet.GetChildren<CapitalShip>().Single();
+            carrier.StarfighterCapacity = 20;
+            Starfighter squadron = new Starfighter
+            {
+                InstanceID = "RECOVERY_SQUADRON",
+                OwnerInstanceID = factionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 8,
+            };
+            _game.AttachNode(squadron, carrier);
+            _game.CurrentTick = 19;
+            squadron.ScheduleReplacement(_game.CurrentTick, 30);
+            MovementCommands movement = _session.GetService<MovementCommands>();
+            Assert.IsTrue(movement.TryRequestMove(fleet, destination));
+            fleet.Movement = TestMovement.WithDuration(fleet.Movement, 1);
+
+            _tick.ProcessTick();
+
+            Assert.AreEqual(20, _game.CurrentTick);
+            Assert.AreEqual(2, squadron.ReplacementIntervalTicks);
+            Assert.AreEqual(22, squadron.NextReplacementTick);
+            Assert.AreEqual(8, squadron.CurrentSquadronSize);
+
+            _tick.ProcessTick();
+            _tick.ProcessTick();
+
+            Assert.AreEqual(9, squadron.CurrentSquadronSize);
+        }
+
+        [Test]
         public void Reset_SuspendedIterator_PreservesBusyGuardUntilDisposal()
         {
             _game.GetFactions().Add(new Faction { InstanceID = "AI", DisplayName = "AI" });

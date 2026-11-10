@@ -4,6 +4,7 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 
 namespace Rebellion.Gameplay
 {
@@ -89,6 +90,105 @@ namespace Rebellion.Gameplay
             return planet != null
                 && planet.OwnerInstanceID == squadron.OwnerInstanceID
                 && shipyardLocations.Contains((planet.InstanceID, squadron.OwnerInstanceID));
+        }
+    }
+
+    /// <summary>
+    /// Updates fighter replacement schedules when movement changes recovery eligibility.
+    /// </summary>
+    internal sealed class RecoveryObserver : IResultObserver, System.IDisposable
+    {
+        private readonly GameRoot _game;
+        private System.IDisposable _arrivalSubscription;
+
+        /// <summary>
+        /// Creates fighter recovery transition observation for one game.
+        /// </summary>
+        /// <param name="game">The active game state.</param>
+        public RecoveryObserver(GameRoot game)
+        {
+            _game = game ?? throw new System.ArgumentNullException(nameof(game));
+        }
+
+        /// <summary>
+        /// Registers the fighter recovery transition callback.
+        /// </summary>
+        /// <param name="results">The bus that delivers completed arrivals.</param>
+        public void Connect(GameResultBus results)
+        {
+            if (_arrivalSubscription != null)
+                throw new System.InvalidOperationException(
+                    "Recovery observer is already connected."
+                );
+            if (results == null)
+                throw new System.ArgumentNullException(nameof(results));
+
+            _arrivalSubscription = results.Subscribe<UnitArrivedResult>(HandleResults);
+        }
+
+        /// <summary>
+        /// Stops receiving movement transitions.
+        /// </summary>
+        public void Dispose()
+        {
+            _arrivalSubscription?.Dispose();
+            _arrivalSubscription = null;
+        }
+
+        /// <summary>
+        /// Reschedules depleted squadrons from the tick on which their arrival changes eligibility.
+        /// </summary>
+        /// <param name="results">The completed unit arrivals.</param>
+        /// <returns>No additional results because scheduling only changes recovery state.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<UnitArrivedResult> results)
+        {
+            Dictionary<Starfighter, int> arrivals = new Dictionary<Starfighter, int>();
+            foreach (UnitArrivedResult result in results ?? System.Array.Empty<UnitArrivedResult>())
+            {
+                foreach (Starfighter squadron in GetArrivingSquadrons(result?.Unit))
+                {
+                    if (
+                        squadron.HasLosses()
+                        && squadron.ManufacturingStatus == ManufacturingStatus.Complete
+                    )
+                        arrivals[squadron] = result.Tick;
+                }
+            }
+
+            if (arrivals.Count == 0)
+                return new List<GameResult>();
+
+            HashSet<(string PlanetInstanceId, string OwnerInstanceId)> shipyardLocations =
+                FighterRecoveryRules.BuildShipyardIndex(_game);
+            foreach ((Starfighter squadron, int arrivalTick) in arrivals)
+            {
+                int interval = FighterRecoveryRules.GetReplacementInterval(
+                    _game,
+                    squadron,
+                    shipyardLocations
+                );
+                if (
+                    squadron.NextReplacementTick <= 0
+                    || squadron.ReplacementIntervalTicks != interval
+                )
+                    squadron.ScheduleReplacement(arrivalTick, interval);
+            }
+
+            return new List<GameResult>();
+        }
+
+        /// <summary>
+        /// Enumerates depleted squadrons carried by one arriving unit.
+        /// </summary>
+        /// <param name="unit">The unit that completed transit.</param>
+        /// <returns>The arriving fighter squadrons.</returns>
+        private static IEnumerable<Starfighter> GetArrivingSquadrons(IGameEntity unit)
+        {
+            if (unit is Starfighter squadron)
+                return new[] { squadron };
+            if (unit is ContainerNode container)
+                return container.GetChildren<Starfighter>(recursive: true);
+            return System.Array.Empty<Starfighter>();
         }
     }
 

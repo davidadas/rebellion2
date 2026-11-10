@@ -19,6 +19,7 @@ namespace Rebellion.Gameplay
         {
             typeof(GameEventObserver),
             typeof(MovementObserver),
+            typeof(RecoveryObserver),
             typeof(HeadquartersObserver),
             typeof(MissionObserver),
             typeof(CaptiveObserver),
