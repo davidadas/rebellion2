@@ -37,7 +37,7 @@ public static partial class HeadlessSimulationRunner
         {
             SimulationOptions options = SimulationOptions.Parse(Environment.GetCommandLineArgs());
             RunSimulation(options);
-            UnityEditor.EditorApplication.Exit(0);
+            UnityEditor.EditorApplication.delayCall += () => UnityEditor.EditorApplication.Exit(0);
         }
         catch (Exception ex)
         {
