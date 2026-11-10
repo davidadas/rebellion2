@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using NUnit.Framework;
 
 namespace Rebellion.Tests.ContentEditor
@@ -11,6 +13,51 @@ namespace Rebellion.Tests.ContentEditor
     [TestFixture]
     public sealed class ContentPackEditorExporterTests : ContentPackEditorTestBase
     {
+        [Test]
+        public async Task WriteArchiveAsync_InvalidRawCost_DoesNotReplaceAnExistingArchiveAsync()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorDocument document = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Buildings")
+                .Document;
+            XDocument xml = XDocument.Parse(document.Text);
+            xml.Descendants("Building").First().SetElementValue("ConstructionCost", -1);
+            project.SetDocumentText(document, xml.ToString());
+            string archive = Path.Combine(contentRoot, "existing.zip");
+            File.WriteAllText(archive, "existing archive");
+
+            await ExpectFailureAsync<ArgumentException>(() =>
+                ContentPackEditorExporter.WriteArchiveAsync(project, archive)
+            );
+
+            Assert.AreEqual("existing archive", File.ReadAllText(archive));
+        }
+
+        [Test]
+        public async Task WriteArchiveAsync_LegalProductionRestriction_ExportsAndReturnsTheWarningAsync()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorRecord building = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.ID == "BDFA01");
+            project.SetField(building.GetField("ProcessRate"), "0");
+            string archive = Path.Combine(contentRoot, "warning.zip");
+
+            IReadOnlyList<string> warnings = await ContentPackEditorExporter.WriteArchiveAsync(
+                project,
+                archive
+            );
+
+            Assert.IsTrue(File.Exists(archive));
+            Assert.IsTrue(project.IsDirty);
+            Assert.That(
+                warnings,
+                Has.Some.Contains("Building 'BDFA01' has a zero production rate")
+            );
+        }
+
         [Test]
         public async Task WriteSnapshotAsync_UnsavedProject_PreservesSourceAndWritesIndependentCopyAsync()
         {
