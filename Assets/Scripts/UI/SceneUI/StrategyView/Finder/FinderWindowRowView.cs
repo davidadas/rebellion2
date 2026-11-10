@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -23,7 +25,7 @@ public sealed class FinderWindowRowView : SelectableListRowView
     private TextMeshProUGUI nameTextField;
 
     [SerializeField]
-    private TextMeshProUGUI[] countTextFields = System.Array.Empty<TextMeshProUGUI>();
+    private TextMeshProUGUI[] countTextFields = Array.Empty<TextMeshProUGUI>();
 
     public string RowId { get; private set; } = string.Empty;
 
@@ -44,7 +46,7 @@ public sealed class FinderWindowRowView : SelectableListRowView
     public void Render(int index, FinderWindowRowRenderData data, int preferredHeight)
     {
         if (data == null)
-            throw new System.ArgumentNullException(nameof(data));
+            throw new ArgumentNullException(nameof(data));
 
         VerifyReferences();
         RowId = data.RowId;
@@ -63,7 +65,7 @@ public sealed class FinderWindowRowView : SelectableListRowView
     /// Renders count values into their authored columns without collapsing empty slots.
     /// </summary>
     /// <param name="counts">The count text values in display order.</param>
-    private void RenderCounts(System.Collections.Generic.IReadOnlyList<string> counts)
+    private void RenderCounts(IReadOnlyList<string> counts)
     {
         int count = Mathf.Min(counts?.Count ?? 0, countTextFields.Length);
         for (int i = 0; i < count; i++)

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
+using UnityEngine;
 
 /// <summary>
 /// Represents a discovered save file paired with its deserialized metadata.
@@ -417,9 +418,7 @@ public class SaveGameManager
         }
         catch (Exception ex)
         {
-            UnityEngine.Debug.LogWarning(
-                $"Failed to read save metadata for {fileName}.sav: {ex.Message}"
-            );
+            Debug.LogWarning($"Failed to read save metadata for {fileName}.sav: {ex.Message}");
             return null;
         }
     }

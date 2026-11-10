@@ -8298,7 +8298,7 @@ public static class StrategyViewPrefabBuilder
         {
             ContentTextureBinding textureBinding = image.GetComponent<ContentTextureBinding>();
             if (textureBinding != null)
-                UnityEngine.Object.DestroyImmediate(textureBinding);
+                Object.DestroyImmediate(textureBinding);
 
             ContentPressVisualBinding pressBinding =
                 image.GetComponent<ContentPressVisualBinding>()
@@ -8327,7 +8327,7 @@ public static class StrategyViewPrefabBuilder
 
         ContentPressVisualBinding pressBinding = target.AddComponent<ContentPressVisualBinding>();
         pressBinding.SetAddresses(textureBinding.Address, null);
-        UnityEngine.Object.DestroyImmediate(textureBinding);
+        Object.DestroyImmediate(textureBinding);
     }
 
     /// <summary>

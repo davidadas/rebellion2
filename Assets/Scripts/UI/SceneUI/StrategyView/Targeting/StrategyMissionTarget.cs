@@ -1,3 +1,4 @@
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -63,7 +64,7 @@ public sealed class StrategyMissionTarget : ITargetable
     {
         return targetKind switch
         {
-            MissionTargetKind.Planet when Item is Rebellion.Game.Galaxy.Planet => Item,
+            MissionTargetKind.Planet when Item is Planet => Item,
             MissionTargetKind.Manufacturable when Item is IManufacturable => Item,
             MissionTargetKind.Officer when Item is Officer => Item,
             _ => null,

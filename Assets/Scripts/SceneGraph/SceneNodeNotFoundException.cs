@@ -1,3 +1,5 @@
+using System;
+
 namespace Rebellion.SceneGraph
 {
     /// <summary>
@@ -28,7 +30,7 @@ namespace Rebellion.SceneGraph
         /// </summary>
         /// <param name="message">The message.</param>
         /// <param name="inner">The inner.</param>
-        public SceneNodeNotFoundException(string message, System.Exception inner)
+        public SceneNodeNotFoundException(string message, Exception inner)
             : base(message, inner) { }
     }
 }

@@ -46,7 +46,7 @@ namespace Rebellion.Gameplay
             FleetCommands fleetSystem = null
         )
         {
-            _game = game ?? throw new System.ArgumentNullException(nameof(game));
+            _game = game ?? throw new ArgumentNullException(nameof(game));
             _provider = provider;
             _blockadeTransitionResolver =
                 blockadeTransitionResolver ?? new BlockadeTransitionResolver(game);
@@ -77,7 +77,7 @@ namespace Rebellion.Gameplay
                     || !string.Equals(
                         liveNode.GetOwnerInstanceID(),
                         ownerInstanceId,
-                        System.StringComparison.Ordinal
+                        StringComparison.Ordinal
                     )
                     || liveItem.GetManufacturingStatus() != ManufacturingStatus.Complete
                 )

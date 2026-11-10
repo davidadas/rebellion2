@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Unity.Services.Analytics;
+using Unity.Services.Core;
 using UnityEngine;
 using UnityEngine.UnityConsent;
 
@@ -17,7 +19,7 @@ public sealed class AnalyticsManager : IAnalyticsConsentRuntime, IAnalyticsEvent
 
     private readonly Func<ConsentState> _getConsentState;
     private readonly Action<ConsentState> _setConsentState;
-    private readonly Func<Unity.Services.Core.ServicesInitializationState> _getServicesState;
+    private readonly Func<ServicesInitializationState> _getServicesState;
     private readonly Func<Task> _initializeServices;
     private readonly Action<string, IReadOnlyDictionary<string, object>> _recordEvent;
     private readonly Action _flush;
@@ -43,8 +45,8 @@ public sealed class AnalyticsManager : IAnalyticsConsentRuntime, IAnalyticsEvent
         : this(
             EndUserConsent.GetConsentState,
             EndUserConsent.SetConsentState,
-            () => Unity.Services.Core.UnityServices.State,
-            Unity.Services.Core.UnityServices.InitializeAsync,
+            () => UnityServices.State,
+            UnityServices.InitializeAsync,
             RecordUnityEvent,
             FlushUnityEvents,
             _collectionEnabledForBuild
@@ -63,7 +65,7 @@ public sealed class AnalyticsManager : IAnalyticsConsentRuntime, IAnalyticsEvent
     internal AnalyticsManager(
         Func<ConsentState> getConsentState,
         Action<ConsentState> setConsentState,
-        Func<Unity.Services.Core.ServicesInitializationState> getServicesState,
+        Func<ServicesInitializationState> getServicesState,
         Func<Task> initializeServices,
         Action<string, IReadOnlyDictionary<string, object>> recordEvent,
         Action flush,
@@ -94,7 +96,7 @@ public sealed class AnalyticsManager : IAnalyticsConsentRuntime, IAnalyticsEvent
     internal AnalyticsManager(
         Func<ConsentState> getConsentState,
         Action<ConsentState> setConsentState,
-        Func<Unity.Services.Core.ServicesInitializationState> getServicesState,
+        Func<ServicesInitializationState> getServicesState,
         Func<Task> initializeServices,
         bool collectionEnabled
     )
@@ -155,7 +157,7 @@ public sealed class AnalyticsManager : IAnalyticsConsentRuntime, IAnalyticsEvent
         }
 
         PendingAnalyticsEvent pending = new PendingAnalyticsEvent(eventName, parameters);
-        if (_getServicesState() != Unity.Services.Core.ServicesInitializationState.Initialized)
+        if (_getServicesState() != ServicesInitializationState.Initialized)
         {
             _pendingEvents.Add(pending);
             StartServicesInitialization();
@@ -173,7 +175,7 @@ public sealed class AnalyticsManager : IAnalyticsConsentRuntime, IAnalyticsEvent
         if (
             !_collectionEnabled
             || _getConsentState().AnalyticsIntent != ConsentStatus.Granted
-            || _getServicesState() != Unity.Services.Core.ServicesInitializationState.Initialized
+            || _getServicesState() != ServicesInitializationState.Initialized
         )
         {
             return;
@@ -210,7 +212,7 @@ public sealed class AnalyticsManager : IAnalyticsConsentRuntime, IAnalyticsEvent
     private void StartServicesInitialization()
     {
         if (
-            _getServicesState() != Unity.Services.Core.ServicesInitializationState.Uninitialized
+            _getServicesState() != ServicesInitializationState.Uninitialized
             || _initializationTask?.IsCompleted == false
         )
         {
@@ -283,11 +285,10 @@ public sealed class AnalyticsManager : IAnalyticsConsentRuntime, IAnalyticsEvent
         IReadOnlyDictionary<string, object> parameters
     )
     {
-        Unity.Services.Analytics.CustomEvent analyticsEvent =
-            new Unity.Services.Analytics.CustomEvent(eventName);
+        CustomEvent analyticsEvent = new CustomEvent(eventName);
         foreach (KeyValuePair<string, object> parameter in parameters)
             analyticsEvent.Add(parameter.Key, parameter.Value);
-        Unity.Services.Analytics.AnalyticsService.Instance.RecordEvent(analyticsEvent);
+        AnalyticsService.Instance.RecordEvent(analyticsEvent);
     }
 
     /// <summary>
@@ -295,7 +296,7 @@ public sealed class AnalyticsManager : IAnalyticsConsentRuntime, IAnalyticsEvent
     /// </summary>
     private static void FlushUnityEvents()
     {
-        Unity.Services.Analytics.AnalyticsService.Instance.Flush();
+        AnalyticsService.Instance.Flush();
     }
 
     /// <summary>

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -83,7 +84,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         [Test]
         public void Constructor_NullSectors_ThrowsArgumentNullException()
         {
-            Assert.Throws<System.ArgumentNullException>(() =>
+            Assert.Throws<ArgumentNullException>(() =>
                 new FinderWindowRowBuilder(null, new Faction[0], _playerFactionId)
             );
         }
@@ -94,7 +95,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             _alpha.AddTestChild(CreateRegiment("planet-armor", "armor", "Armor", _playerFactionId));
             FinderWindowRowBuilder builder = CreateBuilder(_ => null, _ => new[] { "commando" });
 
-            Assert.Throws<System.InvalidOperationException>(() =>
+            Assert.Throws<InvalidOperationException>(() =>
                 builder.GetRows(
                     FinderMode.Troops,
                     false,
@@ -121,7 +122,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 _ => new[] { "commando" }
             );
 
-            Assert.Throws<System.InvalidOperationException>(() =>
+            Assert.Throws<InvalidOperationException>(() =>
                 builder.GetRows(
                     FinderMode.Troops,
                     false,
@@ -139,7 +140,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 _ => new[] { "commando" }
             );
 
-            Assert.Throws<System.InvalidOperationException>(() =>
+            Assert.Throws<InvalidOperationException>(() =>
                 builder.GetRows(
                     FinderMode.Troops,
                     false,
@@ -810,8 +811,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         /// <param name="getSpecialForcesColumnTypeIds">The get special forces column type ids.</param>
         /// <returns>The created builder.</returns>
         private FinderWindowRowBuilder CreateBuilder(
-            System.Func<string, IReadOnlyList<string>> getTroopColumnTypeIds,
-            System.Func<string, IReadOnlyList<string>> getSpecialForcesColumnTypeIds
+            Func<string, IReadOnlyList<string>> getTroopColumnTypeIds,
+            Func<string, IReadOnlyList<string>> getSpecialForcesColumnTypeIds
         )
         {
             GalaxyPlanetSector planetSector = new GalaxyPlanetSector();

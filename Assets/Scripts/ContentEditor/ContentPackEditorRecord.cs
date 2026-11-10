@@ -257,7 +257,7 @@ public sealed class ContentPackEditorRecord
             if (TypeHelper.IsScalar(type) && type != typeof(string))
                 element.Value =
                     Kind == "Trait" && memberName == "PersonnelTravelTimePercent"
-                        ? new Rebellion.Game.Units.OfficerTraitDefinition().PersonnelTravelTimePercent.ToString(
+                        ? new OfficerTraitDefinition().PersonnelTravelTimePercent.ToString(
                             CultureInfo.InvariantCulture
                         )
                     : type == typeof(bool) ? "false"

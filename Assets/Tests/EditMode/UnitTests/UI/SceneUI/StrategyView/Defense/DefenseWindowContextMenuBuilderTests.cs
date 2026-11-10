@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
@@ -36,7 +37,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 AllowedRanks = new[] { OfficerRank.Commander, OfficerRank.Admiral },
                 CurrentRank = OfficerRank.Commander,
             };
-            officer.SetParent(new Rebellion.Game.Galaxy.Planet());
+            officer.SetParent(new Planet());
 
             List<StrategyMenuCommand> commands = DefenseWindowContextMenuBuilder.Build(
                 new ISceneNode[] { officer },

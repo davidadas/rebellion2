@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.Components
@@ -56,9 +57,9 @@ namespace Rebellion.Tests.UI.Components
         [TearDown]
         public void TearDown()
         {
-            UnityEngine.Object.DestroyImmediate(root);
-            UnityEngine.Object.DestroyImmediate(sourceTexture);
-            UnityEngine.Object.DestroyImmediate(atlasTexture);
+            Object.DestroyImmediate(root);
+            Object.DestroyImmediate(sourceTexture);
+            Object.DestroyImmediate(atlasTexture);
         }
 
         [TestCase(512, 512, 1.3f)]
@@ -170,7 +171,7 @@ namespace Rebellion.Tests.UI.Components
             ResizeSourceTexture(256, 256);
             Light light = CreateChild("Local light", rig).AddComponent<Light>();
             light.type = LightType.Point;
-            light.lightUnit = UnityEngine.Rendering.LightUnit.Candela;
+            light.lightUnit = LightUnit.Candela;
             light.intensity = 8f;
             light.range = 6f;
             light.shapeRadius = 0.4f;

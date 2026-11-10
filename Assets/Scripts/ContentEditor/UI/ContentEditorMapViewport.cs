@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -16,7 +17,7 @@ public sealed class ContentEditorMapViewport
     private float zoom = 1;
     public bool IsFitted =>
         Mathf.Approximately(zoom, 1) && mapRoot.anchoredPosition.sqrMagnitude < 0.01f;
-    public event System.Action ViewChanged;
+    public event Action ViewChanged;
 
     /// <summary>
     /// Restores the map to its original fitted bounds.

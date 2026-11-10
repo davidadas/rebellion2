@@ -15,6 +15,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Tests.AI.Helpers;
 
 namespace Rebellion.Tests.Editor.Simulation
@@ -165,7 +166,7 @@ namespace Rebellion.Tests.Editor.Simulation
             IntelligenceRevealedResult intelligence = new IntelligenceRevealedResult
             {
                 Recipient = empire,
-                Observations = new List<Rebellion.SceneGraph.ISceneNode> { planet },
+                Observations = new List<ISceneNode> { planet },
                 Tick = 42,
             };
             object tracker = CreateRunnerNestedType("MissionOutcomeTracker");

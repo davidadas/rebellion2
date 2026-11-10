@@ -2,6 +2,8 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Xml.Linq;
+using TMPro;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -25,12 +27,9 @@ public static class ContentPackEditorPreview
         string contentRoot = Path.GetFullPath("Assets/Content");
         string folder = Directory
             .EnumerateDirectories(Path.Combine(contentRoot, "Packs"))
-            .OrderBy(path => path, System.StringComparer.Ordinal)
+            .OrderBy(path => path, StringComparer.Ordinal)
             .First(path => File.Exists(Path.Combine(path, "pack.xml")));
-        string sourceID = System
-            .Xml.Linq.XDocument.Load(Path.Combine(folder, "pack.xml"))
-            .Root.Element("ID")
-            .Value;
+        string sourceID = XDocument.Load(Path.Combine(folder, "pack.xml")).Root.Element("ID").Value;
         string workingFolder = Path.Combine(
             Path.GetTempPath(),
             "editor-preview-" + Guid.NewGuid().ToString("N")
@@ -162,7 +161,7 @@ public static class ContentPackEditorPreview
     /// <param name="record">The definition to reveal.</param>
     private static void SelectRecord(ContentPackEditorView view, ContentPackEditorRecord record)
     {
-        TMPro.TMP_InputField search = view.GetComponentsInChildren<TMPro.TMP_InputField>(true)
+        TMP_InputField search = view.GetComponentsInChildren<TMP_InputField>(true)
             .Single(input => input.name == "Search");
         search.SetTextWithoutNotify(record.ID);
         search.onValueChanged.Invoke(record.ID);
@@ -185,7 +184,7 @@ public static class ContentPackEditorPreview
     private static void SavePreview(PreviewRenderUtility preview, GameObject root, string path)
     {
         preview.BeginStaticPreview(new Rect(0, 0, 1600, 900));
-        foreach (TMPro.TMP_Text label in root.GetComponentsInChildren<TMPro.TMP_Text>(true))
+        foreach (TMP_Text label in root.GetComponentsInChildren<TMP_Text>(true))
             label.ForceMeshUpdate(true);
         Canvas.ForceUpdateCanvases();
         preview.Render(true);

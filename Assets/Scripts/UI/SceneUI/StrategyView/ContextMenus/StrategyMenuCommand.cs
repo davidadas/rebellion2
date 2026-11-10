@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -325,11 +326,7 @@ public static class StrategyContextMenuAvailability
     {
         return idleBarEnabled
             && item is Officer or SpecialForces or Fleet or Planet
-            && string.Equals(
-                item.GetOwnerInstanceID(),
-                playerFactionId,
-                System.StringComparison.Ordinal
-            );
+            && string.Equals(item.GetOwnerInstanceID(), playerFactionId, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -434,14 +431,10 @@ public static class StrategyContextMenuAvailability
             return string.Equals(
                 officer.CaptorInstanceID,
                 playerFactionId,
-                System.StringComparison.Ordinal
+                StringComparison.Ordinal
             );
 
-        return string.Equals(
-            item?.GetOwnerInstanceID(),
-            playerFactionId,
-            System.StringComparison.Ordinal
-        );
+        return string.Equals(item?.GetOwnerInstanceID(), playerFactionId, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -477,7 +470,7 @@ public static class StrategyContextMenuAvailability
                 && string.Equals(
                     item.GetOwnerInstanceID(),
                     playerFactionId,
-                    System.StringComparison.Ordinal
+                    StringComparison.Ordinal
                 )
                 && (item is SpecialForces || item is Officer { IsCaptured: false })
             );

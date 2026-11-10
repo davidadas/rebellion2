@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -36,12 +37,12 @@ public sealed class ContextMenuView : MonoBehaviour, ICancelable
     /// <summary>
     /// Raised when the player selects an enabled leaf command.
     /// </summary>
-    public event System.Action<IContextMenuCommand> CommandSelected;
+    public event Action<IContextMenuCommand> CommandSelected;
 
     /// <summary>
     /// Raised when a pointer press outside the menu requests dismissal.
     /// </summary>
-    public event System.Action<PointerEventData> DismissRequested;
+    public event Action<PointerEventData> DismissRequested;
 
     public bool Open { get; private set; }
 
@@ -544,7 +545,7 @@ public sealed class ContextMenuCommandItem
         string shortcut = null
     )
     {
-        Command = command ?? throw new System.ArgumentNullException(nameof(command));
+        Command = command ?? throw new ArgumentNullException(nameof(command));
         IconTexture = iconTexture;
         ActiveIconTexture = activeIconTexture;
         UsesIconColumn = usesIconColumn || iconTexture != null || activeIconTexture != null;

@@ -1,3 +1,4 @@
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -46,12 +47,12 @@ public sealed class ContextMenuCommandView
     /// <summary>
     /// Raised when the row invokes its bound command.
     /// </summary>
-    internal event System.Action<IContextMenuCommand> Selected;
+    internal event Action<IContextMenuCommand> Selected;
 
     /// <summary>
     /// Raised when the row changes its active presentation state.
     /// </summary>
-    internal event System.Action<ContextMenuCommandItem> StateChanged;
+    internal event Action<ContextMenuCommandItem> StateChanged;
 
     internal int RowHeight
     {
