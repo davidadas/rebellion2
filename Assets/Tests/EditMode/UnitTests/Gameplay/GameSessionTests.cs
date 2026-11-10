@@ -3836,7 +3836,13 @@ namespace Rebellion.Tests.Gameplay
                 AdmiralLeadershipDivisor = 10,
                 CommanderCombatDivisor = 20,
                 LaserCannonCapitalDamageMultiplier = 1.0 / 6.0,
+                TurbolaserFighterDamageMultiplier = 0.5,
+                FighterIonCannonFighterDamageMultiplier = 0.5,
+                AutoResolveWeaponDamagePerStrength = 4.0 / 15.0,
+                AutoResolveTorpedoDamagePerStrength = 0.53333336,
                 AutoResolveFighterWeaponRechargeMultiplier = 3.751,
+                AutoResolveFighterShieldRechargePerCraft = 0.025,
+                AutoResolveFighterHullPerCraft = 8,
                 AutoResolveMaximumIterations = 4096,
                 AutoResolveStagnationIterations = 1200,
                 AutoResolveRetreatStrengthRatio = 0.33,
@@ -3957,7 +3963,7 @@ namespace Rebellion.Tests.Gameplay
             config.Jedi.FastHealThreshold = 80;
             config.Recovery.NormalHealAmount = 1;
             config.Recovery.FastRepairAmount = 1;
-            config.Recovery.FastReplacementAmount = 1;
+            config.Recovery.FastReplacementIntervalTicks = 1;
             config.Smuggling.LossPercentByMinimumSupport[0] = 0;
             GameRoot game = TestGame.Create(config);
             Faction faction = new Faction { InstanceID = "FACTION", DisplayName = "Faction" };
@@ -3998,6 +4004,8 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 MaxSquadronSize = 12,
                 CurrentSquadronSize = 11,
+                NextReplacementTick = 1,
+                ReplacementIntervalTicks = 1,
             };
             game.AttachNode(officer, planet);
             game.AttachNode(

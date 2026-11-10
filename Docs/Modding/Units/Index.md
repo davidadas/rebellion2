@@ -131,6 +131,17 @@ authoritative structural check. After editing a catalog:
 
 Existing saves retain runtime copies, so definition changes are most reliably tested in a new game.
 
+The content editor rejects negative construction and maintenance costs, production rates, and ship
+cargo capacities. Force-sensitivity probability must be between 0 and 100. Authored `ForceValue` and
+`ForceTrainingAdjustment` values must fit the runtime's signed 16-bit range (-32768 through 32767).
+Validation also checks faction theme keys and rejects resource profiles whose minimum exceeds
+their maximum. These checks also apply to XML edits and staged exports or test-game launches.
+
+Zero production rates, explicitly empty manufacturing-faction lists, factions with every normal
+mission disabled, and bookmark layouts with no usable rows remain legal. Validation and export
+show warnings identifying these restrictions so authors can review them without being prevented
+from exporting intentional settings. An absent manufacturing-faction list remains unrestricted.
+
 ---
 
 <p align="center"><a href="../Index.md">Modding guide</a> · <a href="Officers.md">Officers →</a></p>

@@ -330,12 +330,12 @@ namespace Rebellion.AI.Demands
             yield return (
                 AIFleetCapability.StarfighterFirepower,
                 StarfighterFirepowerDeficit,
-                SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstStarfighters
+                assessment.GetCapitalShipFirepowerAgainstStarfighters
             );
             yield return (
                 AIFleetCapability.Escort,
                 EscortDeficit,
-                ship => SpaceCombatStrengthCalculator.IsArmedEscort(ship) ? 1 : 0
+                ship => assessment.IsArmedEscort(ship) ? 1 : 0
             );
             yield return (
                 AIFleetCapability.StarfighterCapacity,

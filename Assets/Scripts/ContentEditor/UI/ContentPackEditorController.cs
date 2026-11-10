@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -464,12 +465,12 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 return;
             SaveCurrentProject();
             view.RenderStatus("Validating content pack. Press Escape to cancel.", false);
-            await ContentEditorPackValidator.ValidateAsync(
+            IReadOnlyList<string> warnings = await ContentEditorPackValidator.ValidateAsync(
                 project,
                 ReportValidationProgress,
                 cancellationToken
             );
-            view.RenderStatus("Content pack validated successfully.", false);
+            view.RenderValidationResult("Content pack validated successfully.", warnings);
         });
     }
 
@@ -512,13 +513,13 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 "Validating and exporting content pack. Press Escape to cancel.",
                 false
             );
-            await ContentPackEditorExporter.WriteArchiveAsync(
+            IReadOnlyList<string> warnings = await ContentPackEditorExporter.WriteArchiveAsync(
                 project,
                 filePath,
                 ReportValidationProgress,
                 cancellationToken
             );
-            view.RenderStatus("Content pack exported to " + filePath, false);
+            view.RenderValidationResult("Content pack exported to " + filePath, warnings);
         });
     }
 

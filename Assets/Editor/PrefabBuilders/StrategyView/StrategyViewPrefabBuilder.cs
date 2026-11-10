@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.IO;
-using Rebellion.Game;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -8057,7 +8056,7 @@ public static class StrategyViewPrefabBuilder
             _planetSectorPlanetImageWidth,
             _planetSectorPlanetImageHeight
         );
-        int segmentedBarCellCount = GetPlanetSectorSegmentedBarCellCount();
+        int segmentedBarCellCount = PlanetSectorPlanetRenderData.ResourceBarCellLimit;
         BarPrefabParts energyBar = CreateBar(
             "EnergyBar",
             root.transform,
@@ -8075,6 +8074,21 @@ public static class StrategyViewPrefabBuilder
             Orange()
         );
         BarPrefabParts supportBar = CreateFillBar("SupportBar", root.transform, 47, Color.red);
+        int resourceValueWidth = _planetPreviewWidth / 2;
+        TextMeshProUGUI energyValue = CreateResourceValue(
+            "EnergyValueTextField",
+            root.transform,
+            10,
+            resourceValueWidth,
+            Color.white
+        );
+        TextMeshProUGUI rawValue = CreateResourceValue(
+            "RawValueTextField",
+            root.transform,
+            10 + _planetPreviewWidth - resourceValueWidth,
+            resourceValueWidth,
+            new Color32(255, 255, 84, 255)
+        );
         TextMeshProUGUI planetNameTextField = CreateTextLabel(
             "PlanetNameTextField",
             root.transform
@@ -8100,6 +8114,8 @@ public static class StrategyViewPrefabBuilder
         AssignReference(planetView, "missionImage", mission);
         AssignReference(planetView, "headquartersImage", headquarters);
         AssignReference(planetView, "planetNameTextField", planetNameTextField);
+        AssignReference(planetView, "energyValueTextField", energyValue);
+        AssignReference(planetView, "rawValueTextField", rawValue);
         AssignReference(planetView, "energyBarRoot", energyBar.Root);
         AssignReference(planetView, "rawBarRoot", rawBar.Root);
         AssignReference(planetView, "supportBarRoot", supportBar.Root);
@@ -8915,50 +8931,32 @@ public static class StrategyViewPrefabBuilder
     }
 
     /// <summary>
-    /// Gets the largest segmented resource count supported by game generation.
+    /// Authors a compact used/total readout for a planet with oversized resource bars.
     /// </summary>
-    /// <returns>The required authored cell count.</returns>
-    private static int GetPlanetSectorSegmentedBarCellCount()
+    /// <param name="name">The resource value name.</param>
+    /// <param name="parent">The planet view transform.</param>
+    /// <param name="x">The source-space horizontal position.</param>
+    /// <param name="width">The portion of the planet width reserved for this resource.</param>
+    /// <param name="color">The resource text color.</param>
+    /// <returns>The initially hidden resource value label.</returns>
+    private static TextMeshProUGUI CreateResourceValue(
+        string name,
+        Transform parent,
+        int x,
+        int width,
+        Color color
+    )
     {
-        GameGenerationConfig config = ContentPackEditor.LoadGameData().GenerationConfig;
-        IReadOnlyList<PlanetResourceProfile> profiles = config?.PlanetResources?.Profiles;
-        if (profiles == null || profiles.Count == 0)
-        {
-            throw new System.InvalidOperationException(
-                "GameGenerationConfig must define at least one planet resource profile."
-            );
-        }
-
-        int cellCount = 0;
-        for (int index = 0; index < profiles.Count; index++)
-        {
-            PlanetResourceProfile profile = profiles[index];
-            if (profile == null)
-                continue;
-
-            cellCount = Mathf.Max(cellCount, profile.EnergyMax, profile.RawMaterialsMax);
-        }
-
-        IReadOnlyList<HQFacilityLoadout> loadouts = config.FacilityGeneration?.HQLoadouts;
-        int loadoutCellCount = 0;
-        if (loadouts != null)
-        {
-            for (int index = 0; index < loadouts.Count; index++)
-            {
-                int facilityCount = loadouts[index]?.FacilityTypeIDs?.Count ?? 0;
-                loadoutCellCount = Mathf.Max(loadoutCellCount, facilityCount);
-            }
-        }
-        cellCount += loadoutCellCount;
-
-        if (cellCount < 2)
-        {
-            throw new System.InvalidOperationException(
-                "Planet resource profiles must support at least two segmented bar cells."
-            );
-        }
-
-        return cellCount;
+        TextMeshProUGUI value = CreateTextLabel(name, parent);
+        value.text = "0/0";
+        value.color = color;
+        value.fontSize = 7;
+        value.alignment = TextAlignmentOptions.Center;
+        value.overflowMode = TextOverflowModes.Ellipsis;
+        int height = Mathf.CeilToInt(value.GetPreferredValues(value.text).y);
+        SetSourceRect(value.rectTransform, x, 39, width, height);
+        value.gameObject.SetActive(false);
+        return value;
     }
 
     /// <summary>

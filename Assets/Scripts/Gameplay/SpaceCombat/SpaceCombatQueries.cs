@@ -142,12 +142,24 @@ namespace Rebellion.Gameplay
                     .Where(fleet => fleet.GetOwnerInstanceID() == secondOwnerInstanceId)
                     .ToList();
 
-                attackerOwnerInstanceId = firstOwnerInstanceId;
-                defenderOwnerInstanceId = secondOwnerInstanceId;
-                attackerFleets = firstFleets;
-                defenderFleets = secondFleets;
+                string planetOwnerInstanceId = planet.GetOwnerInstanceID();
+                bool firstOwnerDefends = planetOwnerInstanceId == firstOwnerInstanceId;
+                bool secondOwnerDefends = planetOwnerInstanceId == secondOwnerInstanceId;
+                attackerOwnerInstanceId = firstOwnerDefends
+                    ? secondOwnerInstanceId
+                    : firstOwnerInstanceId;
+                defenderOwnerInstanceId = firstOwnerDefends
+                    ? firstOwnerInstanceId
+                    : secondOwnerInstanceId;
+                attackerFleets = firstOwnerDefends ? secondFleets : firstFleets;
+                defenderFleets = firstOwnerDefends ? firstFleets : secondFleets;
 
-                if (attackerFleets.Count == 0 && defenderFleets.Count > 0)
+                if (
+                    !firstOwnerDefends
+                    && !secondOwnerDefends
+                    && attackerFleets.Count == 0
+                    && defenderFleets.Count > 0
+                )
                 {
                     (attackerOwnerInstanceId, defenderOwnerInstanceId) = (
                         defenderOwnerInstanceId,

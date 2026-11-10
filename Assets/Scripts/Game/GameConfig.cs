@@ -2089,7 +2089,19 @@ namespace Rebellion.Game
 
             public double LaserCannonCapitalDamageMultiplier { get; set; }
 
+            public double TurbolaserFighterDamageMultiplier { get; set; }
+
+            public double FighterIonCannonFighterDamageMultiplier { get; set; }
+
+            public double AutoResolveWeaponDamagePerStrength { get; set; }
+
+            public double AutoResolveTorpedoDamagePerStrength { get; set; }
+
             public double AutoResolveFighterWeaponRechargeMultiplier { get; set; }
+
+            public double AutoResolveFighterShieldRechargePerCraft { get; set; }
+
+            public double AutoResolveFighterHullPerCraft { get; set; }
 
             public int AutoResolveMaximumIterations { get; set; }
 
@@ -2125,8 +2137,16 @@ namespace Rebellion.Game
                     AdmiralLeadershipDivisor = AdmiralLeadershipDivisor,
                     CommanderCombatDivisor = CommanderCombatDivisor,
                     LaserCannonCapitalDamageMultiplier = LaserCannonCapitalDamageMultiplier,
+                    TurbolaserFighterDamageMultiplier = TurbolaserFighterDamageMultiplier,
+                    FighterIonCannonFighterDamageMultiplier =
+                        FighterIonCannonFighterDamageMultiplier,
+                    AutoResolveWeaponDamagePerStrength = AutoResolveWeaponDamagePerStrength,
+                    AutoResolveTorpedoDamagePerStrength = AutoResolveTorpedoDamagePerStrength,
                     AutoResolveFighterWeaponRechargeMultiplier =
                         AutoResolveFighterWeaponRechargeMultiplier,
+                    AutoResolveFighterShieldRechargePerCraft =
+                        AutoResolveFighterShieldRechargePerCraft,
+                    AutoResolveFighterHullPerCraft = AutoResolveFighterHullPerCraft,
                     AutoResolveMaximumIterations = AutoResolveMaximumIterations,
                     AutoResolveStagnationIterations = AutoResolveStagnationIterations,
                     AutoResolveRetreatStrengthRatio = AutoResolveRetreatStrengthRatio,
@@ -2361,9 +2381,9 @@ namespace Rebellion.Game
 
             public int NormalRepairAmount { get; set; }
 
-            public int FastReplacementAmount { get; set; }
+            public int FastReplacementIntervalTicks { get; set; }
 
-            public int NormalReplacementAmount { get; set; }
+            public int NormalReplacementIntervalTicks { get; set; }
 
             /// <summary>
             /// Creates an independent snapshot of these settings.
@@ -2377,8 +2397,8 @@ namespace Rebellion.Game
                     NormalHealAmount = NormalHealAmount,
                     FastRepairAmount = FastRepairAmount,
                     NormalRepairAmount = NormalRepairAmount,
-                    FastReplacementAmount = FastReplacementAmount,
-                    NormalReplacementAmount = NormalReplacementAmount,
+                    FastReplacementIntervalTicks = FastReplacementIntervalTicks,
+                    NormalReplacementIntervalTicks = NormalReplacementIntervalTicks,
                 };
         }
 

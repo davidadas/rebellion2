@@ -1390,11 +1390,8 @@ namespace Rebellion.Tests.ContentEditor.Integration
                     support.color
                 );
                 Assert.AreEqual(
-                    maximumEnergy,
-                    planets[i]
-                        .transform.Find("EnergyBar")
-                        .GetComponentsInChildren<Image>()
-                        .Count(image => image.name.StartsWith("Segment", StringComparison.Ordinal))
+                    $"0/{maximumEnergy}",
+                    planets[i].transform.Find("EnergyValueTextField").GetComponent<TMP_Text>().text
                 );
                 RectInt imageRect = planets[i].GetRenderedPlanetImageSourceRect();
                 Vector2Int offset = window.UnprojectPlanetPosition(
