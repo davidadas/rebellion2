@@ -136,12 +136,23 @@ public static class ContentXmlOverrides
     }
 
     /// <summary>
-    /// Checks whether a setting can be reset independently of an ordered list.
+    /// Checks whether a setting can inherit independently without removing a record selector.
     /// </summary>
     /// <param name="element">The displayed setting.</param>
-    /// <returns>True outside the contents of an atomic collection.</returns>
-    public static bool CanResetSetting(XElement element) =>
-        !element.Ancestors().Any(IsAtomicCollection);
+    /// <param name="attribute">The edited attribute, when present.</param>
+    /// <param name="container">The owner of an absent optional setting.</param>
+    /// <returns>True for non-selector settings outside the contents of an atomic collection.</returns>
+    public static bool CanResetSetting(
+        XElement element,
+        XName attribute = null,
+        XElement container = null
+    ) =>
+        !IsSelector(element, attribute, container)
+        && !(
+            element.Parent == null && container != null
+                ? container.AncestorsAndSelf()
+                : element.Ancestors()
+        ).Any(IsAtomicCollection);
 
     /// <summary>
     /// Locates an effective member in another version of the same document.
@@ -186,12 +197,12 @@ public static class ContentXmlOverrides
     public static bool IsOverridden(XElement root, XElement element, XName attribute = null)
     {
         XElement value = FindEquivalent(element, root);
-        return value != null
+        return !IsSelector(element, attribute)
+            && value != null
             && (
-                attribute != null
-                    ? value.Attribute(attribute) != null
-                        || RemovedAttributes(value).Contains(attribute)
-                    : !IsIdentity(element)
+                attribute == null
+                || value.Attribute(attribute) != null
+                || RemovedAttributes(value).Contains(attribute)
             );
     }
 
@@ -204,6 +215,8 @@ public static class ContentXmlOverrides
     /// <returns>The resulting authored overlay.</returns>
     public static string Reset(string text, XElement element, XName attribute = null)
     {
+        if (IsSelector(element, attribute))
+            throw new InvalidOperationException("Record selectors cannot be reset independently.");
         XElement root = XElement.Parse(text);
         XElement target = FindEquivalent(element, root);
         if (target == null)
@@ -521,6 +534,23 @@ public static class ContentXmlOverrides
     /// <returns>True for an identity member.</returns>
     private static bool IsIdentity(XElement element) =>
         element.Parent != null && IdentityName(element.Parent) == element.Name;
+
+    /// <summary>
+    /// Recognizes selector members and their contents using the merger's record identities.
+    /// </summary>
+    /// <param name="element">The edited element or attribute owner.</param>
+    /// <param name="attribute">The edited attribute, when present.</param>
+    /// <param name="container">The owner of an absent optional member.</param>
+    /// <returns>True when changing inheritance would remove all or part of a record selector.</returns>
+    private static bool IsSelector(XElement element, XName attribute, XElement container = null) =>
+        element != null
+        && (
+            attribute != null && IdentityName(element) == attribute
+            || element.AncestorsAndSelf().Any(IsIdentity)
+            || element.Parent == null
+                && container != null
+                && (XName)IdentityMemberName(container.Name.LocalName) == element.Name
+        );
 
     /// <summary>
     /// Checks whether a sparse branch carries only structural identity.

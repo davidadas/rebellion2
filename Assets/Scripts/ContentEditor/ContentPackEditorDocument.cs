@@ -11,6 +11,7 @@ using System.Xml.Linq;
 public sealed class ContentPackEditorDocument
 {
     private readonly string inheritedText;
+    private readonly string legacyRulesDefaults;
     private readonly Dictionary<string, string> observedFiles = new(StringComparer.Ordinal);
     private string savedText;
     private string text;
@@ -70,6 +71,7 @@ public sealed class ContentPackEditorDocument
     /// <param name="inheritedText">The effective XML beneath the local pack.</param>
     /// <param name="sources">The observed source files, including inherited dependencies.</param>
     /// <param name="isApplicationRulesOverride">Whether only application rules exist beneath this rules path.</param>
+    /// <param name="legacyRulesDefaults">The resolved application baseline used by legacy sparse rules.</param>
     internal ContentPackEditorDocument(
         string address,
         string sourcePath,
@@ -77,7 +79,8 @@ public sealed class ContentPackEditorDocument
         string sourceText,
         string inheritedText,
         IReadOnlyDictionary<string, string> sources,
-        bool isApplicationRulesOverride = false
+        bool isApplicationRulesOverride = false,
+        string legacyRulesDefaults = null
     )
     {
         Address = address ?? throw new ArgumentNullException(nameof(address));
@@ -88,6 +91,7 @@ public sealed class ContentPackEditorDocument
             targetPath ?? throw new ArgumentNullException(nameof(targetPath))
         );
         this.inheritedText = inheritedText;
+        this.legacyRulesDefaults = legacyRulesDefaults;
         IsApplicationRulesOverride = isApplicationRulesOverride;
         string relative = address.StartsWith("Pack/", StringComparison.Ordinal)
             ? address[5..]
@@ -134,12 +138,11 @@ public sealed class ContentPackEditorDocument
     /// </summary>
     /// <param name="element">The displayed member.</param>
     /// <param name="container">The owner of an absent optional member.</param>
+    /// <param name="attribute">The edited attribute, when present.</param>
     /// <returns>True for a setting outside an ordered collection with an inherited container.</returns>
-    internal bool CanInherit(XElement element, XElement container = null) =>
+    internal bool CanInherit(XElement element, XElement container = null, XName attribute = null) =>
         inheritedText != null
-        && ContentXmlOverrides.CanResetSetting(
-            element.Parent != null ? element : container ?? element
-        )
+        && ContentXmlOverrides.CanResetSetting(element, attribute, container)
         && ContentXmlOverrides.FindEquivalent(element.Parent ?? container ?? element, InheritedRoot)
             != null;
 
@@ -168,13 +171,17 @@ public sealed class ContentPackEditorDocument
     /// <param name="container">The owner of an absent optional member.</param>
     internal void ResetSetting(XElement element, XName attribute, XElement container = null)
     {
-        if (!CanInherit(element, container))
+        if (!CanInherit(element, container, attribute))
             throw new InvalidOperationException(
                 "This setting has no independently inherited value."
             );
+        string effective =
+            UsesSettingOverrides || legacyRulesDefaults == null
+                ? text
+                : ContentXmlOverrides.MergeRules(legacyRulesDefaults, text);
         string overlay = UsesSettingOverrides
             ? authoredText
-            : ContentXmlOverrides.Update(inheritedText, text, authoredText);
+            : ContentXmlOverrides.Update(inheritedText, effective, authoredText);
         if (element.Parent == null && container != null)
         {
             XElement copy = new XElement(container.AncestorsAndSelf().Last());

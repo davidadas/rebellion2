@@ -37,7 +37,8 @@ public sealed class ContentPackEditorField
     public bool IsBoolean { get; }
     public bool IsNumber => numeric;
     public bool IsList => list;
-    public bool CanInherit => !IsIdentity && Document.CanInherit(element, Container);
+    public bool CanInherit =>
+        !IsIdentity && Document.CanInherit(element, Container, attribute?.Name);
     public bool IsInherited =>
         CanInherit && Document.IsSettingInherited(element, attribute?.Name, Container);
     public ContentPackEditorDocument Document => record.Catalog.Document;

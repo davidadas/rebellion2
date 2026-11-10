@@ -13,6 +13,40 @@ namespace Rebellion.Tests.ContentEditor
     [TestFixture]
     public sealed class ContentPackEditorProjectTests : ContentPackEditorTestBase
     {
+        [TestCase("theme")]
+        [TestCase("dictionary")]
+        public void ResetFieldToInherited_OverlaySelector_RejectsResetWithoutChangingTheDocument(
+            string kind
+        )
+        {
+            string xml =
+                kind == "theme"
+                    ? "<FactionThemes><FactionTheme><FactionInstanceID>FNEMP1</FactionInstanceID><FactionPrimaryColorHex>red</FactionPrimaryColorHex></FactionTheme></FactionThemes>"
+                    : "<Officers><Officer><TypeID>one</TypeID><Ratings><Entry><Key>Diplomacy</Key><Value>40</Value></Entry></Ratings></Officer></Officers>";
+            WriteFixtureFile("Data/units.xml", xml);
+            ContentPackEditorProject project = CreateWorkingProject();
+            Directory.CreateDirectory(Path.Combine(project.PackRootPath, "Data"));
+            File.WriteAllText(Path.Combine(project.PackRootPath, "Data/units.xml"), xml);
+            project = ContentPackEditorStorage.OpenFolder(contentRoot, project.PackRootPath);
+            ContentPackEditorRecord record = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Document.Address == "Pack/Data/units.xml")
+                .Records.Single();
+            XElement element = record
+                .Element.Descendants(kind == "theme" ? "FactionInstanceID" : "Key")
+                .Single();
+            ContentPackEditorField selector = new ContentPackEditorField(
+                record,
+                element,
+                "Selector"
+            );
+            string before = record.Catalog.Document.Text;
+
+            Assert.IsFalse(selector.CanInherit);
+            Assert.Throws<InvalidOperationException>(() => project.ResetFieldToInherited(selector));
+            Assert.AreEqual(before, record.Catalog.Document.Text);
+        }
+
         [Test]
         public void ResetFieldToInherited_BuildingCategory_RestoresProductionAndUndoesTogether()
         {

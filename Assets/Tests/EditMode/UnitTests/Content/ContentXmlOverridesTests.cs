@@ -364,6 +364,74 @@ namespace Rebellion.Tests.Content
             Assert.IsNull(resolved.Element("DifficultyModifiers"));
         }
 
+        [TestCase("Officer", "TypeID")]
+        [TestCase("Planet", "InstanceID")]
+        [TestCase("FactionTheme", "FactionInstanceID")]
+        [TestCase("Entry", "Key")]
+        public void CanResetSetting_OverlaySelector_DisallowsIndependentInheritance(
+            string record,
+            string member
+        )
+        {
+            XElement xml = XElement.Parse(
+                "<Records><"
+                    + record
+                    + "><"
+                    + member
+                    + ">one</"
+                    + member
+                    + "></"
+                    + record
+                    + "></Records>"
+            );
+            Assert.IsFalse(
+                ContentXmlOverrides.CanResetSetting(xml.Element(record).Element(member))
+            );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Reset_OverlaySelector_RejectsRemovingTheSelector(bool attribute)
+        {
+            XElement xml = XElement.Parse(
+                attribute
+                    ? "<OfficerTraits><Trait ID='one'><PersonnelTravelTimePercent>80</PersonnelTravelTimePercent></Trait></OfficerTraits>"
+                    : "<FactionThemes><FactionTheme><FactionInstanceID>FNEMP1</FactionInstanceID><FactionPrimaryColorHex>blue</FactionPrimaryColorHex></FactionTheme></FactionThemes>"
+            );
+            XElement member = attribute
+                ? xml.Element("Trait")
+                : xml.Element("FactionTheme").Element("FactionInstanceID");
+            Assert.Throws<InvalidOperationException>(() =>
+                ContentXmlOverrides.Reset(xml.ToString(), member, attribute ? "ID" : null)
+            );
+        }
+
+        [Test]
+        public void CanResetSetting_CompositeKeyMember_DisallowsPartialSelectorReset()
+        {
+            XElement xml = XElement.Parse(
+                "<Entries><Entry><Key><PrimaryWeaponType>Turbolaser</PrimaryWeaponType></Key><Value>40</Value></Entry></Entries>"
+            );
+            Assert.IsFalse(
+                ContentXmlOverrides.CanResetSetting(xml.Descendants("PrimaryWeaponType").Single())
+            );
+        }
+
+        [Test]
+        public void Reset_MissingSetting_PreservesTheAuthoredOverlay()
+        {
+            string overlay = "<FactionThemes Inherit='true'/>";
+            Assert.AreEqual(overlay, ContentXmlOverrides.Reset(overlay, null));
+        }
+
+        [Test]
+        public void IsOverridden_MissingSetting_ReturnsFalse()
+        {
+            Assert.IsFalse(
+                ContentXmlOverrides.IsOverridden("<FactionThemes Inherit='true'/>", null)
+            );
+        }
+
         /// <summary>
         /// Writes one isolated layer without installing a global content selection.
         /// </summary>

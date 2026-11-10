@@ -217,7 +217,8 @@ public static class ContentPackEditorStorage
                         resolver
                             .ResolveFileLayers("Application/Rules/game.xml")
                             .ToDictionary(path => path, File.ReadAllText),
-                        true
+                        true,
+                        defaults
                     )
                 );
             }
@@ -270,7 +271,8 @@ public static class ContentPackEditorStorage
             File.ReadAllText(sourcePath),
             baseline,
             sources,
-            applicationDefaults != null && !hasInheritedPackDocument
+            applicationDefaults != null && !hasInheritedPackDocument,
+            applicationDefaults
         );
     }
 
