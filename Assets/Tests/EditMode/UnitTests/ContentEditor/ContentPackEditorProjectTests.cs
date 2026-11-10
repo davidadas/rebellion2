@@ -994,7 +994,7 @@ namespace Rebellion.Tests.ContentEditor
 
             Assert.AreEqual("<Units />", units.Text);
             Assert.IsTrue(project.IsDirty);
-            Assert.AreEqual("<Units><Unit/></Units>", File.ReadAllText(units.TargetPath));
+            Assert.IsTrue(ContentXmlOverrides.IsOverlay(File.ReadAllText(units.TargetPath)));
         }
 
         [Test]

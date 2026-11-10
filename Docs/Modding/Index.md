@@ -80,7 +80,8 @@ objects or XML fields within that file. Files beneath the mod's `Content/Pack` d
 files from the selected base pack; files beneath `Content/Application` replace shared application
 files. Copy the original file into the matching mod path, edit the copy, and leave the installed
 `Content` file unchanged. The pack `game.xml` is the exception: it remains a sparse override merged
-over the application `game.xml`.
+over the application `game.xml`. Files can explicitly opt into setting inheritance with
+`Inherit="true"`, as described below.
 
 The game editor exposes **Game rules > AI decisions** for changing the number of ticks between
 new AI assignments at each difficulty. The default intervals are 7 ticks on Easy, 5 on Normal
@@ -149,6 +150,51 @@ Files present in the derived pack override files at the same `Pack/` address. Mi
 back through the declared base-pack chain. Each derived pack still provides a complete `pack.xml`
 so its scenarios, factions, preload manifests, and identity remain explicit. Circular inheritance,
 missing base packs, and duplicate IDs in the active inheritance chain are rejected during loading.
+
+### Setting inheritance
+
+Structured content XML can opt into setting inheritance by adding `Inherit="true"` to its root.
+The game loads the inherited document first and applies only the values present in the overlay.
+For example, a derived pack can change one Empire theme setting in
+`Factions/Empire/Strategy/UI/theme.xml`:
+
+```xml
+<FactionThemes Inherit="true">
+  <FactionTheme>
+    <FactionInstanceID>FNEMP1</FactionInstanceID>
+    <UseUpperButtonLayout>false</UseUpperButtonLayout>
+  </FactionTheme>
+</FactionThemes>
+```
+
+Every other Empire theme setting, including image paths, remains inherited. The file also retains
+other factions supplied by the inherited document. Explicit `0`, `false`, and empty string values
+are overrides; omitting a setting inherits it.
+
+Unit and sector records are matched by `TypeID`. Planets, factions, and events use `InstanceID`;
+themes use `FactionInstanceID`, officer traits use their `ID` attribute, and dictionary entries use
+`Key`. Omitted identified records remain inherited. Remove an identified record explicitly with
+`Remove="true"` on that record and its identifying member. An overlay can remove an optional
+member with `Remove="true"` on that member, or remove an attribute with
+`RemoveAttributes="AttributeName"` on its containing element. Resetting an override instead removes
+the local instruction and restores the inherited value.
+
+Ordered or unidentified collections, such as action lists, conditions, and rank lists, replace the
+inherited collection as a whole when supplied. An empty ordered collection clears the list. Do not
+expect individual actions to be matched by their position or by the variables they reference.
+Documents whose root is itself an ordered or unidentified collection use a complete replacement
+when edited, including when the last entry is removed.
+
+The content editor displays resolved inherited values while keeping their authored overrides
+separate. Editing an inherited document saves only the changed settings. Fields show **Inherited**
+when they have no local override. **Reset to inherited** removes the selected override; resetting
+the last override removes the unnecessary local file. Undo, redo, exports, and test snapshots retain
+the authored overrides rather than copying displayed defaults into the pack.
+
+Existing files without `Inherit="true"` keep their full-replacement behavior. Resetting a setting
+in an existing replacement retains its other authored values. `pack.xml` and `mod.xml` remain
+complete identity and dependency manifests. Packs using setting overlays require game and editor
+builds that support this format; distribution metadata must require a compatible game version.
 
 ## Sharing a mod
 

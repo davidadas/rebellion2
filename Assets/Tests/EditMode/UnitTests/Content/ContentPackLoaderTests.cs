@@ -601,6 +601,18 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void LoadGameConfig_PackSettingOverlay_InheritsApplicationDefaults()
+        {
+            GameConfig config = LoadGameConfigFromFixture(
+                _fixtureCompleteDefaultsXml,
+                "<GameConfig Inherit='true'><Movement><DistanceDivisor>2.5</DistanceDivisor></Movement></GameConfig>"
+            );
+
+            Assert.AreEqual(2.5, config.Movement.DistanceDivisor);
+            Assert.AreEqual(1, config.Research.BaseResearchPoints);
+        }
+
+        [Test]
         public void LoadGameConfig_PackSuppliesSectionMissingFromDefaults_MergesIntoDefaults()
         {
             GameConfig config = LoadGameConfigFromFixture(

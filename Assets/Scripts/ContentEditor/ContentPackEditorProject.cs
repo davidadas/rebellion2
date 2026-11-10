@@ -143,6 +143,21 @@ public sealed class ContentPackEditorProject
     }
 
     /// <summary>
+    /// Removes one local setting override as a reversible edit.
+    /// </summary>
+    /// <param name="field">The owned setting being returned to inheritance.</param>
+    public void ResetFieldToInherited(ContentPackEditorField field)
+    {
+        RequireOwnedRecord(field.Record);
+        if (!field.CanInherit)
+            throw new InvalidOperationException("This setting cannot inherit independently.");
+        using (BeginEdit("Reset to inherited"))
+            field.Document.ResetSetting(field.XmlElement, field.XmlAttributeName, field.Container);
+        catalogs = null;
+        RefreshDefinition();
+    }
+
+    /// <summary>
     /// Updates a building category and its derived manufacturing output as one edit.
     /// </summary>
     /// <param name="field">The building-category field.</param>

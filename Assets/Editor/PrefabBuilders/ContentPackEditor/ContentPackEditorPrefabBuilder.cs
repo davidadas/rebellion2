@@ -541,6 +541,12 @@ public static class ContentPackEditorPrefabBuilder
         Assign(field, "error", error);
         Assign(field, "importButton", import);
         Assign(field, "revertButton", revert);
+        Button inheritance = PlainButton("Inheritance", root, "Reset to inherited");
+        inheritance
+            .gameObject.AddComponent<HelpTooltipView>()
+            .Configure("Remove this override and use the current inherited value.");
+        inheritance.gameObject.SetActive(false);
+        Assign(field, "inheritanceButton", inheritance);
         Assign(field, "previewButton", preview);
         Assign(field, "choiceDropdown", choice);
         Assign(field, "help", HelpIcon(root));

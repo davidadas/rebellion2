@@ -409,9 +409,8 @@ internal static class ContentEditorPackValidator
         string[] scenarios = project
             .Definition.ScenarioPaths.Select(path =>
                 ContentDefinitionSerializer
-                    .Deserialize<ContentScenarioDefinition>(
-                        resolver.ResolveFile("Pack/" + path)
-                            ?? throw new FileNotFoundException("Scenario not found: " + path)
+                    .DeserializeText<ContentScenarioDefinition>(
+                        ContentXmlOverrides.Load(resolver, "Pack/" + path)
                     )
                     .ID
             )

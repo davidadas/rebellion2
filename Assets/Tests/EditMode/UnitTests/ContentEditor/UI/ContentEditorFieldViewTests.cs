@@ -157,13 +157,56 @@ namespace Rebellion.Tests.ContentEditor.UI
 
             TMP_Text label = control
                 .GetComponentsInChildren<TMP_Text>()
-                .Single(text => text.name == "Label");
+                .Single(text => text.name == "Label" && text.transform.parent == control.transform);
             label.ForceMeshUpdate();
             Assert.Greater(height, control.Height);
             Assert.Greater(label.textInfo.lineCount, 1);
             Assert.IsFalse(label.isTextTruncated);
             Assert.LessOrEqual(label.preferredHeight, label.rectTransform.rect.height);
             Assert.AreEqual(height, ((RectTransform)control.transform).rect.height, 0.1f);
+        }
+
+        [Test]
+        public void Render_InheritedSetting_ShowsInheritedStateWithoutCreatingAnOverride()
+        {
+            ContentPackEditorField description = officer.GetField("EncyclopediaDescription");
+            control.Render(
+                ContentPackEditorProjector.BuildField(project, description),
+                null,
+                null,
+                null
+            );
+            control.SetLayout(new Rect(0, 0, 700, control.Height), 220);
+            Button inherited = control
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Inheritance");
+
+            Assert.AreEqual("Inherited", inherited.GetComponentInChildren<TMP_Text>().text);
+            Assert.IsFalse(inherited.interactable);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void ResetButton_OverriddenSetting_RequestsResetWithoutMutatingTheProject()
+        {
+            ContentPackEditorField description = officer.GetField("EncyclopediaDescription");
+            project.SetField(description, "Authored description");
+            control.Render(
+                ContentPackEditorProjector.BuildField(project, description),
+                null,
+                null,
+                null
+            );
+            ContentPackEditorField requested = null;
+            control.InheritanceResetRequested += field => requested = field;
+            Button inherited = control
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Inheritance");
+
+            inherited.onClick.Invoke();
+
+            Assert.AreSame(description, requested);
+            Assert.AreEqual("Authored description", description.Value);
         }
     }
 }

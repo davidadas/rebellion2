@@ -84,8 +84,12 @@ namespace Rebellion.Tests.ContentEditor
             Assert.IsFalse(copy.IsDirty);
             Assert.IsTrue(project.IsDirty);
             Assert.AreEqual(
-                units.Text,
-                copy.Documents.Single(document => document.Address == units.Address).Text
+                System.Xml.Linq.XElement.Parse(units.Text).ToString(),
+                System
+                    .Xml.Linq.XElement.Parse(
+                        copy.Documents.Single(document => document.Address == units.Address).Text
+                    )
+                    .ToString()
             );
             Assert.IsFalse(File.Exists(units.TargetPath));
             Assert.AreEqual(
@@ -134,7 +138,16 @@ namespace Rebellion.Tests.ContentEditor
                 archive.Entries.Select(entry => entry.FullName)
             );
             using StreamReader text = new StreamReader(archive.GetEntry(units.Address[5..]).Open());
-            Assert.AreEqual(units.Text, text.ReadToEnd());
+            string exported = text.ReadToEnd();
+            Assert.IsTrue(ContentXmlOverrides.IsOverlay(exported));
+            Assert.AreEqual(
+                System.Xml.Linq.XElement.Parse(units.Text).ToString(),
+                System
+                    .Xml.Linq.XElement.Parse(
+                        ContentXmlOverrides.Merge(File.ReadAllText(units.SourcePath), exported)
+                    )
+                    .ToString()
+            );
             using Stream asset = archive.GetEntry("Assets/sound.wav").Open();
             using MemoryStream buffer = new MemoryStream();
             asset.CopyTo(buffer);

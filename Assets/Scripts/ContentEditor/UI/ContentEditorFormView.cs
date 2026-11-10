@@ -103,6 +103,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     public event Action Changed;
     public event Action<ContentPackEditorField, IReadOnlyList<string>> FieldSubmitted;
     public event Action<ContentPackEditorField> FieldValidationRequested;
+    public event Action<ContentPackEditorField> FieldInheritanceResetRequested;
     public event Action WidthChanged;
     public event Action<Button> AddMessageRequested;
     public event Action AddNamePoolRequested;
@@ -185,6 +186,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             field.ValidationFailed -= ReportValidationError;
             field.Submitted -= SubmitField;
             field.ValidationRequested -= ValidateField;
+            field.InheritanceResetRequested -= ResetInheritance;
             field.SelectionRequested -= RequestSelection;
         }
     }
@@ -1845,6 +1847,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             created.ValidationFailed += ReportValidationError;
             created.Submitted += SubmitField;
             created.ValidationRequested += ValidateField;
+            created.InheritanceResetRequested += ResetInheritance;
             created.SelectionRequested += RequestSelection;
             fieldViews.Add(created);
         }
@@ -2010,4 +2013,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="field">The member to check.</param>
     private void ValidateField(ContentPackEditorField field) =>
         FieldValidationRequested?.Invoke(field);
+
+    /// <summary>
+    /// Forwards a request to remove one local setting override.
+    /// </summary>
+    /// <param name="field">The setting being returned to inheritance.</param>
+    private void ResetInheritance(ContentPackEditorField field) =>
+        FieldInheritanceResetRequested?.Invoke(field);
 }
