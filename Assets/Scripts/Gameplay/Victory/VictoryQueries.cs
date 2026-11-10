@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -85,65 +84,80 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Finds the faction that has defeated every opponent under the configured game mode.
+        /// Resolves a faction identifier against the active game.
         /// </summary>
-        /// <returns>The winning faction, or null while no faction has met every requirement.</returns>
-        public Faction FindWinner()
+        /// <param name="factionInstanceId">The faction identifier.</param>
+        /// <returns>The registered faction, or null when the identifier is absent or unknown.</returns>
+        public Faction GetFaction(string factionInstanceId)
         {
-            return FindWinner(_game.GetSceneNodesByType<Officer>());
+            return string.IsNullOrEmpty(factionInstanceId)
+                ? null
+                : _game
+                    .GetFactions()
+                    .FirstOrDefault(faction => faction?.InstanceID == factionInstanceId);
         }
 
         /// <summary>
-        /// Finds the faction that has defeated every opponent using an existing officer assessment.
+        /// Resolves the only opposing faction when a result has no responsible attacker.
         /// </summary>
-        /// <param name="officers">The officers in the active game.</param>
-        /// <returns>The winning faction, or null while no faction has met every requirement.</returns>
-        internal Faction FindWinner(IEnumerable<Officer> officers)
+        /// <param name="defender">The faction whose opponent is required.</param>
+        /// <returns>The sole opposing faction, or null when the result is ambiguous.</returns>
+        public Faction GetSoleOpponent(Faction defender)
         {
-            List<Officer> officerList =
-                officers?.Where(officer => officer != null).ToList() ?? new List<Officer>();
-            return _game
+            Faction liveDefender = GetFaction(defender?.InstanceID);
+            if (liveDefender == null)
+                return null;
+
+            Faction[] opponents = _game
                 .GetFactions()
-                .FirstOrDefault(candidate => HasDefeatedEveryOpponent(candidate, officerList));
+                .Where(faction =>
+                    faction != null && faction != liveDefender && HasActiveHeadquarters(faction)
+                )
+                .Take(2)
+                .ToArray();
+            return opponents.Length == 1 ? opponents[0] : null;
         }
 
         /// <summary>
-        /// Determines whether one faction retains its headquarters while every opponent has lost
-        /// theirs and, in conquest games, every opposing main character has been captured.
+        /// Determines whether every opponent has lost its headquarters and, in conquest games,
+        /// every opposing conquest officer has been captured.
         /// </summary>
         /// <param name="candidate">The potential winning faction.</param>
-        /// <param name="officers">The officers in the active game.</param>
         /// <returns>True when the faction has met every victory requirement.</returns>
-        private bool HasDefeatedEveryOpponent(
-            Faction candidate,
-            IReadOnlyCollection<Officer> officers
-        )
+        public bool HasDefeatedEveryOpponent(Faction candidate)
         {
-            if (
-                candidate is not { HasLostHeadquarters: false }
-                || !IsHeadquartersOwnedByFaction(candidate.InstanceID)
-            )
+            Faction liveCandidate = GetFaction(candidate?.InstanceID);
+            if (!HasActiveHeadquarters(liveCandidate))
                 return false;
 
-            List<Faction> opponents = _game
+            Faction[] opponents = _game
                 .GetFactions()
-                .Where(faction => faction != null && faction != candidate)
-                .ToList();
-            if (opponents.Count == 0 || opponents.Any(opponent => !HasLostHeadquarters(opponent)))
+                .Where(faction => faction != null && faction != liveCandidate)
+                .ToArray();
+            if (opponents.Length == 0 || opponents.Any(opponent => !HasLostHeadquarters(opponent)))
                 return false;
 
-            if (_game.Summary.VictoryCondition != GameVictoryCondition.Conquest)
+            if (!IsConquestGame())
                 return true;
 
-            HashSet<string> opponentIds = opponents
-                .Select(opponent => opponent.InstanceID)
-                .ToHashSet(StringComparer.Ordinal);
-
-            return officers.All(officer =>
-                !officer.IsMain
-                || !opponentIds.Contains(officer.GetOwnerInstanceID())
-                || officer.IsCaptured
+            return opponents.All(opponent =>
+                opponent.Settings.ConquestOfficerInstanceIDs.All(officerInstanceID =>
+                    _game.GetSceneNodeByInstanceID<Officer>(officerInstanceID) is Officer officer
+                    && officer.GetOwnerInstanceID() == opponent.InstanceID
+                    && officer.IsCaptured
+                )
             );
+        }
+
+        /// <summary>
+        /// Determines whether a faction remains eligible to win by retaining its headquarters.
+        /// </summary>
+        /// <param name="faction">The faction whose headquarters state is evaluated.</param>
+        /// <returns>True when the faction has not lost and still controls its headquarters.</returns>
+        private bool HasActiveHeadquarters(Faction faction)
+        {
+            return faction is { HasLostHeadquarters: false }
+                && IsHeadquartersOwnedByFaction(faction.InstanceID);
         }
 
         /// <summary>

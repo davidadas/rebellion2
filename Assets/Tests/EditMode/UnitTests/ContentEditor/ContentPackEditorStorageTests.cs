@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Xml;
 using System.Xml.Linq;
 using NUnit.Framework;
 
@@ -280,7 +281,7 @@ namespace Rebellion.Tests.ContentEditor
             string original = File.ReadAllText(document.TargetPath);
             document.SetText("<ContentPack>");
 
-            Assert.Throws<System.Xml.XmlException>(() => ContentPackEditorStorage.Save(project));
+            Assert.Throws<XmlException>(() => ContentPackEditorStorage.Save(project));
             Assert.AreEqual(original, File.ReadAllText(document.TargetPath));
         }
 
@@ -304,7 +305,7 @@ namespace Rebellion.Tests.ContentEditor
             manifest.SetText(manifest.Text.Replace("Sample pack", "Changed pack"));
             units.SetText("<Units>");
 
-            Assert.Throws<System.Xml.XmlException>(() => ContentPackEditorStorage.Save(project));
+            Assert.Throws<XmlException>(() => ContentPackEditorStorage.Save(project));
             Assert.AreEqual(originalManifest, File.ReadAllText(manifest.TargetPath));
             Assert.IsFalse(File.Exists(units.TargetPath));
         }

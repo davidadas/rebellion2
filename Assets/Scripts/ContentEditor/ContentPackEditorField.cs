@@ -188,6 +188,7 @@ public sealed class ContentPackEditorField
             if (value.Length == 0 && detach != null)
                 continue;
             ContentPackEditorFieldSchema.ValidateScalar(value, type);
+            ContentEditorValueValidator.Validate(this, value);
             if (
                 ContentPackEditorFieldMetadata.IsAIDecisionInterval(this)
                 && (

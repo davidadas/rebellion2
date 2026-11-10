@@ -55,7 +55,7 @@ namespace Rebellion.Tests.Gameplay
         public void KillOfficer_ActiveOfficer_MarksKilledAndRetainsIdentity()
         {
             Officer officer = CreateOfficer("killed-officer");
-            officer.Movement = new MovementState();
+            officer.Movement = TestMovement.Create();
             _game.AttachNode(officer, _planet);
 
             _commands.KillOfficer(officer);

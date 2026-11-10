@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -25,8 +26,8 @@ namespace Rebellion.Gameplay
         /// <param name="random">The random source used for loss rolls.</param>
         internal EvacuationLossResolver(GameRoot game, IRandomNumberProvider random)
         {
-            _game = game ?? throw new System.ArgumentNullException(nameof(game));
-            _random = random ?? throw new System.ArgumentNullException(nameof(random));
+            _game = game ?? throw new ArgumentNullException(nameof(game));
+            _random = random ?? throw new ArgumentNullException(nameof(random));
         }
 
         /// <summary>

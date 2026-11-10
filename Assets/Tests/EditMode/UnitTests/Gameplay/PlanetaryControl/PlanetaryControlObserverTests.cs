@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -206,7 +207,7 @@ namespace Rebellion.Tests.Gameplay
         {
             _targetPlanet.SetPopularSupport(_empire.InstanceID, 100);
 
-            Assert.Throws<System.NullReferenceException>(() =>
+            Assert.Throws<NullReferenceException>(() =>
                 _observer.HandleResults(
                     new PlanetGarrisonChangedResult[]
                     {
@@ -1058,7 +1059,7 @@ namespace Rebellion.Tests.Gameplay
             {
                 _game.AttachNode(unit, _empirePlanet);
                 _movementSystem.RequestMove(unit, _targetPlanet);
-                unit.Movement.CurrentPosition = new Point(30, 0);
+                unit.Movement.SetPosition(new Point(30, 0));
             }
 
             return (garrison, inboundUnits);

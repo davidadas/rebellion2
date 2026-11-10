@@ -613,7 +613,7 @@ namespace Rebellion.Tests.Gameplay
                 {
                     MaintenanceCost = 30,
                     ManufacturingStatus = ManufacturingStatus.Complete,
-                    Movement = new MovementState(),
+                    Movement = TestMovement.Create(),
                 }
             );
 
@@ -633,7 +633,7 @@ namespace Rebellion.Tests.Gameplay
             {
                 InstanceID = "FLEET1",
                 OwnerInstanceID = _faction.InstanceID,
-                Movement = new MovementState(),
+                Movement = TestMovement.Create(),
             };
             CapitalShip ship = new CapitalShip
             {

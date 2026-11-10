@@ -81,7 +81,7 @@ namespace Rebellion.Tests.Gameplay
         public void GetPlanetController_OnlyInactiveRegiments_ReturnsSupportController()
         {
             AddRegiment("unfinished", _empire).ManufacturingStatus = ManufacturingStatus.Building;
-            AddRegiment("traveling", _empire).Movement = new MovementState { TransitTicks = 2 };
+            AddRegiment("traveling", _empire).Movement = TestMovement.Create(transitTicks: 2);
             _targetPlanet.SetPopularSupport(_rebels.InstanceID, 100);
 
             Assert.AreSame(_rebels, _queries.GetPlanetController(_targetPlanet));

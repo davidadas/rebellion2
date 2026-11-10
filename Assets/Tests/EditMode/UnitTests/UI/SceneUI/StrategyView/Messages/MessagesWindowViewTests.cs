@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Messages;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -75,10 +76,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreSame(_texture, FindComponent<RawImage>("ButtonStripImage").texture);
             Assert.IsTrue(_indexPanel.gameObject.activeSelf);
             Assert.IsFalse(_detailPanel.gameObject.activeSelf);
-            Assert.AreEqual(
-                "All Messages",
-                FindComponent<TMPro.TextMeshProUGUI>("TitleTextField").text
-            );
+            Assert.AreEqual("All Messages", FindComponent<TextMeshProUGUI>("TitleTextField").text);
         }
 
         [Test]
@@ -92,8 +90,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsTrue(_detailPanel.gameObject.activeSelf);
             Assert.AreEqual(
                 "Message detail",
-                FindComponent<TMPro.TextMeshProUGUI>("DetailHeaderTextField").text
+                FindComponent<TextMeshProUGUI>("DetailHeaderTextField").text
             );
+        }
+
+        [Test]
+        public void TryCancel_DetailWithoutIndexHandler_ReturnsFalse()
+        {
+            _view.Render(CreateRenderData(true));
+
+            bool handled = _view.TryCancel();
+
+            Assert.IsFalse(handled);
+        }
+
+        [Test]
+        public void TryCancel_IndexPresentation_DoesNotRequestIndex()
+        {
+            int requests = 0;
+            _view.IndexRequested += _ => requests++;
+            _view.Render(CreateRenderData(false));
+
+            bool handled = _view.TryCancel();
+
+            Assert.IsFalse(handled);
+            Assert.AreEqual(0, requests);
         }
 
         [Test]

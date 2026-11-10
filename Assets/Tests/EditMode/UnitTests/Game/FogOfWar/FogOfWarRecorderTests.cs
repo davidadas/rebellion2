@@ -548,7 +548,7 @@ namespace Rebellion.Tests.Game.FogOfWar
             _game.AttachNode(CreateOfficer("CARRIED_OFFICER", _empire), movingShip);
             foreach (var planet in planets)
             {
-                var sector = planet.GetParentOfType<Rebellion.Game.Galaxy.PlanetSector>();
+                var sector = planet.GetParentOfType<PlanetSector>();
                 recorder.RecordEspionageSnapshot(_alliance, planet, sector, 10);
                 recorder.RecordEspionageSnapshot(batchedFaction, planet, sector, 10);
             }
@@ -562,7 +562,7 @@ namespace Rebellion.Tests.Game.FogOfWar
                 recorder.RecordPlanetSnapshot(
                     _alliance,
                     planet,
-                    planet.GetParentOfType<Rebellion.Game.Galaxy.PlanetSector>(),
+                    planet.GetParentOfType<PlanetSector>(),
                     11
                 );
             recorder.RecordPlanetSnapshots(batchedFaction, planets, 11);
@@ -672,7 +672,7 @@ namespace Rebellion.Tests.Game.FogOfWar
         public void RecordSelectedObservations_LaterUnrelatedObservation_PreservesMovementObservationTime()
         {
             Officer officer = CreateOfficer("traveller", _empire);
-            officer.Movement = new MovementState { TransitTicks = 20, TicksElapsed = 10 };
+            officer.Movement = TestMovement.Create(transitTicks: 20, ticksElapsed: 10);
             _game.AttachNode(officer, _coruscant);
             Officer another = CreateOfficer("another", _empire);
             _game.AttachNode(another, _coruscant);
@@ -1410,7 +1410,7 @@ namespace Rebellion.Tests.Game.FogOfWar
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
             _coruscant.IsColonized = false;
             _coruscant.IsDestroyed = true;
-            officer.Movement = new MovementState { TransitTicks = 20, TicksElapsed = 5 };
+            officer.Movement = TestMovement.Create(transitTicks: 20, ticksElapsed: 5);
 
             recorder.RecordIntelligenceSnapshot(
                 _alliance,

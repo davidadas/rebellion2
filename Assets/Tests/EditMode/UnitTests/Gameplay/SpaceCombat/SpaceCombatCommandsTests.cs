@@ -194,6 +194,52 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void Resolve_SystemCommander_IncludesSelectedOfficerInCombatReport()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "alliance" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet
+            {
+                InstanceID = "planet",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+            };
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
+            Fleet empireFleet = CreateFleet(game, "empire-fleet", "empire", planet, 1, 100, 10);
+            Fleet allianceFleet = CreateFleet(
+                game,
+                "alliance-fleet",
+                "alliance",
+                planet,
+                1,
+                100,
+                10
+            );
+            Officer commander = new Officer
+            {
+                InstanceID = "system-commander",
+                OwnerInstanceID = "empire",
+                CurrentRank = OfficerRank.Commander,
+            };
+            commander.SetBaseRating(SkillRating.Combat, 70);
+            game.AttachNode(commander, planet);
+            SpaceCombatCommands commands = MakeSpaceCombat(game);
+
+            TryResolveCombat(commands, empireFleet, allianceFleet, out List<GameResult> results);
+
+            SpaceCombatResult combatResult = GetCombatResult(results);
+            CombatReport report = CombatReport.Capture(combatResult, "empire", null, null);
+            IReadOnlyList<CombatReportUnit> empireUnits =
+                combatResult.AttackerOwnerInstanceID == "empire"
+                    ? report.AttackingUnits
+                    : report.DefendingUnits;
+            Assert.IsTrue(empireUnits.Any(unit => unit.InstanceID == commander.InstanceID));
+        }
+
+        [Test]
         public void Resolve_CompletedEncounter_ReturnsAggregateDamage()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -286,13 +332,12 @@ namespace Rebellion.Tests.Gameplay
                 CurrentHullStrength = 1000,
                 ShieldRechargeRate = 0,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                Movement = new MovementState
-                {
-                    TransitTicks = 5,
-                    TicksElapsed = 1,
-                    OriginPosition = planet.GetPosition(),
-                    CurrentPosition = planet.GetPosition(),
-                },
+                Movement = TestMovement.Create(
+                    transitTicks: 5,
+                    ticksElapsed: 1,
+                    originPosition: planet.GetPosition(),
+                    currentPosition: planet.GetPosition()
+                ),
             };
             game.AttachNode(inTransitShip, empireFleet);
 
@@ -332,13 +377,12 @@ namespace Rebellion.Tests.Gameplay
                 CurrentSquadronSize = 12,
                 LaserCannon = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                Movement = new MovementState
-                {
-                    TransitTicks = 5,
-                    TicksElapsed = 1,
-                    OriginPosition = planet.GetPosition(),
-                    CurrentPosition = planet.GetPosition(),
-                },
+                Movement = TestMovement.Create(
+                    transitTicks: 5,
+                    ticksElapsed: 1,
+                    originPosition: planet.GetPosition(),
+                    currentPosition: planet.GetPosition()
+                ),
             };
             game.AttachNode(inTransitFighter, empireCarrier);
 
@@ -1356,13 +1400,12 @@ namespace Rebellion.Tests.Gameplay
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
-            empireFleet.Movement = new MovementState
-            {
-                TransitTicks = 5,
-                TicksElapsed = 1,
-                OriginPosition = planet.GetPosition(),
-                CurrentPosition = planet.GetPosition(),
-            };
+            empireFleet.Movement = TestMovement.Create(
+                transitTicks: 5,
+                ticksElapsed: 1,
+                originPosition: planet.GetPosition(),
+                currentPosition: planet.GetPosition()
+            );
 
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
@@ -1383,20 +1426,18 @@ namespace Rebellion.Tests.Gameplay
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
-            empireFleet.GetChildren<CapitalShip>()[0].Movement = new MovementState
-            {
-                TransitTicks = 5,
-                TicksElapsed = 1,
-                OriginPosition = planet.GetPosition(),
-                CurrentPosition = planet.GetPosition(),
-            };
-            allianceFleet.GetChildren<CapitalShip>()[0].Movement = new MovementState
-            {
-                TransitTicks = 5,
-                TicksElapsed = 1,
-                OriginPosition = planet.GetPosition(),
-                CurrentPosition = planet.GetPosition(),
-            };
+            empireFleet.GetChildren<CapitalShip>()[0].Movement = TestMovement.Create(
+                transitTicks: 5,
+                ticksElapsed: 1,
+                originPosition: planet.GetPosition(),
+                currentPosition: planet.GetPosition()
+            );
+            allianceFleet.GetChildren<CapitalShip>()[0].Movement = TestMovement.Create(
+                transitTicks: 5,
+                ticksElapsed: 1,
+                originPosition: planet.GetPosition(),
+                currentPosition: planet.GetPosition()
+            );
 
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
@@ -2108,13 +2149,12 @@ namespace Rebellion.Tests.Gameplay
             Fleet stationaryFleet = CreateFleet(game, "ef1", "empire", planet, 1, 1000, 100, 0);
             Fleet inTransitFleet = CreateFleet(game, "ef2", "empire", planet, 1, 1000, 100, 0);
             Fleet opposingFleet = CreateFleet(game, "af1", "alliance", planet, 1, 1, 0, 0);
-            inTransitFleet.Movement = new MovementState
-            {
-                TransitTicks = 5,
-                TicksElapsed = 1,
-                OriginPosition = planet.GetPosition(),
-                CurrentPosition = planet.GetPosition(),
-            };
+            inTransitFleet.Movement = TestMovement.Create(
+                transitTicks: 5,
+                ticksElapsed: 1,
+                originPosition: planet.GetPosition(),
+                currentPosition: planet.GetPosition()
+            );
             string inTransitShipId = inTransitFleet.GetChildren<CapitalShip>().Single().InstanceID;
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
@@ -5066,8 +5106,16 @@ namespace Rebellion.Tests.Gameplay
             if (destroyExistingRecoveryFighters)
             {
                 CapitalShip attackingShip = attackingFleet.GetChildren<CapitalShip>().Single();
-                attackingShip.SublightSpeed = 100;
+                attackingShip.SublightSpeed = 0;
                 attackingShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new int[]
+                {
+                    1000,
+                    0,
+                    0,
+                    0,
+                    100,
+                };
+                attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new int[]
                 {
                     1000,
                     0,
@@ -5127,11 +5175,10 @@ namespace Rebellion.Tests.Gameplay
                     0
                 );
                 unrelatedFleet.GetChildren<CapitalShip>().Single().StarfighterCapacity = 1;
-                unrelatedFleet.Movement = new MovementState
-                {
-                    OriginPosition = combatPlanet.GetPosition(),
-                    CurrentPosition = combatPlanet.GetPosition(),
-                };
+                unrelatedFleet.Movement = TestMovement.Create(
+                    originPosition: combatPlanet.GetPosition(),
+                    currentPosition: combatPlanet.GetPosition()
+                );
             }
             List<Starfighter> displacedFighters = new List<Starfighter>();
             for (int index = 0; index < displacedFighterHyperdrives.Count; index++)
@@ -5164,13 +5211,14 @@ namespace Rebellion.Tests.Gameplay
                     ShieldStrength = 1,
                     Hyperdrive = existingRecoveryFighterHyperdrive,
                     SublightSpeed = destroyExistingRecoveryFighters ? 0 : 10,
+                    IonCannon = destroyExistingRecoveryFighters ? 30 : 0,
+                    IonRange = 100,
                 };
                 if (existingRecoveryFightersAreInTransit)
                 {
-                    fighter.Movement = new MovementState
-                    {
-                        CurrentPosition = combatPlanet.GetPosition(),
-                    };
+                    fighter.Movement = TestMovement.Create(
+                        currentPosition: combatPlanet.GetPosition()
+                    );
                 }
                 game.AttachNode(fighter, recoveryCarrier);
                 existingFighters.Add(fighter);
@@ -5216,7 +5264,13 @@ namespace Rebellion.Tests.Gameplay
                     {
                         AdmiralLeadershipDivisor = 10,
                         CommanderCombatDivisor = 20,
+                        TurbolaserFighterDamageMultiplier = 0.5,
+                        FighterIonCannonFighterDamageMultiplier = 0.5,
+                        AutoResolveWeaponDamagePerStrength = 4.0 / 15.0,
+                        AutoResolveTorpedoDamagePerStrength = 0.53333336,
                         AutoResolveFighterWeaponRechargeMultiplier = 3.751,
+                        AutoResolveFighterShieldRechargePerCraft = 0.025,
+                        AutoResolveFighterHullPerCraft = 8,
                         AutoResolveMaximumIterations = 4096,
                         AutoResolveStagnationIterations = 1200,
                         AutoResolveRetreatStrengthRatio = 0.33,

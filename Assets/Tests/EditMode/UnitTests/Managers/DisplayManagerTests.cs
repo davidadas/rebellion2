@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
@@ -30,7 +31,7 @@ namespace Rebellion.Tests.Managers
         public void GetSupportedResolutions_NoReportedModes_ReturnsNativeFittingFallback()
         {
             DisplayManager manager = CreateManager(
-                System.Array.Empty<Vector2Int>(),
+                Array.Empty<Vector2Int>(),
                 new Vector2Int(3440, 1440)
             );
 

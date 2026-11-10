@@ -303,7 +303,7 @@ namespace Rebellion.Tests.Gameplay
         {
             _game.MoveNode(_defender, _ship);
             IMovable carrier = fleetTransit ? (Fleet)_ship.GetParent() : _ship;
-            carrier.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            carrier.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 1);
             MissionForceEncounterScope scope = CreateScope(MissionEncounterPhase.Arrival);
 
             List<Officer> selected = scope.GetDefenders(
@@ -321,7 +321,7 @@ namespace Rebellion.Tests.Gameplay
             _game.ChangeOwnership(_ship, "empire");
             _game.MoveNode(_participant, _ship);
             IMovable carrier = fleetTransit ? (Fleet)_ship.GetParent() : _ship;
-            carrier.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            carrier.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 1);
             MissionForceEncounterScope scope = CreateScope(MissionEncounterPhase.DepartureComplete);
 
             List<Officer> selected = scope.GetParticipants(

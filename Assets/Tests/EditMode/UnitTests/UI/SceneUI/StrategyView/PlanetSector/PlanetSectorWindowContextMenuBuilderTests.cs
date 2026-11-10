@@ -109,7 +109,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 new Officer
                 {
                     OwnerInstanceID = _playerFactionId,
-                    Movement = new MovementState { TransitTicks = 10 },
+                    Movement = TestMovement.Create(transitTicks: 10),
                 }
             );
 
@@ -280,7 +280,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
             GameFleet fleet = new GameFleet(_playerFactionId, "Fleet")
             {
-                Movement = new Rebellion.Game.Units.MovementState(),
+                Movement = new MovementState(),
             };
             fleet.Waypoints.Add("destination");
 
@@ -300,7 +300,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
             GameFleet fleet = new GameFleet(_playerFactionId, "Fleet")
             {
-                Movement = new Rebellion.Game.Units.MovementState(),
+                Movement = new MovementState(),
             };
 
             List<StrategyMenuCommand> commands = PlanetSectorWindowContextMenuBuilder.Create(

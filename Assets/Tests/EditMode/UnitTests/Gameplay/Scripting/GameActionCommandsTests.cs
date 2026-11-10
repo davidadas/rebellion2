@@ -473,7 +473,7 @@ namespace Rebellion.Tests.Gameplay.Scripting
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             Officer officer = EntityFactory.CreateOfficer("officer", planet.OwnerInstanceID);
-            officer.Movement = new MovementState();
+            officer.Movement = TestMovement.Create();
             game.AttachNode(officer, planet);
             SetCaptureStatusAction action = new SetCaptureStatusAction
             {

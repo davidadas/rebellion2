@@ -96,11 +96,18 @@ public readonly struct PlanetSectorWaypointRenderData
 /// </summary>
 public sealed class PlanetSectorPlanetRenderData
 {
+    // Resource totals above this display limit use compact values instead of cell bars.
+    public const int ResourceBarCellLimit = 15;
+
     public Texture2D DefensePressedTexture { get; }
 
     public Texture2D DefenseTexture { get; }
 
     public PlanetSectorBarRenderData EnergyBar { get; }
+
+    public bool UseResourceValues =>
+        EnergyBar.CellCount > ResourceBarCellLimit
+        || RawResourceBar.CellCount > ResourceBarCellLimit;
 
     public Texture2D FacilityPressedTexture { get; }
 

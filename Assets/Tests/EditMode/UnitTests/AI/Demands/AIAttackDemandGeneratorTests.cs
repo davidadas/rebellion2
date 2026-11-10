@@ -74,7 +74,7 @@ namespace Rebellion.Tests.AI.Demands
                 "arriving-fleet",
                 inbound.OwnerInstanceID
             );
-            arrivingFleet.Movement = new MovementState { TransitTicks = fleetTicks };
+            arrivingFleet.Movement = TestMovement.Create(transitTicks: fleetTicks);
             context.Game.AttachNode(arrivingFleet, target);
             context.Game.MoveNode(inbound, arrivingFleet);
             inbound.Movement = null;
@@ -128,7 +128,7 @@ namespace Rebellion.Tests.AI.Demands
             );
             Fleet fast = EntityFactory.CreateFleet("fast", context.Faction.InstanceID);
             fast.RoleType = FleetRoleType.Battle;
-            fast.Movement = new MovementState { TransitTicks = 5 };
+            fast.Movement = TestMovement.Create(transitTicks: 5);
             context.Game.AttachNode(fast, target);
             context.Game.AttachNode(
                 AITestSceneBuilder.CreateCapitalShip("fast-ship", context.Faction.InstanceID, 1000),
@@ -379,7 +379,7 @@ namespace Rebellion.Tests.AI.Demands
             inbound.ManufacturingStatus = completed
                 ? ManufacturingStatus.Delivering
                 : ManufacturingStatus.Building;
-            inbound.Movement = new MovementState { TransitTicks = inboundTicks };
+            inbound.Movement = TestMovement.Create(transitTicks: inboundTicks);
             game.AttachNode(inbound, defender);
             if (observeInbound)
                 AITestSceneBuilder.RevealPlanet(game, faction, target);

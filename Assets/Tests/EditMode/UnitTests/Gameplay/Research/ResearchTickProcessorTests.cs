@@ -147,7 +147,7 @@ namespace Rebellion.Tests.Gameplay
         public void ProcessTick_FacilityInTransit_DoesNotAddCapacity()
         {
             Building shipyard = CreateShipyard("SY1");
-            shipyard.Movement = new MovementState();
+            shipyard.Movement = TestMovement.Create();
             _game.AttachNode(shipyard, _planet);
             _game.CurrentTick = 30;
 

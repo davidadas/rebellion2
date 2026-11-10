@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 
@@ -23,6 +24,7 @@ namespace Rebellion.Generation
         public void Seed(GenerationContext ctx)
         {
             SetStartingResearch(ctx.Factions, ctx.Config.GalaxyClassification.FactionSetups);
+            SetResearchCostScale(ctx.Factions, ctx.Sectors);
             RebuildResearchCatalogs(
                 ctx.Factions,
                 ctx.Buildings,
@@ -31,6 +33,25 @@ namespace Rebellion.Generation
                 ctx.Regiments,
                 ctx.SpecialForces
             );
+        }
+
+        /// <summary>
+        /// Scales research costs by the number of generated core planets.
+        /// </summary>
+        /// <param name="factions">The factions whose research costs are initialized.</param>
+        /// <param name="sectors">The generated sectors containing the active planets.</param>
+        private static void SetResearchCostScale(Faction[] factions, PlanetSector[] sectors)
+        {
+            int corePlanetCount = sectors
+                .Where(sector => sector.SectorType == PlanetSectorType.Core)
+                .Sum(sector => sector.GetChildren<Planet>().Count);
+            if (corePlanetCount <= 0)
+                throw new InvalidOperationException(
+                    "Research cost scaling requires at least one generated core planet."
+                );
+
+            foreach (Faction faction in factions)
+                faction.ResearchState.CostScalePercent = corePlanetCount;
         }
 
         /// <summary>

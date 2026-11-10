@@ -34,7 +34,7 @@ namespace Rebellion.Tests.Gameplay
                 false,
                 1
             );
-            context.MainParticipants[0].Movement = new MovementState { TransitTicks = 13 };
+            context.MainParticipants[0].Movement = TestMovement.Create(transitTicks: 13);
             Planet departure = context.MainParticipants[0].GetParentOfType<Planet>();
             MissionOdds exact = queries.GetMissionOddsAfterArrival(context, departure, null, false);
 
@@ -67,7 +67,7 @@ namespace Rebellion.Tests.Gameplay
             {
                 { -1000, 67 },
             };
-            context.MainParticipants[0].Movement = new MovementState { TransitTicks = 13 };
+            context.MainParticipants[0].Movement = TestMovement.Create(transitTicks: 13);
             Planet departure = context.MainParticipants[0].GetParentOfType<Planet>();
             MissionOdds expected = queries.GetMissionOddsAfterArrival(
                 context,
@@ -98,7 +98,7 @@ namespace Rebellion.Tests.Gameplay
                 1
             );
             Planet departure = context.MainParticipants[0].GetParentOfType<Planet>();
-            MovementState movement = new() { TransitTicks = 13 };
+            MovementState movement = TestMovement.Create(transitTicks: 13);
             context.MainParticipants[0].Movement = movement;
 
             MissionOdds projected = queries.GetMissionOddsAfterArrival(
@@ -131,7 +131,7 @@ namespace Rebellion.Tests.Gameplay
                 1
             );
             Planet departure = context.MainParticipants[0].GetParentOfType<Planet>();
-            context.MainParticipants[0].Movement = new MovementState { TransitTicks = 13 };
+            context.MainParticipants[0].Movement = TestMovement.Create(transitTicks: 13);
             try
             {
                 BaseGameEntity.SetInstanceIdSeed(1234);
@@ -166,7 +166,7 @@ namespace Rebellion.Tests.Gameplay
             };
             context.Game.AttachNode(elsewhere, departure.GetParent());
             context.Game.MoveNode(context.MainParticipants[0], elsewhere);
-            context.MainParticipants[0].Movement = new MovementState { TransitTicks = 13 };
+            context.MainParticipants[0].Movement = TestMovement.Create(transitTicks: 13);
 
             Assert.IsFalse(queries.TryCreateMissionAfterArrival(context, departure, out _));
         }
@@ -1573,7 +1573,7 @@ namespace Rebellion.Tests.Gameplay
             Planet viewPlanet = new Planet { InstanceID = targetPlanet.InstanceID };
             Officer viewTarget = EntityFactory.CreateOfficer(target.InstanceID, "rebels");
             viewTarget.SetParent(viewPlanet);
-            target.Movement = new MovementState();
+            target.Movement = TestMovement.Create();
 
             bool canCreate = missions.CanCreateMission(
                 CreateContext(

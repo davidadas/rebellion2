@@ -10,6 +10,7 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
@@ -243,6 +244,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 .OnPointerClick(pointer);
 
             CollectionAssert.AreEquivalent(new[] { 0 }, _controller.GetSelectedItems(view));
+        }
+
+        [Test]
+        public void OnPointerClick_ScrollbarWithMultipleSelectedUnits_PreservesSelection()
+        {
+            DefenseWindowView view = OpenSelectionGrid();
+            PressCard(view, 0);
+            _selectionModifiers = new SelectionModifierState(true, false);
+            PressCard(view, 2);
+            _selectionModifiers = default;
+            Scrollbar scrollbar = view.GetComponentInChildren<Scrollbar>(true);
+            PointerEventData pointer = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                pointerPressRaycast = new RaycastResult { gameObject = scrollbar.gameObject },
+                pointerCurrentRaycast = new RaycastResult { gameObject = scrollbar.gameObject },
+            };
+
+            ExecuteEvents.ExecuteHierarchy(
+                scrollbar.gameObject,
+                pointer,
+                ExecuteEvents.pointerClickHandler
+            );
+
+            CollectionAssert.AreEquivalent(new[] { 0, 2 }, _controller.GetSelectedItems(view));
         }
 
         [TestCase(false, false)]

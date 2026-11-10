@@ -48,7 +48,7 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void IsMovable_WhenInTransit_ReturnsFalse()
         {
-            _regiment.Movement = new MovementState();
+            _regiment.Movement = TestMovement.Create();
 
             bool isMovable = _regiment.IsMovable();
 

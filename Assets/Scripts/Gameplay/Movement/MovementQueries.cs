@@ -104,6 +104,7 @@ namespace Rebellion.Gameplay
                     waypointPlanetIds,
                     ownerInstanceId,
                     out _,
+                    out _,
                     out _
                 );
         }
@@ -313,7 +314,8 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Estimates how long an in-transit unit would take if retargeted from its current position.
+        /// Estimates how long an in-transit unit would take after changing its destination,
+        /// including an unfinished fighter leg or an existing continuation.
         /// </summary>
         /// <param name="unit">The in-transit unit to evaluate.</param>
         /// <param name="destination">The proposed retarget destination.</param>
@@ -329,8 +331,8 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Estimates how long an in-transit movement group would take if retargeted from each
-        /// member's current position.
+        /// Estimates the shared arrival time after changing a movement group's destination,
+        /// including unfinished fighter legs and existing continuations.
         /// </summary>
         /// <param name="units">The complete in-transit movement group.</param>
         /// <param name="destination">The proposed retarget destination.</param>
@@ -708,15 +710,18 @@ namespace Rebellion.Gameplay
         /// <param name="ownerInstanceId">The faction authorized to command the ships.</param>
         /// <param name="capitalShips">Receives the registered controlled capital ships.</param>
         /// <param name="destinations">Receives the registered destination planets.</param>
+        /// <param name="rejectionReason">The movement eligibility rejection reason, when provided.</param>
         /// <returns>True when the complete route is valid.</returns>
         internal bool TryResolveCapitalShipWaypointRoute(
             IReadOnlyList<ISceneNode> items,
             IReadOnlyList<string> waypointPlanetIds,
             string ownerInstanceId,
             out List<CapitalShip> capitalShips,
-            out List<Planet> destinations
+            out List<Planet> destinations,
+            out string rejectionReason
         )
         {
+            rejectionReason = null;
             capitalShips = new List<CapitalShip>();
             destinations = new List<Planet>();
             if (
@@ -724,7 +729,7 @@ namespace Rebellion.Gameplay
                     items,
                     ownerInstanceId,
                     out List<ISceneNode> liveItems,
-                    out _
+                    out rejectionReason
                 )
                 || liveItems.Any(item => item is not CapitalShip)
                 || !TryResolveWaypointDestinations(waypointPlanetIds, out destinations)
@@ -1030,17 +1035,126 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Finds the nearest safe planet or stationary carrier that can receive an inbound unit.
+        /// Selects a safe destination for an inbound unit using its relocation priorities.
         /// </summary>
         /// <param name="unit">The unit requiring a new destination.</param>
         /// <param name="blockadedPlanet">The destination that became blockaded.</param>
-        /// <returns>The nearest valid destination, or null when none exists.</returns>
+        /// <returns>The first valid destination, or null when none exists.</returns>
         internal ContainerNode FindBlockadeAutorouteDestination(
             IMovable unit,
             Planet blockadedPlanet
         )
         {
-            return FindSafeRelocationDestinations(unit, blockadedPlanet).FirstOrDefault();
+            if (unit is not Starfighter fighter)
+                return FindSafeRelocationDestinations(unit, blockadedPlanet).FirstOrDefault();
+
+            ContainerNode currentDestination = FindFighterDestinationInContext(
+                fighter,
+                fighter.GetParent() as ContainerNode
+            );
+            if (currentDestination != null)
+                return currentDestination;
+
+            ContainerNode previousLocation = GetPreviousLocation(fighter);
+            if (previousLocation != fighter.GetParent())
+            {
+                for (
+                    ContainerNode context = previousLocation;
+                    context != null;
+                    context = context.GetParent() as ContainerNode
+                )
+                {
+                    ContainerNode destination = FindFighterDestinationInContext(fighter, context);
+                    if (destination != null)
+                        return destination;
+                    if (context is Planet)
+                        break;
+                }
+            }
+
+            List<Planet> planets = _game
+                .GetSceneNodesByType<Planet>()
+                .Where(planet => !planet.IsDestroyed)
+                .OrderBy(planet => planet.GetRawDistanceTo(blockadedPlanet.GetPosition()))
+                .ToList();
+            string ownerInstanceID = fighter.GetOwnerInstanceID();
+            foreach (Planet planet in planets)
+            {
+                if (
+                    planet.GetOwnerInstanceID() != ownerInstanceID
+                    || planet.IsBlockadedFor(ownerInstanceID)
+                )
+                    continue;
+                ContainerNode destination = FindFighterDestinationInContext(fighter, planet);
+                if (destination != null)
+                    return destination;
+            }
+
+            foreach (Planet planet in planets)
+            {
+                foreach (Fleet fleet in planet.GetChildren<Fleet>())
+                {
+                    if (fleet.GetOwnerInstanceID() != ownerInstanceID || fleet.Movement != null)
+                        continue;
+                    ContainerNode destination = FindFighterDestinationInContext(fighter, fleet);
+                    if (destination != null)
+                        return destination;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Resolves the last visited container retained by a movement, including older deliveries.
+        /// </summary>
+        /// <param name="unit">The moving unit.</param>
+        /// <returns>The previous live container, or null if it was cleared or removed.</returns>
+        internal ContainerNode GetPreviousLocation(IMovable unit)
+        {
+            if (unit == null)
+                return null;
+            string previousLocationID = unit.Movement?.PreviousLocationInstanceID;
+            if (previousLocationID == null)
+                previousLocationID =
+                    unit
+                        is IManufacturable
+                        {
+                            ManufacturingStatus: ManufacturingStatus.Delivering
+                        } delivery
+                    && !string.IsNullOrEmpty(delivery.ProducerPlanetID)
+                        ? delivery.ProducerPlanetID
+                        : unit.LastParentInstanceID;
+            return _game.GetSceneNodeByInstanceID<ContainerNode>(previousLocationID);
+        }
+
+        /// <summary>
+        /// Finds an accepting planet or carrier within one destination context.
+        /// Planets require an unobstructed surface; carriers require room aboard a friendly stationary ship.
+        /// </summary>
+        /// <param name="fighter">The fighter requiring a destination.</param>
+        /// <param name="context">The container or planetary system to search.</param>
+        /// <returns>The accepting container, or null when this context cannot receive the fighter.</returns>
+        private ContainerNode FindFighterDestinationInContext(
+            Starfighter fighter,
+            ContainerNode context
+        )
+        {
+            if (context == null || ResolveRegisteredContainer(context) == null)
+                return null;
+            if (
+                context is Planet planet
+                && !planet.IsBlockadedFor(fighter.GetOwnerInstanceID())
+                && CanReceiveRelocatedUnit(fighter, planet)
+            )
+                return planet;
+            if (context is CapitalShip carrier)
+                return CanReceiveRelocatedUnit(fighter, carrier) ? carrier : null;
+            if (context is not Planet && context is not Fleet)
+                return null;
+            return context
+                .GetChildren<CapitalShip>(recursive: true)
+                .OrderByDescending(ship => ship.GetExcessStarfighterCapacity())
+                .FirstOrDefault(ship => CanReceiveRelocatedUnit(fighter, ship));
         }
 
         /// <summary>
@@ -1281,17 +1395,40 @@ namespace Rebellion.Gameplay
             )
                 return false;
 
+            return CanReceiveRelocatedUnit(unit, liveDestination);
+        }
+
+        /// <summary>
+        /// Returns whether a registered friendly container is operational and has room for a unit.
+        /// </summary>
+        /// <param name="unit">The unit requiring a destination.</param>
+        /// <param name="destination">The proposed receiving container.</param>
+        /// <returns>True when the container can receive or retain this unit.</returns>
+        private bool CanReceiveRelocatedUnit(IMovable unit, ContainerNode destination)
+        {
+            ContainerNode liveDestination = ResolveRegisteredContainer(destination);
+            Planet planet = liveDestination as Planet ?? liveDestination?.GetParentOfType<Planet>();
+            if (planet?.IsDestroyed != false)
+                return false;
+            string ownerInstanceId = GetMovementControlOwner(unit);
+            if (string.IsNullOrEmpty(ownerInstanceId))
+                return false;
             bool isFriendlyDestination = liveDestination switch
             {
-                Planet planet => planet.GetOwnerInstanceID() == ownerInstanceId
-                    && (planet.IsColonized || unit is Officer { IsCaptured: false }),
+                Planet destinationPlanet => destinationPlanet.GetOwnerInstanceID()
+                    == ownerInstanceId
+                    && (destinationPlanet.IsColonized || unit is Officer { IsCaptured: false }),
                 CapitalShip ship => ship.GetOwnerInstanceID() == ownerInstanceId
                     && ship.ManufacturingStatus == ManufacturingStatus.Complete
                     && ((IMovable)ship).GetTransitMovement() == null,
                 _ => false,
             };
 
-            return isFriendlyDestination && liveDestination.CanAcceptChild(unit);
+            return isFriendlyDestination
+                && (
+                    ReferenceEquals(unit.GetParent(), liveDestination)
+                    || liveDestination.CanAcceptChild(unit)
+                );
         }
 
         /// <summary>
@@ -1644,15 +1781,16 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Calculates the common duration for an existing movement group retargeted from its
-        /// members' current positions.
+        /// Calculates a movement group's common arrival time without discarding unfinished travel.
         /// </summary>
         /// <param name="units">The in-transit members of one movement group.</param>
         /// <param name="destination">The new destination planet.</param>
+        /// <param name="previousDestination">The assigned planet before its receiving container moved, when known.</param>
         /// <returns>The longest member duration after applying the group's travel modifier.</returns>
         internal int CalculateRetargetedGroupTransitTicks(
             IReadOnlyList<IMovable> units,
-            Planet destination
+            Planet destination,
+            Planet previousDestination = null
         )
         {
             if (units == null || units.Count == 0)
@@ -1663,25 +1801,51 @@ namespace Rebellion.Gameplay
             foreach (IMovable unit in units)
             {
                 if (unit?.Movement == null)
-                {
                     throw new InvalidOperationException(
                         "Only in-transit units can be included in a retargeted movement group."
                     );
-                }
-
-                groupTransitTicks = Math.Max(
-                    groupTransitTicks,
-                    CalculateTransitTicks(
-                        unit,
-                        unit.Movement.CurrentPosition,
-                        destination,
-                        sameSector: false,
-                        personnelTravelTimePercent: personnelTravelTimePercent
-                    )
+                MovementState movement = unit.Movement;
+                Planet legDestination = GetTransitLegDestination(
+                    movement,
+                    previousDestination
+                        ?? RequireDestinationPlanet(unit.GetParent() as ContainerNode)
                 );
+                Point endpoint = movement.NextLeg?.OriginPosition ?? legDestination.GetPosition();
+                int onwardTicks =
+                    endpoint == destination.GetPosition()
+                        ? 0
+                        : CalculateTransitTicks(
+                            unit,
+                            endpoint,
+                            legDestination,
+                            destination,
+                            personnelTravelTimePercent
+                        );
+                int transitTicks =
+                    Math.Max(0, movement.TransitTicks - movement.TicksElapsed) + onwardTicks;
+                groupTransitTicks = Math.Max(groupTransitTicks, transitTicks);
             }
-
             return groupTransitTicks;
+        }
+
+        /// <summary>
+        /// Resolves a running leg's endpoint through the existing instance index, using its
+        /// assigned planet for movement saved without an explicit endpoint.
+        /// </summary>
+        /// <param name="movement">The active journey.</param>
+        /// <param name="assignedDestination">The receiving container's planet before relocation.</param>
+        /// <returns>The planet at the end of the running leg.</returns>
+        internal Planet GetTransitLegDestination(MovementState movement, Planet assignedDestination)
+        {
+            return
+                movement.DestinationPlanetInstanceID != null
+                && _game.NodesByInstanceID.TryGetValue(
+                    movement.DestinationPlanetInstanceID,
+                    out ISceneNode node
+                )
+                && node is Planet planet
+                ? planet
+                : assignedDestination;
         }
 
         /// <summary>

@@ -285,7 +285,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _opponentFactionId,
                 "Incoming Reinforcement"
             );
-            reinforcement.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            reinforcement.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 5);
             scene.Game.AttachNode(reinforcement, scene.OpponentFleet);
             PendingCombatResult pending = new PendingCombatResult
             {

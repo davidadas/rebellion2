@@ -1,13 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.SceneGraph;
 using UnityEngine;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
@@ -56,6 +59,56 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
+        public void CreateRenderData_SoleEnemyDiplomatCaptured_HidesMissionIcon()
+        {
+            Faction player = _game.GetFactionByOwnerInstanceID(_playerFactionId);
+            Planet planet = CreatePlanet("target", _playerFactionId, 13, 25);
+            planet.IsColonized = true;
+            _game.AttachNode(_planetSector, _game.GetGalaxyMap());
+            _game.AttachNode(planet, _planetSector);
+            Mission mission = new DiplomacyMission
+            {
+                InstanceID = "diplomacy",
+                OwnerInstanceID = _opposingFactionId,
+                LocationInstanceID = planet.InstanceID,
+            };
+            Officer officer = EntityFactory.CreateOfficer("diplomat", _opposingFactionId);
+            _game.AttachNode(mission, planet);
+            _game.AttachNode(officer, mission);
+            mission.Initiate(10);
+            using GameSession session = new(_game, TestGameData.Create(_game.Config));
+            new FogOfWarRecorder().RecordIntelligenceSnapshot(
+                player,
+                planet,
+                _planetSector,
+                10,
+                PlanetIntelligenceCategory.Missions
+            );
+
+            Assert.IsTrue(
+                session
+                    .GetService<CaptiveCommands>()
+                    .TryCaptureOfficer(officer, player, canEscape: false)
+            );
+            Planet viewPlanet = new FogOfWarQueries(_game)
+                .BuildFactionView(player)
+                .GetChildren<GalaxyPlanetSector>()
+                .Single()
+                .GetChildren<Planet>()
+                .Single();
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                CreateSector(new GalaxyMapPlanet(_planetSector, viewPlanet, string.Empty)),
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            Assert.IsNull(data.Planets.Single().MissionTexture);
+            Assert.IsNull(data.Planets.Single().MissionPressedTexture);
+        }
+
+        [Test]
         public void Constructor_NullContextProvider_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new PlanetSectorWindowProjector(null));
@@ -73,7 +126,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             _game.AttachNode(secondDestination, _planetSector);
             GameFleet playerFleet = new GameFleet(_playerFactionId, "Player Fleet")
             {
-                Movement = new MovementState { OriginPosition = origin.GetPosition() },
+                Movement = TestMovement.Create(originPosition: origin.GetPosition()),
             };
             playerFleet.Waypoints.Add(firstDestination.InstanceID);
             playerFleet.Waypoints.Add(secondDestination.InstanceID);
@@ -338,6 +391,38 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNull(presentation.GalacticInformationTexture);
         }
 
+        [TestCase(53, 53, 11, 7)]
+        [TestCase(1, 2, 16, 2)]
+        [TestCase(0, 2, 16, 1)]
+        public void CreateRenderData_OversizedResourceBars_PreservesExactUsedCounts(
+            int energyCapacity,
+            int buildings,
+            int rawNodes,
+            int mines
+        )
+        {
+            Planet planet = CreatePlanet("planet", _playerFactionId, 13, 25);
+            planet.EnergyCapacity = energyCapacity;
+            planet.NumRawResourceNodes = rawNodes;
+            for (int index = 0; index < buildings; index++)
+                planet.AddTestChild(
+                    CreateBuilding(index < mines ? BuildingType.Mine : BuildingType.Defense)
+                );
+
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                CreateSector(new GalaxyMapPlanet(_planetSector, planet, string.Empty)),
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            Assert.IsTrue(data.Planets[0].UseResourceValues);
+            Assert.AreEqual(buildings, data.Planets[0].EnergyBar.LitCells);
+            Assert.AreEqual(energyCapacity, data.Planets[0].EnergyBar.CellCount);
+            Assert.AreEqual(mines, data.Planets[0].RawResourceBar.LitCells);
+        }
+
         [Test]
         public void CreateRenderData_IdleShipyardFilter_ReturnsEvaluatedMarkerTexture()
         {
@@ -584,7 +669,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         {
             Planet planet = CreatePlanet("planet", _playerFactionId, 10, 20);
             IMovable item = CreateDefenseWindowItem(itemKind);
-            planet.AddTestChild((Rebellion.SceneGraph.ISceneNode)item);
+            planet.AddTestChild((ISceneNode)item);
             GalaxyMapSector sector = CreateSector(
                 new GalaxyMapPlanet(_planetSector, planet, string.Empty)
             );
@@ -655,7 +740,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Planet planet = CreatePlanet("planet", _playerFactionId, 10, 20);
             IMovable item = CreateDefenseWindowItem(itemKind);
             item.IsEnabled = false;
-            planet.AddTestChild((Rebellion.SceneGraph.ISceneNode)item);
+            planet.AddTestChild((ISceneNode)item);
 
             PlanetSectorWindowRenderData data = _projector.CreateRenderData(
                 CreateSector(new GalaxyMapPlanet(_planetSector, planet, string.Empty)),
@@ -1068,7 +1153,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 return;
             }
 
-            _game.AttachNode((Rebellion.SceneGraph.ISceneNode)item, origin);
+            _game.AttachNode((ISceneNode)item, origin);
             commands.RequestMove(item, destination);
         }
 
@@ -1113,8 +1198,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             /// Creates an empty test mission copy.
             /// </summary>
             /// <returns>An empty test mission.</returns>
-            protected override Rebellion.SceneGraph.BaseSceneNode CreateNodeCopy() =>
-                new TestMission(null);
+            protected override BaseSceneNode CreateNodeCopy() => new TestMission(null);
 
             /// <summary>
             /// Initializes a new instance of the TestMission class.

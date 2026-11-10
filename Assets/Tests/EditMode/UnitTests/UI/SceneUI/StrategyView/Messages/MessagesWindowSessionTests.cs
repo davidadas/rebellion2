@@ -103,7 +103,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             _session.SelectOnly(message);
             _session.ShowDetail();
 
-            _session.Reconcile(System.Array.Empty<Message>());
+            _session.Reconcile(Array.Empty<Message>());
 
             Assert.IsNull(_session.SelectedMessageId);
             Assert.IsFalse(_session.DetailVisible);

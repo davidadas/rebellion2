@@ -3,6 +3,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 
@@ -76,7 +77,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         {
             SpaceCombatResult result = new SpaceCombatResult
             {
-                Planet = new Rebellion.Game.Galaxy.Planet { InstanceID = "battle-planet" },
+                Planet = new Planet { InstanceID = "battle-planet" },
                 AttackerOwnerInstanceID = _attackerId,
                 DefenderOwnerInstanceID = _defenderId,
                 AttackerOutcome = SpaceCombatSideOutcome.Withdrawn,
@@ -116,7 +117,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         {
             SpaceCombatResult result = new SpaceCombatResult
             {
-                Planet = new Rebellion.Game.Galaxy.Planet { InstanceID = "battle-planet" },
+                Planet = new Planet { InstanceID = "battle-planet" },
                 AttackerOwnerInstanceID = _attackerId,
                 DefenderOwnerInstanceID = _defenderId,
                 AttackerOutcome = SpaceCombatSideOutcome.Destroyed,

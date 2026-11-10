@@ -270,7 +270,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         [Test]
         public void TryExecuteMove_UnitInTransit_PlaysAdvisorRejection()
         {
-            _officer.Movement = new Rebellion.Game.Units.MovementState { TransitTicks = 10 };
+            _officer.Movement = TestMovement.Create(transitTicks: 10);
 
             bool moved = _controller.TryExecuteMove(
                 _sourceWindow,
@@ -779,7 +779,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 _sourceWindow,
                 new ISceneNode[] { firstMission, secondMission }
             );
-            secondOfficer.Movement = new MovementState { TransitTicks = 10 };
+            secondOfficer.Movement = TestMovement.Create(transitTicks: 10);
 
             ConfirmOpenDialog();
 

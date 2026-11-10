@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -14,6 +15,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.Tests.AI.Helpers;
 
 namespace Rebellion.Tests.AI.Planners
@@ -666,7 +668,7 @@ namespace Rebellion.Tests.AI.Planners
                     if (index == 0)
                         existing.ManufacturingStatus = ManufacturingStatus.Building;
                     else
-                        existing.Movement = new MovementState { TransitTicks = 10 };
+                        existing.Movement = TestMovement.Create(transitTicks: 10);
                 }
                 game.AttachNode(existing, fleet);
             }
@@ -719,7 +721,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_UnrankedFleetsWithSevenAndOneYard_AssignsLargeHullToHigherScoringFleet()
         {
             AITurnContext context = CreateYardAllocationContext(out Planet large, out Planet small);
-            context.SetFleetProductionPriorities(System.Array.Empty<Fleet>());
+            context.SetFleetProductionPriorities(Array.Empty<Fleet>());
 
             List<AIManufactureProposal> proposals = new AIProductionPlanner()
                 .Plan(context)
@@ -1214,7 +1216,7 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(setup.Manufacturing.Enqueue(planet, defense, planet));
             defense.ManufacturingProgress = 3;
             Fleet hostile = EntityFactory.CreateFleet("hostile", enemy.InstanceID);
-            hostile.Movement = new MovementState { TransitTicks = 10 };
+            hostile.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(hostile, planet);
             game.AttachNode(
                 AITestSceneBuilder.CreateCapitalShip("hostile-ship", enemy.InstanceID),
@@ -1334,7 +1336,7 @@ namespace Rebellion.Tests.AI.Planners
                         capitalFirepowerDeficit: combatStrength
                             ? 0
                             : 3
-                                * Rebellion.Gameplay.SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips(
+                                * SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips(
                                     template
                                 )
                     ),
@@ -3766,7 +3768,7 @@ namespace Rebellion.Tests.AI.Planners
                 ManufacturingType.Ship
             );
             shipyard.OwnerInstanceID = empire.InstanceID;
-            shipyard.Movement = new MovementState { TransitTicks = 10 };
+            shipyard.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(shipyard, pendingPlanet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             new AIProductionDemandGenerator().Generate(context);
@@ -4022,7 +4024,7 @@ namespace Rebellion.Tests.AI.Planners
             empire.HQInstanceID = planet.InstanceID;
             planet.SetPopularSupport(empire.InstanceID, 100);
             Fleet hostile = EntityFactory.CreateFleet("hostile", "rebels");
-            hostile.Movement = new MovementState { TransitTicks = 10 };
+            hostile.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(hostile, planet);
             game.AttachNode(
                 AITestSceneBuilder.CreateCapitalShip("hostile-ship", "rebels"),
@@ -4432,7 +4434,7 @@ namespace Rebellion.Tests.AI.Planners
                     BuildingType.None,
                     fleet,
                     1,
-                    capitalFirepowerDeficit: Rebellion.Gameplay.SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips(
+                    capitalFirepowerDeficit: SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips(
                         largeHull
                     ),
                     baseDemandPercent: 100

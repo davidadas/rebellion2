@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -391,7 +392,7 @@ namespace Rebellion.Tests.Gameplay
                 CreateTargetingMissionContext(target)
             );
             new FogOfWarRecorder().RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
-            target.GetParentOfType<Fleet>().Movement = new MovementState();
+            target.GetParentOfType<Fleet>().Movement = TestMovement.Create();
 
             ProcessUnavailableTarget(mission);
 
@@ -401,7 +402,7 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void HandleResults_NullResultAfterValidObservation_KeepsEarlierSnapshotAndThrows()
         {
-            Assert.Throws<System.NullReferenceException>(() =>
+            Assert.Throws<NullReferenceException>(() =>
                 _observer.HandleResults(
                     new IntelligenceRevealedResult[]
                     {
@@ -905,6 +906,8 @@ namespace Rebellion.Tests.Gameplay
             AddCapitalShip(fleet, _alliance, "OPPOSING_SHIP");
             Mission mission = CreateMission("OPPOSING_MISSION", _alliance, _coruscant);
             _game.AttachNode(mission, _coruscant);
+            Officer agent = CreateOfficer("MISSION_AGENT", _alliance);
+            _game.AttachNode(agent, mission);
             new FogOfWarRecorder().RecordEspionageSnapshot(_empire, _coruscant, _coreSector, 10);
             _coruscant.SetOwnerInstanceID(null);
 
@@ -1178,7 +1181,7 @@ namespace Rebellion.Tests.Gameplay
                     ManufacturingStatus = ManufacturingStatus.Complete,
                 },
                 SabotageTargetKind.Starfighter => CreateStarfighter("TARGET", _empire),
-                _ => throw new System.ArgumentOutOfRangeException(nameof(targetKind)),
+                _ => throw new ArgumentOutOfRangeException(nameof(targetKind)),
             };
         }
 
@@ -1208,7 +1211,7 @@ namespace Rebellion.Tests.Gameplay
             }
             else
             {
-                throw new System.ArgumentOutOfRangeException(nameof(targetKind));
+                throw new ArgumentOutOfRangeException(nameof(targetKind));
             }
 
             _game.AttachNode(target, ship);

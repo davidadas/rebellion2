@@ -876,15 +876,21 @@ namespace Rebellion.Gameplay
                 planet,
                 defenderOwnerInstanceId
             );
-            SpaceCombatCommandModifiers attackerCommand = GetCommandModifiers(
+            (Officer Admiral, Officer Commander) attackerCommandOfficers = GetCommandOfficers(
                 attackerFleets,
                 planet,
                 attackerOwnerInstanceId
             );
-            SpaceCombatCommandModifiers defenderCommand = GetCommandModifiers(
+            (Officer Admiral, Officer Commander) defenderCommandOfficers = GetCommandOfficers(
                 defenderFleets,
                 planet,
                 defenderOwnerInstanceId
+            );
+            SpaceCombatCommandModifiers attackerCommand = CreateCommandModifiers(
+                attackerCommandOfficers
+            );
+            SpaceCombatCommandModifiers defenderCommand = CreateCommandModifiers(
+                defenderCommandOfficers
             );
             SpaceCombatResult result = _autoResolver.Resolve(
                 attackerShips,
@@ -896,6 +902,8 @@ namespace Rebellion.Gameplay
                 attackerCommand,
                 defenderCommand
             );
+            IncludeCommandOfficers(result.AttackingUnits, attackerCommandOfficers);
+            IncludeCommandOfficers(result.DefendingUnits, defenderCommandOfficers);
             result.AttackerFleet = SpaceCombatQueries.GetRepresentativeFleet(attackerFleets);
             result.DefenderFleet = SpaceCombatQueries.GetRepresentativeFleet(defenderFleets);
             result.AttackerOwnerInstanceID = attackerOwnerInstanceId;
@@ -944,24 +952,16 @@ namespace Rebellion.Gameplay
             string ownerInstanceId
         )
         {
-            (Officer admiral, Officer commander) = GetCommandOfficers(
-                fleets,
-                planet,
-                ownerInstanceId
-            );
-            return new SpaceCombatCommandModifiers(
-                admiral?.GetEffectiveRating(SkillRating.Leadership) ?? 0,
-                commander?.GetEffectiveRating(SkillRating.Combat) ?? 0
-            );
+            return CreateCommandModifiers(GetCommandOfficers(fleets, planet, ownerInstanceId));
         }
 
         /// <summary>
-        /// Selects command officers while retaining their identities and carrier locations.
+        /// Selects the ranking officers who command one side of a space battle.
         /// </summary>
-        /// <param name="fleets">The participating fleets in encounter order.</param>
-        /// <param name="planet">The combat system.</param>
-        /// <param name="ownerInstanceId">The commanded faction identifier.</param>
-        /// <returns>The selected admiral and fighter commander, either of which may be absent.</returns>
+        /// <param name="fleets">The side's participating fleets in encounter order.</param>
+        /// <param name="planet">The system where combat occurs.</param>
+        /// <param name="ownerInstanceId">The side's faction instance identifier.</param>
+        /// <returns>The selected Admiral and Commander.</returns>
         internal static (Officer Admiral, Officer Commander) GetCommandOfficers(
             IReadOnlyList<Fleet> fleets,
             Planet planet,
@@ -989,6 +989,45 @@ namespace Rebellion.Gameplay
                 ownerInstanceId
             );
             return (admiral, commander);
+        }
+
+        /// <summary>
+        /// Converts selected command officers to the ratings consumed by tactical resolution.
+        /// </summary>
+        /// <param name="officers">The selected Admiral and Commander.</param>
+        /// <returns>The tactical command modifiers.</returns>
+        private static SpaceCombatCommandModifiers CreateCommandModifiers(
+            (Officer Admiral, Officer Commander) officers
+        )
+        {
+            return new SpaceCombatCommandModifiers(
+                officers.Admiral?.GetEffectiveRating(SkillRating.Leadership) ?? 0,
+                officers.Commander?.GetEffectiveRating(SkillRating.Combat) ?? 0
+            );
+        }
+
+        /// <summary>
+        /// Adds selected command officers that are not already carried by a reported fleet.
+        /// </summary>
+        /// <param name="units">The side's detached combat snapshots.</param>
+        /// <param name="officers">The selected Admiral and Commander.</param>
+        private static void IncludeCommandOfficers(
+            ICollection<CombatUnitSnapshot> units,
+            (Officer Admiral, Officer Commander) officers
+        )
+        {
+            HashSet<string> includedIds = units
+                .Where(unit => unit?.Unit != null)
+                .Select(unit => unit.Unit.GetInstanceID())
+                .Where(instanceId => !string.IsNullOrEmpty(instanceId))
+                .ToHashSet(StringComparer.Ordinal);
+            foreach (Officer officer in new[] { officers.Admiral, officers.Commander })
+            {
+                if (officer == null || !includedIds.Add(officer.GetInstanceID()))
+                    continue;
+
+                units.Add(new CombatUnitSnapshot(officer));
+            }
         }
 
         /// <summary>
@@ -1309,12 +1348,23 @@ namespace Rebellion.Gameplay
         )
         {
             List<GameResult> events = new List<GameResult>();
+            bool needsReplacementSchedule = lossResults.Any(loss =>
+                loss.Fighter is Starfighter fighter
+                && !fighter.HasLosses()
+                && loss.SquadsAfter > 0
+                && loss.SquadsAfter < fighter.MaxSquadronSize
+            );
+            HashSet<(string PlanetInstanceId, string OwnerInstanceId)> shipyardLocations =
+                needsReplacementSchedule
+                    ? FighterRecoveryRules.BuildShipyardIndex(_game)
+                    : new HashSet<(string PlanetInstanceId, string OwnerInstanceId)>();
             foreach (FighterLossResult loss in lossResults)
             {
                 Starfighter fighter = loss.Fighter;
                 if (fighter == null)
                     continue;
 
+                bool hadLosses = fighter.HasLosses();
                 fighter.CurrentSquadronSize = loss.SquadsAfter;
 
                 if (loss.SquadsAfter <= 0)
@@ -1330,6 +1380,17 @@ namespace Rebellion.Gameplay
                         }
                     );
                     GameLogger.Log($"Fighter squadron destroyed: {fighter.GetDisplayName()}");
+                }
+                else if (!hadLosses && fighter.HasLosses())
+                {
+                    fighter.ScheduleReplacement(
+                        _game.CurrentTick,
+                        FighterRecoveryRules.GetReplacementInterval(
+                            _game,
+                            fighter,
+                            shipyardLocations
+                        )
+                    );
                 }
             }
 

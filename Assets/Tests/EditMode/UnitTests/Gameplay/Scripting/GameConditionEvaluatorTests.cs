@@ -754,7 +754,7 @@ namespace Rebellion.Tests.Gameplay.Scripting
             GameRoot game = BuildHierarchy(out _, out Fleet fleet, out CapitalShip ship);
             Officer officer = EntityFactory.CreateOfficer("officer", "faction");
             game.AttachNode(officer, ship);
-            fleet.Movement = new MovementState();
+            fleet.Movement = TestMovement.Create();
             IsInTransitConditional condition = new IsInTransitConditional
             {
                 UnitInstanceID = officer.InstanceID,
@@ -929,7 +929,7 @@ namespace Rebellion.Tests.Gameplay.Scripting
         /// <returns>The result of references.</returns>
         private static List<GameUnitReference> References(params ISceneNode[] nodes) =>
             new List<GameUnitReference>(
-                System.Array.ConvertAll(
+                Array.ConvertAll(
                     nodes,
                     node => new GameUnitReference { UnitInstanceID = node.InstanceID }
                 )

@@ -6,6 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Gameplay.Scripting;
@@ -115,11 +116,12 @@ namespace Rebellion.AI
                 string Owner,
                 ISceneNode Location,
                 ISceneNode Target,
-                Rebellion.Game.Research.ResearchDiscipline? Discipline,
+                ResearchDiscipline? Discipline,
                 string MainParticipants,
                 string Decoys,
                 bool OperationalOnly,
-                Planet Departure
+                Planet Departure,
+                bool RequireArrival
             ),
             MissionOdds
         > _missionOdds = new();
@@ -132,7 +134,8 @@ namespace Rebellion.AI
                 string MainParticipants,
                 string DecoyParticipants,
                 bool OperationalOnly,
-                Planet Departure
+                Planet Departure,
+                bool RequireArrival
             ),
             (double Foil, double PersonnelLoss)
         > _sabotageEncounterRisks = new();
@@ -350,6 +353,25 @@ namespace Rebellion.AI
         public int UnfinishedPlanetStarfighterCount { get; }
 
         /// <summary>
+        /// Returns a capital ship's fighter-target firepower under the current combat rules.
+        /// </summary>
+        /// <param name="ship">The capital ship to inspect.</param>
+        /// <returns>The fighter-target firepower.</returns>
+        internal int GetCapitalShipFirepowerAgainstStarfighters(CapitalShip ship) =>
+            SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstStarfighters(
+                ship,
+                _game.Config.Combat.SpaceCombat
+            );
+
+        /// <summary>
+        /// Returns whether a capital ship satisfies the armed-escort capability under current rules.
+        /// </summary>
+        /// <param name="ship">The capital ship to inspect.</param>
+        /// <returns>True when the ship satisfies the armed-escort capability.</returns>
+        internal bool IsArmedEscort(CapitalShip ship) =>
+            SpaceCombatStrengthCalculator.IsArmedEscort(ship, _game.Config.Combat.SpaceCombat);
+
+        /// <summary>
         /// Measures the strongest hostile owner's combined orbital defenders expected at arrival.
         /// Each fleet is counted once using its latest indexed observation.
         /// </summary>
@@ -454,12 +476,7 @@ namespace Rebellion.AI
                                 )
                         );
                     ownerFighterFirepower +=
-                        ships.Sum(ship =>
-                            (long)
-                                SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstStarfighters(
-                                    ship
-                                )
-                        )
+                        ships.Sum(ship => (long)GetCapitalShipFirepowerAgainstStarfighters(ship))
                         + carried.Sum(fighter =>
                             (long)
                                 SpaceCombatStrengthCalculator.GetStarfighterFirepowerAgainstStarfighters(
@@ -1949,6 +1966,33 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Evaluates a team after projecting all participants onto a proposed departure planet.
+        /// </summary>
+        /// <param name="queries">The shared mission calculations.</param>
+        /// <param name="context">The complete planned participant roles.</param>
+        /// <param name="departure">The proposed common departure planet.</param>
+        /// <param name="operationalOnly">Whether to omit detailed personnel-loss odds.</param>
+        /// <param name="minimumOverallProbability">The success floor below which evaluation may stop.</param>
+        /// <returns>The adjusted projected odds, or null when the team cannot assemble.</returns>
+        internal MissionOdds GetMissionOddsFromDeparture(
+            MissionQueries queries,
+            MissionContext context,
+            Planet departure,
+            bool operationalOnly,
+            double minimumOverallProbability = 0
+        )
+        {
+            return GetCachedMissionOdds(
+                queries,
+                context,
+                operationalOnly,
+                minimumOverallProbability,
+                departure,
+                requireArrival: false
+            );
+        }
+
+        /// <summary>
         /// Evaluates exact operational odds only while the required success floor is reachable.
         /// </summary>
         /// <param name="queries">The shared mission calculations.</param>
@@ -1973,20 +2017,23 @@ namespace Rebellion.AI
         /// <param name="queries">The shared mission probability calculations.</param>
         /// <param name="context">The fixed primary team and complete candidate-decoy pool.</param>
         /// <param name="minimumOverallProbability">The required adjusted success percentage.</param>
-        /// <param name="departure">Optional assembly planet for personnel already traveling there.</param>
+        /// <param name="departure">Optional common departure planet.</param>
+        /// <param name="requireArrival">Whether participants must already be present or traveling there.</param>
         /// <returns>False only when the optimistic success bound misses the required floor.</returns>
         internal bool CanMeetOperationalMissionSuccess(
             MissionQueries queries,
             MissionContext context,
             double minimumOverallProbability,
-            Planet departure = null
+            Planet departure = null,
+            bool requireArrival = true
         )
         {
             Mission mission;
             bool valid =
-                departure == null
-                    ? queries.TryCreateMission(context, out mission)
-                    : queries.TryCreateMissionAfterArrival(context, departure, out mission);
+                departure == null ? queries.TryCreateMission(context, out mission)
+                : requireArrival
+                    ? queries.TryCreateMissionAfterArrival(context, departure, out mission)
+                : queries.TryCreateMissionFromDeparture(context, departure, out mission);
             if (!valid)
                 return false;
 
@@ -2034,14 +2081,16 @@ namespace Rebellion.AI
         /// <param name="context">The mission and exact participant roles being evaluated.</param>
         /// <param name="operationalOnly">Whether personnel-loss calculations may be omitted.</param>
         /// <param name="minimumOverallProbability">The required success floor, or zero for an unbounded evaluation.</param>
-        /// <param name="departure">Optional common departure planet after current inbound travel completes.</param>
+        /// <param name="departure">Optional common departure planet.</param>
+        /// <param name="requireArrival">Whether participants must already be present or traveling there.</param>
         /// <returns>The cached or newly calculated uncertainty-adjusted mission odds.</returns>
         private MissionOdds GetCachedMissionOdds(
             MissionQueries queries,
             MissionContext context,
             bool operationalOnly,
             double minimumOverallProbability = 0,
-            Planet departure = null
+            Planet departure = null,
+            bool requireArrival = true
         )
         {
             if (context == null)
@@ -2063,7 +2112,8 @@ namespace Rebellion.AI
                         ?? Enumerable.Empty<string>()
                 ),
                 OperationalOnly: operationalOnly,
-                Departure: departure
+                Departure: departure,
+                RequireArrival: requireArrival
             );
             if (!_missionOdds.TryGetValue(key, out MissionOdds odds))
             {
@@ -2078,7 +2128,8 @@ namespace Rebellion.AI
                     key.MainParticipants,
                     key.DecoyParticipants,
                     key.OperationalOnly,
-                    key.Departure
+                    key.Departure,
+                    key.RequireArrival
                 );
                 bool sharesSabotageEncounters =
                     context.MissionTypeID == MissionTypeIDs.Sabotage
@@ -2090,9 +2141,10 @@ namespace Rebellion.AI
                 {
                     Mission mission;
                     bool valid =
-                        departure == null
-                            ? queries.TryCreateMission(context, out mission)
-                            : queries.TryCreateMissionAfterArrival(context, departure, out mission);
+                        departure == null ? queries.TryCreateMission(context, out mission)
+                        : requireArrival
+                            ? queries.TryCreateMissionAfterArrival(context, departure, out mission)
+                        : queries.TryCreateMissionFromDeparture(context, departure, out mission);
                     if (!valid)
                         return null;
                     double objectiveProbability = mission.GetObjectiveSuccessProbability(
@@ -2110,7 +2162,8 @@ namespace Rebellion.AI
                         context,
                         operationalOnly,
                         minimumOverallProbability,
-                        departure
+                        departure,
+                        requireArrival
                     );
                     if (sharesSabotageEncounters && odds != null)
                         _sabotageEncounterRisks[riskKey] = (
@@ -2131,21 +2184,24 @@ namespace Rebellion.AI
         /// <param name="context">The mission configuration to evaluate.</param>
         /// <param name="operationalOnly">Whether personnel-loss calculations may be omitted.</param>
         /// <param name="minimumOverallProbability">The required success floor, or zero for an unbounded evaluation.</param>
-        /// <param name="departure">Optional common departure planet after current inbound travel completes.</param>
+        /// <param name="departure">Optional common departure planet.</param>
+        /// <param name="requireArrival">Whether participants must already be present or traveling there.</param>
         /// <returns>The adjusted mission odds, or null when the mission cannot be created.</returns>
         private MissionOdds GetMissionOddsCore(
             MissionQueries queries,
             MissionContext context,
             bool operationalOnly,
             double minimumOverallProbability = 0,
-            Planet departure = null
+            Planet departure = null,
+            bool requireArrival = true
         )
         {
             Mission mission;
             bool valid =
-                departure == null
-                    ? queries.TryCreateMission(context, out mission)
-                    : queries.TryCreateMissionAfterArrival(context, departure, out mission);
+                departure == null ? queries.TryCreateMission(context, out mission)
+                : requireArrival
+                    ? queries.TryCreateMissionAfterArrival(context, departure, out mission)
+                : queries.TryCreateMissionFromDeparture(context, departure, out mission);
             if (!valid)
                 return null;
 
@@ -2761,9 +2817,7 @@ namespace Rebellion.AI
                 AddIndexedAmount(
                     _readyStarfighterFirepowerByFleetId,
                     fleetId,
-                    SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstStarfighters(
-                        capitalShip
-                    )
+                    GetCapitalShipFirepowerAgainstStarfighters(capitalShip)
                 );
             }
 
@@ -2779,11 +2833,9 @@ namespace Rebellion.AI
                 AddIndexedAmount(
                     _projectedStarfighterFirepowerByFleetId,
                     fleetId,
-                    SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstStarfighters(
-                        capitalShip
-                    )
+                    GetCapitalShipFirepowerAgainstStarfighters(capitalShip)
                 );
-                if (SpaceCombatStrengthCalculator.IsArmedEscort(capitalShip))
+                if (IsArmedEscort(capitalShip))
                     AddIndexedAmount(_projectedArmedEscortCountByFleetId, fleetId, 1);
                 if (capitalShip.HasGravityWell)
                     AddIndexedAmount(_projectedInterdictionCountByFleetId, fleetId, 1);

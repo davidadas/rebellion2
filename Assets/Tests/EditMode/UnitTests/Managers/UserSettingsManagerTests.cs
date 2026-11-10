@@ -60,7 +60,7 @@ namespace Rebellion.Tests.Managers
                     path
                 );
                 firstSettings.Load();
-                UnityEngine.InputSystem.InputAction firstAction = firstInput.Asset.FindAction(
+                InputAction firstAction = firstInput.Asset.FindAction(
                     "Strategy/ShowTroopers",
                     true
                 );
@@ -263,7 +263,7 @@ namespace Rebellion.Tests.Managers
         /// <param name="action">The action.</param>
         /// <param name="name">The name.</param>
         /// <returns>The matching binding.</returns>
-        private static int FindBinding(UnityEngine.InputSystem.InputAction action, string name)
+        private static int FindBinding(InputAction action, string name)
         {
             for (int index = 0; index < action.bindings.Count; index++)
             {

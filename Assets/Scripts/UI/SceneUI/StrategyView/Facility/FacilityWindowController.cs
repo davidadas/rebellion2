@@ -903,7 +903,7 @@ public sealed class FacilityWindowController
             destinationPlanetId,
             destinationItemId
         );
-        markDirty();
+        actions.RefreshFacilityState();
     }
 
     /// <summary>

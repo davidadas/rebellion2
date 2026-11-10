@@ -340,7 +340,7 @@ namespace Rebellion.Tests.AI
         public void CanReleaseCapitalShip_MovingDonor_ReturnsFalse()
         {
             AITurnContext context = CreateDefender(out Fleet fleet, out CapitalShip spare);
-            fleet.Movement = new MovementState { TransitTicks = 10 };
+            fleet.Movement = TestMovement.Create(transitTicks: 10);
 
             Assert.IsFalse(context.StrategicPlan.CanReleaseCapitalShip(fleet, spare));
         }
@@ -879,7 +879,7 @@ namespace Rebellion.Tests.AI
                 );
                 regiment.ManufacturingStatus = status;
                 if (inTransit)
-                    regiment.Movement = new MovementState { TransitTicks = 10 };
+                    regiment.Movement = TestMovement.Create(transitTicks: 10);
                 initial.Game.AttachNode(regiment, planet);
             }
             AITurnContext context = AITestSceneBuilder.CreateContext(initial.Game, initial.Faction);

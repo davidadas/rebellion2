@@ -55,7 +55,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
-            target.Movement = new MovementState();
+            target.Movement = TestMovement.Create();
             game.AttachNode(target, enemyPlanet);
 
             Mission mission = CreateAssassinationMission(

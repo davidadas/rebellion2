@@ -1,3 +1,4 @@
+using System;
 using Rebellion.Util.Serialization;
 
 /// <summary>
@@ -70,7 +71,7 @@ public class StrategyBookmarkLayout
     /// <returns>The non-negative number of bookmark rows that fit in the list.</returns>
     public int GetSlotCount()
     {
-        return ItemHeight > 0 ? System.Math.Max(0, ListHeight / ItemHeight) : 0;
+        return ItemHeight > 0 ? Math.Max(0, ListHeight / ItemHeight) : 0;
     }
 }
 

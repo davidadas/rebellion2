@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -15,6 +16,9 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
 
     [SerializeField]
     private MainMenuView view;
+
+    [SerializeField]
+    private ModelPreviewAtlas _iconPreviews;
 
     [SerializeField]
     private OptionsMenuView _optionsMenuPrefab;
@@ -116,6 +120,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             if (this == null || view == null || mainMenuCanvas == null)
                 return;
 
+            _iconPreviews.Initialize();
             ContentPack contentPack = bootstrap.GetContentPack();
             view.InitializeContent(bootstrap.GetContentAssets());
             view.RenderVictoryCondition(currentVictoryCondition);
@@ -138,7 +143,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             RenderAnalyticsConsentGate(bootstrap);
             mainMenuCanvas.enabled = true;
         }
-        catch (System.Exception exception)
+        catch (Exception exception)
         {
             if (!LoadingScreenController.CompleteFailedRecovery(bootstrap, exception))
             {
@@ -474,7 +479,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             return;
 
         ContentPackDefinition definition = _customGamePacks?.FirstOrDefault(candidate =>
-            string.Equals(candidate.ID, packID, System.StringComparison.Ordinal)
+            string.Equals(candidate.ID, packID, StringComparison.Ordinal)
         );
         if (definition == null)
             throw new InvalidDataException($"Content pack '{packID}' is not installed.");

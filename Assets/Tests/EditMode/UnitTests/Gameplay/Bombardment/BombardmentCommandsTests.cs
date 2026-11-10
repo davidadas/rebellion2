@@ -95,7 +95,7 @@ namespace Rebellion.Tests.Gameplay
             (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
             Regiment defender = AddRegiment(game, planet, "defender", "empire");
             Fleet defendingFleet = AddBombardmentFleet(game, planet, "empire", bombardment: 0);
-            defendingFleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            defendingFleet.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 1);
             CapitalShip inTransitShip = defendingFleet.GetChildren<CapitalShip>()[0];
             Fleet attackingFleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
 
@@ -729,24 +729,33 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void TryExecute_AllianceHeadquarters_CanBeDestroyed()
+        public void TryExecute_AllianceHeadquarters_ReportsDestructionWithoutApplyingHeadquartersState()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
             planet.IsHeadquarters = true;
             game.GetFactionByOwnerInstanceID("alliance").HQInstanceID = planet.InstanceID;
             Fleet fleet = AddBombardmentFleet(game, planet, "empire", bombardment: 1);
+            BombardmentCommands commands = MakeBombardment(
+                game,
+                new SequenceRNG(intValues: new[] { 1, 0, 10 })
+            );
 
-            BombardmentResult result = MakeBombardment(
-                    game,
-                    new SequenceRNG(intValues: new[] { 1, 0, 10 })
-                )
-                .TryExecute(new List<Fleet> { fleet }, planet, BombardmentType.Military);
+            BombardmentResult result = commands.TryExecute(
+                new List<Fleet> { fleet },
+                planet,
+                BombardmentType.Military
+            );
 
             Assert.IsTrue(result.HeadquartersDestroyed);
-            Assert.IsFalse(planet.IsHeadquarters);
-            Assert.IsNull(game.GetFactionByOwnerInstanceID("alliance").HQInstanceID);
+            Assert.IsTrue(planet.IsHeadquarters);
+            Assert.AreEqual(
+                planet.InstanceID,
+                game.GetFactionByOwnerInstanceID("alliance").HQInstanceID
+            );
+            Assert.IsFalse(game.GetFactionByOwnerInstanceID("alliance").HasLostHeadquarters);
             Assert.IsFalse(planet.IsDestroyed);
+            Assert.IsEmpty(result.Events.OfType<HeadquartersLostResult>());
         }
 
         [Test]
@@ -971,7 +980,7 @@ namespace Rebellion.Tests.Gameplay
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
             Regiment regiment = AddRegiment(game, planet, "departed", "empire");
-            regiment.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            regiment.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 1);
             Fleet fleet = AddBombardmentFleet(game, planet, "alliance", 0);
             fleet.GetChildren<CapitalShip>()[0].CanDestroyPlanets = true;
 
@@ -998,7 +1007,8 @@ namespace Rebellion.Tests.Gameplay
                 BuildingType.Headquarters
             );
             Fleet fleet = AddBombardmentFleet(game, planet, "alliance", 0);
-            fleet.GetChildren<CapitalShip>()[0].CanDestroyPlanets = true;
+            CapitalShip planetDestroyer = fleet.GetChildren<CapitalShip>()[0];
+            planetDestroyer.CanDestroyPlanets = true;
 
             BombardmentResult result = MakeBombardment(game, new SequenceRNG())
                 .TryExecute(new List<Fleet> { fleet }, planet, BombardmentType.DestroyPlanet);
@@ -1006,6 +1016,15 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsTrue(result.HeadquartersDestroyed);
             Assert.IsFalse(planet.IsHeadquarters);
             Assert.IsNull(game.GetFactionByOwnerInstanceID("empire").HQInstanceID);
+            Assert.IsFalse(game.GetFactionByOwnerInstanceID("empire").HasLostHeadquarters);
+            Assert.IsEmpty(result.Events.OfType<HeadquartersLostResult>());
+            Assert.AreSame(
+                planetDestroyer,
+                result
+                    .Events.OfType<GameObjectDestroyedResult>()
+                    .Single(destroyed => destroyed.DestroyedObject == headquarters)
+                    .DestroyedBy
+            );
             Assert.IsNull(headquarters.GetParent());
         }
 

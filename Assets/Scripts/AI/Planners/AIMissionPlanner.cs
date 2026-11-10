@@ -24,6 +24,8 @@ namespace Rebellion.AI.Planners
         private readonly AIMissionCandidatePool _candidateSelector = new AIMissionCandidatePool();
         private readonly AIMissionCandidatePool _waitingCandidateSelector =
             new AIMissionCandidatePool();
+        private readonly AIMissionCandidatePool _stagingCandidateSelector =
+            new AIMissionCandidatePool();
         private readonly Dictionary<string, List<IManufacturable>> _sabotageTargets =
             new Dictionary<string, List<IManufacturable>>(StringComparer.Ordinal);
         private readonly Dictionary<
@@ -61,7 +63,8 @@ namespace Rebellion.AI.Planners
                 bool PlanetaryObjective,
                 string Leader,
                 string Candidates,
-                Planet Departure
+                Planet Departure,
+                bool ProjectedStaging
             ),
             AIMissionProposal
         > _sabotageTeamCache = new();
@@ -109,6 +112,7 @@ namespace Rebellion.AI.Planners
             AssignSpecialForcesIntent(context);
             _candidateSelector.Reset();
             _waitingCandidateSelector.Reset();
+            _stagingCandidateSelector.Reset();
             _sabotageTargets.Clear();
             _sabotageTargetValues.Clear();
             _sabotageMissionCounts.Clear();
@@ -206,7 +210,7 @@ namespace Rebellion.AI.Planners
             long? directTicks = null;
             foreach (Planet planet in context.Assessment.OwnedPlanets)
             {
-                if (planet.IsDestroyed || context.Assessment.HasKnownHostileFleet(planet))
+                if (!IsMissionStagingDestinationEligible(context, planet))
                     continue;
                 AIMissionStagingProposal candidate = new(mission, planet, missionCount);
                 if (candidate.Participants.Count == 0)
@@ -229,6 +233,58 @@ namespace Rebellion.AI.Planners
                 .Select(candidate => candidate.Proposal)
                 .FirstOrDefault(candidate => candidate.CanSelect(context));
             return best?.Destination;
+        }
+
+        /// <summary>
+        /// Finds the nearest eligible owned planet for validating a projected staging team.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="target">The sabotage destination used to compare assembly planets.</param>
+        /// <returns>The nearest eligible owned departure, or null when none is available.</returns>
+        private static Planet FindMissionStagingProjectionDeparture(
+            AITurnContext context,
+            Planet target
+        )
+        {
+            Planet best = null;
+            double bestDistance = double.MaxValue;
+            foreach (Planet candidate in context.Assessment.OwnedPlanets)
+            {
+                if (!IsMissionStagingDestinationEligible(context, candidate))
+                    continue;
+                double distance = candidate.GetRawDistanceTo(target);
+                if (
+                    best == null
+                    || distance < bestDistance
+                    || distance == bestDistance
+                        && string.Compare(
+                            candidate.InstanceID,
+                            best.InstanceID,
+                            StringComparison.Ordinal
+                        ) < 0
+                )
+                {
+                    best = candidate;
+                    bestDistance = distance;
+                }
+            }
+            return best;
+        }
+
+        /// <summary>
+        /// Returns whether an owned planet can be considered as a mission staging destination.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="planet">The owned planet to inspect.</param>
+        /// <returns>True when the planet is intact and has no known hostile fleet.</returns>
+        private static bool IsMissionStagingDestinationEligible(
+            AITurnContext context,
+            Planet planet
+        )
+        {
+            return context?.Assessment?.IsOwnedPlanet(planet) == true
+                && planet.IsDestroyed == false
+                && !context.Assessment.HasKnownHostileFleet(planet);
         }
 
         /// <summary>
@@ -943,14 +999,29 @@ namespace Rebellion.AI.Planners
                     .ThenBy(participant => participant.InstanceID, StringComparer.Ordinal)
                     .Take(Math.Max(1, config.SabotageTeamAlternativesPerTarget))
                     .ToList();
-                Dictionary<bool, List<IMissionParticipant>> candidatesByLeaderKind = new();
-                foreach (IManufacturable target in GetSabotageTargets(context, planet))
+                List<IManufacturable> targets = GetSabotageTargets(context, planet).ToList();
+                Planet projectedStagingFallback =
+                    targets.Count > 1
+                        ? FindMissionStagingProjectionDeparture(context, planet)
+                        : null;
+                Dictionary<bool, List<IMissionParticipant>> orderedCandidatesByLeaderKind = new();
+                Dictionary<bool, List<IMissionParticipant>> stagingCandidatesByLeaderKind = new();
+                Dictionary<
+                    (bool AllowsOfficers, Planet Origin),
+                    List<IMissionParticipant>
+                > immediateCandidatesByOrigin = new();
+                foreach (IManufacturable target in targets)
                 foreach (IMissionParticipant leader in leaders)
                 {
                     bool allowsOfficers = leader is Officer;
-                    if (!candidatesByLeaderKind.TryGetValue(allowsOfficers, out var candidates))
+                    if (
+                        !orderedCandidatesByLeaderKind.TryGetValue(
+                            allowsOfficers,
+                            out var orderedCandidates
+                        )
+                    )
                     {
-                        candidates = available
+                        orderedCandidates = available
                             .Where(participant => allowsOfficers || participant is SpecialForces)
                             .Where(participant =>
                                 participant is not Officer officer
@@ -972,18 +1043,64 @@ namespace Rebellion.AI.Planners
                                 participant.GetParentOfType<Planet>().GetRawDistanceTo(planet)
                             )
                             .ThenBy(participant => participant.InstanceID, StringComparer.Ordinal)
+                            .ToList();
+                        orderedCandidatesByLeaderKind.Add(allowsOfficers, orderedCandidates);
+                        stagingCandidatesByLeaderKind.Add(
+                            allowsOfficers,
+                            orderedCandidates
+                                .Take(Math.Max(1, config.SabotageTeamCandidateCount))
+                                .ToList()
+                        );
+                    }
+                    Planet origin = leader.GetParentOfType<Planet>();
+                    // This departure only validates the projected team; the complete team still
+                    // searches every eligible owned destination before staging is retained.
+                    Planet projectedStagingDeparture = IsMissionStagingDestinationEligible(
+                        context,
+                        origin
+                    )
+                        ? origin
+                        : projectedStagingFallback;
+                    var immediateKey = (allowsOfficers, origin);
+                    if (
+                        !immediateCandidatesByOrigin.TryGetValue(
+                            immediateKey,
+                            out var immediateCandidates
+                        )
+                    )
+                    {
+                        immediateCandidates = orderedCandidates
+                            .Where(candidate => candidate.GetParentOfType<Planet>() == origin)
                             .Take(Math.Max(1, config.SabotageTeamCandidateCount))
                             .ToList();
-                        candidatesByLeaderKind.Add(allowsOfficers, candidates);
+                        immediateCandidatesByOrigin.Add(immediateKey, immediateCandidates);
                     }
                     AddSabotageTeamProposals(
                         context,
                         planet,
                         (ISceneNode)target,
                         leader,
-                        candidates,
+                        immediateCandidates,
                         proposals
                     );
+                    if (
+                        targets.Count > 1
+                        && projectedStagingDeparture != null
+                        && stagingCandidatesByLeaderKind[allowsOfficers]
+                            .Any(candidate => candidate.GetParentOfType<Planet>() != origin)
+                    )
+                    {
+                        AddSabotageTeamProposals(
+                            context,
+                            planet,
+                            (ISceneNode)target,
+                            leader,
+                            stagingCandidatesByLeaderKind[allowsOfficers],
+                            proposals,
+                            projectedStagingDeparture,
+                            projectedStaging: true
+                        );
+                    }
                     yield return leader;
                 }
             }
@@ -999,6 +1116,7 @@ namespace Rebellion.AI.Planners
         /// <param name="candidates">The bounded pool of eligible helpers.</param>
         /// <param name="proposals">The collection receiving scored team alternatives.</param>
         /// <param name="departure">Optional departure planet after current arrivals complete.</param>
+        /// <param name="projectedStaging">Whether the departure is a proposed relocation rather than an inbound destination.</param>
         private void AddSabotageTeamProposals(
             AITurnContext context,
             Planet planet,
@@ -1006,7 +1124,8 @@ namespace Rebellion.AI.Planners
             IMissionParticipant leader,
             IReadOnlyList<IMissionParticipant> candidates,
             List<AIProposal> proposals,
-            Planet departure = null
+            Planet departure = null,
+            bool projectedStaging = false
         )
         {
             AIMissionProposal team = new(
@@ -1019,18 +1138,26 @@ namespace Rebellion.AI.Planners
             // Additional personnel cannot improve the optimistic score of this sabotage target:
             // objective success is already bounded at 100%, while travel and officer costs cannot fall.
             AIMissionCandidatePool pool =
-                departure == null ? _candidateSelector : _waitingCandidateSelector;
+                projectedStaging ? _stagingCandidateSelector
+                : departure == null ? _candidateSelector
+                : _waitingCandidateSelector;
             if (!pool.CanRetain(context, team, departure))
                 return;
             Mission mission;
             bool valid =
                 departure == null
                     ? context.MissionQueries.TryCreateMission(team.CreateContext(), out mission)
-                    : context.MissionQueries.TryCreateMissionAfterArrival(
+                : projectedStaging
+                    ? context.MissionQueries.TryCreateMissionFromDeparture(
                         team.CreateContext(),
                         departure,
                         out mission
-                    );
+                    )
+                : context.MissionQueries.TryCreateMissionAfterArrival(
+                    team.CreateContext(),
+                    departure,
+                    out mission
+                );
             if (!valid)
                 return;
 
@@ -1043,7 +1170,8 @@ namespace Rebellion.AI.Planners
                 ),
                 Leader: leader.InstanceID,
                 Candidates: string.Join(",", candidates.Select(candidate => candidate.InstanceID)),
-                departure
+                departure,
+                ProjectedStaging: projectedStaging
             );
             if (!_sabotageTeamCache.TryGetValue(key, out AIMissionProposal template))
             {
@@ -1054,12 +1182,21 @@ namespace Rebellion.AI.Planners
                     leader,
                     candidates,
                     departure,
-                    mission
+                    mission,
+                    projectedStaging
                 );
                 _sabotageTeamCache.Add(key, template);
             }
             if (template != null)
-                RetainSabotageTeam(context, planet, target, template, proposals, departure);
+                RetainSabotageTeam(
+                    context,
+                    planet,
+                    target,
+                    template,
+                    proposals,
+                    departure,
+                    projectedStaging
+                );
         }
 
         /// <summary>
@@ -1072,6 +1209,7 @@ namespace Rebellion.AI.Planners
         /// <param name="candidates">The ordered pool of eligible helpers.</param>
         /// <param name="departure">Optional common departure after inbound travel.</param>
         /// <param name="mission">The validated mission supplying objective probabilities.</param>
+        /// <param name="projectedStaging">Whether the departure is a proposed relocation.</param>
         /// <returns>The first feasible primary-and-decoy team, or null when none qualifies.</returns>
         private AIMissionProposal AssembleSabotageTeam(
             AITurnContext context,
@@ -1080,7 +1218,8 @@ namespace Rebellion.AI.Planners
             IMissionParticipant leader,
             IReadOnlyList<IMissionParticipant> candidates,
             Planet departure,
-            Mission mission
+            Mission mission,
+            bool projectedStaging
         )
         {
             AIMissionProposal team = new(new[] { leader }, MissionTypeIDs.Sabotage, planet);
@@ -1129,7 +1268,8 @@ namespace Rebellion.AI.Planners
                         target,
                         mains,
                         candidates,
-                        departure
+                        departure,
+                        projectedStaging
                     );
                     if (protectedTeam != null)
                         return protectedTeam;
@@ -1150,13 +1290,15 @@ namespace Rebellion.AI.Planners
         /// <param name="template">The feasible participant roles and evaluated odds.</param>
         /// <param name="proposals">The target-specific alternatives being built.</param>
         /// <param name="departure">Optional departure planet after inbound travel.</param>
+        /// <param name="projectedStaging">Whether the team is retained only for relocation planning.</param>
         private void RetainSabotageTeam(
             AITurnContext context,
             Planet planet,
             ISceneNode target,
             AIMissionProposal template,
             List<AIProposal> proposals,
-            Planet departure
+            Planet departure,
+            bool projectedStaging
         )
         {
             AIMissionProposal team = new(
@@ -1168,6 +1310,17 @@ namespace Rebellion.AI.Planners
                 teamIsFinal: true
             );
             team.SetOperationalOdds(template.OperationalOdds);
+            if (projectedStaging)
+            {
+                Planet firstOrigin = team.Participant.GetParentOfType<Planet>();
+                if (
+                    team.Participants.Any(participant =>
+                        participant.GetParentOfType<Planet>() != firstOrigin
+                    )
+                )
+                    _sabotageTeams.Add(team);
+                return;
+            }
             if (departure == null)
             {
                 _sabotageTeams.Add(team);
@@ -1193,6 +1346,7 @@ namespace Rebellion.AI.Planners
         /// <param name="mains">The fixed objective-capable primary team.</param>
         /// <param name="candidates">The ordered pool of eligible helpers.</param>
         /// <param name="departure">Optional common departure after inbound travel.</param>
+        /// <param name="projectedStaging">Whether the departure is a proposed relocation.</param>
         /// <returns>The first feasible protected team, or null when none qualifies.</returns>
         private AIMissionProposal ProtectSabotageTeam(
             AITurnContext context,
@@ -1200,7 +1354,8 @@ namespace Rebellion.AI.Planners
             ISceneNode target,
             IReadOnlyList<IMissionParticipant> mains,
             IReadOnlyList<IMissionParticipant> candidates,
-            Planet departure
+            Planet departure,
+            bool projectedStaging
         )
         {
             GameConfig.AIMissionPlanningConfig config = context.Game.Config.AI.MissionPlanning;
@@ -1245,7 +1400,8 @@ namespace Rebellion.AI.Planners
                 context.MissionQueries,
                 optimisticTeam,
                 config.MinimumSabotageSuccessPercent,
-                departure
+                departure,
+                requireArrival: !projectedStaging
             );
             if (!canMeetFloor)
                 return null;
@@ -1261,7 +1417,7 @@ namespace Rebellion.AI.Planners
                     teamIsFinal: true
                 );
                 AIMissionStagingProposal waiting =
-                    departure == null
+                    departure == null || projectedStaging
                         ? null
                         : AIMissionStagingProposal.WaitForArrivals(
                             protectedTeam,
@@ -1270,7 +1426,12 @@ namespace Rebellion.AI.Planners
                         );
                 if (waiting?.WaitingTicks <= 0)
                     continue;
-                MissionOdds odds = EvaluateSabotageTeam(context, protectedTeam, departure);
+                MissionOdds odds = EvaluateSabotageTeam(
+                    context,
+                    protectedTeam,
+                    departure,
+                    projectedStaging
+                );
                 if (
                     odds == null
                     || odds.OverallSuccessProbability <= 0
@@ -1285,12 +1446,19 @@ namespace Rebellion.AI.Planners
                                 context.MissionQueries,
                                 protectedTeam.CreateContext()
                             )
-                            : context.Assessment.GetMissionOddsAfterArrival(
+                        : projectedStaging
+                            ? context.Assessment.GetMissionOddsFromDeparture(
                                 context.MissionQueries,
                                 protectedTeam.CreateContext(),
                                 departure,
                                 false
-                            );
+                            )
+                        : context.Assessment.GetMissionOddsAfterArrival(
+                            context.MissionQueries,
+                            protectedTeam.CreateContext(),
+                            departure,
+                            false
+                        );
                     if (
                         completeOdds == null
                         || completeOdds.PersonnelLossProbability
@@ -1311,22 +1479,32 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current faction turn.</param>
         /// <param name="proposal">The immutable participant roles being considered.</param>
         /// <param name="departure">Optional departure planet after current arrivals complete.</param>
+        /// <param name="projectedStaging">Whether the departure is a proposed relocation.</param>
         /// <returns>The operational mission odds, or null when the team is invalid.</returns>
         private static MissionOdds EvaluateSabotageTeam(
             AITurnContext context,
             AIMissionProposal proposal,
-            Planet departure = null
+            Planet departure = null,
+            bool projectedStaging = false
         )
         {
             if (departure != null)
             {
-                MissionOdds future = context.Assessment.GetMissionOddsAfterArrival(
-                    context.MissionQueries,
-                    proposal.CreateContext(),
-                    departure,
-                    true,
-                    context.Game.Config.AI.MissionPlanning.MinimumSabotageSuccessPercent
-                );
+                MissionOdds future = projectedStaging
+                    ? context.Assessment.GetMissionOddsFromDeparture(
+                        context.MissionQueries,
+                        proposal.CreateContext(),
+                        departure,
+                        true,
+                        context.Game.Config.AI.MissionPlanning.MinimumSabotageSuccessPercent
+                    )
+                    : context.Assessment.GetMissionOddsAfterArrival(
+                        context.MissionQueries,
+                        proposal.CreateContext(),
+                        departure,
+                        true,
+                        context.Game.Config.AI.MissionPlanning.MinimumSabotageSuccessPercent
+                    );
                 proposal.SetOperationalOdds(future);
                 return future;
             }

@@ -143,7 +143,207 @@ namespace Rebellion.Tests.Game.Missions
                 .Fog.Snapshots["sector1"]
                 .Planets[enemyPlanet.InstanceID];
             Assert.AreEqual(completedFacility.InstanceID, snapshot.Buildings.Single().InstanceID);
-            Assert.IsFalse(snapshot.HasManufacturingIntelligence);
+        }
+
+        [Test]
+        public void ResolveObjective_EnemyManufacturing_RevealsCurrentQueue()
+        {
+            (GameRoot game, Planet empirePlanet, Planet enemyPlanet, _, _) =
+                MissionSceneBuilder.Build();
+            Building queuedFacility = new Building
+            {
+                InstanceID = "queued-facility",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            enemyPlanet.ManufacturingQueue[ManufacturingType.Building] = new List<IManufacturable>
+            {
+                queuedFacility,
+            };
+            SpecialForces reconTeam = CreateReconTeam("empire");
+            game.AttachNode(reconTeam, empirePlanet);
+            Mission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { reconTeam },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+
+            mission.ResolveObjective(game, new ThrowingRNG());
+
+            PlanetSnapshot snapshot = game.GetFactionByOwnerInstanceID("empire")
+                .Fog.Snapshots["sector1"]
+                .Planets[enemyPlanet.InstanceID];
+            Assert.IsTrue(snapshot.HasManufacturingIntelligence);
+            Assert.AreEqual(
+                queuedFacility.InstanceID,
+                snapshot.ManufacturingQueueItems.Single().InstanceID
+            );
+        }
+
+        [Test]
+        public void ResolveObjective_EnemyOfficers_DoesNotRevealPersonnel()
+        {
+            (GameRoot game, Planet empirePlanet, Planet enemyPlanet, _, _) =
+                MissionSceneBuilder.Build();
+            Officer stationedOfficer = EntityFactory.CreateOfficer("stationed-officer", "rebels");
+            game.AttachNode(stationedOfficer, enemyPlanet);
+            Fleet fleet = EntityFactory.CreateFleet("enemy-fleet", "rebels");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "enemy-ship",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer embarkedOfficer = EntityFactory.CreateOfficer("embarked-officer", "rebels");
+            game.AttachNode(fleet, enemyPlanet);
+            game.AttachNode(ship, fleet);
+            game.AttachNode(embarkedOfficer, ship);
+            SpecialForces reconTeam = CreateReconTeam("empire");
+            game.AttachNode(reconTeam, empirePlanet);
+            Mission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { reconTeam },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+
+            mission.ResolveObjective(game, new ThrowingRNG());
+
+            PlanetSnapshot snapshot = game.GetFactionByOwnerInstanceID("empire")
+                .Fog.Snapshots["sector1"]
+                .Planets[enemyPlanet.InstanceID];
+            Assert.IsEmpty(snapshot.Officers);
+            Assert.IsEmpty(snapshot.Fleets.Single().GetChildren<Officer>(recursive: true));
+        }
+
+        [Test]
+        public void ResolveObjective_EnemySpecialForces_DoesNotRevealPersonnel()
+        {
+            (GameRoot game, Planet empirePlanet, Planet enemyPlanet, _, _) =
+                MissionSceneBuilder.Build();
+            SpecialForces stationedForces = new SpecialForces
+            {
+                InstanceID = "stationed-forces",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(stationedForces, enemyPlanet);
+            Fleet fleet = EntityFactory.CreateFleet("enemy-fleet", "rebels");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "enemy-ship",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            SpecialForces embarkedForces = new SpecialForces
+            {
+                InstanceID = "embarked-forces",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, enemyPlanet);
+            game.AttachNode(ship, fleet);
+            game.AttachNode(embarkedForces, ship);
+            SpecialForces reconTeam = CreateReconTeam("empire");
+            game.AttachNode(reconTeam, empirePlanet);
+            Mission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { reconTeam },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+
+            mission.ResolveObjective(game, new ThrowingRNG());
+
+            PlanetSnapshot snapshot = game.GetFactionByOwnerInstanceID("empire")
+                .Fog.Snapshots["sector1"]
+                .Planets[enemyPlanet.InstanceID];
+            Assert.IsEmpty(snapshot.SpecialForces);
+            Assert.IsEmpty(snapshot.Fleets.Single().GetChildren<SpecialForces>(recursive: true));
+        }
+
+        [Test]
+        public void ResolveObjective_AfterEspionage_PreservesRememberedPersonnelPlacements()
+        {
+            (GameRoot game, Planet empirePlanet, Planet enemyPlanet, _, _) =
+                MissionSceneBuilder.Build();
+            Faction empire = game.GetFactionByOwnerInstanceID("empire");
+            PlanetSector sector = enemyPlanet.GetParentOfType<PlanetSector>();
+            Officer stationedOfficer = EntityFactory.CreateOfficer("stationed-officer", "rebels");
+            SpecialForces stationedForces = new SpecialForces
+            {
+                InstanceID = "stationed-forces",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Fleet fleet = EntityFactory.CreateFleet("enemy-fleet", "rebels");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "enemy-ship",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer embarkedOfficer = EntityFactory.CreateOfficer("embarked-officer", "rebels");
+            SpecialForces embarkedForces = new SpecialForces
+            {
+                InstanceID = "embarked-forces",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(stationedOfficer, enemyPlanet);
+            game.AttachNode(stationedForces, enemyPlanet);
+            game.AttachNode(fleet, enemyPlanet);
+            game.AttachNode(ship, fleet);
+            game.AttachNode(embarkedOfficer, ship);
+            game.AttachNode(embarkedForces, ship);
+            new FogOfWarRecorder().RecordEspionageSnapshot(empire, enemyPlanet, sector, 5);
+            SpecialForces reconTeam = CreateReconTeam("empire");
+            game.AttachNode(reconTeam, empirePlanet);
+            Mission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { reconTeam },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            game.CurrentTick = 20;
+
+            mission.ResolveObjective(game, new ThrowingRNG());
+
+            PlanetSnapshot snapshot = empire.Fog.Snapshots[sector.InstanceID].Planets[
+                enemyPlanet.InstanceID
+            ];
+            Assert.AreEqual(20, snapshot.TickCaptured);
+            Assert.AreEqual(5, snapshot.FullyObservedAtTick);
+            Assert.AreEqual(stationedOfficer.InstanceID, snapshot.Officers.Single().InstanceID);
+            Assert.AreEqual(stationedForces.InstanceID, snapshot.SpecialForces.Single().InstanceID);
+            CapitalShip observedShip = snapshot.Fleets.Single().GetChildren<CapitalShip>().Single();
+            Assert.AreEqual(
+                embarkedOfficer.InstanceID,
+                observedShip.GetChildren<Officer>().Single().InstanceID
+            );
+            Assert.AreEqual(
+                embarkedForces.InstanceID,
+                observedShip.GetChildren<SpecialForces>().Single().InstanceID
+            );
+            foreach (
+                string instanceID in new[]
+                {
+                    stationedOfficer.InstanceID,
+                    stationedForces.InstanceID,
+                    embarkedOfficer.InstanceID,
+                    embarkedForces.InstanceID,
+                }
+            )
+                Assert.AreEqual(enemyPlanet.InstanceID, empire.Fog.EntityLastSeenAt[instanceID]);
         }
 
         [Test]

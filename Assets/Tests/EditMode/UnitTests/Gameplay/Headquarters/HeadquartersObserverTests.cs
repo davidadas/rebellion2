@@ -34,6 +34,15 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void HandleResults_NullBombardments_ReturnsNoResults()
+        {
+            (GameRoot game, _, _, _, _) = CreateGame(isMobile: false);
+            HeadquartersObserver observer = new HeadquartersObserver(game);
+
+            Assert.IsEmpty(observer.HandleResults((IReadOnlyList<BombardmentResult>)null));
+        }
+
+        [Test]
         public void HandleResults_MultipleArrivals_AppliesInBatchOrder()
         {
             (GameRoot game, Faction faction, Planet origin, Planet destination, Building hq) =
@@ -101,6 +110,97 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(42, results[1].Tick);
             Assert.IsFalse(origin.IsHeadquarters);
             Assert.AreEqual(origin.InstanceID, faction.HQInstanceID);
+        }
+
+        [Test]
+        public void HandleResults_FixedHeadquartersNeutralized_ReturnsNeutralizedLoss()
+        {
+            (GameRoot game, Faction faction, Planet headquarters, _, _) = CreateGame(
+                isMobile: false
+            );
+            game.CurrentTick = 42;
+
+            List<GameResult> results = new HeadquartersObserver(game).HandleResults(
+                new[]
+                {
+                    new PlanetOwnershipChangedResult
+                    {
+                        Planet = headquarters,
+                        PreviousOwner = faction,
+                        Tick = 12,
+                    },
+                }
+            );
+
+            HeadquartersNeutralizedResult neutralized = results
+                .OfType<HeadquartersNeutralizedResult>()
+                .Single();
+            Assert.AreSame(headquarters, neutralized.Planet);
+            Assert.AreSame(faction, neutralized.Defender);
+            Assert.IsNull(neutralized.Attacker);
+            Assert.AreEqual(42, neutralized.Tick);
+            Assert.IsTrue(faction.HasLostHeadquarters);
+            Assert.IsFalse(headquarters.IsHeadquarters);
+        }
+
+        [Test]
+        public void HandleResults_FixedHeadquartersBombarded_ReturnsDestructionLoss()
+        {
+            (GameRoot game, Faction faction, Planet headquarters, _, _) = CreateGame(
+                isMobile: false
+            );
+            Faction attacker = new Faction { InstanceID = "attacker" };
+            game.GetFactions().Add(attacker);
+
+            List<GameResult> results = new HeadquartersObserver(game).HandleResults(
+                new[]
+                {
+                    new BombardmentResult
+                    {
+                        Planet = headquarters,
+                        AttackingFaction = attacker,
+                        DefenderOwnerInstanceID = faction.InstanceID,
+                        HeadquartersDestroyed = true,
+                        Tick = 12,
+                    },
+                }
+            );
+
+            HeadquartersDestroyedResult destroyed = results
+                .OfType<HeadquartersDestroyedResult>()
+                .Single();
+            Assert.AreSame(headquarters, destroyed.Planet);
+            Assert.AreSame(faction, destroyed.Defender);
+            Assert.AreSame(attacker, destroyed.Attacker);
+            Assert.AreEqual(12, destroyed.Tick);
+            Assert.IsTrue(faction.HasLostHeadquarters);
+            Assert.IsNull(faction.HQInstanceID);
+            Assert.IsFalse(headquarters.IsHeadquarters);
+        }
+
+        [Test]
+        public void HandleResults_MobileHeadquartersBombarded_ReturnsNoLoss()
+        {
+            (GameRoot game, Faction faction, Planet headquarters, _, _) = CreateGame(
+                isMobile: true
+            );
+
+            List<GameResult> results = new HeadquartersObserver(game).HandleResults(
+                new[]
+                {
+                    new BombardmentResult
+                    {
+                        Planet = headquarters,
+                        DefenderOwnerInstanceID = faction.InstanceID,
+                        HeadquartersDestroyed = true,
+                    },
+                }
+            );
+
+            Assert.IsEmpty(results);
+            Assert.IsFalse(faction.HasLostHeadquarters);
+            Assert.AreEqual(headquarters.InstanceID, faction.HQInstanceID);
+            Assert.IsTrue(headquarters.IsHeadquarters);
         }
 
         [Test]
@@ -288,7 +388,7 @@ namespace Rebellion.Tests.Gameplay
             destination.OwnerInstanceID = otherFaction.InstanceID;
             destination.IsHeadquarters = true;
             faction.HQInstanceID = null;
-            headquarters.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 10 };
+            headquarters.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 10);
 
             new HeadquartersObserver(game).HandleResults(
                 new[]
@@ -328,7 +428,7 @@ namespace Rebellion.Tests.Gameplay
             );
             faction.HeadquartersUnitInstanceID = null;
             faction.HQInstanceID = null;
-            headquarters.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            headquarters.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 1);
 
             new HeadquartersObserver(game).ReconcileState();
 

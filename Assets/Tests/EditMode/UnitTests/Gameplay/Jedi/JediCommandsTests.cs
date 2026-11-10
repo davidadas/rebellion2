@@ -449,7 +449,7 @@ namespace Rebellion.Tests.Gameplay
         {
             CreateJediTrainer("LUKE", forceValue: 120);
             Officer leia = CreateDormantJedi("LEIA");
-            leia.Movement = new MovementState { TransitTicks = 10 };
+            leia.Movement = TestMovement.Create(transitTicks: 10);
             _system?.Dispose();
             _system = new JediCommands(_game, new FixedRNG(0.0));
             _game.CurrentTick++;
@@ -472,7 +472,7 @@ namespace Rebellion.Tests.Gameplay
             Fleet fleet = new Fleet(_alliance.InstanceID, "Alliance Fleet")
             {
                 InstanceID = "ALLIANCE_FLEET",
-                Movement = new MovementState { TransitTicks = 10 },
+                Movement = TestMovement.Create(transitTicks: 10),
             };
             CapitalShip ship = new CapitalShip
             {
@@ -501,7 +501,7 @@ namespace Rebellion.Tests.Gameplay
         public void ProcessTick_InTransitScanner_DoesNotDiscoverCandidate()
         {
             Officer luke = CreateJediTrainer("LUKE", forceValue: 120);
-            luke.Movement = new MovementState { TransitTicks = 10 };
+            luke.Movement = TestMovement.Create(transitTicks: 10);
             Officer leia = CreateDormantJedi("LEIA");
             _system?.Dispose();
             _system = new JediCommands(_game, new FixedRNG(0.0));
@@ -704,7 +704,7 @@ namespace Rebellion.Tests.Gameplay
         public void ProcessTick_TravelCompletedBeforeTick_ScansOnFollowingTick()
         {
             Officer scanner = CreateJediTrainer("TRAINER", forceValue: 80);
-            scanner.Movement = new MovementState();
+            scanner.Movement = TestMovement.Create();
             Officer candidate = CreateDormantJedi("STUDENT");
             _game.CurrentTick = 20;
             scanner.Movement = null;
@@ -739,7 +739,7 @@ namespace Rebellion.Tests.Gameplay
             Officer scanner = CreateJediTrainer("TRAINER", forceValue: 120);
             Officer candidate = CreateDormantJedi("STUDENT");
             Officer moving = scannerInTransit ? scanner : candidate;
-            moving.Movement = new MovementState();
+            moving.Movement = TestMovement.Create();
 
             new JediTickProcessor(_system).ProcessTick(_game);
 

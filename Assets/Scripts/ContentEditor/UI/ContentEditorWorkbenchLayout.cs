@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -24,7 +25,7 @@ public sealed class ContentEditorWorkbenchLayout : UIBehaviour
     private float split = 0.205f;
     public float Zoom { get; private set; } = 1;
     public float Split => split;
-    public event System.Action Changed;
+    public event Action Changed;
 
     /// <summary>
     /// Routes general divider gestures to the workspace's pane sizing policy.
