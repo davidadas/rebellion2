@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
@@ -734,19 +735,38 @@ namespace Rebellion.Tests.Gameplay
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
             planet.IsHeadquarters = true;
-            game.GetFactionByOwnerInstanceID("alliance").HQInstanceID = planet.InstanceID;
+            Faction defender = game.GetFactionByOwnerInstanceID("alliance");
+            Faction attacker = game.GetFactionByOwnerInstanceID("empire");
+            defender.HQInstanceID = planet.InstanceID;
             Fleet fleet = AddBombardmentFleet(game, planet, "empire", bombardment: 1);
+            BombardmentCommands commands = MakeBombardment(
+                game,
+                new SequenceRNG(intValues: new[] { 1, 0, 10 })
+            );
+            IReadOnlyList<GameResult> publishedResults = null;
+            commands.ResultsProduced += results => publishedResults = results;
 
-            BombardmentResult result = MakeBombardment(
-                    game,
-                    new SequenceRNG(intValues: new[] { 1, 0, 10 })
-                )
-                .TryExecute(new List<Fleet> { fleet }, planet, BombardmentType.Military);
+            BombardmentResult result = commands.TryExecute(
+                new List<Fleet> { fleet },
+                planet,
+                BombardmentType.Military
+            );
 
+            HeadquartersDestroyedResult destroyed = result
+                .Events.OfType<HeadquartersDestroyedResult>()
+                .Single();
             Assert.IsTrue(result.HeadquartersDestroyed);
             Assert.IsFalse(planet.IsHeadquarters);
-            Assert.IsNull(game.GetFactionByOwnerInstanceID("alliance").HQInstanceID);
+            Assert.IsNull(defender.HQInstanceID);
+            Assert.IsTrue(defender.HasLostHeadquarters);
             Assert.IsFalse(planet.IsDestroyed);
+            Assert.AreSame(planet, destroyed.Planet);
+            Assert.AreSame(defender, destroyed.Defender);
+            Assert.AreSame(attacker, destroyed.Attacker);
+            Assert.AreSame(
+                destroyed,
+                publishedResults.OfType<HeadquartersDestroyedResult>().Single()
+            );
         }
 
         [Test]

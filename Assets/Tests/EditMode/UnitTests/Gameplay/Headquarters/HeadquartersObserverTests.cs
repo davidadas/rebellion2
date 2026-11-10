@@ -104,6 +104,37 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void HandleResults_FixedHeadquartersNeutralized_ReturnsNeutralizedLoss()
+        {
+            (GameRoot game, Faction faction, Planet headquarters, _, _) = CreateGame(
+                isMobile: false
+            );
+            game.CurrentTick = 42;
+
+            List<GameResult> results = new HeadquartersObserver(game).HandleResults(
+                new[]
+                {
+                    new PlanetOwnershipChangedResult
+                    {
+                        Planet = headquarters,
+                        PreviousOwner = faction,
+                        Tick = 12,
+                    },
+                }
+            );
+
+            HeadquartersNeutralizedResult neutralized = results
+                .OfType<HeadquartersNeutralizedResult>()
+                .Single();
+            Assert.AreSame(headquarters, neutralized.Planet);
+            Assert.AreSame(faction, neutralized.Defender);
+            Assert.IsNull(neutralized.Attacker);
+            Assert.AreEqual(42, neutralized.Tick);
+            Assert.IsTrue(faction.HasLostHeadquarters);
+            Assert.IsFalse(headquarters.IsHeadquarters);
+        }
+
+        [Test]
         public void HandleResults_HostilePlanetCapture_DestroysMobileHeadquarters()
         {
             (GameRoot game, Faction faction, Planet origin, _, Building headquarters) = CreateGame(

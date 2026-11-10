@@ -592,7 +592,7 @@ namespace Rebellion.Gameplay
                     }
                     break;
                 case BombardmentTargetType.Headquarters:
-                    DestroyHeadquarters(planet, defenderId, result);
+                    result.Events.Add(DestroyHeadquarters(planet, defenderId, result));
                     break;
                 case BombardmentTargetType.EnergyCapacity:
                     planet.EnergyCapacity--;
@@ -613,16 +613,32 @@ namespace Rebellion.Gameplay
         /// <param name="planet">Planet containing the headquarters.</param>
         /// <param name="defenderId">Owning faction instance ID.</param>
         /// <param name="result">Bombardment result receiving the destruction flag.</param>
-        private void DestroyHeadquarters(Planet planet, string defenderId, BombardmentResult result)
+        /// <returns>The canonical headquarters-loss result.</returns>
+        private HeadquartersDestroyedResult DestroyHeadquarters(
+            Planet planet,
+            string defenderId,
+            BombardmentResult result
+        )
         {
             planet.IsHeadquarters = false;
+            Faction defender = null;
             if (!string.IsNullOrEmpty(defenderId))
             {
-                Faction defender = _game.GetFactionByOwnerInstanceID(defenderId);
+                defender = _game.GetFactionByOwnerInstanceID(defenderId);
                 defender.HQInstanceID = null;
                 defender.HasLostHeadquarters = true;
             }
             result.HeadquartersDestroyed = true;
+            return new HeadquartersDestroyedResult
+            {
+                Headquarters = result.DestroyedBuildings.FirstOrDefault(building =>
+                    building.BuildingType == BuildingType.Headquarters
+                ),
+                Planet = planet,
+                Defender = defender,
+                Attacker = result.AttackingFaction,
+                Tick = _game.CurrentTick,
+            };
         }
 
         /// <summary>
@@ -685,20 +701,8 @@ namespace Rebellion.Gameplay
 
             if (planet.IsHeadquarters)
             {
-                DestroyHeadquarters(planet, result.DefenderOwnerInstanceID, result);
                 result.Events.Add(
-                    new HeadquartersDestroyedResult
-                    {
-                        Headquarters = result.DestroyedBuildings.FirstOrDefault(building =>
-                            building.BuildingType == BuildingType.Headquarters
-                        ),
-                        Planet = planet,
-                        Defender = _game.GetFactionByOwnerInstanceID(
-                            result.DefenderOwnerInstanceID
-                        ),
-                        Attacker = result.AttackingFaction,
-                        Tick = _game.CurrentTick,
-                    }
+                    DestroyHeadquarters(planet, result.DefenderOwnerInstanceID, result)
                 );
             }
 

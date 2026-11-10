@@ -227,6 +227,90 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ProcessResults_MilitaryBombardmentDestroysHeadquarters_DeclaresVictory()
+        {
+            _game.Summary.VictoryCondition = GameVictoryCondition.Headquarters;
+            _faction.Settings.Headquarters = new HeadquartersSettings { IsBombardable = true };
+            _faction.HQInstanceID = _planet.InstanceID;
+            _planet.IsHeadquarters = true;
+            _planet.EnergyCapacity = 1;
+            Faction attacker = new Faction { InstanceID = "attacker" };
+            _game.GetFactions().Add(attacker);
+            Planet attackerHeadquarters = new Planet
+            {
+                InstanceID = "attacker-headquarters",
+                OwnerInstanceID = attacker.InstanceID,
+                IsColonized = true,
+                IsHeadquarters = true,
+            };
+            _game.AttachNode(attackerHeadquarters, _planet.GetParent());
+            attacker.HQInstanceID = attackerHeadquarters.InstanceID;
+            Fleet fleet = EntityFactory.CreateFleet("bombardment-fleet", attacker.InstanceID);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "bombardment-ship",
+                OwnerInstanceID = attacker.InstanceID,
+                Bombardment = 1,
+                CurrentHullStrength = 100,
+                MaxHullStrength = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(ship, fleet);
+            _game.Random = new MaximumRNG();
+            _session.Dispose();
+            _session = new GameSession(_game, TestGameData.Create(_game.Config));
+            HeadquartersLostResult loss = null;
+            VictoryResult victory = null;
+            _session.Pipeline.HeadquartersLost += result => loss = result;
+            _session.Pipeline.VictoryDeclared += result => victory = result;
+
+            BombardmentResult bombardment = _session
+                .GetService<BombardmentCommands>()
+                .TryExecute(new[] { fleet }, _planet, BombardmentType.Military);
+
+            Assert.IsTrue(bombardment.HeadquartersDestroyed);
+            Assert.IsInstanceOf<HeadquartersDestroyedResult>(loss);
+            Assert.AreSame(_faction, loss.Defender);
+            Assert.AreSame(attacker, loss.Attacker);
+            Assert.AreSame(attacker, victory.Winner);
+        }
+
+        [Test]
+        public void ProcessResults_FixedHeadquartersNeutralized_DeclaresVictory()
+        {
+            _game.Summary.VictoryCondition = GameVictoryCondition.Headquarters;
+            _faction.Settings.Headquarters = new HeadquartersSettings();
+            _faction.HQInstanceID = _planet.InstanceID;
+            _planet.IsHeadquarters = true;
+            Faction opponent = new Faction { InstanceID = "opponent" };
+            _game.GetFactions().Add(opponent);
+            Planet opponentHeadquarters = new Planet
+            {
+                InstanceID = "opponent-headquarters",
+                OwnerInstanceID = opponent.InstanceID,
+                IsColonized = true,
+                IsHeadquarters = true,
+            };
+            _game.AttachNode(opponentHeadquarters, _planet.GetParent());
+            opponent.HQInstanceID = opponentHeadquarters.InstanceID;
+            HeadquartersLostResult loss = null;
+            VictoryResult victory = null;
+            _session.Pipeline.HeadquartersLost += result => loss = result;
+            _session.Pipeline.VictoryDeclared += result => victory = result;
+            PlanetOwnershipChangedResult ownership = _session
+                .GetService<PlanetaryControlCommands>()
+                .ClearPlanetOwnership(_planet);
+
+            _session.Pipeline.ProcessImmediate(new[] { ownership });
+
+            Assert.IsInstanceOf<HeadquartersNeutralizedResult>(loss);
+            Assert.AreSame(_faction, loss.Defender);
+            Assert.IsNull(loss.Attacker);
+            Assert.AreSame(opponent, victory.Winner);
+        }
+
+        [Test]
         public void ProcessResults_SabotagedMobileHeadquarters_DeclaresVictory()
         {
             (Faction attacker, Building headquarters) = ConfigureMobileHeadquartersVictory();

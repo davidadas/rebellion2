@@ -385,13 +385,13 @@ namespace Rebellion.Gameplay
             Planet planet = result?.Planet;
             Faction previousOwner = result?.PreviousOwner;
             Faction newOwner = result?.NewOwner;
-            HeadquartersCapturedResult captured = UpdateFixedHeadquartersMarker(
+            HeadquartersLostResult loss = UpdateFixedHeadquartersMarker(
                 planet,
                 previousOwner,
                 newOwner
             );
-            if (captured != null)
-                reactions.Add(captured);
+            if (loss != null)
+                reactions.Add(loss);
 
             if (
                 previousOwner?.Settings?.Headquarters?.IsMobile != true
@@ -431,8 +431,8 @@ namespace Rebellion.Gameplay
         /// <param name="planet">The planet whose ownership changed.</param>
         /// <param name="previousOwner">The previous controller.</param>
         /// <param name="newOwner">The new controller, or null.</param>
-        /// <returns>A capture result for an enemy takeover, or null.</returns>
-        private HeadquartersCapturedResult UpdateFixedHeadquartersMarker(
+        /// <returns>A headquarters-loss result for a takeover or neutralization, or null.</returns>
+        private HeadquartersLostResult UpdateFixedHeadquartersMarker(
             Planet planet,
             Faction previousOwner,
             Faction newOwner
@@ -452,12 +452,18 @@ namespace Rebellion.Gameplay
 
             planet.IsHeadquarters = newOwner == headquartersFaction;
             headquartersFaction.HasLostHeadquarters = newOwner != headquartersFaction;
-            if (
-                previousOwner != headquartersFaction
-                || newOwner == null
-                || newOwner == headquartersFaction
-            )
+            if (previousOwner != headquartersFaction || newOwner == headquartersFaction)
                 return null;
+
+            if (newOwner == null)
+            {
+                return new HeadquartersNeutralizedResult
+                {
+                    Planet = planet,
+                    Defender = headquartersFaction,
+                    Tick = _game.CurrentTick,
+                };
+            }
 
             return new HeadquartersCapturedResult
             {
