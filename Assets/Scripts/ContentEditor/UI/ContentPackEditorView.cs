@@ -1125,6 +1125,39 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         );
 
     /// <summary>
+    /// Displays successful validation or export with reviewable, non-blocking warnings.
+    /// </summary>
+    /// <param name="message">The successful operation's result.</param>
+    /// <param name="warnings">Warnings from the effective staged content.</param>
+    public void RenderValidationResult(string message, IReadOnlyList<string> warnings)
+    {
+        string count = warnings.Count == 1 ? "1 warning." : $"{warnings.Count} warnings.";
+        RenderStatus(warnings.Count == 0 ? message : $"{message} {count}", false);
+        if (warnings.Count > 0)
+            ShowValidationWarning(warnings, 0);
+    }
+
+    /// <summary>
+    /// Presents one warning at a time so large packs cannot overflow a fixed dialog.
+    /// </summary>
+    /// <param name="warnings">The operation's completed warning list.</param>
+    /// <param name="index">The warning to display.</param>
+    private void ShowValidationWarning(IReadOnlyList<string> warnings, int index)
+    {
+        bool hasNext = index + 1 < warnings.Count;
+        confirmation.Show(
+            warnings[index],
+            hasNext ? "Next" : "Close",
+            () =>
+            {
+                if (hasNext)
+                    ShowValidationWarning(warnings, index + 1);
+            },
+            title: $"Content pack warning {index + 1} of {warnings.Count}"
+        );
+    }
+
+    /// <summary>
     /// Routes desktop key events through the same intents as menu actions, including rapid repeats.
     /// </summary>
     /// <param name="key">The incoming native key event.</param>
