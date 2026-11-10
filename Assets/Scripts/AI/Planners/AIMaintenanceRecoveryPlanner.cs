@@ -141,7 +141,8 @@ namespace Rebellion.AI.Planners
                     unit =>
                         unit is CapitalShip ship
                             ? SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstStarfighters(
-                                ship
+                                ship,
+                                context.Game.Config.Combat.SpaceCombat
                             )
                         : unit is Starfighter fighter
                             ? SpaceCombatStrengthCalculator.GetStarfighterFirepowerAgainstStarfighters(

@@ -12,8 +12,7 @@ namespace Rebellion.Gameplay
     {
         private const int _capitalFirepowerScale = 100;
         private const int _laserCapitalFirepowerDivisor = 6;
-        private const int _fighterTargetLaserWeight = 10;
-        private const int _fighterTargetTurbolaserWeight = 5;
+        private const int _fighterTargetWeaponScale = 10;
         private const int _fighterSpeedDivisor = 8;
 
         /// <summary>
@@ -210,15 +209,21 @@ namespace Rebellion.Gameplay
         /// <param name="laserCannonCapitalDamageMultiplier">
         /// The configured capital-target damage multiplier for laser cannons.
         /// </param>
+        /// <param name="turbolaserFighterDamageMultiplier">
+        /// The configured fighter-target damage multiplier for turbolasers.
+        /// </param>
         /// <returns>The target-specific damage multiplier.</returns>
         internal static double GetPrimaryWeaponTargetMultiplier(
             PrimaryWeaponType weaponType,
             bool targetsFighters,
-            double laserCannonCapitalDamageMultiplier
+            double laserCannonCapitalDamageMultiplier,
+            double turbolaserFighterDamageMultiplier
         )
         {
             if (weaponType == PrimaryWeaponType.IonCannon && targetsFighters)
                 return 0;
+            if (weaponType == PrimaryWeaponType.Turbolaser && targetsFighters)
+                return Math.Max(0, turbolaserFighterDamageMultiplier);
             if (weaponType == PrimaryWeaponType.LaserCannon && !targetsFighters)
                 return Math.Max(0, laserCannonCapitalDamageMultiplier);
             return 1;
@@ -244,7 +249,8 @@ namespace Rebellion.Gameplay
                 * GetPrimaryWeaponTargetMultiplier(
                     weaponEntry.Key,
                     targetsFighters: false,
-                    config.LaserCannonCapitalDamageMultiplier
+                    config.LaserCannonCapitalDamageMultiplier,
+                    config.TurbolaserFighterDamageMultiplier
                 )
             );
             long durability = Math.Max(0L, hullStrength) + Math.Max(0L, ship.MaxShieldStrength);
@@ -303,14 +309,22 @@ namespace Rebellion.Gameplay
         /// Returns a capital ship's strongest-arc firepower against starfighters.
         /// </summary>
         /// <param name="ship">The capital ship to inspect.</param>
+        /// <param name="config">The space-combat rules.</param>
         /// <returns>The fighter-target firepower.</returns>
-        internal static int GetCapitalShipFirepowerAgainstStarfighters(CapitalShip ship)
+        internal static int GetCapitalShipFirepowerAgainstStarfighters(
+            CapitalShip ship,
+            GameConfig.SpaceCombatConfig config
+        )
         {
+            if (config == null)
+                return 0;
+
             return GetStrongestArcFirepower(
                 ship,
-                turbolaserWeight: _fighterTargetTurbolaserWeight,
+                turbolaserWeight: _fighterTargetWeaponScale
+                    * Math.Max(0, config.TurbolaserFighterDamageMultiplier),
                 ionCannonWeight: 0,
-                laserCannonWeight: _fighterTargetLaserWeight,
+                laserCannonWeight: _fighterTargetWeaponScale,
                 weightDivisor: 1,
                 maneuverMultiplier: Math.Max(0, ship?.Maneuverability ?? 0)
             );
@@ -320,11 +334,12 @@ namespace Rebellion.Gameplay
         /// Returns whether a ship is an armed escort without bombardment or interdiction capability.
         /// </summary>
         /// <param name="ship">The capital ship to inspect.</param>
+        /// <param name="config">The space-combat rules.</param>
         /// <returns>True when the ship satisfies the armed escort capability.</returns>
-        internal static bool IsArmedEscort(CapitalShip ship)
+        internal static bool IsArmedEscort(CapitalShip ship, GameConfig.SpaceCombatConfig config)
         {
             return ship is { Bombardment: <= 0, HasGravityWell: false }
-                && GetCapitalShipFirepowerAgainstStarfighters(ship) > 0;
+                && GetCapitalShipFirepowerAgainstStarfighters(ship, config) > 0;
         }
 
         /// <summary>
@@ -417,17 +432,17 @@ namespace Rebellion.Gameplay
         /// <returns>The strongest-arc firepower.</returns>
         private static int GetStrongestArcFirepower(
             CapitalShip ship,
-            int turbolaserWeight,
-            int ionCannonWeight,
-            int laserCannonWeight,
-            int weightDivisor,
-            int maneuverMultiplier
+            double turbolaserWeight,
+            double ionCannonWeight,
+            double laserCannonWeight,
+            double weightDivisor,
+            double maneuverMultiplier
         )
         {
             if (ship == null)
                 return 0;
 
-            long strongestWeighted = 0;
+            double strongestWeighted = 0;
             int strongestWeaponCount = 0;
             foreach (PrimaryWeaponArc arc in CapitalShip.PrimaryWeaponArcs)
             {
@@ -435,10 +450,10 @@ namespace Rebellion.Gameplay
                 int turbolasers = GetWeaponArcValue(ship, PrimaryWeaponType.Turbolaser, arcIndex);
                 int ionCannons = GetWeaponArcValue(ship, PrimaryWeaponType.IonCannon, arcIndex);
                 int laserCannons = GetWeaponArcValue(ship, PrimaryWeaponType.LaserCannon, arcIndex);
-                long weighted =
-                    (long)turbolasers * turbolaserWeight
-                    + (long)ionCannons * ionCannonWeight
-                    + (long)laserCannons * laserCannonWeight;
+                double weighted =
+                    turbolasers * turbolaserWeight
+                    + ionCannons * ionCannonWeight
+                    + laserCannons * laserCannonWeight;
                 if (weighted <= strongestWeighted)
                     continue;
 
@@ -452,7 +467,7 @@ namespace Rebellion.Gameplay
             if (strongestWeighted <= 0 || strongestWeaponCount <= 0)
                 return 0;
 
-            long value =
+            double value =
                 strongestWeighted
                 * Math.Max(0, ship.WeaponRecharge)
                 * Math.Max(0, maneuverMultiplier)
@@ -583,7 +598,7 @@ namespace Rebellion.Gameplay
                     return 0;
 
                 long baseValue =
-                    (long)Math.Max(0, fighter.Agility) * count * _fighterTargetLaserWeight;
+                    (long)Math.Max(0, fighter.Agility) * count * _fighterTargetWeaponScale;
                 long value =
                     baseValue
                     + (long)Math.Max(0, fighter.SublightSpeed) * baseValue / _fighterSpeedDivisor;

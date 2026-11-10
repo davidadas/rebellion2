@@ -352,6 +352,25 @@ namespace Rebellion.AI
         public int UnfinishedPlanetStarfighterCount { get; }
 
         /// <summary>
+        /// Returns a capital ship's fighter-target firepower under the current combat rules.
+        /// </summary>
+        /// <param name="ship">The capital ship to inspect.</param>
+        /// <returns>The fighter-target firepower.</returns>
+        internal int GetCapitalShipFirepowerAgainstStarfighters(CapitalShip ship) =>
+            SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstStarfighters(
+                ship,
+                _game.Config.Combat.SpaceCombat
+            );
+
+        /// <summary>
+        /// Returns whether a capital ship satisfies the armed-escort capability under current rules.
+        /// </summary>
+        /// <param name="ship">The capital ship to inspect.</param>
+        /// <returns>True when the ship satisfies the armed-escort capability.</returns>
+        internal bool IsArmedEscort(CapitalShip ship) =>
+            SpaceCombatStrengthCalculator.IsArmedEscort(ship, _game.Config.Combat.SpaceCombat);
+
+        /// <summary>
         /// Measures the strongest hostile owner's combined orbital defenders expected at arrival.
         /// Each fleet is counted once using its latest indexed observation.
         /// </summary>
@@ -456,12 +475,7 @@ namespace Rebellion.AI
                                 )
                         );
                     ownerFighterFirepower +=
-                        ships.Sum(ship =>
-                            (long)
-                                SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstStarfighters(
-                                    ship
-                                )
-                        )
+                        ships.Sum(ship => (long)GetCapitalShipFirepowerAgainstStarfighters(ship))
                         + carried.Sum(fighter =>
                             (long)
                                 SpaceCombatStrengthCalculator.GetStarfighterFirepowerAgainstStarfighters(
@@ -2802,9 +2816,7 @@ namespace Rebellion.AI
                 AddIndexedAmount(
                     _readyStarfighterFirepowerByFleetId,
                     fleetId,
-                    SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstStarfighters(
-                        capitalShip
-                    )
+                    GetCapitalShipFirepowerAgainstStarfighters(capitalShip)
                 );
             }
 
@@ -2820,11 +2832,9 @@ namespace Rebellion.AI
                 AddIndexedAmount(
                     _projectedStarfighterFirepowerByFleetId,
                     fleetId,
-                    SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstStarfighters(
-                        capitalShip
-                    )
+                    GetCapitalShipFirepowerAgainstStarfighters(capitalShip)
                 );
-                if (SpaceCombatStrengthCalculator.IsArmedEscort(capitalShip))
+                if (IsArmedEscort(capitalShip))
                     AddIndexedAmount(_projectedArmedEscortCountByFleetId, fleetId, 1);
                 if (capitalShip.HasGravityWell)
                     AddIndexedAmount(_projectedInterdictionCountByFleetId, fleetId, 1);
