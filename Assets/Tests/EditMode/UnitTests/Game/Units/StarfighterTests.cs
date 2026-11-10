@@ -482,6 +482,8 @@ namespace Rebellion.Tests.Game.Units
         public void SerializeAndDeserialize_WithPopulatedStarfighter_MaintainsState()
         {
             _starfighter.ManufacturingQueueSequence = 7;
+            _starfighter.NextReplacementTick = 42;
+            _starfighter.ReplacementIntervalTicks = 30;
             string serialized = SerializationHelper.Serialize(_starfighter);
             Starfighter deserialized = SerializationHelper.Deserialize<Starfighter>(serialized);
 
@@ -525,6 +527,11 @@ namespace Rebellion.Tests.Game.Units
                 _starfighter.CurrentSquadronSize,
                 deserialized.CurrentSquadronSize,
                 "SquadronSize should be correctly deserialized."
+            );
+            Assert.AreEqual(_starfighter.NextReplacementTick, deserialized.NextReplacementTick);
+            Assert.AreEqual(
+                _starfighter.ReplacementIntervalTicks,
+                deserialized.ReplacementIntervalTicks
             );
             Assert.AreEqual(
                 _starfighter.DetectionRating,
