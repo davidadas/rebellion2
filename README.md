@@ -19,7 +19,7 @@ Rebellion 2 is available in early access for Windows, macOS, and Linux.
       <sub>64-bit Windows installer</sub>
     </td>
     <td align="center" width="33%">
-      <a href="https://github.com/adasgames/rebellion2-installers/releases/latest/download/Rebellion2-macOS.zip">
+      <a href="https://github.com/adasgames/rebellion2-installers/releases/download/latest-macos-download/Rebellion2-macOS.zip">
         <img src="Docs/Assets/apple.svg" width="64" alt="macOS"><br>
         <strong>Download latest for macOS</strong>
       </a><br>
