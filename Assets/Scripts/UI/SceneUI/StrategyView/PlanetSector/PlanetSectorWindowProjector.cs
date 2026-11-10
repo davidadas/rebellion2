@@ -447,7 +447,7 @@ internal sealed class PlanetSectorWindowProjector
             return new PlanetSectorBarRenderData(
                 true,
                 0,
-                0,
+                energyUsed,
                 1f,
                 _energyEmptyColor,
                 Color.clear,
@@ -459,7 +459,7 @@ internal sealed class PlanetSectorWindowProjector
         return new PlanetSectorBarRenderData(
             true,
             planet.EnergyCapacity,
-            Mathf.Min(energyUsed, planet.EnergyCapacity),
+            energyUsed,
             0f,
             _energyCapacityColor,
             _energyAvailableColor,

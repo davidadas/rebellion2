@@ -45,6 +45,41 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             UnityEngine.Object.DestroyImmediate(_texture);
         }
 
+        [TestCase(15, 15, false)]
+        [TestCase(16, 15, true)]
+        [TestCase(15, 16, true)]
+        [TestCase(0, 0, false)]
+        public void Constructor_ResourceBarCapacity_UsesNumbersOnlyAboveFifteen(
+            int energyTotal,
+            int rawTotal,
+            bool expected
+        )
+        {
+            PlanetSectorPlanetRenderData planet = CreatePlanetData(
+                new PlanetSectorBarRenderData(
+                    true,
+                    energyTotal,
+                    0,
+                    0f,
+                    Color.white,
+                    Color.blue,
+                    Color.gray
+                ),
+                new PlanetSectorBarRenderData(
+                    true,
+                    rawTotal,
+                    0,
+                    0f,
+                    Color.yellow,
+                    Color.red,
+                    Color.gray
+                ),
+                _bar
+            );
+
+            Assert.AreEqual(expected, planet.UseResourceValues);
+        }
+
         [Test]
         public void Window_SourceChanges_PreservesReadOnlyPlanetSnapshot()
         {
