@@ -39,9 +39,7 @@ namespace Rebellion.Multiplayer
         /// </summary>
         /// <returns>The recovery store in the selected application save directory.</returns>
         private MultiplayerRecoveryStore GetRecoveryStore() =>
-            new MultiplayerRecoveryStore(
-                (_runtime?.GetSaveGameManager() ?? SaveGameManager.Instance).GetSaveDirectoryPath()
-            );
+            new MultiplayerRecoveryStore(_saveGames.GetSaveDirectoryPath());
 
         /// <summary>
         /// Requests one continuation after an existing shared save or load completes.
@@ -107,7 +105,7 @@ namespace Rebellion.Multiplayer
                 GameRoot state = GetRecoveryStore().ReadState(_backend.LocalUserID);
                 record.ValidateState(state);
                 _hostSummary = state.Summary;
-                ContentPack active = AppBootstrap.EnsureExists().GetContentPack();
+                ContentPack active = _getActiveContent();
                 _lobbyContent = await Task.Run(() =>
                     SaveContentResolver.Open(active, _hostSummary)
                 );
@@ -141,18 +139,18 @@ namespace Rebellion.Multiplayer
         private void EndForPeerDeparture()
         {
             if (
-                _runtime?.GetActiveGameSession() == null
-                || LoadingScreenController.IsLoadInProgress
+                _sessionManager?.GetActiveGameSession() == null
+                || _isContentTransitionInProgress()
                 || IsTransferringScene
             )
             {
-                bool interruptedLaunch = LoadingScreenController.IsLoadInProgress;
-                _runtime?.BlockGameOperations();
-                _runtime?.GetActiveGameManager()?.ApplyGameSpeed(TickSpeed.Paused);
+                bool interruptedLaunch = _isContentTransitionInProgress();
+                _sessionManager?.BlockGameOperations();
+                _sessionManager?.GetActiveGameManager()?.ApplyGameSpeed(TickSpeed.Paused);
                 SessionEndNotice.ShowOpponentDeparture();
                 Disconnect();
                 if (interruptedLaunch)
-                    AppBootstrap.RecoverInterruptedMultiplayerLoad();
+                    _recoverInterruptedLoad(null);
                 return;
             }
             _synchronizationReady = false;
@@ -166,17 +164,17 @@ namespace Rebellion.Multiplayer
             _pendingInitialSnapshot = null;
             _snapshotAdmission.Clear();
             _remoteReady = false;
-            _runtime.BlockGameOperations();
+            _sessionManager.BlockGameOperations();
             ReleaseGameplay();
-            _readyPresentationSession = _runtime.GetActiveGameSession();
-            BindLocalRecoveryPersistence();
-            _runtime.GetActiveGameManager().BindSpeedRequests(RequestGameSpeed);
+            _readyPresentationSession = _sessionManager.GetActiveGameSession();
+            PrepareDisconnectedSaves();
+            _sessionManager.GetActiveGameManager().BindSpeedRequests(RequestGameSpeed);
             _peer = OpenRecoveryPeer();
             SetStatus(CreateRejoinNotice());
         }
 
         /// <summary>
-        /// Admits the campaign's saved counterpart without requiring a surviving lobby membership.
+        /// Admits the saved counterpart without lobby membership, with only the guest initiating.
         /// </summary>
         /// <returns>The campaign-scoped authenticated connection.</returns>
         private IMultiplayerPeer OpenRecoveryPeer()
@@ -190,32 +188,30 @@ namespace Rebellion.Multiplayer
             return _backend.OpenRecoveryPeer(
                 record.campaignID,
                 counterpart,
-                _returningToRecovery || _role == MultiplayerRole.Guest
+                _role == MultiplayerRole.Guest
             );
         }
 
         /// <summary>
         /// Gives the surviving session local save ownership without admitting independent loads or orders.
         /// </summary>
-        private void BindLocalRecoveryPersistence()
+        private void PrepareDisconnectedSaves()
         {
-            var runtime = _runtime;
+            var runtime = _sessionManager;
             GameSession session = runtime.GetActiveGameSession();
-            runtime.BindPersistenceCoordinator(
-                new MultiplayerLocalPersistence(
-                    runtime,
-                    _role,
-                    () =>
-                    {
-                        if (
-                            !_disposed
-                            && _waitingForRejoin
-                            && ReferenceEquals(_runtime, runtime)
-                            && ReferenceEquals(runtime.GetActiveGameSession(), session)
-                        )
-                            RequestRecoveryCheckpoint();
-                    }
-                )
+            _localSaves = new MultiplayerDisconnectedSaves(
+                runtime,
+                _role,
+                () =>
+                {
+                    if (
+                        !_disposed
+                        && _waitingForRejoin
+                        && ReferenceEquals(_sessionManager, runtime)
+                        && ReferenceEquals(runtime.GetActiveGameSession(), session)
+                    )
+                        RequestRecoveryCheckpoint();
+                }
             );
         }
 
@@ -233,7 +229,7 @@ namespace Rebellion.Multiplayer
         /// </summary>
         private void ProcessRejoinRecovery()
         {
-            GameSession session = _runtime?.GetActiveGameSession();
+            GameSession session = _sessionManager?.GetActiveGameSession();
             if (session == null || !ReferenceEquals(_readyPresentationSession, session))
                 return;
             if (_recoveryPausePending)
@@ -254,7 +250,7 @@ namespace Rebellion.Multiplayer
                     }
                 }
                 _recoveryPausePending = false;
-                _runtime.GetActiveGameManager().ApplyGameSpeed(TickSpeed.Paused);
+                _sessionManager.GetActiveGameManager().ApplyGameSpeed(TickSpeed.Paused);
                 foreach (Player player in session.Game.GetPlayers())
                 {
                     if (player.ControllerType != PlayerControllerType.Human)
@@ -264,9 +260,9 @@ namespace Rebellion.Multiplayer
                         player.GameSpeedSelectionRevision + 1
                     );
                 }
-                _runtime.ResumeMultiplayerOperations();
+                _sessionManager.ResumeMultiplayerOperations();
                 if (ReferenceEquals(_readyPresentationSession, session))
-                    _runtime.NotifyGameStateChanged();
+                    _sessionManager.NotifyGameStateChanged();
             }
             if (!session.CanCaptureSettledState)
                 return;
@@ -359,7 +355,7 @@ namespace Rebellion.Multiplayer
         /// <returns>The account-bound checkpoint identity and content contract.</returns>
         private MultiplayerRecoveryRecord CreateRecoveryRecord(string hash)
         {
-            GameRoot game = _runtime.GetActiveGame();
+            GameRoot game = _sessionManager.GetActiveGame();
             MultiplayerCampaignIdentity identity = game.Metadata.MultiplayerCampaign;
             return new MultiplayerRecoveryRecord
             {
@@ -413,10 +409,16 @@ namespace Rebellion.Multiplayer
                         hello.returningToRecovery
                     )
                 )
+                {
+                    SendHello();
                     return;
+                }
                 if (
-                    _runtime?.GetActiveGameSession()?.CanCaptureSettledState != true
-                    || !ReferenceEquals(_readyPresentationSession, _runtime.GetActiveGameSession())
+                    _sessionManager?.GetActiveGameSession()?.CanCaptureSettledState != true
+                    || !ReferenceEquals(
+                        _readyPresentationSession,
+                        _sessionManager.GetActiveGameSession()
+                    )
                     || _recoveryPausePending
                     || _checkpointPending
                 )
@@ -477,14 +479,17 @@ namespace Rebellion.Multiplayer
         /// <param name="packet">The survivor's complete recovery offer.</param>
         private void HandleRecoveryWelcome(MultiplayerPacket packet)
         {
-            bool livePeer = _waitingForRejoin && !_recoveryOfferSent && _runtime != null;
+            bool livePeer = _waitingForRejoin && !_recoveryOfferSent && _sessionManager != null;
             if ((!_returningToRecovery && !livePeer) || _recoveryRecord == null)
                 throw new InvalidOperationException("No campaign recovery is being negotiated.");
             if (
                 _launchConfiguration != null
                 && (
-                    _runtime?.GetActiveGameSession()?.CanExecuteCommands != true
-                    || !ReferenceEquals(_readyPresentationSession, _runtime.GetActiveGameSession())
+                    _sessionManager?.GetActiveGameSession()?.CanExecuteCommands != true
+                    || !ReferenceEquals(
+                        _readyPresentationSession,
+                        _sessionManager.GetActiveGameSession()
+                    )
                 )
             )
             {
@@ -520,12 +525,12 @@ namespace Rebellion.Multiplayer
             {
                 ConfigureGame(state);
                 ReplaceGame(state);
-                _runtime.GetActiveGameManager().BindSpeedRequests(RequestGameSpeed);
+                _sessionManager.GetActiveGameManager().BindSpeedRequests(RequestGameSpeed);
                 _recoveryPausePending = false;
                 _checkpointPending = false;
                 _recoveryOfferSent = true;
                 SetStatus("Synchronizing the game");
-                NotifyPresentationReady(_runtime);
+                NotifyPresentationReady(_sessionManager);
                 return;
             }
             PrepareRecoveryContent(state);
@@ -541,7 +546,7 @@ namespace Rebellion.Multiplayer
             IMultiplayerPeer receivingPeer = _peer;
             try
             {
-                ContentPack active = AppBootstrap.EnsureExists().GetContentPack();
+                ContentPack active = _getActiveContent();
                 ContentPack content = await Task.Run(() =>
                     SaveContentResolver.Open(active, state.Summary)
                 );
@@ -591,7 +596,7 @@ namespace Rebellion.Multiplayer
                 state
             );
             SetStatus("Rejoining the paused game");
-            LaunchRequested?.Invoke(_launchConfiguration);
+            LaunchGame(_lobbyContent, _launchConfiguration);
         }
 
         /// <summary>

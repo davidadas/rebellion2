@@ -3,30 +3,35 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Rebellion.Game;
-using Rebellion.Persistence;
 
 namespace Rebellion.Multiplayer
 {
     /// <summary>
     /// Owns shared checkpoint storage, participant namespaces, and agreed saved-game scene transfers.
     /// </summary>
-    public sealed partial class MultiplayerCoordinator : IGamePersistenceCoordinator
+    public sealed partial class MultiplayerCoordinator
     {
-        private MultiplayerPersistenceSession _persistence;
+        private MultiplayerSaveProtocol _saveProtocol;
+        private MultiplayerDisconnectedSaves _localSaves;
         private UserGameplaySettings _hostAutosaveSettings;
-        private GameRoot _persistenceLoadedGame;
-        private ContentPack _persistenceContent;
+        private GameRoot _loadedSave;
+        private ContentPack _loadedSaveContent;
 
         /// <summary>
         /// Gets whether the admitted connection owns an agreed transition between strategy scenes.
         /// </summary>
-        public bool IsTransferringScene => _persistence?.IsTransferringScene == true;
+        public bool IsTransferringScene => _saveProtocol?.IsTransferringScene == true;
 
         /// <summary>
         /// Gets whether either admitted player can queue a save for the next settled checkpoint boundary.
         /// </summary>
         public bool CanRequestSave =>
-            _synchronizationReady && _runtime != null && _persistence != null && Failure == null;
+            _localSaves != null
+                ? _localSaves.CanRequestSave
+                : _synchronizationReady
+                    && _sessionManager != null
+                    && _saveProtocol != null
+                    && Failure == null;
 
         /// <summary>
         /// Preserves this participant's live presentation before notifying the scene of a replacement.
@@ -34,26 +39,22 @@ namespace Rebellion.Multiplayer
         /// <param name="game">The configured incoming graph with authenticated participant ownership.</param>
         private void ReplaceGame(GameRoot game)
         {
-            _runtime.ValidateGameContent(game);
-            GameRoot current = _runtime.GetActiveGame();
+            GameRoot current = _sessionManager.GetActiveGame();
             LocalPlayerPresentationState presentation = LocalPlayerPresentationState.Capture(
                 current,
                 current.LocalPlayerFactionID
             );
             presentation?.TryRestore(game, game.LocalPlayerFactionID);
-            _runtime.ReplaceGame(game);
+            _sessionManager.ReplaceGame(game);
         }
 
         /// <summary>
         /// Lists this role's multiplayer copies while retaining single-player sources for promotion.
         /// </summary>
-        /// <param name="store">The persistence store owned by the requesting interface.</param>
         /// <returns>The visible local save entries.</returns>
-        public IReadOnlyList<SaveGameEntry> GetVisibleSavedGames(SaveGameManager store)
+        public IReadOnlyList<SaveGameEntry> GetVisibleSavedGames()
         {
-            if (store == null)
-                throw new ArgumentNullException(nameof(store));
-            return store.GetSavedGames(
+            return _saveGames.GetSavedGames(
                 _role switch
                 {
                     MultiplayerRole.Host => true,
@@ -71,9 +72,11 @@ namespace Rebellion.Multiplayer
         /// <returns>True only after both copies have been acknowledged.</returns>
         public Task<bool> SaveGameAsync(string fileName, string displayName)
         {
-            if (!_synchronizationReady || _runtime == null || _persistence == null)
+            if (_localSaves != null)
+                return _localSaves.SaveGameAsync(fileName, displayName);
+            if (!_synchronizationReady || _sessionManager == null || _saveProtocol == null)
                 return Task.FromResult(false);
-            return _persistence.RequestAsync(fileName, displayName, false);
+            return _saveProtocol.RequestAsync(fileName, displayName, false);
         }
 
         /// <summary>
@@ -83,10 +86,10 @@ namespace Rebellion.Multiplayer
         /// <returns>True only after the replacement game's state handshake completes.</returns>
         public async Task<bool> LoadGameAsync(string fileName)
         {
-            if (!_synchronizationReady || _runtime == null || _persistence == null)
+            if (!_synchronizationReady || _sessionManager == null || _saveProtocol == null)
                 return false;
-            MultiplayerPersistenceSession owner = _persistence;
-            GameRuntime runtime = _runtime;
+            MultiplayerSaveProtocol owner = _saveProtocol;
+            GameSessionManager runtime = _sessionManager;
             var cancellationToken = _sessionCancellation.Token;
             MultiplayerSnapshot source = null;
             if (_role == MultiplayerRole.Guest)
@@ -99,11 +102,12 @@ namespace Rebellion.Multiplayer
                             fileName
                         )
                         : fileName;
-                GameRoot selected = await runtime
-                    .GetSaveGameManager()
-                    .LoadGameDataAsync(localFileName);
+                GameRoot selected = await _saveGames.LoadGameDataAsync(localFileName);
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!ReferenceEquals(_persistence, owner) || !ReferenceEquals(_runtime, runtime))
+                if (
+                    !ReferenceEquals(_saveProtocol, owner)
+                    || !ReferenceEquals(_sessionManager, runtime)
+                )
                     throw new OperationCanceledException(
                         "The requesting game no longer owns this load."
                     );
@@ -121,11 +125,11 @@ namespace Rebellion.Multiplayer
             if (
                 _role != MultiplayerRole.Host
                 || !_synchronizationReady
-                || _persistence == null
+                || _saveProtocol == null
                 || settings?.AutosaveEnabled != true
                 || settings.AutosaveIntervalTicks <= 0
-                || _runtime.GetActiveGame().CurrentTick <= 0
-                || _runtime.GetActiveGame().CurrentTick % settings.AutosaveIntervalTicks != 0
+                || _sessionManager.GetActiveGame().CurrentTick <= 0
+                || _sessionManager.GetActiveGame().CurrentTick % settings.AutosaveIntervalTicks != 0
             )
                 return;
             _hostAutosaveSettings = new UserGameplaySettings
@@ -134,57 +138,57 @@ namespace Rebellion.Multiplayer
                 AutosaveIntervalTicks = settings.AutosaveIntervalTicks,
                 AutosavesToKeep = settings.AutosavesToKeep,
             };
-            _persistence.RequestAutosave();
+            _saveProtocol.RequestAutosave();
         }
 
         /// <summary>
         /// Releases the outgoing scene's core while retaining the admitted connection and load completion.
         /// </summary>
         /// <param name="runtime">The outgoing scene's runtime owner.</param>
-        public void DetachGameForSceneTransfer(GameRuntime runtime)
+        public void DetachGameForSceneTransfer(GameSessionManager runtime)
         {
-            if (!IsTransferringScene || !ReferenceEquals(_runtime, runtime))
+            if (!IsTransferringScene || !ReferenceEquals(_sessionManager, runtime))
                 return;
-            _gameSession?.Dispose();
-            _gameSession = null;
-            _runtime?.GetActiveGameManager()?.UnbindSpeedRequests();
-            _runtime?.UnbindPersistenceCoordinator();
-            _runtime = null;
+            _turnProtocol?.Dispose();
+            _turnProtocol = null;
+            _sessionManager?.GetActiveGameManager()?.UnbindSpeedRequests();
+            _localSaves = null;
+            _sessionManager = null;
             _synchronizationReady = false;
         }
 
         /// <summary>
         /// Creates the connection-owned persistence protocol once, including across an agreed scene transfer.
         /// </summary>
-        private void EnsurePersistenceSession()
+        private void EnsureSaveProtocol()
         {
-            if (_persistence != null)
+            if (_saveProtocol != null)
                 return;
-            _persistence = new MultiplayerPersistenceSession(
+            _saveProtocol = new MultiplayerSaveProtocol(
                 _role,
                 QueueSend,
-                CanCheckpointPersistence,
+                CanCaptureSharedSave,
                 PrepareHostCheckpointAsync,
                 PrepareGuestCheckpointAsync,
                 BeginPersistenceTransfer,
                 _initializationID
             );
-            _persistence.Faulted += HandleGameplayFailure;
-            _persistence.CheckpointCompleted += RequestRecoveryCheckpoint;
+            _saveProtocol.Faulted += HandleGameplayFailure;
+            _saveProtocol.CheckpointCompleted += RequestRecoveryCheckpoint;
         }
 
         /// <summary>
         /// Uses the existing day and action receipt boundary without traversing the scene graph.
         /// </summary>
         /// <returns>True when this participant has reached the host's reserved checkpoint position.</returns>
-        private bool CanCheckpointPersistence()
+        private bool CanCaptureSharedSave()
         {
             return _synchronizationReady
-                && _runtime?.CanSave == true
+                && _sessionManager?.CanSave == true
                 && (
                     _role == MultiplayerRole.Host
-                        ? _gameSession?.CanBeginHostTick == true
-                        : _gameSession != null
+                        ? _turnProtocol?.CanBeginHostTick == true
+                        : _turnProtocol != null
                 );
         }
 
@@ -277,26 +281,29 @@ namespace Rebellion.Multiplayer
         /// <param name="command">The operation reserved after both cores settled.</param>
         /// <param name="sourcePayload">The requesting guest's saved-world bytes, or null for host-selected storage.</param>
         /// <returns>The exact metadata or saved-state payload sent to the admitted guest.</returns>
-        private async Task<MultiplayerPersistenceCheckpoint> PrepareHostCheckpointAsync(
-            MultiplayerPersistenceCommand command,
+        private async Task<MultiplayerSaveCheckpoint> PrepareHostCheckpointAsync(
+            MultiplayerSaveRequest command,
             byte[] sourcePayload
         )
         {
-            GameRuntime runtime = _runtime;
-            MultiplayerPersistenceSession owner = _persistence;
-            SaveGameManager store = runtime.GetSaveGameManager();
+            GameSessionManager runtime = _sessionManager;
+            MultiplayerSaveProtocol owner = _saveProtocol;
+            SaveGameManager store = _saveGames;
             var cancellationToken = _sessionCancellation.Token;
             if (command.load)
             {
                 GameRoot game = command.guestRequest
                     ? MultiplayerSnapshotCodec.Restore(sourcePayload, command.snapshotHash)
                     : await store.LoadGameDataAsync(ResolveHostLoadFileName(command.fileName));
-                ContentPack active = AppBootstrap.EnsureExists().GetContentPack();
+                ContentPack active = _getActiveContent();
                 ContentPack content = await Task.Run(() =>
                     SaveContentResolver.Resolve(active, game.Metadata).Pack
                 );
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!ReferenceEquals(_runtime, runtime) || !ReferenceEquals(_persistence, owner))
+                if (
+                    !ReferenceEquals(_sessionManager, runtime)
+                    || !ReferenceEquals(_saveProtocol, owner)
+                )
                     throw new OperationCanceledException(
                         "The outgoing game no longer owns this load."
                     );
@@ -312,17 +319,20 @@ namespace Rebellion.Multiplayer
                         owner
                     );
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!ReferenceEquals(_runtime, runtime) || !ReferenceEquals(_persistence, owner))
+                if (
+                    !ReferenceEquals(_sessionManager, runtime)
+                    || !ReferenceEquals(_saveProtocol, owner)
+                )
                     throw new OperationCanceledException(
                         "The outgoing game no longer owns this load."
                     );
-                _persistenceLoadedGame = game;
-                _persistenceContent = content;
+                _loadedSave = game;
+                _loadedSaveContent = content;
                 MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(game);
                 command.snapshotHash = snapshot.Hash;
                 command.simulationBuild = MultiplayerCompatibility.SimulationBuild;
                 command.gameplayContent = GetGameplayContentIdentity(content);
-                return new MultiplayerPersistenceCheckpoint
+                return new MultiplayerSaveCheckpoint
                 {
                     Command = command,
                     Payload = snapshot.Payload,
@@ -360,15 +370,13 @@ namespace Rebellion.Multiplayer
                         : "The host checkpoint was not at a writable boundary."
                 );
             cancellationToken.ThrowIfCancellationRequested();
-            if (!ReferenceEquals(_runtime, runtime) || !ReferenceEquals(_persistence, owner))
+            if (
+                !ReferenceEquals(_sessionManager, runtime) || !ReferenceEquals(_saveProtocol, owner)
+            )
                 throw new OperationCanceledException(
                     "The outgoing connection no longer owns this checkpoint."
                 );
-            return new MultiplayerPersistenceCheckpoint
-            {
-                Command = command,
-                Payload = metadataPayload,
-            };
+            return new MultiplayerSaveCheckpoint { Command = command, Payload = metadataPayload };
         }
 
         /// <summary>
@@ -376,10 +384,10 @@ namespace Rebellion.Multiplayer
         /// </summary>
         /// <param name="checkpoint">The host's reserved explicit-schema checkpoint.</param>
         /// <returns>The peer's completed durable write or load-content preflight.</returns>
-        private async Task PrepareGuestCheckpointAsync(MultiplayerPersistenceCheckpoint checkpoint)
+        private async Task PrepareGuestCheckpointAsync(MultiplayerSaveCheckpoint checkpoint)
         {
-            MultiplayerPersistenceSession owner = _persistence;
-            MultiplayerPersistenceCommand command = checkpoint.Command;
+            MultiplayerSaveProtocol owner = _saveProtocol;
+            MultiplayerSaveRequest command = checkpoint.Command;
             if (command.load)
             {
                 GameRoot game = MultiplayerSnapshotCodec.Restore(
@@ -387,13 +395,13 @@ namespace Rebellion.Multiplayer
                     command.snapshotHash
                 );
                 ValidateCampaignIdentity(game.Metadata?.MultiplayerCampaign);
-                ContentPack active = AppBootstrap.EnsureExists().GetContentPack();
+                ContentPack active = _getActiveContent();
                 var cancellationToken = _sessionCancellation.Token;
                 ContentPack content = await Task.Run(() =>
                     SaveContentResolver.Open(active, game.Summary)
                 );
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!ReferenceEquals(_persistence, owner))
+                if (!ReferenceEquals(_saveProtocol, owner))
                     throw new OperationCanceledException(
                         "The admitted connection no longer owns this load."
                     );
@@ -410,19 +418,19 @@ namespace Rebellion.Multiplayer
                     owner
                 );
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!ReferenceEquals(_persistence, owner))
+                if (!ReferenceEquals(_saveProtocol, owner))
                     throw new OperationCanceledException(
                         "The admitted connection no longer owns this load."
                     );
-                _persistenceLoadedGame = game;
-                _persistenceContent = content;
+                _loadedSave = game;
+                _loadedSaveContent = content;
                 return;
             }
 
             GameMetadata metadata = (GameMetadata)
                 MultiplayerSnapshotCodec.Deserialize(typeof(GameMetadata), checkpoint.Payload);
             ValidateCampaignIdentity(metadata.MultiplayerCampaign);
-            GameRoot current = _runtime.GetActiveGame();
+            GameRoot current = _sessionManager.GetActiveGame();
             if (
                 metadata.CampaignID != current.Metadata.CampaignID
                 || metadata.SharedSaveToken != command.token
@@ -442,9 +450,7 @@ namespace Rebellion.Multiplayer
                 );
                 Task publication;
 
-                publication = _runtime
-                    .GetSaveGameManager()
-                    .SaveGameDataWithMetadataAsync(current, fileName, metadata);
+                publication = _saveGames.SaveGameDataWithMetadataAsync(current, fileName, metadata);
                 await publication;
             }
         }
@@ -459,7 +465,7 @@ namespace Rebellion.Multiplayer
             SaveGameManager.ValidateSaveFileName(fileName);
             if (fileName == SaveGameManager.QuickSaveFileName)
                 return SaveGameManager.GetMultiplayerSaveFileName(
-                    _runtime.GetActiveGame().Metadata.CampaignID,
+                    _sessionManager.GetActiveGame().Metadata.CampaignID,
                     true,
                     fileName
                 );
@@ -485,13 +491,13 @@ namespace Rebellion.Multiplayer
             GameRoot game,
             string selectedFileName,
             ContentPack content,
-            MultiplayerPersistenceSession owner
+            MultiplayerSaveProtocol owner
         )
         {
             var cancellationToken = _sessionCancellation.Token;
             if (string.IsNullOrEmpty(game.Metadata.SharedSaveToken))
                 return;
-            SaveGameManager store = _runtime.GetSaveGameManager();
+            SaveGameManager store = _saveGames;
             string localFileName = SaveGameManager.GetMultiplayerSaveFileName(
                 game.Metadata.CampaignID,
                 _role == MultiplayerRole.Host,
@@ -501,7 +507,7 @@ namespace Rebellion.Multiplayer
                 return;
             GameRoot localSave = await store.LoadGameDataAsync(localFileName);
             cancellationToken.ThrowIfCancellationRequested();
-            if (!ReferenceEquals(_persistence, owner))
+            if (!ReferenceEquals(_saveProtocol, owner))
                 throw new OperationCanceledException(
                     "The admitted connection no longer owns this presentation read."
                 );
@@ -533,39 +539,34 @@ namespace Rebellion.Multiplayer
         /// Starts the same exact-content loading path on both peers after both preflights acknowledged.
         /// </summary>
         /// <param name="checkpoint">The preflighted authoritative saved state.</param>
-        private void BeginPersistenceTransfer(MultiplayerPersistenceCheckpoint checkpoint)
+        private void BeginPersistenceTransfer(MultiplayerSaveCheckpoint checkpoint)
         {
-            if (_persistenceLoadedGame == null || _persistenceContent == null)
+            if (_loadedSave == null || _loadedSaveContent == null)
                 throw new InvalidOperationException(
                     "The shared saved game has not finished preparation."
                 );
-            if (LoadingScreenController.IsLoadInProgress)
+            if (_isContentTransitionInProgress())
                 throw new InvalidOperationException(
                     "Another application content transition is already active."
                 );
             MultiplayerLaunchConfiguration previous = _launchConfiguration;
-            _hostSummary = _persistenceLoadedGame.Summary;
+            _hostSummary = _loadedSave.Summary;
             BeginInitialization(checkpoint.Command.token, checkpoint.Command.snapshotHash);
-            _lobbyContent = _persistenceContent;
+            _lobbyContent = _loadedSaveContent;
             _launchConfiguration = new MultiplayerLaunchConfiguration(
                 _hostSummary,
                 _role == MultiplayerRole.Host ? previous.HostFactionID : previous.GuestFactionID,
                 previous.HostFactionID,
                 previous.GuestFactionID,
-                _persistenceLoadedGame
+                _loadedSave
             );
             _remoteReady = false;
             _awaitingSnapshotReceipt = false;
             _pendingInitialSnapshot = null;
-            AppBootstrap bootstrap = AppBootstrap.EnsureExists();
-            DetachGameForSceneTransfer(_runtime);
-            LoadingScreenController.StartMultiplayer(
-                bootstrap,
-                _persistenceContent,
-                _launchConfiguration
-            );
-            _persistenceLoadedGame = null;
-            _persistenceContent = null;
+            DetachGameForSceneTransfer(_sessionManager);
+            _launchGame(_loadedSaveContent, _launchConfiguration);
+            _loadedSave = null;
+            _loadedSaveContent = null;
             SetStatus("Loading the shared checkpoint");
         }
 
@@ -573,16 +574,16 @@ namespace Rebellion.Multiplayer
         /// Cancels incomplete persistence when the admitted connection is released.
         /// </summary>
         /// <param name="interruption">The known interruption, when a shared scene transfer must recover.</param>
-        private void CancelPersistence(Exception interruption = null)
+        private void CancelSharedSave(Exception interruption = null)
         {
             bool interruptedTransfer = IsTransferringScene;
-            _persistence?.Dispose();
-            _persistence = null;
-            _persistenceLoadedGame = null;
-            _persistenceContent = null;
+            _saveProtocol?.Dispose();
+            _saveProtocol = null;
+            _loadedSave = null;
+            _loadedSaveContent = null;
             _hostAutosaveSettings = null;
             if (interruptedTransfer)
-                AppBootstrap.RecoverInterruptedMultiplayerLoad(
+                _recoverInterruptedLoad(
                     interruption
                         ?? new IOException(
                             "The shared load was interrupted because its connection ended."

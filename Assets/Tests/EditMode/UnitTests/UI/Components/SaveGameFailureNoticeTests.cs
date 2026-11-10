@@ -1,17 +1,14 @@
 using NUnit.Framework;
-using Rebellion.Persistence;
 
-namespace Rebellion.Tests.Persistence
+namespace Rebellion.Tests.UI.Components
 {
-    public sealed class PersistenceFailureNoticeTests
+    public sealed class SaveGameFailureNoticeTests
     {
-        [TestCase(PersistenceOperation.Save)]
-        [TestCase(PersistenceOperation.Load)]
-        public void Show_StorageFailure_PublishesPendingAcknowledgment(
-            PersistenceOperation operation
-        )
+        [TestCase(SaveGameOperation.Save)]
+        [TestCase(SaveGameOperation.Load)]
+        public void Show_StorageFailure_PublishesPendingAcknowledgment(SaveGameOperation operation)
         {
-            PersistenceFailureNotice notice = new();
+            SaveGameFailureNotice notice = new();
             int changes = 0;
             notice.Changed += () => changes++;
             notice.Show(operation);
@@ -24,8 +21,8 @@ namespace Rebellion.Tests.Persistence
         [Test]
         public void Acknowledge_PendingFailure_DismissesNotice()
         {
-            PersistenceFailureNotice notice = new();
-            notice.Show(PersistenceOperation.Save);
+            SaveGameFailureNotice notice = new();
+            notice.Show(SaveGameOperation.Save);
             notice.Acknowledge();
 
             Assert.That(notice.IsPending, Is.False);
@@ -35,7 +32,7 @@ namespace Rebellion.Tests.Persistence
         [Test]
         public void Acknowledge_NoPendingFailure_DoesNotPublishAChange()
         {
-            PersistenceFailureNotice notice = new();
+            SaveGameFailureNotice notice = new();
             int changes = 0;
             notice.Changed += () => changes++;
             notice.Acknowledge();

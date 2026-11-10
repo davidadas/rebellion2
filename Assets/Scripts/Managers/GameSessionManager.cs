@@ -1,23 +1,19 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using Rebellion.Game;
-using Rebellion.Game.Factions;
-using Rebellion.Game.Galaxy;
 using Rebellion.Gameplay;
-using Rebellion.Persistence;
 using Rebellion.PlayerRequests;
 using Rebellion.Util.Logging;
 using UnityEngine;
 
 /// <summary>
-/// Owns the active game-session lifecycle, hot loading, and content-identity validation.
+/// Owns the active simulation, clock, player request routing, and save/load lifecycle.
 /// </summary>
-public sealed class GameRuntime
+public sealed class GameSessionManager
 {
     private readonly ContentPack _contentPack;
+    private readonly GameContentBinding _contentBinding;
     private readonly SaveGameManager _saveGameManager;
     private readonly Func<UserGameplaySettings> _getGameplaySettings;
     private readonly IAnalyticsEventSink _analyticsSink;
@@ -25,14 +21,13 @@ public sealed class GameRuntime
     private GameManager _gameManager;
     private CampaignAnalyticsTracker _campaignAnalyticsTracker;
     private bool _operationsBlocked;
-    private IGamePersistenceCoordinator _persistenceCoordinator;
     private SessionPlayerRequestDispatcher _playerRequests;
     private IGameSessionOwner _sessionOwner;
 
     /// <summary>
-    /// Gets whether persistence is owned by a coordinated session rather than the local process.
+    /// Gets whether the active session has an owner coordinating execution and saves.
     /// </summary>
-    public bool HasCoordinatedPersistence => _persistenceCoordinator != null;
+    public bool HasCoordinatedSession => _sessionOwner != null;
 
     /// <summary>
     /// Gets the active player's ordered application action boundary.
@@ -49,7 +44,7 @@ public sealed class GameRuntime
     /// <summary>
     /// Reports a storage failure belonging to the session that requested the save or load.
     /// </summary>
-    public event Action<GameRuntime, PersistenceOperation, Exception> PersistenceFailed;
+    public event Action<GameSessionManager, SaveGameOperation, Exception> PersistenceFailed;
 
     /// <summary>
     /// Gets whether a game session is currently active.
@@ -60,9 +55,7 @@ public sealed class GameRuntime
     /// Gets whether the persistence owner can accept a request without requiring an immediate snapshot.
     /// </summary>
     public bool CanRequestSave =>
-        _persistenceCoordinator != null
-            ? !_operationsBlocked && _persistenceCoordinator.CanRequestSave
-            : CanSave;
+        _sessionOwner != null ? !_operationsBlocked && _sessionOwner.CanRequestSave : CanSave;
 
     /// <summary>
     /// Gets whether a complete settled snapshot can be captured immediately.
@@ -71,13 +64,13 @@ public sealed class GameRuntime
         !_operationsBlocked && _activeGameSession?.CanCaptureSettledState == true;
 
     /// <summary>
-    /// Creates an application runtime backed by the active content pack.
+    /// Creates a session manager backed by the active content pack.
     /// </summary>
     /// <param name="contentPack">The active content pack.</param>
     /// <param name="saveGameManager">The save manager, or null to use the application singleton.</param>
     /// <param name="getGameplaySettings">Returns the current gameplay settings.</param>
     /// <param name="analyticsSink">Receives consented campaign analytics.</param>
-    internal GameRuntime(
+    internal GameSessionManager(
         ContentPack contentPack,
         SaveGameManager saveGameManager = null,
         Func<UserGameplaySettings> getGameplaySettings = null,
@@ -85,6 +78,7 @@ public sealed class GameRuntime
     )
     {
         _contentPack = contentPack ?? throw new ArgumentNullException(nameof(contentPack));
+        _contentBinding = new GameContentBinding(_contentPack);
         _saveGameManager = saveGameManager ?? SaveGameManager.Instance;
         _getGameplaySettings = getGameplaySettings;
         _analyticsSink = analyticsSink;
@@ -166,8 +160,7 @@ public sealed class GameRuntime
         }
 
         owner?.PrepareGame(game);
-        ValidateGameContent(game);
-        ReconcileStaticContent(game);
+        _contentBinding.Prepare(game);
         game.Metadata ??= new GameMetadata();
         if (string.IsNullOrEmpty(game.Metadata.CampaignID))
             game.Metadata.CampaignID = Guid.NewGuid().ToString("N");
@@ -188,7 +181,6 @@ public sealed class GameRuntime
         _gameManager = clock;
         _operationsBlocked = false;
         _sessionOwner = owner;
-        _persistenceCoordinator = owner;
         _playerRequests = new SessionPlayerRequestDispatcher(
             owner
                 ?? (IPlayerRequestDispatcher)
@@ -206,7 +198,7 @@ public sealed class GameRuntime
         _activeGameSession.Tick.TickCompleted += HandleTickCompleted;
         try
         {
-            owner?.BindRuntime(this);
+            owner?.BindSessionManager(this);
         }
         catch
         {
@@ -268,21 +260,28 @@ public sealed class GameRuntime
         if (_activeGameSession == null)
             return;
 
+        GameSession outgoingSession = _activeGameSession;
+        GameManager outgoingClock = _gameManager;
         try
         {
-            _sessionOwner?.ReleaseRuntime(this);
+            _sessionOwner?.ReleaseSessionManager(this);
         }
         finally
         {
             StopCampaignAnalytics();
             _sessionOwner = null;
-            _activeGameSession.Tick.TickCompleted -= HandleTickCompleted;
-            _gameManager.ApplyGameSpeed(TickSpeed.Paused);
-            _activeGameSession.Dispose();
+            outgoingSession.Tick.TickCompleted -= HandleTickCompleted;
             _activeGameSession = null;
             _gameManager = null;
             _playerRequests = null;
-            _persistenceCoordinator = null;
+            try
+            {
+                outgoingClock.ApplyGameSpeed(TickSpeed.Paused);
+            }
+            finally
+            {
+                outgoingSession.Dispose();
+            }
         }
     }
 
@@ -313,43 +312,17 @@ public sealed class GameRuntime
     }
 
     /// <summary>
-    /// Assigns the current session's save and load policy to its persistence owner.
-    /// </summary>
-    /// <param name="coordinator">The owner of save and load permissions and completion.</param>
-    internal void BindPersistenceCoordinator(IGamePersistenceCoordinator coordinator)
-    {
-        if (!HasActiveGame)
-            throw new InvalidOperationException("No active game can coordinate persistence.");
-        _persistenceCoordinator =
-            coordinator ?? throw new ArgumentNullException(nameof(coordinator));
-    }
-
-    /// <summary>
-    /// Restores local persistence ownership after the coordinated session has released its requests.
-    /// </summary>
-    internal void UnbindPersistenceCoordinator()
-    {
-        _persistenceCoordinator = null;
-    }
-
-    /// <summary>
-    /// Returns the actual persistence store owned by this runtime, including injected stores.
-    /// </summary>
-    /// <returns>The runtime's save manager.</returns>
-    internal SaveGameManager GetSaveGameManager() => _saveGameManager;
-
-    /// <summary>
     /// Saves the quicksave through the current persistence owner.
     /// </summary>
     /// <returns>True only after the quicksave has completed.</returns>
     public async Task<bool> QuickSaveAsync()
     {
-        bool coordinated = HasCoordinatedPersistence;
+        bool coordinated = HasCoordinatedSession;
         bool saved = await ExecutePersistenceAsync(
-            PersistenceOperation.Save,
+            SaveGameOperation.Save,
             () =>
                 coordinated
-                    ? _persistenceCoordinator.SaveGameAsync(SaveGameManager.QuickSaveFileName, null)
+                    ? _sessionOwner.SaveGameAsync(SaveGameManager.QuickSaveFileName, null)
                     : SaveGameLocallyAsync(SaveGameManager.QuickSaveFileName, null)
         );
         if (saved && !coordinated)
@@ -366,10 +339,10 @@ public sealed class GameRuntime
     public Task<bool> QuickLoadAsync()
     {
         return ExecutePersistenceAsync(
-            PersistenceOperation.Load,
+            SaveGameOperation.Load,
             () =>
-                HasCoordinatedPersistence
-                    ? _persistenceCoordinator.LoadGameAsync(SaveGameManager.QuickSaveFileName)
+                HasCoordinatedSession
+                    ? _sessionOwner.LoadGameAsync(SaveGameManager.QuickSaveFileName)
                     : Task.FromResult(QuickLoadLocally())
         );
     }
@@ -383,10 +356,10 @@ public sealed class GameRuntime
     public Task<bool> SaveGameAsync(string fileName, string displayName)
     {
         return ExecutePersistenceAsync(
-            PersistenceOperation.Save,
+            SaveGameOperation.Save,
             () =>
-                _persistenceCoordinator != null
-                    ? _persistenceCoordinator.SaveGameAsync(fileName, displayName)
+                _sessionOwner != null
+                    ? _sessionOwner.SaveGameAsync(fileName, displayName)
                     : SaveGameLocallyAsync(fileName, displayName)
         );
     }
@@ -399,10 +372,10 @@ public sealed class GameRuntime
     public Task<bool> LoadGameAsync(string fileName)
     {
         return ExecutePersistenceAsync(
-            PersistenceOperation.Load,
+            SaveGameOperation.Load,
             () =>
-                _persistenceCoordinator != null
-                    ? _persistenceCoordinator.LoadGameAsync(fileName)
+                _sessionOwner != null
+                    ? _sessionOwner.LoadGameAsync(fileName)
                     : Task.FromResult(LoadGameLocally(fileName))
         );
     }
@@ -415,7 +388,7 @@ public sealed class GameRuntime
     /// <param name="execute">Starts the existing local or coordinated operation.</param>
     /// <returns>The operation's result, or false after a reported storage failure.</returns>
     private async Task<bool> ExecutePersistenceAsync(
-        PersistenceOperation operation,
+        SaveGameOperation operation,
         Func<Task<bool>> execute
     )
     {
@@ -490,8 +463,8 @@ public sealed class GameRuntime
             return;
 
         UserGameplaySettings settings = _getGameplaySettings?.Invoke();
-        if (_persistenceCoordinator != null)
-            _persistenceCoordinator.ProcessAutosaveTick(settings);
+        if (_sessionOwner != null)
+            _sessionOwner.ProcessAutosaveTick(settings);
         else
             ProcessAutosaveLocally(settings);
     }
@@ -546,8 +519,7 @@ public sealed class GameRuntime
         if (_activeGameSession == null)
             throw new InvalidOperationException("No active game can receive replacement state.");
 
-        ValidateGameContent(game);
-        ReconcileStaticContent(game);
+        _contentBinding.Prepare(game);
         bool pendingMultiplayerStart =
             _campaignAnalyticsTracker?.HasPendingMultiplayerStart == true
             && _activeGameSession.Game.Metadata.CampaignID == game.Metadata?.CampaignID;
@@ -610,165 +582,5 @@ public sealed class GameRuntime
             _activeGameSession.Pipeline.VictoryDeclared -= tracker.RecordVictory;
         }
         _campaignAnalyticsTracker = null;
-    }
-
-    /// <summary>
-    /// Verifies that a game was created by the active pack, version, and scenario.
-    /// </summary>
-    /// <param name="game">The game whose content identity is being validated.</param>
-    internal void ValidateGameContent(GameRoot game)
-    {
-        if (game?.Summary == null)
-            throw new InvalidOperationException("Game content identity is missing.");
-
-        GameSummary summary = game.Summary;
-        if (!_contentPack.MatchesContentIdentity(summary))
-        {
-            string requiredMods = FormatModIdentity(summary.ModIDs, summary.ModVersions);
-            string activeMods = FormatModIdentity(
-                _contentPack.FileResolver.Mods.Select(mod => mod.ID).ToArray(),
-                _contentPack.FileResolver.Mods.Select(mod => mod.Version).ToArray()
-            );
-            throw new InvalidOperationException(
-                $"Save requires content pack '{summary.PackID}' version '{summary.PackVersion}' "
-                    + $"scenario '{summary.ScenarioID}' with mods [{requiredMods}], but "
-                    + $"'{_contentPack.Definition.ID}' version '{_contentPack.Definition.Version}' "
-                    + $"scenario '{_contentPack.Scenario.ID}' with mods [{activeMods}] is active."
-            );
-        }
-    }
-
-    /// <summary>
-    /// Restores immutable authored state from the active content pack.
-    /// </summary>
-    /// <param name="game">The game whose authored state will be restored.</param>
-    private void ReconcileStaticContent(GameRoot game)
-    {
-        ReconcileFactionSettings(game);
-        ReconcileGalaxyLayout(game);
-    }
-
-    /// <summary>
-    /// Restores faction configuration from saved launch rules or the active content pack.
-    /// </summary>
-    /// <param name="game">The game whose faction settings will be restored.</param>
-    private void ReconcileFactionSettings(GameRoot game)
-    {
-        Dictionary<string, FactionSettings> overrides = GetFactionSettingOverrides(game);
-        foreach (Faction faction in game.GetFactions())
-        {
-            if (faction == null || string.IsNullOrWhiteSpace(faction.InstanceID))
-                throw new InvalidOperationException(
-                    "Loaded game contains an unidentified faction."
-                );
-
-            Faction template = _contentPack.GameData.Factions.FirstOrDefault(candidate =>
-                candidate?.InstanceID == faction.InstanceID
-            );
-            if (template == null)
-                throw new InvalidOperationException(
-                    $"Loaded faction '{faction.InstanceID}' is missing from the active content pack."
-                );
-
-            FactionSettings settings = overrides.TryGetValue(
-                faction.InstanceID,
-                out FactionSettings factionOverride
-            )
-                ? factionOverride
-                : template.Settings;
-            faction.Settings = settings.CreateCopy();
-        }
-    }
-
-    /// <summary>
-    /// Reads and validates launch-specific faction settings stored with the game.
-    /// </summary>
-    /// <param name="game">The game whose launch configuration will be read.</param>
-    /// <returns>Faction settings indexed by faction instance ID.</returns>
-    private Dictionary<string, FactionSettings> GetFactionSettingOverrides(GameRoot game)
-    {
-        Dictionary<string, FactionSettings> overrides = new Dictionary<string, FactionSettings>(
-            StringComparer.Ordinal
-        );
-        GameGenerationConfig config = game.Summary.CustomSettings?.GenerationConfig;
-        if (config == null)
-            return overrides;
-
-        foreach (
-            FactionModifierConfig modifier in config.FactionModifiers
-                ?? Enumerable.Empty<FactionModifierConfig>()
-        )
-        {
-            if (modifier == null || string.IsNullOrWhiteSpace(modifier.FactionID))
-                throw new InvalidOperationException(
-                    "Game generation config contains an unidentified faction modifier."
-                );
-            if (modifier.Settings == null)
-                throw new InvalidOperationException(
-                    $"Faction modifier '{modifier.FactionID}' has no settings."
-                );
-            if (
-                !_contentPack.GameData.Factions.Any(faction =>
-                    faction?.InstanceID == modifier.FactionID
-                )
-            )
-                throw new InvalidOperationException(
-                    $"Faction modifier '{modifier.FactionID}' is missing from the active content pack."
-                );
-            if (overrides.ContainsKey(modifier.FactionID))
-                throw new InvalidOperationException(
-                    $"Game generation config contains duplicate faction modifier '{modifier.FactionID}'."
-                );
-
-            overrides.Add(modifier.FactionID, modifier.Settings);
-        }
-
-        return overrides;
-    }
-
-    /// <summary>
-    /// Restores authored sector and planet coordinates from the active content pack.
-    /// </summary>
-    /// <param name="game">The game whose galaxy layout will be restored.</param>
-    private void ReconcileGalaxyLayout(GameRoot game)
-    {
-        foreach (PlanetSector sector in game.GetGalaxyMap().GetChildren<PlanetSector>())
-        {
-            PlanetSector template = _contentPack.GameData.PlanetSectors.FirstOrDefault(candidate =>
-                candidate?.TypeID == sector.TypeID
-            );
-            if (template == null)
-                continue;
-
-            sector.PositionX = template.PositionX;
-            sector.PositionY = template.PositionY;
-            foreach (Planet planet in sector.GetChildren<Planet>())
-            {
-                Planet planetTemplate = template
-                    .GetChildren<Planet>()
-                    .FirstOrDefault(candidate => candidate?.InstanceID == planet.InstanceID);
-                if (planetTemplate == null)
-                    continue;
-
-                planet.PositionX = planetTemplate.PositionX;
-                planet.PositionY = planetTemplate.PositionY;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Formats ordered mod identifiers and versions for a compatibility error.
-    /// </summary>
-    /// <param name="modIDs">The ordered mod identifiers.</param>
-    /// <param name="modVersions">The versions corresponding to the identifiers.</param>
-    /// <returns>A comma-separated ordered mod identity.</returns>
-    private static string FormatModIdentity(string[] modIDs, string[] modVersions)
-    {
-        string[] ids = modIDs ?? Array.Empty<string>();
-        string[] versions = modVersions ?? Array.Empty<string>();
-        return string.Join(
-            ", ",
-            ids.Select((id, index) => $"{id}@{(index < versions.Length ? versions[index] : "?")}")
-        );
     }
 }

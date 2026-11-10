@@ -15,17 +15,16 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Generation;
 using Rebellion.Multiplayer;
-using Rebellion.Persistence;
 using Rebellion.PlayerRequests;
 
-namespace Rebellion.Tests.Gameplay
+namespace Rebellion.Tests.Managers
 {
     [TestFixture]
-    public sealed class GameRuntimeTests
+    public sealed class GameSessionManagerTests
     {
         private ContentPack _contentPack;
         private UserGameplaySettings _gameplaySettings;
-        private GameRuntime _runtime;
+        private GameSessionManager _sessionManager;
         private SaveGameManager _saveGameManager;
         private string _saveDirectoryPath;
 
@@ -48,12 +47,16 @@ namespace Rebellion.Tests.Gameplay
             );
             _saveDirectoryPath = Path.Combine(
                 Path.GetTempPath(),
-                nameof(GameRuntimeTests),
+                nameof(GameSessionManagerTests),
                 Guid.NewGuid().ToString("N")
             );
             _gameplaySettings = new UserGameplaySettings();
             _saveGameManager = new SaveGameManager(_saveDirectoryPath);
-            _runtime = new GameRuntime(_contentPack, _saveGameManager, () => _gameplaySettings);
+            _sessionManager = new GameSessionManager(
+                _contentPack,
+                _saveGameManager,
+                () => _gameplaySettings
+            );
         }
 
         /// <summary>
@@ -62,7 +65,7 @@ namespace Rebellion.Tests.Gameplay
         [TearDown]
         public void TearDown()
         {
-            _runtime?.EndGame();
+            _sessionManager?.EndGame();
             if (Directory.Exists(_saveDirectoryPath))
                 Directory.Delete(_saveDirectoryPath, true);
         }
@@ -71,7 +74,7 @@ namespace Rebellion.Tests.Gameplay
         public void StartGame_AnalyticsEnabled_RecordsRuntimeLifecycle()
         {
             RecordingAnalyticsSink sink = new RecordingAnalyticsSink();
-            _runtime = new GameRuntime(
+            _sessionManager = new GameSessionManager(
                 _contentPack,
                 _saveGameManager,
                 () => _gameplaySettings,
@@ -79,8 +82,8 @@ namespace Rebellion.Tests.Gameplay
             );
             GameRoot game = CreateGame();
 
-            _runtime.StartGame(game);
-            _runtime.EndGame();
+            _sessionManager.StartGame(game);
+            _sessionManager.EndGame();
 
             CollectionAssert.AreEqual(new[] { "campaign_started" }, sink.EventNames);
             Assert.IsNotEmpty(game.Metadata.CampaignID);
@@ -90,7 +93,7 @@ namespace Rebellion.Tests.Gameplay
         public void StartLoadedGame_AnalyticsEnabled_InitializesCampaignIdentityBeforeTicks()
         {
             RecordingAnalyticsSink sink = new RecordingAnalyticsSink();
-            _runtime = new GameRuntime(
+            _sessionManager = new GameSessionManager(
                 _contentPack,
                 _saveGameManager,
                 () => _gameplaySettings,
@@ -99,7 +102,7 @@ namespace Rebellion.Tests.Gameplay
             GameRoot game = CreateGame();
             game.Metadata.CampaignID = null;
 
-            _runtime.StartLoadedGame(game);
+            _sessionManager.StartLoadedGame(game);
 
             Assert.IsNotEmpty(game.Metadata.CampaignID);
             Assert.IsEmpty(sink.EventNames);
@@ -109,7 +112,7 @@ namespace Rebellion.Tests.Gameplay
         public void StartGame_VictoryPublished_RecordsFinishedCampaign()
         {
             RecordingAnalyticsSink sink = new RecordingAnalyticsSink();
-            _runtime = new GameRuntime(
+            _sessionManager = new GameSessionManager(
                 _contentPack,
                 _saveGameManager,
                 () => _gameplaySettings,
@@ -121,7 +124,7 @@ namespace Rebellion.Tests.Gameplay
                 InstanceID = _contentPack.Scenario.PlayableFactionIDs[0],
             };
             game.GetFactions().Add(winner);
-            GameSession session = _runtime.StartGame(game);
+            GameSession session = _sessionManager.StartGame(game);
 
             session.Pipeline.ProcessResults(
                 new[]
@@ -144,7 +147,7 @@ namespace Rebellion.Tests.Gameplay
         )
         {
             RecordingAnalyticsSink sink = new RecordingAnalyticsSink();
-            _runtime = new GameRuntime(
+            _sessionManager = new GameSessionManager(
                 _contentPack,
                 _saveGameManager,
                 () => _gameplaySettings,
@@ -153,16 +156,16 @@ namespace Rebellion.Tests.Gameplay
             GameRoot initial = CreateGame();
             ConfigureMultiplayerPresentation(initial, "campaign");
             initial.LocalPlayerFactionID = "FNALL1";
-            _runtime.StartGame(initial, new TestSessionOwner());
+            _sessionManager.StartGame(initial, new TestSessionOwner());
             if (synchronizedBeforeReplacement)
-                _runtime.RecordMultiplayerCampaignStarted();
+                _sessionManager.RecordMultiplayerCampaignStarted();
             GameRoot synchronized = CreateGame();
             ConfigureMultiplayerPresentation(synchronized, "campaign");
             synchronized.LocalPlayerFactionID = "FNALL1";
 
-            _runtime.ReplaceGame(synchronized);
-            _runtime.RecordMultiplayerCampaignStarted();
-            _runtime.RecordMultiplayerCampaignStarted();
+            _sessionManager.ReplaceGame(synchronized);
+            _sessionManager.RecordMultiplayerCampaignStarted();
+            _sessionManager.RecordMultiplayerCampaignStarted();
 
             CollectionAssert.AreEqual(new[] { "campaign_started" }, sink.EventNames);
         }
@@ -171,7 +174,7 @@ namespace Rebellion.Tests.Gameplay
         public void RecordMultiplayerCampaignStarted_ReplacingDifferentCampaign_DoesNotCountCreation()
         {
             RecordingAnalyticsSink sink = new RecordingAnalyticsSink();
-            _runtime = new GameRuntime(
+            _sessionManager = new GameSessionManager(
                 _contentPack,
                 _saveGameManager,
                 () => _gameplaySettings,
@@ -180,13 +183,13 @@ namespace Rebellion.Tests.Gameplay
             GameRoot initial = CreateGame();
             ConfigureMultiplayerPresentation(initial, "initial");
             initial.LocalPlayerFactionID = "FNALL1";
-            _runtime.StartGame(initial, new TestSessionOwner());
+            _sessionManager.StartGame(initial, new TestSessionOwner());
             GameRoot loaded = CreateGame();
             ConfigureMultiplayerPresentation(loaded, "loaded");
             loaded.LocalPlayerFactionID = "FNALL1";
 
-            _runtime.ReplaceGame(loaded);
-            _runtime.RecordMultiplayerCampaignStarted();
+            _sessionManager.ReplaceGame(loaded);
+            _sessionManager.RecordMultiplayerCampaignStarted();
 
             Assert.IsEmpty(sink.EventNames);
         }
@@ -198,40 +201,40 @@ namespace Rebellion.Tests.Gameplay
             ConfigureMultiplayerPresentation(game, Guid.NewGuid().ToString("N"));
             TestSessionOwner owner = new();
 
-            GameSession session = _runtime.StartGame(game, owner);
+            GameSession session = _sessionManager.StartGame(game, owner);
 
             CollectionAssert.AreEqual(new[] { "prepare", "bind" }, owner.Calls);
-            Assert.IsTrue(_runtime.HasCoordinatedPersistence);
-            Assert.IsTrue(_runtime.NotifyPresentationReady(session));
+            Assert.IsTrue(_sessionManager.HasCoordinatedSession);
+            Assert.IsTrue(_sessionManager.NotifyPresentationReady(session));
             CollectionAssert.AreEqual(new[] { "prepare", "bind", "ready" }, owner.Calls);
         }
 
         [Test]
         public void NotifyPresentationReady_ReplacedSession_DoesNotNotifyNewOwner()
         {
-            GameSession outgoing = _runtime.StartGame(CreateGame());
+            GameSession outgoing = _sessionManager.StartGame(CreateGame());
             TestSessionOwner owner = new();
-            _runtime.StartGame(CreateGame(), owner);
+            _sessionManager.StartGame(CreateGame(), owner);
 
-            Assert.IsFalse(_runtime.NotifyPresentationReady(outgoing));
+            Assert.IsFalse(_sessionManager.NotifyPresentationReady(outgoing));
             CollectionAssert.AreEqual(new[] { "prepare", "bind" }, owner.Calls);
         }
 
         [Test]
         public void ResumeMultiplayerOperations_VerifiedCoordinatedSession_ReopensPersistence()
         {
-            _runtime.StartGame(CreateGame(), new TestSessionOwner());
-            _runtime.BlockGameOperations();
-            Assert.IsFalse(_runtime.CanSave);
-            _runtime.ResumeMultiplayerOperations();
-            Assert.IsTrue(_runtime.CanSave);
+            _sessionManager.StartGame(CreateGame(), new TestSessionOwner());
+            _sessionManager.BlockGameOperations();
+            Assert.IsFalse(_sessionManager.CanSave);
+            _sessionManager.ResumeMultiplayerOperations();
+            Assert.IsTrue(_sessionManager.CanSave);
         }
 
         [Test]
         public void ResumeMultiplayerOperations_UncoordinatedSession_RejectsResume()
         {
-            _runtime.StartGame(CreateGame());
-            Assert.Throws<InvalidOperationException>(_runtime.ResumeMultiplayerOperations);
+            _sessionManager.StartGame(CreateGame());
+            Assert.Throws<InvalidOperationException>(_sessionManager.ResumeMultiplayerOperations);
         }
 
         [TestCase(false)]
@@ -246,17 +249,17 @@ namespace Rebellion.Tests.Gameplay
             Assert.Throws<InvalidOperationException>(() =>
             {
                 if (loaded)
-                    _runtime.StartLoadedGame(game);
+                    _sessionManager.StartLoadedGame(game);
                 else
-                    _runtime.StartGame(game);
+                    _sessionManager.StartGame(game);
             });
-            Assert.IsFalse(_runtime.HasActiveGame);
+            Assert.IsFalse(_sessionManager.HasActiveGame);
         }
 
         [Test]
         public void StartGame_QueuedOutgoingRequest_CancelsBeforeReplacementOwnerStarts()
         {
-            GameSession session = _runtime.StartGame(CreateGame());
+            GameSession session = _sessionManager.StartGame(CreateGame());
             Task<int> pending = null;
             session.Game.SetGameSpeed(TickSpeed.Fast);
             session.Tick.TickCompleted += () =>
@@ -265,7 +268,7 @@ namespace Rebellion.Tests.Gameplay
             int completedTick = session.Game.CurrentTick;
             Assert.IsNotNull(pending);
             Assert.IsFalse(pending.IsCompleted);
-            _runtime.StartGame(CreateGame(), new TestSessionOwner());
+            _sessionManager.StartGame(CreateGame(), new TestSessionOwner());
             Assert.IsTrue(pending.IsCanceled);
             Assert.AreEqual(completedTick, session.Game.CurrentTick);
         }
@@ -276,8 +279,8 @@ namespace Rebellion.Tests.Gameplay
             GameRoot game = CreateGame();
             ConfigureMultiplayerPresentation(game, Guid.NewGuid().ToString("N"));
             RecordingPlayerRequestDispatcher negotiatedOwner = TestPlayerRequests.RejectAll();
-            _runtime.StartGame(game, new TestSessionOwner(negotiatedOwner));
-            IPlayerRequestDispatcher capturedByWindow = _runtime.PlayerRequests;
+            _sessionManager.StartGame(game, new TestSessionOwner(negotiatedOwner));
+            IPlayerRequestDispatcher capturedByWindow = _sessionManager.PlayerRequests;
             SetSpeedRequest action = new() { Speed = TickSpeed.Fast };
 
             await capturedByWindow.ExecuteAsync(action);
@@ -290,9 +293,9 @@ namespace Rebellion.Tests.Gameplay
         {
             GameRoot game = CreateGame();
             ConfigureMultiplayerPresentation(game, Guid.NewGuid().ToString("N"));
-            _runtime.StartGame(game, new TestSessionOwner());
-            _runtime.GetActiveGameManager().SetGameSpeed(TickSpeed.Paused);
-            IPlayerRequestDispatcher capturedByWindow = _runtime.PlayerRequests;
+            _sessionManager.StartGame(game, new TestSessionOwner());
+            _sessionManager.GetActiveGameManager().SetGameSpeed(TickSpeed.Paused);
+            IPlayerRequestDispatcher capturedByWindow = _sessionManager.PlayerRequests;
 
             await capturedByWindow.ExecuteAsync(new SetSpeedRequest { Speed = TickSpeed.Fast });
 
@@ -305,9 +308,9 @@ namespace Rebellion.Tests.Gameplay
             GameRoot game = CreateGame();
             ConfigureMultiplayerPresentation(game, Guid.NewGuid().ToString("N"));
             RecordingPlayerRequestDispatcher owner = TestPlayerRequests.RejectAll();
-            _runtime.StartGame(game, new TestSessionOwner(owner));
-            IPlayerRequestDispatcher capturedByWindow = _runtime.PlayerRequests;
-            _runtime.EndGame();
+            _sessionManager.StartGame(game, new TestSessionOwner(owner));
+            IPlayerRequestDispatcher capturedByWindow = _sessionManager.PlayerRequests;
+            _sessionManager.EndGame();
 
             PlayerRequestOutcome result = await capturedByWindow.ExecuteAsync(
                 new SetSpeedRequest { Speed = TickSpeed.Fast }
@@ -325,16 +328,16 @@ namespace Rebellion.Tests.Gameplay
             game.GetFactions().Add(faction);
             game.Summary.PlayerFactionID = faction.InstanceID;
             game.SetFactionController(faction.InstanceID, "player", PlayerControllerType.Human);
-            _runtime.StartGame(game);
+            _sessionManager.StartGame(game);
             int changes = 0;
             bool observedSetting = false;
-            _runtime.GameStateChanged += () =>
+            _sessionManager.GameStateChanged += () =>
             {
                 changes++;
                 observedSetting = faction.TranslateCounterpart;
             };
 
-            PlayerRequestOutcome outcome = await _runtime.PlayerRequests.ExecuteAsync(
+            PlayerRequestOutcome outcome = await _sessionManager.PlayerRequests.ExecuteAsync(
                 new ToggleAdvisorOptionRequest { Option = PlayerAdvisorOption.TranslateCounterpart }
             );
 
@@ -351,11 +354,11 @@ namespace Rebellion.Tests.Gameplay
             game.GetFactions().Add(faction);
             game.Summary.PlayerFactionID = faction.InstanceID;
             game.SetFactionController(faction.InstanceID, "player", PlayerControllerType.Human);
-            _runtime.StartGame(game);
+            _sessionManager.StartGame(game);
             int changes = 0;
-            _runtime.GameStateChanged += () => changes++;
+            _sessionManager.GameStateChanged += () => changes++;
 
-            PlayerRequestOutcome outcome = await _runtime.PlayerRequests.ExecuteAsync(
+            PlayerRequestOutcome outcome = await _sessionManager.PlayerRequests.ExecuteAsync(
                 new ToggleAdvisorOptionRequest { Option = (PlayerAdvisorOption)int.MaxValue }
             );
 
@@ -368,12 +371,12 @@ namespace Rebellion.Tests.Gameplay
         {
             GameRoot first = CreateGame();
             ConfigureMultiplayerPresentation(first, Guid.NewGuid().ToString("N"));
-            _runtime.StartGame(first, new TestSessionOwner());
-            IPlayerRequestDispatcher capturedByOldWindow = _runtime.PlayerRequests;
+            _sessionManager.StartGame(first, new TestSessionOwner());
+            IPlayerRequestDispatcher capturedByOldWindow = _sessionManager.PlayerRequests;
             GameRoot replacement = CreateGame();
             ConfigureMultiplayerPresentation(replacement, Guid.NewGuid().ToString("N"));
             RecordingPlayerRequestDispatcher newOwner = TestPlayerRequests.RejectAll();
-            _runtime.StartGame(replacement, new TestSessionOwner(newOwner));
+            _sessionManager.StartGame(replacement, new TestSessionOwner(newOwner));
 
             PlayerRequestOutcome result = await capturedByOldWindow.ExecuteAsync(
                 new SetSpeedRequest { Speed = TickSpeed.Fast }
@@ -386,41 +389,41 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void StartGame_InvalidContent_EndsPreviousSession()
         {
-            _runtime.StartGame(CreateGame());
+            _sessionManager.StartGame(CreateGame());
             GameRoot replacement = CreateGame();
             replacement.Summary.PackID = "different-pack";
 
-            Assert.Throws<InvalidOperationException>(() => _runtime.StartGame(replacement));
+            Assert.Throws<InvalidOperationException>(() => _sessionManager.StartGame(replacement));
 
-            Assert.IsFalse(_runtime.HasActiveGame);
+            Assert.IsFalse(_sessionManager.HasActiveGame);
         }
 
         [Test]
         public void LoadGameAsync_InvalidContent_KeepsActiveManager()
         {
-            GameSession session = _runtime.StartGame(CreateGame());
-            GameManager manager = _runtime.GetActiveGameManager();
+            GameSession session = _sessionManager.StartGame(CreateGame());
+            GameManager manager = _sessionManager.GetActiveGameManager();
             GameRoot replacement = CreateGame();
             replacement.Summary.PackID = "different-pack";
             _saveGameManager.SaveGameData(replacement, "invalid-content", "Invalid Content");
 
             Assert.ThrowsAsync<InvalidOperationException>(() =>
-                _runtime.LoadGameAsync("invalid-content")
+                _sessionManager.LoadGameAsync("invalid-content")
             );
 
-            Assert.AreSame(manager, _runtime.GetActiveGameManager());
+            Assert.AreSame(manager, _sessionManager.GetActiveGameManager());
         }
 
         [Test]
         public async Task LoadGameAsync_ValidSave_KeepsManagerIdentityAsync()
         {
-            GameSession session = _runtime.StartGame(CreateGame());
-            GameManager manager = _runtime.GetActiveGameManager();
+            GameSession session = _sessionManager.StartGame(CreateGame());
+            GameManager manager = _sessionManager.GetActiveGameManager();
             _saveGameManager.SaveGameData(CreateGame(), "replacement", "Replacement");
 
-            Assert.IsTrue(await _runtime.LoadGameAsync("replacement"));
+            Assert.IsTrue(await _sessionManager.LoadGameAsync("replacement"));
 
-            Assert.AreSame(manager, _runtime.GetActiveGameManager());
+            Assert.AreSame(manager, _sessionManager.GetActiveGameManager());
         }
 
         /// <summary>
@@ -454,7 +457,7 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
 
-            _runtime.StartLoadedGame(game);
+            _sessionManager.StartLoadedGame(game);
 
             Assert.AreEqual(expected, ship.SectorSuppression);
         }
@@ -464,7 +467,7 @@ namespace Rebellion.Tests.Gameplay
         {
             GameRoot legacyGame = CreateGameWithLegacyFactionSettings();
 
-            GameSession session = _runtime.StartLoadedGame(legacyGame);
+            GameSession session = _sessionManager.StartLoadedGame(legacyGame);
 
             AssertFactionSettingsMatchActiveContent(session.Game);
         }
@@ -474,7 +477,7 @@ namespace Rebellion.Tests.Gameplay
         {
             GameRoot game = CreateGameWithLegacyFactionSettings();
 
-            GameSession session = _runtime.StartGame(game);
+            GameSession session = _sessionManager.StartGame(game);
 
             AssertFactionSettingsMatchActiveContent(session.Game);
         }
@@ -492,7 +495,7 @@ namespace Rebellion.Tests.Gameplay
             );
             game.Summary.CustomSettings = new CustomGameSettings { GenerationConfig = config };
 
-            GameSession session = _runtime.StartGame(game);
+            GameSession session = _sessionManager.StartGame(game);
 
             Faction loaded = session
                 .Game.GetFactions()
@@ -516,7 +519,7 @@ namespace Rebellion.Tests.Gameplay
                 },
             };
 
-            GameSession session = _runtime.StartLoadedGame(game);
+            GameSession session = _sessionManager.StartLoadedGame(game);
 
             Assert.AreEqual(70, session.Game.Config.AI.Garrison.SupportThreshold);
             Assert.AreEqual(5, session.Game.Config.AI.Garrison.GarrisonDivisor);
@@ -537,7 +540,7 @@ namespace Rebellion.Tests.Gameplay
                 MovementRules = new MovementRuleSettings { TravelSpeedPercent = 150 },
             };
 
-            GameSession session = _runtime.StartLoadedGame(game);
+            GameSession session = _sessionManager.StartLoadedGame(game);
 
             Assert.AreEqual(
                 authoredDivisor * 1.5d,
@@ -555,7 +558,7 @@ namespace Rebellion.Tests.Gameplay
         {
             GameRoot game = CreateGameWithStaleGalaxyLayout();
 
-            GameSession session = _runtime.StartLoadedGame(game);
+            GameSession session = _sessionManager.StartLoadedGame(game);
 
             AssertGalaxyLayoutMatchesActiveContent(session.Game);
         }
@@ -563,27 +566,27 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public async Task LoadGameAsync_LegacyFactionSettings_RestoresActiveContentSettingsAsync()
         {
-            _runtime.StartGame(CreateGame());
+            _sessionManager.StartGame(CreateGame());
             GameRoot legacyGame = CreateGameWithLegacyFactionSettings();
             _saveGameManager.SaveGameData(legacyGame, "legacy-faction-settings", "Legacy");
 
-            bool loaded = await _runtime.LoadGameAsync("legacy-faction-settings");
+            bool loaded = await _sessionManager.LoadGameAsync("legacy-faction-settings");
 
             Assert.IsTrue(loaded);
-            AssertFactionSettingsMatchActiveContent(_runtime.GetActiveGame());
+            AssertFactionSettingsMatchActiveContent(_sessionManager.GetActiveGame());
         }
 
         [Test]
         public async Task LoadGameAsync_SerializedGalaxyLayout_RestoresActiveContentCoordinatesAsync()
         {
-            _runtime.StartGame(CreateGame());
+            _sessionManager.StartGame(CreateGame());
             GameRoot game = CreateGameWithStaleGalaxyLayout();
             _saveGameManager.SaveGameData(game, "stale-galaxy-layout", "Stale Galaxy Layout");
 
-            bool loaded = await _runtime.LoadGameAsync("stale-galaxy-layout");
+            bool loaded = await _sessionManager.LoadGameAsync("stale-galaxy-layout");
 
             Assert.IsTrue(loaded);
-            AssertGalaxyLayoutMatchesActiveContent(_runtime.GetActiveGame());
+            AssertGalaxyLayoutMatchesActiveContent(_sessionManager.GetActiveGame());
         }
 
         [Test]
@@ -606,7 +609,7 @@ namespace Rebellion.Tests.Gameplay
             };
             legacyGame.AttachNode(sector, legacyGame.GetGalaxyMap());
             legacyGame.AttachNode(planet, sector);
-            GameSession session = _runtime.StartLoadedGame(legacyGame);
+            GameSession session = _sessionManager.StartLoadedGame(legacyGame);
             BombardmentResult result = new BombardmentResult
             {
                 Planet = planet,
@@ -626,17 +629,20 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void EndGame_SpeedObserverThrows_KeepsActiveManager()
+        public void EndGame_SpeedObserverThrows_ReleasesActiveSession()
         {
-            GameSession session = _runtime.StartGame(CreateGame());
-            GameManager manager = _runtime.GetActiveGameManager();
+            GameSession session = _sessionManager.StartGame(CreateGame());
+            GameManager manager = _sessionManager.GetActiveGameManager();
             Action fail = () => throw new InvalidOperationException("Pause observer failed.");
             manager.GameSpeedChanged += fail;
 
             try
             {
-                Assert.Throws<InvalidOperationException>(_runtime.EndGame);
-                Assert.AreSame(manager, _runtime.GetActiveGameManager());
+                Assert.Throws<InvalidOperationException>(_sessionManager.EndGame);
+                Assert.IsFalse(_sessionManager.HasActiveGame);
+                Assert.IsNull(_sessionManager.GetActiveGameManager());
+                Assert.IsNull(_sessionManager.PlayerRequests);
+                Assert.IsFalse(session.CanExecuteCommands);
             }
             finally
             {
@@ -645,28 +651,31 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void EndGame_SpeedObserverThrows_DetachesAutosave()
+        public void EndGame_SpeedObserverThrows_ReplacementSessionCanAutosave()
         {
             GameRoot game = CreateGame();
             game.CurrentTick = 39;
             _gameplaySettings.AutosaveIntervalTicks = 40;
-            GameSession session = _runtime.StartGame(game);
-            GameManager manager = _runtime.GetActiveGameManager();
+            GameSession session = _sessionManager.StartGame(game);
+            GameManager manager = _sessionManager.GetActiveGameManager();
             Action fail = () => throw new InvalidOperationException("Pause observer failed.");
             manager.GameSpeedChanged += fail;
 
             try
             {
-                Assert.Throws<InvalidOperationException>(_runtime.EndGame);
+                Assert.Throws<InvalidOperationException>(_sessionManager.EndGame);
             }
             finally
             {
                 manager.GameSpeedChanged -= fail;
             }
-            manager.SetGameSpeed(TickSpeed.Fast);
-            session.Tick.ProcessTick();
+            GameRoot replacement = CreateGame();
+            replacement.CurrentTick = 39;
+            _sessionManager.StartGame(replacement).Tick.ProcessTick();
 
-            Assert.IsEmpty(_saveGameManager.GetSavedGames());
+            SaveGameEntry saved = _saveGameManager.GetSavedGames().Single();
+            Assert.AreEqual(replacement.Metadata.CampaignID, saved.Metadata.CampaignID);
+            Assert.AreNotEqual(game.Metadata.CampaignID, saved.Metadata.CampaignID);
         }
 
         [Test]
@@ -675,12 +684,12 @@ namespace Rebellion.Tests.Gameplay
             GameRoot game = CreateContestedGame();
             game.CurrentTick = 39;
             _gameplaySettings.AutosaveIntervalTicks = 40;
-            GameSession session = _runtime.StartGame(game);
-            GameManager manager = _runtime.GetActiveGameManager();
+            GameSession session = _sessionManager.StartGame(game);
+            GameManager manager = _sessionManager.GetActiveGameManager();
             session.Tick.ProcessTick();
 
             Assert.IsEmpty(_saveGameManager.GetSavedGames());
-            Assert.IsFalse(_runtime.CanSave);
+            Assert.IsFalse(_sessionManager.CanSave);
 
             session.Tick.ResolveCombat(true);
 
@@ -688,21 +697,21 @@ namespace Rebellion.Tests.Gameplay
                 SaveGameManager.AutosaveFilePrefix + game.Metadata.CampaignID + "_0000000040"
             );
             Assert.IsTrue(File.Exists(autosavePath));
-            Assert.IsTrue(_runtime.CanSave);
+            Assert.IsTrue(_sessionManager.CanSave);
         }
 
         [Test]
         public void StartLoadedGame_CoordinatedContestedWorld_DetectsBattleInAgreedTurn()
         {
-            _runtime.StartLoadedGame(CreateContestedGame(), new TestSessionOwner());
+            _sessionManager.StartLoadedGame(CreateContestedGame(), new TestSessionOwner());
             AssertCoordinatedBattleWaitsForTurn();
         }
 
         [Test]
         public void ReplaceGame_CoordinatedContestedWorld_DetectsBattleInAgreedTurn()
         {
-            _runtime.StartGame(CreateGame(), new TestSessionOwner());
-            _runtime.ReplaceGame(CreateContestedGame());
+            _sessionManager.StartGame(CreateGame(), new TestSessionOwner());
+            _sessionManager.ReplaceGame(CreateContestedGame());
             AssertCoordinatedBattleWaitsForTurn();
         }
 
@@ -712,12 +721,15 @@ namespace Rebellion.Tests.Gameplay
             bool incremental
         )
         {
-            GameSession session = _runtime.StartGame(CreateContestedGame(), new TestSessionOwner());
+            GameSession session = _sessionManager.StartGame(
+                CreateContestedGame(),
+                new TestSessionOwner()
+            );
             MultiplayerSnapshot checkpoint = MultiplayerSnapshotCodec.Capture(session);
             int completedTick = session.Game.CurrentTick;
             int replacements = 0;
-            _runtime.GameReplaced += _ => replacements++;
-            _runtime.BlockGameOperations();
+            _sessionManager.GameReplaced += _ => replacements++;
+            _sessionManager.BlockGameOperations();
             if (incremental)
             {
                 System.Collections.IEnumerator tick = session.Tick.ProcessTickIncrementally();
@@ -731,17 +743,17 @@ namespace Rebellion.Tests.Gameplay
             else
                 session.Tick.ProcessTick();
             Assert.That(session.Tick.IsSettled, Is.False);
-            Assert.That(_runtime.CanSave, Is.False);
+            Assert.That(_sessionManager.CanSave, Is.False);
 
-            _runtime.ReplaceGame(
+            _sessionManager.ReplaceGame(
                 MultiplayerSnapshotCodec.Restore(checkpoint.Payload, checkpoint.Hash)
             );
 
-            Assert.That(_runtime.GetActiveGameSession(), Is.SameAs(session));
+            Assert.That(_sessionManager.GetActiveGameSession(), Is.SameAs(session));
             Assert.That(session.Game.CurrentTick, Is.EqualTo(completedTick));
             Assert.That(session.Tick.IsSettled, Is.True);
             Assert.That(session.GetService<SpaceCombatCommands>().HasPendingDecision, Is.False);
-            Assert.That(_runtime.CanSave, Is.True);
+            Assert.That(_sessionManager.CanSave, Is.True);
             Assert.That(replacements, Is.EqualTo(1));
             session.Tick.ProcessTick();
             Assert.That(
@@ -751,9 +763,9 @@ namespace Rebellion.Tests.Gameplay
                 Is.True
             );
             Assert.That(pending.AttackerHasResponded || pending.DefenderHasResponded, Is.False);
-            Assert.That(_runtime.CanSave, Is.False);
+            Assert.That(_sessionManager.CanSave, Is.False);
             session.Tick.ResolveCombat(autoResolve: true);
-            Assert.That(_runtime.CanSave, Is.True);
+            Assert.That(_sessionManager.CanSave, Is.True);
             Assert.That(session.Game.CurrentTick, Is.EqualTo(completedTick + 1));
         }
 
@@ -761,9 +773,9 @@ namespace Rebellion.Tests.Gameplay
         public async Task QuickSaveAsync_PendingCombat_DoesNotWriteSaveAsync()
         {
             GameRoot game = CreateContestedGame();
-            _runtime.StartLoadedGame(game);
+            _sessionManager.StartLoadedGame(game);
 
-            bool saved = await _runtime.QuickSaveAsync();
+            bool saved = await _sessionManager.QuickSaveAsync();
 
             Assert.IsFalse(saved);
             Assert.IsFalse(
@@ -776,13 +788,13 @@ namespace Rebellion.Tests.Gameplay
         {
             GameRoot game = CreateContestedGame();
             game.CurrentTick = 40;
-            GameSession session = _runtime.StartLoadedGame(game);
-            GameManager manager = _runtime.GetActiveGameManager();
+            GameSession session = _sessionManager.StartLoadedGame(game);
+            GameManager manager = _sessionManager.GetActiveGameManager();
 
-            bool saved = await _runtime.SaveGameAsync("pending_combat", "Pending Combat");
+            bool saved = await _sessionManager.SaveGameAsync("pending_combat", "Pending Combat");
 
             Assert.IsTrue(session.GetService<SpaceCombatCommands>().HasPendingDecision);
-            Assert.IsFalse(_runtime.CanSave);
+            Assert.IsFalse(_sessionManager.CanSave);
             Assert.IsFalse(saved);
             Assert.IsFalse(File.Exists(_saveGameManager.GetSaveFilePath("pending_combat")));
             Assert.AreEqual(40, game.CurrentTick);
@@ -793,92 +805,35 @@ namespace Rebellion.Tests.Gameplay
         {
             GameRoot game = CreateGame();
             game.CurrentTick = 123;
-            GameSession session = _runtime.StartGame(game);
-            GameManager manager = _runtime.GetActiveGameManager();
+            GameSession session = _sessionManager.StartGame(game);
+            GameManager manager = _sessionManager.GetActiveGameManager();
             GameRoot replacement = null;
-            _runtime.GameReplaced += loadedGame => replacement = loadedGame;
+            _sessionManager.GameReplaced += loadedGame => replacement = loadedGame;
 
-            Assert.IsTrue(await _runtime.QuickSaveAsync());
+            Assert.IsTrue(await _sessionManager.QuickSaveAsync());
             game.CurrentTick = 999;
-            Assert.IsTrue(await _runtime.QuickLoadAsync());
+            Assert.IsTrue(await _sessionManager.QuickLoadAsync());
 
             Assert.IsNotNull(replacement);
             Assert.AreNotSame(game, replacement);
-            Assert.AreSame(replacement, _runtime.GetActiveGame());
+            Assert.AreSame(replacement, _sessionManager.GetActiveGame());
             Assert.AreEqual(123, replacement.CurrentTick);
-        }
-
-        [Test]
-        public void ValidateGameContent_MatchingIdentity_DoesNotThrow()
-        {
-            GameRoot game = CreateGame();
-
-            Assert.DoesNotThrow(() => _runtime.ValidateGameContent(game));
-        }
-
-        [Test]
-        public void ValidateGameContent_MissingIdentity_ThrowsInvalidOperationException()
-        {
-            GameRoot game = new GameRoot { Summary = new GameSummary() };
-
-            Assert.Throws<InvalidOperationException>(() => _runtime.ValidateGameContent(game));
-        }
-
-        [Test]
-        public void ValidateGameContent_DifferentPack_ThrowsInvalidOperationException()
-        {
-            GameRoot game = CreateGame();
-            game.Summary.PackID = "different-pack";
-
-            Assert.Throws<InvalidOperationException>(() => _runtime.ValidateGameContent(game));
-        }
-
-        [Test]
-        public void ValidateGameContent_DifferentVersion_ThrowsInvalidOperationException()
-        {
-            GameRoot game = CreateGame();
-            game.Summary.PackVersion = "different-version";
-
-            Assert.Throws<InvalidOperationException>(() => _runtime.ValidateGameContent(game));
-        }
-
-        [Test]
-        public void ValidateGameContent_DifferentScenario_ThrowsInvalidOperationException()
-        {
-            GameRoot game = CreateGame();
-            game.Summary.ScenarioID = "different-scenario";
-
-            Assert.Throws<InvalidOperationException>(() => _runtime.ValidateGameContent(game));
-        }
-
-        [Test]
-        public void ValidateGameContent_SaveHasDifferentMods_ThrowsInvalidOperationException()
-        {
-            GameRoot game = CreateGame();
-            game.Summary.ModIDs = new[] { "missing-mod" };
-            game.Summary.ModVersions = new[] { "1.0.0" };
-
-            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                _runtime.ValidateGameContent(game)
-            );
-            StringAssert.Contains("mods [missing-mod@1.0.0]", exception.Message);
-            StringAssert.Contains("mods [] is active", exception.Message);
         }
 
         [Test]
         public void LoadGameAsync_InvalidEvent_DoesNotNotifyPresentation()
         {
-            _runtime.StartGame(CreateGame());
+            _sessionManager.StartGame(CreateGame());
             GameRoot replacement = CreateGame();
             replacement
                 .GetEventPool()
                 .Add(new GameEvent { InstanceID = "INVALID", MaximumActivations = 0 });
             _saveGameManager.SaveGameData(replacement, "invalid-event", "Invalid Event");
             int announcements = 0;
-            _runtime.GameReplaced += _ => announcements++;
+            _sessionManager.GameReplaced += _ => announcements++;
 
             Assert.ThrowsAsync<InvalidOperationException>(() =>
-                _runtime.LoadGameAsync("invalid-event")
+                _sessionManager.LoadGameAsync("invalid-event")
             );
 
             Assert.AreEqual(0, announcements);
@@ -887,29 +842,31 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public async Task LoadGameAsync_ValidSave_KeepsSessionIdentityAsync()
         {
-            GameSession session = _runtime.StartGame(CreateGame());
+            GameSession session = _sessionManager.StartGame(CreateGame());
             _saveGameManager.SaveGameData(CreateGame(), "replacement", "Replacement");
 
-            Assert.IsTrue(await _runtime.LoadGameAsync("replacement"));
+            Assert.IsTrue(await _sessionManager.LoadGameAsync("replacement"));
 
-            Assert.AreSame(session, _runtime.GetActiveGameSession());
+            Assert.AreSame(session, _sessionManager.GetActiveGameSession());
         }
 
         [Test]
         public async Task LoadGameAsync_ValidSave_ResetsClockBeforeNotificationAsync()
         {
-            _runtime.StartGame(CreateGame());
-            GameManager clock = _runtime.GetActiveGameManager();
+            _sessionManager.StartGame(CreateGame());
+            GameManager clock = _sessionManager.GetActiveGameManager();
             clock.SetGameSpeed(TickSpeed.Fast);
-            float interval = _runtime.GetActiveGame().Config.GameSpeed.FastTickIntervalSeconds;
+            float interval = _sessionManager
+                .GetActiveGame()
+                .Config.GameSpeed.FastTickIntervalSeconds;
             clock.TryAdvanceTickTimer(interval / 2f);
             GameRoot replacement = CreateGame();
             replacement.SetGameSpeed(TickSpeed.Fast);
             _saveGameManager.SaveGameData(replacement, "replacement", "Replacement");
             bool? ready = null;
-            _runtime.GameReplaced += _ => ready = clock.TryAdvanceTickTimer(interval / 2f);
+            _sessionManager.GameReplaced += _ => ready = clock.TryAdvanceTickTimer(interval / 2f);
 
-            Assert.IsTrue(await _runtime.LoadGameAsync("replacement"));
+            Assert.IsTrue(await _sessionManager.LoadGameAsync("replacement"));
 
             Assert.IsFalse(ready);
         }
@@ -917,13 +874,13 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void LoadGameAsync_PresentationThrows_LeavesReconciliationPending()
         {
-            GameSession session = _runtime.StartGame(CreateGame());
+            GameSession session = _sessionManager.StartGame(CreateGame());
             _saveGameManager.SaveGameData(CreateContestedGame(), "contested", "Contested");
-            _runtime.GameReplaced += _ =>
+            _sessionManager.GameReplaced += _ =>
                 throw new InvalidOperationException("Presentation failed.");
 
             Assert.ThrowsAsync<InvalidOperationException>(() =>
-                _runtime.LoadGameAsync("contested")
+                _sessionManager.LoadGameAsync("contested")
             );
 
             Assert.IsFalse(session.GetService<SpaceCombatCommands>().HasPendingDecision);
@@ -932,24 +889,51 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void CanRequestSave_CoordinatedOwnerWhileSimulationBusy_DoesNotRequireImmediateSnapshot()
         {
-            _runtime.StartLoadedGame(CreateContestedGame());
-            _runtime.BindPersistenceCoordinator(new TestPersistenceCoordinator());
+            GameSession session = _sessionManager.StartLoadedGame(
+                CreateContestedGame(),
+                new TestPersistenceCoordinator()
+            );
+            session.Tick.ProcessTick();
 
-            Assert.IsFalse(_runtime.CanSave);
-            Assert.IsTrue(_runtime.CanRequestSave);
+            Assert.IsFalse(_sessionManager.CanSave);
+            Assert.IsTrue(_sessionManager.CanRequestSave);
+        }
+
+        [Test]
+        public async Task SaveGameAsync_SessionOwnerDeclines_DoesNotFallBackToLocalSaveAsync()
+        {
+            _sessionManager.StartGame(CreateGame(), new TestSessionOwner());
+
+            Assert.IsFalse(await _sessionManager.SaveGameAsync("checkpoint", "Checkpoint"));
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [Test]
+        public async Task LoadGameAsync_SessionOwnerDeclines_DoesNotFallBackToLocalSaveAsync()
+        {
+            GameRoot original = CreateGame();
+            original.CurrentTick = 14;
+            _saveGameManager.SaveGameData(CreateGame(), "checkpoint", "Checkpoint");
+            _sessionManager.StartGame(original, new TestSessionOwner());
+
+            Assert.IsFalse(await _sessionManager.LoadGameAsync("checkpoint"));
+            Assert.AreSame(original, _sessionManager.GetActiveGame());
+            Assert.AreEqual(14, original.CurrentTick);
         }
 
         [Test]
         public async Task SaveGameAsync_CoordinatedOwner_WaitsWithoutIndependentWriteAsync()
         {
             GameRoot game = CreateGame();
-            _runtime.StartGame(game);
             TestPersistenceCoordinator coordinator = new TestPersistenceCoordinator();
-            _runtime.BindPersistenceCoordinator(coordinator);
+            _sessionManager.StartGame(game, coordinator);
 
-            Task<bool> saving = _runtime.SaveGameAsync("shared-checkpoint", "Shared checkpoint");
+            Task<bool> saving = _sessionManager.SaveGameAsync(
+                "shared-checkpoint",
+                "Shared checkpoint"
+            );
 
-            Assert.IsTrue(_runtime.HasCoordinatedPersistence);
+            Assert.IsTrue(_sessionManager.HasCoordinatedSession);
             Assert.IsFalse(saving.IsCompleted);
             Assert.AreEqual("shared-checkpoint", coordinator.SavedFileName);
             Assert.AreEqual("Shared checkpoint", coordinator.SavedDisplayName);
@@ -965,31 +949,29 @@ namespace Rebellion.Tests.Gameplay
         public async Task LoadGameAsync_CoordinatedOwner_UsesOwnerWithoutLocalFileLookupAsync()
         {
             GameRoot game = CreateGame();
-            _runtime.StartGame(game);
             TestPersistenceCoordinator coordinator = new TestPersistenceCoordinator();
-            _runtime.BindPersistenceCoordinator(coordinator);
+            _sessionManager.StartGame(game, coordinator);
 
-            Task<bool> loading = _runtime.LoadGameAsync("host-only-file");
+            Task<bool> loading = _sessionManager.LoadGameAsync("host-only-file");
 
             Assert.IsFalse(loading.IsCompleted);
             Assert.AreEqual("host-only-file", coordinator.LoadedFileName);
-            Assert.AreSame(game, _runtime.GetActiveGame());
+            Assert.AreSame(game, _sessionManager.GetActiveGame());
             coordinator.LoadCompletion.SetResult(false);
 
             Assert.IsFalse(await loading);
-            Assert.AreSame(game, _runtime.GetActiveGame());
+            Assert.AreSame(game, _sessionManager.GetActiveGame());
             Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
         }
 
         [Test]
         public async Task QuickSaveAsync_CoordinatedOwner_UsesQuicksaveSlotAndAwaitsCompletionAsync()
         {
-            _runtime.StartGame(CreateGame());
             TestPersistenceCoordinator coordinator = new TestPersistenceCoordinator();
-            _runtime.BindPersistenceCoordinator(coordinator);
+            _sessionManager.StartGame(CreateGame(), coordinator);
 
-            Task<bool> saving = _runtime.QuickSaveAsync();
-            Task<bool> loading = _runtime.QuickLoadAsync();
+            Task<bool> saving = _sessionManager.QuickSaveAsync();
+            Task<bool> loading = _sessionManager.QuickLoadAsync();
 
             Assert.AreEqual(SaveGameManager.QuickSaveFileName, coordinator.SavedFileName);
             Assert.IsNull(coordinator.SavedDisplayName);
@@ -1009,9 +991,8 @@ namespace Rebellion.Tests.Gameplay
             GameRoot game = CreateGame();
             game.CurrentTick = 39;
             _gameplaySettings.AutosaveIntervalTicks = 40;
-            GameSession session = _runtime.StartGame(game);
             TestPersistenceCoordinator coordinator = new TestPersistenceCoordinator();
-            _runtime.BindPersistenceCoordinator(coordinator);
+            GameSession session = _sessionManager.StartGame(game, coordinator);
 
             session.Tick.ProcessTick();
 
@@ -1022,16 +1003,18 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public async Task SaveGameAsync_UnboundOwner_RestoresLocalPersistenceAsync()
+        public async Task StartGame_ReplacingOwnedSessionWithLocalGame_RestoresLocalSavingAsync()
         {
-            _runtime.StartGame(CreateGame());
             TestPersistenceCoordinator coordinator = new TestPersistenceCoordinator();
-            _runtime.BindPersistenceCoordinator(coordinator);
+            _sessionManager.StartGame(CreateGame(), coordinator);
 
-            _runtime.UnbindPersistenceCoordinator();
+            _sessionManager.EndGame();
+            _sessionManager.StartGame(CreateGame());
 
-            Assert.IsFalse(_runtime.HasCoordinatedPersistence);
-            Assert.IsTrue(await _runtime.SaveGameAsync("local-checkpoint", "Local checkpoint"));
+            Assert.IsFalse(_sessionManager.HasCoordinatedSession);
+            Assert.IsTrue(
+                await _sessionManager.SaveGameAsync("local-checkpoint", "Local checkpoint")
+            );
             Assert.IsTrue(File.Exists(_saveGameManager.GetSaveFilePath("local-checkpoint")));
             Assert.IsNull(coordinator.SavedFileName);
         }
@@ -1041,24 +1024,28 @@ namespace Rebellion.Tests.Gameplay
         {
             GameRoot game = CreateGame();
             game.CurrentTick = 14;
-            GameSession session = _runtime.StartGame(game);
-            Assert.IsTrue(await _runtime.SaveGameAsync("local-checkpoint", "Local checkpoint"));
+            GameSession session = _sessionManager.StartGame(game);
+            Assert.IsTrue(
+                await _sessionManager.SaveGameAsync("local-checkpoint", "Local checkpoint")
+            );
             game.CurrentTick = 91;
 
-            bool loaded = await _runtime.LoadGameAsync("local-checkpoint");
+            bool loaded = await _sessionManager.LoadGameAsync("local-checkpoint");
 
             Assert.IsTrue(loaded);
-            Assert.AreSame(session, _runtime.GetActiveGameSession());
-            Assert.AreEqual(14, _runtime.GetActiveGame().CurrentTick);
+            Assert.AreSame(session, _sessionManager.GetActiveGameSession());
+            Assert.AreEqual(14, _sessionManager.GetActiveGame().CurrentTick);
         }
 
         [Test]
         public void SaveGameAsync_CanceledOwner_PropagatesCancellationWithoutLocalWrite()
         {
-            _runtime.StartGame(CreateGame());
             TestPersistenceCoordinator coordinator = new TestPersistenceCoordinator();
-            _runtime.BindPersistenceCoordinator(coordinator);
-            Task<bool> saving = _runtime.SaveGameAsync("shared-checkpoint", "Shared checkpoint");
+            _sessionManager.StartGame(CreateGame(), coordinator);
+            Task<bool> saving = _sessionManager.SaveGameAsync(
+                "shared-checkpoint",
+                "Shared checkpoint"
+            );
 
             coordinator.SaveCompletion.SetCanceled();
 
@@ -1075,7 +1062,7 @@ namespace Rebellion.Tests.Gameplay
             ConfigureMultiplayerPresentation(current, campaignID);
             var currentGuestUI = current.GetFactionPlayer("FNEMP1").UIState;
             currentGuestUI.GetOrCreateSection("AdvisorNotifications").Values["deadline"] = "150";
-            _runtime.StartGame(current, new TestSessionOwner());
+            _sessionManager.StartGame(current, new TestSessionOwner());
             GameRoot incoming = CreateGame();
             ConfigureMultiplayerPresentation(
                 incoming,
@@ -1086,12 +1073,12 @@ namespace Rebellion.Tests.Gameplay
             var incomingGuestUI = incoming.GetFactionPlayer("FNEMP1").UIState;
             using GameSession source = new GameSession(incoming, _contentPack.GameData);
 
-            _runtime.ReplaceGame(source.Game);
+            _sessionManager.ReplaceGame(source.Game);
 
-            Assert.AreSame(incoming, _runtime.GetActiveGame());
+            Assert.AreSame(incoming, _sessionManager.GetActiveGame());
             Assert.AreSame(incomingHostUI, incoming.GetFactionPlayer("FNALL1").UIState);
             Assert.AreSame(incomingGuestUI, incoming.GetFactionPlayer("FNEMP1").UIState);
-            Assert.AreEqual(120, _runtime.GetActiveGame().CurrentTick);
+            Assert.AreEqual(120, _sessionManager.GetActiveGame().CurrentTick);
         }
 
         /// <summary>
@@ -1099,13 +1086,13 @@ namespace Rebellion.Tests.Gameplay
         /// </summary>
         private void AssertCoordinatedBattleWaitsForTurn()
         {
-            GameSession session = _runtime.GetActiveGameSession();
+            GameSession session = _sessionManager.GetActiveGameSession();
             Assert.That(session.Tick.IsSettled, Is.True);
             Assert.That(session.GetService<SpaceCombatCommands>().HasPendingDecision, Is.False);
-            Assert.That(_runtime.CanSave, Is.True);
+            Assert.That(_sessionManager.CanSave, Is.True);
             session.Tick.ProcessTick();
             Assert.That(session.GetService<SpaceCombatCommands>().HasPendingDecision, Is.True);
-            Assert.That(_runtime.CanSave, Is.False);
+            Assert.That(_sessionManager.CanSave, Is.False);
         }
 
         /// <summary>
@@ -1136,12 +1123,11 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public async Task SaveGameAsync_StorageFailure_ReturnsFalseAndReportsFailureAsync()
         {
-            _runtime.StartGame(CreateGame());
             TestPersistenceCoordinator coordinator = new();
-            _runtime.BindPersistenceCoordinator(coordinator);
-            PersistenceOperation? reported = null;
-            _runtime.PersistenceFailed += (_, operation, _) => reported = operation;
-            Task<bool> saving = _runtime.SaveGameAsync("checkpoint", "Checkpoint");
+            _sessionManager.StartGame(CreateGame(), coordinator);
+            SaveGameOperation? reported = null;
+            _sessionManager.PersistenceFailed += (_, operation, _) => reported = operation;
+            Task<bool> saving = _sessionManager.SaveGameAsync("checkpoint", "Checkpoint");
             UnityEngine.TestTools.LogAssert.Expect(
                 UnityEngine.LogType.Exception,
                 new System.Text.RegularExpressions.Regex("test storage failure")
@@ -1149,18 +1135,17 @@ namespace Rebellion.Tests.Gameplay
             coordinator.SaveCompletion.SetException(new IOException("test storage failure"));
 
             Assert.That(await saving, Is.False);
-            Assert.That(reported, Is.EqualTo(PersistenceOperation.Save));
+            Assert.That(reported, Is.EqualTo(SaveGameOperation.Save));
         }
 
         [Test]
         public async Task QuickSaveAsync_StorageFailure_ReportsFailureAsync()
         {
-            _runtime.StartGame(CreateGame());
             TestPersistenceCoordinator coordinator = new();
-            _runtime.BindPersistenceCoordinator(coordinator);
+            _sessionManager.StartGame(CreateGame(), coordinator);
             bool reported = false;
-            _runtime.PersistenceFailed += (_, _, _) => reported = true;
-            Task<bool> saving = _runtime.QuickSaveAsync();
+            _sessionManager.PersistenceFailed += (_, _, _) => reported = true;
+            Task<bool> saving = _sessionManager.QuickSaveAsync();
             UnityEngine.TestTools.LogAssert.Expect(
                 UnityEngine.LogType.Exception,
                 new System.Text.RegularExpressions.Regex("test storage failure")
@@ -1174,12 +1159,11 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public async Task LoadGameAsync_StorageFailure_ReportsFailedLoadAsync()
         {
-            _runtime.StartGame(CreateGame());
             TestPersistenceCoordinator coordinator = new();
-            _runtime.BindPersistenceCoordinator(coordinator);
-            PersistenceOperation? reported = null;
-            _runtime.PersistenceFailed += (_, operation, _) => reported = operation;
-            Task<bool> loading = _runtime.LoadGameAsync("checkpoint");
+            _sessionManager.StartGame(CreateGame(), coordinator);
+            SaveGameOperation? reported = null;
+            _sessionManager.PersistenceFailed += (_, operation, _) => reported = operation;
+            Task<bool> loading = _sessionManager.LoadGameAsync("checkpoint");
             UnityEngine.TestTools.LogAssert.Expect(
                 UnityEngine.LogType.Exception,
                 new System.Text.RegularExpressions.Regex("test storage failure")
@@ -1187,19 +1171,18 @@ namespace Rebellion.Tests.Gameplay
             coordinator.LoadCompletion.SetException(new IOException("test storage failure"));
             await loading;
 
-            Assert.That(reported, Is.EqualTo(PersistenceOperation.Load));
+            Assert.That(reported, Is.EqualTo(SaveGameOperation.Load));
         }
 
         [Test]
         public async Task SaveGameAsync_FailureAfterSessionReplacement_DoesNotNotifyReplacementAsync()
         {
-            _runtime.StartGame(CreateGame());
             TestPersistenceCoordinator coordinator = new();
-            _runtime.BindPersistenceCoordinator(coordinator);
+            _sessionManager.StartGame(CreateGame(), coordinator);
             bool reported = false;
-            _runtime.PersistenceFailed += (_, _, _) => reported = true;
-            Task<bool> saving = _runtime.SaveGameAsync("checkpoint", "Checkpoint");
-            _runtime.StartGame(CreateGame());
+            _sessionManager.PersistenceFailed += (_, _, _) => reported = true;
+            Task<bool> saving = _sessionManager.SaveGameAsync("checkpoint", "Checkpoint");
+            _sessionManager.StartGame(CreateGame());
             UnityEngine.TestTools.LogAssert.Expect(
                 UnityEngine.LogType.Exception,
                 new System.Text.RegularExpressions.Regex("test storage failure")
@@ -1210,7 +1193,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.That(reported, Is.False);
         }
 
-        private sealed class TestSessionOwner : IGameSessionOwner
+        private class TestSessionOwner : IGameSessionOwner
         {
             public bool CanRequestSave => true;
             private readonly IPlayerRequestDispatcher _actions;
@@ -1235,19 +1218,19 @@ namespace Rebellion.Tests.Gameplay
             /// Records runtime attachment before presentation readiness.
             /// </summary>
             /// <param name="runtime">The newly composed runtime.</param>
-            public void BindRuntime(GameRuntime runtime) => Calls.Add("bind");
+            public void BindSessionManager(GameSessionManager runtime) => Calls.Add("bind");
 
             /// <summary>
             /// Records the presentation's readiness notification.
             /// </summary>
             /// <param name="runtime">The ready runtime.</param>
-            public void NotifyPresentationReady(GameRuntime runtime) => Calls.Add("ready");
+            public void NotifyPresentationReady(GameSessionManager runtime) => Calls.Add("ready");
 
             /// <summary>
             /// Records release of the outgoing session.
             /// </summary>
             /// <param name="runtime">The outgoing runtime.</param>
-            public void ReleaseRuntime(GameRuntime runtime) => Calls.Add("release");
+            public void ReleaseSessionManager(GameSessionManager runtime) => Calls.Add("release");
 
             /// <summary>
             /// Keeps the fixture clock stopped.
@@ -1270,7 +1253,7 @@ namespace Rebellion.Tests.Gameplay
             /// <param name="fileName">The requested identifier.</param>
             /// <param name="displayName">The requested display name.</param>
             /// <returns>False without publishing a save.</returns>
-            public Task<bool> SaveGameAsync(string fileName, string displayName) =>
+            public virtual Task<bool> SaveGameAsync(string fileName, string displayName) =>
                 Task.FromResult(false);
 
             /// <summary>
@@ -1278,18 +1261,17 @@ namespace Rebellion.Tests.Gameplay
             /// </summary>
             /// <param name="fileName">The requested identifier.</param>
             /// <returns>False without replacing the graph.</returns>
-            public Task<bool> LoadGameAsync(string fileName) => Task.FromResult(false);
+            public virtual Task<bool> LoadGameAsync(string fileName) => Task.FromResult(false);
 
             /// <summary>
             /// Leaves automatic persistence outside these lifecycle tests.
             /// </summary>
             /// <param name="settings">The configured save preferences.</param>
-            public void ProcessAutosaveTick(UserGameplaySettings settings) { }
+            public virtual void ProcessAutosaveTick(UserGameplaySettings settings) { }
         }
 
-        private sealed class TestPersistenceCoordinator : IGamePersistenceCoordinator
+        private sealed class TestPersistenceCoordinator : TestSessionOwner
         {
-            public bool CanRequestSave => true;
             internal readonly TaskCompletionSource<bool> SaveCompletion = new();
             internal readonly TaskCompletionSource<bool> LoadCompletion = new();
             internal string SavedFileName;
@@ -1304,7 +1286,7 @@ namespace Rebellion.Tests.Gameplay
             /// <param name="fileName">The requested save identifier.</param>
             /// <param name="displayName">The requested display name.</param>
             /// <returns>The fixture's pending completion.</returns>
-            public Task<bool> SaveGameAsync(string fileName, string displayName)
+            public override Task<bool> SaveGameAsync(string fileName, string displayName)
             {
                 SavedFileName = fileName;
                 SavedDisplayName = displayName;
@@ -1316,7 +1298,7 @@ namespace Rebellion.Tests.Gameplay
             /// </summary>
             /// <param name="fileName">The requested save identifier.</param>
             /// <returns>The fixture's pending completion.</returns>
-            public Task<bool> LoadGameAsync(string fileName)
+            public override Task<bool> LoadGameAsync(string fileName)
             {
                 LoadedFileName = fileName;
                 return LoadCompletion.Task;
@@ -1326,7 +1308,7 @@ namespace Rebellion.Tests.Gameplay
             /// Records the completed tick's automatic-save preferences without writing.
             /// </summary>
             /// <param name="settings">The preferences supplied by the runtime.</param>
-            public void ProcessAutosaveTick(UserGameplaySettings settings)
+            public override void ProcessAutosaveTick(UserGameplaySettings settings)
             {
                 AutosaveTicks++;
                 AutosaveSettings = settings;

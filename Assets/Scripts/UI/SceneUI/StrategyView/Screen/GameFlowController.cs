@@ -80,7 +80,7 @@ public sealed class GameFlowController : MonoBehaviour
 
             ContentPack contentPack = bootstrap.GetContentPack();
             themeLibrary = new FactionThemeLibrary(contentPack.GameData.FactionThemes);
-            GameRuntime runtime = bootstrap.GetRuntime();
+            GameSessionManager runtime = bootstrap.GetGameSessionManager();
             if (runtime?.HasActiveGame == true)
             {
                 GameSession session = runtime.GetActiveGameSession();
@@ -145,7 +145,8 @@ public sealed class GameFlowController : MonoBehaviour
     {
         if (
             activeSession == null
-            || AppBootstrap.Instance?.GetRuntime()?.GetActiveGameSession() != activeSession
+            || AppBootstrap.Instance?.GetGameSessionManager()?.GetActiveGameSession()
+                != activeSession
         )
         {
             DisposeActiveTick();
@@ -168,7 +169,9 @@ public sealed class GameFlowController : MonoBehaviour
             return;
         }
 
-        bool beginTick = AppBootstrap.Instance.GetRuntime().TryBeginGameTick(Time.deltaTime);
+        bool beginTick = AppBootstrap
+            .Instance.GetGameSessionManager()
+            .TryBeginGameTick(Time.deltaTime);
         if (beginTick)
         {
             activeTick = activeSession.Tick.ProcessTickIncrementally();
@@ -195,7 +198,9 @@ public sealed class GameFlowController : MonoBehaviour
         if (multiplayer?.IsMultiplayerGame == true)
         {
             if (multiplayer.IsTransferringScene)
-                multiplayer.DetachGameForSceneTransfer(AppBootstrap.Instance?.GetRuntime());
+                multiplayer.DetachGameForSceneTransfer(
+                    AppBootstrap.Instance?.GetGameSessionManager()
+                );
             else
                 multiplayer.Disconnect();
         }
@@ -255,7 +260,7 @@ public sealed class GameFlowController : MonoBehaviour
         ContentPack contentPack = AppBootstrap.Instance.GetContentPack();
         GameBuilder builder = new GameBuilder(summary, contentPack.GameData);
         GameRoot restoredGame = GameLaunchContext.IsMultiplayer
-            ? MultiplayerCoordinator.EnsureExists().RestoredGame
+            ? AppBootstrap.EnsureExists().GetMultiplayerCoordinator().RestoredGame
             : null;
         game = restoredGame ?? builder.Build();
         bool briefingsDisabled = AppBootstrap
@@ -286,7 +291,7 @@ public sealed class GameFlowController : MonoBehaviour
     /// </summary>
     /// <param name="runtime">The runtime that owns the incoming game session.</param>
     /// <returns>A task representing asynchronous save deserialization.</returns>
-    private async Task LoadGameAsync(GameRuntime runtime)
+    private async Task LoadGameAsync(GameSessionManager runtime)
     {
         string fileName = GameLaunchContext.SaveFileName;
 
@@ -298,7 +303,6 @@ public sealed class GameFlowController : MonoBehaviour
             );
 
         game = await SaveGameManager.Instance.LoadGameDataAsync(fileName);
-        runtime.ValidateGameContent(game);
     }
 
     /// <summary>
@@ -363,9 +367,9 @@ public sealed class GameFlowController : MonoBehaviour
     private GameSession StartGameSession(bool loadedGame)
     {
         AppBootstrap bootstrap = AppBootstrap.EnsureExists();
-        GameRuntime runtime = bootstrap.GetRuntime();
+        GameSessionManager runtime = bootstrap.GetGameSessionManager();
         MultiplayerCoordinator multiplayer = GameLaunchContext.IsMultiplayer
-            ? MultiplayerCoordinator.EnsureExists()
+            ? AppBootstrap.EnsureExists().GetMultiplayerCoordinator()
             : null;
         IGameSessionOwner owner = multiplayer;
         GameSession session = loadedGame
@@ -448,8 +452,8 @@ public sealed class GameFlowController : MonoBehaviour
 
         strategyController.Initialize(
             session,
-            bootstrap.GetRuntime().GetActiveGameManager(),
-            bootstrap.GetRuntime(),
+            bootstrap.GetGameSessionManager().GetActiveGameManager(),
+            bootstrap.GetGameSessionManager(),
             uiContext,
             cancellationToken
         );
@@ -497,7 +501,7 @@ public sealed class GameFlowController : MonoBehaviour
         if (!CanContinueStartup(bootstrap))
             return;
 
-        GameManager clock = bootstrap.GetRuntime().GetActiveGameManager();
+        GameManager clock = bootstrap.GetGameSessionManager().GetActiveGameManager();
         GameRoot activeGame = session.Game;
         GameMetadata metadata = activeGame.Metadata ??= new GameMetadata();
         bool briefingsDisabled = bootstrap
@@ -570,7 +574,7 @@ public sealed class GameFlowController : MonoBehaviour
     /// <param name="clock">The prepared application clock.</param>
     private void EnableSessionTicks(GameSession session, GameManager clock)
     {
-        if (!AppBootstrap.Instance.GetRuntime().NotifyPresentationReady(session))
+        if (!AppBootstrap.Instance.GetGameSessionManager().NotifyPresentationReady(session))
             return;
         activeSession = session;
         activeGameManager = clock;
@@ -733,7 +737,7 @@ public sealed class GameFlowController : MonoBehaviour
     private void FinishCampaign()
     {
         AppBootstrap bootstrap = AppBootstrap.EnsureExists();
-        bootstrap.GetRuntime()?.EndGame();
+        bootstrap.GetGameSessionManager()?.EndGame();
         MultiplayerCoordinator.Instance?.Disconnect();
         bootstrap.LoadScene("MainMenu");
     }

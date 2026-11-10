@@ -15,7 +15,7 @@ using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
 using Rebellion.Util.Serialization;
 
-namespace Rebellion.Tests.Persistence
+namespace Rebellion.Tests.Managers
 {
     [TestFixture]
     public class SaveGameManagerTests
@@ -2530,4 +2530,4 @@ namespace Rebellion.Tests.Persistence
             return game;
         }
     }
-} // namespace Rebellion.Tests.Persistence
+} // namespace Rebellion.Tests.Managers

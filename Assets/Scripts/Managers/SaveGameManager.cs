@@ -10,6 +10,15 @@ using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
 
 /// <summary>
+/// Identifies the persistence operation whose storage failure needs acknowledgment.
+/// </summary>
+public enum SaveGameOperation
+{
+    Save,
+    Load,
+}
+
+/// <summary>
 /// Represents a discovered save file paired with its deserialized metadata.
 /// </summary>
 public sealed class SaveGameEntry

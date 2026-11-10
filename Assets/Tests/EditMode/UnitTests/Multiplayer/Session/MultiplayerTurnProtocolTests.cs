@@ -20,7 +20,7 @@ using UnityEngine;
 namespace Rebellion.Tests.Multiplayer
 {
     [TestFixture]
-    public sealed class MultiplayerGameSessionTests
+    public sealed class MultiplayerTurnProtocolTests
     {
         private const string _hostFactionID = "FNALL1";
         private const string _guestFactionID = "FNEMP1";
@@ -530,8 +530,8 @@ namespace Rebellion.Tests.Multiplayer
             peers.Host.ExecuteAsync(new SetSpeedRequest { Speed = TickSpeed.Paused });
             peers.Guest.ExecuteAsync(new SetSpeedRequest { Speed = TickSpeed.Paused });
             peers.Flush();
-            MultiplayerGameSession proposer = hostProposes ? peers.Host : peers.Guest;
-            MultiplayerGameSession responder = hostProposes ? peers.Guest : peers.Host;
+            MultiplayerTurnProtocol proposer = hostProposes ? peers.Host : peers.Guest;
+            MultiplayerTurnProtocol responder = hostProposes ? peers.Guest : peers.Host;
             string faction = hostProposes ? _hostFactionID : _guestFactionID;
             proposer.ExecuteAsync(new SetSpeedRequest { Speed = TickSpeed.Fast });
             peers.Flush();
@@ -808,7 +808,7 @@ namespace Rebellion.Tests.Multiplayer
         public void Dispose_PendingLocalRequest_CompletesWithUnknownOutcome(MultiplayerRole role)
         {
             using PeerPair peers = new();
-            MultiplayerGameSession protocol =
+            MultiplayerTurnProtocol protocol =
                 role == MultiplayerRole.Host ? peers.Host : peers.Guest;
             Task<PlayerRequestOutcome> request = protocol.ExecuteAsync(
                 new MarkAllMessagesReadRequest()
@@ -1239,7 +1239,7 @@ namespace Rebellion.Tests.Multiplayer
                 role == MultiplayerRole.Host ? peers.HostSimulation : peers.GuestSimulation;
             GameManager clock = role == MultiplayerRole.Host ? peers.HostClock : peers.GuestClock;
             Assert.Throws<InvalidOperationException>(() =>
-                new MultiplayerGameSession(
+                new MultiplayerTurnProtocol(
                     role,
                     _hostFactionID,
                     _guestFactionID,
@@ -1375,7 +1375,7 @@ namespace Rebellion.Tests.Multiplayer
             );
             Assert.IsTrue(pending.AttackerCanRetreat);
             Assert.IsTrue(pending.DefenderCanRetreat);
-            MultiplayerGameSession first = guestRespondsFirst ? previous.Guest : previous.Host;
+            MultiplayerTurnProtocol first = guestRespondsFirst ? previous.Guest : previous.Host;
             Task<PlayerRequestOutcome> initialResponse = first.ExecuteAsync(
                 new ResolveCombatRequest
                 {
@@ -1406,7 +1406,7 @@ namespace Rebellion.Tests.Multiplayer
                     .TryGetPendingCombat(out PendingCombatResult restored)
             );
             Assert.That(restored.AttackerHasResponded || restored.DefenderHasResponded, Is.False);
-            MultiplayerGameSession firstAgain = guestRespondsFirst
+            MultiplayerTurnProtocol firstAgain = guestRespondsFirst
                 ? recovered.Guest
                 : recovered.Host;
             Task<PlayerRequestOutcome> newResponse = firstAgain.ExecuteAsync(
@@ -1421,7 +1421,7 @@ namespace Rebellion.Tests.Multiplayer
             Assert.That(Completed(newResponse).Accepted, Is.True);
             Assert.That(Completed(newResponse).SpaceCombatResult, Is.Null);
             Assert.That(recovered.HostSimulation.Tick.IsSettled, Is.False);
-            MultiplayerGameSession second = guestRespondsFirst ? recovered.Host : recovered.Guest;
+            MultiplayerTurnProtocol second = guestRespondsFirst ? recovered.Host : recovered.Guest;
             Task<PlayerRequestOutcome> finalResponse = second.ExecuteAsync(
                 new ResolveCombatRequest
                 {
@@ -1653,8 +1653,8 @@ namespace Rebellion.Tests.Multiplayer
             public GameRoot GuestGame => GuestSimulation.Game;
             public GameManager HostClock { get; }
             public GameManager GuestClock { get; }
-            public MultiplayerGameSession Host { get; }
-            public MultiplayerGameSession Guest { get; }
+            public MultiplayerTurnProtocol Host { get; }
+            public MultiplayerTurnProtocol Guest { get; }
             public bool RejectHostSends { get; set; }
             public bool RejectGuestSends { get; set; }
             public string InitializationID { get; } = Guid.NewGuid().ToString("N");
@@ -1684,7 +1684,7 @@ namespace Rebellion.Tests.Multiplayer
                 GuestSimulation = new GameSession(guestGame, content);
                 HostClock = new GameManager(() => HostGame, HostSimulation.Tick);
                 GuestClock = new GameManager(() => GuestGame, GuestSimulation.Tick);
-                Host = new MultiplayerGameSession(
+                Host = new MultiplayerTurnProtocol(
                     MultiplayerRole.Host,
                     _hostFactionID,
                     _guestFactionID,
@@ -1693,7 +1693,7 @@ namespace Rebellion.Tests.Multiplayer
                     SendHost,
                     InitializationID
                 );
-                Guest = new MultiplayerGameSession(
+                Guest = new MultiplayerTurnProtocol(
                     MultiplayerRole.Guest,
                     _hostFactionID,
                     _guestFactionID,
@@ -1723,7 +1723,7 @@ namespace Rebellion.Tests.Multiplayer
                 GuestGame.LocalPlayerFactionID = _guestFactionID;
                 HostClock = new GameManager(() => HostGame, HostSimulation.Tick);
                 GuestClock = new GameManager(() => GuestGame, GuestSimulation.Tick);
-                Host = new MultiplayerGameSession(
+                Host = new MultiplayerTurnProtocol(
                     MultiplayerRole.Host,
                     _hostFactionID,
                     _guestFactionID,
@@ -1732,7 +1732,7 @@ namespace Rebellion.Tests.Multiplayer
                     SendHost,
                     InitializationID
                 );
-                Guest = new MultiplayerGameSession(
+                Guest = new MultiplayerTurnProtocol(
                     MultiplayerRole.Guest,
                     _hostFactionID,
                     _guestFactionID,

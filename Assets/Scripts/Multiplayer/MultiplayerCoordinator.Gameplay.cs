@@ -13,7 +13,7 @@ namespace Rebellion.Multiplayer
     /// </summary>
     public sealed partial class MultiplayerCoordinator
     {
-        private MultiplayerGameSession _gameSession;
+        private MultiplayerTurnProtocol _turnProtocol;
         private bool _awaitingSnapshotReceipt;
         private string _initialSnapshotHash;
         private string _initialSimulationFingerprint;
@@ -25,7 +25,7 @@ namespace Rebellion.Multiplayer
         /// Gets whether the admitted peer can receive an ordered gameplay chat message.
         /// </summary>
         public bool CanSendPeerChat =>
-            _synchronizationReady && _gameSession != null && _peer?.IsConnected == true;
+            _synchronizationReady && _turnProtocol != null && _peer?.IsConnected == true;
 
         /// <summary>
         /// Sends unchanged composer text through the admitted player's ordered action boundary.
@@ -57,11 +57,11 @@ namespace Rebellion.Multiplayer
         /// Binds execution, speed requests, and persistence before any strategy presentation starts.
         /// </summary>
         /// <param name="runtime">The active game runtime.</param>
-        public void BindRuntime(GameRuntime runtime)
+        public void BindSessionManager(GameSessionManager runtime)
         {
             if (_launchConfiguration == null)
                 throw new InvalidOperationException("A negotiated multiplayer launch is required.");
-            _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
+            _sessionManager = runtime ?? throw new ArgumentNullException(nameof(runtime));
             _readyPresentationSession = null;
             _readyPresentationInitializationID = null;
             runtime.GetActiveGameManager().BindSpeedRequests(RequestGameSpeed);
@@ -71,9 +71,9 @@ namespace Rebellion.Multiplayer
         /// Starts the synchronization handshake after the declared runtime's presentation is ready.
         /// </summary>
         /// <param name="runtime">The runtime reporting its completed presentation setup.</param>
-        public void NotifyPresentationReady(GameRuntime runtime)
+        public void NotifyPresentationReady(GameSessionManager runtime)
         {
-            if (!ReferenceEquals(_runtime, runtime))
+            if (!ReferenceEquals(_sessionManager, runtime))
                 throw new InvalidOperationException(
                     "The ready presentation belongs to another runtime."
                 );
@@ -120,16 +120,16 @@ namespace Rebellion.Multiplayer
         /// Releases only the outgoing runtime while preserving an agreed scene-transfer operation.
         /// </summary>
         /// <param name="runtime">The runtime ending its current session.</param>
-        public void ReleaseRuntime(GameRuntime runtime)
+        public void ReleaseSessionManager(GameSessionManager runtime)
         {
-            if (!ReferenceEquals(_runtime, runtime))
+            if (!ReferenceEquals(_sessionManager, runtime))
                 return;
             if (IsTransferringScene)
                 DetachGameForSceneTransfer(runtime);
             else
             {
                 ReleaseGameplay();
-                _runtime = null;
+                _sessionManager = null;
                 _synchronizationReady = false;
             }
         }
@@ -141,11 +141,11 @@ namespace Rebellion.Multiplayer
         /// <returns>The completed operation, or a rejection while synchronization is unavailable.</returns>
         public Task<PlayerRequestOutcome> ExecuteAsync(PlayerRequest action)
         {
-            if (!_synchronizationReady || _gameSession == null)
+            if (!_synchronizationReady || _turnProtocol == null)
                 return Task.FromResult(
                     new PlayerRequestOutcome(false, "Waiting for the other player.")
                 );
-            return _gameSession.ExecuteAsync(action);
+            return _turnProtocol.ExecuteAsync(action);
         }
 
         /// <summary>
@@ -157,15 +157,15 @@ namespace Rebellion.Multiplayer
         {
             if (
                 !_synchronizationReady
-                || _gameSession == null
+                || _turnProtocol == null
                 || _checkpointPending
-                || _persistence?.BlocksNewTicks == true
+                || _saveProtocol?.BlocksNewTicks == true
             )
                 return false;
             bool elapsed =
-                _gameSession.CanBeginHostTick
-                && _runtime.GetActiveGameManager().TryAdvanceTickTimer(elapsedSeconds);
-            return _gameSession.TryBeginTick(elapsed);
+                _turnProtocol.CanBeginHostTick
+                && _sessionManager.GetActiveGameManager().TryAdvanceTickTimer(elapsedSeconds);
+            return _turnProtocol.TryBeginTick(elapsed);
         }
 
         /// <summary>
@@ -174,8 +174,8 @@ namespace Rebellion.Multiplayer
         /// <param name="exception">The tick failure.</param>
         internal void ReportGameplayFailure(Exception exception)
         {
-            if (_gameSession != null)
-                _gameSession.ReportFailure(exception);
+            if (_turnProtocol != null)
+                _turnProtocol.ReportFailure(exception);
             else
                 HandleGameplayFailure(exception);
         }
@@ -188,14 +188,17 @@ namespace Rebellion.Multiplayer
             if (
                 _role != MultiplayerRole.Host
                 || !_remoteReady
-                || _runtime?.GetActiveGame() == null
-                || !ReferenceEquals(_readyPresentationSession, _runtime.GetActiveGameSession())
+                || _sessionManager?.GetActiveGame() == null
+                || !ReferenceEquals(
+                    _readyPresentationSession,
+                    _sessionManager.GetActiveGameSession()
+                )
                 || _synchronizationReady
                 || _awaitingSnapshotReceipt
                 || Failure != null
             )
                 return;
-            if (!_runtime.GetActiveGameSession().CanCaptureSettledState)
+            if (!_sessionManager.GetActiveGameSession().CanCaptureSettledState)
                 return;
             try
             {
@@ -227,14 +230,14 @@ namespace Rebellion.Multiplayer
             MultiplayerSnapshot snapshot = null;
             if (_snapshotAdmission.PreparedSnapshotHash == null)
             {
-                snapshot = MultiplayerSnapshotCodec.Capture(_runtime.GetActiveGameSession());
+                snapshot = MultiplayerSnapshotCodec.Capture(_sessionManager.GetActiveGameSession());
                 GameRoot game = MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash);
                 ConfigureGame(game);
                 ReplaceGame(game);
             }
-            _runtime.BlockGameOperations();
+            _sessionManager.BlockGameOperations();
             _initialSimulationFingerprint = MultiplayerStateFingerprint.ComputeSimulation(
-                _runtime.GetActiveGameSession()
+                _sessionManager.GetActiveGameSession()
             );
             metadata = new MultiplayerSnapshotMessage
             {
@@ -281,7 +284,7 @@ namespace Rebellion.Multiplayer
         private void AcceptInitialSnapshot(MultiplayerSnapshotMessage metadata)
         {
             metadata.simulationFingerprint = MultiplayerStateFingerprint.VerifyLoadedGame(
-                _runtime.GetActiveGameSession(),
+                _sessionManager.GetActiveGameSession(),
                 metadata.simulationFingerprint
             );
             StartOrderedGameplay();
@@ -330,27 +333,27 @@ namespace Rebellion.Multiplayer
         /// </summary>
         private void StartOrderedGameplay()
         {
-            _gameSession?.Dispose();
-            _gameSession = new MultiplayerGameSession(
+            _turnProtocol?.Dispose();
+            _turnProtocol = new MultiplayerTurnProtocol(
                 _role,
                 _launchConfiguration.HostFactionID,
                 _launchConfiguration.GuestFactionID,
-                _runtime.GetActiveGameSession(),
-                _runtime.GetActiveGameManager(),
+                _sessionManager.GetActiveGameSession(),
+                _sessionManager.GetActiveGameManager(),
                 QueueSend,
                 _initializationID
             );
-            _gameSession.StateChanged += _runtime.NotifyGameStateChanged;
-            _gameSession.Faulted += HandleGameplayFailure;
+            _turnProtocol.StateChanged += _sessionManager.NotifyGameStateChanged;
+            _turnProtocol.Faulted += HandleGameplayFailure;
             _synchronizationReady = true;
-            _runtime.ResumeMultiplayerOperations();
-            EnsurePersistenceSession();
-            _runtime.BindPersistenceCoordinator(this);
-            _persistence.NotifySynchronized();
-            _runtime.RecordMultiplayerCampaignStarted();
+            _sessionManager.ResumeMultiplayerOperations();
+            EnsureSaveProtocol();
+            _localSaves = null;
+            _saveProtocol.NotifySynchronized();
+            _sessionManager.RecordMultiplayerCampaignStarted();
             GetAnalyticsTracker()
                 ?.RecordGameConnected(
-                    _runtime.GetActiveGame(),
+                    _sessionManager.GetActiveGame(),
                     _role,
                     _initializationID,
                     _waitingForRejoin || _returningToRecovery
@@ -402,11 +405,11 @@ namespace Rebellion.Multiplayer
         {
             if (!_synchronizationReady && ReferenceEquals(Failure, exception))
                 return;
-            _analyticsTracker?.RecordStopped(_runtime?.GetActiveGame()?.CurrentTick);
+            _analyticsTracker?.RecordStopped(_sessionManager?.GetActiveGame()?.CurrentTick);
             _synchronizationReady = false;
             Failure = exception;
-            if (_gameSession != null)
-                _gameSession.ReportFailure(exception);
+            if (_turnProtocol != null)
+                _turnProtocol.ReportFailure(exception);
             else if (
                 notifyPeer
                 && !string.IsNullOrEmpty(_initializationID)
@@ -425,11 +428,11 @@ namespace Rebellion.Multiplayer
                     )
                 );
             if (IsTransferringScene)
-                CancelPersistence(exception);
+                CancelSharedSave(exception);
             else
-                _persistence?.ReportFailure(exception);
-            _runtime?.BlockGameOperations();
-            _runtime?.GetActiveGameManager()?.ApplyGameSpeed(TickSpeed.Paused);
+                _saveProtocol?.ReportFailure(exception);
+            _sessionManager?.BlockGameOperations();
+            _sessionManager?.GetActiveGameManager()?.ApplyGameSpeed(TickSpeed.Paused);
             Debug.LogException(exception);
             SetStatus("Game synchronization stopped.");
         }
@@ -439,17 +442,17 @@ namespace Rebellion.Multiplayer
         /// </summary>
         private void ReleaseGameplay()
         {
-            CancelPersistence();
-            _runtime?.UnbindPersistenceCoordinator();
-            _gameSession?.Dispose();
-            _gameSession = null;
+            CancelSharedSave();
+            _localSaves = null;
+            _turnProtocol?.Dispose();
+            _turnProtocol = null;
             _awaitingSnapshotReceipt = false;
             _initialSnapshotHash = null;
             _initialSimulationFingerprint = null;
             _pendingRejoinSnapshot = null;
             _readyPresentationSession = null;
             _readyPresentationInitializationID = null;
-            _runtime?.GetActiveGameManager()?.UnbindSpeedRequests();
+            _sessionManager?.GetActiveGameManager()?.UnbindSpeedRequests();
         }
     }
 }

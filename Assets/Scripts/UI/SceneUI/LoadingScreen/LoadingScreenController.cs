@@ -347,7 +347,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
 
         try
         {
-            controller._bootstrap?.GetRuntime()?.EndGame();
+            controller._bootstrap?.GetGameSessionManager()?.EndGame();
         }
         catch (Exception cleanupFailure)
         {
@@ -499,7 +499,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
 
         try
         {
-            _bootstrap.GetRuntime()?.EndGame();
+            _bootstrap.GetGameSessionManager()?.EndGame();
         }
         catch (Exception exception)
         {
@@ -674,7 +674,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
         Exception failure = null;
         try
         {
-            _bootstrap?.GetRuntime()?.EndGame();
+            _bootstrap?.GetGameSessionManager()?.EndGame();
         }
         catch (Exception exception)
         {

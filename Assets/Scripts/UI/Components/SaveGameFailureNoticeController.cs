@@ -1,11 +1,10 @@
 using System;
-using Rebellion.Persistence;
 using UnityEngine;
 
 /// <summary>
 /// Presents application-owned storage failures using the shared acknowledgment dialog.
 /// </summary>
-public sealed class PersistenceFailureNoticeController : MonoBehaviour, ICancelable, IDisposable
+public sealed class SaveGameFailureNoticeController : MonoBehaviour, ICancelable, IDisposable
 {
     [SerializeField]
     private UIWindowManager windowManager;
@@ -13,7 +12,7 @@ public sealed class PersistenceFailureNoticeController : MonoBehaviour, ICancela
     [SerializeField]
     private ConfirmationDialogView dialogTemplate;
 
-    private PersistenceFailureNotice _notice;
+    private SaveGameFailureNotice _notice;
     private UIWindow _window;
     private ConfirmationDialogView _dialog;
     private Func<IDisposable> _suppressShortcuts;
@@ -49,7 +48,7 @@ public sealed class PersistenceFailureNoticeController : MonoBehaviour, ICancela
     /// <param name="cancelStack">The application cancellation router.</param>
     /// <param name="contentAssets">The installed dialog artwork.</param>
     public void Initialize(
-        PersistenceFailureNotice notice,
+        SaveGameFailureNotice notice,
         UIWindowManager manager,
         ConfirmationDialogView template,
         Func<IDisposable> suppressShortcuts,
@@ -58,7 +57,7 @@ public sealed class PersistenceFailureNoticeController : MonoBehaviour, ICancela
     )
     {
         if (_disposed)
-            throw new ObjectDisposedException(nameof(PersistenceFailureNoticeController));
+            throw new ObjectDisposedException(nameof(SaveGameFailureNoticeController));
         if (_notice != null)
             throw new InvalidOperationException(
                 "The persistence notice already has a scene owner."
@@ -139,9 +138,8 @@ public sealed class PersistenceFailureNoticeController : MonoBehaviour, ICancela
         _dialog.ShowAcknowledgment(
             _notice.Operation.Value switch
             {
-                PersistenceOperation.Save => "The game could not be saved. Please try again.",
-                PersistenceOperation.Load =>
-                    "The saved game could not be loaded. Please try again.",
+                SaveGameOperation.Save => "The game could not be saved. Please try again.",
+                SaveGameOperation.Load => "The saved game could not be loaded. Please try again.",
                 _ => throw new ArgumentOutOfRangeException(nameof(_notice.Operation)),
             }
         );

@@ -1,6 +1,8 @@
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.GameEvents;
+using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
@@ -50,6 +52,27 @@ namespace Rebellion.Tests.Multiplayer
             Assert.AreEqual(
                 MultiplayerStateFingerprint.ComputeSimulation(_source),
                 MultiplayerStateFingerprint.ComputeSimulation(_restored)
+            );
+        }
+
+        [Test]
+        public void ComputeSimulation_IndependentEventDefinitions_MatchAfterSnapshotRestore()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            using GameSession source = new(
+                game,
+                TestGameData.Create(game.Config, gameEvents: new[] { CreateEventDefinition() })
+            );
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(source);
+            source.ReplaceGame(MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash));
+            using GameSession restored = new(
+                MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash),
+                TestGameData.Create(game.Config, gameEvents: new[] { CreateEventDefinition() })
+            );
+
+            Assert.AreEqual(
+                MultiplayerStateFingerprint.ComputeSimulation(source),
+                MultiplayerStateFingerprint.ComputeSimulation(restored)
             );
         }
 
@@ -224,6 +247,18 @@ namespace Rebellion.Tests.Multiplayer
 
             Assert.AreNotEqual(fingerprint, MultiplayerStateFingerprint.Compute(state));
         }
+
+        /// <summary>
+        /// Creates a separately loaded event expression with no scene identity.
+        /// </summary>
+        /// <returns>The independently authored event definition.</returns>
+        private static GameEvent CreateEventDefinition() =>
+            new()
+            {
+                InstanceID = "event",
+                Triggers = { new UnitCreatedTrigger() },
+                Conditionals = { new TickCountConditional { Ticks = 5 } },
+            };
 
         [PersistableObject]
         private sealed class AccessorState

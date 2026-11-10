@@ -2,16 +2,15 @@ using System;
 using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Gameplay;
-using Rebellion.Persistence;
 
 namespace Rebellion.Multiplayer
 {
     /// <summary>
     /// Publishes a survivor's settled local saves while shared loading and simulation remain suspended.
     /// </summary>
-    internal sealed class MultiplayerLocalPersistence : IGamePersistenceCoordinator
+    internal sealed class MultiplayerDisconnectedSaves
     {
-        private readonly GameRuntime _runtime;
+        private readonly GameSessionManager _sessionManager;
         private readonly GameSession _session;
         private readonly MultiplayerRole _role;
         private readonly Action _checkpointPublished;
@@ -20,7 +19,8 @@ namespace Rebellion.Multiplayer
         /// Gets whether the retained campaign has reached a permitted ordinary-save boundary.
         /// </summary>
         public bool CanRequestSave =>
-            ReferenceEquals(_runtime.GetActiveGameSession(), _session) && _runtime.CanSave;
+            ReferenceEquals(_sessionManager.GetActiveGameSession(), _session)
+            && _sessionManager.CanSave;
 
         /// <summary>
         /// Retains the surviving session and its original participant namespace.
@@ -28,13 +28,13 @@ namespace Rebellion.Multiplayer
         /// <param name="runtime">The runtime retaining the paused campaign.</param>
         /// <param name="role">The participant's original simulation role.</param>
         /// <param name="checkpointPublished">Requests a recovery refresh after a durable local save.</param>
-        public MultiplayerLocalPersistence(
-            GameRuntime runtime,
+        public MultiplayerDisconnectedSaves(
+            GameSessionManager runtime,
             MultiplayerRole role,
             Action checkpointPublished
         )
         {
-            _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
+            _sessionManager = runtime ?? throw new ArgumentNullException(nameof(runtime));
             _session =
                 runtime.GetActiveGameSession()
                 ?? throw new InvalidOperationException("An active campaign is required.");
@@ -63,23 +63,10 @@ namespace Rebellion.Multiplayer
             );
             // A local publication must not claim to match an older copy on the absent peer.
             game.Metadata.SharedSaveToken = Guid.NewGuid().ToString("N");
-            bool saved = await _runtime.SaveGameLocallyAsync(localFileName, displayName);
-            if (saved && ReferenceEquals(_runtime.GetActiveGameSession(), _session))
+            bool saved = await _sessionManager.SaveGameLocallyAsync(localFileName, displayName);
+            if (saved && ReferenceEquals(_sessionManager.GetActiveGameSession(), _session))
                 _checkpointPublished?.Invoke();
             return saved;
         }
-
-        /// <summary>
-        /// Keeps scene replacement unavailable until both participants have reconnected.
-        /// </summary>
-        /// <param name="fileName">The requested save identifier.</param>
-        /// <returns>False while persistence belongs to the surviving participant alone.</returns>
-        public Task<bool> LoadGameAsync(string fileName) => Task.FromResult(false);
-
-        /// <summary>
-        /// Leaves automatic recovery to the disconnect checkpoint while the clock is suspended.
-        /// </summary>
-        /// <param name="settings">The configured automatic-save preferences.</param>
-        public void ProcessAutosaveTick(UserGameplaySettings settings) { }
     }
 }

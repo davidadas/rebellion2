@@ -846,7 +846,7 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
         {
             _selectedSave = null;
             saveLoadButton.interactable = false;
-            _saves = _coordinator.GetVisibleSavedGames(SaveGameManager.Instance);
+            _saves = _coordinator.GetVisibleSavedGames();
             _saveSlots.Clear();
             ContentPack pack = _coordinator.LobbyContent;
             FactionThemeLibrary themes = new FactionThemeLibrary(pack.GameData.FactionThemes);

@@ -10,24 +10,24 @@ namespace Rebellion.Multiplayer
     /// Reserves a shared settled boundary before durable checkpoints or an agreed scene transfer.
     /// Storage and content preparation are supplied by the application owner.
     /// </summary>
-    internal sealed class MultiplayerPersistenceSession : IDisposable
+    internal sealed class MultiplayerSaveProtocol : IDisposable
     {
         private readonly MultiplayerRole _role;
         private readonly string _connectionID;
         private readonly Action<MultiplayerPacket> _send;
         private readonly Func<bool> _canCheckpoint;
         private readonly Func<
-            MultiplayerPersistenceCommand,
+            MultiplayerSaveRequest,
             byte[],
-            Task<MultiplayerPersistenceCheckpoint>
+            Task<MultiplayerSaveCheckpoint>
         > _prepareHost;
-        private readonly Func<MultiplayerPersistenceCheckpoint, Task> _prepareGuest;
-        private readonly Action<MultiplayerPersistenceCheckpoint> _beginTransfer;
+        private readonly Func<MultiplayerSaveCheckpoint, Task> _prepareGuest;
+        private readonly Action<MultiplayerSaveCheckpoint> _beginTransfer;
         private readonly Queue<MultiplayerPacket> _events = new();
-        private readonly Queue<MultiplayerPersistenceCheckpoint> _pending = new();
+        private readonly Queue<MultiplayerSaveCheckpoint> _pending = new();
         private readonly Dictionary<long, TaskCompletionSource<bool>> _requests = new();
-        private MultiplayerPersistenceCommand _current;
-        private MultiplayerPersistenceCheckpoint _checkpoint;
+        private MultiplayerSaveRequest _current;
+        private MultiplayerSaveCheckpoint _checkpoint;
         private byte[] _sourcePayload;
         private long _nextRequestID;
         private long _lastGuestRequestID;
@@ -80,17 +80,13 @@ namespace Rebellion.Multiplayer
         /// <param name="prepareGuest">Writes the peer copy or verifies its required load content.</param>
         /// <param name="beginTransfer">Starts the already agreed load transition.</param>
         /// <param name="connectionID">The initialized connection owning this persistence channel.</param>
-        public MultiplayerPersistenceSession(
+        public MultiplayerSaveProtocol(
             MultiplayerRole role,
             Action<MultiplayerPacket> send,
             Func<bool> canCheckpoint,
-            Func<
-                MultiplayerPersistenceCommand,
-                byte[],
-                Task<MultiplayerPersistenceCheckpoint>
-            > prepareHost,
-            Func<MultiplayerPersistenceCheckpoint, Task> prepareGuest,
-            Action<MultiplayerPersistenceCheckpoint> beginTransfer,
+            Func<MultiplayerSaveRequest, byte[], Task<MultiplayerSaveCheckpoint>> prepareHost,
+            Func<MultiplayerSaveCheckpoint, Task> prepareGuest,
+            Action<MultiplayerSaveCheckpoint> beginTransfer,
             string connectionID
         )
         {
@@ -149,7 +145,7 @@ namespace Rebellion.Multiplayer
                 TaskCreationOptions.RunContinuationsAsynchronously
             );
             _requests.Add(requestID, completion);
-            MultiplayerPersistenceCommand command = new()
+            MultiplayerSaveRequest command = new()
             {
                 requestID = requestID,
                 guestRequest = _role == MultiplayerRole.Guest,
@@ -160,7 +156,7 @@ namespace Rebellion.Multiplayer
             };
             byte[] sourcePayload = source == null ? null : (byte[])source.Payload.Clone();
             if (_role == MultiplayerRole.Host)
-                _pending.Enqueue(new MultiplayerPersistenceCheckpoint { Command = command });
+                _pending.Enqueue(new MultiplayerSaveCheckpoint { Command = command });
             else
                 Send(MultiplayerMessageType.PersistenceRequest, command, sourcePayload);
             return completion.Task;
@@ -175,19 +171,19 @@ namespace Rebellion.Multiplayer
             if (_role != MultiplayerRole.Host || _autosaveQueued)
                 return;
             _autosaveQueued = true;
-            MultiplayerPersistenceCheckpoint[] waiting = _pending.ToArray();
+            MultiplayerSaveCheckpoint[] waiting = _pending.ToArray();
             _pending.Clear();
             _pending.Enqueue(
-                new MultiplayerPersistenceCheckpoint
+                new MultiplayerSaveCheckpoint
                 {
-                    Command = new MultiplayerPersistenceCommand
+                    Command = new MultiplayerSaveRequest
                     {
                         automatic = true,
                         fileName = string.Empty,
                     },
                 }
             );
-            foreach (MultiplayerPersistenceCheckpoint request in waiting)
+            foreach (MultiplayerSaveCheckpoint request in waiting)
                 _pending.Enqueue(request);
         }
 
@@ -221,7 +217,7 @@ namespace Rebellion.Multiplayer
                     && _canCheckpoint()
                 )
                 {
-                    MultiplayerPersistenceCheckpoint request = _pending.Dequeue();
+                    MultiplayerSaveCheckpoint request = _pending.Dequeue();
                     _current = request.Command;
                     _sourcePayload = request.Payload;
                     _current.token = Guid.NewGuid().ToString("N");
@@ -295,8 +291,8 @@ namespace Rebellion.Multiplayer
         /// <param name="packet">The next ordered persistence control message.</param>
         private void ProcessPacket(MultiplayerPacket packet)
         {
-            MultiplayerPersistenceCommand command =
-                JsonUtility.FromJson<MultiplayerPersistenceCommand>(packet.Metadata)
+            MultiplayerSaveRequest command =
+                JsonUtility.FromJson<MultiplayerSaveRequest>(packet.Metadata)
                 ?? throw new InvalidDataException("The persistence operation metadata is missing.");
             if (!MultiplayerSessionIdentity.Matches(_connectionID, command.initializationID))
                 return;
@@ -324,7 +320,7 @@ namespace Rebellion.Multiplayer
                     command.automatic = false;
                     command.token = null;
                     _pending.Enqueue(
-                        new MultiplayerPersistenceCheckpoint
+                        new MultiplayerSaveCheckpoint
                         {
                             Command = command,
                             Payload = packet.Payload,
@@ -356,7 +352,7 @@ namespace Rebellion.Multiplayer
                         Send(MultiplayerMessageType.PersistenceReceipt, _current);
                     else if (!_preparing)
                         PrepareGuestAsync(
-                            new MultiplayerPersistenceCheckpoint
+                            new MultiplayerSaveCheckpoint
                             {
                                 Command = command,
                                 Payload = packet.Payload,
@@ -419,15 +415,12 @@ namespace Rebellion.Multiplayer
         /// Awaits host storage or content preparation while both gameplay pumps remain reserved.
         /// </summary>
         /// <param name="command">The immutable reserved operation.</param>
-        private async void PrepareHostAsync(MultiplayerPersistenceCommand command)
+        private async void PrepareHostAsync(MultiplayerSaveRequest command)
         {
             _preparing = true;
             try
             {
-                MultiplayerPersistenceCheckpoint checkpoint = await _prepareHost(
-                    command,
-                    _sourcePayload
-                );
+                MultiplayerSaveCheckpoint checkpoint = await _prepareHost(command, _sourcePayload);
                 if (_disposed || Failure != null || !ReferenceEquals(_current, command))
                     return;
                 _checkpoint =
@@ -455,7 +448,7 @@ namespace Rebellion.Multiplayer
         /// Awaits the peer's durable save copy or exact-content verification before acknowledging.
         /// </summary>
         /// <param name="checkpoint">The host's explicit checkpoint representation.</param>
-        private async void PrepareGuestAsync(MultiplayerPersistenceCheckpoint checkpoint)
+        private async void PrepareGuestAsync(MultiplayerSaveCheckpoint checkpoint)
         {
             _preparing = true;
             try
@@ -521,7 +514,7 @@ namespace Rebellion.Multiplayer
         /// Rejects an acknowledgment or commit belonging to another operation.
         /// </summary>
         /// <param name="command">The received operation identity.</param>
-        private void ValidateCurrent(MultiplayerPersistenceCommand command)
+        private void ValidateCurrent(MultiplayerSaveRequest command)
         {
             if (
                 _current == null
@@ -545,7 +538,7 @@ namespace Rebellion.Multiplayer
         /// <param name="payload">The optional shared metadata or authoritative snapshot.</param>
         private void Send(
             MultiplayerMessageType type,
-            MultiplayerPersistenceCommand command,
+            MultiplayerSaveRequest command,
             byte[] payload = null
         )
         {
@@ -582,7 +575,7 @@ namespace Rebellion.Multiplayer
                         new MultiplayerPacket(
                             MultiplayerMessageType.PersistenceFailed,
                             JsonUtility.ToJson(
-                                new MultiplayerPersistenceCommand
+                                new MultiplayerSaveRequest
                                 {
                                     error = exception.Message,
                                     initializationID = _connectionID,
@@ -614,7 +607,7 @@ namespace Rebellion.Multiplayer
         private void ThrowIfUnavailable()
         {
             if (_disposed)
-                throw new ObjectDisposedException(nameof(MultiplayerPersistenceSession));
+                throw new ObjectDisposedException(nameof(MultiplayerSaveProtocol));
             if (Failure != null)
                 throw new InvalidOperationException("Shared persistence has stopped.", Failure);
         }
@@ -624,7 +617,7 @@ namespace Rebellion.Multiplayer
     /// Carries bounded operation metadata independently of the saved model schema.
     /// </summary>
     [Serializable]
-    internal sealed class MultiplayerPersistenceCommand
+    internal sealed class MultiplayerSaveRequest
     {
         public string initializationID;
         public long requestID;
@@ -643,9 +636,9 @@ namespace Rebellion.Multiplayer
     /// <summary>
     /// Holds a prepared explicit-schema metadata payload or an authoritative saved-state snapshot.
     /// </summary>
-    internal sealed class MultiplayerPersistenceCheckpoint
+    internal sealed class MultiplayerSaveCheckpoint
     {
-        public MultiplayerPersistenceCommand Command { get; set; }
+        public MultiplayerSaveRequest Command { get; set; }
         public byte[] Payload { get; set; }
     }
 }

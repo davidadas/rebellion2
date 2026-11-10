@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -24,6 +25,14 @@ namespace Rebellion.Tests.Multiplayer
             _previousRunInBackground = Application.runInBackground;
             _owner = new GameObject("Multiplayer coordinator test");
             _coordinator = _owner.AddComponent<MultiplayerCoordinator>();
+            _coordinator.Initialize(
+                () => TestContent.Pack,
+                new SaveGameManager(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"))),
+                () => null,
+                () => false,
+                (_, _) => { },
+                _ => false
+            );
         }
 
         /// <summary>
@@ -34,6 +43,21 @@ namespace Rebellion.Tests.Multiplayer
         {
             UnityEngine.Object.DestroyImmediate(_owner);
             Application.runInBackground = _previousRunInBackground;
+        }
+
+        [Test]
+        public void Initialize_AlreadyOwned_RejectsReplacingApplicationServices()
+        {
+            Assert.Throws<InvalidOperationException>(() =>
+                _coordinator.Initialize(
+                    () => TestContent.Pack,
+                    new SaveGameManager(Path.GetTempPath()),
+                    () => null,
+                    () => false,
+                    (_, _) => { },
+                    _ => false
+                )
+            );
         }
 
         [Test]

@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Rebellion.Game;
-using Rebellion.Gameplay;
 using UnityEngine;
 
 namespace Rebellion.Multiplayer
@@ -26,8 +25,15 @@ namespace Rebellion.Multiplayer
         private Task _leaveTask = Task.CompletedTask;
         private int _browseVersion;
         private MultiplayerLaunchConfiguration _launchConfiguration;
-        private GameRuntime _runtime;
+        private GameSessionManager _sessionManager;
         private MultiplayerAnalyticsTracker _analyticsTracker;
+        private Func<ContentPack> _getActiveContent;
+        private SaveGameManager _saveGames;
+        private Func<IAnalyticsEventSink> _getAnalyticsSink;
+        private Func<bool> _isContentTransitionInProgress;
+        private Action<ContentPack, MultiplayerLaunchConfiguration> _launchGame;
+        private Func<Exception, bool> _recoverInterruptedLoad;
+        private bool _initialized;
         private GameSummary _hostSummary;
         private ContentPack _identityContent;
         private string _gameplayContentIdentity;
@@ -122,6 +128,7 @@ namespace Rebellion.Multiplayer
         /// <returns>The pending store and online identity sign-in.</returns>
         public async Task SignInAsync()
         {
+            RequireInitialized();
             if (IsSigningIn)
                 return;
             Disconnect();
@@ -145,15 +152,62 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Returns the existing coordinator or creates it on the persistent application object.
+        /// Connects application-owned content, storage, analytics, and scene transitions once.
         /// </summary>
-        /// <returns>The application-lifetime coordinator.</returns>
-        public static MultiplayerCoordinator EnsureExists()
+        /// <param name="getActiveContent">Returns the application's current content pack.</param>
+        /// <param name="saveGames">The application's save store.</param>
+        /// <param name="getAnalyticsSink">Returns the current consent-aware analytics destination.</param>
+        /// <param name="isContentTransitionInProgress">Reports whether the application is changing content.</param>
+        /// <param name="launchGame">Starts the scene handoff for a negotiated campaign.</param>
+        /// <param name="recoverInterruptedLoad">Recovers an interrupted application content transition.</param>
+        internal void Initialize(
+            Func<ContentPack> getActiveContent,
+            SaveGameManager saveGames,
+            Func<IAnalyticsEventSink> getAnalyticsSink,
+            Func<bool> isContentTransitionInProgress,
+            Action<ContentPack, MultiplayerLaunchConfiguration> launchGame,
+            Func<Exception, bool> recoverInterruptedLoad
+        )
         {
-            if (Instance != null)
-                return Instance;
+            if (_initialized)
+                throw new InvalidOperationException(
+                    "Multiplayer already has an application owner."
+                );
+            _getActiveContent =
+                getActiveContent ?? throw new ArgumentNullException(nameof(getActiveContent));
+            _saveGames = saveGames ?? throw new ArgumentNullException(nameof(saveGames));
+            _getAnalyticsSink =
+                getAnalyticsSink ?? throw new ArgumentNullException(nameof(getAnalyticsSink));
+            _isContentTransitionInProgress =
+                isContentTransitionInProgress
+                ?? throw new ArgumentNullException(nameof(isContentTransitionInProgress));
+            _launchGame = launchGame ?? throw new ArgumentNullException(nameof(launchGame));
+            _recoverInterruptedLoad =
+                recoverInterruptedLoad
+                ?? throw new ArgumentNullException(nameof(recoverInterruptedLoad));
+            _initialized = true;
+        }
 
-            return new GameObject("Multiplayer session").AddComponent<MultiplayerCoordinator>();
+        /// <summary>
+        /// Rejects online work until the application has supplied its required services.
+        /// </summary>
+        private void RequireInitialized()
+        {
+            if (!_initialized)
+                throw new InvalidOperationException(
+                    "Multiplayer has not been initialized by the application."
+                );
+        }
+
+        /// <summary>
+        /// Notifies presentation before the application performs the agreed scene handoff.
+        /// </summary>
+        /// <param name="content">The verified content for the incoming game.</param>
+        /// <param name="configuration">The negotiated participant and game state.</param>
+        private void LaunchGame(ContentPack content, MultiplayerLaunchConfiguration configuration)
+        {
+            LaunchRequested?.Invoke(configuration);
+            _launchGame(content, configuration);
         }
 
         /// <summary>
@@ -189,9 +243,9 @@ namespace Rebellion.Multiplayer
             _backend?.Poll();
             ProcessTransportEvents();
             ProcessPendingCommit();
-            if (_persistence?.BlocksGameplay != true)
-                _gameSession?.Pump();
-            _persistence?.Pump();
+            if (_saveProtocol?.BlocksGameplay != true)
+                _turnProtocol?.Pump();
+            _saveProtocol?.Pump();
             ProcessRejoinRecovery();
             TrySendInitialSnapshot();
         }
@@ -242,10 +296,7 @@ namespace Rebellion.Multiplayer
                 );
                 ValidatePlayableFactions(_hostSummary);
                 _password = password ?? string.Empty;
-                _lobbyContent = SaveContentResolver.Open(
-                    AppBootstrap.EnsureExists().GetContentPack(),
-                    _hostSummary
-                );
+                _lobbyContent = SaveContentResolver.Open(_getActiveContent(), _hostSummary);
                 SetStatus("Signing in for multiplayer");
                 await _leaveTask;
                 cancellationToken.ThrowIfCancellationRequested();
@@ -327,6 +378,7 @@ namespace Rebellion.Multiplayer
         /// <returns>The pending lookup.</returns>
         public async Task RefreshGamesAsync()
         {
+            RequireInitialized();
             CancellationToken cancellationToken = _sessionCancellation.Token;
             int browseVersion = ++_browseVersion;
             IsSearchingGames = true;
@@ -395,7 +447,7 @@ namespace Rebellion.Multiplayer
         {
             if (_disposed)
                 return;
-            _analyticsTracker?.RecordClosed(_runtime?.GetActiveGame()?.CurrentTick);
+            _analyticsTracker?.RecordClosed(_sessionManager?.GetActiveGame()?.CurrentTick);
             _analyticsTracker?.Reset();
             if (!_browserOpen)
                 ReleaseBackgroundProcessing();
@@ -409,7 +461,7 @@ namespace Rebellion.Multiplayer
             _peer = null;
             ReleaseGameplay();
             ResetRecovery();
-            _runtime = null;
+            _sessionManager = null;
             _hostSummary = null;
             _launchConfiguration = null;
             Failure = null;
@@ -481,6 +533,14 @@ namespace Rebellion.Multiplayer
                 return;
             }
 
+            SendHello();
+        }
+
+        /// <summary>
+        /// Sends local admission and recovery role information to the connected counterpart.
+        /// </summary>
+        private void SendHello()
+        {
             MultiplayerHelloMessage hello = new MultiplayerHelloMessage
             {
                 protocolVersion = _protocolVersion,
@@ -536,7 +596,7 @@ namespace Rebellion.Multiplayer
                     case MultiplayerMessageType.PersistenceComplete:
                     case MultiplayerMessageType.PersistenceTransfer:
                     case MultiplayerMessageType.PersistenceFailed:
-                        if (_persistence == null)
+                        if (_saveProtocol == null)
                         {
                             if (_waitingForRejoin)
                                 break;
@@ -544,7 +604,7 @@ namespace Rebellion.Multiplayer
                                 "Shared persistence has not started."
                             );
                         }
-                        _persistence.Receive(packet);
+                        _saveProtocol.Receive(packet);
                         break;
                     case MultiplayerMessageType.PlayerActionRequest:
                     case MultiplayerMessageType.PlayerActionCommit:
@@ -561,7 +621,7 @@ namespace Rebellion.Multiplayer
                             )
                         )
                             break;
-                        if (_gameSession == null)
+                        if (_turnProtocol == null)
                         {
                             if (packet.Type == MultiplayerMessageType.SynchronizationFailed)
                             {
@@ -575,7 +635,7 @@ namespace Rebellion.Multiplayer
                                 "Gameplay synchronization has not started."
                             );
                         }
-                        _gameSession.Receive(packet);
+                        _turnProtocol.Receive(packet);
                         break;
                     case MultiplayerMessageType.Disconnect:
                         HandlePeerDeparture("The other player ended the session", true);
@@ -623,6 +683,8 @@ namespace Rebellion.Multiplayer
                 HandleRecoveryHello(packet);
                 return;
             }
+            if (_launchConfiguration != null)
+                return;
             if (_role != MultiplayerRole.Host || _hostSummary == null)
                 throw new InvalidOperationException("Only a waiting host can accept a player.");
 
@@ -762,7 +824,7 @@ namespace Rebellion.Multiplayer
         /// <param name="packet">The committed snapshot packet.</param>
         private void HandleSnapshotCommit(MultiplayerPacket packet)
         {
-            if (_role != MultiplayerRole.Guest || _gameSession != null)
+            if (_role != MultiplayerRole.Guest || _turnProtocol != null)
                 return;
             MultiplayerSnapshotMessage metadata = JsonUtility.FromJson<MultiplayerSnapshotMessage>(
                 packet.Metadata
@@ -780,8 +842,11 @@ namespace Rebellion.Multiplayer
         {
             if (
                 _role != MultiplayerRole.Guest
-                || _runtime == null
-                || !ReferenceEquals(_readyPresentationSession, _runtime.GetActiveGameSession())
+                || _sessionManager == null
+                || !ReferenceEquals(
+                    _readyPresentationSession,
+                    _sessionManager.GetActiveGameSession()
+                )
             )
                 return;
             MultiplayerPacket packet = _pendingInitialSnapshot;
@@ -832,7 +897,7 @@ namespace Rebellion.Multiplayer
                     || sendingPeer?.IsConnected != true
                 )
                     return;
-                if (_runtime != null)
+                if (_sessionManager != null)
                     HandleGameplayFailure(exception);
                 else
                     SetStatus($"Send failed: {exception.Message}");
@@ -904,7 +969,7 @@ namespace Rebellion.Multiplayer
                 scenarioID = _hostSummary?.ScenarioID,
                 passwordProtected = !string.IsNullOrEmpty(_password),
                 campaignID =
-                    _runtime?.GetActiveGame()?.Metadata?.CampaignID
+                    _sessionManager?.GetActiveGame()?.Metadata?.CampaignID
                     ?? (
                         _waitingForRejoin || _returningToRecovery
                             ? _recoveryRecord?.campaignID
@@ -1015,7 +1080,7 @@ namespace Rebellion.Multiplayer
         {
             if (_analyticsTracker == null)
             {
-                IAnalyticsEventSink sink = AppBootstrap.Instance?.GetAnalyticsEventSink();
+                IAnalyticsEventSink sink = _getAnalyticsSink();
                 if (sink != null)
                     _analyticsTracker = new MultiplayerAnalyticsTracker(sink);
             }
@@ -1029,6 +1094,7 @@ namespace Rebellion.Multiplayer
         /// <returns>The cancellation token owned by this session.</returns>
         private CancellationToken BeginSession(MultiplayerRole role)
         {
+            RequireInitialized();
             Disconnect();
             RetainBackgroundProcessing();
             _role = role;

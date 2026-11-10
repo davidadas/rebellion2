@@ -12,7 +12,7 @@ using UnityEngine;
 namespace Rebellion.Tests.Multiplayer
 {
     [TestFixture]
-    public sealed class MultiplayerPersistenceSessionTests
+    public sealed class MultiplayerSaveProtocolTests
     {
         [TestCase(false)]
         [TestCase(true)]
@@ -21,7 +21,7 @@ namespace Rebellion.Tests.Multiplayer
         )
         {
             using PeerPair peers = new();
-            MultiplayerPersistenceSession owner = guestRequest ? peers.Guest : peers.Host;
+            MultiplayerSaveProtocol owner = guestRequest ? peers.Guest : peers.Host;
 
             Assert.Throws<XmlException>(() =>
                 owner.RequestAsync("checkpoint", "Name \u0001", false)
@@ -139,7 +139,7 @@ namespace Rebellion.Tests.Multiplayer
         )
         {
             using PeerPair peers = new();
-            MultiplayerPersistenceSession owner = guestRequest ? peers.Guest : peers.Host;
+            MultiplayerSaveProtocol owner = guestRequest ? peers.Guest : peers.Host;
             Task<bool> request = owner.RequestAsync("checkpoint", "Checkpoint", false);
             Task<bool> blockedAtCompletion = request.ContinueWith(
                 _ => owner.BlocksGameplay,
@@ -162,7 +162,7 @@ namespace Rebellion.Tests.Multiplayer
         )
         {
             using PeerPair peers = new();
-            MultiplayerPersistenceSession owner = guestRequest ? peers.Guest : peers.Host;
+            MultiplayerSaveProtocol owner = guestRequest ? peers.Guest : peers.Host;
             Task<bool> request = owner.RequestAsync(
                 "load-source",
                 null,
@@ -290,7 +290,7 @@ namespace Rebellion.Tests.Multiplayer
         {
             using PeerPair peers = new();
             peers.HostStable = false;
-            MultiplayerPersistenceSession owner = guestRequest ? peers.Guest : peers.Host;
+            MultiplayerSaveProtocol owner = guestRequest ? peers.Guest : peers.Host;
             Task<bool> request = owner.RequestAsync("checkpoint", "Checkpoint", false);
 
             owner.Dispose();
@@ -308,7 +308,7 @@ namespace Rebellion.Tests.Multiplayer
                 new MultiplayerPacket(
                     MultiplayerMessageType.PersistenceRequest,
                     JsonUtility.ToJson(
-                        new MultiplayerPersistenceCommand
+                        new MultiplayerSaveRequest
                         {
                             requestID = 1,
                             fileName = "../escape",
@@ -333,7 +333,7 @@ namespace Rebellion.Tests.Multiplayer
                 new MultiplayerPacket(
                     MultiplayerMessageType.PersistenceRequest,
                     JsonUtility.ToJson(
-                        new MultiplayerPersistenceCommand
+                        new MultiplayerSaveRequest
                         {
                             requestID = 1,
                             fileName = "checkpoint",
@@ -358,7 +358,7 @@ namespace Rebellion.Tests.Multiplayer
         )
         {
             using PeerPair peers = new();
-            MultiplayerPersistenceSession owner = guestRequest ? peers.Guest : peers.Host;
+            MultiplayerSaveProtocol owner = guestRequest ? peers.Guest : peers.Host;
             Task<bool> loading = owner.RequestAsync(
                 "load-source",
                 null,
@@ -383,8 +383,9 @@ namespace Rebellion.Tests.Multiplayer
             using PeerPair peers = new();
             Task<bool> request = peers.Guest.RequestAsync("checkpoint", "Checkpoint", false);
             MultiplayerPacket packet = peers.ToHost.Dequeue();
-            MultiplayerPersistenceCommand forged =
-                JsonUtility.FromJson<MultiplayerPersistenceCommand>(packet.Metadata);
+            MultiplayerSaveRequest forged = JsonUtility.FromJson<MultiplayerSaveRequest>(
+                packet.Metadata
+            );
             forged.automatic = true;
             forged.guestRequest = false;
             peers.ToHost.Enqueue(new MultiplayerPacket(packet.Type, JsonUtility.ToJson(forged)));
@@ -546,7 +547,7 @@ namespace Rebellion.Tests.Multiplayer
                 new MultiplayerPacket(
                     MultiplayerMessageType.PersistenceRequest,
                     JsonUtility.ToJson(
-                        new MultiplayerPersistenceCommand
+                        new MultiplayerSaveRequest
                         {
                             initializationID = peers.ConnectionID,
                             requestID = 1,
@@ -570,8 +571,8 @@ namespace Rebellion.Tests.Multiplayer
             internal readonly Dictionary<string, byte[]> HostFiles = new();
             internal readonly Dictionary<string, byte[]> GuestFiles = new();
             internal readonly List<string> HostOperations = new();
-            internal readonly MultiplayerPersistenceSession Host;
-            internal readonly MultiplayerPersistenceSession Guest;
+            internal readonly MultiplayerSaveProtocol Host;
+            internal readonly MultiplayerSaveProtocol Guest;
             internal readonly GameMetadata HostMetadata = new()
             {
                 CampaignID = "11111111111111111111111111111111",
@@ -602,7 +603,7 @@ namespace Rebellion.Tests.Multiplayer
             /// </summary>
             internal PeerPair()
             {
-                Host = new MultiplayerPersistenceSession(
+                Host = new MultiplayerSaveProtocol(
                     MultiplayerRole.Host,
                     packet => ToGuest.Enqueue(packet),
                     () => HostStable,
@@ -611,7 +612,7 @@ namespace Rebellion.Tests.Multiplayer
                     _ => HostTransfers++,
                     ConnectionID
                 );
-                Guest = new MultiplayerPersistenceSession(
+                Guest = new MultiplayerSaveProtocol(
                     MultiplayerRole.Guest,
                     packet => ToHost.Enqueue(packet),
                     () => GuestStable,
@@ -670,8 +671,8 @@ namespace Rebellion.Tests.Multiplayer
             /// <param name="command">The reserved operation.</param>
             /// <param name="sourcePayload">The requesting guest's selected source, when present.</param>
             /// <returns>The prepared explicit-schema payload.</returns>
-            private Task<MultiplayerPersistenceCheckpoint> PrepareHostAsync(
-                MultiplayerPersistenceCommand command,
+            private Task<MultiplayerSaveCheckpoint> PrepareHostAsync(
+                MultiplayerSaveRequest command,
                 byte[] sourcePayload
             )
             {
@@ -683,7 +684,7 @@ namespace Rebellion.Tests.Multiplayer
                     command.snapshotHash = "verified-saved-state";
                     PreparedLoadPayload = sourcePayload ?? new byte[] { 1, 2, 3 };
                     return Task.FromResult(
-                        new MultiplayerPersistenceCheckpoint
+                        new MultiplayerSaveCheckpoint
                         {
                             Command = command,
                             Payload = PreparedLoadPayload,
@@ -705,7 +706,7 @@ namespace Rebellion.Tests.Multiplayer
                     )
                 ] = payload;
                 return Task.FromResult(
-                    new MultiplayerPersistenceCheckpoint { Command = command, Payload = payload }
+                    new MultiplayerSaveCheckpoint { Command = command, Payload = payload }
                 );
             }
 
@@ -714,7 +715,7 @@ namespace Rebellion.Tests.Multiplayer
             /// </summary>
             /// <param name="checkpoint">The committed explicit-schema checkpoint.</param>
             /// <returns>The fixture-controlled durable-write or content-preparation completion.</returns>
-            private async Task PrepareGuestAsync(MultiplayerPersistenceCheckpoint checkpoint)
+            private async Task PrepareGuestAsync(MultiplayerSaveCheckpoint checkpoint)
             {
                 if (GuestWriteGate != null)
                     await GuestWriteGate.Task;

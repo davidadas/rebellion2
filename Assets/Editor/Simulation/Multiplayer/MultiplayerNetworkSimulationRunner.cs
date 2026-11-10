@@ -806,8 +806,8 @@ public static class MultiplayerNetworkSimulationRunner
         private CombatSubmission _guestCombatSubmission;
         private DayTiming _dayTiming;
 
-        public MultiplayerGameSession Host { get; }
-        public MultiplayerGameSession Guest { get; }
+        public MultiplayerTurnProtocol Host { get; }
+        public MultiplayerTurnProtocol Guest { get; }
 
         /// <summary>
         /// Binds independently constructed graphs and authenticated roles to reliable ordered transport.
@@ -839,7 +839,7 @@ public static class MultiplayerNetworkSimulationRunner
             _hostFactionID = factions[0];
             _guestFactionID = factions[1];
             string initializationID = Guid.NewGuid().ToString("N");
-            Host = new MultiplayerGameSession(
+            Host = new MultiplayerTurnProtocol(
                 MultiplayerRole.Host,
                 factions[0],
                 factions[1],
@@ -848,7 +848,7 @@ public static class MultiplayerNetworkSimulationRunner
                 _hostOutgoing.Enqueue,
                 initializationID
             );
-            Guest = new MultiplayerGameSession(
+            Guest = new MultiplayerTurnProtocol(
                 MultiplayerRole.Guest,
                 factions[0],
                 factions[1],
@@ -979,7 +979,7 @@ public static class MultiplayerNetworkSimulationRunner
         /// <returns>True when a new command was submitted.</returns>
         private bool RespondToHumanCombat(
             GameSession session,
-            MultiplayerGameSession ordered,
+            MultiplayerTurnProtocol ordered,
             string factionID,
             ref bool required,
             ref CombatSubmission submission
@@ -1135,7 +1135,7 @@ public static class MultiplayerNetworkSimulationRunner
         /// <param name="peer">The receiving TCP peer.</param>
         /// <param name="session">The peer's ordered session.</param>
         /// <returns>Whether a packet was received.</returns>
-        private static bool Drain(MultiplayerPeer peer, MultiplayerGameSession session)
+        private static bool Drain(MultiplayerPeer peer, MultiplayerTurnProtocol session)
         {
             bool received = false;
             while (peer.TryDequeue(out MultiplayerTransportEvent item))

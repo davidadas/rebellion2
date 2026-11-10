@@ -172,11 +172,11 @@ namespace Rebellion.Multiplayer
             SetStatus("Verifying saved game and required content");
             try
             {
-                ContentPack active = AppBootstrap.EnsureExists().GetContentPack();
+                ContentPack active = _getActiveContent();
                 ContentPack content = await Task.Run(() =>
                     SaveContentResolver.Resolve(active, entry.Metadata).Pack
                 );
-                GameRoot game = await SaveGameManager.Instance.LoadGameDataAsync(entry.FileName);
+                GameRoot game = await _saveGames.LoadGameDataAsync(entry.FileName);
                 cancellationToken.ThrowIfCancellationRequested();
                 if (
                     !content.MatchesContentIdentity(game.Summary)
@@ -317,7 +317,7 @@ namespace Rebellion.Multiplayer
                     string fingerprint = CreateContentFingerprint(summary);
                     if (_verifiedFingerprint != fingerprint)
                     {
-                        ContentPack active = AppBootstrap.EnsureExists().GetContentPack();
+                        ContentPack active = _getActiveContent();
                         ContentPack opened = await Task.Run(() =>
                             SaveContentResolver.Open(active, summary)
                         );
@@ -465,7 +465,7 @@ namespace Rebellion.Multiplayer
                 _role == MultiplayerRole.Host ? _restoredGame : null
             );
             SetStatus("Launching game");
-            LaunchRequested?.Invoke(_launchConfiguration);
+            LaunchGame(_lobbyContent, _launchConfiguration);
         }
 
         /// <summary>
@@ -530,7 +530,7 @@ namespace Rebellion.Multiplayer
         private void HandlePeerDeparture(string reason, bool peerEndedSession = false)
         {
             _analyticsTracker?.RecordDisconnected(
-                _runtime?.GetActiveGame()?.CurrentTick,
+                _sessionManager?.GetActiveGame()?.CurrentTick,
                 peerEndedSession ? "peer_ended_session" : "transport_closed"
             );
             if (_returningToRecovery && _launchConfiguration == null)

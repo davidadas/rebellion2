@@ -1315,7 +1315,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <returns>The active game, or null from the Main Menu.</returns>
     private GameRoot GetActiveGame()
     {
-        return _bootstrap.GetRuntime()?.GetActiveGame();
+        return _bootstrap.GetGameSessionManager()?.GetActiveGame();
     }
 
     /// <summary>
@@ -1333,7 +1333,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <returns>True when the runtime can accept a save request.</returns>
     private bool CanSaveGame()
     {
-        return _bootstrap.GetRuntime()?.CanRequestSave == true;
+        return _bootstrap.GetGameSessionManager()?.CanRequestSave == true;
     }
 
     /// <summary>
@@ -1341,7 +1341,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// </summary>
     private void PauseGame()
     {
-        GameManager gameManager = _bootstrap.GetRuntime()?.GetActiveGameManager();
+        GameManager gameManager = _bootstrap.GetGameSessionManager()?.GetActiveGameManager();
         if (gameManager == null || _gamePaused)
             return;
 
@@ -1360,7 +1360,10 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             return;
 
         _bootstrap.GetInputController()?.PopContext();
-        _bootstrap.GetRuntime()?.GetActiveGameManager()?.SetGameSpeed(_speedBeforeOptions);
+        _bootstrap
+            .GetGameSessionManager()
+            ?.GetActiveGameManager()
+            ?.SetGameSpeed(_speedBeforeOptions);
         _gamePaused = false;
     }
 
@@ -1369,7 +1372,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// </summary>
     private void ReturnToMainMenu()
     {
-        _bootstrap.GetRuntime()?.EndGame();
+        _bootstrap.GetGameSessionManager()?.EndGame();
         _bootstrap.LoadScene("MainMenu");
     }
 

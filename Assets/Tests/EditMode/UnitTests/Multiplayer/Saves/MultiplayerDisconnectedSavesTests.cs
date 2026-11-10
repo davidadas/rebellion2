@@ -15,11 +15,11 @@ using UnityEngine.TestTools;
 namespace Rebellion.Tests.Multiplayer
 {
     [TestFixture]
-    public sealed class MultiplayerLocalPersistenceTests
+    public sealed class MultiplayerDisconnectedSavesTests
     {
         private string _directory;
         private SaveGameManager _store;
-        private GameRuntime _runtime;
+        private GameSessionManager _sessionManager;
         private int _publications;
 
         /// <summary>
@@ -30,11 +30,11 @@ namespace Rebellion.Tests.Multiplayer
         {
             _directory = Path.Combine(
                 Path.GetTempPath(),
-                nameof(MultiplayerLocalPersistenceTests),
+                nameof(MultiplayerDisconnectedSavesTests),
                 Guid.NewGuid().ToString("N")
             );
             _store = new SaveGameManager(_directory);
-            _runtime = new GameRuntime(TestContent.Pack, _store);
+            _sessionManager = new GameSessionManager(TestContent.Pack, _store);
             _publications = 0;
         }
 
@@ -44,7 +44,7 @@ namespace Rebellion.Tests.Multiplayer
         [TearDown]
         public void TearDown()
         {
-            _runtime.EndGame();
+            _sessionManager.EndGame();
             if (Directory.Exists(_directory))
                 Directory.Delete(_directory, true);
         }
@@ -58,8 +58,8 @@ namespace Rebellion.Tests.Multiplayer
             GameRoot game = StartWaitingGame(role);
             string previousToken = game.Metadata.SharedSaveToken;
 
-            Assert.IsTrue(_runtime.CanRequestSave);
-            Assert.IsTrue(await _runtime.SaveGameAsync("survivor", "Surviving campaign"));
+            Assert.IsTrue(_sessionManager.CanRequestSave);
+            Assert.IsTrue(await _sessionManager.SaveGameAsync("survivor", "Surviving campaign"));
 
             string fileName = SaveGameManager.GetMultiplayerSaveFileName(
                 game.Metadata.CampaignID,
@@ -89,7 +89,7 @@ namespace Rebellion.Tests.Multiplayer
         {
             GameRoot game = StartWaitingGame(role);
 
-            Assert.IsTrue(await _runtime.QuickSaveAsync());
+            Assert.IsTrue(await _sessionManager.QuickSaveAsync());
 
             string fileName = SaveGameManager.GetMultiplayerSaveFileName(
                 game.Metadata.CampaignID,
@@ -111,7 +111,7 @@ namespace Rebellion.Tests.Multiplayer
             _store.SaveGameData(game, hostName, "Host history");
             byte[] hostBytes = File.ReadAllBytes(_store.GetSaveFilePath(hostName));
 
-            Assert.IsTrue(await _runtime.SaveGameAsync(hostName, "Guest history"));
+            Assert.IsTrue(await _sessionManager.SaveGameAsync(hostName, "Guest history"));
 
             CollectionAssert.AreEqual(
                 hostBytes,
@@ -136,10 +136,10 @@ namespace Rebellion.Tests.Multiplayer
         {
             GameRoot game = StartWaitingGame(role);
             string token = game.Metadata.SharedSaveToken;
-            _runtime.BlockGameOperations();
+            _sessionManager.BlockGameOperations();
 
-            Assert.IsFalse(_runtime.CanRequestSave);
-            Assert.IsFalse(await _runtime.SaveGameAsync("unsafe", "Unsafe"));
+            Assert.IsFalse(_sessionManager.CanRequestSave);
+            Assert.IsFalse(await _sessionManager.SaveGameAsync("unsafe", "Unsafe"));
             Assert.IsEmpty(_store.GetSavedGames());
             Assert.AreEqual(0, _publications);
             Assert.AreEqual(token, game.Metadata.SharedSaveToken);
@@ -155,7 +155,7 @@ namespace Rebellion.Tests.Multiplayer
             string token = game.Metadata.SharedSaveToken;
 
             Assert.ThrowsAsync<XmlException>(() =>
-                _runtime.SaveGameAsync("rejected", "Name \u0001")
+                _sessionManager.SaveGameAsync("rejected", "Name \u0001")
             );
 
             Assert.AreEqual(token, game.Metadata.SharedSaveToken);
@@ -168,12 +168,12 @@ namespace Rebellion.Tests.Multiplayer
         {
             StartWaitingGame(MultiplayerRole.Host);
             Task<bool> save = null;
-            await _runtime
+            await _sessionManager
                 .GetActiveGameSession()
                 .ExecuteCommandAsync(() =>
                 {
-                    Assert.IsFalse(_runtime.CanRequestSave);
-                    save = _runtime.SaveGameAsync("unsafe", "Unsafe");
+                    Assert.IsFalse(_sessionManager.CanRequestSave);
+                    save = _sessionManager.SaveGameAsync("unsafe", "Unsafe");
                     return true;
                 });
 
@@ -186,11 +186,11 @@ namespace Rebellion.Tests.Multiplayer
         public async Task LoadGameAsync_PeerAbsent_DoesNotReplaceCampaignAsync()
         {
             GameRoot game = StartWaitingGame(MultiplayerRole.Guest);
-            Assert.IsTrue(await _runtime.SaveGameAsync("survivor", "Saved"));
+            Assert.IsTrue(await _sessionManager.SaveGameAsync("survivor", "Saved"));
 
-            Assert.IsFalse(await _runtime.LoadGameAsync("survivor"));
-            Assert.IsFalse(await _runtime.QuickLoadAsync());
-            Assert.AreSame(game, _runtime.GetActiveGame());
+            Assert.IsFalse(await _sessionManager.LoadGameAsync("survivor"));
+            Assert.IsFalse(await _sessionManager.QuickLoadAsync());
+            Assert.AreSame(game, _sessionManager.GetActiveGame());
         }
 
         [Test]
@@ -199,7 +199,7 @@ namespace Rebellion.Tests.Multiplayer
             StartWaitingGame(MultiplayerRole.Host);
             _store.Saving += () => StartWaitingGame(MultiplayerRole.Guest);
 
-            Assert.IsTrue(await _runtime.SaveGameAsync("outgoing", "Outgoing"));
+            Assert.IsTrue(await _sessionManager.SaveGameAsync("outgoing", "Outgoing"));
             Assert.AreEqual(0, _publications);
         }
 
@@ -219,7 +219,7 @@ namespace Rebellion.Tests.Multiplayer
                 new Regex("IOException|UnauthorizedAccessException")
             );
 
-            Assert.IsFalse(await _runtime.SaveGameAsync("blocked", "Blocked"));
+            Assert.IsFalse(await _sessionManager.SaveGameAsync("blocked", "Blocked"));
             Assert.AreEqual(0, _publications);
         }
 
@@ -257,18 +257,22 @@ namespace Rebellion.Tests.Multiplayer
             game.SetFactionController("FNALL1", "host", PlayerControllerType.Human);
             game.SetFactionController("FNEMP1", "guest", PlayerControllerType.Human);
             game.GameSpeed = TickSpeed.Paused;
-            _runtime.StartGame(game, new WaitingSessionOwner());
-            _runtime.BlockGameOperations();
-            _runtime.BindPersistenceCoordinator(
-                new MultiplayerLocalPersistence(_runtime, role, () => _publications++)
+            WaitingSessionOwner owner = new WaitingSessionOwner();
+            _sessionManager.StartGame(game, owner);
+            _sessionManager.BlockGameOperations();
+            owner.LocalSaves = new MultiplayerDisconnectedSaves(
+                _sessionManager,
+                role,
+                () => _publications++
             );
-            _runtime.ResumeMultiplayerOperations();
+            _sessionManager.ResumeMultiplayerOperations();
             return game;
         }
 
         private sealed class WaitingSessionOwner : IGameSessionOwner
         {
-            public bool CanRequestSave => false;
+            internal MultiplayerDisconnectedSaves LocalSaves;
+            public bool CanRequestSave => LocalSaves?.CanRequestSave == true;
 
             /// <summary>
             /// Retains the fixture's configured participants.
@@ -280,19 +284,19 @@ namespace Rebellion.Tests.Multiplayer
             /// Leaves storage ownership to the local persistence collaborator.
             /// </summary>
             /// <param name="runtime">The attached runtime.</param>
-            public void BindRuntime(GameRuntime runtime) { }
+            public void BindSessionManager(GameSessionManager runtime) { }
 
             /// <summary>
             /// Keeps gameplay blocked when presentation becomes ready.
             /// </summary>
             /// <param name="runtime">The ready runtime.</param>
-            public void NotifyPresentationReady(GameRuntime runtime) { }
+            public void NotifyPresentationReady(GameSessionManager runtime) { }
 
             /// <summary>
             /// Releases a fixture without transport work.
             /// </summary>
             /// <param name="runtime">The outgoing runtime.</param>
-            public void ReleaseRuntime(GameRuntime runtime) { }
+            public void ReleaseSessionManager(GameSessionManager runtime) { }
 
             /// <summary>
             /// Keeps the waiting campaign's clock stopped.
@@ -310,13 +314,13 @@ namespace Rebellion.Tests.Multiplayer
                 TestPlayerRequests.RejectAll().ExecuteAsync(action);
 
             /// <summary>
-            /// Leaves writes to the separately assigned local persistence owner.
+            /// Uses the disconnected save policy owned by this fixture session.
             /// </summary>
             /// <param name="fileName">The requested slot.</param>
             /// <param name="displayName">The requested label.</param>
             /// <returns>False without shared persistence.</returns>
             public Task<bool> SaveGameAsync(string fileName, string displayName) =>
-                Task.FromResult(false);
+                LocalSaves.SaveGameAsync(fileName, displayName);
 
             /// <summary>
             /// Rejects independent scene replacement.

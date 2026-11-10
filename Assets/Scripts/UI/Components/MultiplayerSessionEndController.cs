@@ -39,11 +39,11 @@ public sealed class MultiplayerSessionEndController : MonoBehaviour, ICancelable
             return;
         AppBootstrap bootstrap = AppBootstrap.EnsureExists();
         Initialize(
-            MultiplayerCoordinator.EnsureExists().SessionEndNotice,
+            AppBootstrap.EnsureExists().GetMultiplayerCoordinator().SessionEndNotice,
             windowManager,
             dialogTemplate,
             isMainMenu,
-            () => bootstrap.GetRuntime()?.EndGame(),
+            () => bootstrap.GetGameSessionManager()?.EndGame(),
             failure => bootstrap.LoadScene("MainMenu", failure),
             () => bootstrap.GetInputController().SuppressShortcuts(),
             bootstrap.GetCancelStack(),

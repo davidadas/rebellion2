@@ -78,6 +78,8 @@ namespace Rebellion.Tests.Content
                 }
             }
             DestroyApplication();
+            if (MultiplayerCoordinator.Instance != null)
+                Object.Destroy(MultiplayerCoordinator.Instance.gameObject);
             yield return null;
             yield return new ExitPlayMode();
             string settingsPath = Path.Combine(UserDataPaths.Root, "user-settings.json");
@@ -128,6 +130,49 @@ namespace Rebellion.Tests.Content
         }
 
         [UnityTest]
+        public IEnumerator GetMultiplayerCoordinator_ContentReplacement_RetainsMultiplayerService()
+        {
+            AppBootstrap previous = AppBootstrap.EnsureExists();
+            MultiplayerCoordinator multiplayer = previous.GetMultiplayerCoordinator();
+            ContentPack pack = previous.GetContentPack();
+            Assert.AreNotSame(previous.gameObject, multiplayer.gameObject);
+
+            DestroyApplication();
+            yield return null;
+
+            AppBootstrap replacement = AppBootstrap.EnsureExists(pack);
+
+            Assert.IsNotNull(multiplayer);
+            Assert.AreSame(multiplayer, MultiplayerCoordinator.Instance);
+            Assert.AreSame(multiplayer, replacement.GetMultiplayerCoordinator());
+        }
+
+        [UnityTest]
+        public IEnumerator OnDestroy_ActiveSession_ReleasesSessionAndRejectsStaleRequests()
+        {
+            AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+            ContentPack pack = bootstrap.GetContentPack();
+            GameSummary summary = GameLaunchContext.CreateDefaultSummary(pack);
+            summary.GalaxySize = GameSize.Small;
+            GameRoot game = new GameBuilder(summary, pack.GameData).Build();
+            GameSessionManager manager = bootstrap.GetGameSessionManager();
+            manager.StartGame(game);
+            var requests = manager.PlayerRequests;
+
+            DestroyApplication();
+            yield return null;
+
+            Assert.IsFalse(manager.HasActiveGame);
+            Task<Rebellion.Game.PlayerRequests.PlayerRequestOutcome> request =
+                requests.ExecuteAsync(
+                    new Rebellion.Game.PlayerRequests.SetSpeedRequest { Speed = TickSpeed.Fast }
+                );
+            while (!request.IsCompleted)
+                yield return null;
+            Assert.IsFalse(request.GetAwaiter().GetResult().Accepted);
+        }
+
+        [UnityTest]
         public IEnumerator StartCustomGame_ReplacedContent_PreparesStrategyBeforePlayingIntro()
         {
             SceneManager.sceneLoaded += DisableSceneRendering;
@@ -171,8 +216,11 @@ namespace Rebellion.Tests.Content
                     "The custom game never became ready."
                 );
                 Assert.AreSame(selected, AppBootstrap.Instance.GetContentPack());
-                Assert.IsTrue(AppBootstrap.Instance.GetRuntime().HasActiveGame);
-                GameRoot game = AppBootstrap.Instance.GetRuntime().GetActiveGameSession().Game;
+                Assert.IsTrue(AppBootstrap.Instance.GetGameSessionManager().HasActiveGame);
+                GameRoot game = AppBootstrap
+                    .Instance.GetGameSessionManager()
+                    .GetActiveGameSession()
+                    .Game;
                 Assert.AreEqual(GameDifficulty.Hard, game.Summary.Difficulty);
                 Assert.IsFalse(
                     game.GetEventPool()
@@ -384,7 +432,7 @@ namespace Rebellion.Tests.Content
                 Assert.AreEqual(1, menuLoads);
                 Assert.AreEqual(0, strategyLoads);
                 Assert.AreSame(previousPack, AppBootstrap.Instance.GetContentPack());
-                Assert.IsFalse(AppBootstrap.Instance.GetRuntime().HasActiveGame);
+                Assert.IsFalse(AppBootstrap.Instance.GetGameSessionManager().HasActiveGame);
                 Assert.IsFalse(GameLaunchContext.IsMultiplayer);
                 Assert.IsFalse(GameLaunchContext.IsLoadGame);
                 Assert.IsNull(GameLaunchContext.LocalPlayerFactionID);
@@ -523,7 +571,7 @@ namespace Rebellion.Tests.Content
                     "The replacement strategy never became ready."
                 );
                 AppBootstrap current = AppBootstrap.Instance;
-                GameRuntime runtime = current.GetRuntime();
+                GameSessionManager runtime = current.GetGameSessionManager();
                 Assert.IsTrue(runtime.HasActiveGame);
                 runtime.GetActiveGameManager().ApplyGameSpeed(TickSpeed.Paused);
                 int activationCallbacks = 0;
@@ -606,7 +654,7 @@ namespace Rebellion.Tests.Content
                     disabledMods,
                     current.GetUserSettingsManager().Settings.Content.DisabledModIDs
                 );
-                Assert.IsFalse(current.GetRuntime().HasActiveGame);
+                Assert.IsFalse(current.GetGameSessionManager().HasActiveGame);
                 Assert.AreEqual(
                     dismissContinue && !interruptDuringFade ? 1 : 0,
                     activationCallbacks
@@ -641,7 +689,7 @@ namespace Rebellion.Tests.Content
             GameSummary summary = GameLaunchContext.CreateDefaultSummary(pack);
             summary.GalaxySize = GameSize.Small;
             GameRoot game = new GameBuilder(summary, pack.GameData).Build();
-            GameRuntime runtime = bootstrap.GetRuntime();
+            GameSessionManager runtime = bootstrap.GetGameSessionManager();
             GameSession session = runtime.StartGame(game);
             ContentAssets assets = bootstrap.GetContentAssets();
             GameObject root = Object.Instantiate(

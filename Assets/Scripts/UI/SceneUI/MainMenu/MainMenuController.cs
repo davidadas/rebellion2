@@ -75,7 +75,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
         ContentPack contentPack = _appBootstrap.GetContentPack();
         GameLaunchContext.Reset(contentPack);
         currentVictoryCondition = GameLaunchContext.Summary.VictoryCondition;
-        _multiplayerCoordinator = MultiplayerCoordinator.EnsureExists();
+        _multiplayerCoordinator = AppBootstrap.EnsureExists().GetMultiplayerCoordinator();
         _multiplayerCoordinator.Disconnect();
 
         if (view == null)
@@ -321,13 +321,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// <param name="configuration">The synchronized launch configuration.</param>
     private void HandleMultiplayerLaunchRequested(MultiplayerLaunchConfiguration configuration)
     {
-        ContentPack content = _multiplayerCoordinator.LobbyContent;
         CloseMultiplayerMenu(false);
-        LoadingScreenController.StartMultiplayer(
-            AppBootstrap.EnsureExists(),
-            content,
-            configuration
-        );
     }
 
     /// <summary>
@@ -417,7 +411,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             () => view.GetOptionsWindowPosition(_optionsMenuPrefab),
             windowManager.DestroyWindow,
             bootstrap,
-            bootstrap.GetRuntime().SaveGameAsync,
+            bootstrap.GetGameSessionManager().SaveGameAsync,
             bootstrap.LoadSaveAsync,
             MarkOptionsDirty,
             SaveGameManager.Instance,
@@ -808,7 +802,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
         GameLaunchContext.PlayIntroCutscene = !GameLaunchContext.IsMultiplayer;
 
         // Start a new game session.
-        AppBootstrap.Instance.GetRuntime()?.EndGame();
+        AppBootstrap.Instance.GetGameSessionManager()?.EndGame();
 
         AudioManager.EnsureExists().StopMusic();
         AppBootstrap.Instance.LoadScene("StrategyView");

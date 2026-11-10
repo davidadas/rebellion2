@@ -15,7 +15,7 @@ namespace Rebellion.Multiplayer
     /// Orders player requests and day barriers without replacing the live game or presentation.
     /// The host validates requests; each peer executes committed requests once on its own session.
     /// </summary>
-    internal sealed class MultiplayerGameSession : IPlayerRequestDispatcher, IDisposable
+    internal sealed class MultiplayerTurnProtocol : IPlayerRequestDispatcher, IDisposable
     {
         private readonly MultiplayerRole _role;
         private readonly string _hostFactionID;
@@ -80,7 +80,7 @@ namespace Rebellion.Multiplayer
         /// <param name="clock">The local session clock.</param>
         /// <param name="send">The reliable ordered peer transport.</param>
         /// <param name="initializationID">The host-issued identity agreed for this exact initialized game.</param>
-        public MultiplayerGameSession(
+        public MultiplayerTurnProtocol(
             MultiplayerRole role,
             string hostFactionID,
             string guestFactionID,
@@ -612,7 +612,7 @@ namespace Rebellion.Multiplayer
         private void ThrowIfUnavailable()
         {
             if (_disposed)
-                throw new ObjectDisposedException(nameof(MultiplayerGameSession));
+                throw new ObjectDisposedException(nameof(MultiplayerTurnProtocol));
             if (Failure != null)
                 throw new InvalidOperationException("Game synchronization has stopped.", Failure);
         }

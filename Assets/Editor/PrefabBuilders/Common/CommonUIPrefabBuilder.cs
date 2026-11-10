@@ -535,8 +535,8 @@ public static class CommonUIPrefabBuilder
         serialized.FindProperty("isMainMenu").boolValue = isMainMenu;
         serialized.ApplyModifiedPropertiesWithoutUndo();
 
-        PersistenceFailureNoticeController persistence =
-            root.AddComponent<PersistenceFailureNoticeController>();
+        SaveGameFailureNoticeController persistence =
+            root.AddComponent<SaveGameFailureNoticeController>();
         AssignReference(persistence, "windowManager", windowManager);
         AssignReference(persistence, "dialogTemplate", template);
     }

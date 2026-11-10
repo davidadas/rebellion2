@@ -134,14 +134,21 @@ namespace Rebellion.Tests.NativeAudit
                     Track(
                         command.operation,
                         () =>
-                            CompleteAsync(MultiplayerCoordinator.EnsureExists().RefreshGamesAsync())
+                            CompleteAsync(
+                                AppBootstrap
+                                    .EnsureExists()
+                                    .GetMultiplayerCoordinator()
+                                    .RefreshGamesAsync()
+                            )
                     );
                     break;
                 case "host":
                     Track(command.operation, () => HostAsync(command));
                     break;
                 case "join":
-                    MultiplayerCoordinator joining = MultiplayerCoordinator.EnsureExists();
+                    MultiplayerCoordinator joining = AppBootstrap
+                        .EnsureExists()
+                        .GetMultiplayerCoordinator();
                     Track(
                         command.operation,
                         () =>
@@ -154,15 +161,24 @@ namespace Rebellion.Tests.NativeAudit
                     );
                     break;
                 case "ready":
-                    MultiplayerCoordinator.EnsureExists().SetLobbyReady(command.ready);
+                    AppBootstrap
+                        .EnsureExists()
+                        .GetMultiplayerCoordinator()
+                        .SetLobbyReady(command.ready);
                     break;
                 case "launch":
-                    MultiplayerCoordinator.EnsureExists().LaunchLobby();
+                    AppBootstrap.EnsureExists().GetMultiplayerCoordinator().LaunchLobby();
                     break;
                 case "resume":
                     Track(
                         command.operation,
-                        () => CompleteAsync(MultiplayerCoordinator.EnsureExists().ResumeAsync())
+                        () =>
+                            CompleteAsync(
+                                AppBootstrap
+                                    .EnsureExists()
+                                    .GetMultiplayerCoordinator()
+                                    .ResumeAsync()
+                            )
                     );
                     break;
                 case "save":
@@ -170,20 +186,23 @@ namespace Rebellion.Tests.NativeAudit
                         command.operation,
                         () =>
                             AppBootstrap
-                                .Instance.GetRuntime()
+                                .Instance.GetGameSessionManager()
                                 .SaveGameAsync(command.target, command.text)
                     );
                     break;
                 case "quicksave":
                     Track(
                         command.operation,
-                        () => AppBootstrap.Instance.GetRuntime().QuickSaveAsync()
+                        () => AppBootstrap.Instance.GetGameSessionManager().QuickSaveAsync()
                     );
                     break;
                 case "load":
                     Track(
                         command.operation,
-                        () => AppBootstrap.Instance.GetRuntime().LoadGameAsync(command.target)
+                        () =>
+                            AppBootstrap
+                                .Instance.GetGameSessionManager()
+                                .LoadGameAsync(command.target)
                     );
                     break;
                 case "fight":
@@ -191,7 +210,7 @@ namespace Rebellion.Tests.NativeAudit
                     break;
                 case "speed":
                     AppBootstrap
-                        .Instance.GetRuntime()
+                        .Instance.GetGameSessionManager()
                         .GetActiveGameManager()
                         .SetGameSpeed(
                             (Rebellion.Game.TickSpeed)
@@ -309,7 +328,9 @@ namespace Rebellion.Tests.NativeAudit
             Rebellion.Game.GameRoot source = await SaveGameManager.Instance.LoadGameDataAsync(
                 command.target
             );
-            MultiplayerCoordinator coordinator = MultiplayerCoordinator.EnsureExists();
+            MultiplayerCoordinator coordinator = AppBootstrap
+                .EnsureExists()
+                .GetMultiplayerCoordinator();
             await coordinator.HostAsync(
                 coordinator.PlayerSession.DisplayName,
                 command.text,
@@ -326,7 +347,7 @@ namespace Rebellion.Tests.NativeAudit
             (
                 AppBootstrap.Instance == null
                     ? null
-                    : AppBootstrap.Instance.GetRuntime()?.GetActiveGameSession()
+                    : AppBootstrap.Instance.GetGameSessionManager()?.GetActiveGameSession()
             ) ?? throw new InvalidOperationException("There is no active session to measure.");
 
         /// <summary>
@@ -404,8 +425,10 @@ namespace Rebellion.Tests.NativeAudit
             TMP_InputField entry =
                 selected == null ? null : selected.GetComponentInParent<TMP_InputField>();
             MultiplayerCoordinator multiplayer = MultiplayerCoordinator.Instance;
-            GameRuntime runtime =
-                AppBootstrap.Instance == null ? null : AppBootstrap.Instance.GetRuntime();
+            GameSessionManager runtime =
+                AppBootstrap.Instance == null
+                    ? null
+                    : AppBootstrap.Instance.GetGameSessionManager();
             Rebellion.Gameplay.GameSession session = runtime?.GetActiveGameSession();
             response.frame = Time.frameCount;
             response.renderedFrame = Time.renderedFrameCount;

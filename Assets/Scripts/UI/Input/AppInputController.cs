@@ -14,7 +14,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     private readonly Stack<InputContext> _contextStack = new();
     private InputManager _inputManager;
     private CancelStack _cancelStack;
-    private GameRuntime _runtime;
+    private GameSessionManager _sessionManager;
     private Func<string, Task<bool>> _loadSave;
     private int _shortcutSuppressionCount;
 
@@ -77,7 +77,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     public void Initialize(
         InputManager inputManager,
         CancelStack cancelStack,
-        GameRuntime runtime,
+        GameSessionManager runtime,
         Func<string, Task<bool>> loadSave = null
     )
     {
@@ -86,7 +86,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
 
         _inputManager = inputManager;
         _cancelStack = cancelStack;
-        _runtime = runtime;
+        _sessionManager = runtime;
         _loadSave = loadSave;
 
         EnsureBaseContext();
@@ -205,8 +205,8 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
 
         try
         {
-            if (_runtime != null)
-                await _runtime.QuickSaveAsync();
+            if (_sessionManager != null)
+                await _sessionManager.QuickSaveAsync();
         }
         catch (OperationCanceledException)
         {
@@ -249,7 +249,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
         if (!CanUseGameplayShortcuts())
             return;
 
-        GameManager gameManager = _runtime?.GetActiveGameManager();
+        GameManager gameManager = _sessionManager?.GetActiveGameManager();
         gameManager?.StepGameSpeed(false);
     }
 
@@ -265,7 +265,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
         if (!CanUseGameplayShortcuts())
             return;
 
-        GameManager gameManager = _runtime?.GetActiveGameManager();
+        GameManager gameManager = _sessionManager?.GetActiveGameManager();
         gameManager?.StepGameSpeed(true);
     }
 

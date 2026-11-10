@@ -4,8 +4,8 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Gameplay;
-using Rebellion.Persistence;
 using UnityEditor;
 using UnityEngine;
 
@@ -176,7 +176,7 @@ namespace Rebellion.Tests.App
         public void ReloadContent_ActiveCampaign_LeavesCampaignRunning()
         {
             UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
-            GameRuntime runtime = _bootstrap.GetRuntime();
+            GameSessionManager runtime = _bootstrap.GetGameSessionManager();
             GameRoot game = CreateCompatibleGame(_bootstrap.GetContentPack(), 42);
             runtime.StartGame(game);
 
@@ -300,7 +300,7 @@ namespace Rebellion.Tests.App
         {
             UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
             ContentPack contentPack = _bootstrap.GetContentPack();
-            GameRuntime runtime = _bootstrap.GetRuntime();
+            GameSessionManager runtime = _bootstrap.GetGameSessionManager();
             GameRoot activeGame = CreateCompatibleGame(contentPack, 1);
             runtime.StartGame(activeGame);
             string fileName = $"bootstrap-hot-load-{System.Guid.NewGuid():N}";
@@ -337,11 +337,10 @@ namespace Rebellion.Tests.App
         public async Task LoadSaveAsync_CoordinatedOwner_WaitsWithoutStartingContentTransitionAsync()
         {
             UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
-            GameRuntime runtime = _bootstrap.GetRuntime();
+            GameSessionManager runtime = _bootstrap.GetGameSessionManager();
             GameRoot activeGame = CreateCompatibleGame(_bootstrap.GetContentPack(), 7);
-            runtime.StartGame(activeGame);
             TestPersistenceCoordinator coordinator = new TestPersistenceCoordinator();
-            runtime.BindPersistenceCoordinator(coordinator);
+            runtime.StartGame(activeGame, coordinator);
             int transitionCount = 0;
             _bootstrap.LoadStarting += () => transitionCount++;
 
@@ -477,11 +476,50 @@ namespace Rebellion.Tests.App
             return contentRoot;
         }
 
-        private sealed class TestPersistenceCoordinator : IGamePersistenceCoordinator
+        private sealed class TestPersistenceCoordinator : IGameSessionOwner
         {
             public bool CanRequestSave => true;
             internal readonly TaskCompletionSource<bool> Completion = new();
             internal string LoadedFileName;
+
+            /// <summary>
+            /// Accepts the prepared fixture world.
+            /// </summary>
+            /// <param name="game">The world entering the session.</param>
+            public void PrepareGame(GameRoot game) { }
+
+            /// <summary>
+            /// Accepts the fixture session manager.
+            /// </summary>
+            /// <param name="runtime">The manager starting the session.</param>
+            public void BindSessionManager(GameSessionManager runtime) { }
+
+            /// <summary>
+            /// Leaves readiness outside the load-routing fixture.
+            /// </summary>
+            /// <param name="runtime">The manager with a ready presentation.</param>
+            public void NotifyPresentationReady(GameSessionManager runtime) { }
+
+            /// <summary>
+            /// Releases the fixture session manager.
+            /// </summary>
+            /// <param name="runtime">The manager ending the session.</param>
+            public void ReleaseSessionManager(GameSessionManager runtime) { }
+
+            /// <summary>
+            /// Leaves simulation advancement outside the fixture.
+            /// </summary>
+            /// <param name="elapsedSeconds">The elapsed frame interval.</param>
+            /// <returns>False because the fixture does not advance ticks.</returns>
+            public bool TryBeginGameTick(float elapsedSeconds) => false;
+
+            /// <summary>
+            /// Rejects commands outside the load-routing fixture.
+            /// </summary>
+            /// <param name="request">The requested player operation.</param>
+            /// <returns>A completed rejection.</returns>
+            public Task<PlayerRequestOutcome> ExecuteAsync(PlayerRequest request) =>
+                TestPlayerRequests.RejectAll().ExecuteAsync(request);
 
             /// <summary>
             /// Rejects saves, which this bootstrap transition fixture does not perform.

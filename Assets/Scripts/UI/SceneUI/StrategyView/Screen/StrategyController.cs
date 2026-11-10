@@ -99,7 +99,7 @@ public sealed class StrategyController
     private CancelStack cancelStack;
     private GameManager gameManager;
     private GameSession session;
-    private GameRuntime runtime;
+    private GameSessionManager runtime;
     private StrategyBriefingController briefingController;
     private bool briefingActive;
     private EventSystem briefingEventSystem;
@@ -178,7 +178,7 @@ public sealed class StrategyController
     public void Initialize(
         GameSession activeSession,
         GameManager manager,
-        GameRuntime gameRuntime,
+        GameSessionManager gameRuntime,
         UIContext context,
         CancellationToken cancellationToken
     )
@@ -735,7 +735,7 @@ public sealed class StrategyController
             MarkDirty
         );
         AppBootstrap bootstrap = AppBootstrap.Instance;
-        GameRuntime settingsRuntime = bootstrap.GetRuntime();
+        GameSessionManager settingsRuntime = bootstrap.GetGameSessionManager();
         saveGameManager = SaveGameManager.Instance;
         saveGameManager.Saving += CaptureChangedWindows;
         _optionsMenuController = new OptionsMenuController(
@@ -751,7 +751,7 @@ public sealed class StrategyController
             saveGameManager,
             showModsTab: false,
             getSavedGames: () =>
-                MultiplayerCoordinator.Instance?.GetVisibleSavedGames(saveGameManager)
+                MultiplayerCoordinator.Instance?.GetVisibleSavedGames()
                 ?? saveGameManager.GetSavedGames()
         );
         _appInputController = bootstrap.GetInputController();
