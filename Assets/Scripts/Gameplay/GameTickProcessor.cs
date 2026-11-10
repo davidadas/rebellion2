@@ -53,7 +53,6 @@ namespace Rebellion.Gameplay
         private SpaceCombatCommands _spaceCombatCommands;
         private ITickProcessor _spaceCombat;
         private ITickProcessor _uprising;
-        private ITickProcessor _victory;
         private bool _tickInProgress;
         private TickExecutionState _tickState;
 
@@ -130,10 +129,6 @@ namespace Rebellion.Gameplay
             );
             _uprising = new UprisingTickProcessor(services.GetService<UprisingResolver>());
             _jedi = new JediTickProcessor(services.GetService<JediCommands>());
-            _victory = new VictoryTickProcessor(
-                services.GetService<VictoryCommands>(),
-                services.GetService<VictoryQueries>()
-            );
         }
 
         /// <summary>
@@ -284,7 +279,6 @@ namespace Rebellion.Gameplay
 
             ProcessResults(_research.ProcessTick(_game));
             ProcessResults(_jedi.ProcessTick(_game));
-            ProcessResults(_victory.ProcessTick(_game));
             _fogOfWarObserver.RefreshVisibleKnowledge();
             _tickState = TickExecutionState.Idle;
             TickCompleted?.Invoke();
