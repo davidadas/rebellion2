@@ -145,7 +145,7 @@ public sealed class QueuedMouseInputModule : StandaloneInputModule
     /// </summary>
     /// <param name="id">The mouse device index requested by the shared dispatcher.</param>
     /// <returns>The mouse pointers and their individual button transitions.</returns>
-    protected override MouseState GetMousePointerEventData(int id)
+    protected override PointerInputModule.MouseState GetMousePointerEventData(int id)
     {
         if (!_processingSample)
             return base.GetMousePointerEventData(id);
@@ -155,7 +155,7 @@ public sealed class QueuedMouseInputModule : StandaloneInputModule
         inputOverride = _snapshotInput;
         try
         {
-            MouseState state = base.GetMousePointerEventData(id);
+            PointerInputModule.MouseState state = base.GetMousePointerEventData(id);
             for (int button = 0; button < _pointerIds.Length; button++)
             {
                 PointerEventData pointer = state

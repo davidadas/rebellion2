@@ -11,6 +11,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
+using InputSystemMouseState = UnityEngine.InputSystem.LowLevel.MouseState;
 using Object = UnityEngine.Object;
 
 namespace Rebellion.Tests.UI.Input
@@ -687,7 +688,7 @@ namespace Rebellion.Tests.UI.Input
             _buttons = buttons;
             InputSystem.QueueStateEvent(
                 _mouse,
-                new MouseState { position = position, buttons = buttons },
+                new InputSystemMouseState { position = position, buttons = buttons },
                 time
             );
         }
