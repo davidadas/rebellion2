@@ -181,6 +181,20 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Returns how far a force's starting line lies from its own edge of the battlefield.
+        /// Automatic resolution has a withdrawing unit cover the same ground, so leaving a battle
+        /// takes about as long there as it does here.
+        /// </summary>
+        /// <param name="config">The space-combat parameters.</param>
+        /// <returns>The distance from a starting line to the edge behind it.</returns>
+        internal static double GetStartingEdgeDistance(GameConfig.SpaceCombatConfig config)
+        {
+            return Math.Max(config.AutoResolveStartingDistance, 0)
+                * _arenaScale
+                * (1 - _spawnLineFraction);
+        }
+
+        /// <summary>
         /// Returns whether a side is permitted to withdraw from the battle right now.
         /// </summary>
         /// <param name="side">The side to inspect.</param>

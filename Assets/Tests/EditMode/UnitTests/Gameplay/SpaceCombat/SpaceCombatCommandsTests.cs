@@ -2368,7 +2368,7 @@ namespace Rebellion.Tests.Gameplay
                 owner: "alliance"
             );
             CreatePlanet(game, "empire-fallback", owner: "empire");
-            Fleet attackingFleet = CreateFleet(
+            CreateFleet(
                 game,
                 "attacker",
                 "empire",
@@ -2378,7 +2378,6 @@ namespace Rebellion.Tests.Gameplay
                 76,
                 shieldRechargeRate: 0
             );
-            CapitalShip attackingShip = attackingFleet.GetChildren<CapitalShip>().Single();
             Fleet retreatingFleet = CreateFleet(
                 game,
                 "retreating-fleet",
@@ -2417,7 +2416,6 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreSame(allianceFallback, retreatingFleet.GetParentOfType<Planet>());
             Assert.IsNotNull(retreatingFleet.Movement);
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(trappedFleet.InstanceID));
-            Assert.AreEqual(attackingShip.MaxHullStrength, attackingShip.CurrentHullStrength);
         }
 
         [Test]

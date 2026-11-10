@@ -267,8 +267,8 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Sends a force's torpedo squadrons out of the fight to fly the trench of an enemy
-        /// battle station that fighters can attack.
+        /// Sends a force's torpedo squadrons to fly the trench of an enemy battle station that
+        /// fighters can attack.
         /// </summary>
         /// <param name="force">The force whose squadrons are sent.</param>
         /// <param name="opposingForce">The force that may own a station.</param>
@@ -285,7 +285,7 @@ namespace Rebellion.Gameplay
 
             foreach (StarfighterState fighter in force.Fighters)
             {
-                if (fighter.IsTargetable && fighter.HasTorpedoes)
+                if (fighter.IsTargetable && fighter.HasTorpedoes && fighter.TrenchRunTarget == null)
                     fighter.BeginTrenchRun(station);
             }
         }
@@ -348,10 +348,12 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Flies and decides the trench runs against one force's stations. A run is decided once
-        /// every squadron sent has covered the distance to the station; success destroys the
-        /// station and returns the squadrons to the fight, failure costs every squadron that flew
-        /// it. Squadrons sent against a station that can no longer be attacked return at once.
+        /// Flies and decides the trench runs against one force's stations. Squadrons stay in the
+        /// fight, under fire, until they have covered the distance to the station and gone into
+        /// its trench. A run is decided once every squadron sent has reached the trench or been
+        /// lost on the way; success destroys the station and returns the squadrons to the fight,
+        /// failure costs every squadron that flew it. Squadrons sent against a station that can
+        /// no longer be attacked return at once.
         /// </summary>
         /// <param name="stationForce">The force whose stations are attacked.</param>
         /// <param name="attackingForce">The force flying the runs.</param>
@@ -381,9 +383,9 @@ namespace Rebellion.Gameplay
                         continue;
                     }
 
-                    fighter.AdvanceTrenchRun();
+                    fighter.AdvanceTrenchRun(runDistance);
                     (run ??= new List<StarfighterState>()).Add(fighter);
-                    onTheWay |= fighter.TrenchRunDistance < runDistance;
+                    onTheWay |= !fighter.IsInTrench;
                 }
 
                 if (run == null || onTheWay)
@@ -566,7 +568,19 @@ namespace Rebellion.Gameplay
                 unit.AdvanceTacticalState(_config, _random);
             }
 
-            force.CompleteReadyWithdrawals(Math.Max(_config.AutoResolveWithdrawalDistance, 0));
+            force.CompleteReadyWithdrawals(GetWithdrawalDistance());
+        }
+
+        /// <summary>
+        /// Returns how far a unit flies to leave the battle: back out to its own edge of the
+        /// battlefield, as far as a starting line lies from that edge on the tactical
+        /// battlefield, and then the configured distance beyond it.
+        /// </summary>
+        /// <returns>The distance a withdrawing unit covers before it is gone.</returns>
+        private double GetWithdrawalDistance()
+        {
+            return TacticalSpaceBattle.GetStartingEdgeDistance(_config)
+                + Math.Max(_config.AutoResolveWithdrawalDistance, 0);
         }
 
         /// <summary>
@@ -1296,14 +1310,19 @@ namespace Rebellion.Gameplay
             internal abstract double RemainingDurability { get; }
             internal abstract bool CanScanForTargets { get; }
             internal virtual bool IsAttackDelayed => false;
-            internal bool CanFire => IsTargetable && !IsWithdrawing && !IsAttackDelayed;
+            internal bool CanFire => IsTargetable && !IsAttackDelayed;
             internal bool HasWithdrawn { get; private set; }
             internal bool IsWithdrawing { get; private set; }
-            internal bool IsTargetable => IsAlive && !HasWithdrawn && !IsWithdrawing && !IsOffField;
+
+            /// <summary>
+            /// Gets whether enemies can still engage this unit: one running for hyperspace stays
+            /// under fire, and returns it, until it is gone.
+            /// </summary>
+            internal bool IsTargetable => IsAlive && !HasWithdrawn && !IsOffField;
 
             /// <summary>
             /// Gets whether the unit has left the fight without leaving the battle, as a squadron
-            /// does while it flies a battle station's trench.
+            /// does inside a battle station's trench.
             /// </summary>
             internal virtual bool IsOffField => false;
             internal double WithdrawalDistance => _withdrawalDistance;
@@ -2105,6 +2124,7 @@ namespace Rebellion.Gameplay
             private readonly TacticalUnit[] _weaponTargets = new TacticalUnit[3];
             private double _currentDurability;
             private double _currentWeaponCharge;
+            private double _trenchRunDistance;
 
             internal int CurrentSquadronSize =>
                 IsAlive
@@ -2121,18 +2141,19 @@ namespace Rebellion.Gameplay
             internal override bool CanScanForTargets =>
                 _maximumWeaponCharge > 0 && _currentWeaponCharge >= _maximumWeaponCharge;
             internal override double ClosingSpeed => Math.Max(Fighter.SublightSpeed, 0);
-            internal override bool IsOffField => TrenchRunTarget != null;
+            internal override bool IsOffField => IsInTrench;
             internal bool HasTorpedoes => Fighter.Torpedoes > 0;
 
             /// <summary>
-            /// Gets the battle station whose trench the squadron is flying, or null.
+            /// Gets the battle station whose trench the squadron has been sent to fly, or null.
             /// </summary>
             internal BattleStationState<TacticalUnit> TrenchRunTarget { get; private set; }
 
             /// <summary>
-            /// Gets how far the squadron has flown toward the station it was sent against.
+            /// Gets whether the squadron has reached the station and is inside its trench, waiting
+            /// for the run to be decided.
             /// </summary>
-            internal double TrenchRunDistance { get; private set; }
+            internal bool IsInTrench { get; private set; }
             internal override double ManeuverRate =>
                 Math.Max(
                     Fighter.SublightSpeed + Fighter.Agility + _commandBonus,
@@ -2169,30 +2190,38 @@ namespace Rebellion.Gameplay
             }
 
             /// <summary>
-            /// Sends the squadron out of the fight to fly a battle station's trench.
+            /// Sends the squadron to fly a battle station's trench.
             /// </summary>
             /// <param name="station">The station to attack.</param>
             internal void BeginTrenchRun(BattleStationState<TacticalUnit> station)
             {
                 TrenchRunTarget = station;
-                TrenchRunDistance = 0;
+                _trenchRunDistance = 0;
+                IsInTrench = false;
             }
 
             /// <summary>
-            /// Flies the squadron one iteration closer to the station it was sent against.
+            /// Flies the squadron one iteration closer to the station it was sent against and
+            /// takes it into the trench once it has covered the distance.
             /// </summary>
-            internal void AdvanceTrenchRun()
+            /// <param name="runDistance">The distance squadrons fly to reach the station.</param>
+            internal void AdvanceTrenchRun(double runDistance)
             {
-                TrenchRunDistance += Math.Max(ClosingSpeed, 1);
+                if (IsInTrench)
+                    return;
+
+                _trenchRunDistance += Math.Max(ClosingSpeed, 1);
+                IsInTrench = _trenchRunDistance >= runDistance;
             }
 
             /// <summary>
-            /// Brings the squadron back into the fight.
+            /// Takes the squadron off its trench run and back into the fight.
             /// </summary>
             internal void EndTrenchRun()
             {
                 TrenchRunTarget = null;
-                TrenchRunDistance = 0;
+                _trenchRunDistance = 0;
+                IsInTrench = false;
             }
 
             /// <summary>

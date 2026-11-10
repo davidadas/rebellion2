@@ -1089,7 +1089,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Resolve_IntactForceBelowOpposingStrengthThreshold_WithdrawsBeforeFiring()
+        public void Resolve_IntactForceBelowOpposingStrengthThreshold_WithdrawsAtOnce()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 100);
             CapitalShip defender = CreateShip("defender", hull: 1000, weaponStrength: 32);
@@ -1112,7 +1112,6 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
-            Assert.AreEqual(1000, GetShipOutcome(result, attacker).HullAfter);
         }
 
         [Test]
@@ -1142,7 +1141,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Resolve_ZeroStrengthForce_WithdrawsBeforeFiring()
+        public void Resolve_ZeroStrengthForce_WithdrawsAtOnce()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 100);
             CapitalShip defender = CreatePassiveTarget("defender", hull: 1000);
@@ -1163,7 +1162,6 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
-            Assert.AreEqual(1000, GetShipOutcome(result, defender).HullAfter);
         }
 
         [Test]
@@ -1225,7 +1223,6 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
-            Assert.AreEqual(12, GetFighterOutcome(result, attackerFighter).SquadronSizeAfter);
         }
 
         [TestCase(true, true)]
@@ -1323,7 +1320,6 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsTrue(GetShipOutcome(result, secondWithdrawingShip).Withdrew);
             Assert.IsFalse(GetShipOutcome(result, strandedShip).Withdrew);
             Assert.AreEqual(0, GetShipOutcome(result, strandedShip).HullAfter);
-            Assert.AreEqual(1000, GetShipOutcome(result, attacker).HullAfter);
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
             Assert.AreEqual(2, result.IterationsCompleted);
         }
@@ -1371,7 +1367,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Resolve_ForceBeginsWithdrawal_CannotBeTargeted()
+        public void Resolve_WithdrawingForce_IsShotAtAndShootsBackUntilItIsGone()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 5);
             CapitalShip defender = CreateShip("defender", hull: 100, weaponStrength: 1);
@@ -1393,7 +1389,34 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
-            Assert.AreEqual(100, GetShipOutcome(result, defender).HullAfter);
+            Assert.Less(GetShipOutcome(result, defender).HullAfter, 100);
+            Assert.Less(GetShipOutcome(result, attacker).HullAfter, 100);
+        }
+
+        [Test]
+        public void Resolve_WithdrawingShip_FliesOutPastItsOwnEdgeBeforeItIsGone()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 5);
+            CapitalShip defender = CreateShip("defender", hull: 100000, weaponStrength: 1);
+            defender.SublightSpeed = 10;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveRetreatStrengthRatio = 1.01;
+            config.AutoResolveStartingDistance = 100;
+            config.AutoResolveWithdrawalDistance = 15;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new[] { attacker },
+                new List<Starfighter>(),
+                new[] { defender },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true
+            );
+
+            // Sixty back to its own edge (0.6 starting distances) and fifteen beyond it: eight
+            // iterations at speed ten, and the battle ends on the next.
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(9, result.IterationsCompleted);
         }
 
         [Test]
@@ -1578,7 +1601,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Resolve_TwoCarriersDestroyedWithNonHyperdriveFighters_DestroysFightersWithoutReturnFire()
+        public void Resolve_TwoCarriersDestroyedWithNonHyperdriveFighters_DestroysFighters()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 100);
             attacker.WeaponRecharge = 100;
@@ -1634,7 +1657,6 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsFalse(GetFighterOutcome(result, secondFighter).Withdrew);
             Assert.AreEqual(0, GetFighterOutcome(result, firstFighter).SquadronSizeAfter);
             Assert.AreEqual(0, GetFighterOutcome(result, secondFighter).SquadronSizeAfter);
-            Assert.AreEqual(1000, GetShipOutcome(result, attacker).HullAfter);
         }
 
         [Test]
@@ -2006,6 +2028,62 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(SpaceCombatSideOutcome.Active, withStation.DefenderOutcome);
             Assert.AreEqual(CombatSide.Defender, withStation.Winner);
             Assert.AreEqual(0, GetShipOutcome(withStation, raider).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_SquadronsOnATrenchRun_AreShotAtOnTheWayIn()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.TacticalTrenchRunBaseChance = 1;
+            config.AutoResolveTargetScanDivisor = 1;
+            CapitalShip station = CreateStation("station");
+            CapitalShip picket = CreateShip("picket", hull: 1000, weaponStrength: 0);
+            picket.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 500;
+            picket.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 100;
+            picket.WeaponRecharge = 500;
+            Starfighter torpedoFighter = CreateTorpedoFighter("y-wing", 12);
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { torpedoFighter },
+                new[] { station, picket },
+                new List<Starfighter>(),
+                random: new ArcDamageRNG()
+            );
+
+            // The picket's guns reach the squadron while it is still flying to the station, so
+            // a run that could not fail is never rolled.
+            Assert.AreEqual(0, GetFighterOutcome(result, torpedoFighter).SquadronSizeAfter);
+            Assert.IsFalse(result.ShipDamage.Any(damage => damage.Ship == station));
+            Assert.AreEqual(CombatSide.Defender, result.Winner);
+        }
+
+        [Test]
+        public void Resolve_FleetFleeingALoneStation_LosesAShipToTheSuperlaser()
+        {
+            CapitalShip station = CreateStation("station");
+            CapitalShip first = CreatePassiveTarget("first", 100000);
+            first.SublightSpeed = 4;
+            CapitalShip second = CreatePassiveTarget("second", 100000);
+            second.SublightSpeed = 4;
+            CapitalShip[] fleet = { first, second };
+
+            SpaceCombatResult result = Resolve(
+                CreateConfig(),
+                fleet,
+                new List<Starfighter>(),
+                new[] { station },
+                new List<Starfighter>(),
+                attackerCanWithdraw: true
+            );
+
+            // The fleet cannot hurt the station and turns for home at once, but a ship running
+            // for hyperspace is still a target: the superlaser's first shot catches one of them.
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
+            Assert.AreEqual(1, fleet.Count(ship => GetShipOutcome(result, ship).HullAfter == 0));
+            Assert.AreEqual(1, fleet.Count(ship => GetShipOutcome(result, ship).Withdrew));
+            Assert.IsFalse(result.ShipDamage.Any(damage => damage.Ship == station));
         }
 
         [Test]

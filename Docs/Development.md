@@ -150,7 +150,10 @@ beams fight from weapon range, close to beam range only on a capital ship that i
 it while its hull stays in range: a held
 ship crawls at a fifth of its speed and cannot complete a hyperspace jump, and a beam ship keeps
 hold of a running ship, following it, until the beam ship dies or the hull slips out of range.
-Withdrawing ships stay under fire until they are gone. Whether a side may retreat is judged live
+Withdrawing ships stay under fire, and return it, until they are gone. Automatic resolution
+follows the same rule: a unit leaving there flies as far as a starting line lies from the edge of
+this arena (0.6 starting distances) and then `AutoResolveWithdrawalDistance` beyond it, so an
+escape takes about as long either way. Whether a side may retreat is judged live
 each frame: an enemy ship with a gravity well holds it in the system until that ship is destroyed
 or jumps out, and a side with no hyperdrive-capable unit left, or no safe system to jump to, cannot
 leave either. The Retreat button names the reason while it is greyed (Interdicted, No Hyperdrive,
@@ -230,8 +233,8 @@ strength threshold, a station is never the loser of a stalemate, and an automati
 nothing left to fight but a station it cannot attack withdraws. Automatic resolution (battles the
 player does not command) follows the same rules, read from the same `BattleStationRules` and
 `BattleStationState`: the station stays out of the line, fires on the same schedule, and torpedo
-squadrons leave the fight for about as long as the flight across the tactical battlefield takes
-(six starting distances) before their run is rolled.
+squadrons fly about as far as the flight across the tactical battlefield (six starting distances),
+under fire like any other unit, before they enter the trench and their run is rolled.
 Weapon fire is drawn as short bolts that fly from the muzzle to the target at a fixed speed, so
 long shots stay visible longer. Laser colors come from each faction's theme primary color. Battle
 sounds use the shared tactical
