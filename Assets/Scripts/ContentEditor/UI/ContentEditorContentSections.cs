@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Xml.Linq;
 
 /// <summary>
 /// Projects related authored content into task-oriented inspector and navigation sections.
@@ -59,10 +60,10 @@ internal static class ContentEditorContentSections
     {
         if (theme == null)
             return Array.Empty<ContentPackEditorField>();
-        IEnumerable<System.Xml.Linq.XElement> elements =
+        IEnumerable<XElement> elements =
             theme.Element.Element("PlanetOverlayTheme")?.Element("UnitTileIcons")?.Elements()
-            ?? Enumerable.Empty<System.Xml.Linq.XElement>();
-        System.Xml.Linq.XElement saveIcon = theme.Element.Element("SavedGameSlotIconImagePath");
+            ?? Enumerable.Empty<XElement>();
+        XElement saveIcon = theme.Element.Element("SavedGameSlotIconImagePath");
         if (saveIcon != null)
             elements = elements.Append(saveIcon);
         return elements

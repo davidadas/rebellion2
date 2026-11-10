@@ -42,6 +42,7 @@ namespace Rebellion.Gameplay
             {
                 results.Subscribe<UnitArrivedResult>(HandleResults),
                 results.Subscribe<PlanetOwnershipChangedResult>(HandleResults),
+                results.Subscribe<BombardmentResult>(HandleResults),
                 results.Subscribe<GameObjectDestroyedResult>(HandleResults),
                 results.Subscribe<GameObjectScrappedResult>(HandleResults),
                 results.Subscribe<UnitOwnershipChangedResult>(HandleResults),
@@ -139,6 +140,23 @@ namespace Rebellion.Gameplay
             )
             {
                 ApplyOwnershipChange(result, reactions);
+            }
+            return reactions;
+        }
+
+        /// <summary>
+        /// Applies fixed-headquarters losses reported by completed bombardments.
+        /// </summary>
+        /// <param name="results">The completed bombardments.</param>
+        /// <returns>The fixed-headquarters losses caused by the bombardments.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<BombardmentResult> results)
+        {
+            List<GameResult> reactions = new();
+            foreach (BombardmentResult result in results ?? Array.Empty<BombardmentResult>())
+            {
+                HeadquartersDestroyedResult destroyed = ApplyBombardment(result);
+                if (destroyed != null)
+                    reactions.Add(destroyed);
             }
             return reactions;
         }
@@ -254,6 +272,43 @@ namespace Rebellion.Gameplay
                 attacker,
                 result?.Tick ?? _game.CurrentTick
             );
+        }
+
+        /// <summary>
+        /// Marks a fixed headquarters as lost after its bombardment target is destroyed.
+        /// </summary>
+        /// <param name="result">The completed bombardment.</param>
+        /// <returns>The headquarters destruction result, or null when no active fixed headquarters was destroyed.</returns>
+        private HeadquartersDestroyedResult ApplyBombardment(BombardmentResult result)
+        {
+            if (
+                result?.HeadquartersDestroyed != true
+                || result.Planet == null
+                || string.IsNullOrEmpty(result.DefenderOwnerInstanceID)
+            )
+                return null;
+
+            Faction defender = _game
+                .GetFactions()
+                .FirstOrDefault(faction => faction.InstanceID == result.DefenderOwnerInstanceID);
+            if (
+                defender == null
+                || defender.Settings?.Headquarters?.IsMobile == true
+                || defender.HasLostHeadquarters
+            )
+                return null;
+
+            MarkHeadquartersLost(defender, result.Planet);
+            return new HeadquartersDestroyedResult
+            {
+                Headquarters = result.DestroyedBuildings.FirstOrDefault(building =>
+                    building.BuildingType == BuildingType.Headquarters
+                ),
+                Planet = result.Planet,
+                Defender = defender,
+                Attacker = result.AttackingFaction,
+                Tick = result.Tick,
+            };
         }
 
         /// <summary>
@@ -385,13 +440,13 @@ namespace Rebellion.Gameplay
             Planet planet = result?.Planet;
             Faction previousOwner = result?.PreviousOwner;
             Faction newOwner = result?.NewOwner;
-            HeadquartersCapturedResult captured = UpdateFixedHeadquartersMarker(
+            HeadquartersLostResult loss = UpdateFixedHeadquartersMarker(
                 planet,
                 previousOwner,
                 newOwner
             );
-            if (captured != null)
-                reactions.Add(captured);
+            if (loss != null)
+                reactions.Add(loss);
 
             if (
                 previousOwner?.Settings?.Headquarters?.IsMobile != true
@@ -431,8 +486,8 @@ namespace Rebellion.Gameplay
         /// <param name="planet">The planet whose ownership changed.</param>
         /// <param name="previousOwner">The previous controller.</param>
         /// <param name="newOwner">The new controller, or null.</param>
-        /// <returns>A capture result for an enemy takeover, or null.</returns>
-        private HeadquartersCapturedResult UpdateFixedHeadquartersMarker(
+        /// <returns>A headquarters-loss result for a takeover or neutralization, or null.</returns>
+        private HeadquartersLostResult UpdateFixedHeadquartersMarker(
             Planet planet,
             Faction previousOwner,
             Faction newOwner
@@ -452,12 +507,18 @@ namespace Rebellion.Gameplay
 
             planet.IsHeadquarters = newOwner == headquartersFaction;
             headquartersFaction.HasLostHeadquarters = newOwner != headquartersFaction;
-            if (
-                previousOwner != headquartersFaction
-                || newOwner == null
-                || newOwner == headquartersFaction
-            )
+            if (previousOwner != headquartersFaction || newOwner == headquartersFaction)
                 return null;
+
+            if (newOwner == null)
+            {
+                return new HeadquartersNeutralizedResult
+                {
+                    Planet = planet,
+                    Defender = headquartersFaction,
+                    Tick = _game.CurrentTick,
+                };
+            }
 
             return new HeadquartersCapturedResult
             {

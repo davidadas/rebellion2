@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Linq;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 
 /// <summary>
 /// Represents one fleet route resolved for strategy-map presentation.
@@ -280,7 +281,7 @@ internal static class FleetWaypointRouteResolver
     /// <param name="instanceId">The node identifier.</param>
     /// <returns>The visible node, or null.</returns>
     private static T FindVisibleNode<T>(IReadOnlyList<GalaxyMapSector> sectors, string instanceId)
-        where T : class, Rebellion.SceneGraph.ISceneNode
+        where T : class, ISceneNode
     {
         if (string.IsNullOrEmpty(instanceId))
             return null;

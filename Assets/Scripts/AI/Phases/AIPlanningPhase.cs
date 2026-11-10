@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -12,7 +13,7 @@ namespace Rebellion.AI.Phases
     public sealed class AIPlanningPhase : IAIIncrementalTurnPhase
     {
         private readonly List<IAIProposalPlanner> _planners;
-        private readonly System.Func<long> _getTimestamp;
+        private readonly Func<long> _getTimestamp;
 
         /// <summary>
         /// Creates a planning phase with the supplied proposal planners.
@@ -26,19 +27,15 @@ namespace Rebellion.AI.Phases
         /// </summary>
         /// <param name="planners">The proposal planners run by this phase.</param>
         /// <param name="getTimestamp">Returns monotonic timestamps measured in Stopwatch.Frequency units.</param>
-        internal AIPlanningPhase(
-            IEnumerable<IAIProposalPlanner> planners,
-            System.Func<long> getTimestamp
-        )
+        internal AIPlanningPhase(IEnumerable<IAIProposalPlanner> planners, Func<long> getTimestamp)
         {
-            _getTimestamp =
-                getTimestamp ?? throw new System.ArgumentNullException(nameof(getTimestamp));
+            _getTimestamp = getTimestamp ?? throw new ArgumentNullException(nameof(getTimestamp));
             if (planners == null)
-                throw new System.ArgumentNullException(nameof(planners));
+                throw new ArgumentNullException(nameof(planners));
 
             _planners = planners.ToList();
             if (_planners.Any(planner => planner == null))
-                throw new System.ArgumentException(
+                throw new ArgumentException(
                     "Planner list cannot contain null entries.",
                     nameof(planners)
                 );

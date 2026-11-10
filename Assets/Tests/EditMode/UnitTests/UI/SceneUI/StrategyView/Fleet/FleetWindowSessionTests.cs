@@ -200,7 +200,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         {
             _session.CaptureContext(_capitalShip);
             _session.BeginRename(_capitalShip);
-            _planet.RemoveChildren<Rebellion.Game.Units.Fleet>(_ => true);
+            _planet.RemoveChildren<GameFleet>(_ => true);
 
             _session.Reconcile();
 

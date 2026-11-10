@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using UnityEngine;
 
@@ -150,7 +151,7 @@ internal sealed class CampaignAnalyticsTracker
             if (target == null)
                 continue;
 
-            target.Planets += faction.GetOwnedUnitsByType<Rebellion.Game.Galaxy.Planet>().Count;
+            target.Planets += faction.GetOwnedUnitsByType<Planet>().Count;
             target.CapitalShips += faction.GetOwnedUnitsByType<CapitalShip>().Count;
             target.Starfighters += faction.GetOwnedUnitsByType<Starfighter>().Count;
             target.Regiments += faction.GetOwnedUnitsByType<Regiment>().Count;

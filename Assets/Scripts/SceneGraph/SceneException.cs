@@ -1,9 +1,11 @@
+using System;
+
 namespace Rebellion.SceneGraph
 {
     /// <summary>
     /// Base exception for scene graph operations.
     /// </summary>
-    public abstract class SceneException : System.Exception
+    public abstract class SceneException : Exception
     {
         /// <summary>
         /// Initializes a new instance of the SceneException class.
@@ -22,7 +24,7 @@ namespace Rebellion.SceneGraph
         /// </summary>
         /// <param name="message">The message.</param>
         /// <param name="inner">The inner.</param>
-        protected SceneException(string message, System.Exception inner)
+        protected SceneException(string message, Exception inner)
             : base(message, inner) { }
     }
 }

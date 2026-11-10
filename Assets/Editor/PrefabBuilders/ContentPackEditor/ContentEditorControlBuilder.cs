@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.IO;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -374,7 +376,7 @@ internal static class ContentEditorControlBuilder
     /// <returns>The imported UI sprite.</returns>
     internal static Sprite LoadIcon(string name) =>
         AssetDatabase.LoadAssetAtPath<Sprite>($"Assets/Art/ContentEditor/{name}.png")
-        ?? throw new System.IO.FileNotFoundException($"Editor icon '{name}' is missing.");
+        ?? throw new FileNotFoundException($"Editor icon '{name}' is missing.");
 
     /// <summary>
     /// Authors the existing checkbox view using compact editor artwork.
@@ -560,11 +562,7 @@ internal static class ContentEditorControlBuilder
     /// <param name="target">The receiving component.</param>
     /// <param name="field">The serialized collection.</param>
     /// <param name="values">The components in display order.</param>
-    internal static void Assign(
-        Object target,
-        string field,
-        System.Collections.Generic.IReadOnlyList<Object> values
-    )
+    internal static void Assign(Object target, string field, IReadOnlyList<Object> values)
     {
         SerializedObject serialized = new SerializedObject(target);
         SerializedProperty property =

@@ -87,7 +87,7 @@ namespace Rebellion.AI.Scorers
             if (missionProposal.IsInterception)
             {
                 long outbound = travelTicks.HasValue
-                    ? System.Math.Max(
+                    ? Math.Max(
                         0,
                         travelTicks.Value
                             - (

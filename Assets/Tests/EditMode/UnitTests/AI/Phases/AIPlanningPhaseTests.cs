@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI;
@@ -34,7 +36,7 @@ namespace Rebellion.Tests.AI.Phases
             long timestamp = 0;
             var phase = new AIPlanningPhase(
                 new IAIProposalPlanner[] { new IncrementalPlanner(first, second) },
-                () => timestamp += System.Diagnostics.Stopwatch.Frequency
+                () => timestamp += Stopwatch.Frequency
             );
             using var work = phase.ExecuteIncrementally(context).GetEnumerator();
 
@@ -172,7 +174,7 @@ namespace Rebellion.Tests.AI.Phases
             /// <param name="context">The current context.</param>
             /// <returns>No result; incremental planning must be selected.</returns>
             public List<AIProposal> Plan(AITurnContext context) =>
-                throw new System.InvalidOperationException();
+                throw new InvalidOperationException();
 
             /// <summary>
             /// Builds the proposals in two independently resumable work units.

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
@@ -287,7 +288,7 @@ namespace Rebellion.AI.Proposals
                             origin,
                             TargetPlanet
                         );
-                maximum = System.Math.Max(maximum, transitTicks);
+                maximum = Math.Max(maximum, transitTicks);
             }
             return maximum;
         }
@@ -310,7 +311,7 @@ namespace Rebellion.AI.Proposals
                 )
             )
             {
-                returning = System.Math.Max(
+                returning = Math.Max(
                     returning,
                     EstimateGroupReturnTravelTicks(context, group.Cast<IMovable>().ToArray())
                 );
@@ -341,7 +342,7 @@ namespace Rebellion.AI.Proposals
             {
                 Planet destination = departure ?? participant.GetParentOfType<Planet>();
                 if ((departureId ?? destination.InstanceID) != TargetPlanet.InstanceID)
-                    returning = System.Math.Max(
+                    returning = Math.Max(
                         returning,
                         context.MovementQueries.CalculateTransitTicks(
                             participant,
@@ -383,7 +384,7 @@ namespace Rebellion.AI.Proposals
                 )
             )
                 return false;
-            waitingTicks = System.Math.Max(0, arrival - preparationTicks);
+            waitingTicks = Math.Max(0, arrival - preparationTicks);
             double execution = context.MissionQueries.EstimateExecutionTicks(
                 MissionTypeID,
                 context.Faction.InstanceID

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -6,6 +7,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.SceneGraph;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -221,7 +223,7 @@ namespace Rebellion.Tests.Gameplay
                 },
             };
 
-            Assert.Throws<System.InvalidOperationException>(() =>
+            Assert.Throws<InvalidOperationException>(() =>
                 scene.Observer.HandleResults(new[] { result })
             );
         }
@@ -249,7 +251,7 @@ namespace Rebellion.Tests.Gameplay
         /// </summary>
         /// <param name="unit">The unit represented by the snapshot.</param>
         /// <returns>The destroyed snapshot.</returns>
-        private static CombatUnitSnapshot DestroyedSnapshot(Rebellion.SceneGraph.ISceneNode unit)
+        private static CombatUnitSnapshot DestroyedSnapshot(ISceneNode unit)
         {
             return new CombatUnitSnapshot(unit) { Destroyed = true };
         }
@@ -259,7 +261,7 @@ namespace Rebellion.Tests.Gameplay
         /// </summary>
         /// <param name="unit">The unit represented by the snapshot.</param>
         /// <returns>The surviving snapshot.</returns>
-        private static CombatUnitSnapshot SurvivingSnapshot(Rebellion.SceneGraph.ISceneNode unit)
+        private static CombatUnitSnapshot SurvivingSnapshot(ISceneNode unit)
         {
             return new CombatUnitSnapshot(unit) { Destroyed = false };
         }

@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.Components
 {
@@ -61,13 +62,9 @@ namespace Rebellion.Tests.UI.Components
         public void ShowBeginning_MultilineInputWithScrollbar_PreservesTheAuthorsScrollPosition()
         {
             input.lineType = TMP_InputField.LineType.MultiLineNewline;
-            GameObject root = new(
-                "Scrollbar",
-                typeof(RectTransform),
-                typeof(UnityEngine.UI.Scrollbar)
-            );
+            GameObject root = new("Scrollbar", typeof(RectTransform), typeof(Scrollbar));
             root.transform.SetParent(input.transform, false);
-            input.verticalScrollbar = root.GetComponent<UnityEngine.UI.Scrollbar>();
+            input.verticalScrollbar = root.GetComponent<Scrollbar>();
             input.textComponent.rectTransform.anchoredPosition = new Vector2(0, 130);
 
             view.ShowBeginning();

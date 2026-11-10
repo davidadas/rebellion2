@@ -10,6 +10,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.SceneGraph;
 using UnityEngine;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
@@ -668,7 +669,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         {
             Planet planet = CreatePlanet("planet", _playerFactionId, 10, 20);
             IMovable item = CreateDefenseWindowItem(itemKind);
-            planet.AddTestChild((Rebellion.SceneGraph.ISceneNode)item);
+            planet.AddTestChild((ISceneNode)item);
             GalaxyMapSector sector = CreateSector(
                 new GalaxyMapPlanet(_planetSector, planet, string.Empty)
             );
@@ -739,7 +740,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Planet planet = CreatePlanet("planet", _playerFactionId, 10, 20);
             IMovable item = CreateDefenseWindowItem(itemKind);
             item.IsEnabled = false;
-            planet.AddTestChild((Rebellion.SceneGraph.ISceneNode)item);
+            planet.AddTestChild((ISceneNode)item);
 
             PlanetSectorWindowRenderData data = _projector.CreateRenderData(
                 CreateSector(new GalaxyMapPlanet(_planetSector, planet, string.Empty)),
@@ -1152,7 +1153,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 return;
             }
 
-            _game.AttachNode((Rebellion.SceneGraph.ISceneNode)item, origin);
+            _game.AttachNode((ISceneNode)item, origin);
             commands.RequestMove(item, destination);
         }
 
@@ -1197,8 +1198,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             /// Creates an empty test mission copy.
             /// </summary>
             /// <returns>An empty test mission.</returns>
-            protected override Rebellion.SceneGraph.BaseSceneNode CreateNodeCopy() =>
-                new TestMission(null);
+            protected override BaseSceneNode CreateNodeCopy() => new TestMission(null);
 
             /// <summary>
             /// Initializes a new instance of the TestMission class.

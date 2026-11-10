@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -15,11 +14,6 @@ namespace Rebellion.Gameplay
         private readonly GameRoot _game;
         private bool _victoryDeclared;
 
-        /// <summary>
-        /// Raised when an immediate victory declaration produces a result.
-        /// </summary>
-        public event Action<IReadOnlyList<VictoryResult>> ResultsProduced;
-
         internal bool IsDeclared => _victoryDeclared;
 
         /// <summary>
@@ -32,7 +26,7 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Declares the winning faction and publishes the completed outcome.
+        /// Declares the winning faction and creates the completed outcome.
         /// </summary>
         /// <param name="winner">The faction that won the game.</param>
         /// <returns>The declared outcome, or null when the request is invalid or already settled.</returns>
@@ -49,10 +43,7 @@ namespace Rebellion.Gameplay
             if (defeatedFactions.Count == 0)
                 return null;
 
-            VictoryResult result = CreateVictory(liveWinner, defeatedFactions);
-            if (result != null)
-                ResultsProduced?.Invoke(new[] { result });
-            return result;
+            return CreateVictory(liveWinner, defeatedFactions);
         }
 
         /// <summary>

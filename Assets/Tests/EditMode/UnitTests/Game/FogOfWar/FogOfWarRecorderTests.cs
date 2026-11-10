@@ -548,7 +548,7 @@ namespace Rebellion.Tests.Game.FogOfWar
             _game.AttachNode(CreateOfficer("CARRIED_OFFICER", _empire), movingShip);
             foreach (var planet in planets)
             {
-                var sector = planet.GetParentOfType<Rebellion.Game.Galaxy.PlanetSector>();
+                var sector = planet.GetParentOfType<PlanetSector>();
                 recorder.RecordEspionageSnapshot(_alliance, planet, sector, 10);
                 recorder.RecordEspionageSnapshot(batchedFaction, planet, sector, 10);
             }
@@ -562,7 +562,7 @@ namespace Rebellion.Tests.Game.FogOfWar
                 recorder.RecordPlanetSnapshot(
                     _alliance,
                     planet,
-                    planet.GetParentOfType<Rebellion.Game.Galaxy.PlanetSector>(),
+                    planet.GetParentOfType<PlanetSector>(),
                     11
                 );
             recorder.RecordPlanetSnapshots(batchedFaction, planets, 11);

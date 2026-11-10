@@ -34,7 +34,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
             Assert.AreEqual(69, data.DragPointerY);
             Assert.AreEqual(new RectInt(40, 60, 30, 40), data.DragImageBounds);
 
-            UnityEngine.Object.DestroyImmediate(texture);
+            Object.DestroyImmediate(texture);
         }
     }
 }
