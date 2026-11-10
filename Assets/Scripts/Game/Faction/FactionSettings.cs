@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Factions
@@ -26,6 +28,7 @@ namespace Rebellion.Game.Factions
         private int _troopEffectiveness = 1;
         private int _uprisingResistance = 1;
         private HeadquartersSettings _headquarters = new HeadquartersSettings();
+        private List<string> _conquestOfficerInstanceIDs = new List<string>();
 
         /// <summary>
         /// Multiplier applied when converting raw/refined production into material supply.
@@ -107,7 +110,22 @@ namespace Rebellion.Game.Factions
         }
 
         /// <summary>
-        /// Captures faction rules without sharing the editable headquarters settings.
+        /// Officers whose capture is required when an opponent pursues a conquest victory.
+        /// </summary>
+        public List<string> ConquestOfficerInstanceIDs
+        {
+            get => _conquestOfficerInstanceIDs ??= new List<string>();
+            set => _conquestOfficerInstanceIDs = value ?? new List<string>();
+        }
+
+        /// <summary>
+        /// Priority used to resolve victory when multiple factions satisfy their objectives in
+        /// the same evaluation. Higher values win.
+        /// </summary>
+        public int SimultaneousVictoryPriority { get; set; }
+
+        /// <summary>
+        /// Captures faction rules without sharing mutable headquarters or victory settings.
         /// </summary>
         /// <returns>An independent copy retaining the stored rule values.</returns>
         public FactionSettings CreateCopy()
@@ -120,12 +138,14 @@ namespace Rebellion.Game.Factions
                 _troopEffectiveness = _troopEffectiveness,
                 _uprisingResistance = _uprisingResistance,
                 _headquarters = _headquarters?.CreateCopy(),
+                _conquestOfficerInstanceIDs = _conquestOfficerInstanceIDs?.ToList(),
                 InvertSupportShift = InvertSupportShift,
                 CivilianBombardmentCoreSupportPenalty = CivilianBombardmentCoreSupportPenalty,
                 CivilianBombardmentOuterRimSupportPenalty =
                     CivilianBombardmentOuterRimSupportPenalty,
                 BattleLossLoyaltyDivisor = BattleLossLoyaltyDivisor,
                 SupportResistance = SupportResistance,
+                SimultaneousVictoryPriority = SimultaneousVictoryPriority,
             };
         }
     }

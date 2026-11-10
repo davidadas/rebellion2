@@ -100,6 +100,7 @@ namespace Rebellion.Tests.Gameplay
                 Planet planet,
                 VictoryCommands system
             ) = BuildScene(GameVictoryCondition.Conquest);
+            defender.Settings.ConquestOfficerInstanceIDs.Add("free-leader");
             Planet friendlyPlanet = new Planet
             {
                 InstanceID = "friendly",

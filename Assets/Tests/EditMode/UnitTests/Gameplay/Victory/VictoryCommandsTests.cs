@@ -93,6 +93,7 @@ namespace Rebellion.Tests.Gameplay
             (GameRoot game, Faction empire, _, _, VictoryCommands system) = BuildScene(
                 GameVictoryCondition.Conquest
             );
+            empire.Settings.ConquestOfficerInstanceIDs.Add("leader1");
 
             Planet empirePlanet = new Planet
             {
@@ -133,6 +134,7 @@ namespace Rebellion.Tests.Gameplay
             (GameRoot game, Faction empire, Faction rebels, _, VictoryCommands system) = BuildScene(
                 GameVictoryCondition.Conquest
             );
+            empire.Settings.ConquestOfficerInstanceIDs.Add("leader1");
 
             Officer leader = new Officer
             {
@@ -142,6 +144,15 @@ namespace Rebellion.Tests.Gameplay
                 IsCaptured = true,
             };
             game.AttachNode(leader, game.GetSceneNodeByInstanceID<Planet>("hq_empire"));
+            Officer otherMainOfficer = new Officer
+            {
+                InstanceID = "other-main-officer",
+                OwnerInstanceID = empire.InstanceID,
+                IsMain = true,
+                IsCaptured = true,
+            };
+            game.AttachNode(otherMainOfficer, game.GetSceneNodeByInstanceID<Planet>("hq_empire"));
+            otherMainOfficer.IsCaptured = false;
 
             VictoryResult victory = CaptureVictory(
                 system,
@@ -260,18 +271,22 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ProcessTick_CandidateHasLostHeadquarters_DoesNotDeclareVictory()
+        public void ProcessTick_SimultaneousHeadquartersLoss_UsesConfiguredPriority()
         {
-            (GameRoot game, _, Faction rebels, _, VictoryCommands system) = BuildScene(
+            (GameRoot game, Faction empire, Faction rebels, _, VictoryCommands system) = BuildScene(
                 GameVictoryCondition.Headquarters
             );
             rebels.HasLostHeadquarters = true;
+            empire.Settings.SimultaneousVictoryPriority = 2;
+            rebels.Settings.SimultaneousVictoryPriority = 1;
             List<VictoryResult> published = new List<VictoryResult>();
             system.ResultsProduced += published.AddRange;
 
             CreateTickProcessor(game, system).ProcessTick(game);
 
-            Assert.IsEmpty(published);
+            VictoryResult victory = published.Single();
+            Assert.AreSame(empire, victory.Winner);
+            CollectionAssert.AreEqual(new[] { rebels }, victory.DefeatedFactions);
         }
 
         [Test]

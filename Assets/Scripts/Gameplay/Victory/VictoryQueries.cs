@@ -104,12 +104,14 @@ namespace Rebellion.Gameplay
                 officers?.Where(officer => officer != null).ToList() ?? new List<Officer>();
             return _game
                 .GetFactions()
-                .FirstOrDefault(candidate => HasDefeatedEveryOpponent(candidate, officerList));
+                .Where(candidate => HasDefeatedEveryOpponent(candidate, officerList))
+                .OrderByDescending(candidate => candidate.Settings.SimultaneousVictoryPriority)
+                .FirstOrDefault();
         }
 
         /// <summary>
-        /// Determines whether one faction retains its headquarters while every opponent has lost
-        /// theirs and, in conquest games, every opposing main character has been captured.
+        /// Determines whether every opponent has lost its headquarters and, in conquest games,
+        /// every opposing conquest officer has been captured.
         /// </summary>
         /// <param name="candidate">The potential winning faction.</param>
         /// <param name="officers">The officers in the active game.</param>
@@ -119,10 +121,7 @@ namespace Rebellion.Gameplay
             IReadOnlyCollection<Officer> officers
         )
         {
-            if (
-                candidate is not { HasLostHeadquarters: false }
-                || !IsHeadquartersOwnedByFaction(candidate.InstanceID)
-            )
+            if (candidate == null)
                 return false;
 
             List<Faction> opponents = _game
@@ -135,14 +134,17 @@ namespace Rebellion.Gameplay
             if (_game.Summary.VictoryCondition != GameVictoryCondition.Conquest)
                 return true;
 
-            HashSet<string> opponentIds = opponents
-                .Select(opponent => opponent.InstanceID)
-                .ToHashSet(StringComparer.Ordinal);
+            Dictionary<string, Officer> officersByInstanceID = officers
+                .Where(officer => !string.IsNullOrEmpty(officer.InstanceID))
+                .GroupBy(officer => officer.InstanceID, StringComparer.Ordinal)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
 
-            return officers.All(officer =>
-                !officer.IsMain
-                || !opponentIds.Contains(officer.GetOwnerInstanceID())
-                || officer.IsCaptured
+            return opponents.All(opponent =>
+                opponent.Settings.ConquestOfficerInstanceIDs.All(officerInstanceID =>
+                    officersByInstanceID.TryGetValue(officerInstanceID, out Officer officer)
+                    && officer.GetOwnerInstanceID() == opponent.InstanceID
+                    && officer.IsCaptured
+                )
             );
         }
 
