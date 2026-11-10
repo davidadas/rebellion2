@@ -27,6 +27,7 @@ public sealed class TacticalBattleScene : MonoBehaviour
     internal const float MinimumPitchDegrees = 12f;
     internal const float MaximumPitchDegrees = 85f;
     public const float FieldOfViewDegrees = 40f;
+    internal const float SelectionLineWidth = 1.25f;
 
     private const float _nearClip = 0.3f;
     private const float _farClip = 4000f;
@@ -90,6 +91,9 @@ public sealed class TacticalBattleScene : MonoBehaviour
     private const float _stationExplosionBurstScale = 0.7f;
     private const float _stationViewPitchDegrees = 20f;
     private const float _stationViewDistanceRadii = 5f;
+    private const int _selectionEdgeCount = 12;
+    private const float _selectionPadding = 1.1f;
+    private const float _selectionEmission = 1.5f;
     private static readonly Color _attackerPlaceholderColor = new Color(0.55f, 0.58f, 0.66f, 1f);
     private static readonly Color _defenderPlaceholderColor = new Color(0.64f, 0.6f, 0.52f, 1f);
     private static readonly Color _flashColor = new Color(1f, 0.95f, 0.8f, 1f);
@@ -117,6 +121,9 @@ public sealed class TacticalBattleScene : MonoBehaviour
     private readonly Dictionary<TacticalBattleStation, UnitPresentation> _stations =
         new Dictionary<TacticalBattleStation, UnitPresentation>();
     private readonly List<SuperlaserBeam> _beams = new List<SuperlaserBeam>();
+    private readonly List<SelectionBox> _selectionBoxes = new List<SelectionBox>();
+    private readonly Dictionary<Color, Material> _selectionMaterials =
+        new Dictionary<Color, Material>();
     private Material _flashMaterial;
     private Material _fireMaterial;
     private Material _smokeMaterial;
@@ -139,6 +146,7 @@ public sealed class TacticalBattleScene : MonoBehaviour
     private float _distanceLimit = MaximumDistance;
     private Vector2 _panLimit = new Vector2(1000f, 1000f);
     private bool _viewInitialized;
+    private int _arenaHeight = 1;
 
     /// <summary>
     /// Gets the number of units currently presented.
@@ -287,6 +295,7 @@ public sealed class TacticalBattleScene : MonoBehaviour
         VerifyReferences();
         _loading ??= new CancellationTokenSource();
         EnsureRenderTarget(arena);
+        _arenaHeight = Mathf.Max(arena.height, 1);
         bool opening = !_viewInitialized;
         if (opening)
             ResetView(battle);
@@ -366,6 +375,104 @@ public sealed class TacticalBattleScene : MonoBehaviour
         return unit != null
             && _units.TryGetValue(unit, out UnitPresentation presentation)
             && presentation.Jump != JumpPhase.None;
+    }
+
+    /// <summary>
+    /// Draws a wireframe box around each listed unit that is on show, in the color of the side
+    /// it fights for, and hides the boxes left over from the previous frame. Call it after
+    /// <see cref="Sync"/>, which places the hulls the boxes wrap.
+    /// </summary>
+    /// <param name="units">The units to box, without repeats; null boxes none.</param>
+    /// <param name="attackerColor">The attacking side's color.</param>
+    /// <param name="defenderColor">The defending side's color.</param>
+    internal void ShowSelection(
+        IReadOnlyList<TacticalBattleUnit> units,
+        Color attackerColor,
+        Color defenderColor
+    )
+    {
+        VerifyReferences();
+        int used = 0;
+        int count = units?.Count ?? 0;
+        for (int index = 0; index < count; index++)
+        {
+            TacticalBattleUnit unit = units[index];
+            if (
+                unit == null
+                || !_units.TryGetValue(unit, out UnitPresentation presentation)
+                || presentation.Holder?.gameObject.activeSelf != true
+            )
+                continue;
+
+            if (used == _selectionBoxes.Count)
+                _selectionBoxes.Add(CreateSelectionBox());
+            SelectionBox box = _selectionBoxes[used];
+            used++;
+            Color color = unit.Side == CombatSide.Attacker ? attackerColor : defenderColor;
+            color.a = 1f;
+            box.Unit = unit;
+            if (box.Material == null || box.Color != color)
+            {
+                box.Color = color;
+                box.Material = GetSelectionMaterial(color);
+                foreach (MeshRenderer edge in box.Edges)
+                    edge.sharedMaterial = box.Material;
+            }
+
+            PoseSelectionBox(box, presentation);
+            box.Root.gameObject.SetActive(true);
+        }
+
+        for (int index = used; index < _selectionBoxes.Count; index++)
+        {
+            _selectionBoxes[index].Unit = null;
+            _selectionBoxes[index].Root.gameObject.SetActive(false);
+        }
+    }
+
+    /// <summary>
+    /// Gets the number of selection boxes currently drawn.
+    /// </summary>
+    internal int SelectionBoxCount
+    {
+        get
+        {
+            int count = 0;
+            foreach (SelectionBox box in _selectionBoxes)
+            {
+                if (box.Unit != null)
+                    count++;
+            }
+
+            return count;
+        }
+    }
+
+    /// <summary>
+    /// Returns the selection box drawn around a unit.
+    /// </summary>
+    /// <param name="unit">The unit to find.</param>
+    /// <param name="box">Receives the box's root transform, whose children are its edges.</param>
+    /// <param name="color">Receives the box's color.</param>
+    /// <returns>True when the unit is boxed.</returns>
+    internal bool TryGetSelectionBox(TacticalBattleUnit unit, out Transform box, out Color color)
+    {
+        box = null;
+        color = default;
+        if (unit == null)
+            return false;
+
+        foreach (SelectionBox candidate in _selectionBoxes)
+        {
+            if (candidate.Unit != unit)
+                continue;
+
+            box = candidate.Root;
+            color = candidate.Color;
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -976,6 +1083,13 @@ public sealed class TacticalBattleScene : MonoBehaviour
         DestroyMaterial(ref _smokeMaterial);
         DestroyMaterial(ref _tractorMaterial);
         DestroyMaterial(ref _superlaserMaterial);
+        foreach (Material material in _selectionMaterials.Values)
+        {
+            if (material != null)
+                DestroyObject(material);
+        }
+
+        _selectionMaterials.Clear();
         if (_particleTexture != null)
             DestroyObject(_particleTexture);
         _particleTexture = null;
@@ -1025,6 +1139,13 @@ public sealed class TacticalBattleScene : MonoBehaviour
         }
 
         _beams.Clear();
+        foreach (SelectionBox box in _selectionBoxes)
+        {
+            if (box.Root != null)
+                DestroyObject(box.Root.gameObject);
+        }
+
+        _selectionBoxes.Clear();
         foreach (ExplosionEffect effect in _explosions)
         {
             if (effect.Root != null)
@@ -1292,7 +1413,11 @@ public sealed class TacticalBattleScene : MonoBehaviour
             modelParent.transform,
             placeholder,
             diameter
-        );
+        )
+        {
+            // Until the model loads, the selection box wraps the placeholder hull.
+            LocalBounds = new Bounds(Vector3.zero, placeholderScale),
+        };
         if (_modelCache != null && !string.IsNullOrEmpty(address))
         {
             _pendingModelLoads++;
@@ -1619,6 +1744,104 @@ public sealed class TacticalBattleScene : MonoBehaviour
         if (_superlaserMaterial.HasProperty(_emissiveExposureWeightProperty))
             _superlaserMaterial.SetFloat(_emissiveExposureWeightProperty, 0f);
         return _superlaserMaterial;
+    }
+
+    /// <summary>
+    /// Creates a selection box: twelve thin bars, one for each edge of a box, under one root.
+    /// </summary>
+    /// <returns>The new box, not yet posed or colored.</returns>
+    private SelectionBox CreateSelectionBox()
+    {
+        GameObject root = new GameObject("SelectionBox");
+        root.layer = PresentationLayers.TacticalBattle;
+        root.transform.SetParent(modelRoot, false);
+        Mesh cube = Resources.GetBuiltinResource<Mesh>("Cube.fbx");
+        MeshRenderer[] edges = new MeshRenderer[_selectionEdgeCount];
+        for (int index = 0; index < edges.Length; index++)
+        {
+            GameObject edge = new GameObject("Edge", typeof(MeshFilter), typeof(MeshRenderer));
+            edge.layer = PresentationLayers.TacticalBattle;
+            edge.transform.SetParent(root.transform, false);
+            edge.GetComponent<MeshFilter>().sharedMesh = cube;
+            MeshRenderer edgeRenderer = edge.GetComponent<MeshRenderer>();
+            edgeRenderer.shadowCastingMode = ShadowCastingMode.Off;
+            edgeRenderer.receiveShadows = false;
+            edges[index] = edgeRenderer;
+        }
+
+        return new SelectionBox(root.transform, edges);
+    }
+
+    /// <summary>
+    /// Fits a selection box to a unit's hull where it is drawn. The lines are sized from the
+    /// hull's distance to the camera, so they keep one width on screen however far the camera
+    /// backs away.
+    /// </summary>
+    /// <param name="box">The box to pose.</param>
+    /// <param name="presentation">The boxed unit's scene objects.</param>
+    private void PoseSelectionBox(SelectionBox box, UnitPresentation presentation)
+    {
+        Transform holder = presentation.Holder;
+        box.Root.localPosition = holder.localPosition;
+        box.Root.localRotation = holder.localRotation;
+
+        // A hyperspace jump stretches the hull along its path. The box takes the stretch in its
+        // size rather than its scale, so its lines stay thin.
+        Vector3 stretch = holder.localScale;
+        Vector3 center = Vector3.Scale(presentation.LocalBounds.center, stretch);
+        Vector3 half = Vector3.Scale(presentation.LocalBounds.extents, stretch) * _selectionPadding;
+        Transform view = sceneCamera.transform;
+        float depth = Mathf.Max(
+            Vector3.Dot(holder.position - view.position, view.forward),
+            _nearClip
+        );
+        float width =
+            SelectionLineWidth
+            * depth
+            * 2f
+            * Mathf.Tan(FieldOfViewDegrees * 0.5f * Mathf.Deg2Rad)
+            / _arenaHeight;
+        for (int index = 0; index < _selectionEdgeCount; index++)
+        {
+            // Four edges run along each axis, one through each corner of the face across it.
+            int axis = index / 4;
+            int first = (axis + 1) % 3;
+            int second = (axis + 2) % 3;
+            Vector3 offset = Vector3.zero;
+            offset[first] = (index & 1) == 0 ? -half[first] : half[first];
+            offset[second] = (index & 2) == 0 ? -half[second] : half[second];
+            Vector3 size = new Vector3(width, width, width);
+            size[axis] = half[axis] * 2f + width;
+            Transform edge = box.Edges[index].transform;
+            edge.localPosition = center + offset;
+            edge.localScale = size;
+        }
+    }
+
+    /// <summary>
+    /// Returns the selection-box material for a color, creating it on first use: the pipeline's
+    /// lit material, black and matte so the rig's lights add nothing, glowing in that color
+    /// whatever the scene exposure.
+    /// </summary>
+    /// <param name="color">The box color.</param>
+    /// <returns>The material shared by every box of that color.</returns>
+    private Material GetSelectionMaterial(Color color)
+    {
+        if (_selectionMaterials.TryGetValue(color, out Material material) && material != null)
+            return material;
+
+        material = CreatePlaceholderMaterial(Color.black);
+        material.name = "Tactical Selection";
+        if (material.HasProperty(_emissiveColorProperty))
+            material.SetColor(_emissiveColorProperty, color.linear * _selectionEmission);
+        else
+            material.color = color;
+        if (material.HasProperty(_emissiveExposureWeightProperty))
+            material.SetFloat(_emissiveExposureWeightProperty, 0f);
+        if (material.HasProperty(_smoothnessProperty))
+            material.SetFloat(_smoothnessProperty, 0f);
+        _selectionMaterials[color] = material;
+        return material;
     }
 
     /// <summary>
@@ -2016,30 +2239,49 @@ public sealed class TacticalBattleScene : MonoBehaviour
     }
 
     /// <summary>
-    /// Scales a loaded model to the unit's diameter, centers it on its holder, and assigns the
-    /// scene layer.
+    /// Fits a loaded model to its unit, assigns the scene layer, and measures the hull for the
+    /// selection box.
     /// </summary>
     /// <param name="presentation">The presentation whose model was loaded.</param>
     private static void PoseModel(UnitPresentation presentation)
     {
         Transform holder = presentation.Holder;
         Transform model = presentation.ModelParent;
+        SetLayerRecursively(model.gameObject, PresentationLayers.TacticalBattle);
+        FitModel(holder, model, presentation.Diameter);
+        if (TryGetLocalBounds(holder, model, out Bounds localBounds))
+            presentation.LocalBounds = localBounds;
+    }
+
+    /// <summary>
+    /// Scales a model so its longest side matches a diameter and centers it on its holder. The
+    /// holder's own turn and stretch are set aside while the model is measured: a ship still
+    /// flying its hyperspace arrival is stretched along its path, and a model fitted to that
+    /// would come out a fraction of its size.
+    /// </summary>
+    /// <param name="holder">The transform positioned at the unit.</param>
+    /// <param name="model">The model root under the holder.</param>
+    /// <param name="diameter">The length the model's longest side is scaled to.</param>
+    internal static void FitModel(Transform holder, Transform model, float diameter)
+    {
         Quaternion holderRotation = holder.localRotation;
+        Vector3 holderScale = holder.localScale;
         holder.localRotation = Quaternion.identity;
+        holder.localScale = Vector3.one;
         model.localPosition = Vector3.zero;
         model.localRotation = Quaternion.identity;
         model.localScale = Vector3.one;
-        SetLayerRecursively(model.gameObject, PresentationLayers.TacticalBattle);
         if (TryGetBounds(model, out Bounds bounds))
         {
             float largestDimension = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
             if (largestDimension > 0f)
-                model.localScale = Vector3.one * (presentation.Diameter / largestDimension);
+                model.localScale = Vector3.one * (diameter / largestDimension);
             if (TryGetBounds(model, out bounds))
                 model.position += holder.position - bounds.center;
         }
 
         holder.localRotation = holderRotation;
+        holder.localScale = holderScale;
     }
 
     /// <summary>
@@ -2128,6 +2370,45 @@ public sealed class TacticalBattleScene : MonoBehaviour
     }
 
     /// <summary>
+    /// Measures a model's extent along its holder's own axes, so a box fitted to it turns with
+    /// the hull instead of swelling to stay square with the world.
+    /// </summary>
+    /// <param name="holder">The transform whose local space the extent is measured in.</param>
+    /// <param name="model">The model root under the holder.</param>
+    /// <param name="bounds">Receives the extent in the holder's local space.</param>
+    /// <returns>True when the model has renderers.</returns>
+    internal static bool TryGetLocalBounds(Transform holder, Transform model, out Bounds bounds)
+    {
+        bounds = default;
+        bool found = false;
+        foreach (Renderer renderer in model.GetComponentsInChildren<Renderer>(true))
+        {
+            Bounds mesh = renderer.localBounds;
+            Vector3 minimum = mesh.min;
+            Vector3 maximum = mesh.max;
+            for (int corner = 0; corner < 8; corner++)
+            {
+                Vector3 point = holder.InverseTransformPoint(
+                    renderer.transform.TransformPoint(
+                        new Vector3(
+                            (corner & 1) == 0 ? minimum.x : maximum.x,
+                            (corner & 2) == 0 ? minimum.y : maximum.y,
+                            (corner & 4) == 0 ? minimum.z : maximum.z
+                        )
+                    )
+                );
+                if (found)
+                    bounds.Encapsulate(point);
+                else
+                    bounds = new Bounds(point, Vector3.zero);
+                found = true;
+            }
+        }
+
+        return found;
+    }
+
+    /// <summary>
     /// Assigns a layer to an object and all of its descendants.
     /// </summary>
     /// <param name="target">The root object.</param>
@@ -2197,6 +2478,12 @@ public sealed class TacticalBattleScene : MonoBehaviour
 
         internal float Diameter { get; }
 
+        /// <summary>
+        /// Gets or sets the hull's extent in the holder's local space, which the selection box
+        /// wraps.
+        /// </summary>
+        internal Bounds LocalBounds { get; set; }
+
         internal ContentModelInstance Model { get; set; }
 
         internal ParticleSystem TractorEffect { get; set; }
@@ -2237,6 +2524,33 @@ public sealed class TacticalBattleScene : MonoBehaviour
         internal float Elapsed { get; set; }
 
         internal bool Active { get; set; }
+    }
+
+    /// <summary>
+    /// Tracks one pooled selection box.
+    /// </summary>
+    private sealed class SelectionBox
+    {
+        /// <summary>
+        /// Creates a box around its edges.
+        /// </summary>
+        /// <param name="root">The transform posed at the boxed hull.</param>
+        /// <param name="edges">The twelve bars that draw the box's edges.</param>
+        internal SelectionBox(Transform root, MeshRenderer[] edges)
+        {
+            Root = root;
+            Edges = edges;
+        }
+
+        internal Transform Root { get; }
+
+        internal MeshRenderer[] Edges { get; }
+
+        internal TacticalBattleUnit Unit { get; set; }
+
+        internal Color Color { get; set; }
+
+        internal Material Material { get; set; }
     }
 
     /// <summary>

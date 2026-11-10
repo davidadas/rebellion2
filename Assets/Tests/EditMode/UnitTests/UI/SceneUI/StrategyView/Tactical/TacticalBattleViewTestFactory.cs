@@ -218,7 +218,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
             GameObject unit = CreateRect("UnitTemplate", parent);
             TacticalUnitView view = unit.AddComponent<TacticalUnitView>();
             Set(view, "spriteImage", CreateImage("SpriteImage", unit.transform));
-            Set(view, "selectionImage", CreateImage("SelectionImage", unit.transform));
             Set(view, "barBackgroundImage", CreateImage("BarBackgroundImage", unit.transform));
             Set(view, "hullBarImage", CreateImage("HullBarImage", unit.transform));
             Set(view, "shieldBarImage", CreateImage("ShieldBarImage", unit.transform));

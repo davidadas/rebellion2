@@ -518,7 +518,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
                     0.5f,
                     0.25f,
                     true,
-                    index == 0,
                     Color.green,
                     1f
                 ))

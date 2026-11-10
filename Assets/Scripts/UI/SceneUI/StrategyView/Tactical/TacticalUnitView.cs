@@ -3,21 +3,17 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Draws one tactical unit sprite with its selection highlight and status bars.
+/// Draws one tactical unit sprite with its status bars.
 /// </summary>
 public sealed class TacticalUnitView : MonoBehaviour
 {
     private const float _barHeight = 2f;
     private const float _barGap = 1f;
-    private const float _selectionPadding = 3f;
     private static readonly Color _shieldColor = new Color(0.35f, 0.65f, 1f, 1f);
     private static readonly Color _barBackgroundColor = new Color(0f, 0f, 0f, 0.6f);
 
     [SerializeField]
     private RawImage spriteImage;
-
-    [SerializeField]
-    private RawImage selectionImage;
 
     [SerializeField]
     private RawImage barBackgroundImage;
@@ -58,12 +54,6 @@ public sealed class TacticalUnitView : MonoBehaviour
         spriteImage.color = new Color(1f, 1f, 1f, data.Alpha);
         spriteImage.rectTransform.sizeDelta = new Vector2(width, height);
         spriteImage.rectTransform.localEulerAngles = new Vector3(0f, 0f, data.RotationDegrees);
-
-        selectionImage.rectTransform.sizeDelta = new Vector2(
-            extent + _selectionPadding * 2f,
-            extent + _selectionPadding * 2f
-        );
-        selectionImage.gameObject.SetActive(data.Selected);
 
         // The bars stack directly above the hull: hull nearest the ship, shields above it.
         float barCount = data.ShowShields ? 2f : 1f;
@@ -128,8 +118,6 @@ public sealed class TacticalUnitView : MonoBehaviour
     {
         if (spriteImage == null)
             throw new MissingReferenceException($"{name}/SpriteImage is missing.");
-        if (selectionImage == null)
-            throw new MissingReferenceException($"{name}/SelectionImage is missing.");
         if (barBackgroundImage == null)
             throw new MissingReferenceException($"{name}/BarBackgroundImage is missing.");
         if (hullBarImage == null)

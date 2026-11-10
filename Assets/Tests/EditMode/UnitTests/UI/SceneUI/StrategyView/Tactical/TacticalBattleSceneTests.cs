@@ -501,9 +501,190 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
         }
 
         [Test]
+        public void ShowSelection_ListedUnits_BoxesEachHullInItsSideColor()
+        {
+            TacticalSpaceBattle battle = CreateBattle(
+                out TacticalCapitalShipUnit friendly,
+                out TacticalCapitalShipUnit enemy
+            );
+            _scene.Begin(null);
+            SyncSettled(battle);
+
+            _scene.ShowSelection(
+                new TacticalBattleUnit[] { friendly, enemy },
+                Color.green,
+                Color.red
+            );
+
+            Assert.AreEqual(2, _scene.SelectionBoxCount);
+            Assert.IsTrue(_scene.TryGetSelectionBox(friendly, out Transform box, out Color color));
+            Assert.IsTrue(_scene.TryGetSelectionBox(enemy, out _, out Color enemyColor));
+            Assert.AreEqual(Color.green, color);
+            Assert.AreEqual(Color.red, enemyColor);
+            Assert.IsTrue(_scene.TryGetUnitTransform(friendly, out Transform holder));
+            Assert.IsTrue(box.gameObject.activeSelf);
+            Assert.AreEqual(PresentationLayers.TacticalBattle, box.gameObject.layer);
+            Assert.AreEqual(holder.localPosition, box.localPosition);
+            Assert.AreEqual(holder.localRotation, box.localRotation);
+            MeshRenderer[] edges = box.GetComponentsInChildren<MeshRenderer>();
+            Assert.AreEqual(12, edges.Length);
+            // The placeholder hull is 0.9 diameters long and 0.45 wide; the box clears both.
+            float diameter = TacticalBattleScene.GetModelDiameter(friendly);
+            Assert.Greater(edges.Max(edge => edge.transform.localPosition.z), diameter * 0.45f);
+            Assert.Less(edges.Min(edge => edge.transform.localPosition.z), -diameter * 0.45f);
+            Assert.Greater(edges.Max(edge => edge.transform.localPosition.x), diameter * 0.225f);
+            Assert.Less(edges.Min(edge => edge.transform.localPosition.x), -diameter * 0.225f);
+        }
+
+        [Test]
+        public void ShowSelection_UnitNoLongerListed_MovesItsBoxToTheNextUnit()
+        {
+            TacticalSpaceBattle battle = CreateBattle(
+                out TacticalCapitalShipUnit friendly,
+                out TacticalCapitalShipUnit enemy
+            );
+            _scene.Begin(null);
+            SyncSettled(battle);
+
+            _scene.ShowSelection(new TacticalBattleUnit[] { friendly }, Color.green, Color.red);
+            bool boxed = _scene.TryGetSelectionBox(friendly, out Transform first, out _);
+            _scene.ShowSelection(new TacticalBattleUnit[] { enemy }, Color.green, Color.red);
+            bool moved = _scene.TryGetSelectionBox(enemy, out Transform second, out Color color);
+            bool stillBoxed = _scene.TryGetSelectionBox(friendly, out _, out _);
+            int shown = _scene.SelectionBoxCount;
+            _scene.ShowSelection(null, Color.green, Color.red);
+
+            Assert.IsTrue(boxed);
+            Assert.IsTrue(moved);
+            Assert.IsFalse(stillBoxed);
+            Assert.AreSame(first, second);
+            Assert.AreEqual(Color.red, color);
+            Assert.AreEqual(1, shown);
+            Assert.AreEqual(0, _scene.SelectionBoxCount);
+            Assert.IsFalse(first.gameObject.activeSelf);
+        }
+
+        [Test]
+        public void ShowSelection_UnitThatHasLeftTheBattle_DrawsNoBox()
+        {
+            TacticalSpaceBattle battle = CreateBattle(out _, out TacticalCapitalShipUnit enemy);
+            _scene.Begin(null);
+            SyncSettled(battle);
+            enemy.FinishWithdrawal();
+            _scene.Sync(battle, _arena);
+
+            _scene.ShowSelection(new TacticalBattleUnit[] { enemy }, Color.green, Color.red);
+
+            Assert.AreEqual(0, _scene.SelectionBoxCount);
+            Assert.IsFalse(_scene.TryGetSelectionBox(enemy, out _, out _));
+        }
+
+        [Test]
+        public void ShowSelection_CameraBacksAway_KeepsTheLinesOneWidthOnScreen()
+        {
+            TacticalSpaceBattle battle = CreateBattle(out TacticalCapitalShipUnit friendly, out _);
+            TacticalBattleUnit[] selection = { friendly };
+            _scene.Begin(null);
+            SyncSettled(battle);
+            _scene.FocusOn(friendly);
+            _scene.Sync(battle, _arena);
+
+            _scene.ShowSelection(selection, Color.green, Color.red);
+            float nearDistance = _scene.Distance;
+            float nearWidth = MeasureSelectionLineWidth(friendly, out float nearThickness);
+            _scene.Zoom(-200f);
+            _scene.Sync(battle, _arena);
+            _scene.ShowSelection(selection, Color.green, Color.red);
+            float farWidth = MeasureSelectionLineWidth(friendly, out float farThickness);
+
+            Assert.Greater(_scene.Distance, nearDistance);
+            Assert.Greater(farThickness, nearThickness);
+            Assert.AreEqual(TacticalBattleScene.SelectionLineWidth, nearWidth, 0.01f);
+            Assert.AreEqual(TacticalBattleScene.SelectionLineWidth, farWidth, 0.01f);
+        }
+
+        [Test]
+        public void End_WithSelectionShown_RemovesTheBoxes()
+        {
+            TacticalSpaceBattle battle = CreateBattle(out TacticalCapitalShipUnit friendly, out _);
+            _scene.Begin(null);
+            SyncSettled(battle);
+            _scene.ShowSelection(new TacticalBattleUnit[] { friendly }, Color.green, Color.red);
+            bool boxed = _scene.TryGetSelectionBox(friendly, out Transform box, out _);
+
+            _scene.End();
+
+            Assert.IsTrue(boxed);
+            Assert.AreEqual(0, _scene.SelectionBoxCount);
+            Assert.IsTrue(box == null);
+        }
+
+        [Test]
+        public void FitModel_HolderStretchedByAHyperspaceJump_FitsTheModelToItsTrueSize()
+        {
+            GameObject holder = new GameObject("Holder");
+            try
+            {
+                holder.transform.localPosition = new Vector3(3f, 0f, -2f);
+                holder.transform.localRotation = Quaternion.Euler(0f, 40f, 0f);
+                holder.transform.localScale = new Vector3(1f, 1f, 3f);
+                GameObject model = new GameObject("Model");
+                model.transform.SetParent(holder.transform, false);
+                GameObject hull = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                hull.transform.SetParent(model.transform, false);
+                hull.transform.localPosition = new Vector3(5f, 1f, 0f);
+                hull.transform.localScale = new Vector3(2f, 1f, 8f);
+
+                TacticalBattleScene.FitModel(holder.transform, model.transform, 20f);
+                bool measured = TacticalBattleScene.TryGetLocalBounds(
+                    holder.transform,
+                    model.transform,
+                    out Bounds bounds
+                );
+
+                // The hull is 8 long, so 20 across means a scale of 2.5 whatever the stretch.
+                Assert.AreEqual(2.5f, model.transform.localScale.x, 0.001f);
+                Assert.AreEqual(2.5f, model.transform.localScale.z, 0.001f);
+                Assert.AreEqual(new Vector3(1f, 1f, 3f), holder.transform.localScale);
+                Assert.AreEqual(40f, holder.transform.localEulerAngles.y, 0.001f);
+                Assert.IsTrue(measured);
+                Assert.AreEqual(0f, bounds.center.magnitude, 0.001f);
+                Assert.AreEqual(5f, bounds.size.x, 0.001f);
+                Assert.AreEqual(2.5f, bounds.size.y, 0.001f);
+                Assert.AreEqual(20f, bounds.size.z, 0.001f);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(holder);
+            }
+        }
+
+        [Test]
         public void Sync_NullBattle_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _scene.Sync(null, _arena));
+        }
+
+        /// <summary>
+        /// Measures how wide a unit's selection-box lines are drawn, in source pixels, at the
+        /// hull's distance from the camera.
+        /// </summary>
+        /// <param name="unit">The boxed unit.</param>
+        /// <param name="thickness">Receives the lines' thickness in scene units.</param>
+        /// <returns>The line width in source pixels.</returns>
+        private float MeasureSelectionLineWidth(TacticalBattleUnit unit, out float thickness)
+        {
+            Assert.IsTrue(_scene.TryGetSelectionBox(unit, out Transform box, out _));
+            Vector3 scale = box.GetChild(0).localScale;
+            thickness = Mathf.Min(scale.x, scale.y, scale.z);
+            Transform view = _scene.SceneCamera.transform;
+            float depth = Vector3.Dot(box.position - view.position, view.forward);
+            float unitsPerPixel =
+                2f
+                * depth
+                * Mathf.Tan(TacticalBattleScene.FieldOfViewDegrees * 0.5f * Mathf.Deg2Rad)
+                / _arena.height;
+            return thickness / unitsPerPixel;
         }
 
         /// <summary>

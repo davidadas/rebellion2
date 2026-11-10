@@ -8076,14 +8076,6 @@ public static class StrategyViewPrefabBuilder
         rect.anchoredPosition = Vector2.zero;
         rect.sizeDelta = new Vector2(40f, 40f);
         TacticalUnitView view = EnableRuntimeComponent(unit.AddComponent<TacticalUnitView>());
-        RawImage selection = CreateCenteredPanelImage(
-            "SelectionImage",
-            unit.transform,
-            new Color(1f, 1f, 1f, 0.25f),
-            46,
-            46
-        );
-        selection.gameObject.SetActive(false);
         RawImage sprite = CreateCenteredPanelImage(
             "SpriteImage",
             unit.transform,
@@ -8106,7 +8098,6 @@ public static class StrategyViewPrefabBuilder
         );
         SetSourceRect(shieldBar.rectTransform, 0, 44, 40, 2);
         AssignReference(view, "spriteImage", sprite);
-        AssignReference(view, "selectionImage", selection);
         AssignReference(view, "barBackgroundImage", barBackground);
         AssignReference(view, "hullBarImage", hullBar);
         AssignReference(view, "shieldBarImage", shieldBar);

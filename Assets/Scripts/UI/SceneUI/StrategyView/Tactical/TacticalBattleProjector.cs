@@ -127,7 +127,6 @@ internal sealed class TacticalBattleProjector
                     arena,
                     point,
                     diameter,
-                    selection,
                     unit.Side == CombatSide.Attacker ? attackerBarColor : defenderBarColor
                 )
             );
@@ -414,14 +413,15 @@ internal sealed class TacticalBattleProjector
     }
 
     /// <summary>
-    /// Returns the hull-bar color for one side: its faction theme color, so Alliance bars read
-    /// red and Imperial bars green whichever side the player commands.
+    /// Returns the color that marks one side's units, on their hull bars and their selection
+    /// boxes: its faction theme color, so the Alliance reads red and the Empire green whichever
+    /// side the player commands.
     /// </summary>
     /// <param name="battle">The battle being presented.</param>
     /// <param name="side">The side.</param>
     /// <param name="uiContext">The current strategy UI context.</param>
     /// <param name="factionId">The side's faction instance identifier.</param>
-    /// <returns>The bar color.</returns>
+    /// <returns>The side's color.</returns>
     internal static Color GetSideColor(
         TacticalSpaceBattle battle,
         CombatSide side,
@@ -561,13 +561,12 @@ internal sealed class TacticalBattleProjector
     }
 
     /// <summary>
-    /// Projects one unit's overlay: the selection ring and status bars drawn over its 3D model.
+    /// Projects one unit's overlay: the status bars drawn over its 3D model.
     /// </summary>
     /// <param name="unit">The unit to present.</param>
     /// <param name="arena">The source-space arena bounds.</param>
     /// <param name="point">The unit's projected source-space center.</param>
     /// <param name="diameter">The unit's projected source-space diameter.</param>
-    /// <param name="selection">The selected units.</param>
     /// <param name="barColor">The unit's faction color for its hull bar.</param>
     /// <returns>The unit presentation.</returns>
     private static TacticalUnitRenderData ProjectUnit(
@@ -575,7 +574,6 @@ internal sealed class TacticalBattleProjector
         RectInt arena,
         Vector2 point,
         float diameter,
-        IReadOnlyCollection<TacticalBattleUnit> selection,
         Color barColor
     )
     {
@@ -605,7 +603,6 @@ internal sealed class TacticalBattleProjector
             hullFraction,
             shieldFraction,
             showShields,
-            selection?.Contains(unit) == true,
             barColor,
             unit.IsWithdrawing ? _withdrawingAlpha : 1f
         );

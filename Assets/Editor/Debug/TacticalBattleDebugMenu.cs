@@ -45,6 +45,10 @@ public static class TacticalBattleDebugMenu
     private const double _handOverDelaySeconds = 12.0;
     private const string _stationKey = "Rebellion.TacticalBattleDebug.Station";
     private const string _autoButtonName = "AutoButton";
+    private const string _rosterSideButtonName = "RosterSideButton";
+    private const double _selectionShotDelaySeconds = 6.0;
+    private const double _selectionShotStepSeconds = 0.5;
+    private const int _selectionShotStageCount = 6;
     private const string _allianceFactionId = "FNALL1";
     private const string _empireFactionId = "FNEMP1";
     private const string _saveFileName = "tactical-battle-test";
@@ -68,6 +72,8 @@ public static class TacticalBattleDebugMenu
     private static bool _stationShotTaken;
     private static bool _stationGoneShotTaken;
     private static bool _handedOver;
+    private static int _selectionShotStage;
+    private static double _selectionShotTime;
     private static string _pendingEventShot;
 
     /// <summary>
@@ -295,6 +301,7 @@ public static class TacticalBattleDebugMenu
         _stationShotTaken = false;
         _stationGoneShotTaken = false;
         _handedOver = false;
+        _selectionShotStage = 0;
         _pendingEventShot = null;
         SceneAsset bootScene = AssetDatabase.LoadAssetAtPath<SceneAsset>(_bootScenePath);
         if (bootScene != null)
@@ -612,16 +619,13 @@ public static class TacticalBattleDebugMenu
         )
         {
             _handedOver = true;
-            TacticalBattleView view =
-                UnityEngine.Object.FindFirstObjectByType<TacticalBattleView>();
-            UnityEngine.UI.Button auto = view
-                ?.GetComponentsInChildren<UnityEngine.UI.Button>(true)
-                .FirstOrDefault(button => button.name == _autoButtonName);
-            if (auto?.interactable == true)
-            {
-                auto.onClick.Invoke();
+            if (
+                PressButton(
+                    UnityEngine.Object.FindFirstObjectByType<TacticalBattleView>(),
+                    _autoButtonName
+                )
+            )
                 Debug.Log("TACTICAL-AUTO handed the player's side to automatic control.");
-            }
         }
 
         TacticalBattleScene scene = UnityEngine.Object.FindFirstObjectByType<TacticalBattleScene>(
@@ -675,12 +679,95 @@ public static class TacticalBattleDebugMenu
             _pendingEventShot = "event-station-gone";
             scene.FrameStation();
         }
+        else
+        {
+            StepSelectionShots(now, scene);
+        }
 
         if (now - _commandedTime < _screenshotDelays[_screenshotsTaken])
             return;
 
         CaptureShots(_screenshotsTaken.ToString(), scene);
         _screenshotsTaken++;
+    }
+
+    /// <summary>
+    /// Photographs the selection box once in an automated run. It picks the player's first ship
+    /// from the roster and captures it, does the same for the enemy's first ship, then hands the
+    /// roster and the camera back. Each step waits for the one before it to be drawn, and a
+    /// capture never shares a step with a change, because the Game view is captured at the end
+    /// of the frame.
+    /// </summary>
+    /// <param name="now">The editor time, in seconds.</param>
+    /// <param name="scene">The tactical scene, or null when it is not in the hierarchy.</param>
+    private static void StepSelectionShots(double now, TacticalBattleScene scene)
+    {
+        if (_selectionShotStage >= _selectionShotStageCount)
+            return;
+
+        bool first = _selectionShotStage == 0;
+        double waited = now - (first ? _commandedTime : _selectionShotTime);
+        if (waited < (first ? _selectionShotDelaySeconds : _selectionShotStepSeconds))
+            return;
+
+        TacticalBattleView view = UnityEngine.Object.FindFirstObjectByType<TacticalBattleView>();
+        switch (_selectionShotStage)
+        {
+            case 0:
+            case 3:
+                PressFirstRosterSlot(view);
+                break;
+            case 1:
+                CaptureShots("selection-friendly", scene);
+                break;
+            case 2:
+                PressButton(view, _rosterSideButtonName);
+                break;
+            case 4:
+                CaptureShots("selection-enemy", scene);
+                break;
+            default:
+                PressButton(view, _rosterSideButtonName);
+                scene?.FrameArena();
+                break;
+        }
+
+        _selectionShotStage++;
+        _selectionShotTime = now;
+    }
+
+    /// <summary>
+    /// Clicks the first slot the roster bar shows, which is the listed side's first ship.
+    /// </summary>
+    /// <param name="view">The tactical battle view, or null when it is not in the hierarchy.</param>
+    private static void PressFirstRosterSlot(TacticalBattleView view)
+    {
+        TacticalRosterSlotView slot = view
+            ?.GetComponentsInChildren<TacticalRosterSlotView>(false)
+            .FirstOrDefault();
+        UnityEngine.UI.Button button = slot?.GetComponent<UnityEngine.UI.Button>();
+        if (button?.interactable == true)
+            button.onClick.Invoke();
+        else
+            Debug.LogWarning("TACTICAL-AUTO found no roster slot to press.");
+    }
+
+    /// <summary>
+    /// Clicks a named button of the tactical battle view when it accepts input.
+    /// </summary>
+    /// <param name="view">The tactical battle view, or null when it is not in the hierarchy.</param>
+    /// <param name="buttonName">The button object's name.</param>
+    /// <returns>True when the button was clicked.</returns>
+    private static bool PressButton(TacticalBattleView view, string buttonName)
+    {
+        UnityEngine.UI.Button button = view
+            ?.GetComponentsInChildren<UnityEngine.UI.Button>(true)
+            .FirstOrDefault(candidate => candidate.name == buttonName);
+        if (button?.interactable != true)
+            return false;
+
+        button.onClick.Invoke();
+        return true;
     }
 
     /// <summary>

@@ -12,7 +12,7 @@ internal enum TacticalSystemState
 }
 
 /// <summary>
-/// Describes one unit sprite, its status bars, and its selection state in source space.
+/// Describes one unit sprite and its status bars in source space.
 /// </summary>
 internal sealed class TacticalUnitRenderData
 {
@@ -34,8 +34,6 @@ internal sealed class TacticalUnitRenderData
 
     public bool ShowShields { get; }
 
-    public bool Selected { get; }
-
     public Color BarColor { get; }
 
     public float Alpha { get; }
@@ -52,7 +50,6 @@ internal sealed class TacticalUnitRenderData
     /// <param name="hullFraction">The remaining hull or squadron fraction.</param>
     /// <param name="shieldFraction">The remaining shield fraction.</param>
     /// <param name="showShields">Whether the shield bar is displayed.</param>
-    /// <param name="selected">Whether the unit is selected.</param>
     /// <param name="barColor">The hull bar color identifying the unit's side.</param>
     /// <param name="alpha">The sprite opacity.</param>
     public TacticalUnitRenderData(
@@ -65,7 +62,6 @@ internal sealed class TacticalUnitRenderData
         float hullFraction,
         float shieldFraction,
         bool showShields,
-        bool selected,
         Color barColor,
         float alpha
     )
@@ -79,7 +75,6 @@ internal sealed class TacticalUnitRenderData
         HullFraction = hullFraction;
         ShieldFraction = shieldFraction;
         ShowShields = showShields;
-        Selected = selected;
         BarColor = barColor;
         Alpha = alpha;
     }

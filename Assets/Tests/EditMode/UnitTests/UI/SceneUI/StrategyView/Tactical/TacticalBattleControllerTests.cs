@@ -185,6 +185,65 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
         }
 
         [Test]
+        public void PointerClick_OnFriendlyShip_BoxesItInItsSideColor()
+        {
+            TacticalSpaceBattle battle = CreateBattle(
+                out TacticalCapitalShipUnit friendly,
+                out TacticalCapitalShipUnit enemy
+            );
+            Begin(battle);
+
+            Click(friendly, PointerEventData.InputButton.Left);
+            _controller.Update(0f);
+
+            Assert.IsTrue(_view.Scene.TryGetSelectionBox(friendly, out _, out Color color));
+            Assert.IsFalse(_view.Scene.TryGetSelectionBox(enemy, out _, out _));
+            Assert.AreEqual(
+                TacticalBattleProjector.GetSideColor(battle, friendly.Side, null, null),
+                color
+            );
+        }
+
+        [Test]
+        public void PointerClick_OnEnemyShip_BoxesItInTheEnemySideColor()
+        {
+            TacticalSpaceBattle battle = CreateBattle(
+                out TacticalCapitalShipUnit friendly,
+                out TacticalCapitalShipUnit enemy
+            );
+            Begin(battle);
+
+            Click(enemy, PointerEventData.InputButton.Left);
+            _controller.Update(0f);
+
+            Assert.IsTrue(_view.Scene.TryGetSelectionBox(enemy, out _, out Color color));
+            Assert.IsFalse(_view.Scene.TryGetSelectionBox(friendly, out _, out _));
+            Assert.AreEqual(
+                TacticalBattleProjector.GetSideColor(battle, enemy.Side, null, null),
+                color
+            );
+            Assert.AreNotEqual(
+                TacticalBattleProjector.GetSideColor(battle, friendly.Side, null, null),
+                color
+            );
+        }
+
+        [Test]
+        public void End_WithAShipSelected_ClearsItsBox()
+        {
+            TacticalSpaceBattle battle = CreateBattle(out TacticalCapitalShipUnit friendly, out _);
+            Begin(battle);
+            Click(friendly, PointerEventData.InputButton.Left);
+            _controller.Update(0f);
+            int shown = _view.Scene.SelectionBoxCount;
+
+            _controller.End();
+
+            Assert.AreEqual(1, shown);
+            Assert.AreEqual(0, _view.Scene.SelectionBoxCount);
+        }
+
+        [Test]
         public void PointerRightClick_EmptySpaceWithSelection_IssuesMoveOrder()
         {
             TacticalSpaceBattle battle = CreateBattle(out TacticalCapitalShipUnit friendly, out _);

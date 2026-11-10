@@ -35,6 +35,7 @@ internal sealed class TacticalBattleController : ICancelable
     private readonly TacticalBattleProjector _projector = new TacticalBattleProjector();
     private readonly TacticalBattleAudio _audio;
     private readonly List<TacticalBattleUnit> _selection = new List<TacticalBattleUnit>();
+    private readonly List<TacticalBattleUnit> _highlighted = new List<TacticalBattleUnit>();
     private TacticalSpaceBattle _battle;
     private Planet _planet;
     private string _attackerFactionId;
@@ -970,6 +971,20 @@ internal sealed class TacticalBattleController : ICancelable
     }
 
     /// <summary>
+    /// Lists the units that carry a selection box: the player's selection, and the inspected
+    /// unit when it is not part of that, such as an enemy ship the player clicked.
+    /// </summary>
+    /// <returns>The units to box, without repeats.</returns>
+    private IReadOnlyList<TacticalBattleUnit> GetHighlightedUnits()
+    {
+        _highlighted.Clear();
+        _highlighted.AddRange(_selection);
+        if (_inspected != null && !_selection.Contains(_inspected))
+            _highlighted.Add(_inspected);
+        return _highlighted;
+    }
+
+    /// <summary>
     /// Projects and draws the current frame.
     /// </summary>
     private void Render()
@@ -989,13 +1004,29 @@ internal sealed class TacticalBattleController : ICancelable
 
         RectInt arena = _view.GetArenaSourceRect();
         TacticalBattleScene scene = _view.Scene;
+        UIContext uiContext = _getUIContext();
         scene.Sync(_battle, arena);
+        scene.ShowSelection(
+            GetHighlightedUnits(),
+            TacticalBattleProjector.GetSideColor(
+                _battle,
+                CombatSide.Attacker,
+                uiContext,
+                _attackerFactionId
+            ),
+            TacticalBattleProjector.GetSideColor(
+                _battle,
+                CombatSide.Defender,
+                uiContext,
+                _defenderFactionId
+            )
+        );
         _view.Render(
             _projector.Project(
                 _battle,
                 arena,
                 scene,
-                _getUIContext(),
+                uiContext,
                 _planet,
                 _attackerFactionId,
                 _defenderFactionId,

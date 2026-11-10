@@ -122,9 +122,11 @@ and the camera is locked to the play space: its focus stays inside the arena and
 only far enough to frame the whole arena; it opens with both fleets in frame. The attacking fleet
 drops out of hyperspace as the battle opens, decelerating into place from off the map, and ships
 that withdraw accelerate away into hyperspace the same way; both are presentation only. The 2D
-overlay (selection
-rings and the bars stacked above capital-ship hulls, plus shots; fighters carry none) projects
-through the same camera and clicks are cast back onto the plane, so picking stays exact. The wheel
+overlay (the bars stacked above capital-ship hulls, plus shots; fighters carry none) projects
+through the same camera and clicks are cast back onto the plane, so picking stays exact. Every
+selected unit, and an enemy unit the player clicks to inspect, is marked in the scene itself by a
+wireframe box fitted to its hull and turning with it, drawn in its faction's color with lines
+that keep one width on screen at any zoom. The wheel
 or plus and minus zoom, right-drag orbits (Q/E turn, R/F tilt between a low angle and top-down),
 middle-drag or WASD and the
 arrow keys pan, Home reframes the fleet, and Tab
@@ -182,7 +184,8 @@ crawl: at least two seconds in flight and well under a bolt's speed. Each squadr
 circles on its own ring (a golden-ratio spread of orbit radii, with alternating directions), so
 squadrons attacking the same ship do not fly stacked on top of each other. Your squadrons can be
 selected and sent after an enemy with a right-click; a directed squadron holds that target until it
-is gone, then goes back to choosing its own, and a selected squadron carries the selection overlay.
+is gone, then goes back to choosing its own, and a selected squadron carries a status bar and the
+selection box.
 The panel shows a squadron's weapon lanes with their power in the system slots and their ranges and
 charge below. Torpedoes burst in a small explosion where they land, and capital energy bolts are
 drawn thicker the heavier the battery behind them, while ion fire and fighter bolts keep a fixed

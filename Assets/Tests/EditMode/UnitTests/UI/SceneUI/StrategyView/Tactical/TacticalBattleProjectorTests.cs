@@ -70,8 +70,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
             Assert.AreEqual(2, data.Units.Count);
             TacticalUnitRenderData friendlyData = data.Units[0];
             TacticalUnitRenderData enemyData = data.Units[1];
-            Assert.IsTrue(friendlyData.Selected);
-            Assert.IsFalse(enemyData.Selected);
             Assert.Greater(friendlyData.BarColor.g, friendlyData.BarColor.r);
             Assert.Greater(enemyData.BarColor.r, enemyData.BarColor.g);
             Assert.Greater(friendlyData.Y, enemyData.Y);
@@ -524,8 +522,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
 
             Color empire = uiContext.ResolveFactionColor(_empireFactionId);
             Color alliance = uiContext.ResolveFactionColor(_allianceFactionId);
-            TacticalUnitRenderData friendlyData = data.Units.Single(unit => unit.Selected);
-            TacticalUnitRenderData enemyData = data.Units.Single(unit => !unit.Selected);
+            TacticalUnitRenderData friendlyData = data.Units[0];
+            TacticalUnitRenderData enemyData = data.Units[1];
             Assert.AreEqual(empire.r, friendlyData.BarColor.r, 0.001f);
             Assert.AreEqual(empire.g, friendlyData.BarColor.g, 0.001f);
             Assert.AreEqual(alliance.r, enemyData.BarColor.r, 0.001f);
