@@ -132,7 +132,7 @@ def main():
     if not library.is_file():
         raise RuntimeError(f"The build did not produce {library.name}.")
     if args.target == "osx":
-        run("lipo", "-verify_arch", "x86_64", "arm64", library)
+        run("lipo", library, "-verify_arch", "x86_64", "arm64")
     if args.target == "win-x64":
         verify_windows_dependencies(library, compiler_path)
     load_library(library)
