@@ -20,6 +20,30 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class MovementQueriesTests
     {
+        [Test]
+        public void CanSetFleetWaypointRoute_CapitalShipInTransit_DoesNotLogWarnings()
+        {
+            (GameRoot game, Planet origin, Planet destination, _, MovementQueries movement) =
+                BuildScene();
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+            CapitalShip ship = CreateMovableCapitalShip("ship");
+            game.AttachNode(fleet, origin);
+            game.AttachNode(ship, fleet);
+            ship.Movement = TestMovement.Create(transitTicks: 10);
+
+            List<string> warnings = CaptureWarnings(() =>
+                Assert.IsFalse(
+                    movement.CanSetFleetWaypointRoute(
+                        new ISceneNode[] { ship },
+                        new[] { destination.InstanceID },
+                        "empire"
+                    )
+                )
+            );
+
+            Assert.IsEmpty(warnings);
+        }
+
         [TestCase(false, false)]
         [TestCase(true, false)]
         [TestCase(false, true)]

@@ -394,7 +394,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             PointerEventData eventData = CreateRaycastEvent(cards[0].gameObject);
 
             bool found = _view.TryGetItemIndex(eventData, out int itemIndex);
-            bool selectionClick = _view.IsSelectionItemClick(eventData);
+            bool selectionClick = _view.IsSelectionInteractionClick(eventData);
             bool previewCreated = _view.TryCreateDragPreview(
                 new[] { 0, 1 },
                 100,
@@ -435,7 +435,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         public void ItemQueries_MissingPointerTarget_ReturnFalseAndDefaultIndex()
         {
             bool found = _view.TryGetItemIndex(null, out int itemIndex);
-            bool selectionClick = _view.IsSelectionItemClick(null);
+            bool selectionClick = _view.IsSelectionInteractionClick(null);
             bool desktopPosition = _view.TryGetDesktopPosition(null, out int x, out int y);
 
             Assert.IsFalse(found);

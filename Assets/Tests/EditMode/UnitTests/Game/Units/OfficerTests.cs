@@ -789,7 +789,6 @@ namespace Rebellion.Tests.Game.Units
             originalOfficer.TraitGrants.Add(
                 new OfficerTraitGrant { TraitID = "leadership", SourceID = "event" }
             );
-
             string xml = SerializationHelper.Serialize(originalOfficer);
             Officer deserializedOfficer = SerializationHelper.Deserialize<Officer>(xml);
 

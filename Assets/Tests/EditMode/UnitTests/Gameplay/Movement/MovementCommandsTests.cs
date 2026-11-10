@@ -21,6 +21,90 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class MovementCommandsTests
     {
+        [Test]
+        public void TryRequestMove_OrphanedUnitWithMultipleDestinations_LogsOneFinalRejection()
+        {
+            (_, Planet origin, Planet destination, _, MovementCommands movement) = BuildScene();
+            Officer orphan = EntityFactory.CreateOfficer("orphan", "empire");
+
+            List<string> warnings = CaptureWarnings(() =>
+                Assert.IsFalse(
+                    movement.TryRequestMove(orphan, new ContainerNode[] { origin, destination })
+                )
+            );
+
+            Assert.That(warnings, Has.Count.EqualTo(1));
+            StringAssert.Contains("not at a planet location", warnings.Single());
+            Assert.IsNull(orphan.Movement);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TrySetFleetWaypointRoute_CapitalShipInTransit_LogsRejectionReason(
+            bool useSnapshot
+        )
+        {
+            (_, _, Planet destination, _, Fleet fleet, MovementCommands movement) =
+                BuildWaypointScene();
+            CapitalShip ship = fleet.GetChildren<CapitalShip>().Single();
+            MovementState transit = TestMovement.Create(transitTicks: 10);
+            ship.Movement = transit;
+            ISceneNode selection = useSnapshot ? ship.CreateCopy() : ship;
+
+            List<string> warnings = CaptureWarnings(() =>
+                Assert.IsFalse(
+                    movement.TrySetFleetWaypointRoute(
+                        new[] { selection },
+                        new[] { destination.InstanceID },
+                        "empire"
+                    )
+                )
+            );
+
+            Assert.That(warnings, Has.Count.EqualTo(1));
+            StringAssert.Contains("already in transit", warnings.Single());
+            Assert.AreSame(transit, ship.Movement);
+            Assert.AreSame(fleet, ship.GetParent());
+            Assert.IsEmpty(fleet.Waypoints);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TrySetFleetWaypointRoute_MovingFleetWithStaleWaypoint_DoesNotLogShipRejection(
+            bool useSnapshot
+        )
+        {
+            (
+                GameRoot game,
+                _,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet fleet,
+                MovementCommands movement
+            ) = BuildWaypointScene();
+            Assert.IsTrue(
+                movement.TryRequestMove(new ISceneNode[] { fleet }, firstDestination, "empire")
+            );
+            MovementState transit = fleet.Movement;
+            ISceneNode selection = useSnapshot ? fleet.CreateCopy() : fleet;
+            game.DetachNode(secondDestination);
+
+            List<string> warnings = CaptureWarnings(() =>
+                Assert.IsFalse(
+                    movement.TrySetFleetWaypointRoute(
+                        new[] { selection },
+                        new[] { secondDestination.InstanceID },
+                        "empire"
+                    )
+                )
+            );
+
+            Assert.IsEmpty(warnings);
+            Assert.AreSame(transit, fleet.Movement);
+            Assert.AreSame(firstDestination, fleet.GetParent());
+            Assert.IsEmpty(fleet.Waypoints);
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void ProcessTick_ReloadedJourney_PreservesRemainingLegsAndArrivesOnce(
@@ -4051,6 +4135,64 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ReturnFromMission_PassengerEscortSpecified_ReturnsWithMatchingEscortGroup()
+        {
+            GameConfig config = new GameConfig();
+            config.Movement.DistanceDivisor = 5;
+            (
+                GameRoot game,
+                Planet firstOrigin,
+                Planet destination,
+                Officer firstEscort,
+                MovementCommands movement
+            ) = BuildScene(config);
+            Planet secondOrigin = new Planet
+            {
+                InstanceID = "second-origin",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 100,
+            };
+            game.AttachNode(secondOrigin, firstOrigin.GetParent());
+            Officer secondEscort = EntityFactory.CreateOfficer("second-escort", "empire");
+            game.AttachNode(secondEscort, secondOrigin);
+            StubMission mission = new StubMission("empire", destination.InstanceID);
+            game.AttachNode(mission, destination);
+            movement.SendToMission(
+                new IMissionParticipant[] { firstEscort, secondEscort },
+                mission
+            );
+            firstEscort.Movement = null;
+            secondEscort.Movement = null;
+            Officer passenger = EntityFactory.CreateOfficer("passenger", "rebels");
+            passenger.IsCaptured = true;
+            passenger.CaptorInstanceID = "empire";
+            game.AttachNode(passenger, destination);
+
+            List<IMovable> stranded = movement.ReturnFromMission(
+                new IMissionParticipant[] { firstEscort, secondEscort },
+                new IMovable[] { passenger },
+                out _,
+                new List<GameResult>(),
+                secondEscort.InstanceID
+            );
+
+            Assert.IsEmpty(stranded);
+            Assert.AreSame(firstOrigin, firstEscort.GetParent());
+            Assert.AreSame(secondOrigin, secondEscort.GetParent());
+            Assert.AreSame(secondOrigin, passenger.GetParent());
+            Assert.AreEqual(
+                secondEscort.Movement.MovementGroupID,
+                passenger.Movement.MovementGroupID
+            );
+            Assert.AreNotEqual(
+                firstEscort.Movement.MovementGroupID,
+                passenger.Movement.MovementGroupID
+            );
+        }
+
+        [Test]
         public void ReturnFromMission_OfficerNearHostileFleet_StartsReturnWithoutEncounter()
         {
             (GameRoot game, Planet missionPlanet, Planet returnPlanet, MovementCommands movement) =
@@ -5562,14 +5704,18 @@ namespace Rebellion.Tests.Gameplay
                 "empire"
             );
 
-            bool routeSet = movement.TrySetFleetWaypointRoute(
-                new ISceneNode[] { fleet },
-                new[] { secondDestination.InstanceID },
-                "empire"
+            bool routeSet = false;
+            List<string> warnings = CaptureWarnings(() =>
+                routeSet = movement.TrySetFleetWaypointRoute(
+                    new ISceneNode[] { fleet },
+                    new[] { secondDestination.InstanceID },
+                    "empire"
+                )
             );
 
             Assert.IsTrue(moved);
             Assert.IsTrue(routeSet);
+            Assert.IsEmpty(warnings);
             CollectionAssert.AreEqual(
                 new[] { firstDestination.InstanceID, secondDestination.InstanceID },
                 fleet.Waypoints

@@ -898,8 +898,6 @@ namespace Rebellion.Game.Missions
     public class EspionageMission : Mission
     {
         public const string MissionTypeID = "Espionage";
-        private const string _fixedCapitalBonusPlanetInstanceID = "CORUSCANT";
-        private const string _fixedCapitalBonusOwnerInstanceID = "FNEMP1";
 
         /// <summary>
         /// Gets or sets whether the mission starts another objective attempt after completion.
@@ -1106,7 +1104,7 @@ namespace Rebellion.Game.Missions
             GameConfig.RandomCountConfig countConfig = config.CoreSectorBonus;
             bool includeOuterRim = false;
 
-            if (IsHeadquartersBonusTarget(targetPlanet))
+            if (IsHeadquartersBonusTarget(game, targetPlanet))
             {
                 countConfig = config.HeadquartersBonus;
                 includeOuterRim = true;
@@ -1135,19 +1133,27 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns whether the target hosts an active mobile headquarters or matches the fixed capital bonus target.
+        /// Returns whether the target is its owning faction's current headquarters.
         /// </summary>
+        /// <param name="game">The current game state.</param>
         /// <param name="targetPlanet">The target planet.</param>
         /// <returns>True when a headquarters bonus condition is met; otherwise false.</returns>
-        private static bool IsHeadquartersBonusTarget(Planet targetPlanet)
+        private static bool IsHeadquartersBonusTarget(GameRoot game, Planet targetPlanet)
         {
-            return targetPlanet
-                    .GetChildren<Building>()
-                    .Any(building => building.BuildingType == BuildingType.Headquarters)
-                || (
-                    targetPlanet.InstanceID == _fixedCapitalBonusPlanetInstanceID
-                    && targetPlanet.OwnerInstanceID == _fixedCapitalBonusOwnerInstanceID
-                );
+            if (game == null || string.IsNullOrEmpty(targetPlanet?.OwnerInstanceID))
+                return false;
+
+            Faction owner = game.GetFactionByOwnerInstanceID(targetPlanet.OwnerInstanceID);
+            if (owner == null || owner.HQInstanceID != targetPlanet.InstanceID)
+                return false;
+            if (string.IsNullOrEmpty(owner.HeadquartersUnitInstanceID))
+                return true;
+
+            Building headquarters = game.GetSceneNodeByInstanceID<Building>(
+                owner.HeadquartersUnitInstanceID,
+                includeDisabled: true
+            );
+            return headquarters != null && headquarters.Movement == null;
         }
 
         /// <summary>

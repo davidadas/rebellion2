@@ -257,6 +257,9 @@ namespace Rebellion.Game.Missions
             if (!HasUniqueParticipants(resolvedContext))
                 return false;
 
+            if (!HasSharedOrigin(resolvedContext))
+                return false;
+
             Faction faction = _game
                 .GetFactions()
                 .Find(f => f.InstanceID == resolvedContext.OwnerInstanceId);
@@ -304,6 +307,41 @@ namespace Rebellion.Game.Missions
                     && !string.IsNullOrEmpty(participant.InstanceID)
                     && participantIds.Add(participant.InstanceID)
                 );
+        }
+
+        /// <summary>
+        /// Ensures every primary and decoy participant departs from the same planetary context.
+        /// </summary>
+        /// <param name="context">The mission context containing the complete participant roster.</param>
+        /// <returns>True when every participant resolves to the same planet.</returns>
+        private static bool HasSharedOrigin(MissionContext context)
+        {
+            string originInstanceID = null;
+            foreach (
+                IMissionParticipant participant in context.MainParticipants.Concat(
+                    context.DecoyParticipants
+                )
+            )
+            {
+                string participantOriginInstanceID = participant
+                    ?.GetParentOfType<Planet>()
+                    ?.InstanceID;
+                if (string.IsNullOrEmpty(participantOriginInstanceID))
+                    return false;
+
+                if (originInstanceID == null)
+                    originInstanceID = participantOriginInstanceID;
+                else if (
+                    !string.Equals(
+                        originInstanceID,
+                        participantOriginInstanceID,
+                        StringComparison.Ordinal
+                    )
+                )
+                    return false;
+            }
+
+            return originInstanceID != null;
         }
 
         /// <summary>

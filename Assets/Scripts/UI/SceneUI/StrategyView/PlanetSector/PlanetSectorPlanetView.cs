@@ -58,6 +58,12 @@ public sealed class PlanetSectorPlanetView
     private TextMeshProUGUI planetNameTextField;
 
     [SerializeField]
+    private TextMeshProUGUI energyValueTextField;
+
+    [SerializeField]
+    private TextMeshProUGUI rawValueTextField;
+
+    [SerializeField]
     private RectTransform energyBarRoot;
 
     [SerializeField]
@@ -191,8 +197,7 @@ public sealed class PlanetSectorPlanetView
             data.MissionPressedTexture
         );
         SetImage(headquartersImage, data.HeadquartersTexture);
-        energyBar.Render(data.EnergyBar, planetWidth);
-        rawBar.Render(data.RawResourceBar, planetWidth);
+        RenderResources(data, planetWidth);
         supportBar.Render(data.SupportBar, planetWidth);
         UILayout.SetTextContent(planetNameTextField, data.Name, data.NameColor);
         gameObject.SetActive(true);
@@ -235,8 +240,8 @@ public sealed class PlanetSectorPlanetView
                 defenseImage.rectTransform,
                 fleetImage.rectTransform,
                 missionImage.rectTransform,
-                energyBarRoot,
-                rawBarRoot,
+                GetStatusBarRoot(PlanetSectorStatusBar.Energy),
+                GetStatusBarRoot(PlanetSectorStatusBar.RawMaterials),
                 supportBarRoot,
             }
         )
@@ -629,6 +634,9 @@ public sealed class PlanetSectorPlanetView
                 continue;
 
             RectInt barBounds = UILayout.GetSourceRect(barRoot);
+            if (barBounds.Contains(point))
+                return statusBar;
+
             float distance = Mathf.Abs(y + 0.5f - (barBounds.y + barBounds.height * 0.5f));
             if (distance < nearestDistance)
             {
@@ -764,8 +772,12 @@ public sealed class PlanetSectorPlanetView
     {
         return statusBar switch
         {
-            PlanetSectorStatusBar.Energy => energyBarRoot,
-            PlanetSectorStatusBar.RawMaterials => rawBarRoot,
+            PlanetSectorStatusBar.Energy => lastRenderData?.UseResourceValues == true
+                ? energyValueTextField.rectTransform
+                : energyBarRoot,
+            PlanetSectorStatusBar.RawMaterials => lastRenderData?.UseResourceValues == true
+                ? rawValueTextField.rectTransform
+                : rawBarRoot,
             PlanetSectorStatusBar.PopularSupport => supportBarRoot,
             _ => null,
         };
@@ -949,6 +961,42 @@ public sealed class PlanetSectorPlanetView
     }
 
     /// <summary>
+    /// Keeps cell bars through the presentation limit and uses compact values for larger planets.
+    /// </summary>
+    /// <param name="data">The current planet presentation.</param>
+    /// <param name="planetWidth">The authored planet image width.</param>
+    private void RenderResources(PlanetSectorPlanetRenderData data, int planetWidth)
+    {
+        if (data.UseResourceValues)
+        {
+            energyBarRoot.gameObject.SetActive(false);
+            rawBarRoot.gameObject.SetActive(false);
+            RenderResourceValue(energyValueTextField, data.EnergyBar);
+            RenderResourceValue(rawValueTextField, data.RawResourceBar);
+            return;
+        }
+
+        energyValueTextField.gameObject.SetActive(false);
+        rawValueTextField.gameObject.SetActive(false);
+        energyBar.Render(data.EnergyBar, planetWidth);
+        rawBar.Render(data.RawResourceBar, planetWidth);
+    }
+
+    /// <summary>
+    /// Displays one used/total value in its bounded resource label.
+    /// </summary>
+    /// <param name="textField">The authored resource value label.</param>
+    /// <param name="data">The exact resource counts and their presentation.</param>
+    private static void RenderResourceValue(
+        TextMeshProUGUI textField,
+        PlanetSectorBarRenderData data
+    )
+    {
+        UILayout.SetTextContent(textField, $"{data.LitCells}/{data.CellCount}", data.FillColor);
+        textField.gameObject.SetActive(data.Visible);
+    }
+
+    /// <summary>
     /// Creates bar renderers from the authored bar components.
     /// </summary>
     private void EnsureBars()
@@ -998,6 +1046,8 @@ public sealed class PlanetSectorPlanetView
             throw new MissingReferenceException($"{name}/HeadquartersImage is missing.");
         if (planetNameTextField == null)
             throw new MissingReferenceException($"{name}/PlanetNameTextField is missing.");
+        if (energyValueTextField == null || rawValueTextField == null)
+            throw new MissingReferenceException($"{name} resource value labels are missing.");
         if (energyBarRoot == null)
             throw new MissingReferenceException($"{name}/EnergyBar is missing.");
         if (rawBarRoot == null)

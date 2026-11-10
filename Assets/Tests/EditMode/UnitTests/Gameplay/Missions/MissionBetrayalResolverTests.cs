@@ -67,7 +67,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void TryResolve_MultipleTraitors_RevealsLastTraitor()
+        public void TryResolve_MultipleTraitors_RevealsFirstTraitor()
         {
             GameRoot game = BuildScene(
                 out Planet planet,
@@ -76,7 +76,7 @@ namespace Rebellion.Tests.Gameplay
                 loyalty: 0
             );
             Officer lastTraitor = EntityFactory.CreateOfficer(
-                "last-traitor",
+                "z-last-traitor",
                 firstTraitor.OwnerInstanceID,
                 canBetray: true,
                 loyalty: 0
@@ -101,7 +101,7 @@ namespace Rebellion.Tests.Gameplay
 
             TraitorDiscoveredResult result = results.OfType<TraitorDiscoveredResult>().Single();
             Assert.IsTrue(betrayed);
-            Assert.AreSame(lastTraitor, result.Officer);
+            Assert.AreSame(firstTraitor, result.Officer);
             Assert.AreSame(discoverer, result.DiscoveredBy);
         }
 

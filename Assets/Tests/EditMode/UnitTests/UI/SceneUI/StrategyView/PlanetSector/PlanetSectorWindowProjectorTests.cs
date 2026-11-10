@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
@@ -53,6 +55,56 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 PositionY = 20,
             };
             _projector = new PlanetSectorWindowProjector(() => _uiContext);
+        }
+
+        [Test]
+        public void CreateRenderData_SoleEnemyDiplomatCaptured_HidesMissionIcon()
+        {
+            Faction player = _game.GetFactionByOwnerInstanceID(_playerFactionId);
+            Planet planet = CreatePlanet("target", _playerFactionId, 13, 25);
+            planet.IsColonized = true;
+            _game.AttachNode(_planetSector, _game.GetGalaxyMap());
+            _game.AttachNode(planet, _planetSector);
+            Mission mission = new DiplomacyMission
+            {
+                InstanceID = "diplomacy",
+                OwnerInstanceID = _opposingFactionId,
+                LocationInstanceID = planet.InstanceID,
+            };
+            Officer officer = EntityFactory.CreateOfficer("diplomat", _opposingFactionId);
+            _game.AttachNode(mission, planet);
+            _game.AttachNode(officer, mission);
+            mission.Initiate(10);
+            using GameSession session = new(_game, TestGameData.Create(_game.Config));
+            new FogOfWarRecorder().RecordIntelligenceSnapshot(
+                player,
+                planet,
+                _planetSector,
+                10,
+                PlanetIntelligenceCategory.Missions
+            );
+
+            Assert.IsTrue(
+                session
+                    .GetService<CaptiveCommands>()
+                    .TryCaptureOfficer(officer, player, canEscape: false)
+            );
+            Planet viewPlanet = new FogOfWarQueries(_game)
+                .BuildFactionView(player)
+                .GetChildren<GalaxyPlanetSector>()
+                .Single()
+                .GetChildren<Planet>()
+                .Single();
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                CreateSector(new GalaxyMapPlanet(_planetSector, viewPlanet, string.Empty)),
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            Assert.IsNull(data.Planets.Single().MissionTexture);
+            Assert.IsNull(data.Planets.Single().MissionPressedTexture);
         }
 
         [Test]
@@ -336,6 +388,38 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
             Assert.AreEqual("Popular Support 75/100", presentation.SupportBar.TooltipText);
             Assert.IsNull(presentation.GalacticInformationTexture);
+        }
+
+        [TestCase(53, 53, 11, 7)]
+        [TestCase(1, 2, 16, 2)]
+        [TestCase(0, 2, 16, 1)]
+        public void CreateRenderData_OversizedResourceBars_PreservesExactUsedCounts(
+            int energyCapacity,
+            int buildings,
+            int rawNodes,
+            int mines
+        )
+        {
+            Planet planet = CreatePlanet("planet", _playerFactionId, 13, 25);
+            planet.EnergyCapacity = energyCapacity;
+            planet.NumRawResourceNodes = rawNodes;
+            for (int index = 0; index < buildings; index++)
+                planet.AddTestChild(
+                    CreateBuilding(index < mines ? BuildingType.Mine : BuildingType.Defense)
+                );
+
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                CreateSector(new GalaxyMapPlanet(_planetSector, planet, string.Empty)),
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            Assert.IsTrue(data.Planets[0].UseResourceValues);
+            Assert.AreEqual(buildings, data.Planets[0].EnergyBar.LitCells);
+            Assert.AreEqual(energyCapacity, data.Planets[0].EnergyBar.CellCount);
+            Assert.AreEqual(mines, data.Planets[0].RawResourceBar.LitCells);
         }
 
         [Test]

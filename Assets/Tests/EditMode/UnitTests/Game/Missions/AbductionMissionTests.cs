@@ -432,6 +432,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(target.IsCaptured);
             Assert.AreEqual(firstCombat + 1, officer.GetBaseRating(SkillRating.Combat));
             Assert.AreEqual(secondCombat, secondOfficer.GetBaseRating(SkillRating.Combat));
+            Assert.AreEqual(officer.InstanceID, mission.SuccessfulParticipantInstanceID);
         }
 
         [Test]
