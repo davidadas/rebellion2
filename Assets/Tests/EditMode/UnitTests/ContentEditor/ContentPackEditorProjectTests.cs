@@ -13,6 +13,131 @@ namespace Rebellion.Tests.ContentEditor
     [TestFixture]
     public sealed class ContentPackEditorProjectTests : ContentPackEditorTestBase
     {
+        [TestCase("Production", "ScrapRefundDivisor", 0)]
+        [TestCase("Production", "ScrapRefundDivisor", -1)]
+        [TestCase("AI", "TickInterval", 0)]
+        [TestCase("AI", "TickInterval", -1)]
+        [TestCase("AI.Garrison", "ResourceFacilitiesPerGarrison", 0)]
+        [TestCase("AI.Garrison", "ResourceFacilitiesPerGarrison", -1)]
+        [TestCase("Combat.PlanetaryAssault", "PersonnelDivisor", 0)]
+        [TestCase("Combat.PlanetaryAssault", "GeneralLeadershipDivisor", 0)]
+        [TestCase("Combat.PlanetaryAssault", "GeneralLeadershipDivisor", -1)]
+        [TestCase("Combat.PlanetaryAssault", "DefenseFireDivisor", 0)]
+        [TestCase("Combat.PlanetaryAssault", "DefenseFireDivisor", -1)]
+        [TestCase("Combat.Bombardment", "AttackerLeadershipDivisor", 0)]
+        [TestCase("Combat.Bombardment", "AttackerLeadershipDivisor", -1)]
+        [TestCase("Combat.Bombardment", "DefenderLeadershipDivisor", 0)]
+        [TestCase("Combat.Bombardment", "DefenderLeadershipDivisor", -1)]
+        [TestCase("Uprising", "MissionLeadershipDivisor", 0)]
+        [TestCase("Uprising", "MissionLeadershipDivisor", -1)]
+        [TestCase("Uprising", "DiceRange", 0)]
+        [TestCase("Uprising", "DiceRange", -2)]
+        [TestCase("Uprising", "DiceRange", int.MaxValue)]
+        [TestCase("Research", "RefreshIntervalSpread", -2)]
+        [TestCase("Research", "RefreshIntervalSpread", int.MaxValue)]
+        [TestCase("Combat.Bombardment", "StrikeRollMinimum", -1)]
+        [TestCase("Combat.Bombardment", "StrikeRollMaximum", -1)]
+        [TestCase("Combat.Bombardment", "StrikeRollMaximum", int.MaxValue)]
+        public void SetField_InvalidGameRule_PreservesWorkingDocument(
+            string section,
+            string member,
+            int value
+        )
+        {
+            var (project, catalog) = CreateGameRules(section, (member, 2));
+            ContentPackEditorField field = catalog
+                .Records[0]
+                .GetFields()
+                .Single(candidate => candidate.MemberName == member);
+            string before = catalog.Document.Text;
+
+            ArgumentException error = Assert.Throws<ArgumentException>(() =>
+                project.SetField(
+                    field,
+                    value.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                )
+            );
+
+            Assert.AreEqual(before, catalog.Document.Text);
+            Assert.IsFalse(project.IsDirty);
+            Assert.IsFalse(project.CanUndo);
+            StringAssert.Contains(field.Name, error.Message);
+            StringAssert.Contains(catalog.Document.Address, error.Message);
+        }
+
+        [TestCase("Production", "ScrapRefundDivisor", 1)]
+        [TestCase("AI", "TickInterval", 1)]
+        [TestCase("AI.Garrison", "ResourceFacilitiesPerGarrison", 1)]
+        [TestCase("Combat.PlanetaryAssault", "PersonnelDivisor", 1)]
+        [TestCase("Combat.PlanetaryAssault", "GeneralLeadershipDivisor", 1)]
+        [TestCase("Combat.PlanetaryAssault", "DefenseFireDivisor", 1)]
+        [TestCase("Combat.Bombardment", "AttackerLeadershipDivisor", 1)]
+        [TestCase("Combat.Bombardment", "DefenderLeadershipDivisor", 1)]
+        [TestCase("Uprising", "MissionLeadershipDivisor", 1)]
+        [TestCase("Uprising", "DiceRange", 1)]
+        [TestCase("Research", "RefreshIntervalSpread", 0)]
+        public void SetField_GameRuleBoundary_AcceptsValue(string section, string member, int value)
+        {
+            var (project, catalog) = CreateGameRules(section, (member, 2));
+            ContentPackEditorField field = catalog
+                .Records[0]
+                .GetFields()
+                .Single(candidate => candidate.MemberName == member);
+            string proposed = value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+            project.SetField(field, proposed);
+
+            Assert.AreEqual(proposed, field.Value);
+        }
+
+        [TestCase("StrikeRollMinimum", 11)]
+        [TestCase("StrikeRollMaximum", 0)]
+        public void SetField_InvertedBombardmentRange_PreservesWorkingDocument(
+            string member,
+            int value
+        )
+        {
+            var (project, catalog) = CreateGameRules(
+                "Combat.Bombardment",
+                ("StrikeRollMinimum", 1),
+                ("StrikeRollMaximum", 10)
+            );
+            string before = catalog.Document.Text;
+
+            Assert.Throws<ArgumentException>(() =>
+                project.SetField(
+                    catalog
+                        .Records[0]
+                        .GetFields()
+                        .Single(candidate => candidate.MemberName == member),
+                    value.ToString()
+                )
+            );
+
+            Assert.AreEqual(before, catalog.Document.Text);
+            Assert.IsFalse(project.IsDirty);
+            Assert.IsFalse(project.CanUndo);
+        }
+
+        [TestCase("StrikeRollMinimum", 10)]
+        [TestCase("StrikeRollMaximum", 1)]
+        public void SetField_EqualBombardmentBounds_AcceptsValue(string member, int value)
+        {
+            var (project, catalog) = CreateGameRules(
+                "Combat.Bombardment",
+                ("StrikeRollMinimum", 1),
+                ("StrikeRollMaximum", 10)
+            );
+            ContentPackEditorField field = catalog
+                .Records[0]
+                .GetFields()
+                .Single(candidate => candidate.MemberName == member);
+
+            project.SetField(field, value.ToString());
+
+            Assert.AreEqual(value.ToString(), field.Value);
+        }
+
         [TestCase(BuildingType.Mine, ManufacturingType.None)]
         [TestCase(BuildingType.Shipyard, ManufacturingType.Ship)]
         [TestCase(BuildingType.TrainingFacility, ManufacturingType.Troop)]
@@ -1267,6 +1392,35 @@ namespace Rebellion.Tests.ContentEditor
             Assert.Throws<ArgumentException>(() =>
                 project.ValidateField(ship.GetField("Hyperdrive"))
             );
+        }
+
+        /// <summary>
+        /// Creates a sparse rules document containing one nested configuration section.
+        /// </summary>
+        /// <param name="section">The dotted path to the configuration section.</param>
+        /// <param name="values">The authored scalar members.</param>
+        /// <returns>The editable project and its sparse rules catalog.</returns>
+        private (
+            ContentPackEditorProject Project,
+            ContentPackEditorCatalog Catalog
+        ) CreateGameRules(string section, params (string Member, int Value)[] values)
+        {
+            XElement root = new XElement("GameConfig");
+            XElement container = root;
+            foreach (string member in section.Split('.'))
+            {
+                XElement child = new XElement(member);
+                container.Add(child);
+                container = child;
+            }
+            foreach (var value in values)
+                container.Add(new XElement(value.Member, value.Value));
+            WriteFixtureFile("Data/game-config.xml", root.ToString());
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorCatalog catalog = project
+                .GetCatalogs()
+                .Single(item => item.Name == "Rules");
+            return (project, catalog);
         }
     }
 }
