@@ -4280,7 +4280,7 @@ namespace Rebellion.Tests.Gameplay
             {
                 InstanceID = "moving-passenger",
                 OwnerInstanceID = attacker.OwnerInstanceID,
-                Movement = new MovementState { TransitTicks = 5 },
+                Movement = new MovementState(new MovementLeg(5, default, null), null, null),
             };
             Officer disabled = new()
             {

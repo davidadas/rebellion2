@@ -388,7 +388,10 @@ namespace Rebellion.Tests.Game.SpaceCombat
             Assert.IsNotNull(fleet.Movement);
             Assert.AreEqual(2, _origin.SpaceCombatEntryFaction);
             Assert.AreEqual(2, _destination.SpaceCombatEntryFaction);
-            fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
+            fleet.Movement.Advance(
+                fleet.Movement.TransitTicks - 1,
+                new System.Drawing.Point(_destination.PositionX, _destination.PositionY)
+            );
             new MovementTickProcessor(movement).ProcessTick(_game);
             Assert.IsNull(fleet.Movement);
             Assert.AreEqual(1, _destination.SpaceCombatEntryFaction);
