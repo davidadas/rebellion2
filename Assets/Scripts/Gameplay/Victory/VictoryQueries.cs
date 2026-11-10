@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -85,28 +84,36 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Finds the faction that has defeated every opponent under the configured game mode.
+        /// Resolves a faction identifier against the active game.
         /// </summary>
-        /// <returns>The winning faction, or null while no faction has met every requirement.</returns>
-        public Faction FindWinner()
+        /// <param name="factionInstanceId">The faction identifier.</param>
+        /// <returns>The registered faction, or null when the identifier is absent or unknown.</returns>
+        public Faction GetFaction(string factionInstanceId)
         {
-            return FindWinner(_game.GetSceneNodesByType<Officer>());
+            return string.IsNullOrEmpty(factionInstanceId)
+                ? null
+                : _game
+                    .GetFactions()
+                    .FirstOrDefault(faction => faction?.InstanceID == factionInstanceId);
         }
 
         /// <summary>
-        /// Finds the faction that has defeated every opponent using an existing officer assessment.
+        /// Resolves the only opposing faction when a result has no responsible attacker.
         /// </summary>
-        /// <param name="officers">The officers in the active game.</param>
-        /// <returns>The winning faction, or null while no faction has met every requirement.</returns>
-        internal Faction FindWinner(IEnumerable<Officer> officers)
+        /// <param name="defender">The faction whose opponent is required.</param>
+        /// <returns>The sole opposing faction, or null when the result is ambiguous.</returns>
+        public Faction GetSoleOpponent(Faction defender)
         {
-            List<Officer> officerList =
-                officers?.Where(officer => officer != null).ToList() ?? new List<Officer>();
-            return _game
+            Faction liveDefender = GetFaction(defender?.InstanceID);
+            if (liveDefender == null)
+                return null;
+
+            Faction[] opponents = _game
                 .GetFactions()
-                .Where(candidate => HasDefeatedEveryOpponent(candidate, officerList))
-                .OrderByDescending(candidate => candidate.Settings.SimultaneousVictoryPriority)
-                .FirstOrDefault();
+                .Where(faction => faction != null && faction != liveDefender)
+                .Take(2)
+                .ToArray();
+            return opponents.Length == 1 ? opponents[0] : null;
         }
 
         /// <summary>
@@ -114,34 +121,26 @@ namespace Rebellion.Gameplay
         /// every opposing conquest officer has been captured.
         /// </summary>
         /// <param name="candidate">The potential winning faction.</param>
-        /// <param name="officers">The officers in the active game.</param>
         /// <returns>True when the faction has met every victory requirement.</returns>
-        private bool HasDefeatedEveryOpponent(
-            Faction candidate,
-            IReadOnlyCollection<Officer> officers
-        )
+        public bool HasDefeatedEveryOpponent(Faction candidate)
         {
-            if (candidate == null)
+            Faction liveCandidate = GetFaction(candidate?.InstanceID);
+            if (liveCandidate == null)
                 return false;
 
-            List<Faction> opponents = _game
+            Faction[] opponents = _game
                 .GetFactions()
-                .Where(faction => faction != null && faction != candidate)
-                .ToList();
-            if (opponents.Count == 0 || opponents.Any(opponent => !HasLostHeadquarters(opponent)))
+                .Where(faction => faction != null && faction != liveCandidate)
+                .ToArray();
+            if (opponents.Length == 0 || opponents.Any(opponent => !HasLostHeadquarters(opponent)))
                 return false;
 
-            if (_game.Summary.VictoryCondition != GameVictoryCondition.Conquest)
+            if (!IsConquestGame())
                 return true;
-
-            Dictionary<string, Officer> officersByInstanceID = officers
-                .Where(officer => !string.IsNullOrEmpty(officer.InstanceID))
-                .GroupBy(officer => officer.InstanceID, StringComparer.Ordinal)
-                .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
 
             return opponents.All(opponent =>
                 opponent.Settings.ConquestOfficerInstanceIDs.All(officerInstanceID =>
-                    officersByInstanceID.TryGetValue(officerInstanceID, out Officer officer)
+                    _game.GetSceneNodeByInstanceID<Officer>(officerInstanceID) is Officer officer
                     && officer.GetOwnerInstanceID() == opponent.InstanceID
                     && officer.IsCaptured
                 )

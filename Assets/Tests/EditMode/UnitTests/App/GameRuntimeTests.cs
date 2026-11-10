@@ -201,8 +201,6 @@ namespace Rebellion.Tests.App
             FactionSettings configured = template.Settings.CreateCopy();
             configured.GarrisonEfficiency++;
             configured.ConquestOfficerInstanceIDs = new List<string> { "stale-officer" };
-            configured.SimultaneousVictoryPriority =
-                template.Settings.SimultaneousVictoryPriority + 1;
             GameGenerationConfig config = _contentPack.GameData.GenerationConfig.CreateCopy();
             config.FactionModifiers.Add(
                 new FactionModifierConfig { FactionID = template.InstanceID, Settings = configured }
@@ -218,10 +216,6 @@ namespace Rebellion.Tests.App
             CollectionAssert.AreEqual(
                 template.Settings.ConquestOfficerInstanceIDs,
                 loaded.Settings.ConquestOfficerInstanceIDs
-            );
-            Assert.AreEqual(
-                template.Settings.SimultaneousVictoryPriority,
-                loaded.Settings.SimultaneousVictoryPriority
             );
             Assert.AreNotSame(configured, loaded.Settings);
         }

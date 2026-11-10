@@ -13,7 +13,6 @@ namespace Rebellion.Tests.Game.Factions
             FactionSettings settings = new FactionSettings
             {
                 ConquestOfficerInstanceIDs = new List<string> { "leader" },
-                SimultaneousVictoryPriority = 4,
             };
 
             FactionSettings copy = settings.CreateCopy();
@@ -24,7 +23,6 @@ namespace Rebellion.Tests.Game.Factions
                 new[] { "leader", "second-leader" },
                 copy.ConquestOfficerInstanceIDs
             );
-            Assert.AreEqual(4, copy.SimultaneousVictoryPriority);
         }
     }
 }

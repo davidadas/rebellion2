@@ -360,9 +360,6 @@ public sealed class GameRuntime
             FactionSettings resolvedSettings = settings.CreateCopy();
             resolvedSettings.ConquestOfficerInstanceIDs =
                 template.Settings.ConquestOfficerInstanceIDs.ToList();
-            resolvedSettings.SimultaneousVictoryPriority = template
-                .Settings
-                .SimultaneousVictoryPriority;
             faction.Settings = resolvedSettings;
         }
     }

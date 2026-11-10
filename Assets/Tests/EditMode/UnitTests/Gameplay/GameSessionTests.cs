@@ -1832,65 +1832,35 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Tick_VictoryConditionMet_RaisesVictoryDeclaredOnce()
+        public void CaptiveCommands_LastConquestOfficerCaptured_RaisesVictoryDeclaredImmediately()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
-            game.Summary = new GameSummary { VictoryCondition = GameVictoryCondition.Headquarters };
-            Faction empire = new Faction
-            {
-                InstanceID = "empire",
-                DisplayName = "Empire",
-                HQInstanceID = "coruscant",
-            };
-            Faction alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
-            game.GetFactions().Add(empire);
-            game.GetFactions().Add(alliance);
-            PlanetSector sector = new PlanetSector { InstanceID = "core" };
-            Planet coruscant = new Planet
-            {
-                InstanceID = "coruscant",
-                OwnerInstanceID = alliance.InstanceID,
-                IsColonized = true,
-            };
+            game.Summary = new GameSummary { VictoryCondition = GameVictoryCondition.Conquest };
+            Faction defender = new Faction { InstanceID = "DEFENDER", HasLostHeadquarters = true };
+            defender.Settings.ConquestOfficerInstanceIDs.Add("LEADER");
+            Faction attacker = new Faction { InstanceID = "ATTACKER" };
+            game.GetFactions().Add(defender);
+            game.GetFactions().Add(attacker);
+            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
+            Planet capturePlanet = CreatePlanet("CAPTURE", defender.InstanceID, 0);
+            Planet custodyPlanet = CreatePlanet("CUSTODY", attacker.InstanceID, 100);
             game.AttachNode(sector, game.Galaxy);
-            game.AttachNode(coruscant, sector);
-            Planet allianceHeadquarters = new Planet
-            {
-                InstanceID = "alliance-headquarters",
-                OwnerInstanceID = alliance.InstanceID,
-                IsColonized = true,
-            };
-            game.AttachNode(allianceHeadquarters, sector);
-            alliance.HQInstanceID = allianceHeadquarters.InstanceID;
-            GameSession manager = TestContent.CreateGameSession(game);
-            List<VictoryResult> declarations = new List<VictoryResult>();
-            manager.Pipeline.VictoryDeclared += declarations.Add;
-
-            manager.Tick.ProcessTick();
-            manager.Tick.ProcessTick();
-
-            Assert.AreEqual(1, declarations.Count);
-            Assert.AreSame(alliance, declarations[0].Winner);
-            CollectionAssert.AreEqual(new[] { empire }, declarations[0].DefeatedFactions);
-        }
-
-        [Test]
-        public void VictoryCommands_TryDeclareVictory_RaisesVictoryDeclared()
-        {
-            GameRoot game = TestGame.Create(TestConfig.Create());
-            Faction winner = new Faction { InstanceID = "WINNER" };
-            Faction loser = new Faction { InstanceID = "LOSER" };
-            game.GetFactions().Add(winner);
-            game.GetFactions().Add(loser);
+            game.AttachNode(capturePlanet, sector);
+            game.AttachNode(custodyPlanet, sector);
+            Officer leader = EntityFactory.CreateOfficer("LEADER", defender.InstanceID);
+            game.AttachNode(leader, capturePlanet);
             GameSession manager = TestContent.CreateGameSession(game);
             VictoryResult declared = null;
             manager.Pipeline.VictoryDeclared += result => declared = result;
 
-            VictoryResult result = manager.GetService<VictoryCommands>().TryDeclareVictory(winner);
+            bool captured = manager
+                .GetService<CaptiveCommands>()
+                .TryCaptureOfficer(leader, attacker);
 
-            Assert.AreSame(result, declared);
-            Assert.AreSame(winner, declared.Winner);
-            CollectionAssert.AreEqual(new[] { loser }, declared.DefeatedFactions);
+            Assert.IsTrue(captured);
+            Assert.IsNotNull(declared);
+            Assert.AreSame(attacker, declared.Winner);
+            CollectionAssert.AreEqual(new[] { defender }, declared.DefeatedFactions);
         }
 
         [Test]
@@ -2018,36 +1988,6 @@ namespace Rebellion.Tests.Gameplay
                     .SelectMany(faction => faction.Messages.Values)
                     .Sum(messages => messages.Count)
             );
-        }
-
-        [Test]
-        public void Tick_VictoryResult_RaisesResolvedEvent()
-        {
-            GameRoot game = TestGame.Create(TestConfig.Create());
-            game.Summary = new GameSummary { VictoryCondition = GameVictoryCondition.Headquarters };
-            Faction defeated = new Faction
-            {
-                InstanceID = "DEFEATED",
-                HQInstanceID = "HEADQUARTERS",
-            };
-            Faction winner = new Faction { InstanceID = "WINNER" };
-            game.GetFactions().Add(defeated);
-            game.GetFactions().Add(winner);
-            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
-            Planet headquarters = CreatePlanet("HEADQUARTERS", winner.InstanceID, 0);
-            game.AttachNode(sector, game.Galaxy);
-            game.AttachNode(headquarters, sector);
-            Planet winnerHeadquarters = CreatePlanet("WINNER-HEADQUARTERS", winner.InstanceID, 100);
-            game.AttachNode(winnerHeadquarters, sector);
-            winner.HQInstanceID = winnerHeadquarters.InstanceID;
-            GameSession manager = TestContent.CreateGameSession(game);
-            IReadOnlyList<VictoryResult> observedResults = null;
-            manager.Pipeline.VictoriesResolved += results => observedResults = results;
-
-            manager.Tick.ProcessTick();
-
-            Assert.That(observedResults, Has.Count.EqualTo(1));
-            Assert.AreSame(winner, observedResults[0].Winner);
         }
 
         [Test]

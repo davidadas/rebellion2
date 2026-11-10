@@ -119,12 +119,6 @@ namespace Rebellion.Game.Factions
         }
 
         /// <summary>
-        /// Priority used to resolve victory when multiple factions satisfy their objectives in
-        /// the same evaluation. Higher values win.
-        /// </summary>
-        public int SimultaneousVictoryPriority { get; set; }
-
-        /// <summary>
         /// Captures faction rules without sharing mutable headquarters or victory settings.
         /// </summary>
         /// <returns>An independent copy retaining the stored rule values.</returns>
@@ -145,7 +139,6 @@ namespace Rebellion.Game.Factions
                     CivilianBombardmentOuterRimSupportPenalty,
                 BattleLossLoyaltyDivisor = BattleLossLoyaltyDivisor,
                 SupportResistance = SupportResistance,
-                SimultaneousVictoryPriority = SimultaneousVictoryPriority,
             };
         }
     }
