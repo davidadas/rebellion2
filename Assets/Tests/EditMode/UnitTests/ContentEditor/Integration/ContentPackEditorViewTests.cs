@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using System.Xml.Schema;
 using NUnit.Framework;
+using Rebellion.Game;
 using Rebellion.SceneGraph;
 using Rebellion.Tests.ContentEditor.UI;
 using TMPro;
@@ -518,8 +519,8 @@ namespace Rebellion.Tests.ContentEditor.Integration
                 }
             );
             Assert.IsTrue(requested.HasValue);
-            Assert.AreEqual(Rebellion.Game.GameSize.Large, requested.Value.GalaxySize);
-            Assert.AreEqual(Rebellion.Game.GameDifficulty.Medium, requested.Value.Difficulty);
+            Assert.AreEqual(GameSize.Large, requested.Value.GalaxySize);
+            Assert.AreEqual(GameDifficulty.Medium, requested.Value.Difficulty);
             Assert.AreEqual(project.Definition.DefaultScenarioID, requested.Value.ScenarioID);
             Assert.IsTrue(project.GetFactionOptions().ContainsKey(requested.Value.FactionID));
             Assert.IsFalse(project.IsDirty);
@@ -536,7 +537,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
             TMP_InputField xml = view.GetComponentsInChildren<TMP_InputField>()
                 .Single(input => input.name == "AdvancedXml");
             Assert.AreEqual(record.Element.ToString(), xml.text);
-            Assert.AreEqual("GameEvent", System.Xml.Linq.XElement.Parse(xml.text).Name.LocalName);
+            Assert.AreEqual("GameEvent", XElement.Parse(xml.text).Name.LocalName);
             Assert.IsEmpty(view.GetComponentsInChildren<ContentEditorFieldView>());
             Assert.IsTrue(view.CommitFields());
             Assert.IsFalse(project.IsDirty);
@@ -1084,7 +1085,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
             );
             checkbox.GetComponent<Toggle>().isOn = false;
             Assert.IsNull(officer.Element("GalaxySizes"));
-            System.Xml.Schema.XmlSchemaSet schemas = new();
+            XmlSchemaSet schemas = new();
             schemas.Add(
                 null,
                 Path.Combine(
@@ -1891,9 +1892,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
                 ContentPackEditorCatalog roster = project
                     .GetCatalogs()
                     .First(catalog => catalog.Name == category);
-                string root = System
-                    .Xml.Linq.XDocument.Parse(roster.Document.Text)
-                    .Root.Name.LocalName;
+                string root = XDocument.Parse(roster.Document.Text).Root.Name.LocalName;
                 project.SetDocumentText(roster.Document, "<" + root + " />");
                 workspace.RenderProject(project, assets);
                 roster = project
@@ -2196,15 +2195,15 @@ namespace Rebellion.Tests.ContentEditor.Integration
             SelectRecord(
                 project.GetCatalogs().First(catalog => catalog.Name == "Officers").Records.First()
             );
-            view.GetComponentsInChildren<UnityEngine.UI.Button>(true)
+            view.GetComponentsInChildren<Button>(true)
                 .Single(button => button.name == "Tab3")
                 .onClick.Invoke();
-            view.GetComponentsInChildren<UnityEngine.UI.Button>(true)
+            view.GetComponentsInChildren<Button>(true)
                 .Single(button => button.name == "ApplyXml")
                 .onClick.Invoke();
 
             Assert.IsTrue(
-                view.GetComponentsInChildren<UnityEngine.UI.Button>()
+                view.GetComponentsInChildren<Button>()
                     .Any(button => button.name is "ApplyXml" or "DiscardXml")
             );
             Assert.IsFalse(project.IsDirty);

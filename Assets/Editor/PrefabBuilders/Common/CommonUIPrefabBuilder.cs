@@ -624,10 +624,10 @@ public static class CommonUIPrefabBuilder
     /// <param name="value">The color to assign.</param>
     private static void AssignColor(UnityEngine.Object target, string propertyName, Color value)
     {
-        UnityEditor.SerializedObject serializedObject = new UnityEditor.SerializedObject(target);
-        UnityEditor.SerializedProperty property = serializedObject.FindProperty(propertyName);
+        SerializedObject serializedObject = new SerializedObject(target);
+        SerializedProperty property = serializedObject.FindProperty(propertyName);
         if (property == null)
-            throw new System.MissingMemberException(target.GetType().Name, propertyName);
+            throw new MissingMemberException(target.GetType().Name, propertyName);
         property.colorValue = value;
         serializedObject.ApplyModifiedPropertiesWithoutUndo();
     }

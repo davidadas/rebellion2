@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Xml.Linq;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
@@ -56,7 +57,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             Canvas.ForceUpdateCanvases();
             TMP_InputField input = view.GetComponentsInChildren<TMP_InputField>()
                 .Single(field => field.name == "AdvancedXml");
-            Assert.AreEqual("Officer", System.Xml.Linq.XElement.Parse(input.text).Name.LocalName);
+            Assert.AreEqual("Officer", XElement.Parse(input.text).Name.LocalName);
         }
 
         [Test]

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Proposals;
@@ -33,11 +34,11 @@ namespace Rebellion.AI.Phases
         internal AIScoringPhase(IEnumerable<IAIProposalScorer> proposalScorers)
         {
             if (proposalScorers == null)
-                throw new System.ArgumentNullException(nameof(proposalScorers));
+                throw new ArgumentNullException(nameof(proposalScorers));
 
             _proposalScorers = proposalScorers.ToList();
             if (_proposalScorers.Any(proposalScorer => proposalScorer == null))
-                throw new System.ArgumentException(
+                throw new ArgumentException(
                     "Scorer list cannot contain null entries.",
                     nameof(proposalScorers)
                 );
@@ -79,7 +80,7 @@ namespace Rebellion.AI.Phases
                 return;
             }
 
-            throw new System.InvalidOperationException(
+            throw new InvalidOperationException(
                 $"No AI proposal scorer is registered for {proposal.GetType().Name}."
             );
         }

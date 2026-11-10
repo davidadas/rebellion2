@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -27,17 +28,17 @@ namespace Rebellion.Gameplay
         )
         {
             if (game == null)
-                throw new System.ArgumentNullException(nameof(game));
+                throw new ArgumentNullException(nameof(game));
             if (squadron == null)
-                throw new System.ArgumentNullException(nameof(squadron));
+                throw new ArgumentNullException(nameof(squadron));
             if (shipyardLocations == null)
-                throw new System.ArgumentNullException(nameof(shipyardLocations));
+                throw new ArgumentNullException(nameof(shipyardLocations));
 
             GameConfig.RecoveryConfig config = game.Config.Recovery;
             int interval = HasFriendlyOperationalShipyard(squadron, shipyardLocations)
                 ? config.FastReplacementIntervalTicks
                 : config.NormalReplacementIntervalTicks;
-            return System.Math.Max(1, interval);
+            return Math.Max(1, interval);
         }
 
         /// <summary>
@@ -51,7 +52,7 @@ namespace Rebellion.Gameplay
         )> BuildShipyardIndex(GameRoot game)
         {
             if (game == null)
-                throw new System.ArgumentNullException(nameof(game));
+                throw new ArgumentNullException(nameof(game));
 
             HashSet<(string PlanetInstanceId, string OwnerInstanceId)> locations =
                 new HashSet<(string PlanetInstanceId, string OwnerInstanceId)>();
@@ -96,10 +97,10 @@ namespace Rebellion.Gameplay
     /// <summary>
     /// Updates fighter replacement schedules when movement changes recovery eligibility.
     /// </summary>
-    internal sealed class RecoveryObserver : IResultObserver, System.IDisposable
+    internal sealed class RecoveryObserver : IResultObserver, IDisposable
     {
         private readonly GameRoot _game;
-        private System.IDisposable _arrivalSubscription;
+        private IDisposable _arrivalSubscription;
 
         /// <summary>
         /// Creates fighter recovery transition observation for one game.
@@ -107,7 +108,7 @@ namespace Rebellion.Gameplay
         /// <param name="game">The active game state.</param>
         public RecoveryObserver(GameRoot game)
         {
-            _game = game ?? throw new System.ArgumentNullException(nameof(game));
+            _game = game ?? throw new ArgumentNullException(nameof(game));
         }
 
         /// <summary>
@@ -117,11 +118,9 @@ namespace Rebellion.Gameplay
         public void Connect(GameResultBus results)
         {
             if (_arrivalSubscription != null)
-                throw new System.InvalidOperationException(
-                    "Recovery observer is already connected."
-                );
+                throw new InvalidOperationException("Recovery observer is already connected.");
             if (results == null)
-                throw new System.ArgumentNullException(nameof(results));
+                throw new ArgumentNullException(nameof(results));
 
             _arrivalSubscription = results.Subscribe<UnitArrivedResult>(HandleResults);
         }
@@ -143,7 +142,7 @@ namespace Rebellion.Gameplay
         public List<GameResult> HandleResults(IReadOnlyList<UnitArrivedResult> results)
         {
             Dictionary<Starfighter, int> arrivals = new Dictionary<Starfighter, int>();
-            foreach (UnitArrivedResult result in results ?? System.Array.Empty<UnitArrivedResult>())
+            foreach (UnitArrivedResult result in results ?? Array.Empty<UnitArrivedResult>())
             {
                 foreach (Starfighter squadron in GetArrivingSquadrons(result?.Unit))
                 {
@@ -188,7 +187,7 @@ namespace Rebellion.Gameplay
                 return new[] { squadron };
             if (unit is ContainerNode container)
                 return container.GetChildren<Starfighter>(recursive: true);
-            return System.Array.Empty<Starfighter>();
+            return Array.Empty<Starfighter>();
         }
     }
 

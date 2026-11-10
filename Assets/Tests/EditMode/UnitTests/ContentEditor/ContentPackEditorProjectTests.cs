@@ -1,12 +1,16 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using NUnit.Framework;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.ContentEditor
 {
@@ -52,10 +56,7 @@ namespace Rebellion.Tests.ContentEditor
             string before = catalog.Document.Text;
 
             ArgumentException error = Assert.Throws<ArgumentException>(() =>
-                project.SetField(
-                    field,
-                    value.ToString(System.Globalization.CultureInfo.InvariantCulture)
-                )
+                project.SetField(field, value.ToString(CultureInfo.InvariantCulture))
             );
 
             Assert.AreEqual(before, catalog.Document.Text);
@@ -83,7 +84,7 @@ namespace Rebellion.Tests.ContentEditor
                 .Records[0]
                 .GetFields()
                 .Single(candidate => candidate.MemberName == member);
-            string proposed = value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            string proposed = value.ToString(CultureInfo.InvariantCulture);
 
             project.SetField(field, proposed);
 
@@ -718,13 +719,10 @@ namespace Rebellion.Tests.ContentEditor
             Assert.AreEqual("My new advice", title.Value);
             using (StringReader reader = new(catalog.Document.Text))
             {
-                var factions = (Rebellion.Game.Factions.Faction[])
-                    new Rebellion.Util.Serialization.GameSerializer(
-                        typeof(Rebellion.Game.Factions.Faction[]),
-                        new Rebellion.Util.Serialization.GameSerializerSettings
-                        {
-                            RootName = "Factions",
-                        }
+                var factions = (Faction[])
+                    new GameSerializer(
+                        typeof(Faction[]),
+                        new GameSerializerSettings { RootName = "Factions" }
                     ).Deserialize(reader);
                 Assert.AreEqual(
                     existing ? 2 : 1,
@@ -804,10 +802,7 @@ namespace Rebellion.Tests.ContentEditor
             Assert.AreEqual(250, saved.Y);
             Assert.IsEmpty(saved.Planets);
             using StringReader text = new(saved.Element.ToString());
-            var sector = (Rebellion.Game.Galaxy.PlanetSector)
-                new Rebellion.Util.Serialization.GameSerializer(
-                    typeof(Rebellion.Game.Galaxy.PlanetSector)
-                ).Deserialize(text);
+            var sector = (PlanetSector)new GameSerializer(typeof(PlanetSector)).Deserialize(text);
             Assert.AreEqual(first.ID, sector.TypeID);
         }
 

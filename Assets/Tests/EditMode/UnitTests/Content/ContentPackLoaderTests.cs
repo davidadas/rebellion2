@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Xml.Linq;
 using System.Xml.Schema;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -647,11 +648,11 @@ namespace Rebellion.Tests.Content
             int value
         )
         {
-            System.Xml.Linq.XElement config = new System.Xml.Linq.XElement("GameConfig");
-            System.Xml.Linq.XElement container = config;
+            XElement config = new XElement("GameConfig");
+            XElement container = config;
             foreach (string name in section.Split('.'))
             {
-                System.Xml.Linq.XElement child = new System.Xml.Linq.XElement(name);
+                XElement child = new XElement(name);
                 container.Add(child);
                 container = child;
             }

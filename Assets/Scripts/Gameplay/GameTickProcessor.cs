@@ -9,6 +9,7 @@ using Rebellion.Game.Results;
 using Rebellion.Gameplay.GameEvents;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Logging;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Gameplay
 {
@@ -96,7 +97,7 @@ namespace Rebellion.Gameplay
 
             _game = services.GetService<GameRoot>();
             ResearchTickProcessor research = new ResearchTickProcessor(
-                services.GetService<Rebellion.Util.Random.IRandomNumberProvider>()
+                services.GetService<IRandomNumberProvider>()
             );
             research.InitializeTimers(_game);
             _research = research;
@@ -507,10 +508,7 @@ namespace Rebellion.Gameplay
 
             List<BlockadeChangedResult> immediateResults = new List<BlockadeChangedResult>();
             foreach (
-                IGrouping<
-                    Rebellion.Game.Galaxy.Planet,
-                    BlockadeChangedResult
-                > planetTransitions in blockadeTransitions
+                IGrouping<Planet, BlockadeChangedResult> planetTransitions in blockadeTransitions
                     .Where(result => result?.Planet != null)
                     .GroupBy(result => result.Planet)
             )

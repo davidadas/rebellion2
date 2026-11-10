@@ -929,7 +929,7 @@ namespace Rebellion.Tests.Gameplay.Scripting
         /// <returns>The result of references.</returns>
         private static List<GameUnitReference> References(params ISceneNode[] nodes) =>
             new List<GameUnitReference>(
-                System.Array.ConvertAll(
+                Array.ConvertAll(
                     nodes,
                     node => new GameUnitReference { UnitInstanceID = node.InstanceID }
                 )

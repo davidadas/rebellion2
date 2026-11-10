@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -27,7 +28,7 @@ namespace Rebellion.Tests.Gameplay
         {
             (_, Planet planet, UprisingObserver system) = BuildScene(troopCount: 4);
 
-            Assert.Throws<System.NullReferenceException>(() =>
+            Assert.Throws<NullReferenceException>(() =>
                 system.HandleResults(
                     new PlanetGarrisonChangedResult[]
                     {

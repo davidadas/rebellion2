@@ -1,3 +1,4 @@
+using System;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 
@@ -26,7 +27,7 @@ public sealed class StrategyMissionChoice
     public StrategyMissionChoice(MissionOption option, bool isRepeating = false)
     {
         if (option == null)
-            throw new System.ArgumentNullException(nameof(option));
+            throw new ArgumentNullException(nameof(option));
         MissionTypeID = option.MissionTypeID;
         Discipline = option.Discipline;
         Name = isRepeating ? option.DisplayName + " (Repeat)" : option.DisplayName;

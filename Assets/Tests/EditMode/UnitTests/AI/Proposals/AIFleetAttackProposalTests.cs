@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -1008,7 +1009,7 @@ namespace Rebellion.Tests.AI.Fleets
             CapitalShip ship = AITestSceneBuilder.CreateCapitalShip(
                 "ship",
                 ownerInstanceId,
-                regimentCapacity: System.Math.Max(1, regimentCount)
+                regimentCapacity: Math.Max(1, regimentCount)
             );
             fleet.AddChild(ship);
             ship.SetParent(fleet);

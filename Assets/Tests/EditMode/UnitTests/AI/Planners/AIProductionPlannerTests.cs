@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -14,6 +15,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.Tests.AI.Helpers;
 
 namespace Rebellion.Tests.AI.Planners
@@ -719,7 +721,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_UnrankedFleetsWithSevenAndOneYard_AssignsLargeHullToHigherScoringFleet()
         {
             AITurnContext context = CreateYardAllocationContext(out Planet large, out Planet small);
-            context.SetFleetProductionPriorities(System.Array.Empty<Fleet>());
+            context.SetFleetProductionPriorities(Array.Empty<Fleet>());
 
             List<AIManufactureProposal> proposals = new AIProductionPlanner()
                 .Plan(context)
@@ -1334,7 +1336,7 @@ namespace Rebellion.Tests.AI.Planners
                         capitalFirepowerDeficit: combatStrength
                             ? 0
                             : 3
-                                * Rebellion.Gameplay.SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips(
+                                * SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips(
                                     template
                                 )
                     ),
@@ -4432,7 +4434,7 @@ namespace Rebellion.Tests.AI.Planners
                     BuildingType.None,
                     fleet,
                     1,
-                    capitalFirepowerDeficit: Rebellion.Gameplay.SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips(
+                    capitalFirepowerDeficit: SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips(
                         largeHull
                     ),
                     baseDemandPercent: 100

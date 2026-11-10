@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Schema;
+using Rebellion.Game;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
@@ -344,10 +346,10 @@ public sealed class ContentPackEditorProject
         if (field.IsIdentity)
             return null;
         if (field.MemberName == "GalaxySize" && field.Record.Kind == "GameGenerationConfig")
-            return Enum.GetValues(typeof(Rebellion.Game.GameSize))
-                .Cast<Rebellion.Game.GameSize>()
+            return Enum.GetValues(typeof(GameSize))
+                .Cast<GameSize>()
                 .ToDictionary(
-                    size => ((int)size).ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    size => ((int)size).ToString(CultureInfo.InvariantCulture),
                     size => size.ToString()
                 );
         if (field.MemberName is "ShipNamePoolID" or "FallbackNamePoolID")
@@ -451,7 +453,7 @@ public sealed class ContentPackEditorProject
             || field.MemberName == "PlanetTypeID"
                 && field.Container?.Name.LocalName is "HQFacilityLoadout" or "FixedFleet"
         )
-            result[Rebellion.Game.GameGenerationConfig.FactionHqSentinel] = "Faction headquarters";
+            result[GameGenerationConfig.FactionHqSentinel] = "Faction headquarters";
         return result;
     }
 
@@ -556,7 +558,7 @@ public sealed class ContentPackEditorProject
             && !collection.Owner.Ancestors().Contains(collection.Record.Element)
         )
             throw new ArgumentException("Choose a current setup entry.", nameof(collection));
-        if (collection.ItemType != typeof(Rebellion.Game.UnitEntry))
+        if (collection.ItemType != typeof(UnitEntry))
             throw new ArgumentException("Choose a unit collection.", nameof(collection));
         var options = GetCollectionUnitOptions(collection);
         if (amounts.Any(item => item.Value < 0 || !options.ContainsKey(item.Key)))

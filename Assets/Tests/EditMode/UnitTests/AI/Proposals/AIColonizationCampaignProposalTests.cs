@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI;
@@ -77,7 +78,7 @@ namespace Rebellion.Tests.AI.Fleets
             AIColonizationCampaignProposal proposal = new AIColonizationCampaignProposal(
                 fleet,
                 system.InstanceID,
-                System.Array.Empty<Planet>(),
+                Array.Empty<Planet>(),
                 context.Assessment.GetKnownPlanet(target.InstanceID)
             );
 

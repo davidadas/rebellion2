@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -206,7 +207,7 @@ namespace Rebellion.Tests.Gameplay
         {
             _targetPlanet.SetPopularSupport(_empire.InstanceID, 100);
 
-            Assert.Throws<System.NullReferenceException>(() =>
+            Assert.Throws<NullReferenceException>(() =>
                 _observer.HandleResults(
                     new PlanetGarrisonChangedResult[]
                     {
