@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Xml.Linq;
+using Rebellion.Game;
+using Rebellion.Util.Serialization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -103,6 +106,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     public event Action Changed;
     public event Action<ContentPackEditorField, IReadOnlyList<string>> FieldSubmitted;
     public event Action<ContentPackEditorField> FieldValidationRequested;
+    public event Action<ContentPackEditorField> FieldInheritanceResetRequested;
     public event Action WidthChanged;
     public event Action<Button> AddMessageRequested;
     public event Action AddNamePoolRequested;
@@ -185,6 +189,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             field.ValidationFailed -= ReportValidationError;
             field.Submitted -= SubmitField;
             field.ValidationRequested -= ValidateField;
+            field.InheritanceResetRequested -= ResetInheritance;
             field.SelectionRequested -= RequestSelection;
         }
     }
@@ -383,8 +388,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
         if (
             !int.TryParse(
                 scoreInput.text,
-                System.Globalization.NumberStyles.Integer,
-                System.Globalization.CultureInfo.InvariantCulture,
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
                 out int score
             )
         )
@@ -482,7 +487,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         curveGraphic.gameObject.SetActive(true);
         curveGraphic.Render(points);
         PlaceLabel(
-            high.ToString("0", System.Globalization.CultureInfo.InvariantCulture),
+            high.ToString("0", CultureInfo.InvariantCulture),
             labelIndex++,
             x,
             y + 38,
@@ -490,7 +495,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             false
         );
         PlaceLabel(
-            low.ToString("0", System.Globalization.CultureInfo.InvariantCulture),
+            low.ToString("0", CultureInfo.InvariantCulture),
             labelIndex++,
             x,
             y + 208,
@@ -498,7 +503,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             false
         );
         PlaceLabel(
-            minimum.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            minimum.ToString(CultureInfo.InvariantCulture),
             labelIndex++,
             x + 44,
             y + 232,
@@ -506,7 +511,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             false
         );
         PlaceLabel(
-            maximum.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            maximum.ToString(CultureInfo.InvariantCulture),
             labelIndex++,
             x + width - 70,
             y + 232,
@@ -932,9 +937,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     y += imageHeight + 12;
                 }
             }
-            IReadOnlyDictionary<System.Xml.Linq.XElement, string> poolTitles = GetNamePoolTitles(
-                record
-            );
+            IReadOnlyDictionary<XElement, string> poolTitles = GetNamePoolTitles(record);
             IReadOnlyList<string> previous = Array.Empty<string>();
             foreach (ContentPackEditorField field in group)
             {
@@ -953,7 +956,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     && field.Group is "Settings" or "ShipNamePools" or "Messages"
                 )
                     sections = sections.Skip(1).ToArray();
-                System.Xml.Linq.XElement pool = field
+                XElement pool = field
                     .XmlElement.AncestorsAndSelf()
                     .FirstOrDefault(element => element.Name.LocalName == "NamePool");
                 if (pool != null && poolTitles.TryGetValue(pool, out string poolTitle))
@@ -1001,13 +1004,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// </summary>
     /// <param name="record">The faction whose pools are being edited.</param>
     /// <returns>The usage captions keyed by their exact collection entries.</returns>
-    private IReadOnlyDictionary<System.Xml.Linq.XElement, string> GetNamePoolTitles(
-        ContentPackEditorRecord record
-    )
+    private IReadOnlyDictionary<XElement, string> GetNamePoolTitles(ContentPackEditorRecord record)
     {
-        System.Xml.Linq.XElement[] pools =
+        XElement[] pools =
             record.Element.Element("ShipNamePools")?.Elements().ToArray()
-            ?? Array.Empty<System.Xml.Linq.XElement>();
+            ?? Array.Empty<XElement>();
         string owner = record.Element.Element("InstanceID")?.Value;
         ContentPackEditorRecord[] ships =
             pools.Length == 0
@@ -1092,16 +1093,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
             : owner == null ? null
             : ContentPackEditorFieldSchema.GetValueType(selectedRecord.Element, owner);
         Type memberType =
-            ownerType == null
-                ? null
-                : Rebellion.Util.Serialization.SerializationMetadata.GetElementType(
-                    ownerType,
-                    memberName
-                );
+            ownerType == null ? null : SerializationMetadata.GetElementType(ownerType, memberName);
         if (
             memberType != null
             && ContentPackEditorFieldSchema.GetItemType(memberType) is Type item
-            && !Rebellion.Util.Serialization.TypeHelper.IsScalar(item)
+            && !TypeHelper.IsScalar(item)
         )
             RenderSetupCollection(
                 project.GetCollection(selectedRecord, selectedRecord.Element, path),
@@ -1163,9 +1159,9 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     ? null
                     : ContentPackEditorFieldSchema.GetValueType(selectedRecord.Element, parent);
             if (
-                type == typeof(Rebellion.Game.DiceFormula)
-                || type == typeof(Rebellion.Game.SupportFormula)
-                || type == typeof(Rebellion.Game.PlanetSizeProfile)
+                type == typeof(DiceFormula)
+                || type == typeof(SupportFormula)
+                || type == typeof(PlanetSizeProfile)
             )
             {
                 if (!ranges.Add(parent))
@@ -1218,7 +1214,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         ref int unitIndex
     )
     {
-        if (collection.ItemType == typeof(Rebellion.Game.UnitEntry))
+        if (collection.ItemType == typeof(UnitEntry))
         {
             string title = collection.Name == "Cargo" ? "Cargo" : "Units";
             y += PlaceLabel(title, labelIndex++, 4, y + 8, width - 8, true) + 8;
@@ -1413,6 +1409,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 terms.FirstOrDefault()?.XmlElement.Parent?.Name.LocalName ?? string.Empty
             )
         );
+        int fieldHeight = 44;
         for (int i = 0; i < terms.Length; i++)
         {
             ContentPackEditorField term = terms[i];
@@ -1424,9 +1421,12 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 : "+ random " + i;
             if (showHeaders)
                 PlaceLabel(name, labelIndex++, left + 4, y, cellWidth - 8, false, term.HelpText);
-            PlaceField(term, fieldIndex++, left, y + headerHeight, cellWidth, 0, 44);
+            fieldHeight = Mathf.Max(
+                fieldHeight,
+                PlaceField(term, fieldIndex++, left, y + headerHeight, cellWidth, 0, 44)
+            );
         }
-        return Mathf.Max(headerHeight + 48, captionHeight + headerHeight + 8);
+        return Mathf.Max(headerHeight + fieldHeight + 4, captionHeight + headerHeight + 8);
     }
 
     /// <summary>
@@ -1556,7 +1556,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 row.transform.SetAsFirstSibling();
                 row.gameObject.SetActive(true);
                 PlaceLabel(
-                    score.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    score.ToString(CultureInfo.InvariantCulture),
                     groupIndex++,
                     4,
                     y + 6,
@@ -1564,17 +1564,21 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     false
                 );
                 groupLabels[groupIndex - 1].alignment = TextAlignmentOptions.Center;
+                int rowHeight = 44;
                 for (int column = 0; column < grid.Columns.Count; column++)
                 {
                     ContentPackEditorField field = grid.GetCell(score, column);
-                    PlaceField(
-                        field,
-                        fieldIndex++,
-                        scoreWidth + column * cellWidth,
-                        y,
-                        cellWidth,
-                        0,
-                        44
+                    rowHeight = Mathf.Max(
+                        rowHeight,
+                        PlaceField(
+                            field,
+                            fieldIndex++,
+                            scoreWidth + column * cellWidth,
+                            y,
+                            cellWidth,
+                            0,
+                            44
+                        )
                     );
                     ContentEditorFieldView cell = fieldViews[fieldIndex - 1];
                     cell.name = "Probability" + column + "Score" + score + "Field";
@@ -1606,7 +1610,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     34,
                     32
                 );
-                y += 44;
+                UILayout.SetSourceRect(row.rectTransform, 0, y, Mathf.FloorToInt(width), rowHeight);
+                y += rowHeight;
                 rowIndex++;
             }
             y = Mathf.Max(y, chartBottom);
@@ -1751,7 +1756,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                         false,
                         field.HelpText
                     );
-                    PlaceField(
+                    int rowHeight = PlaceField(
                         field,
                         fieldIndex++,
                         x + width - (hasVariance ? 164 : 80),
@@ -1768,8 +1773,19 @@ public sealed class ContentEditorFormView : MonoBehaviour
                         candidate.MemberName == key + "Variance"
                     );
                     if (variance != null)
-                        PlaceField(variance, fieldIndex++, x + width - 80, top[column], 80, 0, 48);
-                    top[column] += Mathf.Max(44, captionHeight + 12);
+                        rowHeight = Mathf.Max(
+                            rowHeight,
+                            PlaceField(
+                                variance,
+                                fieldIndex++,
+                                x + width - 80,
+                                top[column],
+                                80,
+                                0,
+                                48
+                            )
+                        );
+                    top[column] += Mathf.Max(rowHeight, captionHeight + 12);
                 }
             }
             else
@@ -1845,6 +1861,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             created.ValidationFailed += ReportValidationError;
             created.Submitted += SubmitField;
             created.ValidationRequested += ValidateField;
+            created.InheritanceResetRequested += ResetInheritance;
             created.SelectionRequested += RequestSelection;
             fieldViews.Add(created);
         }
@@ -2010,4 +2027,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="field">The member to check.</param>
     private void ValidateField(ContentPackEditorField field) =>
         FieldValidationRequested?.Invoke(field);
+
+    /// <summary>
+    /// Forwards a request to remove one local setting override.
+    /// </summary>
+    /// <param name="field">The setting being returned to inheritance.</param>
+    private void ResetInheritance(ContentPackEditorField field) =>
+        FieldInheritanceResetRequested?.Invoke(field);
 }

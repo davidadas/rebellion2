@@ -954,10 +954,15 @@ namespace Rebellion.Gameplay
         /// <returns>The target-specific damage multiplier.</returns>
         private double GetTargetTypeMultiplier(PrimaryWeaponType type, bool targetsFighters)
         {
+            // A turbolaser keeps its full strength against fighters here. Automatic resolution
+            // scales its damage down by TurbolaserFighterDamageMultiplier; the tactical battle
+            // has it mostly miss instead (GetHitChance), and applying both would count the same
+            // weakness twice.
             double multiplier = SpaceCombatStrengthCalculator.GetPrimaryWeaponTargetMultiplier(
                 type,
                 targetsFighters,
-                _laserCannonCapitalDamageMultiplier
+                _laserCannonCapitalDamageMultiplier,
+                turbolaserFighterDamageMultiplier: 1
             );
             return multiplier;
         }

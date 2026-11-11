@@ -6,7 +6,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
@@ -58,9 +60,26 @@ internal static class ContentEditorPackValidator
             data.Regiments.Select(item => item.TypeID),
             StringComparer.Ordinal
         );
-        foreach (var faction in data.Factions)
+        Dictionary<string, Officer> officersByInstanceID = data.Officers.ToDictionary(
+            officer => officer.InstanceID,
+            StringComparer.Ordinal
+        );
+        foreach (Faction faction in data.Factions)
+        {
             if (!string.IsNullOrEmpty(faction.GarrisonTroopTypeID))
                 RequireReference(regiments, faction.GarrisonTroopTypeID, "garrison troop");
+            foreach (string officerInstanceID in faction.Settings.ConquestOfficerInstanceIDs)
+            {
+                RequireReference(officers, officerInstanceID, "conquest officer");
+                if (
+                    officersByInstanceID[officerInstanceID].GetOwnerInstanceID()
+                    != faction.InstanceID
+                )
+                    throw new InvalidDataException(
+                        $"Conquest officer '{officerInstanceID}' is not owned by faction '{faction.InstanceID}'."
+                    );
+            }
+        }
 
         GameGenerationConfig config = data.GenerationConfig;
         foreach (StartingOfficerRule rule in config.Officers.StartingOfficers)
@@ -131,6 +150,21 @@ internal static class ContentEditorPackValidator
             RequireReference(factions, budget.FactionID, "unit budget faction");
             foreach (WeightedUnitEntry entry in budget.UnitTable ?? new List<WeightedUnitEntry>())
                 ValidateUnits(unitTypes, entry.Units);
+        }
+
+        FactionThemeLibrary themes = new FactionThemeLibrary(data.FactionThemes);
+        foreach (string factionID in factions)
+            themes.GetTheme(factionID);
+        foreach (PlanetResourceProfile profile in config.PlanetResources.Profiles)
+        {
+            if (profile.EnergyMin > profile.EnergyMax)
+                throw new InvalidDataException(
+                    $"Resource profile '{profile.Availability}' has an energy minimum greater than its maximum."
+                );
+            if (profile.RawMaterialsMin > profile.RawMaterialsMax)
+                throw new InvalidDataException(
+                    $"Resource profile '{profile.Availability}' has a raw-material minimum greater than its maximum."
+                );
         }
     }
 
@@ -246,8 +280,8 @@ internal static class ContentEditorPackValidator
     /// <param name="project">The saved working content to validate.</param>
     /// <param name="progress">Optional status reporting for the current validation check.</param>
     /// <param name="cancellationToken">The requested cancellation.</param>
-    /// <returns>The completion of all validation checks.</returns>
-    public static async Task ValidateAsync(
+    /// <returns>Non-blocking authoring warnings after all validation checks succeed.</returns>
+    public static async Task<IReadOnlyList<string>> ValidateAsync(
         ContentPackEditorProject project,
         Action<string> progress = null,
         CancellationToken cancellationToken = default
@@ -255,7 +289,8 @@ internal static class ContentEditorPackValidator
     {
         cancellationToken.ThrowIfCancellationRequested();
         await Task.Yield();
-        foreach (var check in GetStartupChecks(project))
+        List<string> warnings = new List<string>();
+        foreach (var check in GetStartupChecks(project, warnings))
         {
             cancellationToken.ThrowIfCancellationRequested();
             progress?.Invoke(
@@ -266,6 +301,44 @@ internal static class ContentEditorPackValidator
         }
         await ValidateMediaAsync(project, progress, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
+        return warnings.Distinct(StringComparer.Ordinal).ToArray();
+    }
+
+    /// <summary>
+    /// Reports legal definitions that disable production, missions, or bookmark rows.
+    /// </summary>
+    /// <param name="pack">The validated scenario and effective inherited catalogs.</param>
+    /// <returns>Warnings identifying the affected scenario and definition.</returns>
+    private static IEnumerable<string> GetWarnings(ContentPack pack)
+    {
+        GameDataCatalog data = pack.GameData;
+        string prefix = $"Scenario '{pack.Scenario.ID}': ";
+        foreach (Building building in data.Buildings)
+            if (building.ProductionType != ManufacturingType.None && building.ProcessRate == 0)
+                yield return prefix
+                    + $"Building '{building.TypeID}' has a zero production rate and cannot produce units.";
+        IEnumerable<IManufacturable> products = data
+            .Buildings.Cast<IManufacturable>()
+            .Concat(data.CapitalShips)
+            .Concat(data.Starfighters)
+            .Concat(data.Regiments)
+            .Concat(data.SpecialForces);
+        foreach (IManufacturable product in products)
+            if (product.ManufacturingFactionInstanceIDs is { Count: 0 })
+                yield return prefix
+                    + $"Product '{product.GetTypeID()}' has no allowed manufacturing factions and cannot be built.";
+        foreach (var faction in data.Factions)
+            if (
+                ContentPackEditorFieldSchema.MissionIDs.All(id =>
+                    faction.DisallowedMissionTypeIDs?.Contains(id) == true
+                )
+            )
+                yield return prefix
+                    + $"Faction '{faction.InstanceID}' disables every normal mission type.";
+        foreach (FactionTheme theme in new FactionThemeLibrary(data.FactionThemes).GetAllThemes())
+            if (theme.StrategyBookmarkLayout?.GetSlotCount() == 0)
+                yield return prefix
+                    + $"Faction theme '{theme.FactionInstanceID}' has no usable bookmark rows.";
     }
 
     /// <summary>
@@ -338,10 +411,50 @@ internal static class ContentEditorPackValidator
     /// Validates authored fields and loads the scenarios needed by the startup checks.
     /// </summary>
     /// <param name="project">The working content to check.</param>
+    /// <param name="warnings">Receives scenario-level warnings once per loaded scenario.</param>
     /// <returns>The loaded catalog and launch configuration for each startup check.</returns>
     private static IEnumerable<(ContentPack Pack, GameSummary Summary)> GetStartupChecks(
-        ContentPackEditorProject project
+        ContentPackEditorProject project,
+        ICollection<string> warnings
     )
+    {
+        ValidateFields(project);
+        ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
+            project.ContentRootPath,
+            project.PackRootPath,
+            project.Definition
+        );
+        string[] scenarios = project
+            .Definition.ScenarioPaths.Select(path =>
+                ContentDefinitionSerializer
+                    .DeserializeText<ContentScenarioDefinition>(
+                        ContentXmlOverrides.Load(resolver, "Pack/" + path)
+                    )
+                    .ID
+            )
+            .Append(project.Definition.DefaultScenarioID)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        foreach (string scenario in scenarios)
+        {
+            ContentPack pack = ContentPackLoader.OpenFolder(
+                project.ContentRootPath,
+                project.PackRootPath,
+                scenario
+            );
+            ValidateDefinitions(pack);
+            foreach (string warning in GetWarnings(pack))
+                warnings.Add(warning);
+            foreach (GameSummary summary in GetStartupConfigurations(pack))
+                yield return (pack, summary);
+        }
+    }
+
+    /// <summary>
+    /// Checks authored fields before startup, including values narrowed by deserialization.
+    /// </summary>
+    /// <param name="project">The saved project or immutable play/export snapshot.</param>
+    internal static void ValidateFields(ContentPackEditorProject project)
     {
         if (project.IsDirty)
             throw new InvalidOperationException("Save the content pack before validating it.");
@@ -360,30 +473,5 @@ internal static class ContentEditorPackValidator
         )
         foreach (ContentPackEditorField field in record.GetFields())
             project.ValidateFieldValues(field, field.Values, resolver, factions, traits);
-        string[] scenarios = project
-            .Definition.ScenarioPaths.Select(path =>
-                ContentDefinitionSerializer
-                    .Deserialize<ContentScenarioDefinition>(
-                        resolver.ResolveFile("Pack/" + path)
-                            ?? throw new FileNotFoundException("Scenario not found: " + path)
-                    )
-                    .ID
-            )
-            .Append(project.Definition.DefaultScenarioID)
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-        foreach (string scenario in scenarios)
-        {
-            ContentPack pack = ContentPackLoader.OpenFolder(
-                project.ContentRootPath,
-                project.PackRootPath,
-                scenario
-            );
-            ContentEditorPackValidator.ValidateDefinitions(pack);
-            foreach (
-                GameSummary summary in ContentEditorPackValidator.GetStartupConfigurations(pack)
-            )
-                yield return (pack, summary);
-        }
     }
 }

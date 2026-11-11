@@ -1,18 +1,209 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using NUnit.Framework;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.ContentEditor
 {
     [TestFixture]
     public sealed class ContentPackEditorProjectTests : ContentPackEditorTestBase
     {
+        [TestCase("theme")]
+        [TestCase("dictionary")]
+        public void ResetFieldToInherited_OverlaySelector_RejectsResetWithoutChangingTheDocument(
+            string kind
+        )
+        {
+            string xml =
+                kind == "theme"
+                    ? "<FactionThemes><FactionTheme><FactionInstanceID>FNEMP1</FactionInstanceID><FactionPrimaryColorHex>red</FactionPrimaryColorHex></FactionTheme></FactionThemes>"
+                    : "<Officers><Officer><TypeID>one</TypeID><Ratings><Entry><Key>Diplomacy</Key><Value>40</Value></Entry></Ratings></Officer></Officers>";
+            WriteFixtureFile("Data/units.xml", xml);
+            ContentPackEditorProject project = CreateWorkingProject();
+            Directory.CreateDirectory(Path.Combine(project.PackRootPath, "Data"));
+            File.WriteAllText(Path.Combine(project.PackRootPath, "Data/units.xml"), xml);
+            project = ContentPackEditorStorage.OpenFolder(contentRoot, project.PackRootPath);
+            ContentPackEditorRecord record = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Document.Address == "Pack/Data/units.xml")
+                .Records.Single();
+            XElement element = record
+                .Element.Descendants(kind == "theme" ? "FactionInstanceID" : "Key")
+                .Single();
+            ContentPackEditorField selector = new ContentPackEditorField(
+                record,
+                element,
+                "Selector"
+            );
+            string before = record.Catalog.Document.Text;
+
+            Assert.IsFalse(selector.CanInherit);
+            Assert.Throws<InvalidOperationException>(() => project.ResetFieldToInherited(selector));
+            Assert.AreEqual(before, record.Catalog.Document.Text);
+        }
+
+        [Test]
+        public void ResetFieldToInherited_BuildingCategory_RestoresProductionAndUndoesTogether()
+        {
+            WriteFixtureFile(
+                "Data/units.xml",
+                "<Buildings><Building><TypeID>MINE</TypeID><BuildingType>Mine</BuildingType><ProductionType>None</ProductionType></Building></Buildings>"
+            );
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorRecord building = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Buildings")
+                .Records.Single();
+            project.SetField(building.GetField("BuildingType"), "Shipyard");
+
+            project.ResetFieldToInherited(building.GetField("BuildingType"));
+
+            building = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Buildings")
+                .Records.Single();
+            Assert.AreEqual("Mine", building.GetField("BuildingType").Value);
+            Assert.AreEqual("None", building.GetField("ProductionType").Value);
+            Assert.IsTrue(project.Undo());
+            building = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Buildings")
+                .Records.Single();
+            Assert.AreEqual("Shipyard", building.GetField("BuildingType").Value);
+            Assert.AreEqual("Ship", building.GetField("ProductionType").Value);
+        }
+
+        [TestCase("Production", "ScrapRefundDivisor", 0)]
+        [TestCase("Production", "ScrapRefundDivisor", -1)]
+        [TestCase("AI", "TickInterval", 0)]
+        [TestCase("AI", "TickInterval", -1)]
+        [TestCase("AI.Garrison", "ResourceFacilitiesPerGarrison", 0)]
+        [TestCase("AI.Garrison", "ResourceFacilitiesPerGarrison", -1)]
+        [TestCase("Combat.PlanetaryAssault", "PersonnelDivisor", 0)]
+        [TestCase("Combat.PlanetaryAssault", "GeneralLeadershipDivisor", 0)]
+        [TestCase("Combat.PlanetaryAssault", "GeneralLeadershipDivisor", -1)]
+        [TestCase("Combat.PlanetaryAssault", "DefenseFireDivisor", 0)]
+        [TestCase("Combat.PlanetaryAssault", "DefenseFireDivisor", -1)]
+        [TestCase("Combat.Bombardment", "AttackerLeadershipDivisor", 0)]
+        [TestCase("Combat.Bombardment", "AttackerLeadershipDivisor", -1)]
+        [TestCase("Combat.Bombardment", "DefenderLeadershipDivisor", 0)]
+        [TestCase("Combat.Bombardment", "DefenderLeadershipDivisor", -1)]
+        [TestCase("Uprising", "MissionLeadershipDivisor", 0)]
+        [TestCase("Uprising", "MissionLeadershipDivisor", -1)]
+        [TestCase("Uprising", "DiceRange", 0)]
+        [TestCase("Uprising", "DiceRange", -2)]
+        [TestCase("Uprising", "DiceRange", int.MaxValue)]
+        [TestCase("Research", "RefreshIntervalSpread", -2)]
+        [TestCase("Research", "RefreshIntervalSpread", int.MaxValue)]
+        [TestCase("Combat.Bombardment", "StrikeRollMinimum", -1)]
+        [TestCase("Combat.Bombardment", "StrikeRollMaximum", -1)]
+        [TestCase("Combat.Bombardment", "StrikeRollMaximum", int.MaxValue)]
+        public void SetField_InvalidGameRule_PreservesWorkingDocument(
+            string section,
+            string member,
+            int value
+        )
+        {
+            var (project, catalog) = CreateGameRules(section, (member, 2));
+            ContentPackEditorField field = catalog
+                .Records[0]
+                .GetFields()
+                .Single(candidate => candidate.MemberName == member);
+            string before = catalog.Document.Text;
+
+            ArgumentException error = Assert.Throws<ArgumentException>(() =>
+                project.SetField(field, value.ToString(CultureInfo.InvariantCulture))
+            );
+
+            Assert.AreEqual(before, catalog.Document.Text);
+            Assert.IsFalse(project.IsDirty);
+            Assert.IsFalse(project.CanUndo);
+            StringAssert.Contains(field.Name, error.Message);
+            StringAssert.Contains(catalog.Document.Address, error.Message);
+        }
+
+        [TestCase("Production", "ScrapRefundDivisor", 1)]
+        [TestCase("AI", "TickInterval", 1)]
+        [TestCase("AI.Garrison", "ResourceFacilitiesPerGarrison", 1)]
+        [TestCase("Combat.PlanetaryAssault", "PersonnelDivisor", 1)]
+        [TestCase("Combat.PlanetaryAssault", "GeneralLeadershipDivisor", 1)]
+        [TestCase("Combat.PlanetaryAssault", "DefenseFireDivisor", 1)]
+        [TestCase("Combat.Bombardment", "AttackerLeadershipDivisor", 1)]
+        [TestCase("Combat.Bombardment", "DefenderLeadershipDivisor", 1)]
+        [TestCase("Uprising", "MissionLeadershipDivisor", 1)]
+        [TestCase("Uprising", "DiceRange", 1)]
+        [TestCase("Research", "RefreshIntervalSpread", 0)]
+        public void SetField_GameRuleBoundary_AcceptsValue(string section, string member, int value)
+        {
+            var (project, catalog) = CreateGameRules(section, (member, 2));
+            ContentPackEditorField field = catalog
+                .Records[0]
+                .GetFields()
+                .Single(candidate => candidate.MemberName == member);
+            string proposed = value.ToString(CultureInfo.InvariantCulture);
+
+            project.SetField(field, proposed);
+
+            Assert.AreEqual(proposed, field.Value);
+        }
+
+        [TestCase("StrikeRollMinimum", 11)]
+        [TestCase("StrikeRollMaximum", 0)]
+        public void SetField_InvertedBombardmentRange_PreservesWorkingDocument(
+            string member,
+            int value
+        )
+        {
+            var (project, catalog) = CreateGameRules(
+                "Combat.Bombardment",
+                ("StrikeRollMinimum", 1),
+                ("StrikeRollMaximum", 10)
+            );
+            string before = catalog.Document.Text;
+
+            Assert.Throws<ArgumentException>(() =>
+                project.SetField(
+                    catalog
+                        .Records[0]
+                        .GetFields()
+                        .Single(candidate => candidate.MemberName == member),
+                    value.ToString()
+                )
+            );
+
+            Assert.AreEqual(before, catalog.Document.Text);
+            Assert.IsFalse(project.IsDirty);
+            Assert.IsFalse(project.CanUndo);
+        }
+
+        [TestCase("StrikeRollMinimum", 10)]
+        [TestCase("StrikeRollMaximum", 1)]
+        public void SetField_EqualBombardmentBounds_AcceptsValue(string member, int value)
+        {
+            var (project, catalog) = CreateGameRules(
+                "Combat.Bombardment",
+                ("StrikeRollMinimum", 1),
+                ("StrikeRollMaximum", 10)
+            );
+            ContentPackEditorField field = catalog
+                .Records[0]
+                .GetFields()
+                .Single(candidate => candidate.MemberName == member);
+
+            project.SetField(field, value.ToString());
+
+            Assert.AreEqual(value.ToString(), field.Value);
+        }
+
         [TestCase(BuildingType.Mine, ManufacturingType.None)]
         [TestCase(BuildingType.Shipyard, ManufacturingType.Ship)]
         [TestCase(BuildingType.TrainingFacility, ManufacturingType.Troop)]
@@ -593,13 +784,10 @@ namespace Rebellion.Tests.ContentEditor
             Assert.AreEqual("My new advice", title.Value);
             using (StringReader reader = new(catalog.Document.Text))
             {
-                var factions = (Rebellion.Game.Factions.Faction[])
-                    new Rebellion.Util.Serialization.GameSerializer(
-                        typeof(Rebellion.Game.Factions.Faction[]),
-                        new Rebellion.Util.Serialization.GameSerializerSettings
-                        {
-                            RootName = "Factions",
-                        }
+                var factions = (Faction[])
+                    new GameSerializer(
+                        typeof(Faction[]),
+                        new GameSerializerSettings { RootName = "Factions" }
                     ).Deserialize(reader);
                 Assert.AreEqual(
                     existing ? 2 : 1,
@@ -679,10 +867,7 @@ namespace Rebellion.Tests.ContentEditor
             Assert.AreEqual(250, saved.Y);
             Assert.IsEmpty(saved.Planets);
             using StringReader text = new(saved.Element.ToString());
-            var sector = (Rebellion.Game.Galaxy.PlanetSector)
-                new Rebellion.Util.Serialization.GameSerializer(
-                    typeof(Rebellion.Game.Galaxy.PlanetSector)
-                ).Deserialize(text);
+            var sector = (PlanetSector)new GameSerializer(typeof(PlanetSector)).Deserialize(text);
             Assert.AreEqual(first.ID, sector.TypeID);
         }
 
@@ -953,6 +1138,39 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void Redo_InvalidDraftGroup_PreservesOverrideOnRepair()
+        {
+            WriteFixtureFile(
+                "Data/units.xml",
+                "<Officers><Officer><TypeID>ONE</TypeID><DisplayName>Base name</DisplayName></Officer></Officers>"
+            );
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorDocument units = project.Documents.Single(document =>
+                document.Address == "Pack/Data/units.xml"
+            );
+            string original = units.Text;
+            XDocument edited = XDocument.Parse(original);
+            edited.Root.Element("Officer").SetElementValue("DisplayName", "Changed name");
+            string invalid = "<Officers>";
+            units.SetText(invalid);
+            using (project.BeginEdit("Edit draft"))
+            {
+                project.SetDocumentText(units, edited.ToString());
+                units.SetText(invalid);
+            }
+
+            Assert.IsTrue(project.Undo());
+            Assert.IsTrue(project.Redo());
+            project.SetDocumentText(units, original);
+
+            ContentPackEditorRecord officer = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.ID == "ONE");
+            Assert.IsFalse(officer.GetField("DisplayName").IsInherited);
+        }
+
+        [Test]
         public void BeginEdit_ContinuousChangesAcrossDocuments_UndoesAsOneOperation()
         {
             ContentPackEditorProject project = CreateWorkingProject();
@@ -994,7 +1212,7 @@ namespace Rebellion.Tests.ContentEditor
 
             Assert.AreEqual("<Units />", units.Text);
             Assert.IsTrue(project.IsDirty);
-            Assert.AreEqual("<Units><Unit/></Units>", File.ReadAllText(units.TargetPath));
+            Assert.IsTrue(ContentXmlOverrides.IsOverlay(File.ReadAllText(units.TargetPath)));
         }
 
         [Test]
@@ -1267,6 +1485,43 @@ namespace Rebellion.Tests.ContentEditor
             Assert.Throws<ArgumentException>(() =>
                 project.ValidateField(ship.GetField("Hyperdrive"))
             );
+        }
+
+        /// <summary>
+        /// Creates a sparse rules document over an empty application rules baseline.
+        /// </summary>
+        /// <param name="section">The dotted path to the configuration section.</param>
+        /// <param name="values">The authored scalar members.</param>
+        /// <returns>The editable project and its sparse rules catalog.</returns>
+        private (
+            ContentPackEditorProject Project,
+            ContentPackEditorCatalog Catalog
+        ) CreateGameRules(string section, params (string Member, int Value)[] values)
+        {
+            string rulesPath = Path.Combine(contentRoot, "Application", "Rules", "game.xml");
+            Directory.CreateDirectory(Path.GetDirectoryName(rulesPath));
+            File.WriteAllText(rulesPath, "<GameConfig />");
+            XElement root = new XElement("GameConfig");
+            XElement container = root;
+            foreach (string member in section.Split('.'))
+            {
+                XElement child = new XElement(member);
+                container.Add(child);
+                container = child;
+            }
+            foreach (var value in values)
+                container.Add(new XElement(value.Member, value.Value));
+            WriteFixtureFile("Data/game-config.xml", root.ToString());
+            string manifest = Path.Combine(contentRoot, "Packs", "BasePack", "pack.xml");
+            ContentPackDefinition definition =
+                ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(manifest);
+            definition.GameConfigPath = "Data/game-config.xml";
+            ContentDefinitionSerializer.Serialize(manifest, definition);
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorCatalog catalog = project
+                .GetCatalogs()
+                .Single(item => item.Name == "Rules");
+            return (project, catalog);
         }
     }
 }

@@ -36,7 +36,7 @@ public sealed class UserInterfaceSettings
     public bool ShowUnitCardStats;
     public bool ShowFrameRate;
     public bool KeepIdleBarAboveWindows;
-    public IdleBarLocation IdleBarLocation = global::IdleBarLocation.TopRight;
+    public IdleBarLocation IdleBarLocation = IdleBarLocation.TopRight;
 
     /// <summary>
     /// Replaces unsupported persisted values with interface defaults.
@@ -44,7 +44,7 @@ public sealed class UserInterfaceSettings
     public void Normalize()
     {
         if (!Enum.IsDefined(typeof(IdleBarLocation), IdleBarLocation))
-            IdleBarLocation = global::IdleBarLocation.TopRight;
+            IdleBarLocation = IdleBarLocation.TopRight;
     }
 
     /// <summary>
@@ -109,6 +109,6 @@ public sealed class UserInterfaceSettings
         ShowUnitCardStats = false;
         ShowFrameRate = false;
         KeepIdleBarAboveWindows = false;
-        IdleBarLocation = global::IdleBarLocation.TopRight;
+        IdleBarLocation = IdleBarLocation.TopRight;
     }
 }

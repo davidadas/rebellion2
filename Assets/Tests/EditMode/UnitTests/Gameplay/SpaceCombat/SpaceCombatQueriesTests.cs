@@ -248,6 +248,32 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsTrue(canRetreat);
         }
 
+        [Test]
+        public void TryFindContestedForces_PlanetOwner_DefendsAgainstOpposingFleet()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "combat", owner: "alliance");
+            Fleet allianceFleet = AddFleet(game, planet, "alliance-fleet", "alliance");
+            Fleet empireFleet = AddFleet(game, planet, "empire-fleet", "empire");
+            SpaceCombatQueries queries = new SpaceCombatQueries(game, new MovementQueries(game));
+
+            bool found = queries.TryFindContestedForces(
+                new HashSet<string>(),
+                out Planet contestedPlanet,
+                out string attackerOwnerInstanceId,
+                out string defenderOwnerInstanceId,
+                out List<Fleet> attackerFleets,
+                out List<Fleet> defenderFleets
+            );
+
+            Assert.IsTrue(found);
+            Assert.AreSame(planet, contestedPlanet);
+            Assert.AreEqual("empire", attackerOwnerInstanceId);
+            Assert.AreEqual("alliance", defenderOwnerInstanceId);
+            CollectionAssert.AreEqual(new[] { empireFleet }, attackerFleets);
+            CollectionAssert.AreEqual(new[] { allianceFleet }, defenderFleets);
+        }
+
         /// <summary>
         /// Creates a stationary fleet and the read-only combat query dependencies.
         /// </summary>

@@ -60,8 +60,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
                 .GetPlayerFactionTheme()
                 .StrategyBookmarkLayout.GetSlotCount();
 
-            System.Collections.Generic.IReadOnlyList<BookmarkRenderData> data =
-                _controller.BuildRenderData();
+            IReadOnlyList<BookmarkRenderData> data = _controller.BuildRenderData();
 
             Assert.AreEqual(expectedCount, data.Count);
             Assert.That(data, Has.All.Matches<BookmarkRenderData>(item => !item.Active));
@@ -97,8 +96,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             GalaxyMapPlanet planet = CreatePlanet("planet-1", "Coruscant");
 
             bool accepted = _controller.TryAdd(PlanetIcon.Fleet, 10, 20, planet);
-            System.Collections.Generic.IReadOnlyList<BookmarkRenderData> data =
-                _controller.BuildRenderData();
+            IReadOnlyList<BookmarkRenderData> data = _controller.BuildRenderData();
 
             Assert.IsTrue(accepted);
             Assert.IsTrue(data[0].Active);

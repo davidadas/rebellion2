@@ -1817,7 +1817,7 @@ namespace Rebellion.AI
                 .ToList();
             if (
                 remaining.Count == 0
-                || !remaining.Any(SpaceCombatStrengthCalculator.IsArmedEscort)
+                || !remaining.Any(_assessment.IsArmedEscort)
                 || capitalShip.HasGravityWell && !remaining.Any(ship => ship.HasGravityWell)
             )
                 return false;

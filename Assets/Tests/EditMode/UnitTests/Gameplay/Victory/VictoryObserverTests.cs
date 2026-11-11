@@ -14,233 +14,319 @@ namespace Rebellion.Tests.Gameplay
     public class VictoryObserverTests
     {
         [Test]
-        public void HandleResults_HeadquartersCaptured_PublishesVictory()
+        public void HandleResults_HeadquartersLost_ProducesVictory()
         {
-            (
-                GameRoot game,
-                Faction empire,
-                Faction rebels,
-                Planet empireHQ,
-                VictoryCommands system
-            ) = BuildScene(rebelsCaptureEmpireHQ: false);
-            game.ChangeOwnership(empireHQ, rebels.InstanceID);
+            (GameRoot game, Faction defender, Faction attacker, Planet headquarters) = BuildScene();
+            VictoryObserver observer = CreateObserver(game);
 
-            List<VictoryResult> published = CaptureVictories(system);
-            new VictoryObserver(system, new VictoryQueries(game)).HandleResults(
-                new List<HeadquartersLostResult>
+            List<GameResult> results = observer.HandleResults(
+                new GameResult[]
                 {
                     new HeadquartersCapturedResult
                     {
-                        Planet = empireHQ,
+                        Planet = headquarters,
+                        Defender = defender,
+                        Attacker = attacker,
+                    },
+                }
+            );
+
+            VictoryResult victory = results.OfType<VictoryResult>().Single();
+            Assert.AreSame(attacker, victory.Winner);
+            CollectionAssert.AreEqual(new[] { defender }, victory.DefeatedFactions);
+            Assert.AreEqual(200, victory.Tick);
+        }
+
+        [Test]
+        public void HandleResults_HeadquartersLostWithoutAttacker_UsesSoleOpponent()
+        {
+            (GameRoot game, Faction defender, Faction attacker, Planet headquarters) = BuildScene();
+            VictoryObserver observer = CreateObserver(game);
+
+            List<GameResult> results = observer.HandleResults(
+                new GameResult[]
+                {
+                    new HeadquartersDestroyedResult { Planet = headquarters, Defender = defender },
+                }
+            );
+
+            Assert.AreSame(attacker, results.OfType<VictoryResult>().Single().Winner);
+        }
+
+        [Test]
+        public void HandleResults_AttackerlessHeadquartersLossWithDefeatedThirdFaction_ProducesVictory()
+        {
+            (GameRoot game, Faction defender, Faction attacker, Planet headquarters) = BuildScene();
+            game.GetFactions()
+                .Add(
+                    new Faction
+                    {
+                        InstanceID = "defeated",
+                        HQInstanceID = "hq-defeated",
+                        HasLostHeadquarters = true,
+                    }
+                );
+            VictoryObserver observer = CreateObserver(game);
+
+            List<GameResult> results = observer.HandleResults(
+                new GameResult[]
+                {
+                    new HeadquartersDestroyedResult { Planet = headquarters, Defender = defender },
+                }
+            );
+
+            Assert.AreSame(attacker, results.OfType<VictoryResult>().Single().Winner);
+        }
+
+        [Test]
+        public void HandleResults_CandidateHeadquartersAlreadyLost_DoesNotProduceVictory()
+        {
+            (GameRoot game, Faction defender, Faction attacker, Planet headquarters) = BuildScene();
+            attacker.HasLostHeadquarters = true;
+            VictoryObserver observer = CreateObserver(game);
+
+            List<GameResult> results = observer.HandleResults(
+                new GameResult[]
+                {
+                    new HeadquartersCapturedResult
+                    {
+                        Planet = headquarters,
+                        Defender = defender,
+                        Attacker = attacker,
+                    },
+                }
+            );
+
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
+        public void HandleResults_OrderedHeadquartersLossesWithDefeatedCandidates_ProducesNoVictory()
+        {
+            (GameRoot game, Faction empire, Faction rebels, Planet empireHeadquarters) =
+                BuildScene();
+            Planet rebelHeadquarters = game.GetSceneNodeByInstanceID<Planet>("hq-rebels");
+            game.ChangeOwnership(rebelHeadquarters, empire.InstanceID);
+            VictoryObserver observer = CreateObserver(game);
+
+            List<GameResult> results = observer.HandleResults(
+                new GameResult[]
+                {
+                    new HeadquartersCapturedResult
+                    {
+                        Planet = empireHeadquarters,
                         Defender = empire,
                         Attacker = rebels,
                     },
-                }
-            );
-
-            VictoryResult victory = published.Single();
-            Assert.IsNotNull(victory);
-            Assert.AreSame(rebels, victory.Winner);
-            CollectionAssert.AreEqual(new[] { empire }, victory.DefeatedFactions);
-        }
-
-        [Test]
-        public void HandleResults_MultipleHeadquartersLosses_DeclaresOnlyFirstVictory()
-        {
-            (GameRoot game, Faction defender, Faction firstAttacker, _, VictoryCommands system) =
-                BuildScene();
-            Faction secondAttacker = new Faction { InstanceID = "other" };
-
-            List<VictoryResult> published = CaptureVictories(system);
-            new VictoryObserver(system, new VictoryQueries(game)).HandleResults(
-                new HeadquartersLostResult[]
-                {
-                    null,
-                    new HeadquartersCapturedResult { Defender = defender },
-                    new HeadquartersDestroyedResult
-                    {
-                        Attacker = firstAttacker,
-                        Defender = defender,
-                    },
                     new HeadquartersCapturedResult
                     {
-                        Attacker = secondAttacker,
-                        Defender = defender,
+                        Planet = rebelHeadquarters,
+                        Defender = rebels,
+                        Attacker = empire,
                     },
                 }
             );
 
-            VictoryResult victory = published.Single();
-            Assert.AreSame(firstAttacker, victory.Winner);
-            Assert.AreEqual(200, victory.Tick);
-            Assert.IsEmpty(
-                new VictoryTickProcessor(system, new VictoryQueries(game)).ProcessTick(game)
-            );
-            Assert.IsEmpty(
-                new VictoryObserver(system, new VictoryQueries(game)).HandleResults(
-                    new HeadquartersLostResult[]
-                    {
-                        new HeadquartersCapturedResult
-                        {
-                            Attacker = secondAttacker,
-                            Defender = defender,
-                        },
-                    }
-                )
-            );
+            Assert.IsEmpty(results);
         }
 
         [Test]
-        public void HandleResults_ConquestWithAnyEnemyLeaderFree_DoesNotPublishVictory()
+        public void HandleResults_ConquestOfficerRemainsFree_DoesNotProduceVictory()
         {
-            (
-                GameRoot game,
-                Faction defender,
-                Faction attacker,
-                Planet planet,
-                VictoryCommands system
-            ) = BuildScene(GameVictoryCondition.Conquest);
-            Planet friendlyPlanet = new Planet
-            {
-                InstanceID = "friendly",
-                OwnerInstanceID = defender.InstanceID,
-                IsColonized = true,
-            };
-            game.AttachNode(friendlyPlanet, planet.GetParent());
+            (GameRoot game, Faction defender, Faction attacker, Planet headquarters) = BuildScene(
+                GameVictoryCondition.Conquest
+            );
+            defender.Settings.ConquestOfficerInstanceIDs.Add("leader");
+            Planet defenderPlanet = AddOwnedPlanet(game, headquarters, defender, "defender-home");
             game.AttachNode(
-                new Officer
-                {
-                    InstanceID = "free-leader",
-                    OwnerInstanceID = defender.InstanceID,
-                    IsMain = true,
-                },
-                friendlyPlanet
+                new Officer { InstanceID = "leader", OwnerInstanceID = defender.InstanceID },
+                defenderPlanet
             );
-            Faction otherDefender = new Faction
-            {
-                InstanceID = "other-defender",
-                HasLostHeadquarters = true,
-            };
-            game.GetFactions().Add(otherDefender);
+            VictoryObserver observer = CreateObserver(game);
 
-            List<VictoryResult> published = CaptureVictories(system);
-            new VictoryObserver(system, new VictoryQueries(game)).HandleResults(
-                new HeadquartersLostResult[]
+            List<GameResult> results = observer.HandleResults(
+                new GameResult[]
                 {
-                    new HeadquartersCapturedResult { Attacker = attacker, Defender = defender },
-                    new HeadquartersCapturedResult
-                    {
-                        Attacker = attacker,
-                        Defender = otherDefender,
-                    },
+                    new HeadquartersCapturedResult { Defender = defender, Attacker = attacker },
                 }
             );
 
-            Assert.IsEmpty(published);
-
-            Officer leader = game.GetSceneNodeByInstanceID<Officer>("free-leader");
-            leader.IsCaptured = true;
-            new VictoryObserver(system, new VictoryQueries(game)).HandleResults(
-                new[]
-                {
-                    new HeadquartersCapturedResult
-                    {
-                        Attacker = attacker,
-                        Defender = otherDefender,
-                    },
-                }
-            );
-
-            VictoryResult victory = published.Single();
-            Assert.AreSame(attacker, victory.Winner);
-            CollectionAssert.AreEquivalent(
-                new[] { defender, otherDefender },
-                victory.DefeatedFactions
-            );
+            Assert.IsEmpty(results);
         }
 
         [Test]
-        public void HandleResults_NullBatch_ReturnsEmpty()
+        public void HandleResults_LastConquestOfficerCaptured_ProducesVictoryImmediately()
         {
-            (GameRoot game, _, _, _, VictoryCommands system) = BuildScene();
-
-            Assert.IsEmpty(
-                new VictoryObserver(system, new VictoryQueries(game)).HandleResults(null)
+            (GameRoot game, Faction defender, Faction attacker, Planet headquarters) = BuildScene(
+                GameVictoryCondition.Conquest
             );
+            defender.Settings.ConquestOfficerInstanceIDs.Add("leader");
+            Officer leader = new Officer
+            {
+                InstanceID = "leader",
+                OwnerInstanceID = defender.InstanceID,
+                IsCaptured = true,
+                CaptorInstanceID = attacker.InstanceID,
+            };
+            game.AttachNode(leader, headquarters);
+            Planet defenderPlanet = AddOwnedPlanet(game, headquarters, defender, "defender-home");
+            game.AttachNode(
+                new Officer { InstanceID = "other-officer", OwnerInstanceID = defender.InstanceID },
+                defenderPlanet
+            );
+            VictoryObserver observer = CreateObserver(game);
+
+            List<GameResult> results = observer.HandleResults(
+                new GameResult[]
+                {
+                    new OfficerCaptureStateResult
+                    {
+                        TargetOfficer = leader,
+                        IsCaptured = true,
+                        CaptorInstanceID = attacker.InstanceID,
+                    },
+                }
+            );
+
+            Assert.AreSame(attacker, results.OfType<VictoryResult>().Single().Winner);
         }
 
-        /// <summary>
-        /// Collects victories published by the supplied command service.
-        /// </summary>
-        /// <param name="commands">The victory commands to observe.</param>
-        /// <returns>The collection receiving published victories.</returns>
-        private static List<VictoryResult> CaptureVictories(VictoryCommands commands)
+        [Test]
+        public void HandleResults_ConquestOfficerReleased_DoesNotProduceVictory()
         {
-            List<VictoryResult> published = new List<VictoryResult>();
-            commands.ResultsProduced += results => published.AddRange(results);
-            return published;
+            (GameRoot game, Faction defender, Faction attacker, Planet headquarters) = BuildScene(
+                GameVictoryCondition.Conquest
+            );
+            defender.Settings.ConquestOfficerInstanceIDs.Add("leader");
+            Officer leader = new Officer
+            {
+                InstanceID = "leader",
+                OwnerInstanceID = defender.InstanceID,
+            };
+            Planet defenderPlanet = AddOwnedPlanet(game, headquarters, defender, "defender-home");
+            game.AttachNode(leader, defenderPlanet);
+            VictoryObserver observer = CreateObserver(game);
+
+            List<GameResult> results = observer.HandleResults(
+                new GameResult[]
+                {
+                    new OfficerCaptureStateResult
+                    {
+                        TargetOfficer = leader,
+                        IsCaptured = false,
+                        CaptorInstanceID = attacker.InstanceID,
+                    },
+                }
+            );
+
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
+        public void Connect_LastConquestOfficerCaptured_QueuesVictoryOnResultBus()
+        {
+            (GameRoot game, Faction defender, Faction attacker, Planet headquarters) = BuildScene(
+                GameVictoryCondition.Conquest
+            );
+            defender.Settings.ConquestOfficerInstanceIDs.Add("leader");
+            Officer leader = new Officer
+            {
+                InstanceID = "leader",
+                OwnerInstanceID = defender.InstanceID,
+                IsCaptured = true,
+                CaptorInstanceID = attacker.InstanceID,
+            };
+            game.AttachNode(leader, headquarters);
+            GameResultBus bus = new();
+            using VictoryObserver observer = CreateObserver(game);
+            observer.Connect(bus);
+
+            List<GameResult> results = bus.Publish(
+                new OfficerCaptureStateResult
+                {
+                    TargetOfficer = leader,
+                    IsCaptured = true,
+                    CaptorInstanceID = attacker.InstanceID,
+                }
+            );
+
+            Assert.AreSame(attacker, results.OfType<VictoryResult>().Single().Winner);
         }
 
         /// <summary>
-        /// Builds scene.
+        /// Creates a victory observer for the supplied game.
         /// </summary>
-        /// <param name="victoryCondition">The victory condition.</param>
-        /// <param name="rebelsCaptureEmpireHQ">Whether rebels capture empire hq.</param>
-        /// <returns>The constructed scene.</returns>
-        private (
+        /// <param name="game">The game to observe.</param>
+        /// <returns>The configured observer.</returns>
+        private static VictoryObserver CreateObserver(GameRoot game)
+        {
+            return new VictoryObserver(new VictoryCommands(game), new VictoryQueries(game));
+        }
+
+        /// <summary>
+        /// Adds a colonized planet owned by the specified faction.
+        /// </summary>
+        /// <param name="game">The game receiving the planet.</param>
+        /// <param name="sibling">A planet in the destination sector.</param>
+        /// <param name="owner">The planet owner.</param>
+        /// <param name="instanceId">The planet instance identifier.</param>
+        /// <returns>The attached planet.</returns>
+        private static Planet AddOwnedPlanet(
+            GameRoot game,
+            Planet sibling,
+            Faction owner,
+            string instanceId
+        )
+        {
+            Planet planet = new Planet
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = owner.InstanceID,
+                IsColonized = true,
+                EnergyCapacity = 10,
+            };
+            game.AttachNode(planet, sibling.GetParent());
+            return planet;
+        }
+
+        /// <summary>
+        /// Creates a two-faction victory scene.
+        /// </summary>
+        /// <param name="victoryCondition">The active victory condition.</param>
+        /// <returns>The game, factions, and lost headquarters planet.</returns>
+        private static (
             GameRoot game,
             Faction empire,
             Faction rebels,
-            Planet empireHQ,
-            VictoryCommands system
-        ) BuildScene(
-            GameVictoryCondition victoryCondition = GameVictoryCondition.Headquarters,
-            bool rebelsCaptureEmpireHQ = true
-        )
+            Planet empireHeadquarters
+        ) BuildScene(GameVictoryCondition victoryCondition = GameVictoryCondition.Headquarters)
         {
-            GameConfig config = TestConfig.Create();
-            GameRoot game = TestGame.Create(config);
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.Summary = new GameSummary { VictoryCondition = victoryCondition };
             game.CurrentTick = 200;
-
             Faction empire = new Faction { InstanceID = "empire" };
             Faction rebels = new Faction { InstanceID = "rebels" };
             game.GetFactions().Add(empire);
             game.GetFactions().Add(rebels);
-
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            game.AttachNode(sector, game.Galaxy);
+            Planet empireHeadquarters = new Planet
             {
-                InstanceID = "sector1",
-                PositionX = 0,
-                PositionY = 0,
-            };
-            game.AttachNode(planetSector, game.Galaxy);
-
-            Planet empireHQ = new Planet
-            {
-                InstanceID = "hq_empire",
-                OwnerInstanceID = rebelsCaptureEmpireHQ ? "rebels" : "empire",
-                IsColonized = true,
-                PositionX = 0,
-                PositionY = 0,
-                PopularSupport = new Dictionary<string, int>(),
-            };
-            game.AttachNode(empireHQ, planetSector);
-            empire.HQInstanceID = "hq_empire";
-
-            Planet rebelHQ = new Planet
-            {
-                InstanceID = "hq_rebels",
+                InstanceID = "hq-empire",
                 OwnerInstanceID = rebels.InstanceID,
                 IsColonized = true,
-                PositionX = 100,
-                PositionY = 0,
-                PopularSupport = new Dictionary<string, int>(),
             };
-            game.AttachNode(rebelHQ, planetSector);
-            rebels.HQInstanceID = rebelHQ.InstanceID;
-
-            return (game, empire, rebels, empireHQ, new VictoryCommands(game));
+            game.AttachNode(empireHeadquarters, sector);
+            empire.HQInstanceID = empireHeadquarters.InstanceID;
+            Planet rebelHeadquarters = new Planet
+            {
+                InstanceID = "hq-rebels",
+                OwnerInstanceID = rebels.InstanceID,
+                IsColonized = true,
+            };
+            game.AttachNode(rebelHeadquarters, sector);
+            rebels.HQInstanceID = rebelHeadquarters.InstanceID;
+            return (game, empire, rebels, empireHeadquarters);
         }
     }
 }

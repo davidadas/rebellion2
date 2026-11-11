@@ -294,7 +294,7 @@ internal static class ContentPackEditorFieldMetadata
             return "Percentage added to the officer's base leadership while the trait is active.";
         if (_descriptions.TryGetValue(field.MemberName, out string text))
             return text;
-        if (field.MemberName.EndsWith("Variance", System.StringComparison.Ordinal))
+        if (field.MemberName.EndsWith("Variance", StringComparison.Ordinal))
             return "The random starting variation applied to this rating during world generation.";
         if (field.IsMedia)
             return field.IsMediaDirectory

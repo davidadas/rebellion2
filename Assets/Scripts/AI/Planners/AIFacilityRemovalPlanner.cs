@@ -55,7 +55,7 @@ namespace Rebellion.AI.Planners
                 .Where(site => site.Count > 0)
                 .OrderBy(site => site.Rate)
                 .ThenBy(site => context.Assessment.GetPlanetValue(site.Planet))
-                .ThenBy(site => site.Planet.InstanceID, System.StringComparer.Ordinal)
+                .ThenBy(site => site.Planet.InstanceID, StringComparer.Ordinal)
                 .ToList();
             int surplusCount = Math.Max(0, sites.Sum(site => site.Count) - minimumShipyardCount);
             foreach ((Planet planet, int count, int _) in sites)

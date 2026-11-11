@@ -28,7 +28,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         [TearDown]
         public void TearDown()
         {
-            UnityEngine.Object.DestroyImmediate(_gameObject);
+            Object.DestroyImmediate(_gameObject);
             GameLaunchContext.Reset(TestContent.Pack);
         }
 

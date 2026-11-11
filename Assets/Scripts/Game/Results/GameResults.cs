@@ -178,6 +178,11 @@ namespace Rebellion.Game.Results
     public sealed class HeadquartersCapturedResult : HeadquartersLostResult { }
 
     /// <summary>
+    /// A faction's headquarters lost control without another faction taking ownership.
+    /// </summary>
+    public sealed class HeadquartersNeutralizedResult : HeadquartersLostResult { }
+
+    /// <summary>
     /// A faction's headquarters was destroyed.
     /// </summary>
     public sealed class HeadquartersDestroyedResult : HeadquartersLostResult

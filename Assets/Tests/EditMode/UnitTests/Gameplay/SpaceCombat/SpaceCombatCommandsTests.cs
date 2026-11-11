@@ -194,6 +194,52 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void Resolve_SystemCommander_IncludesSelectedOfficerInCombatReport()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "alliance" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet
+            {
+                InstanceID = "planet",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+            };
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
+            Fleet empireFleet = CreateFleet(game, "empire-fleet", "empire", planet, 1, 100, 10);
+            Fleet allianceFleet = CreateFleet(
+                game,
+                "alliance-fleet",
+                "alliance",
+                planet,
+                1,
+                100,
+                10
+            );
+            Officer commander = new Officer
+            {
+                InstanceID = "system-commander",
+                OwnerInstanceID = "empire",
+                CurrentRank = OfficerRank.Commander,
+            };
+            commander.SetBaseRating(SkillRating.Combat, 70);
+            game.AttachNode(commander, planet);
+            SpaceCombatCommands commands = MakeSpaceCombat(game);
+
+            TryResolveCombat(commands, empireFleet, allianceFleet, out List<GameResult> results);
+
+            SpaceCombatResult combatResult = GetCombatResult(results);
+            CombatReport report = CombatReport.Capture(combatResult, "empire", null, null);
+            IReadOnlyList<CombatReportUnit> empireUnits =
+                combatResult.AttackerOwnerInstanceID == "empire"
+                    ? report.AttackingUnits
+                    : report.DefendingUnits;
+            Assert.IsTrue(empireUnits.Any(unit => unit.InstanceID == commander.InstanceID));
+        }
+
+        [Test]
         public void Resolve_CompletedEncounter_ReturnsAggregateDamage()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -4399,8 +4445,16 @@ namespace Rebellion.Tests.Gameplay
             if (destroyExistingRecoveryFighters)
             {
                 CapitalShip attackingShip = attackingFleet.GetChildren<CapitalShip>().Single();
-                attackingShip.SublightSpeed = 100;
+                attackingShip.SublightSpeed = 0;
                 attackingShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new int[]
+                {
+                    1000,
+                    0,
+                    0,
+                    0,
+                    100,
+                };
+                attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new int[]
                 {
                     1000,
                     0,
@@ -4496,6 +4550,8 @@ namespace Rebellion.Tests.Gameplay
                     ShieldStrength = 1,
                     Hyperdrive = existingRecoveryFighterHyperdrive,
                     SublightSpeed = destroyExistingRecoveryFighters ? 0 : 10,
+                    IonCannon = destroyExistingRecoveryFighters ? 30 : 0,
+                    IonRange = 100,
                 };
                 if (existingRecoveryFightersAreInTransit)
                 {
@@ -4547,7 +4603,13 @@ namespace Rebellion.Tests.Gameplay
                     {
                         AdmiralLeadershipDivisor = 10,
                         CommanderCombatDivisor = 20,
+                        TurbolaserFighterDamageMultiplier = 0.5,
+                        FighterIonCannonFighterDamageMultiplier = 0.5,
+                        AutoResolveWeaponDamagePerStrength = 4.0 / 15.0,
+                        AutoResolveTorpedoDamagePerStrength = 0.53333336,
                         AutoResolveFighterWeaponRechargeMultiplier = 3.751,
+                        AutoResolveFighterShieldRechargePerCraft = 0.025,
+                        AutoResolveFighterHullPerCraft = 8,
                         AutoResolveMaximumIterations = 4096,
                         AutoResolveStagnationIterations = 1200,
                         AutoResolveRetreatStrengthRatio = 0.33,

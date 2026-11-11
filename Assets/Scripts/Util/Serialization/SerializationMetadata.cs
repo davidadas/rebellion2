@@ -12,6 +12,29 @@ namespace Rebellion.Util.Serialization
     public static class SerializationMetadata
     {
         /// <summary>
+        /// Resolves element and attribute aliases to one persisted member identity.
+        /// </summary>
+        /// <param name="type">The containing object type.</param>
+        /// <param name="name">The accepted XML member name.</param>
+        /// <returns>The member identity, or null for an unknown member.</returns>
+        public static string GetMemberIdentity(Type type, string name)
+        {
+            if (type == null || TypeHelper.IsEnumerable(type))
+                return null;
+            if (
+                ReflectionHelper
+                    .GetElementMemberLookup(type)
+                    .TryGetValue(name, out MemberInfo member)
+            )
+                return member.Name;
+            return ReflectionHelper
+                .GetPersistableAttributeMap(type, ReflectionHelper.OperationType.Read)
+                .TryGetValue(name, out member)
+                ? member.Name
+                : null;
+        }
+
+        /// <summary>
         /// Finds registered types using their serialized element name.
         /// </summary>
         /// <param name="elementName">The serialized object name.</param>

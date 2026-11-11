@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -98,7 +99,7 @@ public sealed class AppBootstrap : MonoBehaviour
             return bootstrap;
 
         Destroy(obj);
-        throw new System.InvalidOperationException(
+        throw new InvalidOperationException(
             "AppBootstrap initialization failed.",
             bootstrap._initializationFailure
         );
@@ -168,7 +169,7 @@ public sealed class AppBootstrap : MonoBehaviour
         _contentAssets = new ContentAssets(_contentPack.FileResolver);
         Texture2D cursorTexture =
             _contentAssets.GetCursor(_defaultCursorAddress)
-            ?? throw new System.InvalidOperationException(
+            ?? throw new InvalidOperationException(
                 $"Application cursor is missing: {_defaultCursorAddress}"
             );
         Cursor.SetCursor(cursorTexture, Vector2.zero, CursorMode.Auto);
@@ -272,7 +273,7 @@ public sealed class AppBootstrap : MonoBehaviour
             return false;
 
         SaveGameManager saveGameManager = SaveGameManager.Instance;
-        if (!System.IO.File.Exists(saveGameManager.GetSaveFilePath(fileName)))
+        if (!File.Exists(saveGameManager.GetSaveFilePath(fileName)))
             return false;
 
         if (LoadingScreenController.IsLoadInProgress)

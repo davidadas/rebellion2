@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using UnityEngine;
@@ -33,6 +34,41 @@ namespace Rebellion.Tests.ContentEditor
         /// </summary>
         [TearDown]
         public void TearDown() => Directory.Delete(folder, true);
+
+        [TestCase("Building", "ProcessRate", -1)]
+        [TestCase("Officer", "ForceValue", 32768)]
+        public async Task PrepareAsync_InvalidRawNumericValue_RejectsTheSnapshotAsync(
+            string kind,
+            string member,
+            int value
+        )
+        {
+            ContentPackEditorRecord record = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(item => item.Kind == kind);
+            XDocument xml = XDocument.Parse(record.Catalog.Document.Text);
+            xml.Descendants(kind).First().SetElementValue(member, value);
+            project.SetDocumentText(record.Catalog.Document, xml.ToString());
+            try
+            {
+                using ContentEditorPlaySession session =
+                    await ContentEditorPlaySession.PrepareAsync(
+                        project,
+                        new ContentEditorPlayOptions(
+                            project.Definition.DefaultScenarioID,
+                            project.GetFactionOptions().Keys.First(),
+                            GameSize.Small,
+                            GameDifficulty.Easy
+                        )
+                    );
+                Assert.Fail("The invalid snapshot must not launch.");
+            }
+            catch (ArgumentException error)
+            {
+                StringAssert.Contains(record.GetField(member).Name, error.Message);
+            }
+        }
 
         [Test]
         public async Task PrepareAsync_UnsavedChanges_UsesTheSnapshotWithoutSavingTheProjectAsync()

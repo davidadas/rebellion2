@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Demands;
@@ -5,6 +6,7 @@ using Rebellion.AI.Proposals;
 using Rebellion.AI.Selectors;
 using Rebellion.Game;
 using Rebellion.Game.Missions;
+using Rebellion.Util.Random;
 
 namespace Rebellion.AI.Phases
 {
@@ -41,7 +43,7 @@ namespace Rebellion.AI.Phases
 
             AISelectionState state = _continueSelection
                 ? context.SelectionState
-                    ?? throw new System.InvalidOperationException(
+                    ?? throw new InvalidOperationException(
                         "Selection must begin before it can continue."
                     )
                 : new AISelectionState();
@@ -372,7 +374,7 @@ namespace Rebellion.AI.Phases
             IList<AIProposal> proposals,
             int start,
             int end,
-            Rebellion.Util.Random.IRandomNumberProvider random
+            IRandomNumberProvider random
         )
         {
             if (random == null)

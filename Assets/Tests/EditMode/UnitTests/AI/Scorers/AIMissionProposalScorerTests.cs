@@ -1875,7 +1875,7 @@ namespace Rebellion.Tests.AI.Scorers
             bool incite = missionTypeId == InciteUprisingMission.MissionTypeID;
             string controller = incite ? rebels.InstanceID : empire.InstanceID;
             Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", controller);
-            target.PopularSupport = new System.Collections.Generic.Dictionary<string, int>
+            target.PopularSupport = new Dictionary<string, int>
             {
                 { controller, 0 },
                 { incite ? empire.InstanceID : rebels.InstanceID, 100 },
@@ -1899,10 +1899,14 @@ namespace Rebellion.Tests.AI.Scorers
             );
             participant.AllowedMissionTypeIDs.Add(missionTypeId);
             game.AttachNode(participant, origin);
-            game.Config.ProbabilityTables.Mission.InciteUprising =
-                new System.Collections.Generic.Dictionary<int, int> { { -1000, 100 } };
-            game.Config.ProbabilityTables.Mission.SubdueUprising =
-                new System.Collections.Generic.Dictionary<int, int> { { -1000, 100 } };
+            game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            game.Config.ProbabilityTables.Mission.SubdueUprising = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposal proposal = new AIMissionProposal(

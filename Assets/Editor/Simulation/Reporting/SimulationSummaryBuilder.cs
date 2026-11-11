@@ -14,6 +14,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Util.Random;
+using UnityEngine;
 
 public static partial class HeadlessSimulationRunner
 {
@@ -824,7 +825,7 @@ public static partial class HeadlessSimulationRunner
         if (!string.IsNullOrEmpty(directory))
             Directory.CreateDirectory(directory);
 
-        File.WriteAllText(resolvedPath, UnityEngine.JsonUtility.ToJson(report, true));
+        File.WriteAllText(resolvedPath, JsonUtility.ToJson(report, true));
         return resolvedPath;
     }
 

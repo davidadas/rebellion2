@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,6 +15,47 @@ namespace Rebellion.Tests.ContentEditor.UI
     [TestFixture]
     public sealed class ContentPackEditorWorkspaceControllerTests : ContentEditorViewTestBase
     {
+        [Test]
+        public void ResetFieldToInherited_VisibleButton_RestoresInheritedValueAndSupportsUndo()
+        {
+            project = ContentEditorTestData.CreateLoadableProject(
+                Path.Combine(folder, "InheritedContent")
+            );
+            ContentPackEditorRecord officer = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.First();
+            string inheritedName = officer.GetField("DisplayName").Value;
+            project.SetField(officer.GetField("DisplayName"), "Overridden name");
+            workspace.RenderProject(project, assets);
+            SelectRecord(officer);
+            ContentEditorFieldView field = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(control => control.Field.MemberName == "DisplayName");
+
+            field
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Inheritance")
+                .onClick.Invoke();
+
+            ContentPackEditorField reset = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.First()
+                .GetField("DisplayName");
+            Assert.AreEqual(inheritedName, reset.Value);
+            Assert.IsTrue(reset.IsInherited);
+            Assert.IsTrue(project.Undo());
+            Assert.AreEqual(
+                "Overridden name",
+                project
+                    .GetCatalogs()
+                    .First(catalog => catalog.Name == "Officers")
+                    .Records.First()
+                    .GetField("DisplayName")
+                    .Value
+            );
+        }
+
         [UnityTest]
         public IEnumerator ArrangeMapAsync_OverlappingPlanets_ClearsRenderedGeometryAndUndoesAsOneEdit()
         {

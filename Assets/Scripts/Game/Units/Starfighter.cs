@@ -35,6 +35,12 @@ namespace Rebellion.Game.Units
         [PersistableMember(Name = nameof(CurrentSquadronSize))]
         private int _currentSquadronSize;
 
+        [PersistableMember(Name = nameof(NextReplacementTick))]
+        private int _nextReplacementTick;
+
+        [PersistableMember(Name = nameof(ReplacementIntervalTicks))]
+        private int _replacementIntervalTicks;
+
         [PersistableMember(Name = nameof(DetectionRating))]
         private int _detectionRating;
 
@@ -86,6 +92,20 @@ namespace Rebellion.Game.Units
         {
             get => _currentSquadronSize;
             set => _currentSquadronSize = value;
+        }
+
+        [PersistableIgnore]
+        public int NextReplacementTick
+        {
+            get => _nextReplacementTick;
+            set => _nextReplacementTick = value;
+        }
+
+        [PersistableIgnore]
+        public int ReplacementIntervalTicks
+        {
+            get => _replacementIntervalTicks;
+            set => _replacementIntervalTicks = value;
         }
 
         [PersistableIgnore]
@@ -217,6 +237,8 @@ namespace Rebellion.Game.Units
             copy.UprisingDefense = UprisingDefense;
             copy.MaxSquadronSize = MaxSquadronSize;
             copy.CurrentSquadronSize = CurrentSquadronSize;
+            copy.NextReplacementTick = NextReplacementTick;
+            copy.ReplacementIntervalTicks = ReplacementIntervalTicks;
             copy.DetectionRating = DetectionRating;
             copy.Bombardment = Bombardment;
             copy.ShieldStrength = ShieldStrength;
@@ -250,6 +272,27 @@ namespace Rebellion.Game.Units
         public void ReplaceFighters(int amount)
         {
             CurrentSquadronSize = Math.Min(MaxSquadronSize, CurrentSquadronSize + amount);
+        }
+
+        /// <summary>
+        /// Schedules the next lost-fighter replacement pulse.
+        /// </summary>
+        /// <param name="currentTick">The tick from which to measure the interval.</param>
+        /// <param name="intervalTicks">The positive number of ticks before the next pulse.</param>
+        public void ScheduleReplacement(int currentTick, int intervalTicks)
+        {
+            int clampedInterval = Math.Max(1, intervalTicks);
+            NextReplacementTick = checked(currentTick + clampedInterval);
+            ReplacementIntervalTicks = clampedInterval;
+        }
+
+        /// <summary>
+        /// Clears the lost-fighter replacement timer.
+        /// </summary>
+        public void ClearReplacementSchedule()
+        {
+            NextReplacementTick = 0;
+            ReplacementIntervalTicks = 0;
         }
 
         /// <summary>

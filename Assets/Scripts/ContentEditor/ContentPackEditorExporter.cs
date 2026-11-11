@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -17,8 +18,8 @@ internal static class ContentPackEditorExporter
     /// <param name="filePath">The archive destination.</param>
     /// <param name="progress">Optional status reporting for the staged validation.</param>
     /// <param name="cancellationToken">The requested cancellation.</param>
-    /// <returns>The completion of the staged export.</returns>
-    internal static async Task WriteArchiveAsync(
+    /// <returns>The staged validation's non-blocking authoring warnings.</returns>
+    internal static async Task<IReadOnlyList<string>> WriteArchiveAsync(
         ContentPackEditorProject project,
         string filePath,
         Action<string> progress = null,
@@ -33,7 +34,7 @@ internal static class ContentPackEditorExporter
         try
         {
             await WriteSnapshotAsync(project, staging, cancellationToken);
-            await ContentEditorPackValidator.ValidateAsync(
+            IReadOnlyList<string> warnings = await ContentEditorPackValidator.ValidateAsync(
                 ContentPackEditorStorage.OpenFolder(project.ContentRootPath, staging),
                 progress,
                 cancellationToken
@@ -43,6 +44,7 @@ internal static class ContentPackEditorExporter
             await WriteArchiveContentsAsync(staging, temporaryFile, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             CommitArchive(temporaryFile, destination);
+            return warnings;
         }
         finally
         {
@@ -153,11 +155,19 @@ internal static class ContentPackEditorExporter
         foreach (ContentPackEditorDocument document in project.Documents)
             document.Validate();
         var documents = project
-            .Documents.Where(document => !document.IsInherited || document.IsDirty)
-            .Select(document => (Path: document.Address[5..], document.Text))
+            .Documents.Where(document =>
+                (!document.IsInherited || document.IsDirty) && !document.InheritsAll
+            )
+            .Select(document => (Path: document.Address[5..], Text: document.AuthoredText))
             .ToArray();
         string root = project.PackRootPath;
-        var removed = project.RemovedDocumentPaths.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var removed = project
+            .RemovedDocumentPaths.Concat(
+                project
+                    .Documents.Where(document => document.InheritsAll)
+                    .Select(document => document.TargetPath)
+            )
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         string[] sources = Directory
             .EnumerateFiles(root, "*", SearchOption.AllDirectories)
             .Where(source =>

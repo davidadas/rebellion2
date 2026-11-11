@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -59,9 +60,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(string.Empty, data.Name);
             Assert.IsTrue(data.Selected);
             CollectionAssert.AreEqual(new[] { "1", "2" }, data.Counts);
-            Assert.Throws<NotSupportedException>(() =>
-                ((System.Collections.Generic.IList<string>)data.Counts)[0] = "3"
-            );
+            Assert.Throws<NotSupportedException>(() => ((IList<string>)data.Counts)[0] = "3");
         }
 
         [Test]
