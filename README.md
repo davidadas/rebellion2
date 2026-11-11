@@ -26,7 +26,7 @@ Rebellion 2 is available in early access for Windows, macOS, and Linux.
       <sub>Universal Intel + Apple Silicon app</sub>
     </td>
     <td align="center" width="33%">
-      <a href="https://github.com/adasgames/rebellion2-installers/releases/latest">
+      <a href="https://github.com/adasgames/rebellion2-installers/releases/download/latest-linux-download/Rebellion2-Linux-x86_64.AppImage">
         <img src="Docs/Assets/linux.svg" width="64" alt="Linux"><br>
         <strong>Download latest for Linux</strong>
       </a><br>
@@ -47,7 +47,7 @@ chmod +x Rebellion2-*-x86_64.AppImage
 ./Rebellion2-*-x86_64.AppImage
 ```
 
-[View release notes and all downloads](https://github.com/adasgames/rebellion2-installers/releases/latest)
+[View release notes and all downloads](https://github.com/adasgames/rebellion2-installers/releases)
 or browse the public [installer and launcher source code](https://github.com/adasgames/rebellion2-installers).
 
 The installer verifies ownership automatically. You must own either *Star Wars: Rebellion* or
