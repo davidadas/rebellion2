@@ -17,6 +17,71 @@ namespace Rebellion.Tests.ContentEditor
     [TestFixture]
     public sealed class ContentPackEditorProjectTests : ContentPackEditorTestBase
     {
+        [TestCase("theme")]
+        [TestCase("dictionary")]
+        public void ResetFieldToInherited_OverlaySelector_RejectsResetWithoutChangingTheDocument(
+            string kind
+        )
+        {
+            string xml =
+                kind == "theme"
+                    ? "<FactionThemes><FactionTheme><FactionInstanceID>FNEMP1</FactionInstanceID><FactionPrimaryColorHex>red</FactionPrimaryColorHex></FactionTheme></FactionThemes>"
+                    : "<Officers><Officer><TypeID>one</TypeID><Ratings><Entry><Key>Diplomacy</Key><Value>40</Value></Entry></Ratings></Officer></Officers>";
+            WriteFixtureFile("Data/units.xml", xml);
+            ContentPackEditorProject project = CreateWorkingProject();
+            Directory.CreateDirectory(Path.Combine(project.PackRootPath, "Data"));
+            File.WriteAllText(Path.Combine(project.PackRootPath, "Data/units.xml"), xml);
+            project = ContentPackEditorStorage.OpenFolder(contentRoot, project.PackRootPath);
+            ContentPackEditorRecord record = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Document.Address == "Pack/Data/units.xml")
+                .Records.Single();
+            XElement element = record
+                .Element.Descendants(kind == "theme" ? "FactionInstanceID" : "Key")
+                .Single();
+            ContentPackEditorField selector = new ContentPackEditorField(
+                record,
+                element,
+                "Selector"
+            );
+            string before = record.Catalog.Document.Text;
+
+            Assert.IsFalse(selector.CanInherit);
+            Assert.Throws<InvalidOperationException>(() => project.ResetFieldToInherited(selector));
+            Assert.AreEqual(before, record.Catalog.Document.Text);
+        }
+
+        [Test]
+        public void ResetFieldToInherited_BuildingCategory_RestoresProductionAndUndoesTogether()
+        {
+            WriteFixtureFile(
+                "Data/units.xml",
+                "<Buildings><Building><TypeID>MINE</TypeID><BuildingType>Mine</BuildingType><ProductionType>None</ProductionType></Building></Buildings>"
+            );
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorRecord building = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Buildings")
+                .Records.Single();
+            project.SetField(building.GetField("BuildingType"), "Shipyard");
+
+            project.ResetFieldToInherited(building.GetField("BuildingType"));
+
+            building = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Buildings")
+                .Records.Single();
+            Assert.AreEqual("Mine", building.GetField("BuildingType").Value);
+            Assert.AreEqual("None", building.GetField("ProductionType").Value);
+            Assert.IsTrue(project.Undo());
+            building = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Buildings")
+                .Records.Single();
+            Assert.AreEqual("Shipyard", building.GetField("BuildingType").Value);
+            Assert.AreEqual("Ship", building.GetField("ProductionType").Value);
+        }
+
         [TestCase("Production", "ScrapRefundDivisor", 0)]
         [TestCase("Production", "ScrapRefundDivisor", -1)]
         [TestCase("AI", "TickInterval", 0)]
@@ -1073,6 +1138,39 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void Redo_InvalidDraftGroup_PreservesOverrideOnRepair()
+        {
+            WriteFixtureFile(
+                "Data/units.xml",
+                "<Officers><Officer><TypeID>ONE</TypeID><DisplayName>Base name</DisplayName></Officer></Officers>"
+            );
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorDocument units = project.Documents.Single(document =>
+                document.Address == "Pack/Data/units.xml"
+            );
+            string original = units.Text;
+            XDocument edited = XDocument.Parse(original);
+            edited.Root.Element("Officer").SetElementValue("DisplayName", "Changed name");
+            string invalid = "<Officers>";
+            units.SetText(invalid);
+            using (project.BeginEdit("Edit draft"))
+            {
+                project.SetDocumentText(units, edited.ToString());
+                units.SetText(invalid);
+            }
+
+            Assert.IsTrue(project.Undo());
+            Assert.IsTrue(project.Redo());
+            project.SetDocumentText(units, original);
+
+            ContentPackEditorRecord officer = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.ID == "ONE");
+            Assert.IsFalse(officer.GetField("DisplayName").IsInherited);
+        }
+
+        [Test]
         public void BeginEdit_ContinuousChangesAcrossDocuments_UndoesAsOneOperation()
         {
             ContentPackEditorProject project = CreateWorkingProject();
@@ -1114,7 +1212,7 @@ namespace Rebellion.Tests.ContentEditor
 
             Assert.AreEqual("<Units />", units.Text);
             Assert.IsTrue(project.IsDirty);
-            Assert.AreEqual("<Units><Unit/></Units>", File.ReadAllText(units.TargetPath));
+            Assert.IsTrue(ContentXmlOverrides.IsOverlay(File.ReadAllText(units.TargetPath)));
         }
 
         [Test]
@@ -1390,7 +1488,7 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         /// <summary>
-        /// Creates a sparse rules document containing one nested configuration section.
+        /// Creates a sparse rules document over an empty application rules baseline.
         /// </summary>
         /// <param name="section">The dotted path to the configuration section.</param>
         /// <param name="values">The authored scalar members.</param>
@@ -1400,6 +1498,9 @@ namespace Rebellion.Tests.ContentEditor
             ContentPackEditorCatalog Catalog
         ) CreateGameRules(string section, params (string Member, int Value)[] values)
         {
+            string rulesPath = Path.Combine(contentRoot, "Application", "Rules", "game.xml");
+            Directory.CreateDirectory(Path.GetDirectoryName(rulesPath));
+            File.WriteAllText(rulesPath, "<GameConfig />");
             XElement root = new XElement("GameConfig");
             XElement container = root;
             foreach (string member in section.Split('.'))
@@ -1411,6 +1512,11 @@ namespace Rebellion.Tests.ContentEditor
             foreach (var value in values)
                 container.Add(new XElement(value.Member, value.Value));
             WriteFixtureFile("Data/game-config.xml", root.ToString());
+            string manifest = Path.Combine(contentRoot, "Packs", "BasePack", "pack.xml");
+            ContentPackDefinition definition =
+                ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(manifest);
+            definition.GameConfigPath = "Data/game-config.xml";
+            ContentDefinitionSerializer.Serialize(manifest, definition);
             ContentPackEditorProject project = CreateWorkingProject();
             ContentPackEditorCatalog catalog = project
                 .GetCatalogs()

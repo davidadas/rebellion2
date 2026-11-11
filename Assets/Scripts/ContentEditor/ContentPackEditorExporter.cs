@@ -155,11 +155,19 @@ internal static class ContentPackEditorExporter
         foreach (ContentPackEditorDocument document in project.Documents)
             document.Validate();
         var documents = project
-            .Documents.Where(document => !document.IsInherited || document.IsDirty)
-            .Select(document => (Path: document.Address[5..], document.Text))
+            .Documents.Where(document =>
+                (!document.IsInherited || document.IsDirty) && !document.InheritsAll
+            )
+            .Select(document => (Path: document.Address[5..], Text: document.AuthoredText))
             .ToArray();
         string root = project.PackRootPath;
-        var removed = project.RemovedDocumentPaths.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var removed = project
+            .RemovedDocumentPaths.Concat(
+                project
+                    .Documents.Where(document => document.InheritsAll)
+                    .Select(document => document.TargetPath)
+            )
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         string[] sources = Directory
             .EnumerateFiles(root, "*", SearchOption.AllDirectories)
             .Where(source =>

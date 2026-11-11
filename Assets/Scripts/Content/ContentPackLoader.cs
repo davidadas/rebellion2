@@ -540,13 +540,11 @@ public static class ContentPackLoader
             throw new ArgumentException("A preload ID is required.", nameof(preloadID));
 
         ContentPreloadManifest manifest =
-            ContentDefinitionSerializer.Deserialize<ContentPreloadManifest>(
-                fileResolver.ResolveFile(
+            ContentDefinitionSerializer.DeserializeText<ContentPreloadManifest>(
+                ContentXmlOverrides.Load(
+                    fileResolver,
                     _applicationAddressPrefix + _preloadDirectoryName + "/" + preloadID + ".xml"
                 )
-                    ?? throw new FileNotFoundException(
-                        $"Application preload '{preloadID}' was not found."
-                    )
             );
         ValidatePreloadManifest(
             manifest,
@@ -724,8 +722,8 @@ public static class ContentPackLoader
         string packGameConfigPath
     )
     {
-        XmlDocument defaults = LoadXmlDocument(
-            RequireFile(fileResolver, _applicationGameConfigRelativePath)
+        XmlDocument defaults = LoadXmlText(
+            ContentXmlOverrides.Load(fileResolver, _applicationGameConfigRelativePath)
         );
 
         XmlSchemaSet schemas = new XmlSchemaSet();
@@ -743,8 +741,13 @@ public static class ContentPackLoader
         object gameConfig = string.IsNullOrWhiteSpace(packGameConfigPath)
             ? serializer.Deserialize(defaults)
             : serializer.Deserialize(
-                defaults,
-                LoadXmlDocument(RequirePackFile(fileResolver, packGameConfigPath))
+                LoadXmlText(
+                    ContentXmlOverrides.Load(
+                        fileResolver,
+                        _packAddressPrefix + packGameConfigPath,
+                        defaults.OuterXml
+                    )
+                )
             );
         GameConfig config =
             gameConfig as GameConfig
@@ -762,30 +765,15 @@ public static class ContentPackLoader
     }
 
     /// <summary>
-    /// Loads one XML content file into a document.
+    /// Parses resolved XML for the strict typed configuration loader.
     /// </summary>
-    /// <param name="filePath">The absolute XML file path.</param>
-    /// <returns>The loaded document.</returns>
-    private static XmlDocument LoadXmlDocument(string filePath)
+    /// <param name="text">The resolved XML text.</param>
+    /// <returns>The parsed document.</returns>
+    private static XmlDocument LoadXmlText(string text)
     {
-        if (!File.Exists(filePath))
-            throw new FileNotFoundException($"Content definition not found: {filePath}");
-
         XmlDocument document = new XmlDocument();
-        using XmlReader reader = XmlReader.Create(filePath);
-        document.Load(reader);
+        document.LoadXml(text);
         return document;
-    }
-
-    /// <summary>
-    /// Resolves a required pack-scoped content file.
-    /// </summary>
-    /// <param name="fileResolver">The layered content resolver.</param>
-    /// <param name="relativePath">The path relative to the pack scope.</param>
-    /// <returns>The resolved absolute file path.</returns>
-    private static string RequirePackFile(ContentFileResolver fileResolver, string relativePath)
-    {
-        return RequireFile(fileResolver, _packAddressPrefix + relativePath);
     }
 
     /// <summary>
@@ -817,7 +805,7 @@ public static class ContentPackLoader
     )
         where T : class
     {
-        string filePath = RequirePackFile(fileResolver, relativePath);
+        string xml = ContentXmlOverrides.Load(fileResolver, _packAddressPrefix + relativePath);
         GameSerializerSettings settings = new GameSerializerSettings { RootName = rootName };
         if (!string.IsNullOrWhiteSpace(schemaFilePath))
         {
@@ -828,13 +816,8 @@ public static class ContentPackLoader
         }
 
         GameSerializer serializer = new GameSerializer(typeof(T), settings);
-        using FileStream stream = new FileStream(
-            filePath,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read
-        );
-        return serializer.Deserialize(stream) as T
+        using StringReader reader = new StringReader(xml);
+        return serializer.Deserialize(reader) as T
             ?? throw new InvalidDataException(
                 $"Failed to deserialize content data: {relativePath}"
             );
@@ -858,7 +841,9 @@ public static class ContentPackLoader
 
         return paths
             .Select(path =>
-                ContentDefinitionSerializer.Deserialize<T>(RequirePackFile(fileResolver, path))
+                ContentDefinitionSerializer.DeserializeText<T>(
+                    ContentXmlOverrides.Load(fileResolver, _packAddressPrefix + path)
+                )
             )
             .ToList();
     }
@@ -893,8 +878,8 @@ public static class ContentPackLoader
                 throw new InvalidDataException($"Duplicate content preload ID '{preload.ID}'.");
 
             ContentPreloadManifest manifest =
-                ContentDefinitionSerializer.Deserialize<ContentPreloadManifest>(
-                    RequirePackFile(fileResolver, preload.Path)
+                ContentDefinitionSerializer.DeserializeText<ContentPreloadManifest>(
+                    ContentXmlOverrides.Load(fileResolver, _packAddressPrefix + preload.Path)
                 );
             ValidatePreloadManifest(manifest, _packAddressPrefix, $"Pack preload '{preload.ID}'");
             manifests.Add(preload.ID, manifest);

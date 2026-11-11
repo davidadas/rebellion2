@@ -29,6 +29,9 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     private Button revertButton;
 
     [SerializeField]
+    private Button inheritanceButton;
+
+    [SerializeField]
     private Button selectItemsButton;
 
     [SerializeField]
@@ -54,6 +57,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     public event Action<string> ValidationFailed;
     public event Action<ContentPackEditorField, IReadOnlyList<string>> Submitted;
     public event Action<ContentPackEditorField> ValidationRequested;
+    public event Action<ContentPackEditorField> InheritanceResetRequested;
     public event Action<ContentPackEditorField> SelectionRequested;
 
     public int Height => PreferredHeight(((RectTransform)transform).rect.width, lastLabelWidth);
@@ -75,9 +79,13 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     public void SetCellLayout()
     {
         RectTransform value = (RectTransform)input.transform;
-        value.anchorMin = value.anchorMax = value.pivot = new Vector2(0.5f, 0.5f);
-        value.anchoredPosition = Vector2.zero;
-        value.sizeDelta = new Vector2(((RectTransform)transform).rect.width - 8, 32);
+        UILayout.SetSourceRect(
+            value,
+            4,
+            6,
+            Mathf.RoundToInt(((RectTransform)transform).rect.width - 8),
+            32
+        );
         UILayout.ConfigureCenteredNumericInput(
             input,
             input.textComponent.color,
@@ -150,7 +158,24 @@ public sealed class ContentEditorFieldView : MonoBehaviour
                 )
             )
             : 0;
-        bounds.height = height + (HasError ? errorHeight + 8 : 0);
+        bounds.height = height + (HasError ? errorHeight + 8 : 0) + (field.CanInherit ? 36 : 0);
+        inheritanceButton.gameObject.SetActive(field.CanInherit);
+        inheritanceButton.interactable = !field.IsInherited;
+        if (field.CanInherit)
+        {
+            float available = Mathf.Max(1, bounds.width - valueLeft - 8);
+            UILayout.SetSourceRect(
+                (RectTransform)inheritanceButton.transform,
+                Mathf.RoundToInt(valueLeft),
+                bodyHeight + (HasError ? errorHeight + 8 : 0),
+                Mathf.RoundToInt(Mathf.Min(148, available)),
+                28
+            );
+            inheritanceButton.GetComponentInChildren<TMP_Text>().text =
+                field.IsInherited ? "Inherited"
+                : available < 148 ? "Reset"
+                : "Reset to inherited";
+        }
         RectTransform root = (RectTransform)transform;
         UILayout.SetSourceRect(
             root,
@@ -319,6 +344,15 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     }
 
     /// <summary>
+    /// Requests removal of this field's authored override.
+    /// </summary>
+    private void ResetToInherited()
+    {
+        if (field?.CanInherit == true && !field.IsInherited)
+            InheritanceResetRequested?.Invoke(field);
+    }
+
+    /// <summary>
     /// Restores the last accepted value without undoing other project changes.
     /// </summary>
     public void RevertDraft()
@@ -354,6 +388,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             || error == null
             || importButton == null
             || revertButton == null
+            || inheritanceButton == null
             || selectItemsButton == null
             || choiceDropdown == null
             || previewButton == null
@@ -361,6 +396,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         )
             throw new MissingReferenceException(name + " has incomplete field references.");
         revertButton.onClick.AddListener(RevertDraft);
+        inheritanceButton.onClick.AddListener(ResetToInherited);
         selectItemsButton.onClick.AddListener(RequestSelection);
         bound = true;
         input.onEndEdit.AddListener(ApplyText);
@@ -381,6 +417,8 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     {
         if (revertButton != null)
             revertButton.onClick.RemoveListener(RevertDraft);
+        if (inheritanceButton != null)
+            inheritanceButton.onClick.RemoveListener(ResetToInherited);
         if (selectItemsButton != null)
             selectItemsButton.onClick.RemoveListener(RequestSelection);
         if (bound)
@@ -408,6 +446,8 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             SetBackgroundRole(ContentEditorColorRole.Input);
             presentation = value;
             field = value.Field;
+            inheritanceButton.gameObject.SetActive(field.CanInherit);
+            inheritanceButton.interactable = !field.IsInherited;
             help.Configure(field.HelpText, input);
             IReadOnlyDictionary<string, string> referenceLabels = value.ReferenceLabels;
             choiceValues =

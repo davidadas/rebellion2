@@ -37,6 +37,10 @@ public sealed class ContentPackEditorField
     public bool IsBoolean { get; }
     public bool IsNumber => numeric;
     public bool IsList => list;
+    public bool CanInherit =>
+        !IsIdentity && Document.CanInherit(element, Container, attribute?.Name);
+    public bool IsInherited =>
+        CanInherit && Document.IsSettingInherited(element, attribute?.Name, Container);
     public ContentPackEditorDocument Document => record.Catalog.Document;
     public string MemberName => attribute?.Name.LocalName ?? element.Name.LocalName;
     public bool IsFactionReference =>
@@ -53,6 +57,7 @@ public sealed class ContentPackEditorField
         );
     internal ContentPackEditorRecord Record => record;
     internal XElement XmlElement => element;
+    internal XName XmlAttributeName => attribute?.Name;
     internal XElement Container => parentOverride ?? element.Parent;
     internal bool IsIdentity =>
         ContentPackEditorCatalog.IsIdentityName(MemberName)

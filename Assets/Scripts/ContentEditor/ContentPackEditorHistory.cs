@@ -34,7 +34,7 @@ internal sealed class ContentPackEditorHistory
     /// Includes a newly authored document in subsequent reversible edits.
     /// </summary>
     /// <param name="document">The project-owned document.</param>
-    internal void Track(ContentPackEditorDocument document) => document.Changed += Record;
+    internal void Track(ContentPackEditorDocument document) => document.StateChanged += Record;
 
     /// <summary>
     /// Begins an edit group that completes when its returned scope is disposed.
@@ -71,20 +71,23 @@ internal sealed class ContentPackEditorHistory
     /// </summary>
     /// <param name="document">The changed document.</param>
     /// <param name="previous">Its text before the change.</param>
-    private void Record(ContentPackEditorDocument document, string previous)
+    private void Record(ContentPackEditorDocument document, ContentPackEditorDocumentState previous)
     {
         if (restoring)
             return;
         if (depth > 0)
         {
             if (pending.TryGetValue(document, out Change change))
-                change.After = document.Text;
+                change.After = document.CaptureState();
             else
-                pending.Add(document, new Change(document, previous, document.Text));
+                pending.Add(document, new Change(document, previous, document.CaptureState()));
             return;
         }
         undo.Push(
-            new Edit(document.DisplayName, new[] { new Change(document, previous, document.Text) })
+            new Edit(
+                document.DisplayName,
+                new[] { new Change(document, previous, document.CaptureState()) }
+            )
         );
         redo.Clear();
     }
@@ -96,7 +99,9 @@ internal sealed class ContentPackEditorHistory
     {
         if (--depth != 0)
             return;
-        Change[] changes = pending.Values.Where(change => change.Before != change.After).ToArray();
+        Change[] changes = pending
+            .Values.Where(change => !change.Before.Matches(change.After))
+            .ToArray();
         pending.Clear();
         if (changes.Length == 0)
             return;
@@ -124,7 +129,7 @@ internal sealed class ContentPackEditorHistory
         try
         {
             foreach (Change change in edit.Changes)
-                change.Document.RestoreText(forward ? change.After : change.Before);
+                change.Document.RestoreState(forward ? change.After : change.Before);
         }
         finally
         {
@@ -140,8 +145,8 @@ internal sealed class ContentPackEditorHistory
     private sealed class Change
     {
         internal ContentPackEditorDocument Document { get; }
-        internal string Before { get; }
-        internal string After { get; set; }
+        internal ContentPackEditorDocumentState Before { get; }
+        internal ContentPackEditorDocumentState After { get; set; }
 
         /// <summary>
         /// Captures a reversible document change.
@@ -149,7 +154,11 @@ internal sealed class ContentPackEditorHistory
         /// <param name="document">The affected document.</param>
         /// <param name="before">The preceding text.</param>
         /// <param name="after">The resulting text.</param>
-        internal Change(ContentPackEditorDocument document, string before, string after)
+        internal Change(
+            ContentPackEditorDocument document,
+            ContentPackEditorDocumentState before,
+            ContentPackEditorDocumentState after
+        )
         {
             Document = document;
             Before = before;

@@ -195,12 +195,7 @@ public static class ContentPackEditorStorage
                                 $"Content document not found: {address}"
                             );
                 string targetPath = Path.GetFullPath(relativePath, resolver.PackRootPath);
-                return new ContentPackEditorDocument(
-                    address,
-                    sourcePath,
-                    targetPath,
-                    File.ReadAllText(sourcePath)
-                );
+                return OpenDocument(resolver, address, sourcePath, targetPath);
             })
             .ToList();
         if (
@@ -210,16 +205,75 @@ public static class ContentPackEditorStorage
         {
             string defaultRules = resolver.ResolveFile("Application/Rules/game.xml");
             if (defaultRules != null)
+            {
+                string defaults = ContentXmlOverrides.Load(resolver, "Application/Rules/game.xml");
                 result.Add(
                     new ContentPackEditorDocument(
                         "Pack/Shared/Data/game-config.xml",
                         defaultRules,
                         Path.Combine(resolver.PackRootPath, "Shared", "Data", "game-config.xml"),
-                        File.ReadAllText(defaultRules)
+                        File.ReadAllText(defaultRules),
+                        defaults,
+                        resolver
+                            .ResolveFileLayers("Application/Rules/game.xml")
+                            .ToDictionary(path => path, File.ReadAllText),
+                        true,
+                        defaults
                     )
                 );
+            }
         }
         return result;
+    }
+
+    /// <summary>
+    /// Retains authored XML separately from every resolved inherited dependency.
+    /// </summary>
+    /// <param name="resolver">The pack's content layers.</param>
+    /// <param name="address">The logical document address.</param>
+    /// <param name="sourcePath">The highest existing source.</param>
+    /// <param name="targetPath">The local override destination.</param>
+    /// <returns>The editor document with its inherited baseline.</returns>
+    private static ContentPackEditorDocument OpenDocument(
+        ContentFileResolver resolver,
+        string address,
+        string sourcePath,
+        string targetPath
+    )
+    {
+        Dictionary<string, string> sources = resolver
+            .ResolveFileLayers(address)
+            .ToDictionary(path => path, File.ReadAllText, StringComparer.Ordinal);
+        string baseline = null;
+        string applicationDefaults = null;
+        bool hasInheritedPackDocument = sources.Keys.Any(path =>
+            !string.Equals(path, targetPath, StringComparison.OrdinalIgnoreCase)
+        );
+        if (System.Xml.Linq.XElement.Parse(sources[sourcePath]).Name.LocalName == "GameConfig")
+        {
+            applicationDefaults = ContentXmlOverrides.Load(resolver, "Application/Rules/game.xml");
+            baseline = applicationDefaults;
+            foreach (string path in resolver.ResolveFileLayers("Application/Rules/game.xml"))
+                sources[path] = File.ReadAllText(path);
+        }
+        if (address != _packDefinitionAddress)
+            foreach (string path in resolver.ResolveFileLayers(address))
+                if (!string.Equals(path, targetPath, StringComparison.OrdinalIgnoreCase))
+                    baseline =
+                        ContentXmlOverrides.IsOverlay(sources[path])
+                            ? ContentXmlOverrides.Merge(baseline, sources[path])
+                        : applicationDefaults == null ? sources[path]
+                        : ContentXmlOverrides.MergeRules(applicationDefaults, sources[path]);
+        return new ContentPackEditorDocument(
+            address,
+            sourcePath,
+            targetPath,
+            File.ReadAllText(sourcePath),
+            baseline,
+            sources,
+            applicationDefaults != null && !hasInheritedPackDocument,
+            applicationDefaults
+        );
     }
 
     /// <summary>
@@ -453,7 +507,7 @@ public static class ContentPackEditorStorage
         ContentEditorPaths.VerifyWritePath(project, document.TargetPath);
         VerifyUnchangedTarget(document);
 
-        if (document.IsRemoved)
+        if (document.IsRemoved || document.InheritsAll)
         {
             if (File.Exists(document.TargetPath))
                 File.Delete(document.TargetPath);
@@ -469,7 +523,7 @@ public static class ContentPackEditorStorage
         string temporaryPath = document.TargetPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
-            File.WriteAllText(temporaryPath, document.Text);
+            File.WriteAllText(temporaryPath, document.AuthoredText);
             ReplaceFile(temporaryPath, document.TargetPath);
         }
         finally
@@ -487,33 +541,7 @@ public static class ContentPackEditorStorage
     /// <param name="document">The document and its last observed disk state.</param>
     private static void VerifyUnchangedTarget(ContentPackEditorDocument document)
     {
-        bool exists = File.Exists(document.TargetPath);
-        bool changed;
-        if (document.SavedText == null)
-            changed = exists;
-        else if (exists)
-            changed =
-                document.IsInherited
-                || !string.Equals(
-                    File.ReadAllText(document.TargetPath),
-                    document.SavedText,
-                    StringComparison.Ordinal
-                );
-        else
-            changed = !document.IsInherited;
-        if (!changed && document.IsInherited)
-            changed =
-                !File.Exists(document.SourcePath)
-                || !string.Equals(
-                    File.ReadAllText(document.SourcePath),
-                    document.SavedText,
-                    StringComparison.Ordinal
-                );
-        if (changed)
-            throw new IOException(
-                "Content changed outside the editor. Reopen the pack before saving: "
-                    + document.TargetPath
-            );
+        document.VerifyUnchangedSources();
     }
 
     /// <summary>
