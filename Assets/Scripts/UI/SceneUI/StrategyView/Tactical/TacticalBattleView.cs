@@ -200,14 +200,9 @@ public sealed class TacticalBattleView
     [SerializeField]
     private TextMeshProUGUI speedLabel;
 
-    /// <summary>
-    /// The name every capital-ship slot in the roster bar starts with; its index follows.
-    /// </summary>
+    // The names every capital-ship slot and every squadron slot in the roster bar start with;
+    // the slot's index follows.
     public const string RosterShipSlotPrefix = "RosterShipSlot";
-
-    /// <summary>
-    /// The name every squadron slot in the roster bar starts with; its index follows.
-    /// </summary>
     public const string RosterSquadronSlotPrefix = "RosterSquadronSlot";
 
     private readonly List<TacticalUnitView> _unitViews = new List<TacticalUnitView>();

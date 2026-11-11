@@ -601,6 +601,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
         }
 
         [Test]
+        public void Scroll_SmallTrackpadDelta_ZoomsInProportionToTheDelta()
+        {
+            TacticalSpaceBattle battle = CreateBattle(out TacticalCapitalShipUnit friendly, out _);
+            Begin(battle);
+            Vector2 point = ToSource(_activeBattle, friendly.X, friendly.Y);
+            float distanceAtStart = _view.Scene.Distance;
+
+            _view.OnScroll(CreateScroll(point, 0.1f));
+            float distanceAfterNudge = _view.Scene.Distance;
+            _view.OnScroll(CreateScroll(point, 1f));
+            float distanceAfterNotch = _view.Scene.Distance;
+
+            // A wheel notch zooms one step; a trackpad's small delta zooms a tenth of one.
+            Assert.AreEqual(Mathf.Pow(0.85f, 0.1f), distanceAfterNudge / distanceAtStart, 0.001f);
+            Assert.AreEqual(0.85f, distanceAfterNotch / distanceAfterNudge, 0.001f);
+        }
+
+        [Test]
         public void PointerClick_WithControlHeld_AddsTheShipAndTakesItOutAgain()
         {
             TacticalSpaceBattle battle = CreateFleetBattle(
@@ -1204,6 +1222,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
         }
 
         /// <summary>
+        /// Creates a wheel event at a source-space point on the view.
+        /// </summary>
+        /// <param name="sourcePoint">The source-space point.</param>
+        /// <param name="delta">The vertical scroll delta.</param>
+        /// <returns>The pointer event.</returns>
+        private static PointerEventData CreateScroll(Vector2 sourcePoint, float delta)
+        {
+            PointerEventData eventData = CreateEvent(
+                sourcePoint,
+                PointerEventData.InputButton.Left
+            );
+            eventData.scrollDelta = new Vector2(0f, delta);
+            return eventData;
+        }
+
+        /// <summary>
         /// Creates a pointer event at a source-space point on the view.
         /// </summary>
         /// <param name="sourcePoint">The source-space point.</param>
@@ -1285,7 +1319,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
                 AutoResolveComponentDelayMinimum = 30,
                 AutoResolveComponentDelayMaximum = 50,
                 AutoResolveComponentDelayRecovery = 1,
-            };
+            }.WithShippedTacticalSettings();
         }
 
         /// <summary>

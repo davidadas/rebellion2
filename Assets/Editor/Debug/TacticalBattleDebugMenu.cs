@@ -1088,6 +1088,10 @@ public static class TacticalBattleDebugMenu
     /// </summary>
     private readonly struct ShipGroup
     {
+        internal string TypeId { get; }
+
+        internal int Count { get; }
+
         /// <summary>
         /// Creates a group of ships of one type.
         /// </summary>
@@ -1098,9 +1102,5 @@ public static class TacticalBattleDebugMenu
             TypeId = typeId;
             Count = count;
         }
-
-        internal string TypeId { get; }
-
-        internal int Count { get; }
     }
 }

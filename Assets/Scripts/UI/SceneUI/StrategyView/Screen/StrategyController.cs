@@ -2851,7 +2851,8 @@ public sealed class StrategyController
             yaw,
             pitch,
             zoom,
-            Input.GetKeyDown(KeyCode.Home),
+            // Most Mac keyboards have no Home key, so H reframes as well.
+            Input.GetKeyDown(KeyCode.Home) || Input.GetKeyDown(KeyCode.H),
             Input.GetKeyDown(KeyCode.Tab),
             Input.GetKeyDown(KeyCode.Space),
             Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift),

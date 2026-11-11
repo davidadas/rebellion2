@@ -120,6 +120,24 @@ public sealed class TacticalBattleScene : MonoBehaviour
     [SerializeField]
     private RawImage outputImage;
 
+    [SerializeField]
+    private Material litMaterial;
+
+    [SerializeField]
+    private Material particleMaterial;
+
+    /// <summary>
+    /// Gets the authored opaque lit material that placeholders, markers, beams and repaired hulls
+    /// are cloned from, or null in a scene assembled without the rig.
+    /// </summary>
+    internal Material LitMaterial => litMaterial;
+
+    /// <summary>
+    /// Gets the authored alpha-cutout material that particle effects are cloned from, or null in
+    /// a scene assembled without the rig.
+    /// </summary>
+    internal Material ParticleMaterial => particleMaterial;
+
     private readonly Dictionary<TacticalBattleUnit, UnitPresentation> _units =
         new Dictionary<TacticalBattleUnit, UnitPresentation>();
     private readonly HashSet<string> _reportedAddresses = new HashSet<string>();
@@ -193,6 +211,123 @@ public sealed class TacticalBattleScene : MonoBehaviour
     /// Gets the farthest the camera may back away, which frames the whole play space.
     /// </summary>
     internal float DistanceLimit => _distanceLimit;
+
+    /// <summary>
+    /// Gets whether any unit's model is still loading, so the battle can hold at its opening
+    /// positions instead of starting on placeholders.
+    /// </summary>
+    internal bool HasPendingModelLoads => _pendingModelLoads > 0;
+
+    /// <summary>
+    /// Gets the number of selection boxes currently drawn.
+    /// </summary>
+    internal int SelectionBoxCount
+    {
+        get
+        {
+            int count = 0;
+            foreach (SelectionBox box in _selectionBoxes)
+            {
+                if (box.Unit != null)
+                    count++;
+            }
+
+            return count;
+        }
+    }
+
+    /// <summary>
+    /// Gets whether any explosion is still burning; the debug automation screenshots it.
+    /// </summary>
+    public bool HasActiveExplosions
+    {
+        get
+        {
+            foreach (ExplosionEffect effect in _explosions)
+            {
+                if (effect.IsAlive)
+                    return true;
+            }
+
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Gets whether any unit is shown held in a tractor beam; the debug automation screenshots
+    /// it.
+    /// </summary>
+    public bool HasActiveTractorEffects
+    {
+        get
+        {
+            foreach (UnitPresentation presentation in _units.Values)
+            {
+                if (presentation.TractorActive)
+                    return true;
+            }
+
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Gets whether any ship on show is drawn projecting a gravity well; the debug automation
+    /// screenshots it.
+    /// </summary>
+    public bool HasActiveGravityWellEffects
+    {
+        get
+        {
+            foreach (UnitPresentation presentation in _units.Values)
+            {
+                if (IsShowingGravityWell(presentation))
+                    return true;
+            }
+
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Gets whether a superlaser beam is being drawn; the debug automation screenshots it.
+    /// </summary>
+    public bool HasActiveSuperlaserBeams
+    {
+        get
+        {
+            foreach (SuperlaserBeam beam in _beams)
+            {
+                if (beam.Active)
+                    return true;
+            }
+
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Gets whether a battle station's model is on show; the debug automation watches for it to
+    /// go.
+    /// </summary>
+    public bool HasVisibleStation
+    {
+        get
+        {
+            foreach (UnitPresentation presentation in _stations.Values)
+            {
+                if (presentation.Holder?.gameObject.activeSelf == true)
+                    return true;
+            }
+
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Gets the number of battle stations presented, whether or not they are still shown.
+    /// </summary>
+    internal int StationCount => _stations.Count;
 
     /// <summary>
     /// Returns the content address of a unit's 3D model, derived from its display image folder.
@@ -271,12 +406,6 @@ public sealed class TacticalBattleScene : MonoBehaviour
         Vector3 forward = new Vector3((float)Math.Cos(heading), 0f, (float)Math.Sin(heading));
         return Quaternion.LookRotation(forward, Vector3.up);
     }
-
-    /// <summary>
-    /// Gets whether any unit's model is still loading, so the battle can hold at its opening
-    /// positions instead of starting on placeholders.
-    /// </summary>
-    internal bool HasPendingModelLoads => _pendingModelLoads > 0;
 
     /// <summary>
     /// Prepares the scene for a new battle, discarding any previous presentation. The camera is
@@ -553,24 +682,6 @@ public sealed class TacticalBattleScene : MonoBehaviour
     }
 
     /// <summary>
-    /// Gets the number of selection boxes currently drawn.
-    /// </summary>
-    internal int SelectionBoxCount
-    {
-        get
-        {
-            int count = 0;
-            foreach (SelectionBox box in _selectionBoxes)
-            {
-                if (box.Unit != null)
-                    count++;
-            }
-
-            return count;
-        }
-    }
-
-    /// <summary>
     /// Returns the selection box drawn around a unit.
     /// </summary>
     /// <param name="unit">The unit to find.</param>
@@ -626,99 +737,6 @@ public sealed class TacticalBattleScene : MonoBehaviour
             }
         }
     }
-
-    /// <summary>
-    /// Gets whether any explosion is still burning; the debug automation screenshots it.
-    /// </summary>
-    public bool HasActiveExplosions
-    {
-        get
-        {
-            foreach (ExplosionEffect effect in _explosions)
-            {
-                if (effect.IsAlive)
-                    return true;
-            }
-
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Gets whether any unit is shown held in a tractor beam; the debug automation screenshots
-    /// it.
-    /// </summary>
-    public bool HasActiveTractorEffects
-    {
-        get
-        {
-            foreach (UnitPresentation presentation in _units.Values)
-            {
-                if (presentation.TractorActive)
-                    return true;
-            }
-
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Gets whether any ship on show is drawn projecting a gravity well; the debug automation
-    /// screenshots it.
-    /// </summary>
-    public bool HasActiveGravityWellEffects
-    {
-        get
-        {
-            foreach (UnitPresentation presentation in _units.Values)
-            {
-                if (IsShowingGravityWell(presentation))
-                    return true;
-            }
-
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Gets whether a superlaser beam is being drawn; the debug automation screenshots it.
-    /// </summary>
-    public bool HasActiveSuperlaserBeams
-    {
-        get
-        {
-            foreach (SuperlaserBeam beam in _beams)
-            {
-                if (beam.Active)
-                    return true;
-            }
-
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Gets whether a battle station's model is on show; the debug automation watches for it to
-    /// go.
-    /// </summary>
-    public bool HasVisibleStation
-    {
-        get
-        {
-            foreach (UnitPresentation presentation in _stations.Values)
-            {
-                if (presentation.Holder?.gameObject.activeSelf == true)
-                    return true;
-            }
-
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Gets the number of battle stations presented, whether or not they are still shown.
-    /// </summary>
-    internal int StationCount => _stations.Count;
 
     /// <summary>
     /// Returns whether a unit is currently shown held in a tractor beam.
@@ -2397,16 +2415,23 @@ public sealed class TacticalBattleScene : MonoBehaviour
     /// <returns>The new material.</returns>
     private Material CreateEffectMaterial(string materialName, Color color, float emission)
     {
-        Material material = CreatePlaceholderMaterial(color);
+        // The particle material authored with the rig already has the alpha cutout, validated
+        // in the editor, so a clone needs only its texture and colors. A scene assembled without
+        // the rig sets the cutout up here, which the editor alone can do.
+        bool authored = particleMaterial != null;
+        Material material = authored
+            ? new Material(particleMaterial) { color = color }
+            : CreatePlaceholderMaterial(color);
         material.name = materialName;
         Texture2D particle = GetParticleTexture();
         material.mainTexture = particle;
         if (material.HasProperty(_baseColorMapProperty))
             material.SetTexture(_baseColorMapProperty, particle);
-        if (material.HasProperty(_alphaCutoffEnableProperty))
+        if (material.HasProperty(_alphaCutoffProperty))
+            material.SetFloat(_alphaCutoffProperty, _particleAlphaCutoff);
+        if (!authored && material.HasProperty(_alphaCutoffEnableProperty))
         {
             material.SetFloat(_alphaCutoffEnableProperty, 1f);
-            material.SetFloat(_alphaCutoffProperty, _particleAlphaCutoff);
             material.EnableKeyword(_alphaTestKeyword);
         }
 
@@ -2418,16 +2443,8 @@ public sealed class TacticalBattleScene : MonoBehaviour
             material.SetFloat(_smoothnessProperty, 0f);
         // HDRP honors the cutout only once the material's passes, keywords and render queue are
         // validated; set by hand alone, the particles draw as opaque squares.
-        if (material.HasProperty(_alphaCutoffEnableProperty))
+        if (!authored && material.HasProperty(_alphaCutoffEnableProperty))
             UnityEngine.Rendering.HighDefinition.HDMaterial.ValidateMaterial(material);
-        Debug.Log(
-            $"Tactical effect material {materialName}: shader {material.shader.name}, "
-                + $"baseColorMap={material.HasProperty(_baseColorMapProperty)}, "
-                + $"alphaCutoff={material.HasProperty(_alphaCutoffEnableProperty)}, "
-                + $"emissive={material.HasProperty(_emissiveColorProperty)}, "
-                + $"exposureWeight={material.HasProperty(_emissiveExposureWeightProperty)}, "
-                + $"queue={material.renderQueue}"
-        );
         return material;
     }
 
@@ -2499,17 +2516,30 @@ public sealed class TacticalBattleScene : MonoBehaviour
     /// </summary>
     /// <param name="color">The tint.</param>
     /// <returns>The new material.</returns>
-    private static Material CreatePlaceholderMaterial(Color color)
+    private Material CreatePlaceholderMaterial(Color color)
     {
-        Material template =
-            GraphicsSettings.currentRenderPipeline != null
-                ? GraphicsSettings.currentRenderPipeline.defaultMaterial
-                : null;
-        Material material =
-            template != null ? new Material(template) : new Material(Shader.Find("Standard"));
-        material.name = "Tactical Placeholder";
-        material.color = color;
-        return material;
+        Material template = FindLitTemplate();
+        if (template == null)
+            throw new MissingReferenceException($"{name}/LitMaterial is missing.");
+
+        return new Material(template) { name = "Tactical Placeholder", color = color };
+    }
+
+    /// <summary>
+    /// Returns the opaque lit material the battle's own materials are cloned from: the asset
+    /// authored with the rig, which a player build carries along with its shader variants. A
+    /// scene assembled without the rig, as tests do, falls back to the render pipeline's default
+    /// material, which exists only in the editor.
+    /// </summary>
+    /// <returns>The template material, or null when neither is available.</returns>
+    private Material FindLitTemplate()
+    {
+        if (litMaterial != null)
+            return litMaterial;
+
+        return GraphicsSettings.currentRenderPipeline != null
+            ? GraphicsSettings.currentRenderPipeline.defaultMaterial
+            : null;
     }
 
     /// <summary>
@@ -2621,10 +2651,7 @@ public sealed class TacticalBattleScene : MonoBehaviour
     /// <param name="model">The model root.</param>
     private void PrepareModelMaterials(Transform model)
     {
-        Material template =
-            GraphicsSettings.currentRenderPipeline != null
-                ? GraphicsSettings.currentRenderPipeline.defaultMaterial
-                : null;
+        Material template = FindLitTemplate();
         foreach (Renderer renderer in model.GetComponentsInChildren<Renderer>(true))
         {
             Material[] materials = renderer.sharedMaterials;
@@ -2778,26 +2805,6 @@ public sealed class TacticalBattleScene : MonoBehaviour
     /// </summary>
     private sealed class UnitPresentation
     {
-        /// <summary>
-        /// Creates the presentation for a unit holder.
-        /// </summary>
-        /// <param name="holder">The transform positioned at the unit.</param>
-        /// <param name="modelParent">The holder child that receives and scales the model.</param>
-        /// <param name="placeholder">The primitive shown until the model loads.</param>
-        /// <param name="diameter">The target model diameter in scene units.</param>
-        internal UnitPresentation(
-            Transform holder,
-            Transform modelParent,
-            GameObject placeholder,
-            float diameter
-        )
-        {
-            Holder = holder;
-            ModelParent = modelParent;
-            Placeholder = placeholder;
-            Diameter = diameter;
-        }
-
         internal Transform Holder { get; }
 
         internal Transform ModelParent { get; }
@@ -2829,6 +2836,26 @@ public sealed class TacticalBattleScene : MonoBehaviour
         internal Vector3 JumpOrigin { get; set; }
 
         internal Vector3 JumpForward { get; set; }
+
+        /// <summary>
+        /// Creates the presentation for a unit holder.
+        /// </summary>
+        /// <param name="holder">The transform positioned at the unit.</param>
+        /// <param name="modelParent">The holder child that receives and scales the model.</param>
+        /// <param name="placeholder">The primitive shown until the model loads.</param>
+        /// <param name="diameter">The target model diameter in scene units.</param>
+        internal UnitPresentation(
+            Transform holder,
+            Transform modelParent,
+            GameObject placeholder,
+            float diameter
+        )
+        {
+            Holder = holder;
+            ModelParent = modelParent;
+            Placeholder = placeholder;
+            Diameter = diameter;
+        }
     }
 
     /// <summary>
@@ -2836,15 +2863,6 @@ public sealed class TacticalBattleScene : MonoBehaviour
     /// </summary>
     private sealed class SuperlaserBeam
     {
-        /// <summary>
-        /// Creates a beam around its stretched mesh.
-        /// </summary>
-        /// <param name="root">The beam's transform.</param>
-        internal SuperlaserBeam(Transform root)
-        {
-            Root = root;
-        }
-
         internal Transform Root { get; }
 
         internal TacticalBattleStation Station { get; set; }
@@ -2856,6 +2874,15 @@ public sealed class TacticalBattleScene : MonoBehaviour
         internal float Elapsed { get; set; }
 
         internal bool Active { get; set; }
+
+        /// <summary>
+        /// Creates a beam around its stretched mesh.
+        /// </summary>
+        /// <param name="root">The beam's transform.</param>
+        internal SuperlaserBeam(Transform root)
+        {
+            Root = root;
+        }
     }
 
     /// <summary>
@@ -2863,6 +2890,18 @@ public sealed class TacticalBattleScene : MonoBehaviour
     /// </summary>
     private sealed class DeckMarker
     {
+        internal Transform Root { get; }
+
+        internal MeshRenderer Stem { get; }
+
+        internal MeshRenderer Foot { get; }
+
+        internal TacticalBattleUnit Unit { get; set; }
+
+        internal Color Color { get; set; }
+
+        internal Material Material { get; set; }
+
         /// <summary>
         /// Creates a marker around its two parts.
         /// </summary>
@@ -2875,18 +2914,6 @@ public sealed class TacticalBattleScene : MonoBehaviour
             Stem = stem;
             Foot = foot;
         }
-
-        internal Transform Root { get; }
-
-        internal MeshRenderer Stem { get; }
-
-        internal MeshRenderer Foot { get; }
-
-        internal TacticalBattleUnit Unit { get; set; }
-
-        internal Color Color { get; set; }
-
-        internal Material Material { get; set; }
     }
 
     /// <summary>
@@ -2894,6 +2921,16 @@ public sealed class TacticalBattleScene : MonoBehaviour
     /// </summary>
     private sealed class SelectionBox
     {
+        internal Transform Root { get; }
+
+        internal MeshRenderer[] Edges { get; }
+
+        internal TacticalBattleUnit Unit { get; set; }
+
+        internal Color Color { get; set; }
+
+        internal Material Material { get; set; }
+
         /// <summary>
         /// Creates a box around its edges.
         /// </summary>
@@ -2904,16 +2941,6 @@ public sealed class TacticalBattleScene : MonoBehaviour
             Root = root;
             Edges = edges;
         }
-
-        internal Transform Root { get; }
-
-        internal MeshRenderer[] Edges { get; }
-
-        internal TacticalBattleUnit Unit { get; set; }
-
-        internal Color Color { get; set; }
-
-        internal Material Material { get; set; }
     }
 
     /// <summary>
@@ -2935,6 +2962,11 @@ public sealed class TacticalBattleScene : MonoBehaviour
         private readonly ParticleSystem _fire;
         private readonly ParticleSystem _smoke;
 
+        internal Transform Root { get; }
+
+        internal bool IsAlive =>
+            Root != null && (IsBurning(_flash) || IsBurning(_fire) || IsBurning(_smoke));
+
         /// <summary>
         /// Creates the effect for one explosion root.
         /// </summary>
@@ -2954,11 +2986,6 @@ public sealed class TacticalBattleScene : MonoBehaviour
             _fire = fire;
             _smoke = smoke;
         }
-
-        internal Transform Root { get; }
-
-        internal bool IsAlive =>
-            Root != null && (IsBurning(_flash) || IsBurning(_fire) || IsBurning(_smoke));
 
         /// <summary>
         /// Emits the flash, the fire, and the smoke at once.

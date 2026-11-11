@@ -75,6 +75,69 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
+        public void AuthoredPrefab_TacticalBattleButtons_TakeNoKeyboardNavigation()
+        {
+            GameObject prefabRoot = PrefabUtility.LoadPrefabContents(_prefabPath);
+
+            try
+            {
+                TacticalBattleView view = prefabRoot.GetComponentInChildren<TacticalBattleView>(
+                    true
+                );
+                Button[] buttons = view.GetComponentsInChildren<Button>(true);
+                string[] navigable = buttons
+                    .Where(button => button.navigation.mode != Navigation.Mode.None)
+                    .Select(button => button.name)
+                    .ToArray();
+
+                // The battle reads Space, Enter, WASD and the arrows itself; a button that also
+                // took them through uGUI navigation would be pressed by the same key.
+                Assert.GreaterOrEqual(buttons.Length, 9);
+                Assert.IsEmpty(navigable);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(prefabRoot);
+            }
+        }
+
+        [Test]
+        public void AuthoredPrefab_TacticalBattleRig_CarriesItsMaterialsAndItsOwnAmbientVolume()
+        {
+            GameObject prefabRoot = PrefabUtility.LoadPrefabContents(_prefabPath);
+
+            try
+            {
+                TacticalBattleScene scene = prefabRoot.GetComponentInChildren<TacticalBattleScene>(
+                    true
+                );
+                Material lit = scene.LitMaterial;
+                Material particle = scene.ParticleMaterial;
+                UnityEngine.Rendering.Volume ambient = prefabRoot
+                    .GetComponentsInChildren<UnityEngine.Rendering.Volume>(true)
+                    .Single(volume => volume.name == "TacticalBattleAmbientVolume");
+                int cameraVolumeLayers = scene
+                    .SceneCamera.GetComponent<UnityEngine.Rendering.HighDefinition.HDAdditionalCameraData>()
+                    .volumeLayerMask.value;
+
+                // Materials referenced as assets ship with a player build, shader variants and
+                // all; the pipeline's default material does not exist outside the editor.
+                Assert.IsNotNull(lit);
+                Assert.IsNotNull(particle);
+                Assert.IsNotEmpty(AssetDatabase.GetAssetPath(lit));
+                Assert.IsNotEmpty(AssetDatabase.GetAssetPath(particle));
+                Assert.IsTrue(lit.IsKeywordEnabled("_DOUBLESIDED_ON"));
+                Assert.IsTrue(particle.IsKeywordEnabled("_ALPHATEST_ON"));
+                Assert.AreEqual("TacticalBattleAmbientVolumeProfile", ambient.sharedProfile.name);
+                Assert.AreNotEqual(0, cameraVolumeLayers & (1 << ambient.gameObject.layer));
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(prefabRoot);
+            }
+        }
+
+        [Test]
         public void AuthoredPrefab_StrategyController_ReferencesHiddenTacticalBattleLayer()
         {
             GameObject prefabRoot = PrefabUtility.LoadPrefabContents(_prefabPath);

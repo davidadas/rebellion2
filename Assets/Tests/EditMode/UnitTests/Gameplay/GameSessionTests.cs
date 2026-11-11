@@ -3124,7 +3124,7 @@ namespace Rebellion.Tests.Gameplay
                 AutoResolveComponentDelayMinimum = 30,
                 AutoResolveComponentDelayMaximum = 50,
                 AutoResolveComponentDelayRecovery = 1,
-            };
+            }.WithShippedTacticalSettings();
             return config;
         }
 

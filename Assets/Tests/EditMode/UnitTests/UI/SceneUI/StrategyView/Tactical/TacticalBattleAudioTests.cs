@@ -248,7 +248,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
                 AutoResolveComponentDelayMinimum = 30,
                 AutoResolveComponentDelayMaximum = 50,
                 AutoResolveComponentDelayRecovery = 1,
-            };
+            }.WithShippedTacticalSettings();
         }
 
         /// <summary>

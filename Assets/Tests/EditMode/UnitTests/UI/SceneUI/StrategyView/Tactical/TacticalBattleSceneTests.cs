@@ -131,7 +131,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
         }
 
         [Test]
-        public void TryProject_MatchesTheCameraProjection()
+        public void TryProject_PointOnTheBattlePlane_MatchesTheCameraProjection()
         {
             TacticalSpaceBattle battle = CreateBattle(out TacticalCapitalShipUnit friendly, out _);
             _scene.Begin(null);
@@ -833,6 +833,44 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
         }
 
         [Test]
+        public void Sync_RigCarriesAnAuthoredLitMaterial_BuildsItsPlaceholdersFromThatMaterial()
+        {
+            Material authored = new Material(
+                UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline.defaultMaterial
+            )
+            {
+                name = "Authored",
+            };
+            authored.SetFloat("_Smoothness", 0.125f);
+            typeof(TacticalBattleScene)
+                .GetField(
+                    "litMaterial",
+                    System.Reflection.BindingFlags.Instance
+                        | System.Reflection.BindingFlags.NonPublic
+                )
+                .SetValue(_scene, authored);
+
+            try
+            {
+                TacticalSpaceBattle battle = CreateBattle(out _, out TacticalCapitalShipUnit enemy);
+                _scene.Begin(null);
+                SyncSettled(battle);
+                Assert.IsTrue(_scene.TryGetUnitTransform(enemy, out Transform holder));
+                Material used = holder.GetComponentInChildren<MeshRenderer>(true).sharedMaterial;
+
+                Assert.AreSame(authored, _scene.LitMaterial);
+                Assert.AreNotSame(authored, used);
+                Assert.AreSame(authored.shader, used.shader);
+                Assert.AreEqual(0.125f, used.GetFloat("_Smoothness"), 0.0001f);
+            }
+            finally
+            {
+                _scene.End();
+                UnityEngine.Object.DestroyImmediate(authored);
+            }
+        }
+
+        [Test]
         public void Sync_NullBattle_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _scene.Sync(null, _arena));
@@ -953,7 +991,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
                 AutoResolveComponentDelayMinimum = 30,
                 AutoResolveComponentDelayMaximum = 50,
                 AutoResolveComponentDelayRecovery = 1,
-            };
+            }.WithShippedTacticalSettings();
         }
     }
 }

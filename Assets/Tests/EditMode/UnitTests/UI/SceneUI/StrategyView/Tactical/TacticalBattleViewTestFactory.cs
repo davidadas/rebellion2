@@ -232,13 +232,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
         }
 
         /// <summary>
-        /// Creates one flat button with a caption label.
-        /// </summary>
-        /// <param name="name">The button object name.</param>
-        /// <param name="parent">The parent transform.</param>
-        /// <param name="label">Receives the caption label.</param>
-        /// <returns>The created button.</returns>
-        /// <summary>
         /// Creates the inactive roster slot template with every reference the slot view requires.
         /// </summary>
         /// <param name="parent">The roster layer.</param>
@@ -257,6 +250,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
             return slot;
         }
 
+        /// <summary>
+        /// Creates one flat button with a caption label.
+        /// </summary>
+        /// <param name="name">The button object name.</param>
+        /// <param name="parent">The parent transform.</param>
+        /// <param name="label">Receives the caption label.</param>
+        /// <returns>The created button.</returns>
         private static Button CreateButton(string name, Transform parent, out TextMeshProUGUI label)
         {
             RawImage image = CreateImage(name, parent);

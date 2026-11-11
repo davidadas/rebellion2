@@ -423,6 +423,20 @@ internal sealed class TacticalBattleRenderData
 /// </summary>
 public sealed class TacticalRosterSlotRenderData
 {
+    public string Label { get; }
+
+    public Texture2D Portrait { get; }
+
+    public bool Highlighted { get; }
+
+    public bool Alive { get; }
+
+    /// <summary>
+    /// Gets whether the unit is a squadron that has docked aboard a ship: out of the fight like
+    /// a lost one, but still alive.
+    /// </summary>
+    public bool Aboard { get; }
+
     /// <summary>
     /// Creates a roster entry.
     /// </summary>
@@ -447,20 +461,6 @@ public sealed class TacticalRosterSlotRenderData
         Alive = alive;
         Aboard = aboard;
     }
-
-    public string Label { get; }
-
-    public Texture2D Portrait { get; }
-
-    public bool Highlighted { get; }
-
-    public bool Alive { get; }
-
-    /// <summary>
-    /// Gets whether the unit is a squadron that has docked aboard a ship: out of the fight like
-    /// a lost one, but still alive.
-    /// </summary>
-    public bool Aboard { get; }
 }
 
 /// <summary>
@@ -469,6 +469,16 @@ public sealed class TacticalRosterSlotRenderData
 /// </summary>
 public sealed class TacticalRosterRenderData
 {
+    public string SideLabel { get; }
+
+    public IReadOnlyList<TacticalRosterSlotRenderData> Ships { get; }
+
+    /// <summary>
+    /// Gets the squadrons grouped by fighter type in first-seen order; slot indexes count across
+    /// the groups, matching the side's squadron list in group order.
+    /// </summary>
+    public IReadOnlyList<IReadOnlyList<TacticalRosterSlotRenderData>> SquadronGroups { get; }
+
     /// <summary>
     /// Creates the roster presentation.
     /// </summary>
@@ -486,14 +496,4 @@ public sealed class TacticalRosterRenderData
         SquadronGroups =
             squadronGroups ?? System.Array.Empty<IReadOnlyList<TacticalRosterSlotRenderData>>();
     }
-
-    public string SideLabel { get; }
-
-    public IReadOnlyList<TacticalRosterSlotRenderData> Ships { get; }
-
-    /// <summary>
-    /// Gets the squadrons grouped by fighter type in first-seen order; slot indexes count across
-    /// the groups, matching the side's squadron list in group order.
-    /// </summary>
-    public IReadOnlyList<IReadOnlyList<TacticalRosterSlotRenderData>> SquadronGroups { get; }
 }

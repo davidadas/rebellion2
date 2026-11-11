@@ -507,6 +507,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
         }
 
         [Test]
+        public void GetSelectionTip_OnAMac_NamesTheCommandKeyAndControlElsewhere()
+        {
+            string mac = TacticalBattleProjector.GetSelectionTip(RuntimePlatform.OSXPlayer);
+            string windows = TacticalBattleProjector.GetSelectionTip(RuntimePlatform.WindowsPlayer);
+            string linux = TacticalBattleProjector.GetSelectionTip(RuntimePlatform.LinuxPlayer);
+
+            StringAssert.StartsWith("Cmd-click", mac);
+            StringAssert.StartsWith("Ctrl-click", windows);
+            Assert.AreEqual(windows, linux);
+        }
+
+        [Test]
         public void Project_UnitsSelected_AddsTheSelectionKeysToTheHint()
         {
             TacticalSpaceBattle battle = CreateBattle(
@@ -1217,7 +1229,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
                 AutoResolveComponentDelayMinimum = 30,
                 AutoResolveComponentDelayMaximum = 50,
                 AutoResolveComponentDelayRecovery = 1,
-            };
+            }.WithShippedTacticalSettings();
         }
 
         /// <summary>

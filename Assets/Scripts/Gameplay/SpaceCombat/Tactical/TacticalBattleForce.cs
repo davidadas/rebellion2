@@ -497,14 +497,42 @@ namespace Rebellion.Gameplay
 
         /// <summary>
         /// Resolves stranded units after every mobile survivor has escaped. A squadron aboard a
-        /// ship that jumped went with it; whatever else is still here has no way out and is lost.
+        /// ship that jumped went with it, and a battle station that jumped takes the squadrons
+        /// still outside, as far as its bays reach: it stands off the battlefield, so none could
+        /// dock with it during the battle. Whatever else is still here has no way out and is
+        /// lost.
         /// </summary>
         internal void CompleteDependentWithdrawal()
         {
+            HashSet<Starfighter> stranded = Fighters
+                .Where(fighter =>
+                    fighter.IsAlive
+                    && !fighter.HasWithdrawn
+                    && !fighter.IsDocked
+                    && !fighter.CanWithdrawIndependently
+                )
+                .Select(fighter => fighter.Fighter)
+                .ToHashSet();
+            Dictionary<Starfighter, CapitalShip> stationBerths =
+                SpaceCombatWithdrawalPlanner.GetRecoveryAssignments(
+                    Stations
+                        .Where(station => station.HasWithdrawn && station.CanWithdrawIndependently)
+                        .Select(station => station.Ship),
+                    Fighters.ConvertAll(fighter => fighter.Fighter),
+                    stranded
+                );
             foreach (
                 TacticalBattleUnit unit in Units.Where(unit => unit.IsAlive && !unit.HasWithdrawn)
             )
-                unit.Destroy();
+            {
+                if (
+                    unit is TacticalStarfighterUnit fighter
+                    && stationBerths.ContainsKey(fighter.Fighter)
+                )
+                    unit.FinishWithdrawal();
+                else
+                    unit.Destroy();
+            }
 
             // A station with no hyperdrive cannot follow its fleet out.
             foreach (TacticalBattleStation station in Stations)

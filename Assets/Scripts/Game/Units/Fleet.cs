@@ -52,6 +52,12 @@ namespace Rebellion.Game.Units
         private List<CapitalShip> _capitalShips = new List<CapitalShip>();
 
         /// <summary>
+        /// Gets whether the fleet carries a planet-destroying capital ship, complete or still
+        /// under construction.
+        /// </summary>
+        public bool HasPlanetDestroyer => _capitalShips.Any(ship => ship.CanDestroyPlanets);
+
+        /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
         public Fleet() { }
@@ -292,12 +298,6 @@ namespace Rebellion.Game.Units
 
             _capitalShips.Add(capitalShip);
         }
-
-        /// <summary>
-        /// Gets whether the fleet carries a planet-destroying capital ship, complete or still
-        /// under construction.
-        /// </summary>
-        public bool HasPlanetDestroyer => _capitalShips.Any(ship => ship.CanDestroyPlanets);
 
         /// <summary>
         /// Returns the planet destroyer that keeps a ship out of this fleet. A system holds only

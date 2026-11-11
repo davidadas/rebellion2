@@ -2098,27 +2098,27 @@ namespace Rebellion.Game
 
             public double AutoResolveTorpedoDamagePerStrength { get; set; }
 
-            public double TacticalFighterHullStrength { get; set; } = 5;
+            public double TacticalFighterHullStrength { get; set; }
 
-            public double TacticalFighterShieldMultiplier { get; set; } = 3;
+            public double TacticalFighterShieldMultiplier { get; set; }
 
-            public double TacticalFighterRechargeMultiplier { get; set; } = 0.6;
+            public double TacticalFighterRechargeMultiplier { get; set; }
 
-            public double TacticalTurbolaserFighterHitChance { get; set; } = 0.15;
+            public double TacticalTurbolaserFighterHitChance { get; set; }
 
-            public double TacticalCapitalWeaponRangeMultiplier { get; set; } = 2;
+            public double TacticalCapitalWeaponRangeMultiplier { get; set; }
 
-            public double TacticalShieldGeneratorHitChance { get; set; } = 0.03;
+            public double TacticalShieldGeneratorHitChance { get; set; }
 
-            public double TacticalShieldRechargeMultiplier { get; set; } = 0.5;
+            public double TacticalShieldRechargeMultiplier { get; set; }
 
-            public double TacticalShieldGeneratorRepairMultiplier { get; set; } = 2;
+            public double TacticalShieldGeneratorRepairMultiplier { get; set; }
 
-            public double TacticalSuperlaserRechargeSeconds { get; set; } = 180;
+            public double TacticalSuperlaserRechargeSeconds { get; set; }
 
-            public double TacticalTrenchRunBaseChance { get; set; } = 0.9;
+            public double TacticalTrenchRunBaseChance { get; set; }
 
-            public double TacticalTrenchRunMinimumChance { get; set; } = 0.25;
+            public double TacticalTrenchRunMinimumChance { get; set; }
 
             public double AutoResolveFighterWeaponRechargeMultiplier { get; set; }
 

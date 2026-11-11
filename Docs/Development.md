@@ -117,7 +117,15 @@ blockades, withdrawals, and fleet cleanup behave identically. Its presentation l
 `UI/SceneUI/StrategyView/Tactical` as a hidden full-screen layer of the authored Strategy root prefab.
 Units are drawn as 3D models by `TacticalBattleScene`: an off-canvas rig on the `TacticalBattle`
 layer (25) whose perspective camera orbits a focus point on the battle plane and renders into the
-arena image. The view opens at a fixed angle onto the battle plane from behind the player's side,
+arena image. The rig is lit by two directional lights and by a flat ambient volume of its own
+(`HdrpRenderTargetBuilder.AddTacticalAmbientVolume`: volume layer 24 and
+`TacticalBattleAmbientVolumeProfile.asset`), kept apart from the much dimmer flat ambient volume
+that the main menu and the loading screen share, because a loading screen can be on show while the
+strategy scene is loaded. The battle builds its own materials while it runs (placeholders,
+selection and deck markers, beams, particle effects, repaired hulls) by cloning two assets the rig
+references, `TacticalBattleLitMaterial` and `TacticalBattleParticleMaterial`, so that a player
+build carries the shader and its variants; the render pipeline's default material exists only in
+the editor. The view opens at a fixed angle onto the battle plane from behind the player's side,
 and the camera is locked to the play space: its focus stays inside the arena and it can back out
 only far enough to frame the whole arena; it opens with both fleets in frame. The attacking fleet
 drops out of hyperspace as the battle opens, decelerating into place from off the map, and ships
@@ -127,9 +135,10 @@ through the same camera and clicks are cast back onto the plane, so picking stay
 selected unit, and an enemy unit the player clicks to inspect, is marked in the scene itself by a
 wireframe box fitted to its hull and turning with it, drawn in its faction's color with lines
 that keep one width on screen at any zoom. The wheel
+(a trackpad's smaller scroll deltas zoom in proportion)
 or plus and minus zoom, right-drag orbits (Q/E turn, R/F tilt between a low angle and top-down),
 middle-drag or WASD and the
-arrow keys pan, Home reframes the fleet, and Tab
+arrow keys pan, Home or H reframes the fleet (most Mac keyboards have no Home key), and Tab
 selects and frames the next friendly ship, and Space pauses; the Speed button steps playback through
 1x, 2x, 4x and 8x. Clicking a unit in the arena or on its roster slot picks it without moving the
 camera; clicking it again while it is the one unit picked zooms the camera in on it and follows it
@@ -144,7 +153,8 @@ with two keys, read each frame with the camera keys (`TacticalCameraInput`): wit
 click on a roster slot selects every unit from the last one picked through it, ships first and
 then squadrons as the bar lists them; with Control held, a click on a slot or on a unit in the
 arena adds that unit or takes it out again, and a drag box adds to the selection instead of
-replacing it. Neither moves the camera, and a right-click then orders the whole selection: ships
+replacing it (Command does the same as Control, and the hint names Cmd on a Mac). Neither moves
+the camera, and a right-click then orders the whole selection: ships
 keep their formation on a move, and ships and squadrons alike go for an attacked target. A move
 click is cast onto the deck the selected ships stand on rather than the battle plane, so a ship on
 a raised deck ends up under the pointer and not beneath it. Clicks pick
@@ -207,8 +217,8 @@ capital-ship weapon ranges are doubled for the larger arena; these are tactical-
 space-combat config (`TacticalFighterHullStrength`, `TacticalFighterShieldMultiplier`,
 `TacticalFighterRechargeMultiplier`,
 `TacticalTurbolaserFighterHitChance`, `TacticalCapitalWeaponRangeMultiplier`,
-`TacticalShieldRechargeMultiplier`, `TacticalShieldGeneratorRepairMultiplier`) with code defaults,
-since `game.xml` lives in the media repository. Capital-ship shields recharge at half their
+`TacticalShieldRechargeMultiplier`, `TacticalShieldGeneratorRepairMultiplier`), authored in the
+application `game.xml` with the other combat rules. Capital-ship shields recharge at half their
 strategic rate, because arcs recharge one at a time and full-rate shields healed completely between
 a Star Destroyer's volleys, and a knocked-out generator takes twice as long to come back
 during a battle than other components (the repair days it carries out are unchanged). Squadron

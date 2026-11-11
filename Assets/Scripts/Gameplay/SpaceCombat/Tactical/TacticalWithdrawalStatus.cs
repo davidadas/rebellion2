@@ -5,16 +5,16 @@ namespace Rebellion.Gameplay
     /// </summary>
     public enum TacticalWithdrawalStatus
     {
-        /// <summary>The side may order a withdrawal.</summary>
+        // The side may order a withdrawal.
         Available,
 
-        /// <summary>No unit still in the battle has a hyperdrive to jump with.</summary>
+        // No unit still in the battle has a hyperdrive to jump with.
         NoHyperdrive,
 
-        /// <summary>The side has no safe system to jump to.</summary>
+        // The side has no safe system to jump to.
         NoEscapeRoute,
 
-        /// <summary>An enemy ship still in the battle projects a gravity well over the system.</summary>
+        // An enemy ship still in the battle projects a gravity well over the system.
         Interdicted,
     }
 }

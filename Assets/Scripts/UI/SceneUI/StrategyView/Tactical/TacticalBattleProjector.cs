@@ -19,11 +19,8 @@ internal sealed class TacticalBattleProjector
     private const float _withdrawingAlpha = 0.45f;
     private const float _overlayExtentFraction = 0.8f;
 
-    /// <summary>
-    /// The tip added to the hint while units are selected.
-    /// </summary>
-    internal const string SelectionTip =
-        "Ctrl-click adds a unit; Shift-click in the roster takes a run.";
+    // The tip added to the hint while units are selected, naming this platform's selection key.
+    internal static readonly string SelectionTip = GetSelectionTip(Application.platform);
     private const float _capitalShotThickness = 2f;
     private const float _fighterShotThickness = 1f;
     private const float _torpedoShotThickness = 3f;
@@ -217,6 +214,21 @@ internal sealed class TacticalBattleProjector
             ProjectSuperlaser(battle, superlaserArmed),
             CanRecoverAny(battle, selection)
         );
+    }
+
+    /// <summary>
+    /// Builds the tip about adding to a selection for a platform: the key that adds one unit is
+    /// Command on a Mac and Control elsewhere. The battle accepts either on every platform.
+    /// </summary>
+    /// <param name="platform">The platform the game is running on.</param>
+    /// <returns>The tip text.</returns>
+    internal static string GetSelectionTip(RuntimePlatform platform)
+    {
+        string key =
+            platform == RuntimePlatform.OSXPlayer || platform == RuntimePlatform.OSXEditor
+                ? "Cmd"
+                : "Ctrl";
+        return $"{key}-click adds a unit; Shift-click in the roster takes a run.";
     }
 
     /// <summary>
@@ -890,7 +902,7 @@ internal sealed class TacticalBattleProjector
         if (fighter.IsWithdrawing)
             return fighter.Fighter.Hyperdrive > 0
                 ? "Orders: Withdraw to hyperspace"
-                : "Orders: Stranded, no hangar has room";
+                : "Orders: No hangar has room, waiting on the fleet";
         if (fighter.IsInTrench)
             return $"Orders: In the {fighter.TrenchRunTarget.DisplayName} trench";
         if (fighter.TrenchRunTarget != null)

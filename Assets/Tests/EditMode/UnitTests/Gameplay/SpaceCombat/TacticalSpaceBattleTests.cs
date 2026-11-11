@@ -2578,6 +2578,38 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void OrderWithdrawal_SquadronsCarriedByAStation_LeaveWithItAsFarAsItsBaysReach()
+        {
+            CapitalShip station = CreateStation("station");
+            station.StarfighterCapacity = 1;
+            Starfighter carried = CreateFighter("carried", 12, 5);
+            station.AddChild(carried);
+            carried.SetParent(station);
+            Starfighter extra = CreateFighter("extra", 12, 5);
+            TacticalSpaceBattle battle = CreateStationBattle(
+                new[] { station, CreateShip("escort", 100, 0) },
+                new[] { CreateShip("defender", 100, 0) },
+                attackerFighters: new[] { carried, extra },
+                playerSide: CombatSide.Attacker,
+                canWithdraw: true
+            );
+
+            bool ordered = battle.OrderWithdrawal(CombatSide.Attacker);
+            battle.Advance(240);
+
+            Assert.IsTrue(ordered);
+            Assert.IsTrue(battle.IsComplete);
+            Assert.IsTrue(battle.Stations.Single().HasWithdrawn);
+            SpaceCombatResult result = battle.CreateResult();
+            CollectionAssert.Contains(result.WithdrawnUnits, station);
+            CollectionAssert.Contains(result.WithdrawnUnits, carried);
+            CollectionAssert.DoesNotContain(result.WithdrawnUnits, extra);
+            FighterLossResult loss = result.FighterLosses.Single();
+            Assert.AreSame(extra, loss.Fighter);
+            Assert.AreEqual(0, loss.SquadsAfter);
+        }
+
+        [Test]
         public void Advance_StationOutlastsItsFleet_TheBattleGoesOn()
         {
             TacticalSpaceBattle battle = CreateStationBattle(
@@ -2762,7 +2794,7 @@ namespace Rebellion.Tests.Gameplay
                 AutoResolveComponentDelayMinimum = 30,
                 AutoResolveComponentDelayMaximum = 50,
                 AutoResolveComponentDelayRecovery = 1,
-            };
+            }.WithShippedTacticalSettings();
         }
 
         /// <summary>

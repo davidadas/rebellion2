@@ -7,6 +7,36 @@ using UnityEngine;
 /// </summary>
 internal readonly struct TacticalCameraInput
 {
+    internal Vector2 Pan { get; }
+
+    internal float Yaw { get; }
+
+    internal float Pitch { get; }
+
+    internal float ZoomSteps { get; }
+
+    internal bool ResetView { get; }
+
+    internal bool CycleShips { get; }
+
+    internal bool TogglePause { get; }
+
+    internal bool ExtendSelection { get; }
+
+    internal bool AddToSelection { get; }
+
+    /// <summary>
+    /// Gets whether this frame carries any camera input.
+    /// </summary>
+    internal bool IsEmpty =>
+        Pan == Vector2.zero
+        && Yaw == 0f
+        && Pitch == 0f
+        && ZoomSteps == 0f
+        && !ResetView
+        && !CycleShips
+        && !TogglePause;
+
     /// <summary>
     /// Creates a frame of camera input.
     /// </summary>
@@ -45,34 +75,4 @@ internal readonly struct TacticalCameraInput
         ExtendSelection = extendSelection;
         AddToSelection = addToSelection;
     }
-
-    internal Vector2 Pan { get; }
-
-    internal float Yaw { get; }
-
-    internal float Pitch { get; }
-
-    internal float ZoomSteps { get; }
-
-    internal bool ResetView { get; }
-
-    internal bool CycleShips { get; }
-
-    internal bool TogglePause { get; }
-
-    internal bool ExtendSelection { get; }
-
-    internal bool AddToSelection { get; }
-
-    /// <summary>
-    /// Gets whether this frame carries any camera input.
-    /// </summary>
-    internal bool IsEmpty =>
-        Pan == Vector2.zero
-        && Yaw == 0f
-        && Pitch == 0f
-        && ZoomSteps == 0f
-        && !ResetView
-        && !CycleShips
-        && !TogglePause;
 }

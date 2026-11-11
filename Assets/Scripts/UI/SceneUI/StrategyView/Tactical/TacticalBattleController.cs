@@ -14,6 +14,7 @@ using UnityEngine.EventSystems;
 internal sealed class TacticalBattleController : ICancelable
 {
     private const float _completionDelaySeconds = 1.2f;
+    private const float _maximumWheelSteps = 3f;
     private const float _clickDragThreshold = 4f;
     private const float _minimumPickRadius = 10f;
     private const float _keyboardPanRate = 0.6f;
@@ -86,6 +87,11 @@ internal sealed class TacticalBattleController : ICancelable
     /// Gets whether a trench-run movie is playing over the battle, which holds it.
     /// </summary>
     internal bool IsCutscenePlaying => _cutscenePlaying;
+
+    /// <summary>
+    /// Gets whether the battle is holding at its opening positions while hull models load.
+    /// </summary>
+    internal bool IsDeploying => IsActive && _deployHoldRemaining > 0f;
 
     /// <summary>
     /// Creates a tactical battle controller bound to an authored battle view.
@@ -193,11 +199,6 @@ internal sealed class TacticalBattleController : ICancelable
         Render();
         _markDirty();
     }
-
-    /// <summary>
-    /// Gets whether the battle is holding at its opening positions while hull models load.
-    /// </summary>
-    internal bool IsDeploying => IsActive && _deployHoldRemaining > 0f;
 
     /// <summary>
     /// Advances playback and redraws the battle without keyboard camera input.
@@ -660,7 +661,9 @@ internal sealed class TacticalBattleController : ICancelable
         if (!IsActive || delta == 0f)
             return;
 
-        _view.Scene.Zoom(Mathf.Sign(delta) * Mathf.Clamp(Mathf.Abs(delta), 1f, 3f));
+        // A wheel notch is one step. A trackpad or a Magic Mouse reports one gesture as a run of
+        // small deltas, so each of those zooms in proportion instead of a whole step.
+        _view.Scene.Zoom(Mathf.Clamp(delta, -_maximumWheelSteps, _maximumWheelSteps));
     }
 
     /// <summary>

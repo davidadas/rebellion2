@@ -7876,7 +7876,7 @@ public static class StrategyViewPrefabBuilder
     {
         const int layer = PresentationLayers.TacticalBattle;
         HdrpRenderTargetBuilder.AddIsolatedVolume(sceneRoot);
-        HdrpRenderTargetBuilder.AddFlatAmbientVolume(sceneRoot, _tacticalAmbientColor);
+        HdrpRenderTargetBuilder.AddTacticalAmbientVolume(sceneRoot, _tacticalAmbientColor);
 
         GameObject rig = new GameObject(_tacticalBattleRigName);
         rig.transform.SetParent(sceneRoot, false);
@@ -7932,11 +7932,21 @@ public static class StrategyViewPrefabBuilder
         camera.allowHDR = false;
         camera.allowMSAA = false;
         camera.enabled = false;
-        HdrpRenderTargetBuilder.ConfigureCamera(camera, includeFlatAmbientLighting: true);
+        HdrpRenderTargetBuilder.ConfigureCamera(camera, includeTacticalAmbientLighting: true);
 
         AssignReference(scene, "sceneCamera", camera);
         AssignReference(scene, "modelRoot", modelRoot.transform);
         AssignReference(scene, "outputImage", outputImage);
+        AssignReference(
+            scene,
+            "litMaterial",
+            HdrpRenderTargetBuilder.LoadOrCreateTacticalLitMaterial()
+        );
+        AssignReference(
+            scene,
+            "particleMaterial",
+            HdrpRenderTargetBuilder.LoadOrCreateTacticalParticleMaterial()
+        );
         rig.SetActive(false);
         return scene;
     }
@@ -7967,6 +7977,9 @@ public static class StrategyViewPrefabBuilder
         image.raycastTarget = true;
         Button button = image.gameObject.AddComponent<Button>();
         button.targetGraphic = image;
+        // The battle reads the keyboard itself: Space pauses and WASD pans. Left in uGUI's own
+        // navigation, the button clicked last would be pressed or walked off by the same keys.
+        button.navigation = new Navigation { mode = Navigation.Mode.None };
         // A disabled button reads as clearly off: darker and half transparent.
         ColorBlock colors = button.colors;
         colors.disabledColor = new Color(0.45f, 0.45f, 0.5f, 0.55f);
@@ -8057,6 +8070,7 @@ public static class StrategyViewPrefabBuilder
         frame.raycastTarget = true;
         Button button = frame.gameObject.AddComponent<Button>();
         button.targetGraphic = frame;
+        button.navigation = new Navigation { mode = Navigation.Mode.None };
         TacticalRosterSlotView slot = EnableRuntimeComponent(
             frame.gameObject.AddComponent<TacticalRosterSlotView>()
         );
