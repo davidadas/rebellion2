@@ -356,29 +356,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
-        public void Project_CorellianPlanets_ReturnsCorrectedSeloniaAndDurosOffsets()
+        public void Project_MultiplePlanets_ReturnsSectorRelativeOffsets()
         {
-            ContentPack classicPack = ContentPackLoader.OpenActive(
-                "classic-galactic-civil-war",
-                "standard"
-            );
-            GalaxyPlanetSector planetSector = classicPack.GameData.PlanetSectors.Single(candidate =>
-                candidate.TypeID == "PSCOR"
-            );
-            Planet selonia = planetSector
-                .GetChildren<Planet>()
-                .Single(planet => planet.InstanceID == "SELONIA");
-            Planet duros = planetSector
-                .GetChildren<Planet>()
-                .Single(planet => planet.InstanceID == "DUROS");
-            GalaxyMapSector sector = new GalaxyMapSector(
-                planetSector,
-                new[]
-                {
-                    new GalaxyMapPlanet(planetSector, selonia, string.Empty),
-                    new GalaxyMapPlanet(planetSector, duros, string.Empty),
-                }
-            );
+            GalaxyPlanetSector planetSector = CreateSector("sector", "Sector", 40, 50);
+            Planet first = CreatePlanet("first", _playerFactionId, 47, 61);
+            Planet second = CreatePlanet("second", _playerFactionId, 71, 82);
+            GalaxyMapSector sector = CreateSector(planetSector, first, second);
 
             GalaxyMapRenderData data = _projector.Project(
                 new[] { sector },
@@ -387,14 +370,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 null
             );
 
-            GalaxyMapStarRenderData seloniaStar = data.Clusters[0]
-                .Stars.Single(star => star.PlanetInstanceId == "SELONIA");
-            GalaxyMapStarRenderData durosStar = data.Clusters[0]
-                .Stars.Single(star => star.PlanetInstanceId == "DUROS");
-            Assert.AreEqual(225, selonia.PositionX);
-            Assert.AreEqual(240, duros.PositionX);
-            Assert.AreEqual(19, seloniaStar.SourceX);
-            Assert.AreEqual(34, durosStar.SourceX);
+            GalaxyMapStarRenderData firstStar = data.Clusters[0]
+                .Stars.Single(star => star.PlanetInstanceId == first.InstanceID);
+            GalaxyMapStarRenderData secondStar = data.Clusters[0]
+                .Stars.Single(star => star.PlanetInstanceId == second.InstanceID);
+            Assert.AreEqual(7, firstStar.SourceX);
+            Assert.AreEqual(11, firstStar.SourceY);
+            Assert.AreEqual(31, secondStar.SourceX);
+            Assert.AreEqual(32, secondStar.SourceY);
         }
 
         [Test]

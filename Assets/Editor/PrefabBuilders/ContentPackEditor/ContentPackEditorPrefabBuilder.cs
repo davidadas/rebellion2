@@ -46,7 +46,7 @@ public static class ContentPackEditorPrefabBuilder
         GameObject events = new GameObject(
             "EventSystem",
             typeof(EventSystem),
-            typeof(StandaloneInputModule),
+            typeof(QueuedMouseInputModule),
             typeof(ShortcutNavigationInput)
         );
         events.transform.SetParent(root.transform, false);
