@@ -75,6 +75,14 @@ class PackageDesktopTests(unittest.TestCase):
                 0x0100000C
             ).to_bytes(4, "big")
         self.write((editor / "Plugins" / native).relative_to(self.root), binary)
+        for name in (game_name, "rebellion2-editor"):
+            data = packager.player_data(self.root, name, platform, game_name)
+            self.write(
+                (data / "Plugins" / packager.MATH_LIBRARIES[platform]).relative_to(
+                    self.root
+                ),
+                binary,
+            )
         if platform != "StandaloneOSX":
             if platform == "StandaloneWindows64":
                 self.write("MonoBleedingEdge/EmbedRuntime/mono-runtime")
@@ -193,6 +201,29 @@ class PackageDesktopTests(unittest.TestCase):
         self.create_build()
         self.write("rebellion2_Data/Managed/ContentPackEditorAssembly.dll")
         with self.assertRaisesRegex(ValueError, "assembly inclusion"):
+            packager.collect_files(self.root, "StandaloneWindows64")
+
+    def test_collect_files_rejects_missing_game_vector_library(self):
+        self.create_build()
+        (self.root / "rebellion2_Data/Plugins/RebellionTacticalMath.dll").unlink()
+
+        with self.assertRaisesRegex(ValueError, "native vector library inclusion"):
+            packager.collect_files(self.root, "StandaloneWindows64")
+
+    def test_collect_files_rejects_missing_editor_vector_library(self):
+        editor = self.create_build()
+        (editor / "Plugins/RebellionTacticalMath.dll").unlink()
+
+        with self.assertRaisesRegex(ValueError, "native vector library inclusion"):
+            packager.collect_files(self.root, "StandaloneWindows64")
+
+    def test_collect_files_rejects_wrong_vector_library_architecture(self):
+        self.create_build()
+        (self.root / "rebellion2_Data/Plugins/RebellionTacticalMath.dll").write_bytes(
+            b"wrong architecture"
+        )
+
+        with self.assertRaises(ValueError):
             packager.collect_files(self.root, "StandaloneWindows64")
 
     def test_collect_files_rejects_missing_editor_native_library(self):

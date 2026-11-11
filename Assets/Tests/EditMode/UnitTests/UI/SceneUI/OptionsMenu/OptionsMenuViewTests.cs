@@ -325,6 +325,45 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsFalse(saveButton.interactable);
         }
 
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Render_LoadingPermission_ControlsExistingSaveActions(bool canLoad)
+        {
+            OptionsMenuRenderData data = new(
+                0,
+                0,
+                OptionsMenuTab.SaveLoad,
+                string.Empty,
+                string.Empty,
+                new Dictionary<UserTacticalOption, bool>(),
+                Array.Empty<float>(),
+                Array.Empty<OptionsBindingRow>(),
+                new[] { new OptionsSaveSlot("Save", "Today", null, false, "save") },
+                0,
+                true,
+                false,
+                -1,
+                false,
+                canLoad: canLoad
+            );
+
+            _view.Render(data);
+
+            Button[] buttons = _root.GetComponentsInChildren<Button>(true);
+            Assert.AreEqual(
+                canLoad,
+                buttons.Single(button => button.name == "LoadIcon").interactable
+            );
+            Assert.AreEqual(
+                canLoad,
+                buttons.Single(button => button.name == "SlotRow0").interactable
+            );
+            Assert.AreEqual(
+                canLoad,
+                buttons.Single(button => button.name == "SlotDelete0").interactable
+            );
+        }
+
         [Test]
         public void GameplayPage_AnalyticsSection_UsesSpecificHeading()
         {

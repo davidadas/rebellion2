@@ -74,7 +74,8 @@ namespace Rebellion.Gameplay
                     content.CapitalShips,
                     content.Starfighters,
                     content.Regiments,
-                    content.SpecialForces
+                    content.SpecialForces,
+                    content.TacticalCombat
                 );
             });
 
@@ -134,6 +135,11 @@ namespace Rebellion.Gameplay
                 locator.GetService<PersonnelCommands>()
             ));
             services.AddSingleton<SpaceCombatQueries>();
+            services.AddSingleton<TacticalCombatFactory>(locator => new TacticalCombatFactory(
+                locator.GetService<GameRoot>(),
+                locator.GetService<GameDataCatalog>(),
+                locator.GetService<SpaceCombatQueries>()
+            ));
             services.AddSingleton<SpaceCombatCommands>();
             services.AddSingleton<BombardmentQueries>();
             services.AddSingleton<BombardmentCommands>();

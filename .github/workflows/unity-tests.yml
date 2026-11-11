@@ -18,6 +18,9 @@ env:
   UNITY_IMAGE_VERSION: 3
 
 jobs:
+  native-math:
+    uses: ./.github/workflows/native-math.yml
+
   resolve-media:
     name: Resolve media revision
     runs-on: ubuntu-latest
@@ -29,6 +32,9 @@ jobs:
       sha: ${{ steps.resolve.outputs.sha }}
 
     steps:
+      - name: Checkout source metadata
+        uses: actions/checkout@v4
+
       - name: Checkout media metadata
         uses: actions/checkout@v4
         with:
@@ -43,31 +49,16 @@ jobs:
         env:
           PULL_REQUEST_BRANCH: ${{ github.head_ref }}
         run: |
-          revision="main"
-          if [ -n "$PULL_REQUEST_BRANCH" ]; then
-            for candidate in "$PULL_REQUEST_BRANCH" "$PULL_REQUEST_BRANCH-media"; do
-              if git -C .ci/rebellion2-media ls-remote --exit-code --heads origin \
-                "refs/heads/$candidate" >/dev/null; then
-                revision="$candidate"
-                break
-              fi
-            done
-          fi
-          sha="$(git -C .ci/rebellion2-media ls-remote origin "refs/heads/$revision" | awk 'NR == 1 { print $1 }')"
-          if [ -z "$sha" ]; then
-            echo "Could not resolve rebellion2-media revision: $revision"
-            exit 1
-          fi
-          echo "Using rebellion2-media revision: $revision"
-          echo "Using rebellion2-media commit: $sha"
-          echo "revision=$revision" >> "$GITHUB_OUTPUT"
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          python3 Tools/resolve_media_revision.py \
+            --media-checkout .ci/rebellion2-media \
+            --branch "$PULL_REQUEST_BRANCH" | tee -a "$GITHUB_OUTPUT"
 
   build:
     name: Build (${{ matrix.targetPlatform }})
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    needs: resolve-media
+    needs: [resolve-media, native-math]
     environment: production
     permissions:
       contents: read
@@ -80,6 +71,24 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Install win-x64 native vector library
+        uses: actions/download-artifact@v4
+        with:
+          name: tactical-math-win-x64
+          path: Assets/Plugins
+
+      - name: Install linux-x64 native vector library
+        uses: actions/download-artifact@v4
+        with:
+          name: tactical-math-linux-x64
+          path: Assets/Plugins
+
+      - name: Install osx native vector library
+        uses: actions/download-artifact@v4
+        with:
+          name: tactical-math-osx
+          path: Assets/Plugins
 
       - name: Checkout media (git only, no LFS)
         uses: actions/checkout@v4
@@ -206,7 +215,7 @@ jobs:
       - name: Format check
         run: dotnet csharpier check Assets/
 
-      - name: Test desktop packaging
+      - name: Test build tools
         run: python3 -m unittest discover -s Tools/tests -v
 
       - name: Extract Unity managed assemblies
@@ -265,7 +274,7 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    needs: resolve-media
+    needs: [resolve-media, native-math]
     environment: production
     permissions:
       checks: write
@@ -275,6 +284,24 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Install win-x64 native vector library
+        uses: actions/download-artifact@v4
+        with:
+          name: tactical-math-win-x64
+          path: Assets/Plugins
+
+      - name: Install linux-x64 native vector library
+        uses: actions/download-artifact@v4
+        with:
+          name: tactical-math-linux-x64
+          path: Assets/Plugins
+
+      - name: Install osx native vector library
+        uses: actions/download-artifact@v4
+        with:
+          name: tactical-math-osx
+          path: Assets/Plugins
 
       - name: Checkout media (git only, no LFS)
         uses: actions/checkout@v4

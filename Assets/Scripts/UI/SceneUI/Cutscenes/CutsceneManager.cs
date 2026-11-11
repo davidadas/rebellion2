@@ -23,6 +23,7 @@ public sealed class CutsceneManager : MonoBehaviour
 
     private CutscenePlayer activePlayer;
     private Coroutine pendingCompletion;
+    private object playbackOwner;
     private bool _audioPauseApplied;
     private bool _presentationPauseApplied;
     private bool ownsTimePause;
@@ -73,6 +74,7 @@ public sealed class CutsceneManager : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
+        playbackOwner = null;
         CancelPendingCompletion();
         DestroyActivePlayer();
         RestoreApplicationAudio();
@@ -100,6 +102,44 @@ public sealed class CutsceneManager : MonoBehaviour
             );
 
         StartPlayback(contentAssets.GetVideoUrl(clipAddress), onFinished);
+    }
+
+    /// <summary>
+    /// Plays an addressed video and returns ownership that cancels only this request.
+    /// </summary>
+    /// <param name="clipAddress">The required video content address.</param>
+    /// <param name="onFinished">Completes the caller's presentation ownership after playback.</param>
+    /// <param name="skipInput">The inputs admitted by the video's skip control.</param>
+    /// <returns>Ownership that cancels this request without completing it.</returns>
+    public IDisposable PlayOwned(
+        string clipAddress,
+        Action onFinished,
+        CutsceneSkipInput skipInput = CutsceneSkipInput.AnyInput
+    )
+    {
+        CancelPlayback();
+        if (string.IsNullOrWhiteSpace(clipAddress))
+            throw new ArgumentException(
+                "A video content address is required.",
+                nameof(clipAddress)
+            );
+        if (contentAssets == null)
+            throw new InvalidOperationException(
+                "CutsceneManager has not been initialized with a content asset store."
+            );
+
+        object owner = new();
+        playbackOwner = owner;
+        try
+        {
+            StartPlayback(contentAssets.GetVideoUrl(clipAddress), onFinished, skipInput);
+            return new PlaybackOwnership(this, owner);
+        }
+        catch
+        {
+            CancelOwnedPlayback(owner);
+            throw;
+        }
     }
 
     /// <summary>
@@ -168,7 +208,12 @@ public sealed class CutsceneManager : MonoBehaviour
     /// </summary>
     /// <param name="videoUrl">The local video file URL.</param>
     /// <param name="onFinished">The callback invoked after playback completes.</param>
-    private void StartPlayback(string videoUrl, Action onFinished)
+    /// <param name="skipInput">The inputs admitted by the video's skip control.</param>
+    private void StartPlayback(
+        string videoUrl,
+        Action onFinished,
+        CutsceneSkipInput skipInput = CutsceneSkipInput.AnyInput
+    )
     {
         if (cutscenePrefab == null)
             throw new InvalidOperationException("CutsceneManager has not been initialized.");
@@ -185,6 +230,7 @@ public sealed class CutsceneManager : MonoBehaviour
 
         activePlayer = player;
         player.SetVolume(GetVideoVolume());
+        player.SetSkipInput(skipInput);
         try
         {
             PausePresentation();
@@ -228,6 +274,8 @@ public sealed class CutsceneManager : MonoBehaviour
 
         if (onFinished != null)
             pendingCompletion = StartCoroutine(CompleteAfterPlayerRelease(onFinished));
+        else
+            playbackOwner = null;
     }
 
     /// <summary>
@@ -239,6 +287,7 @@ public sealed class CutsceneManager : MonoBehaviour
     {
         yield return null;
         pendingCompletion = null;
+        playbackOwner = null;
         onFinished();
     }
 
@@ -335,11 +384,52 @@ public sealed class CutsceneManager : MonoBehaviour
     /// </summary>
     private void CancelPlayback()
     {
+        playbackOwner = null;
         CancelPendingCompletion();
         DestroyActivePlayer();
         RestoreApplicationAudio();
         RestoreTimeScale();
         RestorePresentation();
+    }
+
+    /// <summary>
+    /// Cancels playback only while its original caller still owns the active request.
+    /// </summary>
+    /// <param name="owner">The identity captured by the caller's ownership token.</param>
+    private void CancelOwnedPlayback(object owner)
+    {
+        if (ReferenceEquals(playbackOwner, owner))
+            CancelPlayback();
+    }
+
+    /// <summary>
+    /// Releases one caller's playback without affecting a replacement video.
+    /// </summary>
+    private sealed class PlaybackOwnership : IDisposable
+    {
+        private CutsceneManager manager;
+        private readonly object owner;
+
+        /// <summary>
+        /// Captures the manager and request identity being owned.
+        /// </summary>
+        /// <param name="manager">The manager hosting the request.</param>
+        /// <param name="owner">The request identity.</param>
+        public PlaybackOwnership(CutsceneManager manager, object owner)
+        {
+            this.manager = manager;
+            this.owner = owner;
+        }
+
+        /// <summary>
+        /// Cancels the captured request once when it remains active.
+        /// </summary>
+        public void Dispose()
+        {
+            CutsceneManager current = manager;
+            manager = null;
+            current?.CancelOwnedPlayback(owner);
+        }
     }
 
     /// <summary>

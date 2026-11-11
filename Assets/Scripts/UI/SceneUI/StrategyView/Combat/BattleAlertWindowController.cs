@@ -46,6 +46,8 @@ public sealed class BattleAlertWindowController
     private readonly Func<UIContext> getUIContext;
     private readonly Func<Vector2Int> getWindowPosition;
     private readonly Action markDirty;
+    private readonly Func<bool> canTakeCommand;
+    private readonly Action<BattleAlertWindowView> takeCommand;
     private readonly Action<string> playSfx;
     private readonly Action<string> playTrack;
     private readonly Action stopMusic;
@@ -72,6 +74,8 @@ public sealed class BattleAlertWindowController
     /// <param name="getWindowPosition">Returns the authored battle-alert placement.</param>
     /// <param name="closeWindow">Closes a registered strategy window.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
+    /// <param name="canTakeCommand">Checks whether tactical deployment is available.</param>
+    /// <param name="takeCommand">Opens the interactive encounter.</param>
     internal BattleAlertWindowController(
         Func<PendingCombatResult> getPendingCombat,
         Func<SpaceCombatResult> resolveRetreat,
@@ -85,7 +89,9 @@ public sealed class BattleAlertWindowController
         UIWindowManager windowManager,
         Func<Vector2Int> getWindowPosition,
         Action<UIWindow> closeWindow,
-        Action markDirty
+        Action markDirty,
+        Func<bool> canTakeCommand = null,
+        Action<BattleAlertWindowView> takeCommand = null
     )
     {
         this.getPendingCombat =
@@ -106,6 +112,8 @@ public sealed class BattleAlertWindowController
             getWindowPosition ?? throw new ArgumentNullException(nameof(getWindowPosition));
         this.closeWindow = closeWindow ?? throw new ArgumentNullException(nameof(closeWindow));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
+        this.canTakeCommand = canTakeCommand ?? (() => false);
+        this.takeCommand = takeCommand;
     }
 
     /// <summary>
@@ -329,7 +337,8 @@ public sealed class BattleAlertWindowController
             x,
             y,
             getUIContext(),
-            pendingPlanet
+            pendingPlanet,
+            canTakeCommand()
         );
     }
 
@@ -348,6 +357,10 @@ public sealed class BattleAlertWindowController
 
         switch (choice)
         {
+            case BattleAlertChoice.TakeCommand:
+                if (canTakeCommand())
+                    takeCommand?.Invoke(view);
+                break;
             case BattleAlertChoice.Retreat:
                 ResolveRetreat(view);
                 break;
@@ -355,6 +368,20 @@ public sealed class BattleAlertWindowController
                 ResolveAutomatically(view);
                 break;
         }
+    }
+
+    /// <summary>
+    /// Returns from interactive combat to the requesting report window.
+    /// </summary>
+    /// <param name="view">The originating battle alert.</param>
+    /// <param name="result">The committed battle result.</param>
+    internal void ShowTacticalResult(BattleAlertWindowView view, SpaceCombatResult result)
+    {
+        BattleResultPresentation presentation = BattleResultPresentation.Create(result);
+        SetCombatResult(view, presentation);
+        PlayResultAudio(presentation);
+        actions.RebuildBattleSnapshot();
+        markDirty();
     }
 
     /// <summary>

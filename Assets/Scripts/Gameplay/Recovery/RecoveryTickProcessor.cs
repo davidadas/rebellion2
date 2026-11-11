@@ -268,21 +268,33 @@ namespace Rebellion.Gameplay
             List<GameResult> results
         )
         {
-            foreach (CapitalShip ship in game.GetSceneNodesByType<CapitalShip>())
+            List<CapitalShip> ships = game.GetSceneNodesByType<CapitalShip>();
+            HashSet<(string Planet, string Owner)> shipyards = ships.Exists(CanRepairShip)
+                ? GetShipyards(game)
+                : null;
+            foreach (CapitalShip ship in ships)
             {
-                if (
-                    !ship.IsDamaged()
-                    || ship.ManufacturingStatus != ManufacturingStatus.Complete
-                    || ((IMovable)ship).GetTransitMovement() != null
-                )
+                bool damagedSystems = ship.SystemDamage.Total > 0;
+                if (!ship.IsDamaged())
                     continue;
-
+                if (!CanRepairShip(ship))
+                {
+                    ship.SystemDamage.RepairDueTick = 0;
+                    ship.SystemDamage.RepairInterval = 0;
+                    continue;
+                }
+                Planet planet = ship.GetParentOfType<Planet>();
+                bool atShipyard =
+                    planet != null
+                    && planet.OwnerInstanceID == ship.OwnerInstanceID
+                    && shipyards.Contains((planet.InstanceID, ship.OwnerInstanceID));
                 int before = ship.CurrentHullStrength;
-                int amount = IsAtFriendlyShipyard(ship)
-                    ? config.FastRepairAmount
-                    : config.NormalRepairAmount;
-                ship.RepairHull(amount);
-
+                if (damagedSystems)
+                    RepairSystems(game, ship, atShipyard);
+                if (ship.CurrentHullStrength < ship.MaxHullStrength)
+                    ship.RepairHull(
+                        atShipyard ? config.FastRepairAmount : config.NormalRepairAmount
+                    );
                 if (!ship.IsDamaged())
                 {
                     results.Add(
@@ -295,6 +307,66 @@ namespace Rebellion.Gameplay
                         }
                     );
                 }
+            }
+        }
+
+        /// <summary>
+        /// Checks whether a damaged ship is complete and stationary before repair resources are resolved.
+        /// </summary>
+        /// <param name="ship">The ship being assessed.</param>
+        /// <returns>Whether hull or component repairs can advance this tick.</returns>
+        private static bool CanRepairShip(CapitalShip ship)
+        {
+            return ship.IsDamaged()
+                && ship.ManufacturingStatus == ManufacturingStatus.Complete
+                && ((IMovable)ship).GetTransitMovement() == null;
+        }
+
+        /// <summary>
+        /// Indexes operational shipyards once for the tick's damaged ships.
+        /// </summary>
+        /// <param name="game">The active campaign graph.</param>
+        /// <returns>The planet and owner pairs that provide accelerated repair.</returns>
+        private static HashSet<(string Planet, string Owner)> GetShipyards(GameRoot game)
+        {
+            HashSet<(string Planet, string Owner)> result = new();
+            foreach (Building building in game.GetSceneNodesByType<Building>())
+            {
+                if (
+                    building.BuildingType == BuildingType.Shipyard
+                    && building.ManufacturingStatus == ManufacturingStatus.Complete
+                    && building.Movement == null
+                    && building.GetParent() is Planet planet
+                )
+                    result.Add((planet.InstanceID, building.OwnerInstanceID));
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Advances the ship's persistent repair timer and attempts one weighted component repair.
+        /// </summary>
+        /// <param name="game">The active campaign and random stream.</param>
+        /// <param name="ship">The damaged ship.</param>
+        /// <param name="atShipyard">Whether an operational friendly shipyard is available.</param>
+        private static void RepairSystems(GameRoot game, CapitalShip ship, bool atShipyard)
+        {
+            CapitalShipSystemDamage damage = ship.SystemDamage;
+            int interval = ship.GetSystemRepairInterval(atShipyard);
+            if (damage.RepairDueTick == 0 || damage.RepairInterval != interval)
+            {
+                damage.RepairInterval = interval;
+                damage.RepairDueTick = game.CurrentTick + interval;
+            }
+            if (game.CurrentTick < damage.RepairDueTick)
+                return;
+            damage.RepairDueTick = game.CurrentTick + interval;
+            if (game.Random.NextInt(1, 101) <= ship.DamageControl)
+                damage.RepairComponent(game.Random.NextInt(0, damage.Total));
+            if (damage.Total == 0)
+            {
+                damage.RepairDueTick = 0;
+                damage.RepairInterval = 0;
             }
         }
 
@@ -371,26 +443,6 @@ namespace Rebellion.Gameplay
                     squadron.ScheduleReplacement(game.CurrentTick, interval);
                 }
             }
-        }
-
-        /// <summary>
-        /// Returns true if the ship is at a friendly planet with an operational orbital shipyard.
-        /// </summary>
-        /// <param name="ship">The capital ship to check.</param>
-        /// <returns>True when a friendly operational shipyard can accelerate repairs.</returns>
-        private static bool IsAtFriendlyShipyard(CapitalShip ship)
-        {
-            Planet planet = ship.GetParentOfType<Planet>();
-            return planet != null
-                && planet.OwnerInstanceID == ship.OwnerInstanceID
-                && planet
-                    .GetChildren<Building>()
-                    .Any(building =>
-                        building.OwnerInstanceID == ship.OwnerInstanceID
-                        && building.BuildingType == BuildingType.Shipyard
-                        && building.ManufacturingStatus == ManufacturingStatus.Complete
-                        && building.Movement == null
-                    );
         }
     }
 }

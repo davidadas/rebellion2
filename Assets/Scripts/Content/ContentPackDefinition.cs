@@ -51,6 +51,9 @@ public sealed class ContentPackDefinition
     public string OfficerTraitsPath { get; set; }
 
     [XmlElement]
+    public string TacticalCombatDefinitionsPath { get; set; }
+
+    [XmlElement]
     public string GameEventsPath { get; set; }
 
     [XmlElement]

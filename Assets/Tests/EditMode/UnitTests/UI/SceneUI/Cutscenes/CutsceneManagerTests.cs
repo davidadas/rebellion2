@@ -1,8 +1,11 @@
 using System;
+using System.Collections;
+using System.IO;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.TestTools;
 using UnityEngine.Video;
 
 namespace Rebellion.Tests.UI.SceneUI.Cutscenes
@@ -20,6 +23,8 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
         private GameObject _playerPrefab;
         private AudioManager _audioManager;
         private bool _previousAudioPause;
+        private ContentAssets _ownedAssets;
+        private string _ownedContentRoot;
 
         /// <summary>
         /// Sets up.
@@ -59,6 +64,11 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
 
             Time.timeScale = 1f;
             AudioListener.pause = _previousAudioPause;
+            _ownedAssets?.Dispose();
+            _ownedAssets = null;
+            if (_ownedContentRoot != null && Directory.Exists(_ownedContentRoot))
+                Directory.Delete(_ownedContentRoot, true);
+            _ownedContentRoot = null;
         }
 
         [Test]
@@ -179,6 +189,55 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.AreEqual(1, finishedCount);
         }
 
+        [UnityTest]
+        public IEnumerator PlayOwned_DisposedOwnership_RestoresApplicationState()
+        {
+            InitializeOwnedContent();
+            Time.timeScale = 0.75f;
+            IDisposable ownership = _manager.PlayOwned(
+                "Application/Videos/blank",
+                null,
+                CutsceneSkipInput.EscapeOrPrimaryPointer
+            );
+
+            ownership.Dispose();
+
+            Assert.AreEqual(0.75f, Time.timeScale);
+            Assert.IsFalse(AudioListener.pause);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator PlayOwned_StaleOwnershipDisposed_PreservesReplacementPlayback()
+        {
+            InitializeOwnedContent();
+            IDisposable first = _manager.PlayOwned("Application/Videos/blank", null);
+            using IDisposable replacement = _manager.PlayOwned("Application/Videos/blank", null);
+
+            first.Dispose();
+
+            Assert.AreEqual(0f, Time.timeScale);
+            Assert.IsTrue(AudioListener.pause);
+            replacement.Dispose();
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator PlayOwned_DisposedOwnership_DoesNotCompleteCancelledPlayback()
+        {
+            InitializeOwnedContent();
+            int completions = 0;
+            IDisposable ownership = _manager.PlayOwned(
+                "Application/Videos/blank",
+                () => completions++
+            );
+
+            ownership.Dispose();
+
+            Assert.AreEqual(0, completions);
+            yield return null;
+        }
+
         /// <summary>
         /// Gets field.
         /// </summary>
@@ -203,6 +262,60 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             typeof(CutsceneManager)
                 .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
                 .SetValue(_manager, value);
+        }
+
+        /// <summary>
+        /// Creates an external synthetic black-and-silent video for scoped playback requests.
+        /// </summary>
+        private void InitializeOwnedContent()
+        {
+            _ownedContentRoot = Path.Combine(
+                Path.GetTempPath(),
+                "rebellion2-owned-video",
+                Guid.NewGuid().ToString("N")
+            );
+            string videoDirectory = Path.Combine(_ownedContentRoot, "Application", "Videos");
+            string packRoot = Path.Combine(_ownedContentRoot, "Pack");
+            Directory.CreateDirectory(videoDirectory);
+            Directory.CreateDirectory(packRoot);
+            File.WriteAllBytes(
+                Path.Combine(videoDirectory, "blank.mp4"),
+                Convert.FromBase64String(
+                    "AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAYWbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAA+gAAQAAAQAAAAAAAAAAAA"
+                        + "AAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAAAkN0cmFrAAAAXHRraGQA"
+                        + "AAADAAAAAAAAAAAAAAABAAAAAAAAA+gAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAABAAAAAQAA"
+                        + "AAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAPoAAAAAAABAAAAAAG7bWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAABAAAAAQABVxAAAAAAALWhk"
+                        + "bHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABZm1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZW"
+                        + "YAAAAAAAAAAQAAAAx1cmwgAAAAAQAAASZzdGJsAAAAwnN0c2QAAAAAAAAAAQAAALJhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAABAAEABI"
+                        + "AAAASAAAAAAAAAABFUxhdmM2Mi4yOC4xMDIgbGlieDI2NAAAAAAAAAAAAAAAGP//AAAAOGF2Y0MBZAAK/+EAG2dkAAqs2V7AWoEBAKAAAAMAIA"
+                        + "AAAwBB4kSywAEABmjr48siwP34+AAAAAAQcGFzcAAAAAEAAAABAAAAFGJ0cnQAAAAAAAAWKAAAAAAAAAAYc3R0cwAAAAAAAAABAAAAAQAAQAAA"
+                        + "AAAcc3RzYwAAAAAAAAABAAAAAQAAAAEAAAABAAAAFHN0c3oAAAAAAAACxQAAAAEAAAAUc3RjbwAAAAAAAAABAAAGWwAAAv10cmFrAAAAXHRraG"
+                        + "QAAAADAAAAAAAAAAAAAAACAAAAAAAAA+gAAAAAAAAAAAAAAAEBAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAA"
+                        + "AAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAPoAAAEAAABAAAAAAJ1bWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAACsRAAAsERVxAAAAAAALW"
+                        + "hkbHIAAAAAAAAAAHNvdW4AAAAAAAAAAAAAAABTb3VuZEhhbmRsZXIAAAACIG1pbmYAAAAQc21oZAAAAAAAAAAAAAAAJGRpbmYAAAAcZHJlZgAA"
+                        + "AAAAAAABAAAADHVybCAAAAABAAAB5HN0YmwAAAB+c3RzZAAAAAAAAAABAAAAbm1wNGEAAAAAAAAAAQAAAAAAAAAAAAEAEAAAAACsRAAAAAAANm"
+                        + "VzZHMAAAAAA4CAgCUAAgAEgICAF0AVAAAAAAENiAAABgQFgICABRIIVuUABoCAgAECAAAAFGJ0cnQAAAAAAAENiAAABgQAAAAgc3R0cwAAAAAA"
+                        + "AAACAAAALAAABAAAAAABAAAARAAAAChzdHNjAAAAAAAAAAIAAAABAAAAAQAAAAEAAAACAAAALAAAAAEAAADIc3RzegAAAAAAAAAAAAAALQAAAB"
+                        + "UAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAA"
+                        + "AAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABA"
+                        + "AAAAQAAAAEAAAABAAAABhzdGNvAAAAAAAAAAIAAAZGAAAJIAAAABpzZ3BkAQAAAHJvbGwAAAACAAAAAf//AAAAHHNiZ3AAAAAAcm9sbAAAAAEA"
+                        + "AAAtAAAAAQAAAGJ1ZHRhAAAAWm1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAG1kaXJhcHBsAAAAAAAAAAAAAAAALWlsc3QAAAAlqXRvbwAAAB1kYX"
+                        + "RhAAAAAQAAAABMYXZmNjIuMTIuMTAyAAAACGZyZWUAAAOSbWRhdN4CAExhdmM2Mi4yOC4xMDIAAjBADgAAAq0GBf//qdxF6b3m2Ui3lizYINkj"
+                        + "7u94MjY0IC0gY29yZSAxNjUgcjMyMjIgYjM1NjA1YSAtIEguMjY0L01QRUctNCBBVkMgY29kZWMgLSBDb3B5bGVmdCAyMDAzLTIwMjUgLSBodH"
+                        + "RwOi8vd3d3LnZpZGVvbGFuLm9yZy94MjY0Lmh0bWwgLSBvcHRpb25zOiBjYWJhYz0xIHJlZj0zIGRlYmxvY2s9MTowOjAgYW5hbHlzZT0weDM6"
+                        + "MHgxMTMgbWU9aGV4IHN1Ym1lPTcgcHN5PTEgcHN5X3JkPTEuMDA6MC4wMCBtaXhlZF9yZWY9MSBtZV9yYW5nZT0xNiBjaHJvbWFfbWU9MSB0cm"
+                        + "VsbGlzPTEgOHg4ZGN0PTEgY3FtPTAgZGVhZHpvbmU9MjEsMTEgZmFzdF9wc2tpcD0xIGNocm9tYV9xcF9vZmZzZXQ9LTIgdGhyZWFkcz0xIGxv"
+                        + "b2thaGVhZF90aHJlYWRzPTEgc2xpY2VkX3RocmVhZHM9MCBucj0wIGRlY2ltYXRlPTEgaW50ZXJsYWNlZD0wIGJsdXJheV9jb21wYXQ9MCBjb2"
+                        + "5zdHJhaW5lZF9pbnRyYT0wIGJmcmFtZXM9MyBiX3B5cmFtaWQ9MiBiX2FkYXB0PTEgYl9iaWFzPTAgZGlyZWN0PTEgd2VpZ2h0Yj0xIG9wZW5f"
+                        + "Z29wPTAgd2VpZ2h0cD0yIGtleWludD0yNTAga2V5aW50X21pbj0xIHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9ND"
+                        + "AgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6"
+                        + "MS4wMACAAAAAEGWIhAAV//73ye/Apuvb34EBGCAHARggBwEYIAcBGCAHARggBwEYIAcBGCAHARggBwEYIAcBGCAHARggBwEYIAcBGCAHARggBw"
+                        + "EYIAcBGCAHARggBwEYIAcBGCAHARggBwEYIAcBGCAHARggBwEYIAcBGCAHARggBwEYIAcBGCAHARggBwEYIAcBGCAHARggBwEYIAcBGCAHARgg"
+                        + "BwEYIAcBGCAHARggBwEYIAcBGCAHARggBwEYIAcBGCAHARggBw=="
+                )
+            );
+            _ownedAssets = new ContentAssets(new ContentFileResolver(_ownedContentRoot, packRoot));
+            _manager.InitializeContent(_ownedAssets);
         }
     }
 }

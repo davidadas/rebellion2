@@ -208,6 +208,32 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Reserves destinations for actual departures without replacing tactical recovery assignments.
+        /// </summary>
+        /// <param name="fleets">The participating fleets.</param>
+        /// <param name="planet">The encounter's planet.</param>
+        /// <param name="ownerInstanceId">The departing faction.</param>
+        /// <param name="departures">The units that escaped.</param>
+        /// <param name="recoveries">The completed battle's fighter assignments.</param>
+        /// <returns>The reserved departure plan.</returns>
+        internal SpaceCombatWithdrawalPlan GetTacticalWithdrawalPlan(
+            IReadOnlyList<Fleet> fleets,
+            Planet planet,
+            string ownerInstanceId,
+            ISet<ISceneNode> departures,
+            IReadOnlyList<FighterRecoveryResult> recoveries
+        )
+        {
+            return _withdrawalPlanner.CreateTacticalPlan(
+                fleets,
+                planet,
+                ownerInstanceId,
+                departures,
+                recoveries
+            );
+        }
+
+        /// <summary>
         /// Determines whether any opposing fleet projects a gravity well at the combat planet.
         /// </summary>
         /// <param name="fleets">The fleets attempting to retreat.</param>

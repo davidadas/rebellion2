@@ -563,7 +563,8 @@ public static class TestGameData
             source.MessageDefinitions,
             source.EncyclopediaEntries,
             source.FactionThemes,
-            source.OfficerTraits
+            source.OfficerTraits,
+            source.TacticalCombat
         );
     }
 }

@@ -39,6 +39,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         [SetUp]
         public void SetUp()
         {
+            _dirtyCount = 0;
+            _loadResult = false;
+            _menuOpenWhenLoadCalled = false;
+            _loadedFileName = null;
             DestroyAudioManagers();
             GameLaunchContext.Reset(TestContent.Pack);
             _saveDirectoryPath = Path.Combine(
@@ -104,6 +108,61 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(1, _windowManager.Windows.Count);
             Assert.IsTrue(view.gameObject.activeSelf);
             Assert.GreaterOrEqual(_dirtyCount, 1);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Open_SavedGamePermission_ControlsLoadingFromTheWindow(bool allowSaveLoad)
+        {
+            _saveGameManager.SaveGameData(CreateGame(), "existing_save", "Existing Save");
+            _controller.Dispose();
+            _controller = CreateController(GetPrefab(), allowSaveLoad: allowSaveLoad);
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
+            view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "SlotRow0")
+                .onClick.Invoke();
+            _controller.RenderWindows();
+
+            view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "LoadIcon")
+                .onClick.Invoke();
+
+            Assert.AreEqual(allowSaveLoad ? "existing_save" : null, _loadedFileName);
+        }
+
+        [Test]
+        public void Open_SaveLoadUnavailable_PreventsSavedGameMutations()
+        {
+            _saveGameManager.SaveGameData(CreateGame(), "existing_save", "Existing Save");
+            _bootstrap.GetRuntime().StartGame(CreateGame());
+            _controller.Dispose();
+            _controller = CreateController(GetPrefab(), allowSaveLoad: false);
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
+            Button load = view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "LoadIcon");
+            Button save = view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "SaveIcon");
+            Button row = view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "SlotRow0");
+            Button delete = view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "SlotDelete0");
+            TMP_InputField rename = view.GetComponentsInChildren<TMP_InputField>(true)
+                .Single(field => field.name == "SlotRenameField");
+
+            row.onClick.Invoke();
+            delete.onClick.Invoke();
+            rename.onEndEdit.Invoke("Changed Save");
+            load.onClick.Invoke();
+            save.onClick.Invoke();
+
+            Assert.IsFalse(load.interactable);
+            Assert.IsFalse(save.interactable);
+            Assert.IsFalse(delete.interactable);
+            Assert.IsNull(_loadedFileName);
+            Assert.AreEqual(
+                "Existing Save",
+                _saveGameManager.GetSavedGames().Single().Metadata.SaveDisplayName
+            );
         }
 
         [Test]
@@ -1140,10 +1199,12 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         /// </summary>
         /// <param name="prefab">The Options prefab.</param>
         /// <param name="showModsTab">Whether the controller exposes content management.</param>
+        /// <param name="allowSaveLoad">Whether the owning interaction permits saved-game operations.</param>
         /// <returns>The created controller.</returns>
         private OptionsMenuController CreateController(
             OptionsMenuView prefab,
-            bool showModsTab = true
+            bool showModsTab = true,
+            bool allowSaveLoad = true
         )
         {
             return new OptionsMenuController(
@@ -1170,7 +1231,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 },
                 () => _dirtyCount++,
                 _saveGameManager,
-                showModsTab
+                showModsTab,
+                allowSaveLoad
             );
         }
 

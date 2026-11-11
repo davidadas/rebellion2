@@ -7,7 +7,7 @@ using UnityEngine;
 /// <summary>
 /// Manages the Options menu.
 /// </summary>
-public sealed class OptionsMenuController : ICancelable, IDisposable
+public sealed class OptionsMenuController : ICancelable, IOptionsMenuPresenter
 {
     private readonly OptionsMenuView _prefab;
     private readonly Transform _windowParent;
@@ -23,6 +23,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private readonly FactionThemeLibrary _factionThemeLibrary;
     private readonly IReadOnlyList<InstalledContentPack> _availablePacks;
     private readonly bool _showModsTab;
+    private readonly bool _allowSaveLoad;
 
     private readonly OptionsSettingsSession _settingsSession;
     private readonly OptionsBindingSession _bindingSession;
@@ -67,6 +68,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <param name="markDirty">Marks the menu data as changed.</param>
     /// <param name="saveGameManager">The save-game persistence service.</param>
     /// <param name="showModsTab">Whether the owning scene exposes content management.</param>
+    /// <param name="allowSaveLoad">Whether the owning interaction permits saved-game operations.</param>
     public OptionsMenuController(
         OptionsMenuView prefab,
         Transform windowParent,
@@ -78,7 +80,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         Func<string, bool> loadSave,
         Action markDirty,
         SaveGameManager saveGameManager,
-        bool showModsTab = true
+        bool showModsTab = true,
+        bool allowSaveLoad = true
     )
     {
         _prefab = prefab;
@@ -94,6 +97,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         _saveGameManager =
             saveGameManager ?? throw new ArgumentNullException(nameof(saveGameManager));
         _showModsTab = showModsTab;
+        _allowSaveLoad = allowSaveLoad;
         _contentAssets = _bootstrap.GetContentAssets();
         _factionThemeLibrary = new FactionThemeLibrary(
             _bootstrap.GetContentPack().GameData.FactionThemes
@@ -260,7 +264,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 _settingsSession.GetGraphicsValues(),
                 _settingsSession.Analytics.IsEnabled,
                 _statusMessage,
-                _statusIsError
+                _statusIsError,
+                canLoad: _allowSaveLoad
             )
         );
     }
@@ -604,6 +609,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <param name="slot">The clicked row index.</param>
     private void HandleSlotSelected(int slot)
     {
+        if (!_allowSaveLoad)
+            return;
         if (slot < 0 || slot >= _saveSlots.Count)
             return;
 
@@ -619,6 +626,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <param name="submitted">Whether Return submitted the edit.</param>
     private void HandleSlotRenamed(int slot, string newName, bool submitted)
     {
+        if (!_allowSaveLoad)
+            return;
         if (slot < 0 || slot >= _saveSlots.Count || string.IsNullOrWhiteSpace(newName))
             return;
 
@@ -653,6 +662,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <param name="slot">The row index to delete.</param>
     private void HandleSlotDeleteRequested(int slot)
     {
+        if (!_allowSaveLoad)
+            return;
         if (slot < 0 || slot >= _saveSlots.Count || _saveSlots[slot].IsCreateNew)
             return;
 
@@ -710,7 +721,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// </summary>
     private void HandleLoadRequested()
     {
-        if (!IsSelectedExistingSave())
+        if (!_allowSaveLoad || !IsSelectedExistingSave())
             return;
 
         string fileName = _saveSlots[_selectedSlot].FileName;
@@ -1287,7 +1298,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <returns>True when the runtime permits a new save snapshot.</returns>
     private bool CanSaveGame()
     {
-        return _bootstrap.GetRuntime()?.CanSave == true;
+        return _allowSaveLoad && _bootstrap.GetRuntime()?.CanSave == true;
     }
 
     /// <summary>

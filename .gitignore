@@ -101,3 +101,9 @@ Assets/Art/Models/MainMenu/
 # App icon lives in private rebellion2-media, not here
 /Assets/GameIcon/
 /Assets/GameIcon.meta
+
+# Native vector libraries and import metadata are generated together.
+/Assets/Plugins/TacticalMath/
+/Assets/Plugins/TacticalMath.meta
+/.native-math-build/
+!/Native/TacticalMath/managed-tests/TacticalMath.ManagedTests.csproj

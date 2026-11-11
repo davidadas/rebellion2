@@ -368,6 +368,73 @@ public sealed class AudioManagerTests
         Assert.Throws<System.ArgumentNullException>(() => manager.PlayDynamicPlaylist(null));
     }
 
+    [Test]
+    public void PlaySfxInstance_LoopingClip_RepeatsUntilOwnedHandleStops()
+    {
+        AudioManager manager = AudioManager.EnsureExists();
+        AudioClip clip = AudioClip.Create("Loop", 44100, 1, 44100, false);
+        try
+        {
+            AudioPlaybackHandle playback = manager.PlaySfxInstance(clip, loop: true);
+            AudioSource source = playback.Source;
+
+            Assert.IsTrue(source.loop);
+            playback.Stop();
+
+            Assert.IsFalse(playback.IsActive);
+            Assert.IsNull(source.clip);
+        }
+        finally
+        {
+            Object.DestroyImmediate(clip);
+        }
+    }
+
+    [Test]
+    public void PlaySfxInstance_SourceReusedAfterLoop_RestoresOneShotDefault()
+    {
+        AudioManager manager = AudioManager.EnsureExists();
+        AudioClip clip = AudioClip.Create("Reused loop", 44100, 1, 44100, false);
+        try
+        {
+            AudioPlaybackHandle looping = manager.PlaySfxInstance(clip, loop: true);
+            AudioSource source = looping.Source;
+            looping.Stop();
+
+            AudioPlaybackHandle oneShot = manager.PlaySfxInstance(clip);
+
+            Assert.AreSame(source, oneShot.Source);
+            Assert.IsFalse(oneShot.Source.loop);
+            oneShot.Stop();
+        }
+        finally
+        {
+            Object.DestroyImmediate(clip);
+        }
+    }
+
+    [Test]
+    public void PlaySfxInstance_StoppingOneLoop_PreservesAnotherOwnedPlayback()
+    {
+        AudioManager manager = AudioManager.EnsureExists();
+        AudioClip clip = AudioClip.Create("Independent loops", 44100, 1, 44100, false);
+        try
+        {
+            AudioPlaybackHandle first = manager.PlaySfxInstance(clip, loop: true);
+            AudioPlaybackHandle second = manager.PlaySfxInstance(clip, loop: true);
+
+            first.Stop();
+
+            Assert.IsTrue(second.IsActive);
+            Assert.AreSame(clip, second.Source.clip);
+            second.Stop();
+        }
+        finally
+        {
+            Object.DestroyImmediate(clip);
+        }
+    }
+
     /// <summary>
     /// Executes destroy audio managers.
     /// </summary>

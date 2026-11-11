@@ -52,7 +52,24 @@ require_command() {
     fi
 }
 
+prepare_native_math() {
+    local native_target
+    case "$(uname -s)" in
+        Darwin) native_target="osx" ;;
+        Linux) native_target="linux-x64" ;;
+        MINGW*|MSYS*|CYGWIN*) native_target="win-x64" ;;
+        *) echo "Unsupported native vector math host: $(uname -s)"; return 1 ;;
+    esac
+    require_command "${PYTHON:-python3}"
+    "${PYTHON:-python3}" "$PROJECT_PATH/Tools/build_tactical_math.py" \
+        --source "$PROJECT_PATH/Native/TacticalMath" \
+        --build-directory "$PROJECT_PATH/.native-math-build/$native_target" \
+        --output-directory "$PROJECT_PATH/Assets/Plugins/TacticalMath" \
+        --target "$native_target"
+}
+
 run_unity_editmode_tests() {
+    prepare_native_math
     "$UNITY" \
         -runTests \
         -testPlatform EditMode \
@@ -159,6 +176,15 @@ do_lint() {
             -verbosity:normal \
             "${extra_args[@]}"
         echo ""
+        if [ -f ContentPackEditorAssembly.csproj ]; then
+            echo "=== ContentPackEditorAssembly ==="
+            dotnet build ContentPackEditorAssembly.csproj \
+                --no-dependencies \
+                -maxcpucount:1 \
+                -verbosity:normal \
+                "${extra_args[@]}"
+            echo ""
+        fi
         for test_project in UnitTests.csproj; do
             if [ ! -f "$test_project" ]; then
                 continue
@@ -336,6 +362,7 @@ default_build_player_path() {
 }
 
 do_build() {
+    prepare_native_math
     local build_target="${BUILD_TARGET:-$(default_build_target)}"
     local build_player_path="${BUILD_PLAYER_PATH:-$(default_build_player_path)}"
     local resolved_player_path

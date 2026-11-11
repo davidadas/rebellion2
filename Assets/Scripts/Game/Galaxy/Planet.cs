@@ -53,6 +53,13 @@ namespace Rebellion.Game.Galaxy
         // Planet Properties.
         public bool IsColonized { get; set; }
         public int PlanetDataId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the retained faction selector for space-combat arrival presentation.
+        /// Zero records no activation, one and two identify the two authored combat factions,
+        /// and three records neutral ownership.
+        /// </summary>
+        public int SpaceCombatEntryFaction { get; set; }
         public int NumRawResourceNodes { get; set; }
         public int EnergyCapacity { get; set; }
         public int AllocatedEnergy { get; set; }
@@ -162,6 +169,7 @@ namespace Rebellion.Game.Galaxy
             Planet copy = (Planet)destination;
             copy.IsColonized = IsColonized;
             copy.PlanetDataId = PlanetDataId;
+            copy.SpaceCombatEntryFaction = SpaceCombatEntryFaction;
             copy.NumRawResourceNodes = NumRawResourceNodes;
             copy.EnergyCapacity = EnergyCapacity;
             copy.AllocatedEnergy = AllocatedEnergy;
@@ -1252,6 +1260,12 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
+        /// Captures the current fighter roster for an admitted relationship transaction.
+        /// </summary>
+        /// <returns>A snapshot that can restore this roster if destination admission fails.</returns>
+        internal StarfighterRosterSnapshot CaptureStarfighterRoster() => new(_starfighters);
+
+        /// <summary>
         /// Returns all officers on the planet.
         /// </summary>
         /// <returns>A list of officers currently on this planet.</returns>
@@ -1322,7 +1336,8 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Returns true if this planet can accept the child. Destroyed planets reject manufactured
         /// surface units. Fleets and Missions are always
-        /// accepted. Uncolonized planets accept regiments and facilities under construction;
+        /// accepted. Starfighters may remain at a surviving planet independently of its surface
+        /// ownership or colonization. Uncolonized planets accept regiments and facilities under construction;
         /// an owned uncolonized planet with a stationed friendly unit also accepts its owner's
         /// other surface units. Colonized planets accept surface children when ownership and
         /// capacity rules permit them.
@@ -1349,9 +1364,8 @@ namespace Rebellion.Game.Galaxy
                 case SpecialForces specialForces:
                     return CanHostOwnedUnits()
                         && specialForces.GetOwnerInstanceID() == GetOwnerInstanceID();
-                case Starfighter starfighter:
-                    return CanHostOwnedUnits()
-                        && starfighter.GetOwnerInstanceID() == GetOwnerInstanceID();
+                case Starfighter _:
+                    return true;
                 case Building building:
                     return (
                             IsColonized

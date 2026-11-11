@@ -191,6 +191,7 @@ public sealed class OptionsMenuRenderData
 
     public bool HasActiveGame { get; }
     public bool CanSave { get; }
+    public bool CanLoad { get; }
 
     /// <summary>
     /// Creates the Options menu data.
@@ -222,6 +223,7 @@ public sealed class OptionsMenuRenderData
     /// <param name="analyticsEnabled">Whether analytics collection is enabled.</param>
     /// <param name="statusMessage">The result of the most recent settings action.</param>
     /// <param name="statusIsError">Whether the settings status represents an error.</param>
+    /// <param name="canLoad">Whether the owning interaction permits saved-game loading.</param>
     public OptionsMenuRenderData(
         int x,
         int y,
@@ -249,7 +251,8 @@ public sealed class OptionsMenuRenderData
         IReadOnlyDictionary<UserGraphicsSetting, OptionsGraphicsValue> graphicsValues = null,
         bool analyticsEnabled = false,
         string statusMessage = "",
-        bool statusIsError = false
+        bool statusIsError = false,
+        bool canLoad = true
     )
     {
         X = x;
@@ -278,6 +281,7 @@ public sealed class OptionsMenuRenderData
         SelectedSlot = selectedSlot;
         HasActiveGame = hasActiveGame;
         CanSave = canSave;
+        CanLoad = canLoad;
         ListeningRow = listeningRow;
         ListeningSecondary = listeningSecondary;
     }

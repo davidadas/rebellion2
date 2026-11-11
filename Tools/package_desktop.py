@@ -19,6 +19,13 @@ PLATFORMS = {
 EDITOR_ASSEMBLY = "ContentPackEditorAssembly.dll"
 
 
+MATH_LIBRARIES = {
+    "StandaloneWindows64": "RebellionTacticalMath.dll",
+    "StandaloneLinux64": "libRebellionTacticalMath.so",
+    "StandaloneOSX": "libRebellionTacticalMath.dylib",
+}
+
+
 def require(condition, message):
     if not condition:
         raise ValueError(message)
@@ -159,6 +166,18 @@ def collect_files(root, platform, game_name="rebellion2"):
         )
         if libraries:
             verify_native(libraries[0], platform)
+        math_libraries = [
+            path
+            for path in (player if suffix == ".app" else data).rglob(
+                MATH_LIBRARIES[platform]
+            )
+            if name == "rebellion2-editor" or not path.is_relative_to(editor_path)
+        ]
+        require(
+            len(math_libraries) == 1,
+            f"Incorrect native vector library inclusion: {name}",
+        )
+        verify_native(math_libraries[0], platform)
         if name == "rebellion2-editor":
             notice_root = data.parent if suffix == ".app" else data
             notice = notice_root / "ThirdPartyNotices" / "NativeFileDialog.txt"

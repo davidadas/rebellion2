@@ -21,14 +21,18 @@ or otherwise redistribute `rebellion2-media`, `Assets/Content`, or any copyright
 4. Overlay `rebellion2-media/UnityAssets/` onto `rebellion2/Assets/`, preserving `.meta` files.
    This installs native Unity packages, including the main-menu planet, at their logical art
    paths.
-5. Open `rebellion2` in Unity.
-6. Run **Rebellion > Build > Build All UI**.
+5. Build the host vector library using the instructions in [Native vector math](NativeMath.md).
+6. Open `rebellion2` in Unity.
+7. Run **Rebellion > Build > Build All UI**.
 
 The copied content, models, Unity assets, all generated prefabs, and all generated scenes are local
 development artifacts and are ignored by Git. This includes the boot scene and cutscene playback
 assets. Manage the media checkout and refresh these local copies outside Unity.
 
 CI installs clean media mirrors automatically with `rsync --delete` before Unity builds and tests.
+The revision in `.github/media-revision` pins the content expected by this branch. Use that revision
+when refreshing local content; `Pack/` addresses resolve beneath the selected directory in
+`Assets/Content/Packs/`.
 
 ## Commands
 
@@ -54,6 +58,47 @@ BUILD_TARGET=StandaloneWindows64 BUILD_PLAYER_PATH=build/rebellion2.exe ./build.
 
 Player builds generate the UI through `StandalonePlayerBuild.Build` and verify that development
 content under `Assets/Content/` was not embedded in the player.
+
+## Tactical space combat
+
+The battle alert opens manual combat when the selected content pack supplies tactical definitions
+for both factions and every participating unit. The campaign stays suspended while the encounter
+runs. Closing a completed encounter applies its losses, component damage, fighter recovery, and
+withdrawals through the shared combat-result pipeline. Surviving fighters without a carrier may
+remain at the encounter planet without changing its surface ownership or colonization.
+
+The tactical frame uses a fixed 640x480 layout. Left-click to replace the current selection; hold
+Ctrl to extend or toggle it. Right-click addresses an object or visible navigation marker within
+the current command context. Use the category buttons or number keys 1-8 for object groups and
+Space for the nearest opposing object. The Pause button pauses and resumes the battle.
+
+The camera buttons and arrow keys rotate or tilt the view. Page Up and Page Down zoom; Home saves
+the primary camera and End restores it. Return focuses the current selection. F1-F12 open category
+camera views. Opening Options isolates battle input and returns to a paused encounter.
+
+`TacticalCombatSession` owns battle state and queued commands independently of Unity objects.
+`TacticalCombatFactory` captures campaign participants and the pack's shared definitions at entry.
+`TacticalCombatController` translates screen input, and `TacticalCombatRenderer` owns instantiated
+models, effects, and render targets. Required media finishes loading before the session advances.
+The shared content caches retain source assets; disposing the encounter releases its presentation
+instances and audio handles.
+
+A pack selects its definition XML with `TacticalCombatDefinitionsPath` in `pack.xml`. It contains
+faction deployment, unit geometry and model detail paths, fighter images, environments, sound
+variants, impact sequences, retreat settings, and component-repair intervals. Paths resolve through
+the pack's existing file resolver. Keep these assets in the private media checkout and copy them
+into the ignored development content directory before rebuilding the UI or running tests.
+
+Keep tactical models, fighter sprites, and palette textures beside the unit's existing artwork.
+Shared planet backgrounds belong in `Shared/Planets`; HUD images use the existing shared and
+faction `Strategy/UI/Combat` folders. World effects and the starfield use `Shared/Strategy/Combat`,
+shared effects audio uses `Shared/Strategy/Audio/Combat`, and faction voice lines use the existing
+`Strategy/Advisor/Audio/Notifications` folders. Asset addresses in XML omit file extensions.
+Filenames describe their purpose; native message IDs and GLB texture identifiers remain separate
+authored metadata. See the media repository's README for the complete layout.
+
+Capital-ship component damage and its campaign repair timer are saved per ship. Shared tactical
+geometry and media references remain pack data. Older saves load with an undamaged component record.
 
 ## Content-pack editor and packaging
 

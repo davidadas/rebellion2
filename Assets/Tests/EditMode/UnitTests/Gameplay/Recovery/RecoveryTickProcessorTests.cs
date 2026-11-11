@@ -7,6 +7,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -894,6 +895,126 @@ namespace Rebellion.Tests.Gameplay
                 squadron.CurrentSquadronSize,
                 "Squadron still under construction should not have fighters replaced"
             );
+        }
+
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(3)]
+        [TestCase(4)]
+        [TestCase(5)]
+        public void ProcessTick_SystemRepairDue_RepairsWeightedComponent(int selected)
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            CapitalShip ship = CreateSystemDamagedShip(game, planet);
+            ship.SystemDamage = new CapitalShipSystemDamage
+            {
+                Shields = 1,
+                Weapons = 1,
+                TractorBeam = 1,
+                Engines = 1,
+                PrimaryHyperdrive = 1,
+                BackupHyperdrive = 1,
+            };
+            game.Random = new FixedRandomProvider(new[] { 0.0, (selected + 0.5) / 6 });
+            game.CurrentTick = 10;
+            RecoveryTickProcessor processor = new();
+            processor.ProcessTick(game);
+            game.CurrentTick = 40;
+            processor.ProcessTick(game);
+            int[] damage =
+            {
+                ship.SystemDamage.Shields,
+                ship.SystemDamage.Weapons,
+                ship.SystemDamage.TractorBeam,
+                ship.SystemDamage.Engines,
+                ship.SystemDamage.PrimaryHyperdrive,
+                ship.SystemDamage.BackupHyperdrive,
+            };
+            Assert.AreEqual(0, damage[selected]);
+            Assert.AreEqual(5, ship.SystemDamage.Total);
+        }
+
+        [Test]
+        public void ProcessTick_SystemRepairNotDue_LeavesComponentsDamaged()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            CapitalShip ship = CreateSystemDamagedShip(game, planet);
+            game.CurrentTick = 10;
+            RecoveryTickProcessor processor = new();
+            processor.ProcessTick(game);
+            game.CurrentTick = 39;
+            processor.ProcessTick(game);
+            Assert.AreEqual(1, ship.SystemDamage.Engines);
+        }
+
+        [Test]
+        public void ProcessTick_ShipyardAvailable_RearmsSystemRepairAtFastInterval()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            CapitalShip ship = CreateSystemDamagedShip(game, planet);
+            RecoveryTickProcessor processor = new();
+            game.CurrentTick = 10;
+            processor.ProcessTick(game);
+            Building shipyard = new()
+            {
+                InstanceID = "shipyard",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Shipyard,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(shipyard, planet);
+            game.CurrentTick = 11;
+            processor.ProcessTick(game);
+            Assert.AreEqual(13, ship.SystemDamage.RepairDueTick);
+        }
+
+        [Test]
+        public void ProcessTick_FailedSystemRepairRoll_RetainsComponentDamage()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            CapitalShip ship = CreateSystemDamagedShip(game, planet);
+            ship.DamageControl = 50;
+            game.Random = new FixedRandomProvider(new[] { 0.99 });
+            game.CurrentTick = 10;
+            RecoveryTickProcessor processor = new();
+            processor.ProcessTick(game);
+            game.CurrentTick = 40;
+            processor.ProcessTick(game);
+            Assert.AreEqual(1, ship.SystemDamage.Engines);
+        }
+
+        /// <summary>
+        /// Creates a fully built ship with shared repair definitions and one damaged system.
+        /// </summary>
+        /// <param name="game">The fixture's campaign graph.</param>
+        /// <param name="planet">The ship's repair location.</param>
+        /// <returns>The attached damaged ship.</returns>
+        private static CapitalShip CreateSystemDamagedShip(GameRoot game, Planet planet)
+        {
+            GameDataCatalog content = TestContent.Data;
+            UnitFactory factory = new(
+                content.Buildings,
+                content.CapitalShips,
+                content.Starfighters,
+                content.Regiments,
+                content.SpecialForces,
+                content.TacticalCombat
+            );
+            CapitalShip ship = factory.Create<CapitalShip>(
+                content.CapitalShips[0].TypeID,
+                "empire"
+            );
+            ship.InstanceID = "repair-ship";
+            ship.OwnerInstanceID = "empire";
+            ship.ManufacturingStatus = ManufacturingStatus.Complete;
+            ship.CurrentHullStrength = ship.MaxHullStrength;
+            ship.DamageControl = 100;
+            ship.SystemDamage.Engines = 1;
+            Fleet fleet = EntityFactory.CreateFleet("repair-fleet", "empire");
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            return ship;
         }
 
         /// <summary>
