@@ -306,6 +306,12 @@ namespace Rebellion.Tests.Multiplayer
             public bool TryBeginGameTick(float elapsedSeconds) => false;
 
             /// <summary>
+            /// Keeps the disconnected fixture outside terminal campaign coordination.
+            /// </summary>
+            /// <returns>A completed rejection.</returns>
+            public Task<bool> WaitForCampaignCompletionAsync() => Task.FromResult(false);
+
+            /// <summary>
             /// Rejects orders while the peer is absent.
             /// </summary>
             /// <param name="action">The requested player action.</param>

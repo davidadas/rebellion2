@@ -252,6 +252,20 @@ public sealed class GameSessionManager
     }
 
     /// <summary>
+    /// Waits for the active campaign's execution owner before presentation releases its terminal session.
+    /// </summary>
+    /// <returns>True when the same settled session is ready to end.</returns>
+    public async Task<bool> WaitForCampaignCompletionAsync()
+    {
+        GameSession session = _activeGameSession;
+        if (session?.CanCaptureSettledState != true || !session.CanExecuteCommands)
+            return false;
+        IGameSessionOwner owner = _sessionOwner;
+        bool completed = owner == null || await owner.WaitForCampaignCompletionAsync();
+        return completed && ReferenceEquals(_activeGameSession, session);
+    }
+
+    /// <summary>
     /// End the current game session.
     /// Stops game logic and clears the active session.
     /// </summary>

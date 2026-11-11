@@ -35,6 +35,8 @@ namespace Rebellion.Multiplayer
         PersistenceTransfer = 29,
         PersistenceFailed = 30,
         RecoveryWelcome = 31,
+        CampaignComplete = 32,
+        CampaignCompleteReceipt = 33,
     }
 
     /// <summary>

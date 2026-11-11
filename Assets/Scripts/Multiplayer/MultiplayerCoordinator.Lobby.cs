@@ -529,6 +529,11 @@ namespace Rebellion.Multiplayer
         /// <param name="peerEndedSession">Whether an explicit session-end packet was received.</param>
         private void HandlePeerDeparture(string reason, bool peerEndedSession = false)
         {
+            if (_turnProtocol?.TryCompleteCampaignAfterPeerDeparture() == true)
+            {
+                _synchronizationReady = false;
+                return;
+            }
             _analyticsTracker?.RecordDisconnected(
                 _sessionManager?.GetActiveGame()?.CurrentTick,
                 peerEndedSession ? "peer_ended_session" : "transport_closed"

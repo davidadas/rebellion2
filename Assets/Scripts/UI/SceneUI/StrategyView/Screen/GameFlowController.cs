@@ -31,6 +31,8 @@ public sealed class GameFlowController : MonoBehaviour
     private bool campaignEnding;
     private bool cutscenePlaying;
     private bool finishCampaignAfterCutscenes;
+    private bool campaignPresentationCompleted;
+    private Task<bool> campaignCompletion;
     private IEnumerator activeTick;
     private CancellationTokenSource presentationCancellation;
     private readonly Queue<string> cutsceneQueue = new Queue<string>();
@@ -166,6 +168,23 @@ public sealed class GameFlowController : MonoBehaviour
                 MultiplayerCoordinator.Instance.ReportGameplayFailure(activeSession.CommandFailure);
             else
                 activeGameManager.SetGameSpeed(TickSpeed.Paused);
+            return;
+        }
+
+        if (campaignEnding)
+        {
+            if (
+                campaignPresentationCompleted
+                && activeSession.CanCaptureSettledState
+                && activeSession.CanExecuteCommands
+            )
+            {
+                campaignCompletion ??= AppBootstrap
+                    .Instance.GetGameSessionManager()
+                    .WaitForCampaignCompletionAsync();
+                if (campaignCompletion.IsCompletedSuccessfully && campaignCompletion.Result)
+                    FinishCampaign();
+            }
             return;
         }
 
@@ -702,7 +721,7 @@ public sealed class GameFlowController : MonoBehaviour
         if (cutsceneQueue.Count == 0)
         {
             if (finishCampaignAfterCutscenes)
-                FinishCampaign();
+                campaignPresentationCompleted = true;
             return;
         }
 

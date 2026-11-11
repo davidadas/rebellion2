@@ -81,6 +81,44 @@ namespace Rebellion.Tests.Multiplayer
         }
 
         [Test]
+        public async Task Delete_CompletedCampaign_RemovesReconnectCheckpointAsync()
+        {
+            await WriteCheckpointAsync("host");
+
+            _store.Delete("host", _record.campaignID);
+
+            Assert.IsNull(_store.ReadRecord("host"));
+        }
+
+        [Test]
+        public async Task Delete_DifferentCampaign_PreservesCurrentCheckpointAsync()
+        {
+            await WriteCheckpointAsync("host");
+
+            _store.Delete("host", Guid.NewGuid().ToString("N"));
+
+            Assert.AreEqual(_record.campaignID, _store.ReadRecord("host").campaignID);
+        }
+
+        [Test]
+        public void Delete_NoCheckpoint_DoesNotCreateStorage()
+        {
+            Assert.DoesNotThrow(() => _store.Delete("host", _record.campaignID));
+            Assert.IsFalse(Directory.Exists(_directory));
+        }
+
+        [Test]
+        public async Task Delete_OtherParticipant_PreservesItsCheckpointAsync()
+        {
+            await WriteCheckpointAsync("host");
+            await WriteCheckpointAsync("guest");
+
+            _store.Delete("host", _record.campaignID);
+
+            Assert.IsNotNull(_store.ReadRecord("guest"));
+        }
+
+        [Test]
         public async Task WriteAsync_CompletedPublication_RestoresExactSimulationAndRandomPositionAsync()
         {
             _session.Game.Random.NextInt(int.MinValue, int.MaxValue);

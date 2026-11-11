@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
@@ -208,6 +209,50 @@ namespace Rebellion.Tests.NativeAudit
                 case "fight":
                     Track(command.operation, FightAsync);
                     break;
+                case "disconnect":
+                    AppBootstrap.EnsureExists().GetMultiplayerCoordinator().Disconnect();
+                    break;
+                case "skip-cutscene":
+                    UnityEngine.Object.FindObjectsByType<CutscenePlayer>().Single().Skip();
+                    break;
+                case "activate":
+                    Button button = GetTargets()
+                        .OfType<Button>()
+                        .Single(control =>
+                            GetPath(control.transform) == command.target
+                            || control.name == command.target
+                        );
+                    if (!button.IsActive() || !button.IsInteractable())
+                        throw new InvalidOperationException(
+                            "The selected button cannot be activated."
+                        );
+                    button.onClick.Invoke();
+                    break;
+                case "bombard":
+                    Track(command.operation, () => BombardAsync(command.text, command.target));
+                    break;
+                case "bombard-on-connect":
+                    Track(
+                        command.operation,
+                        () => BombardOnConnectAsync(command.text, command.target)
+                    );
+                    break;
+                case "load-lobby":
+                    MultiplayerCoordinator lobby = AppBootstrap
+                        .EnsureExists()
+                        .GetMultiplayerCoordinator();
+                    Track(
+                        command.operation,
+                        () =>
+                            CompleteAsync(
+                                lobby.LoadLobbySaveAsync(
+                                    SaveGameManager
+                                        .Instance.GetSavedGames()
+                                        .Single(save => save.FileName == command.target)
+                                )
+                            )
+                    );
+                    break;
                 case "speed":
                     AppBootstrap
                         .Instance.GetGameSessionManager()
@@ -305,6 +350,61 @@ namespace Rebellion.Tests.NativeAudit
                 }
             );
             return result.Accepted;
+        }
+
+        /// <summary>
+        /// Submits an explicitly selected fleet's planet-destruction order through the current session owner.
+        /// </summary>
+        /// <param name="fleetID">The selected fleet's instance identifier.</param>
+        /// <param name="planetID">The observed target planet's instance identifier.</param>
+        /// <returns>Whether the synchronized order was accepted.</returns>
+        private static async Task<bool> BombardAsync(string fleetID, string planetID)
+        {
+            GameSession session = GetSession();
+            PlayerRequestOutcome result = await AppBootstrap
+                .Instance.GetGameSessionManager()
+                .PlayerRequests.ExecuteAsync(
+                    new BombardRequest
+                    {
+                        ItemIDs = new[] { fleetID },
+                        ObservedTarget =
+                            session.Game.GetSceneNodeByInstanceID<Rebellion.Game.Galaxy.Planet>(
+                                planetID
+                            ),
+                        Type = Rebellion.Game.Results.BombardmentType.DestroyPlanet,
+                    }
+                );
+            return result.Accepted;
+        }
+
+        /// <summary>
+        /// Queues an explicit winning order from the first synchronization callback, before recovery capture.
+        /// </summary>
+        /// <param name="fleetID">The selected fleet's instance identifier.</param>
+        /// <param name="planetID">The observed target planet's instance identifier.</param>
+        /// <returns>Whether the first synchronized order was accepted.</returns>
+        private static async Task<bool> BombardOnConnectAsync(string fleetID, string planetID)
+        {
+            MultiplayerCoordinator coordinator = AppBootstrap
+                .EnsureExists()
+                .GetMultiplayerCoordinator();
+            TaskCompletionSource<bool> connected = new();
+            Action changed = () =>
+            {
+                if (coordinator.IsSynchronized)
+                    connected.TrySetResult(true);
+            };
+            coordinator.StateChanged += changed;
+            try
+            {
+                changed();
+                await connected.Task;
+                return await BombardAsync(fleetID, planetID);
+            }
+            finally
+            {
+                coordinator.StateChanged -= changed;
+            }
         }
 
         /// <summary>
@@ -440,6 +540,14 @@ namespace Rebellion.Tests.NativeAudit
             response.width = Screen.width;
             response.height = Screen.height;
             response.status = multiplayer?.Status;
+            response.simulationBuild = typeof(Rebellion.Game.GameRoot)
+                .Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+                .Single(attribute => attribute.Key == "SimulationBuild")
+                .Value;
+            response.rejoining = multiplayer?.IsRejoining == true;
+            response.hasRecovery = multiplayer?.HasRecovery == true;
+            response.sessionEndNotice = multiplayer?.SessionEndNotice.IsPending == true;
+            response.synchronized = multiplayer?.IsSynchronized == true;
             response.multiplayer = multiplayer?.IsMultiplayerGame == true;
             response.canRequestSharedSave = multiplayer?.CanRequestSave == true;
             response.canSendPeerChat = multiplayer?.CanSendPeerChat == true;
@@ -646,6 +754,11 @@ namespace Rebellion.Tests.NativeAudit
             public float pointerX;
             public float pointerY;
             public string status;
+            public string simulationBuild;
+            public bool rejoining;
+            public bool hasRecovery;
+            public bool sessionEndNotice;
+            public bool synchronized;
             public bool multiplayer;
             public bool canRequestSharedSave;
             public bool canSendPeerChat;

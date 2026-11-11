@@ -25,6 +25,267 @@ namespace Rebellion.Tests.Multiplayer
         private const string _hostFactionID = "FNALL1";
         private const string _guestFactionID = "FNEMP1";
 
+        [Test]
+        public void WaitForCampaignCompletionAsync_NoVictory_DoesNotEndRunningGame()
+        {
+            using PeerPair peers = new();
+
+            Assert.IsFalse(peers.Host.WaitForCampaignCompletionAsync().Result);
+            Assert.IsTrue(peers.Host.CanBeginHostTick);
+        }
+
+        [TestCase(MultiplayerRole.Host)]
+        [TestCase(MultiplayerRole.Guest)]
+        public void WaitForCampaignCompletionAsync_WinningRequest_WaitsForFinalReplayAndHostClosure(
+            MultiplayerRole winner
+        )
+        {
+            using PeerPair peers = new(winningRole: winner);
+            Task<bool> hostCompletion = null;
+            Task<bool> guestCompletion = null;
+            peers.HostSimulation.Pipeline.VictoryDeclared += _ =>
+                hostCompletion = peers.Host.WaitForCampaignCompletionAsync();
+            peers.GuestSimulation.Pipeline.VictoryDeclared += _ =>
+                guestCompletion = peers.Guest.WaitForCampaignCompletionAsync();
+            Task<PlayerRequestOutcome> winningRequest = ExecuteWinningRequestAsync(peers, winner);
+
+            peers.DeliverToHost();
+            peers.Host.Pump();
+
+            Assert.IsNotNull(hostCompletion);
+            Assert.IsFalse(hostCompletion.IsCompleted);
+            Assert.That(
+                peers.ToGuest.Peek().Type,
+                Is.EqualTo(MultiplayerMessageType.PlayerActionCommit)
+            );
+            Assert.IsFalse(peers.Host.TryBeginTick(true));
+            peers.DeliverToGuest();
+            peers.Guest.Pump();
+            Assert.IsNotNull(guestCompletion);
+            Assert.IsFalse(guestCompletion.IsCompleted);
+            Assert.IsFalse(peers.Guest.TryCompleteCampaignAfterPeerDeparture());
+            peers.DeliverToHost();
+            peers.Host.Pump();
+            Assert.IsFalse(hostCompletion.IsCompleted);
+            Assert.That(
+                peers.ToGuest.Peek().Type,
+                Is.EqualTo(MultiplayerMessageType.CampaignComplete)
+            );
+            peers.DeliverToGuest();
+            peers.Guest.Pump();
+            Assert.IsFalse(guestCompletion.IsCompleted);
+            peers.DeliverToHost();
+
+            Assert.IsTrue(hostCompletion.Result);
+            Assert.IsTrue(winningRequest.Result.Accepted);
+            Assert.IsTrue(peers.Guest.TryCompleteCampaignAfterPeerDeparture());
+            Assert.IsTrue(guestCompletion.Result);
+            peers.AssertSharedState();
+        }
+
+        [Test]
+        public void WaitForCampaignCompletionAsync_GuestPresentationPending_KeepsHostConnected()
+        {
+            using PeerPair peers = new(winningRole: MultiplayerRole.Host);
+            ExecuteWinningRequestAsync(peers, MultiplayerRole.Host);
+            peers.Flush();
+            Task<bool> hostCompletion = peers.Host.WaitForCampaignCompletionAsync();
+
+            peers.Flush();
+
+            Assert.IsFalse(hostCompletion.IsCompleted);
+            Assert.IsFalse(peers.Guest.TryCompleteCampaignAfterPeerDeparture());
+            peers.Guest.WaitForCampaignCompletionAsync();
+            peers.Flush();
+            Assert.IsTrue(hostCompletion.Result);
+        }
+
+        [Test]
+        public void Pump_RequestQueuedBehindVictory_RejectsWithoutChangingTerminalWorld()
+        {
+            using PeerPair peers = new(winningRole: MultiplayerRole.Host);
+            ExecuteWinningRequestAsync(peers, MultiplayerRole.Host);
+            Task<PlayerRequestOutcome> trailing = peers.Host.ExecuteAsync(
+                new RenameRequest { EntityID = "host-ship", Name = "Too late" }
+            );
+
+            peers.Flush();
+
+            Assert.IsFalse(trailing.Result.Accepted);
+            Assert.AreEqual(
+                "host-ship",
+                peers.HostGame.GetSceneNodeByInstanceID<CapitalShip>("host-ship").DisplayName
+            );
+            Assert.IsFalse(peers.Host.CanBeginHostTick);
+            peers.AssertSharedState();
+        }
+
+        [Test]
+        public void Receive_CampaignCompletionStateDiffers_FaultsBeforeClosing()
+        {
+            using PeerPair peers = new(winningRole: MultiplayerRole.Host);
+            ExecuteWinningRequestAsync(peers, MultiplayerRole.Host);
+            peers.Flush();
+            Task<bool> hostCompletion = peers.Host.WaitForCampaignCompletionAsync();
+            Task<bool> guestCompletion = peers.Guest.WaitForCampaignCompletionAsync();
+            peers.Host.Pump();
+            peers.GuestGame.GetSceneNodeByInstanceID<CapitalShip>("guest-ship").DamageControl++;
+
+            peers.DeliverToGuest();
+            peers.Guest.Pump();
+            peers.DeliverToHost();
+
+            Assert.IsNotNull(peers.Guest.Failure);
+            Assert.IsFalse(guestCompletion.Result);
+            Assert.IsFalse(hostCompletion.Result);
+            Assert.IsFalse(peers.Guest.TryCompleteCampaignAfterPeerDeparture());
+        }
+
+        [Test]
+        public void Dispose_CampaignCompletionPending_CompletesWithoutApprovingClosure()
+        {
+            using PeerPair peers = new(winningRole: MultiplayerRole.Host);
+            ExecuteWinningRequestAsync(peers, MultiplayerRole.Host);
+            peers.Flush();
+            Task<bool> completion = peers.Host.WaitForCampaignCompletionAsync();
+
+            peers.Host.Dispose();
+
+            Assert.IsFalse(completion.Result);
+        }
+
+        [Test]
+        public void Pump_TerminalOutcomeInsideTick_WaitsForBothDayReceipts()
+        {
+            using PeerPair peers = new();
+            foreach (GameSession session in new[] { peers.HostSimulation, peers.GuestSimulation })
+                session.Tick.TickCompleted += () =>
+                {
+                    VictoryResult result = session
+                        .GetService<VictoryCommands>()
+                        .TryDeclareVictory(
+                            session.Game.GetFactionByOwnerInstanceID(_hostFactionID)
+                        );
+                    session.Pipeline.ProcessResults(new[] { result });
+                };
+            Assert.IsTrue(peers.Host.TryBeginTick(true));
+            peers.DeliverToGuest();
+            peers.Guest.Pump();
+            Assert.IsTrue(peers.Guest.TryBeginTick(false));
+
+            peers.HostSimulation.Tick.ProcessTick();
+            Task<bool> hostCompletion = peers.Host.WaitForCampaignCompletionAsync();
+            peers.Host.Pump();
+
+            Assert.IsFalse(hostCompletion.IsCompleted);
+            Assert.IsFalse(
+                peers.ToGuest.Any(packet => packet.Type == MultiplayerMessageType.CampaignComplete)
+            );
+            peers.GuestSimulation.Tick.ProcessTick();
+            Task<bool> guestCompletion = peers.Guest.WaitForCampaignCompletionAsync();
+            peers.Flush();
+            Assert.IsTrue(hostCompletion.Result);
+            Assert.IsFalse(guestCompletion.IsCompleted);
+            Assert.IsTrue(peers.Guest.TryCompleteCampaignAfterPeerDeparture());
+            Assert.IsTrue(guestCompletion.Result);
+            Assert.IsFalse(peers.Host.CanBeginHostTick);
+            peers.AssertSharedState();
+        }
+
+        [Test]
+        public void Receive_DuplicateCampaignCompletion_ClosesOnlyAfterAcknowledgment()
+        {
+            using PeerPair peers = new(winningRole: MultiplayerRole.Host);
+            ExecuteWinningRequestAsync(peers, MultiplayerRole.Host);
+            peers.Flush();
+            Task<bool> hostCompletion = peers.Host.WaitForCampaignCompletionAsync();
+            Task<bool> guestCompletion = peers.Guest.WaitForCampaignCompletionAsync();
+            peers.Host.Pump();
+            MultiplayerPacket offer = peers.ToGuest.Peek();
+            peers.ToGuest.Enqueue(offer);
+
+            peers.DeliverToGuest();
+            peers.Guest.Pump();
+
+            Assert.IsFalse(hostCompletion.IsCompleted);
+            Assert.IsFalse(guestCompletion.IsCompleted);
+            MultiplayerPacket receipt = peers.ToHost.Peek();
+            peers.ToHost.Enqueue(receipt);
+            peers.DeliverToHost();
+            Assert.IsNull(peers.Host.Failure);
+            Assert.IsNull(peers.Guest.Failure);
+            Assert.IsTrue(hostCompletion.Result);
+            Assert.IsTrue(peers.Guest.TryCompleteCampaignAfterPeerDeparture());
+            Assert.IsTrue(guestCompletion.Result);
+        }
+
+        [TestCase(MultiplayerRole.Host)]
+        [TestCase(MultiplayerRole.Guest)]
+        public void TryCompleteCampaignAfterPeerDeparture_NoTerminalReceipt_DoesNotApproveClosure(
+            MultiplayerRole role
+        )
+        {
+            using PeerPair peers = new(winningRole: MultiplayerRole.Host);
+            ExecuteWinningRequestAsync(peers, MultiplayerRole.Host);
+            peers.Flush();
+            MultiplayerTurnProtocol subject =
+                role == MultiplayerRole.Host ? peers.Host : peers.Guest;
+            Task<bool> completion = subject.WaitForCampaignCompletionAsync();
+
+            Assert.IsFalse(subject.TryCompleteCampaignAfterPeerDeparture());
+
+            subject.Dispose();
+            Assert.IsFalse(completion.Result);
+        }
+
+        [TestCase(MultiplayerRole.Host)]
+        [TestCase(MultiplayerRole.Guest)]
+        public void Pump_CampaignCompletionSendFails_DoesNotApproveClosure(MultiplayerRole role)
+        {
+            using PeerPair peers = new(winningRole: MultiplayerRole.Host);
+            ExecuteWinningRequestAsync(peers, MultiplayerRole.Host);
+            peers.Flush();
+            Task<bool> hostCompletion = peers.Host.WaitForCampaignCompletionAsync();
+            Task<bool> guestCompletion = peers.Guest.WaitForCampaignCompletionAsync();
+            peers.RejectHostSends = role == MultiplayerRole.Host;
+            peers.RejectGuestSends = role == MultiplayerRole.Guest;
+
+            peers.Flush();
+
+            MultiplayerTurnProtocol subject =
+                role == MultiplayerRole.Host ? peers.Host : peers.Guest;
+            Assert.IsInstanceOf<IOException>(subject.Failure);
+            Assert.IsFalse(subject.TryCompleteCampaignAfterPeerDeparture());
+            Assert.IsFalse(
+                role == MultiplayerRole.Host ? hostCompletion.Result : guestCompletion.Result
+            );
+        }
+
+        [TestCase(MultiplayerMessageType.CampaignComplete)]
+        [TestCase(MultiplayerMessageType.CampaignCompleteReceipt)]
+        public void Receive_PreviousInitializationCompletion_DoesNotEndCurrentGame(
+            MultiplayerMessageType type
+        )
+        {
+            using PeerPair peers = new();
+            MultiplayerTurnProtocol subject =
+                type == MultiplayerMessageType.CampaignComplete ? peers.Guest : peers.Host;
+
+            subject.Receive(
+                new MultiplayerPacket(
+                    type,
+                    JsonUtility.ToJson(
+                        new PacketMetadata { initializationID = Guid.NewGuid().ToString("N") }
+                    )
+                )
+            );
+            subject.Pump();
+
+            Assert.IsNull(subject.Failure);
+            Assert.IsFalse(subject.TryCompleteCampaignAfterPeerDeparture());
+            Assert.IsTrue(peers.Host.CanBeginHostTick);
+        }
+
         [TestCase(MultiplayerRole.Host)]
         [TestCase(MultiplayerRole.Guest)]
         public async Task ExecuteAsync_RenamingOwnedShip_PublishesCommittedStateOnBothPeersAsync(
@@ -1627,9 +1888,6 @@ namespace Rebellion.Tests.Multiplayer
         }
 
         /// <summary>
-        /// Owns two independent simulations and delayed reliable ordered packet queues.
-        /// </summary>
-        /// <summary>
         /// Admits and independently processes the shared day until both peers await combat input.
         /// </summary>
         /// <param name="peers">The independently simulated participants.</param>
@@ -1643,6 +1901,34 @@ namespace Rebellion.Tests.Multiplayer
             peers.GuestSimulation.Tick.ProcessTick();
         }
 
+        /// <summary>
+        /// Submits the fixture's winning bombardment through its authenticated request owner.
+        /// </summary>
+        /// <param name="peers">The two independently simulated participants.</param>
+        /// <param name="winner">The participant whose fleet destroys the opposing headquarters.</param>
+        /// <returns>The ordered bombardment outcome.</returns>
+        private static Task<PlayerRequestOutcome> ExecuteWinningRequestAsync(
+            PeerPair peers,
+            MultiplayerRole winner
+        )
+        {
+            string prefix = winner == MultiplayerRole.Host ? "host" : "guest";
+            string target = winner == MultiplayerRole.Host ? "guest-planet" : "host-planet";
+            MultiplayerTurnProtocol issuer =
+                winner == MultiplayerRole.Host ? peers.Host : peers.Guest;
+            return issuer.ExecuteAsync(
+                new BombardRequest
+                {
+                    ItemIDs = new[] { prefix + "-fleet" },
+                    ObservedTarget = peers.HostGame.GetSceneNodeByInstanceID<Planet>(target),
+                    Type = BombardmentType.DestroyPlanet,
+                }
+            );
+        }
+
+        /// <summary>
+        /// Owns two independent simulations and delayed reliable ordered packet queues.
+        /// </summary>
         private sealed class PeerPair : IDisposable
         {
             public Queue<MultiplayerPacket> ToHost { get; } = new();
@@ -1663,9 +1949,24 @@ namespace Rebellion.Tests.Multiplayer
             /// Builds matching graphs from one in-memory snapshot and attaches independent services.
             /// </summary>
             /// <param name="contested">Whether opposing fleets initially share the host planet.</param>
-            public PeerPair(bool contested = false)
+            /// <param name="winningRole">The participant prepared to destroy the opposing headquarters, or null for normal play.</param>
+            public PeerPair(bool contested = false, MultiplayerRole? winningRole = null)
             {
                 GameRoot source = CreateSource(contested);
+                if (winningRole.HasValue)
+                {
+                    source.Summary.VictoryCondition = GameVictoryCondition.Headquarters;
+                    string prefix = winningRole == MultiplayerRole.Host ? "host" : "guest";
+                    string target =
+                        winningRole == MultiplayerRole.Host ? "guest-planet" : "host-planet";
+                    source
+                        .GetSceneNodeByInstanceID<CapitalShip>(prefix + "-ship")
+                        .CanDestroyPlanets = true;
+                    source.MoveNode(
+                        source.GetSceneNodeByInstanceID<Fleet>(prefix + "-fleet"),
+                        source.GetSceneNodeByInstanceID<Planet>(target)
+                    );
+                }
                 MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(source);
                 GameRoot hostGame = MultiplayerSnapshotCodec.Restore(
                     snapshot.Payload,

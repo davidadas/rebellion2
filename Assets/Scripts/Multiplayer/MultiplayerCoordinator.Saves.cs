@@ -31,6 +31,7 @@ namespace Rebellion.Multiplayer
                 : _synchronizationReady
                     && _sessionManager != null
                     && _saveProtocol != null
+                    && _turnProtocol?.HasDeclaredVictory != true
                     && Failure == null;
 
         /// <summary>
@@ -74,7 +75,7 @@ namespace Rebellion.Multiplayer
         {
             if (_localSaves != null)
                 return _localSaves.SaveGameAsync(fileName, displayName);
-            if (!_synchronizationReady || _sessionManager == null || _saveProtocol == null)
+            if (!CanRequestSave)
                 return Task.FromResult(false);
             return _saveProtocol.RequestAsync(fileName, displayName, false);
         }
@@ -86,7 +87,7 @@ namespace Rebellion.Multiplayer
         /// <returns>True only after the replacement game's state handshake completes.</returns>
         public async Task<bool> LoadGameAsync(string fileName)
         {
-            if (!_synchronizationReady || _sessionManager == null || _saveProtocol == null)
+            if (_localSaves != null || !CanRequestSave)
                 return false;
             MultiplayerSaveProtocol owner = _saveProtocol;
             GameSessionManager runtime = _sessionManager;
@@ -125,6 +126,7 @@ namespace Rebellion.Multiplayer
             if (
                 _role != MultiplayerRole.Host
                 || !_synchronizationReady
+                || _turnProtocol?.HasDeclaredVictory == true
                 || _saveProtocol == null
                 || settings?.AutosaveEnabled != true
                 || settings.AutosaveIntervalTicks <= 0

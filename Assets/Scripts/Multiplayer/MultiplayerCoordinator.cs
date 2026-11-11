@@ -13,7 +13,7 @@ namespace Rebellion.Multiplayer
     /// </summary>
     public sealed partial class MultiplayerCoordinator : MonoBehaviour, IGameSessionOwner
     {
-        private const int _protocolVersion = 12;
+        private const int _protocolVersion = 13;
 
         private readonly List<MultiplayerGameListing> _games = new();
         private readonly MultiplayerSnapshotAdmission _snapshotAdmission = new();
@@ -612,6 +612,8 @@ namespace Rebellion.Multiplayer
                     case MultiplayerMessageType.AdvanceDay:
                     case MultiplayerMessageType.DayReceipt:
                     case MultiplayerMessageType.SynchronizationFailed:
+                    case MultiplayerMessageType.CampaignComplete:
+                    case MultiplayerMessageType.CampaignCompleteReceipt:
                         MultiplayerSessionIdentity gameplayIdentity =
                             JsonUtility.FromJson<MultiplayerSessionIdentity>(packet.Metadata);
                         if (

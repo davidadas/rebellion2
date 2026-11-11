@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.PlayerRequests;
+using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.PlayerRequests;
 using UnityEngine;
@@ -23,6 +24,7 @@ namespace Rebellion.Multiplayer
         private readonly string _initializationID;
         private readonly GameSession _session;
         private readonly PlayerRequestExecutor _executor;
+        private readonly GameManager _clock;
         private readonly Action<MultiplayerPacket> _send;
         private readonly Queue<ReceivedEvent> _events = new();
         private readonly Queue<Envelope> _dayReceipts = new();
@@ -41,6 +43,10 @@ namespace Rebellion.Multiplayer
         private bool _guestDayPending;
         private bool _dayStarted;
         private bool _verificationPending;
+        private bool _victoryDeclared;
+        private TaskCompletionSource<bool> _campaignCompletion;
+        private Envelope _campaignCompletionOffer;
+        private bool _campaignReceiptSent;
         private bool _disposed;
 
         /// <summary>
@@ -49,11 +55,17 @@ namespace Rebellion.Multiplayer
         public Exception Failure { get; private set; }
 
         /// <summary>
+        /// Gets whether the active simulation has published its terminal outcome.
+        /// </summary>
+        public bool HasDeclaredVictory => _victoryDeclared;
+
+        /// <summary>
         /// Gets whether the host may consume another configured clock interval.
         /// </summary>
         public bool CanBeginHostTick =>
             !_disposed
             && Failure == null
+            && !_victoryDeclared
             && _role == MultiplayerRole.Host
             && !_dayStarted
             && _events.Count == 0
@@ -113,11 +125,13 @@ namespace Rebellion.Multiplayer
                     "Ordered gameplay must start from a completed turn."
                 );
             _executor = new PlayerRequestExecutor(session, clock);
+            _clock = clock;
             clock.EnableCoordinatedSpeeds();
             _send = send ?? throw new ArgumentNullException(nameof(send));
             _nextRequestID = role == MultiplayerRole.Host ? 1 : 2000000001;
             _expectedTick = session.Game.CurrentTick;
             _session.Tick.TickCompleted += HandleTickCompleted;
+            _session.Pipeline.VictoryDeclared += HandleVictoryDeclared;
         }
 
         /// <summary>
@@ -128,6 +142,8 @@ namespace Rebellion.Multiplayer
         public Task<PlayerRequestOutcome> ExecuteAsync(PlayerRequest action)
         {
             ThrowIfUnavailable();
+            if (_victoryDeclared)
+                return Task.FromResult(RejectCompletedCampaign());
             byte[] payload = MultiplayerPlayerRequestCodec.Serialize(action);
             long requestID = _nextRequestID;
             if (_role == MultiplayerRole.Host && requestID >= 2000000001)
@@ -178,6 +194,8 @@ namespace Rebellion.Multiplayer
                 {
                     case MultiplayerMessageType.PlayerActionRequest:
                         RequireRole(MultiplayerRole.Host);
+                        if (_campaignCompletionOffer != null)
+                            break;
                         envelope.actor = MultiplayerRole.Guest;
                         if (envelope.requestID < 2000000001)
                             throw new InvalidDataException(
@@ -187,12 +205,17 @@ namespace Rebellion.Multiplayer
                         break;
                     case MultiplayerMessageType.PlayerActionCommit:
                     case MultiplayerMessageType.AdvanceDay:
+                    case MultiplayerMessageType.CampaignComplete:
                         RequireRole(MultiplayerRole.Guest);
                         _events.Enqueue(new ReceivedEvent(packet.Type, envelope, packet.Payload));
                         break;
                     case MultiplayerMessageType.PlayerActionReceipt:
                         RequireRole(MultiplayerRole.Host);
                         ReceiveActionReceipt(envelope);
+                        break;
+                    case MultiplayerMessageType.CampaignCompleteReceipt:
+                        RequireRole(MultiplayerRole.Host);
+                        ReceiveCampaignCompleteReceipt(envelope);
                         break;
                     case MultiplayerMessageType.DayReceipt:
                         if (
@@ -247,7 +270,6 @@ namespace Rebellion.Multiplayer
                 if (_verificationPending && _session.CanExecuteCommands)
                 {
                     _localDayReceipt = CaptureReceipt();
-
                     _localDayReceipt.stateFingerprint =
                         MultiplayerStateFingerprint.ComputeSimulation(_session);
                     _verificationPending = false;
@@ -264,6 +286,8 @@ namespace Rebellion.Multiplayer
                         ExecuteHostRequest(item);
                     else if (item.Type == MultiplayerMessageType.PlayerActionCommit)
                         ExecuteGuestCommit(item);
+                    else if (item.Type == MultiplayerMessageType.CampaignComplete)
+                        ReceiveCampaignComplete(item.Envelope);
                     else
                     {
                         ReceiveDay(item.Envelope);
@@ -271,6 +295,7 @@ namespace Rebellion.Multiplayer
                         break;
                     }
                 }
+                ProcessCampaignCompletion();
             }
             catch (Exception exception)
             {
@@ -285,7 +310,7 @@ namespace Rebellion.Multiplayer
         /// <returns>Whether the caller should begin its normal incremental tick.</returns>
         public bool TryBeginTick(bool hostClockElapsed)
         {
-            if (_disposed || Failure != null || !_session.CanExecuteCommands)
+            if (_disposed || Failure != null || _victoryDeclared || !_session.CanExecuteCommands)
                 return false;
             if (_role == MultiplayerRole.Guest)
             {
@@ -314,6 +339,34 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
+        /// Keeps the terminal connection alive until both presentations finish and the final state is acknowledged.
+        /// </summary>
+        /// <returns>True after coordinated completion, or false when the session fails or ends first.</returns>
+        public Task<bool> WaitForCampaignCompletionAsync()
+        {
+            if (_disposed || Failure != null || !_victoryDeclared)
+                return Task.FromResult(false);
+            _campaignCompletion ??= new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously
+            );
+            return _campaignCompletion.Task;
+        }
+
+        /// <summary>
+        /// Accepts the host's closure only after this guest acknowledged the settled terminal state.
+        /// </summary>
+        /// <returns>True when departure completes the agreed campaign rather than starting recovery.</returns>
+        public bool TryCompleteCampaignAfterPeerDeparture()
+        {
+            if (_disposed || Failure != null || _campaignCompletion == null)
+                return false;
+            if (_role == MultiplayerRole.Guest && _campaignReceiptSent)
+                _campaignCompletion.TrySetResult(true);
+            return _campaignCompletion.Task.IsCompletedSuccessfully
+                && _campaignCompletion.Task.GetAwaiter().GetResult();
+        }
+
+        /// <summary>
         /// Completes unresolved requests without confirmation and releases connection-owned callbacks.
         /// </summary>
         public void Dispose()
@@ -322,6 +375,8 @@ namespace Rebellion.Multiplayer
                 return;
             _disposed = true;
             _session.Tick.TickCompleted -= HandleTickCompleted;
+            _session.Pipeline.VictoryDeclared -= HandleVictoryDeclared;
+            _campaignCompletion?.TrySetResult(false);
             CompleteUnconfirmedRequests();
             _events.Clear();
             _dayReceipts.Clear();
@@ -354,7 +409,9 @@ namespace Rebellion.Multiplayer
                 envelope.kind,
                 item.Payload
             );
-            PlayerRequestOutcome result = _executor.Execute(GetFaction(envelope.actor), action);
+            PlayerRequestOutcome result = _victoryDeclared
+                ? RejectCompletedCampaign()
+                : _executor.Execute(GetFaction(envelope.actor), action);
             envelope.accepted = result.Accepted;
             envelope.reason = result.RejectionReason;
             envelope.createdEntityID = result.CreatedEntityID ?? string.Empty;
@@ -389,7 +446,9 @@ namespace Rebellion.Multiplayer
                 envelope.kind,
                 item.Payload
             );
-            PlayerRequestOutcome result = _executor.Execute(GetFaction(envelope.actor), action);
+            PlayerRequestOutcome result = _victoryDeclared
+                ? RejectCompletedCampaign()
+                : _executor.Execute(GetFaction(envelope.actor), action);
             if (
                 result.Accepted != envelope.accepted
                 || !string.Equals(
@@ -428,6 +487,99 @@ namespace Rebellion.Multiplayer
                 );
             _awaitingReceipts.Remove(envelope.sequence);
             _completedRequests.Remove(expected.requestID);
+        }
+
+        /// <summary>
+        /// Stops future days after the terminal domain result while preserving its current command or tick.
+        /// </summary>
+        /// <param name="result">The victory produced by the active simulation.</param>
+        private void HandleVictoryDeclared(VictoryResult result)
+        {
+            if (result?.Winner == null)
+                return;
+            _victoryDeclared = true;
+            _clock.ApplyGameSpeed(TickSpeed.Paused);
+        }
+
+        /// <summary>
+        /// Rejects orders that were queued after the winning operation without mutating the terminal world.
+        /// </summary>
+        /// <returns>The shared terminal rejection.</returns>
+        private static PlayerRequestOutcome RejectCompletedCampaign() =>
+            new(false, "The campaign has ended.");
+
+        /// <summary>
+        /// Offers the host's settled final state and lets the guest acknowledge after its ending presentation.
+        /// </summary>
+        private void ProcessCampaignCompletion()
+        {
+            if (
+                !_victoryDeclared
+                || _campaignCompletion?.Task.IsCompleted != false
+                || _dayStarted
+                || _events.Count != 0
+                || _awaitingReceipts.Count != 0
+                || !_session.CanCaptureSettledState
+                || !_session.CanExecuteCommands
+            )
+                return;
+            if (_role == MultiplayerRole.Host && _campaignCompletionOffer == null)
+            {
+                _campaignCompletionOffer = CaptureReceipt();
+                _campaignCompletionOffer.sequence = _lastSequence;
+                _campaignCompletionOffer.stateFingerprint =
+                    MultiplayerStateFingerprint.ComputeSimulation(_session);
+                Send(MultiplayerMessageType.CampaignComplete, _campaignCompletionOffer);
+            }
+            else if (
+                _role == MultiplayerRole.Guest
+                && _campaignCompletionOffer != null
+                && !_campaignReceiptSent
+            )
+            {
+                _campaignReceiptSent = true;
+                Send(MultiplayerMessageType.CampaignCompleteReceipt, _campaignCompletionOffer);
+            }
+        }
+
+        /// <summary>
+        /// Verifies completion after all preceding committed actions have executed on the guest.
+        /// </summary>
+        /// <param name="offer">The host's final ordered state.</param>
+        private void ReceiveCampaignComplete(Envelope offer)
+        {
+            if (
+                !_victoryDeclared
+                || offer.sequence != _lastAppliedSequence
+                || offer.tick != _session.Game.CurrentTick
+                || offer.randomIndex != _session.Game.RandomIndex
+                || offer.identifierIndex != _session.Game.RuntimeIdentifierIndex
+                || offer.stateFingerprint != MultiplayerStateFingerprint.ComputeSimulation(_session)
+            )
+                throw new InvalidDataException(
+                    "The completed campaign does not match the host state."
+                );
+            _campaignCompletionOffer = offer;
+        }
+
+        /// <summary>
+        /// Releases host teardown only after the guest confirms the same terminal state and finishes its presentation.
+        /// </summary>
+        /// <param name="receipt">The guest's acknowledgment of the host's completion offer.</param>
+        private void ReceiveCampaignCompleteReceipt(Envelope receipt)
+        {
+            Envelope offer = _campaignCompletionOffer;
+            if (
+                offer == null
+                || _campaignCompletion == null
+                || receipt.sequence != offer.sequence
+                || receipt.tick != offer.tick
+                || receipt.randomIndex != offer.randomIndex
+                || receipt.identifierIndex != offer.identifierIndex
+                || receipt.stateFingerprint != offer.stateFingerprint
+            )
+                throw new InvalidDataException("The campaign completion receipt does not match.");
+            _campaignCompletion.TrySetResult(true);
         }
 
         /// <summary>
@@ -627,6 +779,7 @@ namespace Rebellion.Multiplayer
             if (_disposed || Failure != null)
                 return;
             Failure = exception;
+            _campaignCompletion?.TrySetResult(false);
             CompleteUnconfirmedRequests();
             if (notifyPeer)
             {

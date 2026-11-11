@@ -514,6 +514,12 @@ namespace Rebellion.Tests.App
             public bool TryBeginGameTick(float elapsedSeconds) => false;
 
             /// <summary>
+            /// Keeps campaign completion outside this load-routing fixture.
+            /// </summary>
+            /// <returns>A completed rejection.</returns>
+            public Task<bool> WaitForCampaignCompletionAsync() => Task.FromResult(false);
+
+            /// <summary>
             /// Rejects commands outside the load-routing fixture.
             /// </summary>
             /// <param name="request">The requested player operation.</param>

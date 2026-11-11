@@ -138,10 +138,14 @@ namespace Rebellion.Multiplayer
         /// </summary>
         private void EndForPeerDeparture()
         {
+            GameRoot currentGame = _sessionManager?.GetActiveGame();
             if (
-                _sessionManager?.GetActiveGameSession() == null
+                currentGame == null
                 || _isContentTransitionInProgress()
                 || IsTransferringScene
+                || _turnProtocol?.HasDeclaredVictory == true
+                || _recoverySnapshot == null
+                || _recoveryRecord?.campaignID != currentGame.Metadata?.CampaignID
             )
             {
                 bool interruptedLaunch = _isContentTransitionInProgress();
@@ -230,7 +234,11 @@ namespace Rebellion.Multiplayer
         private void ProcessRejoinRecovery()
         {
             GameSession session = _sessionManager?.GetActiveGameSession();
-            if (session == null || !ReferenceEquals(_readyPresentationSession, session))
+            if (
+                session == null
+                || !ReferenceEquals(_readyPresentationSession, session)
+                || _turnProtocol?.HasDeclaredVictory == true
+            )
                 return;
             if (_recoveryPausePending)
             {

@@ -1193,9 +1193,47 @@ namespace Rebellion.Tests.Managers
             Assert.That(reported, Is.False);
         }
 
+        [Test]
+        public async Task WaitForCampaignCompletionAsync_LocalSettledSession_AllowsClosureAsync()
+        {
+            _sessionManager.StartGame(CreateGame());
+
+            Assert.IsTrue(await _sessionManager.WaitForCampaignCompletionAsync());
+            Assert.IsTrue(_sessionManager.HasActiveGame);
+        }
+
+        [Test]
+        public async Task WaitForCampaignCompletionAsync_CoordinatedSession_WaitsForOwnerAsync()
+        {
+            TaskCompletionSource<bool> completion = new();
+            TestSessionOwner owner = new() { CampaignCompletion = completion.Task };
+            _sessionManager.StartGame(CreateGame(), owner);
+
+            Task<bool> waiting = _sessionManager.WaitForCampaignCompletionAsync();
+
+            Assert.IsFalse(waiting.IsCompleted);
+            completion.SetResult(true);
+            Assert.IsTrue(await waiting);
+        }
+
+        [Test]
+        public async Task WaitForCampaignCompletionAsync_SessionReplaced_DoesNotApproveReplacementAsync()
+        {
+            TaskCompletionSource<bool> completion = new();
+            TestSessionOwner owner = new() { CampaignCompletion = completion.Task };
+            _sessionManager.StartGame(CreateGame(), owner);
+            Task<bool> waiting = _sessionManager.WaitForCampaignCompletionAsync();
+
+            _sessionManager.StartGame(CreateGame());
+            completion.SetResult(true);
+
+            Assert.IsFalse(await waiting);
+        }
+
         private class TestSessionOwner : IGameSessionOwner
         {
             public bool CanRequestSave => true;
+            public Task<bool> CampaignCompletion { get; set; } = Task.FromResult(true);
             private readonly IPlayerRequestDispatcher _actions;
             public readonly List<string> Calls = new();
 
@@ -1238,6 +1276,12 @@ namespace Rebellion.Tests.Managers
             /// <param name="elapsedSeconds">The elapsed frame interval.</param>
             /// <returns>False while exercising lifecycle composition.</returns>
             public bool TryBeginGameTick(float elapsedSeconds) => false;
+
+            /// <summary>
+            /// Returns the terminal acknowledgment controlled by this fixture.
+            /// </summary>
+            /// <returns>The supplied campaign completion.</returns>
+            public virtual Task<bool> WaitForCampaignCompletionAsync() => CampaignCompletion;
 
             /// <summary>
             /// Forwards commands to the fixture's declared owner.

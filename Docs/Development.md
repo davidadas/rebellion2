@@ -88,7 +88,7 @@ polling at five hertz. Keep both audit clients on the same compiled build and us
 
 ## Multiplayer synchronization
 
-`GameRuntime` selects the session owner before constructing simulation services. Multiplayer
+`GameSessionManager` selects the session owner before constructing simulation services. Multiplayer
 campaigns require an `IGameSessionOwner`; presentation reports readiness for that specific session
 and never replaces its execution owner. Local and network player requests use the session's writable
 command boundary. Commands wait while a tick executes, and network commands also wait for the
@@ -113,6 +113,10 @@ pending-fact counter rejects unfinished ownership reactions instead of persistin
 Normal loading also settles derived-state rebuild work before exposing a savable session.
 Mission roster baselines are saved as IDs on the mission. Victory suppression belongs only to the
 live session, which ends through the campaign-ending flow.
+
+Campaign completion waits for settled final replay and both ending presentations before releasing
+the connection, then removes each participant's completed reconnect checkpoint. A departure before
+the first current-campaign checkpoint uses the session-end notice instead of attempting recovery.
 
 Planet notifications use the existing result bus plus model support/presence observables.
 Authored activation changes use the same mutation boundary, including sector reactivation. They
@@ -217,14 +221,19 @@ are retained for seven days; creating them does not publish a release or update 
 
 | Area | Ownership |
 | --- | --- |
-| `Game/Player/Requests` | Player request parameters, request kinds, and execution outcomes. |
-| `Gameplay/PlayerRequests` | Request execution against the active session and its gameplay commands. |
-| `App/PlayerRequests` | Local delivery and rejection of requests from an ended or replaced session. |
+| `App` | Application bootstrap, startup selection, and scene handoff. |
+| `Sessions` | Session lifetime, service construction, simulation command admission, and clock ownership. |
+| `Sessions/PlayerRequests` | Typed player requests, outcomes, execution, and local or coordinated dispatch. |
+| `Saves` | Campaign and preset files, save listings, and metadata publication. |
+| `Multiplayer` | Online authentication, lobbies, transport, ordered gameplay, shared saves, and reconnects. |
+| `Analytics` | Consented campaign and application metrics. |
+| `UserSettings` | User preferences and their application to runtime services. |
+| `UI/Audio`, `UI/Graphics`, `UI/Input` | Presentation and device owners used by startup, settings, and interactive UI. |
 | `Game/Scripting` | Authored action, conditional, selector, binding, and trigger instructions. |
 | `Game/GameEvents` | Event definitions, schedules, and saved activation history. |
 | `Gameplay/Scripting` | Interpretation, evaluation, temporary execution contexts, and gameplay action handling. |
 | `Gameplay/GameEvents` | Event validation, activation, and campaign tick/result integration. |
-| `Gameplay` (root) | Session construction, service registration, tick scheduling, and result delivery. |
+| `Gameplay` (root) | Tick execution, result delivery, and gameplay reaction processing. |
 
 Gameplay feature folders retain commands for operations, queries for inspection and estimates, tick processors for time-driven work, and observers for result-driven reactions. A supporting class does not need its own tick to belong to a gameplay feature.
 

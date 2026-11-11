@@ -64,4 +64,10 @@ public interface IGameSessionOwner : IPlayerRequestDispatcher
     /// <param name="elapsedSeconds">The elapsed application frame interval.</param>
     /// <returns>True when the local session should begin its next tick.</returns>
     bool TryBeginGameTick(float elapsedSeconds);
+
+    /// <summary>
+    /// Keeps a completed campaign connected until its final state and both presentations are acknowledged.
+    /// </summary>
+    /// <returns>True after coordinated campaign completion, or false after interruption.</returns>
+    Task<bool> WaitForCampaignCompletionAsync();
 }

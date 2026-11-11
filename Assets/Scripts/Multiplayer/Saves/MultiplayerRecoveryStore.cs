@@ -210,6 +210,38 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
+        /// Removes a completed campaign's checkpoint after earlier writes finish, preserving any newer campaign.
+        /// </summary>
+        /// <param name="userID">The account owning the checkpoint.</param>
+        /// <param name="campaignID">The completed campaign whose reconnect state is no longer needed.</param>
+        public void Delete(string userID, string campaignID)
+        {
+            if (!Guid.TryParseExact(campaignID, "N", out _))
+                throw new ArgumentException(
+                    "A campaign identifier is required.",
+                    nameof(campaignID)
+                );
+            string path = GetPath(userID);
+            SerialFileOperations.Run(
+                _directory,
+                () =>
+                {
+                    if (!File.Exists(path))
+                        return false;
+                    MultiplayerRecoveryRecord record;
+                    using (
+                        BinaryReader reader = new BinaryReader(File.OpenRead(path), Encoding.UTF8)
+                    )
+                        record = ReadHeader(reader, userID);
+                    if (record.campaignID != campaignID)
+                        return false;
+                    File.Delete(path);
+                    return true;
+                }
+            );
+        }
+
+        /// <summary>
         /// Captures owned bytes and publishes the record and its sole world payload as one durable file.
         /// </summary>
         /// <param name="userID">The local authenticated account.</param>

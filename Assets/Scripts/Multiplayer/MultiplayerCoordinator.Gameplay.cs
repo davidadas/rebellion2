@@ -169,6 +169,46 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
+        /// Waits for terminal replay and presentation agreement before either scene releases the connection.
+        /// </summary>
+        /// <returns>True after the final host state is acknowledged, or false after interruption.</returns>
+        public async Task<bool> WaitForCampaignCompletionAsync()
+        {
+            MultiplayerTurnProtocol protocol = _turnProtocol;
+            GameSessionManager runtime = _sessionManager;
+            if (protocol == null || !await protocol.WaitForCampaignCompletionAsync())
+                return false;
+            if (
+                !ReferenceEquals(_turnProtocol, protocol)
+                || !ReferenceEquals(_sessionManager, runtime)
+            )
+                return false;
+            string campaignID = runtime.GetActiveGame().Metadata.CampaignID;
+            string userID = _backend.LocalUserID;
+            _checkpointPending = false;
+            await _recoveryPublication;
+            if (
+                !ReferenceEquals(_turnProtocol, protocol)
+                || !ReferenceEquals(_sessionManager, runtime)
+            )
+                return false;
+            try
+            {
+                GetRecoveryStore().Delete(userID, campaignID);
+            }
+            catch (Exception exception)
+                when (exception is IOException or UnauthorizedAccessException or ArgumentException)
+            {
+                Debug.LogWarning(
+                    "Could not remove completed campaign recovery: " + exception.Message
+                );
+            }
+            _recoveryRecord = null;
+            _recoverySnapshot = null;
+            return true;
+        }
+
+        /// <summary>
         /// Stops replay after a tick exception that occurred in the strategy frame loop.
         /// </summary>
         /// <param name="exception">The tick failure.</param>
