@@ -3248,6 +3248,9 @@ namespace Rebellion.Gameplay
         {
             foreach (SmugglingChangedResult result in results)
             {
+                if (result.NewPercent == 0 && result.EndedByOwnershipChange)
+                    continue;
+
                 AddSmugglingDelivery(deliveries, result.Controller, result, false);
                 AddSmugglingDelivery(deliveries, result.Beneficiary, result, true);
             }
@@ -3306,9 +3309,6 @@ namespace Rebellion.Gameplay
         )
         {
             bool active = result.NewPercent != 0;
-            if (receivesBenefits && !active && result.EndedByOwnershipChange)
-                return;
-
             MessageResultType resultType = (receivesBenefits, active) switch
             {
                 (false, true) => MessageResultType.SmugglingLosses,

@@ -1626,7 +1626,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void CreateMessages_SmugglingEndedByOwnershipChange_OmitsBenefitEndReport()
+        public void CreateMessages_SmugglingEndedByOwnershipChange_OmitsEndReports()
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
@@ -1646,9 +1646,7 @@ namespace Rebellion.Tests.Gameplay
                 }
             );
 
-            Assert.AreEqual(1, deliveries.Count);
-            Assert.AreSame(empire, deliveries[0].Recipient);
-            Assert.AreEqual("Smuggling Losses End", AsMessage(deliveries[0]).Title);
+            Assert.IsEmpty(deliveries);
         }
 
         [Test]
