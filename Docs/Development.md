@@ -89,6 +89,14 @@ variants, impact sequences, retreat settings, and component-repair intervals. Pa
 the pack's existing file resolver. Keep these assets in the private media checkout and copy them
 into the ignored development content directory before rebuilding the UI or running tests.
 
+Keep tactical models, fighter sprites, and palette textures beside the unit's existing artwork.
+Shared planet backgrounds belong in `Shared/Planets`; HUD images use the existing shared and
+faction `Strategy/UI/Combat` folders. World effects and the starfield use `Shared/Strategy/Combat`,
+shared effects audio uses `Shared/Strategy/Audio/Combat`, and faction voice lines use the existing
+`Strategy/Advisor/Audio/Notifications` folders. Asset addresses in XML omit file extensions.
+Filenames describe their purpose; native message IDs and GLB texture identifiers remain separate
+authored metadata. See the media repository's README for the complete layout.
+
 Capital-ship component damage and its campaign repair timer are saved per ship. Shared tactical
 geometry and media references remain pack data. Older saves load with an undamaged component record.
 
