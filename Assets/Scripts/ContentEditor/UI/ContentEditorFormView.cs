@@ -106,6 +106,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     public event Action Changed;
     public event Action<ContentPackEditorField, IReadOnlyList<string>> FieldSubmitted;
     public event Action<ContentPackEditorField> FieldValidationRequested;
+    public event Action<ContentPackEditorField> FieldInheritanceResetRequested;
     public event Action WidthChanged;
     public event Action<Button> AddMessageRequested;
     public event Action AddNamePoolRequested;
@@ -188,6 +189,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             field.ValidationFailed -= ReportValidationError;
             field.Submitted -= SubmitField;
             field.ValidationRequested -= ValidateField;
+            field.InheritanceResetRequested -= ResetInheritance;
             field.SelectionRequested -= RequestSelection;
         }
     }
@@ -1407,6 +1409,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 terms.FirstOrDefault()?.XmlElement.Parent?.Name.LocalName ?? string.Empty
             )
         );
+        int fieldHeight = 44;
         for (int i = 0; i < terms.Length; i++)
         {
             ContentPackEditorField term = terms[i];
@@ -1418,9 +1421,12 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 : "+ random " + i;
             if (showHeaders)
                 PlaceLabel(name, labelIndex++, left + 4, y, cellWidth - 8, false, term.HelpText);
-            PlaceField(term, fieldIndex++, left, y + headerHeight, cellWidth, 0, 44);
+            fieldHeight = Mathf.Max(
+                fieldHeight,
+                PlaceField(term, fieldIndex++, left, y + headerHeight, cellWidth, 0, 44)
+            );
         }
-        return Mathf.Max(headerHeight + 48, captionHeight + headerHeight + 8);
+        return Mathf.Max(headerHeight + fieldHeight + 4, captionHeight + headerHeight + 8);
     }
 
     /// <summary>
@@ -1558,17 +1564,21 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     false
                 );
                 groupLabels[groupIndex - 1].alignment = TextAlignmentOptions.Center;
+                int rowHeight = 44;
                 for (int column = 0; column < grid.Columns.Count; column++)
                 {
                     ContentPackEditorField field = grid.GetCell(score, column);
-                    PlaceField(
-                        field,
-                        fieldIndex++,
-                        scoreWidth + column * cellWidth,
-                        y,
-                        cellWidth,
-                        0,
-                        44
+                    rowHeight = Mathf.Max(
+                        rowHeight,
+                        PlaceField(
+                            field,
+                            fieldIndex++,
+                            scoreWidth + column * cellWidth,
+                            y,
+                            cellWidth,
+                            0,
+                            44
+                        )
                     );
                     ContentEditorFieldView cell = fieldViews[fieldIndex - 1];
                     cell.name = "Probability" + column + "Score" + score + "Field";
@@ -1600,7 +1610,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     34,
                     32
                 );
-                y += 44;
+                UILayout.SetSourceRect(row.rectTransform, 0, y, Mathf.FloorToInt(width), rowHeight);
+                y += rowHeight;
                 rowIndex++;
             }
             y = Mathf.Max(y, chartBottom);
@@ -1745,7 +1756,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                         false,
                         field.HelpText
                     );
-                    PlaceField(
+                    int rowHeight = PlaceField(
                         field,
                         fieldIndex++,
                         x + width - (hasVariance ? 164 : 80),
@@ -1762,8 +1773,19 @@ public sealed class ContentEditorFormView : MonoBehaviour
                         candidate.MemberName == key + "Variance"
                     );
                     if (variance != null)
-                        PlaceField(variance, fieldIndex++, x + width - 80, top[column], 80, 0, 48);
-                    top[column] += Mathf.Max(44, captionHeight + 12);
+                        rowHeight = Mathf.Max(
+                            rowHeight,
+                            PlaceField(
+                                variance,
+                                fieldIndex++,
+                                x + width - 80,
+                                top[column],
+                                80,
+                                0,
+                                48
+                            )
+                        );
+                    top[column] += Mathf.Max(rowHeight, captionHeight + 12);
                 }
             }
             else
@@ -1839,6 +1861,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             created.ValidationFailed += ReportValidationError;
             created.Submitted += SubmitField;
             created.ValidationRequested += ValidateField;
+            created.InheritanceResetRequested += ResetInheritance;
             created.SelectionRequested += RequestSelection;
             fieldViews.Add(created);
         }
@@ -2004,4 +2027,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="field">The member to check.</param>
     private void ValidateField(ContentPackEditorField field) =>
         FieldValidationRequested?.Invoke(field);
+
+    /// <summary>
+    /// Forwards a request to remove one local setting override.
+    /// </summary>
+    /// <param name="field">The setting being returned to inheritance.</param>
+    private void ResetInheritance(ContentPackEditorField field) =>
+        FieldInheritanceResetRequested?.Invoke(field);
 }

@@ -25,6 +25,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             WriteFixtureFile(
                 "Data/officers.xml",
                 "<Officers><Officer><TypeID>OFFICER</TypeID>"
+                    + "<DisplayName>Officer</DisplayName>"
                     + "<EncyclopediaDescription>Description.</EncyclopediaDescription>"
                     + "<RecruitingFactionInstanceIDs /></Officer></Officers>"
             );
@@ -157,13 +158,111 @@ namespace Rebellion.Tests.ContentEditor.UI
 
             TMP_Text label = control
                 .GetComponentsInChildren<TMP_Text>()
-                .Single(text => text.name == "Label");
+                .Single(text => text.name == "Label" && text.transform.parent == control.transform);
             label.ForceMeshUpdate();
             Assert.Greater(height, control.Height);
             Assert.Greater(label.textInfo.lineCount, 1);
             Assert.IsFalse(label.isTextTruncated);
             Assert.LessOrEqual(label.preferredHeight, label.rectTransform.rect.height);
             Assert.AreEqual(height, ((RectTransform)control.transform).rect.height, 0.1f);
+        }
+
+        [Test]
+        public void Render_InheritedSetting_ShowsInheritedStateWithoutCreatingAnOverride()
+        {
+            ContentPackEditorField description = officer.GetField("EncyclopediaDescription");
+            control.Render(
+                ContentPackEditorProjector.BuildField(project, description),
+                null,
+                null,
+                null
+            );
+            control.SetLayout(new Rect(0, 0, 700, control.Height), 220);
+            Button inherited = control
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Inheritance");
+
+            Assert.AreEqual("Inherited", inherited.GetComponentInChildren<TMP_Text>().text);
+            Assert.IsFalse(inherited.interactable);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void SetLayout_EditingAnInheritedField_EnablesResetImmediately()
+        {
+            ContentPackEditorField description = officer.GetField("EncyclopediaDescription");
+            control.Submitted += (field, values) => project.SetField(field, values.Single());
+            control.Render(
+                ContentPackEditorProjector.BuildField(project, description),
+                () => control.SetLayout(new Rect(0, 0, 700, control.Height), 220),
+                null,
+                null
+            );
+            control.SetLayout(new Rect(0, 0, 700, control.Height), 220);
+
+            control
+                .GetComponentInChildren<TMP_InputField>()
+                .onEndEdit.Invoke("Changed description");
+
+            Button reset = control
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Inheritance");
+            Assert.IsTrue(reset.interactable);
+            Assert.AreEqual("Reset to inherited", reset.GetComponentInChildren<TMP_Text>().text);
+        }
+
+        [Test]
+        public void SetCellLayout_InheritedField_KeepsTheInputAboveTheInheritanceButton()
+        {
+            ContentPackEditorField description = officer.GetField("DisplayName");
+            control.Render(
+                ContentPackEditorProjector.BuildField(project, description),
+                null,
+                null,
+                null
+            );
+            control.SetLayout(new Rect(0, 0, 180, 44), 0);
+            control.SetCellLayout();
+            Canvas.ForceUpdateCanvases();
+            RectTransform input = (RectTransform)
+                control.GetComponentInChildren<TMP_InputField>().transform;
+            RectTransform button = (RectTransform)
+                control
+                    .GetComponentsInChildren<Button>()
+                    .Single(item => item.name == "Inheritance")
+                    .transform;
+            Bounds inputBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                control.transform,
+                input
+            );
+            Bounds buttonBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                control.transform,
+                button
+            );
+            Assert.GreaterOrEqual(inputBounds.min.y, buttonBounds.max.y);
+        }
+
+        [Test]
+        public void ResetButton_OverriddenSetting_RequestsResetWithoutMutatingTheProject()
+        {
+            ContentPackEditorField description = officer.GetField("EncyclopediaDescription");
+            project.SetField(description, "Authored description");
+            control.Render(
+                ContentPackEditorProjector.BuildField(project, description),
+                null,
+                null,
+                null
+            );
+            ContentPackEditorField requested = null;
+            control.InheritanceResetRequested += field => requested = field;
+            Button inherited = control
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Inheritance");
+
+            inherited.onClick.Invoke();
+
+            Assert.AreSame(description, requested);
+            Assert.AreEqual("Authored description", description.Value);
         }
     }
 }

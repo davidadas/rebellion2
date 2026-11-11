@@ -112,6 +112,17 @@ namespace Rebellion.Util.Serialization
         /// <returns>The deserialized object.</returns>
         public object Deserialize(XmlDocument defaults, XmlDocument overlay)
         {
+            return Deserialize(Compose(defaults, overlay));
+        }
+
+        /// <summary>
+        /// Composes legacy sparse XML without deserializing or validating the intermediate result.
+        /// </summary>
+        /// <param name="defaults">The complete defaults document.</param>
+        /// <param name="overlay">The sparse document applied over the defaults.</param>
+        /// <returns>An independent composed document.</returns>
+        public XmlDocument Compose(XmlDocument defaults, XmlDocument overlay)
+        {
             XmlElement defaultsRoot =
                 defaults?.DocumentElement
                 ?? throw new InvalidDataException("A defaults document root element is required.");
@@ -133,7 +144,7 @@ namespace Rebellion.Util.Serialization
 
             XmlDocument merged = (XmlDocument)defaults.CloneNode(true);
             MergeElement(merged.DocumentElement, overlayRoot, _type);
-            return Deserialize(merged);
+            return merged;
         }
 
         /// <summary>

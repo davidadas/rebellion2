@@ -217,6 +217,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     internal event Action<ContentEditorXmlScope, string, int> XmlSubmitted;
     internal event Action<ContentPackEditorField, IReadOnlyList<string>> FieldSubmitted;
     internal event Action<ContentPackEditorField> FieldValidationRequested;
+    internal event Action<ContentPackEditorField> FieldInheritanceResetRequested;
     internal event Action<ContentPackEditorRecord> MapEditStarted;
     internal event Action<ContentPackEditorRecord, Vector2Int> MapMoved;
     internal event Action MapEditEnded;
@@ -413,6 +414,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         form.CollectionAddRequested += ForwardCollectionAdd;
         form.CollectionRemoveRequested += ConfirmCollectionRemove;
         form.FieldValidationRequested += ValidateField;
+        form.FieldInheritanceResetRequested += ResetInheritance;
         form.ImportRequested += ImportMedia;
         form.PreviewRequested += PreviewMedia;
         form.ValidationFailed += ReportFieldError;
@@ -486,6 +488,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             form.CollectionAddRequested -= ForwardCollectionAdd;
             form.CollectionRemoveRequested -= ConfirmCollectionRemove;
             form.FieldValidationRequested -= ValidateField;
+            form.FieldInheritanceResetRequested -= ResetInheritance;
             form.ImportRequested -= ImportMedia;
             form.PreviewRequested -= PreviewMedia;
             form.ValidationFailed -= ReportFieldError;
@@ -2344,6 +2347,13 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <param name="field">The member to validate.</param>
     private void ValidateField(ContentPackEditorField field) =>
         FieldValidationRequested?.Invoke(field);
+
+    /// <summary>
+    /// Forwards a request to remove one authored setting override.
+    /// </summary>
+    /// <param name="field">The setting being returned to inheritance.</param>
+    private void ResetInheritance(ContentPackEditorField field) =>
+        FieldInheritanceResetRequested?.Invoke(field);
 }
 
 /// <summary>

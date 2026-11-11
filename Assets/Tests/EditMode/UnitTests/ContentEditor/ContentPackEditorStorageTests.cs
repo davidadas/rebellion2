@@ -146,10 +146,14 @@ namespace Rebellion.Tests.ContentEditor
                 document.Address == "Pack/Data/units.xml"
             );
             Assert.AreEqual(
-                localOverride
-                    ? "<Units><Unit ID=\"local\" /></Units>"
-                    : "<Units><Unit ID=\"base\" /></Units>",
-                effective.Text
+                System
+                    .Xml.Linq.XElement.Parse(
+                        localOverride
+                            ? "<Units><Unit ID=\"local\" /></Units>"
+                            : "<Units><Unit ID=\"base\" /></Units>"
+                    )
+                    .ToString(),
+                System.Xml.Linq.XElement.Parse(effective.Text).ToString()
             );
             Assert.AreEqual(!localOverride, effective.IsInherited);
             Assert.AreEqual(
@@ -256,7 +260,8 @@ namespace Rebellion.Tests.ContentEditor
 
             Assert.IsFalse(document.IsDirty);
             Assert.IsFalse(document.IsInherited);
-            Assert.AreEqual("<Units><Unit /></Units>", File.ReadAllText(document.TargetPath));
+            Assert.IsTrue(ContentXmlOverrides.IsOverlay(File.ReadAllText(document.TargetPath)));
+            Assert.AreEqual(1, System.Xml.Linq.XElement.Parse(document.Text).Elements().Count());
             Assert.AreEqual(
                 "<Units />",
                 File.ReadAllText(
@@ -374,8 +379,14 @@ namespace Rebellion.Tests.ContentEditor
             );
 
             Assert.AreEqual(
-                units.Text,
-                reopened.Documents.Single(document => document.Address == units.Address).Text
+                System.Xml.Linq.XElement.Parse(units.Text).ToString(),
+                System
+                    .Xml.Linq.XElement.Parse(
+                        reopened
+                            .Documents.Single(document => document.Address == units.Address)
+                            .Text
+                    )
+                    .ToString()
             );
             Assert.AreEqual(
                 "<Units />",
