@@ -353,5 +353,6 @@ internal sealed class ContentPackEditorDocumentState
     internal bool Matches(ContentPackEditorDocumentState other) =>
         AuthoredText == other.AuthoredText
         && Text == other.Text
+        && LastValidAuthoredText == other.LastValidAuthoredText
         && UsesSettingOverrides == other.UsesSettingOverrides;
 }

@@ -1138,6 +1138,39 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void Redo_InvalidDraftGroup_PreservesOverrideOnRepair()
+        {
+            WriteFixtureFile(
+                "Data/units.xml",
+                "<Officers><Officer><TypeID>ONE</TypeID><DisplayName>Base name</DisplayName></Officer></Officers>"
+            );
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorDocument units = project.Documents.Single(document =>
+                document.Address == "Pack/Data/units.xml"
+            );
+            string original = units.Text;
+            XDocument edited = XDocument.Parse(original);
+            edited.Root.Element("Officer").SetElementValue("DisplayName", "Changed name");
+            string invalid = "<Officers>";
+            units.SetText(invalid);
+            using (project.BeginEdit("Edit draft"))
+            {
+                project.SetDocumentText(units, edited.ToString());
+                units.SetText(invalid);
+            }
+
+            Assert.IsTrue(project.Undo());
+            Assert.IsTrue(project.Redo());
+            project.SetDocumentText(units, original);
+
+            ContentPackEditorRecord officer = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.ID == "ONE");
+            Assert.IsFalse(officer.GetField("DisplayName").IsInherited);
+        }
+
+        [Test]
         public void BeginEdit_ContinuousChangesAcrossDocuments_UndoesAsOneOperation()
         {
             ContentPackEditorProject project = CreateWorkingProject();
