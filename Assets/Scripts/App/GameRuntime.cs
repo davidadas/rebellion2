@@ -357,7 +357,10 @@ public sealed class GameRuntime
             )
                 ? factionOverride
                 : template.Settings;
-            faction.Settings = settings.CreateCopy();
+            FactionSettings resolvedSettings = settings.CreateCopy();
+            resolvedSettings.ConquestOfficerInstanceIDs =
+                template.Settings.ConquestOfficerInstanceIDs.ToList();
+            faction.Settings = resolvedSettings;
         }
     }
 

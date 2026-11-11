@@ -10,6 +10,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
@@ -245,7 +246,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                     .OrderBy(row => row.Index)
                     .ToArray();
             string[] labels = rows.Select(row =>
-                    row.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true)
+                    row.GetComponentsInChildren<TextMeshProUGUI>(true)
                         .Single(text => text.name == "ItemTextField")
                         .text
                 )
@@ -336,7 +337,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             MissionCreateWindowView view = OpenWindow(out UIWindow window);
             _controller.RenderWindow(view, window);
 
-            TMPro.TextMeshProUGUI label = view.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true)
+            TextMeshProUGUI label = view.GetComponentsInChildren<TextMeshProUGUI>(true)
                 .Single(text =>
                     text.name == "OverallSuccessOddsTextField" && text.gameObject.activeInHierarchy
                 );

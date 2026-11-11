@@ -172,7 +172,7 @@ namespace Rebellion.AI.Scorers
 
             score.AddCost(
                 AIUtility.Fulfillment(
-                    System.Math.Max(0, headroomDeficit),
+                    Math.Max(0, headroomDeficit),
                     config.MaintenanceHeadroomReserve
                 ),
                 utility.HeadroomRisk

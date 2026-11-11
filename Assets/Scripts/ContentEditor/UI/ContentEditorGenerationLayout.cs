@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
+using Rebellion.Game;
 using Rebellion.Util.Serialization;
 
 /// <summary>
@@ -188,7 +189,7 @@ internal static class ContentEditorGenerationLayout
             if (string.IsNullOrWhiteSpace(value))
                 continue;
             names.Add(
-                value == Rebellion.Game.GameGenerationConfig.FactionHqSentinel
+                value == GameGenerationConfig.FactionHqSentinel
                     ? "Headquarters"
                     : records
                         .FirstOrDefault(record =>
@@ -202,9 +203,9 @@ internal static class ContentEditorGenerationLayout
         if (
             entry.Element("GalaxySize") is XElement size
             && int.TryParse(size.Value, out int number)
-            && Enum.IsDefined(typeof(Rebellion.Game.GameSize), number)
+            && Enum.IsDefined(typeof(GameSize), number)
         )
-            names.Add(((Rebellion.Game.GameSize)number).ToString());
+            names.Add(((GameSize)number).ToString());
         foreach (
             string member in new[] { "Availability", "Difficulty", "ControllerType", "Category" }
         )

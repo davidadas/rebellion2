@@ -1,3 +1,5 @@
+using System;
+
 namespace Rebellion.SceneGraph
 {
     /// <summary>
@@ -40,7 +42,7 @@ namespace Rebellion.SceneGraph
         /// </summary>
         /// <param name="message">The message.</param>
         /// <param name="inner">The inner.</param>
-        public SceneAccessException(string message, System.Exception inner)
+        public SceneAccessException(string message, Exception inner)
             : base(message, inner) { }
     }
 }

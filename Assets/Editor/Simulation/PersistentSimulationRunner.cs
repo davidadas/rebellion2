@@ -3,13 +3,15 @@ using System.IO;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Util.Logging;
+using UnityEditor;
+using UnityEngine;
 
-[UnityEditor.InitializeOnLoad]
+[InitializeOnLoad]
 public static class PersistentSimulationRunner
 {
     private static readonly string _jobDirectory = Path.Combine(
         "/tmp/rebellion2-sim-jobs",
-        Path.GetFullPath(Path.Combine(UnityEngine.Application.dataPath, ".."))
+        Path.GetFullPath(Path.Combine(Application.dataPath, ".."))
             .TrimStart(Path.DirectorySeparatorChar)
     );
     private const string _logDirectory = "/tmp/rebellion2-sim-logs";
@@ -23,7 +25,7 @@ public static class PersistentSimulationRunner
     /// </summary>
     static PersistentSimulationRunner()
     {
-        UnityEditor.EditorApplication.update += OnEditorUpdate;
+        EditorApplication.update += OnEditorUpdate;
     }
 
     /// <summary>
@@ -31,20 +33,20 @@ public static class PersistentSimulationRunner
     /// </summary>
     private static void OnEditorUpdate()
     {
-        if (_isRunningJob || UnityEditor.EditorApplication.isCompiling)
+        if (_isRunningJob || EditorApplication.isCompiling)
             return;
 
-        if (UnityEditor.EditorApplication.timeSinceStartup < _nextPollAt)
+        if (EditorApplication.timeSinceStartup < _nextPollAt)
             return;
 
-        _nextPollAt = UnityEditor.EditorApplication.timeSinceStartup + _pollIntervalSeconds;
+        _nextPollAt = EditorApplication.timeSinceStartup + _pollIntervalSeconds;
         try
         {
             TryRunNextJob();
         }
         catch (Exception ex)
         {
-            UnityEngine.Debug.LogException(ex);
+            Debug.LogException(ex);
         }
     }
 
@@ -54,7 +56,7 @@ public static class PersistentSimulationRunner
     /// <returns>True if a job was found and started.</returns>
     private static bool TryRunNextJob()
     {
-        if (UnityEditor.EditorApplication.isCompiling)
+        if (EditorApplication.isCompiling)
             return false;
 
         string nextJob = GetNextJobPath();
@@ -68,17 +70,17 @@ public static class PersistentSimulationRunner
     /// <summary>
     /// Runs the next queued simulation job from the editor menu.
     /// </summary>
-    [UnityEditor.MenuItem("Tools/Simulation/Run Next Queued Simulation")]
+    [MenuItem("Tools/Simulation/Run Next Queued Simulation")]
     private static void RunNextQueuedJob()
     {
         try
         {
             if (!TryRunNextJob())
-                UnityEngine.Debug.Log("No queued simulation job found.");
+                Debug.Log("No queued simulation job found.");
         }
         catch (Exception ex)
         {
-            UnityEngine.Debug.LogException(ex);
+            Debug.LogException(ex);
         }
     }
 
@@ -119,9 +121,7 @@ public static class PersistentSimulationRunner
 
             File.Move(jobPath, runningPath);
 
-            SimulationJob job = UnityEngine.JsonUtility.FromJson<SimulationJob>(
-                File.ReadAllText(runningPath)
-            );
+            SimulationJob job = JsonUtility.FromJson<SimulationJob>(File.ReadAllText(runningPath));
             if (job == null)
                 throw new InvalidOperationException(
                     $"Could not parse simulation job: {runningPath}"
@@ -142,7 +142,7 @@ public static class PersistentSimulationRunner
             GameLogger.Configure(logPath, enableFileLogging: true);
             string startMessage =
                 $"[PersistentSim] running job={Path.GetFileName(runningPath)} type={simulationType} seed={(job.Seed >= 0 ? job.Seed.ToString() : "random")} ticks={job.TickCount} output={job.OutputPath}";
-            UnityEngine.Debug.Log(startMessage);
+            Debug.Log(startMessage);
             LogToFile(logPath, startMessage);
 
             bool saveAfterRun = simulationType == SimulationJobType.NormalAndSave;
@@ -161,7 +161,7 @@ public static class PersistentSimulationRunner
 
             File.WriteAllText(
                 completePath,
-                UnityEngine.JsonUtility.ToJson(
+                JsonUtility.ToJson(
                     new SimulationJobResult
                     {
                         JobPath = runningPath,
@@ -177,7 +177,7 @@ public static class PersistentSimulationRunner
             File.Delete(runningPath);
             string completeMessage =
                 $"[PersistentSim] completed job={Path.GetFileName(completePath)}";
-            UnityEngine.Debug.Log(completeMessage);
+            Debug.Log(completeMessage);
             LogToFile(logPath, completeMessage);
         }
         catch (Exception ex)
@@ -186,7 +186,7 @@ public static class PersistentSimulationRunner
                 File.WriteAllText(failedPath, ex.ToString());
             if (File.Exists(runningPath))
                 File.Delete(runningPath);
-            UnityEngine.Debug.LogException(ex);
+            Debug.LogException(ex);
         }
         finally
         {

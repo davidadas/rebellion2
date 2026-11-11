@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -61,9 +62,7 @@ namespace Rebellion.Tests.ContentEditor
             ContentPackEditorCatalog generation = project
                 .GetCatalogs()
                 .First(catalog => catalog.Name == "Starting setup");
-            System.Xml.Linq.XDocument xml = System.Xml.Linq.XDocument.Parse(
-                generation.Document.Text
-            );
+            XDocument xml = XDocument.Parse(generation.Document.Text);
             xml.Descendants("OfficerInstanceID").First().Value = "missing-starting-officer";
             project.SetDocumentText(generation.Document, xml.ToString());
             ContentPackEditorStorage.Save(project);
@@ -78,7 +77,7 @@ namespace Rebellion.Tests.ContentEditor
         {
             ContentPackEditorProject project = CreateLoadableProject();
             ContentPackEditorCatalog map = project.GetCatalogs().First(catalog => catalog.IsMap);
-            System.Xml.Linq.XDocument xml = System.Xml.Linq.XDocument.Parse(map.Document.Text);
+            XDocument xml = XDocument.Parse(map.Document.Text);
             xml.Descendants("Planet")
                 .First()
                 .SetElementValue("DisplayImagePath", "Pack/missing-planet-art.png");
@@ -103,20 +102,18 @@ namespace Rebellion.Tests.ContentEditor
             ContentPackEditorCatalog generation = project
                 .GetCatalogs()
                 .First(catalog => catalog.Name == "Starting setup");
-            System.Xml.Linq.XDocument xml = System.Xml.Linq.XDocument.Parse(
-                generation.Document.Text
-            );
+            XDocument xml = XDocument.Parse(generation.Document.Text);
             if (location == "weighted building")
                 xml.Descendants("CoreFacilityTable")
                     .First()
                     .AddFirst(
-                        new System.Xml.Linq.XElement(
+                        new XElement(
                             "WeightedFacilityEntry",
-                            new System.Xml.Linq.XElement("CumulativeWeight", 0),
-                            new System.Xml.Linq.XElement("TypeID", "missing-generation-reference")
+                            new XElement("CumulativeWeight", 0),
+                            new XElement("TypeID", "missing-generation-reference")
                         )
                     );
-            System.Xml.Linq.XElement target = location switch
+            XElement target = location switch
             {
                 "weighted unit" => xml.Descendants("WeightedUnitEntry")
                     .First()
@@ -150,7 +147,7 @@ namespace Rebellion.Tests.ContentEditor
                 .First(catalog => catalog.Name == "Capital ships")
                 .Records.First()
                 .ID;
-            System.Xml.Linq.XDocument xml = System.Xml.Linq.XDocument.Parse(fighters.Document.Text);
+            XDocument xml = XDocument.Parse(fighters.Document.Text);
             xml.Descendants("Starfighter").First().SetElementValue("TypeID", shipType);
             project.SetDocumentText(fighters.Document, xml.ToString());
             ContentPackEditorStorage.Save(project);
@@ -219,15 +216,9 @@ namespace Rebellion.Tests.ContentEditor
                 .First(item => item.Kind == kind)
                 .GetField(member);
 
-            project.SetField(
-                field,
-                value.ToString(System.Globalization.CultureInfo.InvariantCulture)
-            );
+            project.SetField(field, value.ToString(CultureInfo.InvariantCulture));
 
-            Assert.AreEqual(
-                value.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                field.Value
-            );
+            Assert.AreEqual(value.ToString(CultureInfo.InvariantCulture), field.Value);
         }
 
         [Test]

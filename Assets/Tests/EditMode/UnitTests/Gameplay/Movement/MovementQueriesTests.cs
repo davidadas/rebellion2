@@ -14,6 +14,7 @@ using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
+using UnityEngine;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -1172,19 +1173,19 @@ namespace Rebellion.Tests.Gameplay
             List<string> warnings = new();
             GameLogger.LogLevel originalLevel = GameLogger.MinimumLevel;
             GameLogger.SetMinimumLevel(GameLogger.LogLevel.Warning);
-            UnityEngine.Application.LogCallback handler = (message, _, type) =>
+            Application.LogCallback handler = (message, _, type) =>
             {
-                if (type == UnityEngine.LogType.Warning)
+                if (type == LogType.Warning)
                     warnings.Add(message);
             };
-            UnityEngine.Application.logMessageReceived += handler;
+            Application.logMessageReceived += handler;
             try
             {
                 action();
             }
             finally
             {
-                UnityEngine.Application.logMessageReceived -= handler;
+                Application.logMessageReceived -= handler;
                 GameLogger.SetMinimumLevel(originalLevel);
             }
             return warnings;

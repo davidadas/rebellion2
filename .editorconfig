@@ -77,3 +77,11 @@ dotnet_diagnostic.RCS1213.severity = none
 [Assets/Editor/Capture/GameRecordingSession.cs]
 dotnet_diagnostic.IDE0005.severity = none
 dotnet_diagnostic.CS8019.severity = none
+
+# CI omits the compiled glTFast and Unity Services packages. Their required imports appear unused
+# to the partial compiler model; retain IDE0005 for analysis with the complete Unity references.
+[Assets/Scripts/Content/ContentModelLoader.cs]
+dotnet_diagnostic.CS8019.severity = none
+
+[Assets/Scripts/Managers/AnalyticsManager.cs]
+dotnet_diagnostic.CS8019.severity = none

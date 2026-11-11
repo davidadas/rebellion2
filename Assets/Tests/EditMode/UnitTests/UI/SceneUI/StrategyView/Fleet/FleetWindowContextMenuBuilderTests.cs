@@ -174,7 +174,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         [Test]
         public void Build_MovingFleetWithoutWaypoints_ReturnsEnabledWaypointMoveCommand()
         {
-            GameFleet fleet = new GameFleet { Movement = new Rebellion.Game.Units.MovementState() };
+            GameFleet fleet = new GameFleet { Movement = new MovementState() };
 
             List<StrategyMenuCommand> commands = FleetWindowContextMenuBuilder.Build(
                 new ISceneNode[] { fleet },

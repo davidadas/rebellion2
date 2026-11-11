@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Numerics;
 
@@ -363,14 +364,13 @@ namespace Rebellion.Gameplay
                 PersonnelLossProbability = personnelLossProbability;
                 if (survivors == null)
                     throw new ArgumentNullException(nameof(survivors));
-                Survivors = new System.Collections.ObjectModel.ReadOnlyDictionary<
-                    BigInteger,
-                    double
-                >(new Dictionary<BigInteger, double>(survivors));
+                Survivors = new ReadOnlyDictionary<BigInteger, double>(
+                    new Dictionary<BigInteger, double>(survivors)
+                );
                 NoLossSurvivors =
                     noLossSurvivors == null
                         ? Survivors
-                        : new System.Collections.ObjectModel.ReadOnlyDictionary<BigInteger, double>(
+                        : new ReadOnlyDictionary<BigInteger, double>(
                             new Dictionary<BigInteger, double>(noLossSurvivors)
                         );
             }

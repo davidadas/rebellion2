@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -224,9 +225,9 @@ namespace Rebellion.Tests.Managers
         /// <param name="collectionEnabled">Whether analytics collection is available.</param>
         /// <returns>The configured analytics manager.</returns>
         private static AnalyticsManager CreateManager(
-            System.Func<ConsentState> getConsentState,
-            System.Action<ConsentState> setConsentState,
-            System.Action initializeServices,
+            Func<ConsentState> getConsentState,
+            Action<ConsentState> setConsentState,
+            Action initializeServices,
             bool collectionEnabled = true
         )
         {

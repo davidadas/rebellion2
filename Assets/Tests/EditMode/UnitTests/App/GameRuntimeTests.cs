@@ -200,6 +200,7 @@ namespace Rebellion.Tests.App
             Faction template = _contentPack.GameData.Factions[0];
             FactionSettings configured = template.Settings.CreateCopy();
             configured.GarrisonEfficiency++;
+            configured.ConquestOfficerInstanceIDs = new List<string> { "stale-officer" };
             GameGenerationConfig config = _contentPack.GameData.GenerationConfig.CreateCopy();
             config.FactionModifiers.Add(
                 new FactionModifierConfig { FactionID = template.InstanceID, Settings = configured }
@@ -212,6 +213,10 @@ namespace Rebellion.Tests.App
                 .Game.GetFactions()
                 .Single(faction => faction.InstanceID == template.InstanceID);
             Assert.AreEqual(configured.GarrisonEfficiency, loaded.Settings.GarrisonEfficiency);
+            CollectionAssert.AreEqual(
+                template.Settings.ConquestOfficerInstanceIDs,
+                loaded.Settings.ConquestOfficerInstanceIDs
+            );
             Assert.AreNotSame(configured, loaded.Settings);
         }
 

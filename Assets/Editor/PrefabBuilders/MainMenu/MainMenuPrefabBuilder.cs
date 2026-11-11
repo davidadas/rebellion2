@@ -271,7 +271,7 @@ public static class MainMenuPrefabBuilder
     {
         GameObject eventSystem = NewChild("EventSystem", root.transform);
         eventSystem.AddComponent<EventSystem>();
-        eventSystem.AddComponent<StandaloneInputModule>();
+        eventSystem.AddComponent<QueuedMouseInputModule>();
     }
 
     /// <summary>

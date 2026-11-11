@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Generation;
 
@@ -34,6 +35,26 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(7, alliance.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign));
         }
 
+        [Test]
+        public void Seed_CorePlanets_SetsResearchCostScaleForEveryFaction()
+        {
+            Faction empire = new Faction { InstanceID = "FNEMP1" };
+            Faction alliance = new Faction { InstanceID = "FNALL1" };
+            GenerationContext context = BuildContext(new[] { empire, alliance }, 0, 0);
+            PlanetSector secondCoreSector = new PlanetSector
+            {
+                InstanceID = "core-2",
+                SectorType = PlanetSectorType.Core,
+            };
+            secondCoreSector.AddChild(new Planet { InstanceID = "core-planet-2" });
+            context.Sectors = new[] { context.Sectors[0], secondCoreSector };
+
+            new FactionSeeder().Seed(context);
+
+            Assert.AreEqual(2, empire.ResearchState.CostScalePercent);
+            Assert.AreEqual(2, alliance.ResearchState.CostScalePercent);
+        }
+
         /// <summary>
         /// Builds context.
         /// </summary>
@@ -47,6 +68,13 @@ namespace Rebellion.Tests.Generation
         {
             GenerationContext ctx = GenerationContextFactory.CreateDefault();
             ctx.Factions = factions;
+            PlanetSector coreSector = new PlanetSector
+            {
+                InstanceID = "core-1",
+                SectorType = PlanetSectorType.Core,
+            };
+            coreSector.AddChild(new Planet { InstanceID = "core-planet-1" });
+            ctx.Sectors = new[] { coreSector };
             ctx.Config.GalaxyClassification.FactionSetups = new List<FactionSetup>();
             for (int index = 0; index < factions.Length; index++)
             {

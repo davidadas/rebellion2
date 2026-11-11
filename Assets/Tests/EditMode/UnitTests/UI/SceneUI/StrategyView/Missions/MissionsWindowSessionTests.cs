@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using UnityEngine;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
@@ -271,8 +272,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             /// Creates an empty test mission copy.
             /// </summary>
             /// <returns>An empty test mission.</returns>
-            protected override Rebellion.SceneGraph.BaseSceneNode CreateNodeCopy() =>
-                new TestMission();
+            protected override BaseSceneNode CreateNodeCopy() => new TestMission();
 
             /// <summary>
             /// Checks whether the repeat after completion condition is met.
