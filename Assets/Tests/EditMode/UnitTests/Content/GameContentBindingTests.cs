@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -59,6 +60,32 @@ namespace Rebellion.Tests.Content
                 faction.Settings.GarrisonEfficiency
             );
             Assert.AreNotSame(template.Settings, faction.Settings);
+        }
+
+        [Test]
+        public void Prepare_CustomFactionOverride_RestoresAuthoredConquestOfficers()
+        {
+            Faction template = _contentPack.GameData.Factions[0];
+            FactionSettings configured = template.Settings.CreateCopy();
+            configured.GarrisonEfficiency++;
+            configured.ConquestOfficerInstanceIDs = new List<string> { "stale-officer" };
+            GameGenerationConfig config = _contentPack.GameData.GenerationConfig.CreateCopy();
+            config.FactionModifiers.Add(
+                new FactionModifierConfig { FactionID = template.InstanceID, Settings = configured }
+            );
+            GameRoot game = CreateGame();
+            game.Summary.CustomSettings = new CustomGameSettings { GenerationConfig = config };
+            Faction faction = new Faction { InstanceID = template.InstanceID };
+            game.GetFactions().Add(faction);
+
+            new GameContentBinding(_contentPack).Prepare(game);
+
+            Assert.AreEqual(configured.GarrisonEfficiency, faction.Settings.GarrisonEfficiency);
+            CollectionAssert.AreEqual(
+                template.Settings.ConquestOfficerInstanceIDs,
+                faction.Settings.ConquestOfficerInstanceIDs
+            );
+            Assert.AreNotSame(configured, faction.Settings);
         }
 
         [Test]

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
@@ -2694,7 +2695,7 @@ namespace Rebellion.Tests.Util.Serialization
             GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
             string xml = "<?xml version=\"1.0\"?><UnrelatedRoot><Child/></UnrelatedRoot>";
 
-            Assert.Throws<System.IO.InvalidDataException>(() =>
+            Assert.Throws<InvalidDataException>(() =>
             {
                 using MemoryStream stream = new MemoryStream();
                 using StreamWriter writer = new StreamWriter(stream);
@@ -2923,7 +2924,7 @@ namespace Rebellion.Tests.Util.Serialization
         public void DeserializeNode_TypeReadNames_FindsNestedElement(string name)
         {
             using MemoryStream input = new MemoryStream(
-                System.Text.Encoding.UTF8.GetBytes(
+                Encoding.UTF8.GetBytes(
                     $"<Envelope><{name}><CurrentValue>42</CurrentValue></{name}></Envelope>"
                 )
             );
@@ -2939,7 +2940,7 @@ namespace Rebellion.Tests.Util.Serialization
         public void DeserializeNode_ExplicitElementName_KeepsCallerSelection()
         {
             using MemoryStream input = new MemoryStream(
-                System.Text.Encoding.UTF8.GetBytes(
+                Encoding.UTF8.GetBytes(
                     "<Envelope><LegacyAliasItem><CurrentValue>1</CurrentValue></LegacyAliasItem><Selected><CurrentValue>2</CurrentValue></Selected></Envelope>"
                 )
             );

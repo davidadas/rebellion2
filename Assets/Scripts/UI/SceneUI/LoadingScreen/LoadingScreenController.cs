@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Threading.Tasks;
+using Rebellion.Game;
 using Rebellion.Multiplayer;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -133,7 +134,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
     internal static void StartCustomGame(
         AppBootstrap bootstrap,
         ContentPack contentPack,
-        Rebellion.Game.GameSummary summary
+        GameSummary summary
     )
     {
         if (bootstrap == null)
@@ -656,7 +657,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
             GameLaunchContext.PrepareMultiplayer(_multiplayerLaunch);
         else if (_operation.SaveFileName != null)
             GameLaunchContext.PrepareSaveLoad(_operation.SaveFileName);
-        else if (_operation.CustomGameSummary is Rebellion.Game.GameSummary summary)
+        else if (_operation.CustomGameSummary is GameSummary summary)
         {
             GameLaunchContext.ApplyCustomGameSummary(summary);
             GameLaunchContext.PlayIntroCutscene = true;

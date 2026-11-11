@@ -5,6 +5,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
 using System.Xml.Linq;
 using NUnit.Framework;
 
@@ -152,7 +153,7 @@ namespace Rebellion.Tests.ContentEditor
                 .GetCatalogs()
                 .First(catalog => catalog.Name == "Starting setup")
                 .Document;
-            System.Xml.Linq.XDocument xml = System.Xml.Linq.XDocument.Parse(generation.Text);
+            XDocument xml = XDocument.Parse(generation.Text);
             xml.Descendants("OfficerInstanceID").First().Value = "missing-export-officer";
             project.SetDocumentText(generation, xml.ToString());
             string output = Path.Combine(contentRoot, "existing.zip");
@@ -241,7 +242,7 @@ namespace Rebellion.Tests.ContentEditor
             string output = Path.Combine(contentRoot, "export.zip");
             File.WriteAllText(output, "existing archive");
 
-            await ExpectFailureAsync<System.Xml.XmlException>(() =>
+            await ExpectFailureAsync<XmlException>(() =>
                 ContentPackEditorExporter.WriteArchiveAsync(project, output)
             );
 

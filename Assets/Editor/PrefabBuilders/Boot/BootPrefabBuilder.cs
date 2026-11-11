@@ -122,7 +122,7 @@ public static class BootPrefabBuilder
             GameObject eventSystem = new GameObject(
                 "EventSystem",
                 typeof(EventSystem),
-                typeof(StandaloneInputModule)
+                typeof(QueuedMouseInputModule)
             );
             eventSystem.transform.SetParent(root.transform, false);
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -46,7 +47,7 @@ public sealed class StrategyOverlayView : MonoBehaviour, ITargetingCursor, ICanc
     /// <summary>
     /// Raised when the active targeting cursor receives a cancel command.
     /// </summary>
-    public event System.Action TargetingCancelRequested;
+    public event Action TargetingCancelRequested;
 
     /// <summary>
     /// Applies one immutable drag-overlay presentation snapshot.

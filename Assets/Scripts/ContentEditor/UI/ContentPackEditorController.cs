@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
 using UnityEngine;
 
 /// <summary>
@@ -63,7 +64,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
         RunOperation(() =>
         {
             settingsManager = new ContentEditorSettingsManager(
-                System.IO.Path.Combine(UserDataPaths.Root, "content-editor-settings.json"),
+                Path.Combine(UserDataPaths.Root, "content-editor-settings.json"),
                 new ContentEditorSettings
                 {
                     ColorMode = (ContentEditorColorMode)PlayerPrefs.GetInt(_colorModePreference, 0),
@@ -174,7 +175,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             {
                 Texture2D texture = assets.GetTexture(address);
                 if (texture == null)
-                    throw new System.IO.FileNotFoundException(
+                    throw new FileNotFoundException(
                         "Image could not be opened. Check the file or use Import."
                     );
                 view.ShowImagePreview(texture, address);
@@ -203,8 +204,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             }
             else
                 view.RenderStatus(
-                    "Asset file: "
-                        + assets.ResolveFile(address, System.IO.Path.GetExtension(address)),
+                    "Asset file: " + assets.ResolveFile(address, Path.GetExtension(address)),
                     false
                 );
         }
@@ -724,8 +724,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
             Debug.LogWarning(exception.ToString());
         if (
             exception is not ArgumentException
-            && exception is not System.IO.IOException
-            && exception is not System.Xml.XmlException
+            && exception is not IOException
+            && exception is not XmlException
             && exception is not UnauthorizedAccessException
         )
             Debug.LogException(exception);

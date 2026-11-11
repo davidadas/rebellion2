@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml;
 using NUnit.Framework;
@@ -1184,7 +1185,7 @@ namespace Rebellion.Tests.Managers
 
             string saveFilePath = _saveGameManager.GetSaveFilePath(_saveFileName);
             string xml = File.ReadAllText(saveFilePath);
-            string stripped = System.Text.RegularExpressions.Regex.Replace(
+            string stripped = Regex.Replace(
                 xml,
                 @"\s*<SaveVersion>\d+</SaveVersion>",
                 string.Empty
@@ -1578,7 +1579,7 @@ namespace Rebellion.Tests.Managers
                 PlayerFactionID = "FNALL1",
                 CampaignID = campaignID,
                 OpeningBriefingCompleted = true,
-                LastSavedUtc = new System.DateTime(2025, 1, 1, 12, 0, 0, System.DateTimeKind.Utc),
+                LastSavedUtc = new DateTime(2025, 1, 1, 12, 0, 0, DateTimeKind.Utc),
             };
 
             GameRoot game = new GameRoot

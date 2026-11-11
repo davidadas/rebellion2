@@ -1898,7 +1898,7 @@ namespace Rebellion.Game.FogOfWar
 
             return locations
                 .OrderByDescending(location => location.TickCaptured)
-                .ThenBy(location => location.PlanetId, System.StringComparer.Ordinal)
+                .ThenBy(location => location.PlanetId, StringComparer.Ordinal)
                 .First();
         }
 
@@ -2848,7 +2848,7 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="entityId">The entity id.</param>
         private static void RemoveEntityFromSnapshot(PlanetSnapshot snapshot, string entityId)
         {
-            System.Predicate<ISceneNode> matchesEntity = entity => entity.InstanceID == entityId;
+            Predicate<ISceneNode> matchesEntity = entity => entity.InstanceID == entityId;
             snapshot.Officers.RemoveAll(matchesEntity);
             snapshot.Fleets.RemoveAll(matchesEntity);
             snapshot.Regiments.RemoveAll(matchesEntity);
@@ -2891,7 +2891,7 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="entityId">The entity id.</param>
         private static void RemoveEntityFromCapitalShip(CapitalShip ship, string entityId)
         {
-            System.Func<ISceneNode, bool> matchesEntity = entity => entity.InstanceID == entityId;
+            Func<ISceneNode, bool> matchesEntity = entity => entity.InstanceID == entityId;
             ship.RemoveChildren<Officer>(matchesEntity);
             ship.RemoveChildren<Regiment>(matchesEntity);
             ship.RemoveChildren<SpecialForces>(matchesEntity);

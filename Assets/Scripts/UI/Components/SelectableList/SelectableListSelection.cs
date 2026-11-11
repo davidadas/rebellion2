@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 /// <summary>
@@ -124,7 +125,7 @@ public sealed class SelectableListSelection
         if (selectedIndex < 0 || selectedIndex >= count)
             return direction < 0 ? count - 1 : 0;
 
-        return System.Math.Max(0, System.Math.Min(count - 1, selectedIndex + direction));
+        return Math.Max(0, Math.Min(count - 1, selectedIndex + direction));
     }
 
     /// <summary>
@@ -263,10 +264,10 @@ public sealed class SelectableListSelection
         int startColumn = start % itemsPerRow;
         int endRow = end / itemsPerRow;
         int endColumn = end % itemsPerRow;
-        int rowMin = System.Math.Min(startRow, endRow);
-        int rowMax = System.Math.Max(startRow, endRow);
-        int columnMin = System.Math.Min(startColumn, endColumn);
-        int columnMax = System.Math.Max(startColumn, endColumn);
+        int rowMin = Math.Min(startRow, endRow);
+        int rowMax = Math.Max(startRow, endRow);
+        int columnMin = Math.Min(startColumn, endColumn);
+        int columnMax = Math.Max(startColumn, endColumn);
 
         for (int row = rowMin; row <= rowMax; row++)
         {

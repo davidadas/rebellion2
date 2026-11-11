@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
@@ -66,7 +67,7 @@ namespace Rebellion.Game.Messages
         {
             bool hasPath = !string.IsNullOrWhiteSpace(Path);
             if (hasPath && Preset.HasValue)
-                throw new System.InvalidOperationException(
+                throw new InvalidOperationException(
                     "OfficerVoice requires exactly one of Path or Preset."
                 );
             if (hasPath)

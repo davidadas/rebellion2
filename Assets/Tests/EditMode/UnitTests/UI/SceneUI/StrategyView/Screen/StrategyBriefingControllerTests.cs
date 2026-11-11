@@ -11,6 +11,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
 using UnityEngine;
+using UnityEngine.UI;
 using GalaxyMapModel = Rebellion.Game.Galaxy.GalaxyMap;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
@@ -837,10 +838,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         /// </summary>
         /// <param name="rootObject">The root object.</param>
         /// <returns>The requested protocol image.</returns>
-        private static UnityEngine.UI.RawImage GetProtocolImage(GameObject rootObject)
+        private static RawImage GetProtocolImage(GameObject rootObject)
         {
             return Array.Find(
-                rootObject.GetComponentsInChildren<UnityEngine.UI.RawImage>(true),
+                rootObject.GetComponentsInChildren<RawImage>(true),
                 image => image.name == "ProtocolImage"
             );
         }

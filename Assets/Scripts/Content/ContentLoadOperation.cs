@@ -138,7 +138,7 @@ internal sealed class ContentLoadOperation
         _saveFileName = fileName;
         SaveContentSelection selection = await Task.Run(() =>
             {
-                Rebellion.Game.GameMetadata metadata = saves.GetSaveMetadata(fileName);
+                GameMetadata metadata = saves.GetSaveMetadata(fileName);
                 if (_previousPack.MatchesContentIdentity(metadata))
                     return null;
 

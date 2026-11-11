@@ -359,9 +359,6 @@ namespace Rebellion.Gameplay
             _disconnect.Add(() =>
                 planetaryAssaultSystem.ResultsProduced -= ProcessImmediateResults
             );
-            VictoryCommands victorySystem = GetService<VictoryCommands>();
-            victorySystem.ResultsProduced += ProcessImmediateResults;
-            _disconnect.Add(() => victorySystem.ResultsProduced -= ProcessImmediateResults);
         }
 
         /// <summary>

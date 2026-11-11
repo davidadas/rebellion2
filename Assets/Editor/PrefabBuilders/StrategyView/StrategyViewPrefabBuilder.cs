@@ -1453,7 +1453,7 @@ public static class StrategyViewPrefabBuilder
         GameObject eventSystemObject = new GameObject("EventSystem");
         eventSystemObject.transform.SetParent(sceneRoot.transform, false);
         eventSystemObject.AddComponent<EventSystem>();
-        eventSystemObject.AddComponent<StandaloneInputModule>();
+        eventSystemObject.AddComponent<QueuedMouseInputModule>();
     }
 
     /// <summary>
@@ -8476,7 +8476,7 @@ public static class StrategyViewPrefabBuilder
         {
             ContentTextureBinding textureBinding = image.GetComponent<ContentTextureBinding>();
             if (textureBinding != null)
-                UnityEngine.Object.DestroyImmediate(textureBinding);
+                Object.DestroyImmediate(textureBinding);
 
             ContentPressVisualBinding pressBinding =
                 image.GetComponent<ContentPressVisualBinding>()
@@ -8505,7 +8505,7 @@ public static class StrategyViewPrefabBuilder
 
         ContentPressVisualBinding pressBinding = target.AddComponent<ContentPressVisualBinding>();
         pressBinding.SetAddresses(textureBinding.Address, null);
-        UnityEngine.Object.DestroyImmediate(textureBinding);
+        Object.DestroyImmediate(textureBinding);
     }
 
     /// <summary>

@@ -43,7 +43,7 @@ public sealed class UserGameplaySettings
     public bool PauseAfterEnemyBombardment = true;
     public bool PauseWhenSpaceBattleBegins = true;
     public bool ShowMissionOdds = true;
-    public GameLaunchSpeed GameLaunchSpeed = global::GameLaunchSpeed.Unchanged;
+    public GameLaunchSpeed GameLaunchSpeed = GameLaunchSpeed.Unchanged;
 
     /// <summary>
     /// Gets whether a gameplay option is enabled.
@@ -99,7 +99,7 @@ public sealed class UserGameplaySettings
             Math.Min(MaximumAutosavesToKeep, AutosavesToKeep)
         );
         if (!Enum.IsDefined(typeof(GameLaunchSpeed), GameLaunchSpeed))
-            GameLaunchSpeed = global::GameLaunchSpeed.Unchanged;
+            GameLaunchSpeed = GameLaunchSpeed.Unchanged;
     }
 
     /// <summary>
@@ -134,6 +134,6 @@ public sealed class UserGameplaySettings
         PauseAfterEnemyBombardment = true;
         PauseWhenSpaceBattleBegins = true;
         ShowMissionOdds = true;
-        GameLaunchSpeed = global::GameLaunchSpeed.Unchanged;
+        GameLaunchSpeed = GameLaunchSpeed.Unchanged;
     }
 }

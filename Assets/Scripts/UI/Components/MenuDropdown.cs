@@ -1,5 +1,6 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// Fits the canonical menu selector popup to its current choices without changing native TMP interaction.
@@ -24,7 +25,7 @@ public sealed class MenuDropdown : TMP_Dropdown
         );
         RectTransform content = (RectTransform)item.parent;
         content.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, itemHeight);
-        UnityEngine.UI.ScrollRect scroll = popup.GetComponent<UnityEngine.UI.ScrollRect>();
+        ScrollRect scroll = popup.GetComponent<ScrollRect>();
         scroll.vertical = options.Count > _maximumVisibleOptions;
         scroll.scrollSensitivity = itemHeight;
         RectTransform viewport = scroll.viewport;

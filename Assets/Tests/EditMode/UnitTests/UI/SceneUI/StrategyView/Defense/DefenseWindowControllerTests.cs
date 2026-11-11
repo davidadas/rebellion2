@@ -11,6 +11,7 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
@@ -254,8 +255,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             _selectionModifiers = new SelectionModifierState(true, false);
             PressCard(view, 2);
             _selectionModifiers = default;
-            UnityEngine.UI.Scrollbar scrollbar =
-                view.GetComponentInChildren<UnityEngine.UI.Scrollbar>(true);
+            Scrollbar scrollbar = view.GetComponentInChildren<Scrollbar>(true);
             PointerEventData pointer = new PointerEventData(null)
             {
                 button = PointerEventData.InputButton.Left,

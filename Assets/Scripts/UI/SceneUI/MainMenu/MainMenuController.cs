@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -160,7 +161,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             RenderAnalyticsConsentGate(bootstrap);
             mainMenuCanvas.enabled = true;
         }
-        catch (System.Exception exception)
+        catch (Exception exception)
         {
             if (!LoadingScreenController.CompleteFailedRecovery(bootstrap, exception))
             {
@@ -521,7 +522,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             return;
 
         ContentPackDefinition definition = _customGamePacks?.FirstOrDefault(candidate =>
-            string.Equals(candidate.ID, packID, System.StringComparison.Ordinal)
+            string.Equals(candidate.ID, packID, StringComparison.Ordinal)
         );
         if (definition == null)
             throw new InvalidDataException($"Content pack '{packID}' is not installed.");

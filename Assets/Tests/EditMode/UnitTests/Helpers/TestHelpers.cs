@@ -345,7 +345,7 @@ public class SequenceRNG : IRandomNumberProvider
     /// <param name="max">The max.</param>
     /// <returns>The result of next int.</returns>
     public int NextInt(int min, int max) =>
-        _ints.Count > 0 ? System.Math.Max(min, System.Math.Min(max - 1, _ints.Dequeue())) : min;
+        _ints.Count > 0 ? Math.Max(min, Math.Min(max - 1, _ints.Dequeue())) : min;
 }
 
 /// <summary>

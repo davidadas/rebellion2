@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -308,11 +309,7 @@ namespace Rebellion.Tests.Managers
                 _ => { }
             );
             long timestamp = 0;
-            var manager = new GameManager(
-                () => game,
-                tick,
-                () => timestamp += System.Diagnostics.Stopwatch.Frequency
-            );
+            var manager = new GameManager(() => game, tick, () => timestamp += Stopwatch.Frequency);
             List<int> completed = new();
             using var work = EnumerateWork(completed, 2).GetEnumerator();
 

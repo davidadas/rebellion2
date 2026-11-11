@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -131,7 +132,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             VictoryQueries first = new VictoryQueries(TestGame.Create(TestConfig.Create()));
             VictoryQueries second = new VictoryQueries(TestGame.Create(TestConfig.Create()));
             VictoryQueries current = first;
-            var requested = new System.Collections.Generic.List<VictoryQueries>();
+            var requested = new List<VictoryQueries>();
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions()
                 .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Player" });
