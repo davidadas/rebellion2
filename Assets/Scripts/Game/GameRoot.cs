@@ -31,6 +31,12 @@ namespace Rebellion.Game
     [PersistableObject(Name = "Game")]
     public class GameRoot
     {
+        /// <summary>
+        /// Reports completed membership or ownership changes with their affected planet locations.
+        /// Observers defer reactions until the enclosing simulation operation has settled.
+        /// </summary>
+        internal event Action<ISceneNode, Planet, Planet> UnitPresenceChanged;
+
         // Scene graph.
         private GalaxyMap _galaxy;
 
@@ -64,15 +70,41 @@ namespace Rebellion.Game
         [PersistableIgnore]
         public GameConfig Config { get; private set; }
 
+        /// <summary>
+        /// Gets or sets the faction presented as local on this machine. This runtime-only value is
+        /// intentionally excluded from shared saves and network snapshots.
+        /// </summary>
+        [PersistableIgnore]
+        public string LocalPlayerFactionID { get; set; }
+
         // Random generators.
         [PersistableIgnore]
         private IRandomNumberProvider _random;
 
         [PersistableIgnore]
+        private int? _restoredSeed;
+
+        [PersistableMember(Name = "RandomSeed")]
+        private int PersistedRandomSeed
+        {
+            get => (_random as SystemRandomProvider)?.Seed ?? _restoredSeed ?? Summary.Seed;
+            set
+            {
+                _restoredSeed = value;
+                if (_random is SystemRandomProvider current && current.Seed != value)
+                    _random = new SystemRandomProvider(value, _restoredIndex);
+            }
+        }
+
+        [PersistableIgnore]
         public IRandomNumberProvider Random
         {
-            get => _random ??= new SystemRandomProvider(Summary.Seed, _restoredIndex);
-            set => _random = value;
+            get => _random ??= new SystemRandomProvider(PersistedRandomSeed, _restoredIndex);
+            set
+            {
+                _random = value;
+                _restoredSeed = (value as SystemRandomProvider)?.Seed;
+            }
         }
 
         [PersistableIgnore]
@@ -86,7 +118,7 @@ namespace Rebellion.Game
             {
                 _restoredIndex = value;
                 if (_random is SystemRandomProvider srp && srp.CallCount != value)
-                    _random = new SystemRandomProvider(Summary.Seed, value);
+                    _random = new SystemRandomProvider(PersistedRandomSeed, value);
             }
         }
 
@@ -96,6 +128,20 @@ namespace Rebellion.Game
             get => PersistedRandomIndex;
             set => PersistedRandomIndex = value;
         }
+
+        [PersistableMember(Name = nameof(RuntimeIdentifierIndex))]
+        private long _runtimeIdentifierIndex;
+
+        /// <summary>
+        /// Gets or sets whether accepted runtime entities use the game's persisted identity sequence.
+        /// </summary>
+        public bool UseDeterministicRuntimeIdentifiers { get; set; }
+
+        /// <summary>
+        /// Gets the position of the campaign's runtime identity sequence independently of gameplay randomness.
+        /// </summary>
+        [PersistableIgnore]
+        public long RuntimeIdentifierIndex => _runtimeIdentifierIndex;
 
         // Game state.
         [PersistableMember(Name = nameof(CurrentTick))]
@@ -188,6 +234,58 @@ namespace Rebellion.Game
         public GameRoot()
         {
             Galaxy = new GalaxyMap();
+        }
+
+        /// <summary>
+        /// Creates an identity from the enabled per-game sequence or the normal random identity source.
+        /// </summary>
+        /// <returns>A unique 32-digit hexadecimal identity within this game's runtime sequence.</returns>
+        public string GenerateRuntimeIdentifier()
+        {
+            if (!UseDeterministicRuntimeIdentifiers)
+                return Guid.NewGuid().ToString("N");
+
+            ulong seed = MixRuntimeIdentifier(unchecked((uint)Summary.Seed + 0x9e3779b97f4a7c15UL));
+            ulong position = MixRuntimeIdentifier((ulong)checked(++_runtimeIdentifierIndex));
+            return new Guid(
+                unchecked((int)(seed >> 32)),
+                unchecked((short)(seed >> 16)),
+                unchecked((short)seed),
+                (byte)(position >> 56),
+                (byte)(position >> 48),
+                (byte)(position >> 40),
+                (byte)(position >> 32),
+                (byte)(position >> 24),
+                (byte)(position >> 16),
+                (byte)(position >> 8),
+                (byte)position
+            ).ToString("N");
+        }
+
+        /// <summary>
+        /// Assigns an accepted entity's missing identity when per-game deterministic identities are enabled.
+        /// Existing identities and the normal lazy identity source are preserved.
+        /// </summary>
+        /// <param name="entity">The runtime entity being attached or delivered.</param>
+        internal void EnsureRuntimeIdentifier(BaseGameEntity entity)
+        {
+            if (UseDeterministicRuntimeIdentifiers && string.IsNullOrEmpty(entity.PeekInstanceID()))
+                entity.InstanceID = GenerateRuntimeIdentifier();
+        }
+
+        /// <summary>
+        /// Applies a fixed, reversible integer mixing operation to one identity component.
+        /// </summary>
+        /// <param name="value">The seed or sequence component.</param>
+        /// <returns>The mixed 64-bit component.</returns>
+        private static ulong MixRuntimeIdentifier(ulong value)
+        {
+            unchecked
+            {
+                value = (value ^ (value >> 30)) * 0xbf58476d1ce4e5b9UL;
+                value = (value ^ (value >> 27)) * 0x94d049bb133111ebUL;
+                return value ^ (value >> 31);
+            }
         }
 
         /// <summary>
@@ -388,9 +486,11 @@ namespace Rebellion.Game
         /// </exception>
         public Faction GetPlayerFaction()
         {
-            string factionInstanceID = _players
-                .FirstOrDefault(player => player.ControllerType == PlayerControllerType.Human)
-                ?.FactionID;
+            string factionInstanceID = !string.IsNullOrWhiteSpace(LocalPlayerFactionID)
+                ? LocalPlayerFactionID
+                : _players
+                    .FirstOrDefault(player => player.ControllerType == PlayerControllerType.Human)
+                    ?.FactionID;
             if (string.IsNullOrEmpty(factionInstanceID))
                 throw new InvalidOperationException("No human player faction is configured.");
 
@@ -446,6 +546,7 @@ namespace Rebellion.Game
                 throw new InvalidOperationException(
                     $"Cannot delete '{node.GetDisplayName()}' because it has no parent."
                 );
+            Planet origin = UnitPresenceChanged == null ? null : GetContainingPlanet(node);
             ((BaseSceneNode)node).TraverseIncludingDisabled(DisconnectOfficerRuntime);
             node.GetParent().RemoveChild(node);
             node.SetParent(null);
@@ -454,6 +555,26 @@ namespace Rebellion.Game
                 DeregsiterOwnedUnit(child);
                 RemoveSceneNodeByInstanceID(child);
             });
+            UnitPresenceChanged?.Invoke(node, origin, null);
+        }
+
+        /// <summary>
+        /// Applies an authored active-state change and reports the affected live location.
+        /// </summary>
+        /// <param name="node">The node whose local active state changes.</param>
+        /// <param name="enabled">Whether the node should be locally active.</param>
+        internal void SetNodeEnabled(ISceneNode node, bool enabled)
+        {
+            if (node == null)
+                throw new ArgumentNullException(nameof(node));
+            if (node.IsEnabled == enabled)
+                return;
+            node.IsEnabled = enabled;
+            if (UnitPresenceChanged != null)
+            {
+                Planet planet = GetContainingPlanet(node);
+                UnitPresenceChanged(node, planet, planet);
+            }
         }
 
         /// <summary>
@@ -475,6 +596,11 @@ namespace Rebellion.Game
             DeregsiterOwnedUnit(node);
             node.SetOwnerInstanceID(ownerInstanceId);
             RegisterOwnedUnit(node);
+            if (UnitPresenceChanged != null)
+            {
+                Planet planet = GetContainingPlanet(node);
+                UnitPresenceChanged(node, planet, planet);
+            }
         }
 
         /// <summary>
@@ -495,6 +621,7 @@ namespace Rebellion.Game
 
             DeregsiterOwnedUnit(planet);
             planet.ClearDestroyedControl();
+            UnitPresenceChanged?.Invoke(planet, planet, planet);
         }
 
         /// <summary>
@@ -513,6 +640,7 @@ namespace Rebellion.Game
                 );
             }
 
+            EnsureRuntimeIdentifier((BaseGameEntity)node);
             parent.AddChild(node);
             node.SetParent(parent);
 
@@ -521,6 +649,8 @@ namespace Rebellion.Game
 
             // Register the node and its children.
             ((BaseSceneNode)node).TraverseIncludingDisabled(AddSceneNodeByInstanceID);
+            if (UnitPresenceChanged != null)
+                UnitPresenceChanged(node, null, GetContainingPlanet(node));
         }
 
         /// <summary>
@@ -538,6 +668,7 @@ namespace Rebellion.Game
             }
 
             ISceneNode parent = node.GetParent();
+            Planet origin = UnitPresenceChanged == null ? null : GetContainingPlanet(node);
 
             ((BaseSceneNode)node).TraverseIncludingDisabled(DisconnectOfficerRuntime);
             parent.RemoveChild(node);
@@ -548,6 +679,7 @@ namespace Rebellion.Game
 
             // Deregister the node and its children.
             ((BaseSceneNode)node).TraverseIncludingDisabled(RemoveSceneNodeByInstanceID);
+            UnitPresenceChanged?.Invoke(node, origin, null);
         }
 
         /// <summary>
@@ -583,6 +715,7 @@ namespace Rebellion.Game
                     $"Cannot move '{node.GetDisplayName()}' to '{newParent.GetDisplayName()}'."
                 );
 
+            Planet origin = UnitPresenceChanged == null ? null : GetContainingPlanet(node);
             oldParent.RemoveChild(node);
             try
             {
@@ -595,7 +728,17 @@ namespace Rebellion.Game
                 node.SetParent(oldParent);
                 throw;
             }
+            if (UnitPresenceChanged != null)
+                UnitPresenceChanged(node, origin, GetContainingPlanet(node));
         }
+
+        /// <summary>
+        /// Resolves a node's current planet by its ancestor chain, without enumerating the scene.
+        /// </summary>
+        /// <param name="node">The changed node.</param>
+        /// <returns>The node itself when it is a planet, otherwise its nearest containing planet.</returns>
+        private static Planet GetContainingPlanet(ISceneNode node) =>
+            node as Planet ?? node.GetParentOfType<Planet>();
 
         /// <summary>
         /// Retrieves a list of scene nodes by their Instance IDs.
@@ -786,6 +929,7 @@ namespace Rebellion.Game
         /// <param name="node">The scene node to register.</param>
         public void AddSceneNodeByInstanceID(ISceneNode node)
         {
+            EnsureRuntimeIdentifier((BaseGameEntity)node);
             if (node is Officer officerToBind && Config != null)
                 officerToBind.BindForceRules(Config.Jedi, this);
             try
@@ -874,6 +1018,9 @@ namespace Rebellion.Game
         /// <returns>The result of initialize galaxy.</returns>
         private GalaxyMap InitializeGalaxy(GalaxyMap galaxy)
         {
+            NodesByInstanceID.Clear();
+            foreach (Faction faction in _factions)
+                faction.ClearOwnedUnits();
             InitializeSceneRoot(galaxy);
             return galaxy;
         }
@@ -890,16 +1037,25 @@ namespace Rebellion.Game
                     if (node is Planet { IsDestroyed: true } planet)
                         NeutralizeDestroyedPlanet(planet);
 
+                    EnsureRuntimeIdentifier((BaseGameEntity)node);
                     if (!NodesByInstanceID.ContainsKey(node.InstanceID))
                         AddSceneNodeByInstanceID(node);
 
                     foreach (ISceneNode child in node.GetChildren(includeDisabled: true))
+                    {
+                        string previousParentID = child.LastParentInstanceID;
                         child.SetParent(node);
+                        child.LastParentInstanceID = previousParentID;
+                    }
 
                     if (node.OwnerInstanceID != null)
                         RegisterOwnedUnit(node);
                 }
             );
+            foreach (ISceneNode node in NodesByInstanceID.Values)
+                node.LastParentNode = string.IsNullOrEmpty(node.LastParentInstanceID)
+                    ? null
+                    : GetSceneNodeByInstanceID<ISceneNode>(node.LastParentInstanceID, true);
         }
     }
 }

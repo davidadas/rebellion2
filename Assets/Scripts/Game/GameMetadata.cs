@@ -11,6 +11,15 @@ namespace Rebellion.Game
     {
         public const int CurrentSaveVersion = 1;
 
+        [PersistableMember(Name = nameof(CampaignID))]
+        private string _campaignId;
+
+        [PersistableMember(Name = nameof(MultiplayerCampaign))]
+        private MultiplayerCampaignIdentity _multiplayerCampaign;
+
+        [PersistableMember(Name = nameof(SharedSaveToken))]
+        private string _sharedSaveToken;
+
         [PersistableMember(Name = nameof(SaveDisplayName))]
         private string _saveDisplayName;
 
@@ -44,14 +53,47 @@ namespace Rebellion.Game
         [PersistableMember(Name = nameof(OpeningBriefingCompleted))]
         private bool _openingBriefingCompleted;
 
-        [PersistableMember(Name = nameof(CampaignID))]
-        private string _campaignId;
-
         [PersistableMember(Name = nameof(LastSavedUtc))]
         private DateTime _lastSavedUtc;
 
         [PersistableMember(Name = nameof(SaveVersion))]
         private int _saveVersion;
+
+        /// <summary>
+        /// Gets or sets the admitted account and faction bindings, or null for a single-player save.
+        /// </summary>
+        [PersistableIgnore]
+        public MultiplayerCampaignIdentity MultiplayerCampaign
+        {
+            get => _multiplayerCampaign;
+            set => _multiplayerCampaign = value;
+        }
+
+        /// <summary>
+        /// Gets or sets the shared checkpoint identity assigned by the persistence coordinator.
+        /// </summary>
+        [PersistableIgnore]
+        public string SharedSaveToken
+        {
+            get => _sharedSaveToken;
+            set => _sharedSaveToken = value;
+        }
+
+        /// <summary>
+        /// Gets whether this save belongs to an authenticated multiplayer campaign.
+        /// </summary>
+        [PersistableIgnore]
+        public bool IsMultiplayer => _multiplayerCampaign != null;
+
+        /// <summary>
+        /// Gets or sets the persistent identity shared by this campaign's save history.
+        /// </summary>
+        [PersistableIgnore]
+        public string CampaignID
+        {
+            get => _campaignId;
+            set => _campaignId = value;
+        }
 
         [PersistableIgnore]
         public string SaveDisplayName
@@ -128,16 +170,6 @@ namespace Rebellion.Game
         {
             get => _openingBriefingCompleted;
             set => _openingBriefingCompleted = value;
-        }
-
-        /// <summary>
-        /// Gets or sets the anonymous identifier shared by analytics sessions for this campaign.
-        /// </summary>
-        [PersistableIgnore]
-        public string CampaignID
-        {
-            get => _campaignId;
-            set => _campaignId = value;
         }
 
         [PersistableIgnore]

@@ -1,4 +1,5 @@
 using System;
+using Rebellion.Game.Messages;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -27,6 +28,7 @@ public sealed class MessageWindowRowView : SelectableListRowView
     private FontWeight headerTextTemplateFontWeight;
     private RectInt iconImageTemplateRect;
     private bool initialized;
+    private bool headerTextTemplateRichText;
 
     public string MessageId { get; private set; } = string.Empty;
 
@@ -48,6 +50,7 @@ public sealed class MessageWindowRowView : SelectableListRowView
             data.Selected ? data.SelectedIconTexture : data.NormalIconTexture,
             data.Selected
         );
+        headerTextField.richText = data.Type != MessageType.Chat && headerTextTemplateRichText;
         UILayout.SetTextContent(headerTextField, data.Header, data.HeaderColor);
         headerTextField.fontStyle = headerTextTemplateFontStyle;
         headerTextField.fontWeight = headerTextTemplateFontWeight;
@@ -72,6 +75,7 @@ public sealed class MessageWindowRowView : SelectableListRowView
 
         VerifyReferences();
         iconImageTemplateRect = UILayout.GetSourceRect(iconImage.rectTransform);
+        headerTextTemplateRichText = headerTextField.richText;
         headerTextTemplateFontStyle = headerTextField.fontStyle;
         headerTextTemplateFontWeight = headerTextField.fontWeight;
         initialized = true;

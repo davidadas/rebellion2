@@ -1,13 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.PlayerRequests;
 using Rebellion.SceneGraph;
 using Rebellion.Util.DependencyInjection;
+using Rebellion.Util.Random;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -16,11 +20,6 @@ using UnityEngine.EventSystems;
 /// </summary>
 public interface IMissionCreateWindowActions
 {
-    /// <summary>
-    /// Rebuilds strategy state after a mission is created.
-    /// </summary>
-    void RefreshAfterMissionCreation();
-
     /// <summary>
     /// Opens the Encyclopedia from the Mission Create information control.
     /// </summary>
@@ -36,8 +35,15 @@ public sealed class MissionCreateWindowController
         new HashSet<MissionCreateWindowView>();
     private readonly Action<UIWindow> closeWindow;
     private readonly IServiceLocator services;
+    private readonly IPlayerRequestDispatcher playerRequests;
+    private readonly IRandomNumberProvider presentationRandom = new SystemRandomProvider(
+        Environment.TickCount
+    );
+    private readonly HashSet<MissionCreateWindowView> pendingSubmissions =
+        new HashSet<MissionCreateWindowView>();
     private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly Func<bool> getShowMissionOdds;
+    private readonly Func<UIContext> getUIContext;
     private readonly Func<Vector2Int> getWindowPosition;
     private readonly Action markDirty;
     private readonly Action<string> playSfx;
@@ -53,6 +59,7 @@ public sealed class MissionCreateWindowController
     /// Creates the Mission Create feature controller.
     /// </summary>
     /// <param name="services">Resolves the active game's mission commands and queries.</param>
+    /// <param name="playerRequests">Completes mission requests through the session action boundary.</param>
     /// <param name="getUIContext">Returns the current strategy presentation context.</param>
     /// <param name="playSfx">Plays a resolved mission acknowledgment sound.</param>
     /// <param name="windowLayer">Provides the authored Mission Create prefab and modal layer.</param>
@@ -66,6 +73,7 @@ public sealed class MissionCreateWindowController
     /// <param name="setShowMissionOdds">Persists mission-odds visibility.</param>
     public MissionCreateWindowController(
         IServiceLocator services,
+        IPlayerRequestDispatcher playerRequests,
         Func<UIContext> getUIContext,
         Action<string> playSfx,
         StrategyWindowLayerView windowLayer,
@@ -80,6 +88,9 @@ public sealed class MissionCreateWindowController
     )
     {
         this.services = services ?? throw new ArgumentNullException(nameof(services));
+        this.playerRequests =
+            playerRequests ?? throw new ArgumentNullException(nameof(playerRequests));
+        this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
         this.windowLayer = windowLayer ?? throw new ArgumentNullException(nameof(windowLayer));
         this.windowManager =
@@ -336,19 +347,38 @@ public sealed class MissionCreateWindowController
     /// Validates and starts the configured mission when confirmation is requested.
     /// </summary>
     /// <param name="view">The requesting Mission Create view.</param>
-    private void HandleConfirmRequested(MissionCreateWindowView view)
+    private async void HandleConfirmRequested(MissionCreateWindowView view)
     {
-        if (!sessions.TryGetValue(view, out MissionCreateWindowSession session))
+        if (
+            !sessions.TryGetValue(view, out MissionCreateWindowSession session)
+            || !pendingSubmissions.Add(view)
+        )
             return;
 
-        session.Window.RequestFocus();
-        if (TryStartMission(session))
+        try
         {
-            actions.RefreshAfterMissionCreation();
-            closeWindow(session.Window);
+            session.Window.RequestFocus();
+            GameRoot requestGame = getUIContext()?.Game;
+            bool started = await TryStartMissionAsync(session);
+            if (
+                view == null
+                || !sessions.TryGetValue(view, out MissionCreateWindowSession currentSession)
+                || !ReferenceEquals(session, currentSession)
+                || !ReferenceEquals(requestGame, getUIContext()?.Game)
+            )
+                return;
+
+            if (started)
+            {
+                closeWindow(session.Window);
+            }
+            else
+                markDirty();
         }
-        else
-            markDirty();
+        finally
+        {
+            pendingSubmissions.Remove(view);
+        }
     }
 
     /// <summary>
@@ -604,7 +634,7 @@ public sealed class MissionCreateWindowController
     /// </summary>
     /// <param name="session">The source Mission Create session.</param>
     /// <returns>True when the game accepted and initiated the mission.</returns>
-    private bool TryStartMission(MissionCreateWindowSession session)
+    private async Task<bool> TryStartMissionAsync(MissionCreateWindowSession session)
     {
         StrategyMissionChoice choice = session.SelectedChoice;
         Planet missionPlanet = session.Target?.Planet?.Planet;
@@ -616,14 +646,32 @@ public sealed class MissionCreateWindowController
             missionPlanet,
             session.Target.Item
         );
-        MissionCommands missionSystem = services.GetService<MissionCommands>();
+        GameRoot requestGame = getUIContext()?.Game;
         if (
             !services.GetService<MissionQueries>().CanCreateMission(context)
-            || !missionSystem.InitiateMission(context)
+            || !(
+                await playerRequests.ExecuteAsync(
+                    new StartMissionRequest
+                    {
+                        MissionTypeID = context.MissionTypeID,
+                        ObservedLocation = context.Location as Planet,
+                        ObservedTarget = context.SelectedTarget,
+                        MainParticipantIDs = context
+                            .MainParticipants.Select(item => item.InstanceID)
+                            .ToArray(),
+                        DecoyParticipantIDs = context
+                            .DecoyParticipants.Select(item => item.InstanceID)
+                            .ToArray(),
+                        Discipline = context.Discipline,
+                        IsRepeating = context.IsRepeating,
+                    }
+                )
+            ).Accepted
         )
             return false;
 
-        PlayMissionStartVoice(session.Agents, session.Decoys);
+        if (windowLayer != null && ReferenceEquals(requestGame, getUIContext()?.Game))
+            PlayMissionStartVoice(context.MainParticipants, context.DecoyParticipants);
         return true;
     }
 
@@ -648,10 +696,7 @@ public sealed class MissionCreateWindowController
         if (officer == null)
             return;
 
-        string voicePath = officer.GetVoicePath(
-            OfficerVoiceLineType.Order,
-            services.GetService<GameRoot>()?.Random
-        );
+        string voicePath = officer.GetVoicePath(OfficerVoiceLineType.Order, presentationRandom);
         if (!string.IsNullOrEmpty(voicePath))
             playSfx(voicePath);
     }

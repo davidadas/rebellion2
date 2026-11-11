@@ -1,0 +1,72 @@
+using System;
+using System.Threading.Tasks;
+using Rebellion.Game;
+using Rebellion.Gameplay;
+
+namespace Rebellion.Multiplayer
+{
+    /// <summary>
+    /// Publishes a survivor's settled local saves while shared loading and simulation remain suspended.
+    /// </summary>
+    internal sealed class MultiplayerDisconnectedSaves
+    {
+        private readonly GameSessionManager _sessionManager;
+        private readonly GameSession _session;
+        private readonly MultiplayerRole _role;
+        private readonly Action _checkpointPublished;
+
+        /// <summary>
+        /// Gets whether the retained campaign has reached a permitted ordinary-save boundary.
+        /// </summary>
+        public bool CanRequestSave =>
+            ReferenceEquals(_sessionManager.GetActiveGameSession(), _session)
+            && _sessionManager.CanSave;
+
+        /// <summary>
+        /// Retains the surviving session and its original participant namespace.
+        /// </summary>
+        /// <param name="runtime">The runtime retaining the paused campaign.</param>
+        /// <param name="role">The participant's original simulation role.</param>
+        /// <param name="checkpointPublished">Requests a recovery refresh after a durable local save.</param>
+        public MultiplayerDisconnectedSaves(
+            GameSessionManager runtime,
+            MultiplayerRole role,
+            Action checkpointPublished
+        )
+        {
+            _sessionManager = runtime ?? throw new ArgumentNullException(nameof(runtime));
+            _session =
+                runtime.GetActiveGameSession()
+                ?? throw new InvalidOperationException("An active campaign is required.");
+            if (role != MultiplayerRole.Host && role != MultiplayerRole.Guest)
+                throw new ArgumentOutOfRangeException(nameof(role));
+            _role = role;
+            _checkpointPublished = checkpointPublished;
+        }
+
+        /// <summary>
+        /// Writes this participant's copy without waiting for an absent peer's acknowledgment.
+        /// </summary>
+        /// <param name="fileName">The logical identifier or an existing multiplayer copy identifier.</param>
+        /// <param name="displayName">The requested label, or null for the slot default.</param>
+        /// <returns>True after the settled local save has been durably published.</returns>
+        public async Task<bool> SaveGameAsync(string fileName, string displayName)
+        {
+            if (!CanRequestSave || string.IsNullOrWhiteSpace(fileName))
+                return false;
+            displayName = SaveGameManager.NormalizeDisplayName(displayName);
+            GameRoot game = _session.Game;
+            string localFileName = SaveGameManager.GetMultiplayerSaveFileName(
+                game.Metadata.CampaignID,
+                _role == MultiplayerRole.Host,
+                fileName
+            );
+            // A local publication must not claim to match an older copy on the absent peer.
+            game.Metadata.SharedSaveToken = Guid.NewGuid().ToString("N");
+            bool saved = await _sessionManager.SaveGameLocallyAsync(localFileName, displayName);
+            if (saved && ReferenceEquals(_sessionManager.GetActiveGameSession(), _session))
+                _checkpointPublished?.Invoke();
+            return saved;
+        }
+    }
+}

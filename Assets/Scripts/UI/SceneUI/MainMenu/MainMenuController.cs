@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Rebellion.Game;
+using Rebellion.Multiplayer;
+using Rebellion.UI.SceneUI.MainMenu.Multiplayer;
 using UnityEngine;
 
 /// <summary>
@@ -27,7 +29,13 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     private NewGameSettingsView _newGameSettingsPrefab;
 
     [SerializeField]
+    private MultiplayerMenuOverlay _multiplayerMenuPrefab;
+
+    [SerializeField]
     private AnalyticsConsentView _analyticsConsentView;
+
+    [SerializeField]
+    private LegalDocumentsView _legalDocumentsView;
 
     private UIWindow _newGameSettingsWindow;
     private NewGameSettingsView _newGameSettingsView;
@@ -44,8 +52,12 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     private bool optionsDirty;
     private AppInputController _appInputController;
     private AppBootstrap _appBootstrap;
+    private MultiplayerCoordinator _multiplayerCoordinator;
+    private UIWindow _multiplayerWindow;
+    private MultiplayerMenuOverlay _multiplayerMenuView;
 
-    private bool IsAnalyticsConsentBlocking => _analyticsConsentView?.IsVisible == true;
+    private bool IsStartupConsentBlocking =>
+        _legalDocumentsView?.IsVisible == true || _analyticsConsentView?.IsVisible == true;
 
     /// <summary>
     /// Resets launch state and renders the authored initial selections.
@@ -64,6 +76,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
         ContentPack contentPack = _appBootstrap.GetContentPack();
         GameLaunchContext.Reset(contentPack);
         currentVictoryCondition = GameLaunchContext.Summary.VictoryCondition;
+        _multiplayerCoordinator = AppBootstrap.EnsureExists().GetMultiplayerCoordinator();
+        _multiplayerCoordinator.Disconnect();
 
         if (view == null)
             return;
@@ -97,9 +111,13 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
         view.ExitRequested += ExitApplication;
         view.CreditsRequested += ShowCredits;
         view.NewGameSettingsRequested += OpenNewGameSettings;
+        view.MultiplayerRequested += OpenMultiplayerMenu;
         view.AudioCueRequested += PlayAudioCue;
+        _multiplayerCoordinator.LaunchRequested += HandleMultiplayerLaunchRequested;
         _analyticsConsentView.Allowed += HandleAnalyticsAllowed;
         _analyticsConsentView.Declined += HandleAnalyticsDeclined;
+        _legalDocumentsView.MultiplayerAccepted += ContinueToMultiplayer;
+        _legalDocumentsView.Closed += HandleLegalDocumentsClosed;
     }
 
     /// <summary>
@@ -162,6 +180,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// </summary>
     private void OnDisable()
     {
+        _appBootstrap?.GetCancelStack()?.Unregister(this);
+        CloseMultiplayerMenu(true);
         CloseNewGameSettings();
         if (view == null)
             return;
@@ -174,9 +194,15 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
         view.ExitRequested -= ExitApplication;
         view.CreditsRequested -= ShowCredits;
         view.NewGameSettingsRequested -= OpenNewGameSettings;
+        view.MultiplayerRequested -= OpenMultiplayerMenu;
         view.AudioCueRequested -= PlayAudioCue;
+        if (_multiplayerCoordinator != null)
+            _multiplayerCoordinator.LaunchRequested -= HandleMultiplayerLaunchRequested;
         _analyticsConsentView.Allowed -= HandleAnalyticsAllowed;
         _analyticsConsentView.Declined -= HandleAnalyticsDeclined;
+        _legalDocumentsView.MultiplayerAccepted -= ContinueToMultiplayer;
+        _legalDocumentsView.Closed -= HandleLegalDocumentsClosed;
+        _legalDocumentsView.Hide();
 
         if (_appInputController != null)
         {
@@ -217,7 +243,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// </summary>
     private void HandleOptionsMenuRequested()
     {
-        if (mainMenuCanvas?.enabled != true || _analyticsConsentView.IsVisible)
+        if (mainMenuCanvas?.enabled != true || IsStartupConsentBlocking)
             return;
 
         if (TryCancel())
@@ -238,7 +264,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// <param name="factionId">The configured faction identifier.</param>
     internal void SelectFaction(string factionId)
     {
-        if (IsAnalyticsConsentBlocking)
+        if (IsStartupConsentBlocking)
             return;
         GameLaunchContext.Summary.PlayerFactionID = factionId;
     }
@@ -249,7 +275,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// <param name="size">The selected galaxy size.</param>
     internal void SelectGalaxySize(GameSize size)
     {
-        if (IsAnalyticsConsentBlocking)
+        if (IsStartupConsentBlocking)
             return;
         GameLaunchContext.Summary.GalaxySize = size;
     }
@@ -260,7 +286,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// <param name="condition">The selected victory condition.</param>
     internal void SelectVictoryCondition(GameVictoryCondition condition)
     {
-        if (IsAnalyticsConsentBlocking)
+        if (IsStartupConsentBlocking)
             return;
         currentVictoryCondition = condition;
         GameLaunchContext.Summary.VictoryCondition = condition;
@@ -273,7 +299,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// <param name="difficulty">The selected difficulty.</param>
     internal void SelectGameDifficulty(GameDifficulty difficulty)
     {
-        if (IsAnalyticsConsentBlocking)
+        if (IsStartupConsentBlocking)
             return;
         GameLaunchContext.Summary.Difficulty = difficulty;
     }
@@ -284,10 +310,19 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// <param name="factionId">The configured faction identifier.</param>
     private void HandleStartGameRequested(string factionId)
     {
-        if (IsAnalyticsConsentBlocking)
+        if (IsStartupConsentBlocking)
             return;
         SelectFaction(factionId);
         StartGame();
+    }
+
+    /// <summary>
+    /// Applies negotiated multiplayer settings and enters the strategy scene.
+    /// </summary>
+    /// <param name="configuration">The synchronized launch configuration.</param>
+    private void HandleMultiplayerLaunchRequested(MultiplayerLaunchConfiguration configuration)
+    {
+        CloseMultiplayerMenu(false);
     }
 
     /// <summary>
@@ -295,7 +330,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// </summary>
     private void HandleVictoryConditionToggleRequested()
     {
-        if (IsAnalyticsConsentBlocking)
+        if (IsStartupConsentBlocking)
             return;
         SelectVictoryCondition(
             currentVictoryCondition == GameVictoryCondition.Conquest
@@ -318,7 +353,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// </summary>
     private void ShowCredits()
     {
-        if (IsAnalyticsConsentBlocking)
+        if (IsStartupConsentBlocking)
             return;
         AudioManager.EnsureExists().FadeOutMusic(creditsMusicFadeDuration);
         AppBootstrap.EnsureExists().GetCutsceneManager().Play(_creditsVideoPath, OnCreditsFinished);
@@ -329,7 +364,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// </summary>
     private void OpenSaveLoadMenu()
     {
-        if (IsAnalyticsConsentBlocking)
+        if (IsStartupConsentBlocking)
             return;
         PlayAudioCue(_selectSfxPath);
         OpenOptions(OptionsMenuTab.SaveLoad);
@@ -340,9 +375,12 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// </summary>
     private void Update()
     {
-        bool open = optionsMenuController?.IsOpen == true || _newGameSettingsWindow != null;
+        bool open =
+            optionsMenuController?.IsOpen == true
+            || _newGameSettingsWindow != null
+            || _multiplayerWindow != null;
         view?.RenderOptionsOverlay(open);
-        if (!open || !optionsDirty)
+        if (optionsMenuController?.IsOpen != true || !optionsDirty)
             return;
 
         optionsDirty = false;
@@ -374,8 +412,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             () => view.GetOptionsWindowPosition(_optionsMenuPrefab),
             windowManager.DestroyWindow,
             bootstrap,
-            bootstrap.GetRuntime().SaveGame,
-            bootstrap.LoadSave,
+            bootstrap.GetGameSessionManager().SaveGameAsync,
+            bootstrap.LoadSaveAsync,
             MarkOptionsDirty,
             SaveGameManager.Instance,
             showModsTab: true
@@ -388,7 +426,11 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// <param name="tab">The page to show initially.</param>
     private void OpenOptions(OptionsMenuTab tab)
     {
-        if (_analyticsConsentView.IsVisible || _newGameSettingsWindow != null)
+        if (
+            _analyticsConsentView.IsVisible
+            || _newGameSettingsWindow != null
+            || _multiplayerWindow != null
+        )
             return;
         EnsureOptionsController();
         if (optionsMenuController == null)
@@ -424,6 +466,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
         if (
             _analyticsConsentView.IsVisible
             || _newGameSettingsWindow != null
+            || _multiplayerWindow != null
             || optionsMenuController?.IsOpen == true
         )
             return;
@@ -546,13 +589,118 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     }
 
     /// <summary>
+    /// Presents both required documents before every entry into multiplayer.
+    /// </summary>
+    private void OpenMultiplayerMenu()
+    {
+        if (
+            IsStartupConsentBlocking
+            || _multiplayerWindow != null
+            || _newGameSettingsWindow != null
+            || optionsMenuController?.IsOpen == true
+        )
+            return;
+        if (_multiplayerMenuPrefab == null)
+        {
+            Debug.LogWarning(
+                "MainMenu multiplayer prefab is not assigned; run Build Main Menu UI to wire it."
+            );
+            return;
+        }
+
+        _legalDocumentsView.ShowMultiplayerAgreement();
+        _appBootstrap.GetCancelStack()?.Register(this);
+    }
+
+    /// <summary>
+    /// Opens multiplayer discovery only after the player agrees to both documents.
+    /// </summary>
+    private void ContinueToMultiplayer()
+    {
+        _appBootstrap.GetCancelStack()?.Unregister(this);
+        AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+        UIWindowManager manager = view.OptionsWindowManager;
+        manager.SetContentSource(bootstrap.GetContentAssets());
+        Vector2Int position = view.GetOptionsWindowPosition(_multiplayerMenuPrefab);
+        Vector2 size = ((RectTransform)_multiplayerMenuPrefab.transform).sizeDelta;
+        view.RenderOptionsOverlay(true);
+        try
+        {
+            _multiplayerWindow = manager.CreateWindow(
+                _multiplayerMenuPrefab,
+                view.OptionsWindowLayer,
+                "MultiplayerMenu",
+                position.x,
+                position.y,
+                new Vector2Int((int)size.x, (int)size.y),
+                true,
+                true,
+                false,
+                false,
+                out _multiplayerMenuView
+            );
+            _multiplayerMenuView.CloseRequested += HandleMultiplayerCloseRequested;
+            _multiplayerMenuView.Initialize(_multiplayerCoordinator, GameLaunchContext.Summary);
+            bootstrap.GetCancelStack()?.Register(this);
+        }
+        catch
+        {
+            CloseMultiplayerMenu(true);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Releases the privacy notice's cancellation handler when the player returns to the menu.
+    /// </summary>
+    private void HandleLegalDocumentsClosed()
+    {
+        _appBootstrap.GetCancelStack()?.Unregister(this);
+    }
+
+    /// <summary>
+    /// Closes the multiplayer modal in response to its Back command.
+    /// </summary>
+    private void HandleMultiplayerCloseRequested()
+    {
+        CloseMultiplayerMenu(true);
+    }
+
+    /// <summary>
+    /// Removes a multiplayer window still owned by this menu and optionally ends its session.
+    /// </summary>
+    /// <param name="disconnect">Whether to close the peer and directory listing.</param>
+    private void CloseMultiplayerMenu(bool disconnect)
+    {
+        if (_multiplayerWindow == null)
+            return;
+
+        if (_multiplayerMenuView != null)
+            _multiplayerMenuView.CloseRequested -= HandleMultiplayerCloseRequested;
+        AppBootstrap.Instance?.GetCancelStack()?.Unregister(this);
+        if (disconnect)
+            _multiplayerCoordinator?.Disconnect();
+        if (view?.OptionsWindowManager != null)
+            view.OptionsWindowManager.DestroyWindow(_multiplayerWindow);
+        _multiplayerWindow = null;
+        _multiplayerMenuView = null;
+        bool anotherModalOpen =
+            optionsMenuController?.IsOpen == true || _newGameSettingsWindow != null;
+        view?.RenderOptionsOverlay(anotherModalOpen);
+    }
+
+    /// <summary>
     /// Handles cancellation only while this scene owns the custom-game editor.
     /// </summary>
     /// <returns>Whether the preview consumed cancellation.</returns>
     public bool TryCancel()
     {
+        if (_legalDocumentsView?.TryCancel() == true)
+            return true;
         if (_analyticsConsentView.IsVisible)
             return true;
+        if (_multiplayerMenuView != null)
+            return _multiplayerMenuView.TryCancel();
         if (_newGameSettingsWindow == null)
             return false;
         CloseNewGameSettings();
@@ -594,9 +742,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// <param name="bootstrap">The initialized application bootstrap, or null after startup failure.</param>
     private void RenderAnalyticsConsentGate(AppBootstrap bootstrap)
     {
-        UserAnalyticsConsent? consent = bootstrap
-            ?.GetUserSettingsManager()
-            ?.Settings?.Analytics?.Consent;
+        UserSettings settings = bootstrap?.GetUserSettingsManager()?.Settings;
+        UserAnalyticsConsent? consent = settings?.Analytics?.Consent;
         _analyticsConsentView.Render(consent == null || consent == UserAnalyticsConsent.Undecided);
     }
 
@@ -605,8 +752,16 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// </summary>
     private void ExitApplication()
     {
-        if (IsAnalyticsConsentBlocking)
+        if (IsStartupConsentBlocking)
             return;
+        QuitApplication();
+    }
+
+    /// <summary>
+    /// Ends the application when the player exits.
+    /// </summary>
+    private void QuitApplication()
+    {
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
 #else
@@ -641,14 +796,14 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// </summary>
     private void StartGame()
     {
-        if (IsAnalyticsConsentBlocking)
+        if (IsStartupConsentBlocking)
             return;
         GameLaunchContext.IsLoadGame = false;
         GameLaunchContext.SaveFileName = null;
-        GameLaunchContext.PlayIntroCutscene = true;
+        GameLaunchContext.PlayIntroCutscene = !GameLaunchContext.IsMultiplayer;
 
         // Start a new game session.
-        AppBootstrap.Instance.GetRuntime()?.EndGame();
+        AppBootstrap.Instance.GetGameSessionManager()?.EndGame();
 
         AudioManager.EnsureExists().StopMusic();
         AppBootstrap.Instance.LoadScene("StrategyView");

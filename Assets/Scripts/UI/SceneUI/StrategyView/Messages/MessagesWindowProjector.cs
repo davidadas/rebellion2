@@ -24,6 +24,10 @@ internal static class MessagesWindowProjector
     /// <param name="x">The window's source-space x coordinate.</param>
     /// <param name="y">The window's source-space y coordinate.</param>
     /// <param name="missionContinuationChoiceVisible">Whether the selected report owns a continuing mission choice.</param>
+    /// <param name="canComposeChat">Whether the active session accepts player chat.</param>
+    /// <param name="composerDraft">The active draft, or null when the editor is closed.</param>
+    /// <param name="sendingPeerChat">Whether the draft is awaiting submission acceptance.</param>
+    /// <param name="composerStatus">The optional submission status.</param>
     /// <returns>The complete immutable messages presentation.</returns>
     internal static MessagesWindowRenderData Project(
         UIContext uiContext,
@@ -36,12 +40,18 @@ internal static class MessagesWindowProjector
         bool hasNavigationTarget,
         int x,
         int y,
-        bool missionContinuationChoiceVisible = false
+        bool missionContinuationChoiceVisible = false,
+        bool canComposeChat = false,
+        string composerDraft = null,
+        bool sendingPeerChat = false,
+        string composerStatus = null
     )
     {
         IReadOnlyList<Message> safeMessages = messages ?? Array.Empty<Message>();
         int selectedIndex = FindMessageIndex(safeMessages, selectedMessageId);
-        bool showDetail = detailVisible && selectedIndex >= 0 && selectedIndex < safeMessages.Count;
+        bool composing = composerDraft != null;
+        bool showDetail =
+            !composing && detailVisible && selectedIndex >= 0 && selectedIndex < safeMessages.Count;
         MessagesWindowTheme theme = uiContext?.GetPlayerFactionTheme()?.StrategyWindows?.Messages;
 
         return new MessagesWindowRenderData(
@@ -51,13 +61,14 @@ internal static class MessagesWindowProjector
             CreateCommandBarRenderData(
                 uiContext,
                 theme,
-                showDetail,
-                activeTab,
+                showDetail || composing,
                 safeMessages.Count,
                 notificationsEnabled,
-                hasNavigationTarget
+                !composing && hasNavigationTarget,
+                canComposeChat,
+                composing
             ),
-            showDetail
+            showDetail || composing
                 ? null
                 : CreateIndexPanelRenderData(
                     uiContext,
@@ -74,6 +85,14 @@ internal static class MessagesWindowProjector
                     selectedIndex,
                     missionContinuationChoiceVisible
                 )
+                : null,
+            composing
+                ? new MessagesChatComposerRenderData(
+                    composerDraft,
+                    canComposeChat,
+                    sendingPeerChat,
+                    composerStatus
+                )
                 : null
         );
     }
@@ -84,19 +103,21 @@ internal static class MessagesWindowProjector
     /// <param name="uiContext">The current texture context.</param>
     /// <param name="theme">The current messages theme.</param>
     /// <param name="panel">Whether the detail panel is visible.</param>
-    /// <param name="activeTab">The active semantic Messages tab.</param>
     /// <param name="messageCount">The active tab's message count.</param>
     /// <param name="notificationsEnabled">Whether notifications are enabled.</param>
     /// <param name="hasNavigationTarget">Whether the selected detail has a target.</param>
+    /// <param name="canComposeChat">Whether the active session accepts player chat.</param>
+    /// <param name="composing">Whether the editor is already open.</param>
     /// <returns>The immutable command-bar presentation.</returns>
     private static MessagesCommandBarRenderData CreateCommandBarRenderData(
         UIContext uiContext,
         MessagesWindowTheme theme,
         bool panel,
-        MessagesTab activeTab,
         int messageCount,
         bool notificationsEnabled,
-        bool hasNavigationTarget
+        bool hasNavigationTarget,
+        bool canComposeChat,
+        bool composing
     )
     {
         return new MessagesCommandBarRenderData(
@@ -116,8 +137,8 @@ internal static class MessagesWindowProjector
                 uiContext,
                 theme?.ChatCommandButton,
                 true,
-                activeTab != MessagesTab.Chat || panel,
-                activeTab == MessagesTab.Chat && !panel
+                canComposeChat && !composing,
+                composing
             )
         );
     }
@@ -396,7 +417,8 @@ internal static class MessagesWindowProjector
             GetTexture(uiContext, theme?.GetNormalIconImagePath(message.Type)),
             selectedIndex == 0,
             selectedIndex == messages.Count - 1,
-            missionContinuationChoiceVisible
+            missionContinuationChoiceVisible,
+            plainText: message.Type == MessageType.Chat
         );
     }
 
