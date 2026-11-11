@@ -1402,7 +1402,7 @@ public static class StrategyViewPrefabBuilder
         GameObject eventSystemObject = new GameObject("EventSystem");
         eventSystemObject.transform.SetParent(sceneRoot.transform, false);
         eventSystemObject.AddComponent<EventSystem>();
-        eventSystemObject.AddComponent<StandaloneInputModule>();
+        eventSystemObject.AddComponent<QueuedMouseInputModule>();
     }
 
     /// <summary>

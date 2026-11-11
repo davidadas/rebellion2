@@ -39,6 +39,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.XmlSubmitted += ApplyXml;
         view.FieldSubmitted += ApplyField;
         view.FieldValidationRequested += ValidateField;
+        view.FieldInheritanceResetRequested += ResetInheritance;
         view.CollectionAddRequested += AddCollectionEntry;
         view.CollectionRemoveRequested += RemoveCollectionEntry;
         view.CollectionQuantitiesSubmitted += ApplyCollectionQuantities;
@@ -139,6 +140,18 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         if (moved > 0)
             view.ShowArrangedMap();
         return moved;
+    }
+
+    /// <summary>
+    /// Removes a setting override and rebinds the inspector to its inherited value.
+    /// </summary>
+    /// <param name="field">The project-owned setting.</param>
+    private void ResetInheritance(ContentPackEditorField field)
+    {
+        if (!view.CommitFields())
+            return;
+        Project.ResetFieldToInherited(field);
+        view.RenderProject(Project, assets);
     }
 
     /// <summary>
@@ -387,6 +400,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.XmlSubmitted -= ApplyXml;
         view.FieldSubmitted -= ApplyField;
         view.FieldValidationRequested -= ValidateField;
+        view.FieldInheritanceResetRequested -= ResetInheritance;
         view.CollectionAddRequested -= AddCollectionEntry;
         view.CollectionRemoveRequested -= RemoveCollectionEntry;
         view.CollectionQuantitiesSubmitted -= ApplyCollectionQuantities;

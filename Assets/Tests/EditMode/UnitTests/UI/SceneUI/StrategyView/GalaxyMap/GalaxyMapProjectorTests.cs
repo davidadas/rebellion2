@@ -356,6 +356,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
+        public void Project_MultiplePlanets_ReturnsSectorRelativeOffsets()
+        {
+            GalaxyPlanetSector planetSector = CreateSector("sector", "Sector", 40, 50);
+            Planet first = CreatePlanet("first", _playerFactionId, 47, 61);
+            Planet second = CreatePlanet("second", _playerFactionId, 71, 82);
+            GalaxyMapSector sector = CreateSector(planetSector, first, second);
+
+            GalaxyMapRenderData data = _projector.Project(
+                new[] { sector },
+                _playerFactionId,
+                GalacticInformationFilterMode.DisplayOff,
+                null
+            );
+
+            GalaxyMapStarRenderData firstStar = data.Clusters[0]
+                .Stars.Single(star => star.PlanetInstanceId == first.InstanceID);
+            GalaxyMapStarRenderData secondStar = data.Clusters[0]
+                .Stars.Single(star => star.PlanetInstanceId == second.InstanceID);
+            Assert.AreEqual(7, firstStar.SourceX);
+            Assert.AreEqual(11, firstStar.SourceY);
+            Assert.AreEqual(31, secondStar.SourceX);
+            Assert.AreEqual(32, secondStar.SourceY);
+        }
+
+        [Test]
         public void Project_CorellianPlanets_ReturnsAuthoredSeloniaAndDurosOffsets()
         {
             ContentPack classicPack = ContentPackLoader.OpenActive(

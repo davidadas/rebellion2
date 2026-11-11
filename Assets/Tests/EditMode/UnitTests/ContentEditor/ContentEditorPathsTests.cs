@@ -132,8 +132,15 @@ namespace Rebellion.Tests.ContentEditor
             ContentPackEditorStorage.Save(project);
 
             Assert.AreEqual(
-                "<Units><Unit/></Units>",
-                File.ReadAllText(Path.Combine(physical, "NewPack", "Data", "units.xml"))
+                "<Units><Unit /></Units>",
+                System
+                    .Xml.Linq.XElement.Parse(
+                        ContentXmlOverrides.Merge(
+                            File.ReadAllText(document.SourcePath),
+                            File.ReadAllText(Path.Combine(physical, "NewPack", "Data", "units.xml"))
+                        )
+                    )
+                    .ToString(System.Xml.Linq.SaveOptions.DisableFormatting)
             );
             Assert.AreEqual(
                 "<Units/>",

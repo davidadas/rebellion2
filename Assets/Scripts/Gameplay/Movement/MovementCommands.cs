@@ -1218,6 +1218,14 @@ namespace Rebellion.Gameplay
                 throw new ArgumentNullException(nameof(results));
 
             List<IMovable> arrivals = movables.Where(AdvanceMovement).ToList();
+            HashSet<Fleet> arrivingFleets = arrivals
+                .OfType<CapitalShip>()
+                .Select(ship => ship.GetParentOfType<Fleet>())
+                .Distinct()
+                .Where(fleet =>
+                    fleet != null && fleet.Movement == null && !fleet.HasOperationalCapitalShips()
+                )
+                .ToHashSet();
             ResolvePersonnelArrivalGroups(arrivals, results);
             foreach (IMovable movable in arrivals)
             {
@@ -1235,7 +1243,14 @@ namespace Rebellion.Gameplay
                     ?? throw new InvalidOperationException(
                         $"Unit {movable.GetDisplayName()} is in transit but has no container destination."
                     );
-                CheckArrival(movable, destination, destinationPlanet, results);
+                Fleet arrivedFleet = movable as Fleet;
+                if (movable is CapitalShip ship)
+                {
+                    Fleet destinationFleet = ship.GetParentOfType<Fleet>();
+                    if (arrivingFleets.Contains(destinationFleet))
+                        arrivedFleet = destinationFleet;
+                }
+                CheckArrival(movable, destination, destinationPlanet, results, arrivedFleet);
             }
         }
 
@@ -1508,11 +1523,13 @@ namespace Rebellion.Gameplay
         /// <param name="destination">The destination container.</param>
         /// <param name="destinationPlanet">The destination planet.</param>
         /// <param name="results">The results generated this tick.</param>
+        /// <param name="arrivedFleet">The fleet whose presence is established by the arrival.</param>
         private void CheckArrival(
             IMovable movable,
             ContainerNode destination,
             Planet destinationPlanet,
-            List<GameResult> results
+            List<GameResult> results,
+            Fleet arrivedFleet
         )
         {
             using var sceneUpdate = _game.BeginSceneUpdate();
@@ -1562,7 +1579,8 @@ namespace Rebellion.Gameplay
                     movementGroupID,
                     results,
                     sourceEventInstanceID,
-                    completesManufacturingDelivery
+                    completesManufacturingDelivery,
+                    arrivedFleet
                 );
                 AddBlockadeChangedResult(destinationPlanet, wasBlockaded, results);
             }
@@ -1886,13 +1904,15 @@ namespace Rebellion.Gameplay
         /// <param name="results">The results generated this tick.</param>
         /// <param name="sourceEventInstanceID">The event that requested the movement, if any.</param>
         /// <param name="completedManufacturingDelivery">Whether the arrival completed a manufactured delivery.</param>
+        /// <param name="arrivedFleet">The fleet whose presence is established by the arrival.</param>
         private void AddArrivalResults(
             IMovable movable,
             Planet destinationPlanet,
             string movementGroupID,
             ICollection<GameResult> results,
             string sourceEventInstanceID = null,
-            bool completedManufacturingDelivery = false
+            bool completedManufacturingDelivery = false,
+            Fleet arrivedFleet = null
         )
         {
             results.Add(
@@ -1909,6 +1929,7 @@ namespace Rebellion.Gameplay
                     Unit = movable,
                     Destination = destinationPlanet,
                     MovementGroupID = movementGroupID,
+                    ArrivedFleet = arrivedFleet,
                     SourceEventInstanceID = sourceEventInstanceID,
                     Tick = _game.CurrentTick,
                 }

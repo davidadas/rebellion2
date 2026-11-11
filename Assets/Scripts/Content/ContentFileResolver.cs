@@ -243,6 +243,22 @@ public sealed class ContentFileResolver
     }
 
     /// <summary>
+    /// Finds every existing version of one file in base-to-override order.
+    /// </summary>
+    /// <param name="address">The logical content address.</param>
+    /// <returns>The existing files in application order.</returns>
+    public IReadOnlyList<string> ResolveFileLayers(string address)
+    {
+        string normalized = NormalizeAddress(address);
+        return ResolveBasePaths(normalized)
+            .Reverse()
+            .Concat(modContentRoots.Select(root => ResolveModPath(root, normalized)))
+            .Where(File.Exists)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    /// <summary>
     /// Enumerates the union of files beneath an address, with later layers replacing earlier files.
     /// </summary>
     /// <param name="directoryAddress">The application- or pack-scoped directory address.</param>

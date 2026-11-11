@@ -652,6 +652,18 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void LoadGameConfig_PackSettingOverlay_InheritsApplicationDefaults()
+        {
+            GameConfig config = LoadGameConfigFromFixture(
+                _fixtureCompleteDefaultsXml,
+                "<GameConfig Inherit='true'><Movement><DistanceDivisor>2.5</DistanceDivisor></Movement></GameConfig>"
+            );
+
+            Assert.AreEqual(2.5, config.Movement.DistanceDivisor);
+            Assert.AreEqual(1, config.Research.BaseResearchPoints);
+        }
+
+        [Test]
         public void LoadGameConfig_PackSuppliesSectionMissingFromDefaults_MergesIntoDefaults()
         {
             GameConfig config = LoadGameConfigFromFixture(
@@ -790,6 +802,16 @@ namespace Rebellion.Tests.Content
                 150,
                 config.DifficultyModifiers[GameDifficulty.Hard].MaintenanceCapacityPercent
             );
+        }
+
+        [Test]
+        public void LoadGameConfig_RemovedOptionalDefaults_DoesNotRestoreTheRemovedMember()
+        {
+            GameConfig config = LoadGameConfigFromFixture(
+                _fixtureDifficultyDefaultsXml,
+                "<GameConfig Inherit='true'><DifficultyModifiers Remove='true'/></GameConfig>"
+            );
+            Assert.IsEmpty(config.DifficultyModifiers);
         }
 
         /// <summary>
