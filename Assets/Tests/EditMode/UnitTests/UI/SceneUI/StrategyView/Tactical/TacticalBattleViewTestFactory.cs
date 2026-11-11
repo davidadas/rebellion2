@@ -92,6 +92,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
                 CreateButton("TargetPriorityButton", panel, out TextMeshProUGUI targetPriorityLabel)
             );
             Set(view, "targetPriorityLabel", targetPriorityLabel);
+            Set(
+                view,
+                "recoverButton",
+                CreateButton("RecoverButton", panel, out TextMeshProUGUI recoverLabel)
+            );
+            Set(view, "recoverLabel", recoverLabel);
             Button superlaser = CreateButton(
                 "SuperlaserButton",
                 panel,

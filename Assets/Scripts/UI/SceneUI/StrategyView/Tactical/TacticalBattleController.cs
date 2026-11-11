@@ -45,6 +45,9 @@ internal sealed class TacticalBattleController : ICancelable
     private Action<TacticalSpaceBattle> _completed;
     private TacticalBattleUnit _inspected;
     private TacticalBattleUnit _followed;
+    private TacticalBattleUnit _selectionAnchor;
+    private bool _extendSelection;
+    private bool _addToSelection;
     private float _deployHoldRemaining;
     private CombatSide _rosterSide;
     private bool _paused;
@@ -128,6 +131,7 @@ internal sealed class TacticalBattleController : ICancelable
         _view.ArenaReleased += HandleArenaReleased;
         _view.ArenaScrolled += HandleArenaScrolled;
         _view.TargetPriorityToggleRequested += HandleTargetPriorityToggleRequested;
+        _view.RecoverRequested += HandleRecoverRequested;
         _view.RosterSidePressed += HandleRosterSidePressed;
         _view.RosterShipPressed += HandleRosterShipPressed;
         _view.RosterSquadronPressed += HandleRosterSquadronPressed;
@@ -170,6 +174,9 @@ internal sealed class TacticalBattleController : ICancelable
         _selection.Clear();
         _inspected = null;
         _followed = null;
+        _selectionAnchor = null;
+        _extendSelection = false;
+        _addToSelection = false;
         _paused = false;
         _speedIndex = 0;
         _pressed = false;
@@ -225,6 +232,9 @@ internal sealed class TacticalBattleController : ICancelable
             cameraInput = default;
         }
 
+        // Clicks arrive between updates, so the selection keys are remembered from the frame.
+        _extendSelection = cameraInput.ExtendSelection;
+        _addToSelection = cameraInput.AddToSelection;
         if (_battle.IsComplete)
         {
             _battle.Advance(deltaTime);
@@ -287,6 +297,9 @@ internal sealed class TacticalBattleController : ICancelable
         _selection.Clear();
         _inspected = null;
         _followed = null;
+        _selectionAnchor = null;
+        _extendSelection = false;
+        _addToSelection = false;
         _pressed = false;
         _dragActive = false;
         _rotatePressed = false;
@@ -688,27 +701,157 @@ internal sealed class TacticalBattleController : ICancelable
     }
 
     /// <summary>
-    /// Inspects the unit under a point and selects it when the player can command it.
+    /// Picks the unit under a point, or clears the selection when there is none. With a
+    /// selection key held the click adds that unit to the selection, or takes it out again, and
+    /// a click on empty space leaves the selection as it is.
     /// </summary>
     /// <param name="point">The source-space position.</param>
     private void SelectAt(Vector2 point)
     {
-        _selection.Clear();
         TacticalBattleUnit unit = FindUnitAt(point);
-        _inspected = unit;
-        if (unit != null && _battle.CanCommand(unit))
-            _selection.Add(unit);
-        Follow(unit);
+        if (_extendSelection || _addToSelection)
+        {
+            if (unit != null)
+                AddOrRemove(unit);
+            return;
+        }
+
+        if (unit != null)
+        {
+            Pick(unit);
+            return;
+        }
+
+        _selection.Clear();
+        _inspected = null;
+        _followed = null;
     }
 
     /// <summary>
-    /// Selects every commandable ship inside a drag rectangle.
+    /// Picks one unit with a plain click, in the arena or on its roster slot. The first click
+    /// inspects it, and selects it alone when the player can command it, without moving the
+    /// camera. A click on the unit that is already picked is the second click of a pair: it
+    /// zooms the camera in on the unit and follows it.
+    /// </summary>
+    /// <param name="unit">The clicked unit.</param>
+    private void Pick(TacticalBattleUnit unit)
+    {
+        if (IsPickedAlone(unit))
+        {
+            FocusUnit(unit);
+            return;
+        }
+
+        _inspected = unit;
+        _selection.Clear();
+        if (_battle.CanCommand(unit))
+        {
+            _selection.Add(unit);
+            _selectionAnchor = unit;
+        }
+    }
+
+    /// <summary>
+    /// Returns whether a unit is already the one unit picked: it is the inspected unit and the
+    /// selection holds nothing else.
+    /// </summary>
+    /// <param name="unit">The unit to check.</param>
+    /// <returns>True when another plain click on the unit should zoom to it.</returns>
+    private bool IsPickedAlone(TacticalBattleUnit unit)
+    {
+        return _inspected == unit
+            && (_selection.Count == 0 || (_selection.Count == 1 && _selection[0] == unit));
+    }
+
+    /// <summary>
+    /// Adds a unit the player can command to the selection, or takes it out when it is already
+    /// there. Any other unit is only inspected, and the selection stays as it is.
+    /// </summary>
+    /// <param name="unit">The unit clicked with a selection key held.</param>
+    private void AddOrRemove(TacticalBattleUnit unit)
+    {
+        if (!_battle.CanCommand(unit))
+        {
+            _inspected = unit;
+            return;
+        }
+
+        if (_selection.Remove(unit))
+        {
+            if (_inspected == unit)
+                _inspected = _selection.Count > 0 ? _selection[_selection.Count - 1] : null;
+            return;
+        }
+
+        _selection.Add(unit);
+        _inspected = unit;
+        _selectionAnchor = unit;
+    }
+
+    /// <summary>
+    /// Handles a click on a roster slot. A plain click picks that unit alone, and a second one
+    /// zooms to it. With the extend key held it selects every unit of the roster from the last
+    /// unit picked through this one; with the add key held it adds the unit to the selection
+    /// or takes it out.
+    /// </summary>
+    /// <param name="unit">The unit in the clicked slot.</param>
+    private void PickFromRoster(TacticalBattleUnit unit)
+    {
+        if (_extendSelection && SelectRosterRun(unit))
+            return;
+
+        if (_extendSelection || _addToSelection)
+            AddOrRemove(unit);
+        else
+            Pick(unit);
+    }
+
+    /// <summary>
+    /// Selects every unit the player can command in the listed roster from the last unit picked
+    /// through the one clicked: ships first, then squadrons, in the order the bar shows them.
+    /// The run replaces the selection, or joins it when the add key is held as well.
+    /// </summary>
+    /// <param name="unit">The unit that ends the run.</param>
+    /// <returns>
+    /// False when the unit cannot be commanded or no earlier pick in this roster starts a run.
+    /// </returns>
+    private bool SelectRosterRun(TacticalBattleUnit unit)
+    {
+        if (_selectionAnchor == null || !_battle.CanCommand(unit))
+            return false;
+
+        List<TacticalBattleUnit> roster = new List<TacticalBattleUnit>();
+        roster.AddRange(TacticalBattleProjector.GetRosterShips(_battle, _rosterSide));
+        roster.AddRange(TacticalBattleProjector.GetRosterSquadrons(_battle, _rosterSide));
+        int from = roster.IndexOf(_selectionAnchor);
+        int to = roster.IndexOf(unit);
+        if (from < 0 || to < 0)
+            return false;
+
+        if (!_addToSelection)
+            _selection.Clear();
+        for (int index = Math.Min(from, to); index <= Math.Max(from, to); index++)
+        {
+            TacticalBattleUnit member = roster[index];
+            if (_battle.CanCommand(member) && !_selection.Contains(member))
+                _selection.Add(member);
+        }
+
+        _inspected = unit;
+        return true;
+    }
+
+    /// <summary>
+    /// Selects every commandable ship inside a drag rectangle, adding them to the selection
+    /// instead of replacing it when a selection key is held.
     /// </summary>
     /// <param name="first">One source-space corner.</param>
     /// <param name="second">The opposite source-space corner.</param>
     private void SelectInBox(Vector2 first, Vector2 second)
     {
-        _selection.Clear();
+        bool adding = _extendSelection || _addToSelection;
+        if (!adding)
+            _selection.Clear();
         Vector2 min = Vector2.Min(first, second);
         Vector2 max = Vector2.Max(first, second);
         RectInt arena = _view.GetArenaSourceRect();
@@ -717,15 +860,21 @@ internal sealed class TacticalBattleController : ICancelable
         {
             if (!_battle.CanCommand(unit))
                 continue;
-            if (!scene.TryProject(unit.X, unit.Y, arena, out Vector2 point))
+            if (!scene.TryProject(unit.X, unit.Y, arena, out Vector2 point, unit.Altitude))
                 continue;
 
-            if (point.x >= min.x && point.x <= max.x && point.y >= min.y && point.y <= max.y)
+            if (
+                point.x >= min.x
+                && point.x <= max.x
+                && point.y >= min.y
+                && point.y <= max.y
+                && !_selection.Contains(unit)
+            )
                 _selection.Add(unit);
         }
 
-        _inspected = _selection.Count > 0 ? _selection[0] : null;
-        Follow(_selection.Count == 1 ? _selection[0] : null);
+        if (!adding || _inspected == null)
+            _inspected = _selection.Count > 0 ? _selection[0] : null;
     }
 
     /// <summary>
@@ -744,6 +893,12 @@ internal sealed class TacticalBattleController : ICancelable
             return;
         }
 
+        // A click on one of the player's own capital ships posts the selected squadrons around
+        // it as a screen. Ships selected with them take the click as the move order it always
+        // was.
+        if (target is TacticalCapitalShipUnit)
+            _battle.IssueScreenOrder(_selection, target);
+
         // An enemy battle station stands beyond the arena: a click on it sends the selected
         // squadrons to fly its trench, and never moves the ships selected with them.
         TacticalBattleStation station = target == null ? FindEnemyStationAt(point) : null;
@@ -753,8 +908,38 @@ internal sealed class TacticalBattleController : ICancelable
             return;
         }
 
-        if (_view.Scene.TryPickGround(_view.GetArenaSourceRect(), point, out Vector2 battlePoint))
+        // The click is cast onto the deck the selected ships stand on, so they end up under the
+        // pointer rather than above or below it.
+        if (
+            _view.Scene.TryPickGround(
+                _view.GetArenaSourceRect(),
+                point,
+                out Vector2 battlePoint,
+                GetSelectionAltitude()
+            )
+        )
             _battle.IssueMoveOrder(_selection, battlePoint.x, battlePoint.y);
+    }
+
+    /// <summary>
+    /// Returns the height a move order is aimed at: the mean height of the selected capital
+    /// ships, which is one ship's own deck when one is selected.
+    /// </summary>
+    /// <returns>The height above the battle plane, or zero with no ship selected.</returns>
+    private double GetSelectionAltitude()
+    {
+        double total = 0;
+        int ships = 0;
+        foreach (TacticalBattleUnit unit in _selection)
+        {
+            if (unit.IsStarfighter)
+                continue;
+
+            total += unit.Altitude;
+            ships++;
+        }
+
+        return ships > 0 ? total / ships : 0;
     }
 
     /// <summary>
@@ -774,7 +959,11 @@ internal sealed class TacticalBattleController : ICancelable
             _followed = null;
         }
 
-        // The camera lets go of a squadron that has flown off the battlefield into a trench.
+        if (_selectionAnchor != null && !_battle.CanCommand(_selectionAnchor))
+            _selectionAnchor = null;
+
+        // The camera lets go of a squadron that has flown off the battlefield, into a trench or
+        // aboard a ship.
         if (_followed?.IsOffField == true)
             _followed = null;
 
@@ -849,17 +1038,6 @@ internal sealed class TacticalBattleController : ICancelable
     }
 
     /// <summary>
-    /// Snaps the camera onto a unit and keeps following it until the player pans or reframes.
-    /// </summary>
-    /// <param name="unit">The unit to follow, or null to stop following.</param>
-    private void Follow(TacticalBattleUnit unit)
-    {
-        _followed = unit?.IsAlive == true && !unit.HasWithdrawn ? unit : null;
-        if (_followed != null)
-            _view.Scene.TrackUnit(_followed);
-    }
-
-    /// <summary>
     /// Keeps the camera centered on the followed unit while it is still the inspected unit and
     /// still in the battle; a fighter would otherwise fly out of view within a second.
     /// </summary>
@@ -877,7 +1055,8 @@ internal sealed class TacticalBattleController : ICancelable
     }
 
     /// <summary>
-    /// Inspects a unit, selects it when the player can command it, frames it, and follows it.
+    /// Inspects a unit, selects it when the player can command it, zooms the camera in on it,
+    /// and follows it until the player pans or reframes.
     /// </summary>
     /// <param name="unit">The unit to focus.</param>
     private void FocusUnit(TacticalBattleUnit unit)
@@ -885,7 +1064,11 @@ internal sealed class TacticalBattleController : ICancelable
         _inspected = unit;
         _selection.Clear();
         if (_battle.CanCommand(unit))
+        {
             _selection.Add(unit);
+            _selectionAnchor = unit;
+        }
+
         _followed = unit.IsAlive && !unit.HasWithdrawn ? unit : null;
         if (_followed != null)
             _view.Scene.FocusOn(unit);
@@ -915,6 +1098,18 @@ internal sealed class TacticalBattleController : ICancelable
     }
 
     /// <summary>
+    /// Recalls the selected squadrons to a hangar: each to the ship it is screening, else to its
+    /// own carrier, or to the nearest friendly ship with a bay free when that has none.
+    /// </summary>
+    private void HandleRecoverRequested()
+    {
+        if (!IsActive || _battle.IsComplete)
+            return;
+
+        _battle.IssueRecoverOrder(_selection);
+    }
+
+    /// <summary>
     /// Switches the roster bar to the other side.
     /// </summary>
     private void HandleRosterSidePressed()
@@ -927,7 +1122,7 @@ internal sealed class TacticalBattleController : ICancelable
     }
 
     /// <summary>
-    /// Focuses the ship in a roster slot.
+    /// Picks the ship in a roster slot, alone or into the selection as the selection keys say.
     /// </summary>
     /// <param name="index">The ship slot index.</param>
     private void HandleRosterShipPressed(int index)
@@ -947,11 +1142,12 @@ internal sealed class TacticalBattleController : ICancelable
         if (_superlaserArmed && TryFireSuperlaser(ships[index]))
             return;
 
-        FocusUnit(ships[index]);
+        PickFromRoster(ships[index]);
     }
 
     /// <summary>
-    /// Inspects the squadron in a roster slot.
+    /// Picks the squadron in a roster slot, alone or into the selection as the selection keys
+    /// say.
     /// </summary>
     /// <param name="index">The squadron slot index, counted across every fighter type.</param>
     private void HandleRosterSquadronPressed(int index)
@@ -967,7 +1163,7 @@ internal sealed class TacticalBattleController : ICancelable
             return;
 
         HandleControlPressed();
-        FocusUnit(squadrons[index]);
+        PickFromRoster(squadrons[index]);
     }
 
     /// <summary>
@@ -1005,22 +1201,21 @@ internal sealed class TacticalBattleController : ICancelable
         RectInt arena = _view.GetArenaSourceRect();
         TacticalBattleScene scene = _view.Scene;
         UIContext uiContext = _getUIContext();
-        scene.Sync(_battle, arena);
-        scene.ShowSelection(
-            GetHighlightedUnits(),
-            TacticalBattleProjector.GetSideColor(
-                _battle,
-                CombatSide.Attacker,
-                uiContext,
-                _attackerFactionId
-            ),
-            TacticalBattleProjector.GetSideColor(
-                _battle,
-                CombatSide.Defender,
-                uiContext,
-                _defenderFactionId
-            )
+        Color attackerColor = TacticalBattleProjector.GetSideColor(
+            _battle,
+            CombatSide.Attacker,
+            uiContext,
+            _attackerFactionId
         );
+        Color defenderColor = TacticalBattleProjector.GetSideColor(
+            _battle,
+            CombatSide.Defender,
+            uiContext,
+            _defenderFactionId
+        );
+        scene.Sync(_battle, arena);
+        scene.ShowSelection(GetHighlightedUnits(), attackerColor, defenderColor);
+        scene.ShowDeckMarkers(_battle, attackerColor, defenderColor);
         _view.Render(
             _projector.Project(
                 _battle,

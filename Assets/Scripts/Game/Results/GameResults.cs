@@ -667,6 +667,16 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// A fighter squadron that ended space combat aboard a capital ship it docked with during
+    /// the battle (nested in SpaceCombatResult). The squadron stays with that ship afterwards.
+    /// </summary>
+    public class FighterDockingResult
+    {
+        public Starfighter Fighter { get; set; }
+        public CapitalShip Ship { get; set; }
+    }
+
+    /// <summary>
     /// Detached presentation state for one unit present when combat began.
     /// </summary>
     public class CombatUnitSnapshot
@@ -795,6 +805,8 @@ namespace Rebellion.Game.Results
         public SpaceCombatSideOutcome DefenderOutcome { get; set; }
         public List<ShipDamageResult> ShipDamage { get; set; } = new List<ShipDamageResult>();
         public List<FighterLossResult> FighterLosses { get; set; } = new List<FighterLossResult>();
+        public List<FighterDockingResult> FighterDockings { get; set; } =
+            new List<FighterDockingResult>();
         public List<CombatUnitSnapshot> AttackingUnits { get; set; } =
             new List<CombatUnitSnapshot>();
         public List<CombatUnitSnapshot> DefendingUnits { get; set; } =

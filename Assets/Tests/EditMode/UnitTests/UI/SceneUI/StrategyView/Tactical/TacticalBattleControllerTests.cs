@@ -261,6 +261,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
         }
 
         [Test]
+        public void PointerRightClick_WithAShipOnARaisedDeck_SendsItToWhereThePointerShowsItsDeck()
+        {
+            TacticalSpaceBattle battle = CreateBattle(out TacticalCapitalShipUnit friendly, out _);
+            friendly.Altitude = 12;
+            Begin(battle);
+            FindRosterSlot(0).GetComponent<Button>().onClick.Invoke();
+            // The point on screen where a place beside the ship, on the ship's own deck, shows.
+            Assert.IsTrue(
+                _view.Scene.TryProject(
+                    friendly.X,
+                    friendly.Y + 30,
+                    _view.GetArenaSourceRect(),
+                    out Vector2 destination,
+                    friendly.Altitude
+                )
+            );
+
+            Press(destination, PointerEventData.InputButton.Right);
+
+            Assert.AreEqual(TacticalShipOrder.Move, friendly.Order);
+            Assert.AreEqual(friendly.X, friendly.DestinationX, 0.5);
+            Assert.AreEqual(friendly.Y + 30, friendly.DestinationY, 0.5);
+        }
+
+        [Test]
         public void PointerClick_OnTheEdgeOfADrawnHull_StillPicksTheShip()
         {
             TacticalSpaceBattle battle = CreateBattle(out _, out TacticalCapitalShipUnit enemy);
@@ -304,7 +329,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
         }
 
         [Test]
-        public void PointerClick_OnUnit_SnapsTheCameraOntoItAndFollowsUntilAPan()
+        public void PointerClick_OnAUnitAlreadyPicked_ZoomsToItAndFollowsUntilAPan()
         {
             TacticalSpaceBattle battle = CreateBattle(out TacticalCapitalShipUnit friendly, out _);
             Begin(battle);
@@ -317,9 +342,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
                 false,
                 false
             );
+            Vector2 focusAtStart = _view.Scene.Focus;
+            float distanceAtStart = _view.Scene.Distance;
 
             Click(friendly, PointerEventData.InputButton.Left);
-            Vector2 focusAtClick = _view.Scene.Focus;
+            _controller.Update(0f);
+            Vector2 focusAfterOneClick = _view.Scene.Focus;
+            float distanceAfterOneClick = _view.Scene.Distance;
+            Click(friendly, PointerEventData.InputButton.Left);
+            Vector2 focusAtSecondClick = _view.Scene.Focus;
+            float distanceAtSecondClick = _view.Scene.Distance;
             friendly.X += 15;
             friendly.Y += 5;
             _controller.Update(0f);
@@ -328,11 +360,38 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
             friendly.X += 15;
             _controller.Update(0f);
 
-            Assert.AreEqual((float)(friendly.X - 30), focusAtClick.x, 0.01f);
-            Assert.AreEqual((float)(friendly.Y - 5), focusAtClick.y, 0.01f);
+            // The first click only picks the ship; the camera stays where it was.
+            Assert.AreEqual(focusAtStart, focusAfterOneClick);
+            Assert.AreEqual(distanceAtStart, distanceAfterOneClick);
+            Assert.AreEqual((float)(friendly.X - 30), focusAtSecondClick.x, 0.01f);
+            Assert.AreEqual((float)(friendly.Y - 5), focusAtSecondClick.y, 0.01f);
+            Assert.Less(distanceAtSecondClick, distanceAtStart);
             Assert.AreEqual((float)(friendly.X - 15), focusWhileFollowing.x, 0.01f);
             Assert.AreEqual((float)friendly.Y, focusWhileFollowing.y, 0.01f);
             Assert.Greater(Mathf.Abs(_view.Scene.Focus.x - (float)friendly.X), 0.5f);
+        }
+
+        [Test]
+        public void PointerClick_OnAnEnemyAlreadyInspected_ZoomsToIt()
+        {
+            TacticalSpaceBattle battle = CreateBattle(
+                out _,
+                out TacticalCapitalShipUnit enemy,
+                defenderHull: 100
+            );
+            Begin(battle);
+            float distanceAtStart = _view.Scene.Distance;
+
+            Click(enemy, PointerEventData.InputButton.Left);
+            float distanceAfterOneClick = _view.Scene.Distance;
+            Click(enemy, PointerEventData.InputButton.Left);
+
+            Assert.AreEqual(distanceAtStart, distanceAfterOneClick);
+            Assert.Less(_view.Scene.Distance, distanceAtStart);
+            Assert.AreEqual((float)enemy.X, _view.Scene.Focus.x, 0.001f);
+            Assert.AreEqual((float)enemy.Y, _view.Scene.Focus.y, 0.001f);
+            Assert.AreSame(enemy, _controller.Inspected);
+            Assert.IsEmpty(_controller.Selection);
         }
 
         [Test]
@@ -359,7 +418,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
         }
 
         [Test]
-        public void RosterSlot_Clicked_FocusesThatShipAndSideToggleListsTheEnemy()
+        public void RosterSlot_Clicked_PicksThatShipAndSideToggleListsTheEnemy()
         {
             TacticalSpaceBattle battle = CreateBattle(
                 out TacticalCapitalShipUnit friendly,
@@ -380,6 +439,267 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
             Assert.AreEqual("Alliance", FindText("RosterSideButtonLabel").text);
             Assert.AreSame(enemy, _controller.Inspected);
             Assert.IsEmpty(_controller.Selection);
+        }
+
+        [Test]
+        public void RosterSlot_ClickedOnce_PicksTheShipWithoutMovingTheCamera()
+        {
+            TacticalSpaceBattle battle = CreateBattle(out TacticalCapitalShipUnit friendly, out _);
+            Begin(battle);
+            Vector2 focusAtStart = _view.Scene.Focus;
+            float distanceAtStart = _view.Scene.Distance;
+
+            FindRosterSlot(0).GetComponent<Button>().onClick.Invoke();
+            _controller.Update(0f);
+
+            Assert.AreSame(friendly, _controller.Inspected);
+            CollectionAssert.AreEqual(new[] { friendly }, _controller.Selection);
+            Assert.AreEqual(focusAtStart, _view.Scene.Focus);
+            Assert.AreEqual(distanceAtStart, _view.Scene.Distance);
+        }
+
+        [Test]
+        public void RosterSlot_ClickedAgainOnTheShipAlreadyPicked_ZoomsToIt()
+        {
+            TacticalSpaceBattle battle = CreateBattle(out TacticalCapitalShipUnit friendly, out _);
+            Begin(battle);
+            float distanceAtStart = _view.Scene.Distance;
+
+            FindRosterSlot(0).GetComponent<Button>().onClick.Invoke();
+            _controller.Update(0f);
+            FindRosterSlot(0).GetComponent<Button>().onClick.Invoke();
+            _controller.Update(0f);
+
+            CollectionAssert.AreEqual(new[] { friendly }, _controller.Selection);
+            Assert.AreEqual((float)friendly.X, _view.Scene.Focus.x, 0.001f);
+            Assert.AreEqual((float)friendly.Y, _view.Scene.Focus.y, 0.001f);
+            Assert.Less(_view.Scene.Distance, distanceAtStart);
+        }
+
+        [Test]
+        public void RosterSlot_ShiftClicked_SelectsEveryShipFromTheLastPickThroughIt()
+        {
+            TacticalSpaceBattle battle = CreateFleetBattle(
+                4,
+                0,
+                out List<TacticalCapitalShipUnit> ships,
+                out _,
+                out _
+            );
+            Begin(battle);
+
+            FindRosterSlot(1).GetComponent<Button>().onClick.Invoke();
+            _controller.Update(0f, HoldSelectionKeys(extend: true, add: false));
+            FindRosterSlot(3).GetComponent<Button>().onClick.Invoke();
+            _controller.Update(0f);
+
+            CollectionAssert.AreEquivalent(
+                new[] { ships[1], ships[2], ships[3] },
+                _controller.Selection
+            );
+            Assert.AreSame(ships[3], _controller.Inspected);
+        }
+
+        [Test]
+        public void RosterSlot_ShiftClickedBackward_SelectsTheSameRun()
+        {
+            TacticalSpaceBattle battle = CreateFleetBattle(
+                4,
+                0,
+                out List<TacticalCapitalShipUnit> ships,
+                out _,
+                out _
+            );
+            Begin(battle);
+
+            FindRosterSlot(2).GetComponent<Button>().onClick.Invoke();
+            _controller.Update(0f, HoldSelectionKeys(extend: true, add: false));
+            FindRosterSlot(0).GetComponent<Button>().onClick.Invoke();
+            _controller.Update(0f);
+
+            CollectionAssert.AreEquivalent(
+                new[] { ships[0], ships[1], ships[2] },
+                _controller.Selection
+            );
+        }
+
+        [Test]
+        public void RosterSlot_ShiftClickedOnASquadron_RunsOnFromTheShipsIntoTheSquadrons()
+        {
+            TacticalSpaceBattle battle = CreateFleetBattle(
+                2,
+                3,
+                out List<TacticalCapitalShipUnit> ships,
+                out List<TacticalStarfighterUnit> squadrons,
+                out _
+            );
+            Begin(battle);
+
+            FindRosterSlot(1).GetComponent<Button>().onClick.Invoke();
+            _controller.Update(0f, HoldSelectionKeys(extend: true, add: false));
+            FindRosterSlot(3).GetComponent<Button>().onClick.Invoke();
+            _controller.Update(0f);
+
+            CollectionAssert.AreEquivalent(
+                new TacticalBattleUnit[] { ships[1], squadrons[0], squadrons[1] },
+                _controller.Selection
+            );
+        }
+
+        [Test]
+        public void RosterSlot_ControlClicked_AddsTheUnitAndTakesItOutAgain()
+        {
+            TacticalSpaceBattle battle = CreateFleetBattle(
+                3,
+                1,
+                out List<TacticalCapitalShipUnit> ships,
+                out List<TacticalStarfighterUnit> squadrons,
+                out _
+            );
+            Begin(battle);
+
+            FindRosterSlot(0).GetComponent<Button>().onClick.Invoke();
+            _controller.Update(0f, HoldSelectionKeys(extend: false, add: true));
+            FindRosterSlot(2).GetComponent<Button>().onClick.Invoke();
+            FindRosterSlot(3).GetComponent<Button>().onClick.Invoke();
+            List<TacticalBattleUnit> afterAdding = _controller.Selection.ToList();
+            FindRosterSlot(2).GetComponent<Button>().onClick.Invoke();
+            _controller.Update(0f);
+
+            CollectionAssert.AreEquivalent(
+                new TacticalBattleUnit[] { ships[0], ships[2], squadrons[0] },
+                afterAdding
+            );
+            CollectionAssert.AreEquivalent(
+                new TacticalBattleUnit[] { ships[0], squadrons[0] },
+                _controller.Selection
+            );
+        }
+
+        [Test]
+        public void RosterSlot_ShiftClickedOnAnEnemy_InspectsItAndLeavesTheSelectionAlone()
+        {
+            TacticalSpaceBattle battle = CreateFleetBattle(
+                3,
+                0,
+                out List<TacticalCapitalShipUnit> ships,
+                out _,
+                out TacticalCapitalShipUnit enemy
+            );
+            Begin(battle);
+            FindRosterSlot(0).GetComponent<Button>().onClick.Invoke();
+            _controller.Update(0f, HoldSelectionKeys(extend: true, add: false));
+            FindRosterSlot(1).GetComponent<Button>().onClick.Invoke();
+
+            TacticalBattleViewTestFactory.FindButton(_view, "RosterSideButton").onClick.Invoke();
+            _controller.Update(0f, HoldSelectionKeys(extend: true, add: false));
+            FindRosterSlot(0).GetComponent<Button>().onClick.Invoke();
+            _controller.Update(0f);
+
+            CollectionAssert.AreEquivalent(new[] { ships[0], ships[1] }, _controller.Selection);
+            Assert.AreSame(enemy, _controller.Inspected);
+        }
+
+        [Test]
+        public void PointerClick_WithControlHeld_AddsTheShipAndTakesItOutAgain()
+        {
+            TacticalSpaceBattle battle = CreateFleetBattle(
+                2,
+                0,
+                out List<TacticalCapitalShipUnit> ships,
+                out _,
+                out _
+            );
+            Begin(battle);
+
+            Click(ships[0], PointerEventData.InputButton.Left);
+            _controller.Update(0f, HoldSelectionKeys(extend: false, add: true));
+            Click(ships[1], PointerEventData.InputButton.Left);
+            List<TacticalBattleUnit> afterAdding = _controller.Selection.ToList();
+            Click(ships[1], PointerEventData.InputButton.Left);
+
+            CollectionAssert.AreEquivalent(new[] { ships[0], ships[1] }, afterAdding);
+            CollectionAssert.AreEqual(new[] { ships[0] }, _controller.Selection);
+        }
+
+        [Test]
+        public void PointerRightClick_WithARunOfShipsSelected_OrdersThemAll()
+        {
+            TacticalSpaceBattle battle = CreateFleetBattle(
+                3,
+                1,
+                out List<TacticalCapitalShipUnit> ships,
+                out List<TacticalStarfighterUnit> squadrons,
+                out TacticalCapitalShipUnit enemy
+            );
+            Begin(battle);
+            FindRosterSlot(0).GetComponent<Button>().onClick.Invoke();
+            _controller.Update(0f, HoldSelectionKeys(extend: true, add: false));
+            FindRosterSlot(3).GetComponent<Button>().onClick.Invoke();
+            _controller.Update(0f);
+
+            Click(enemy, PointerEventData.InputButton.Right);
+
+            Assert.AreEqual(4, _controller.Selection.Count);
+            Assert.IsTrue(ships.All(ship => ship.Order == TacticalShipOrder.Attack));
+            Assert.IsTrue(ships.All(ship => ReferenceEquals(ship.Target, enemy)));
+            Assert.IsTrue(squadrons[0].IsDirected);
+            Assert.AreSame(enemy, squadrons[0].Target);
+        }
+
+        [Test]
+        public void RecoverButton_ClickedWithASquadronSelected_RecallsItToAHangar()
+        {
+            TacticalSpaceBattle battle = CreateFleetBattle(
+                1,
+                1,
+                out List<TacticalCapitalShipUnit> ships,
+                out List<TacticalStarfighterUnit> squadrons,
+                out _
+            );
+            ships[0].Ship.StarfighterCapacity = 1;
+            Begin(battle);
+            Button recover = TacticalBattleViewTestFactory.FindButton(_view, "RecoverButton");
+            bool offeredWithNothingSelected = recover.interactable;
+
+            FindRosterSlot(1).GetComponent<Button>().onClick.Invoke();
+            _controller.Update(0f);
+            bool offered = recover.interactable;
+            recover.onClick.Invoke();
+            _controller.Update(0f);
+
+            Assert.IsFalse(offeredWithNothingSelected);
+            Assert.IsTrue(offered);
+            Assert.AreSame(ships[0], squadrons[0].RecoveryShip);
+            Assert.IsFalse(recover.interactable);
+            StringAssert.StartsWith("Orders: Return to", FindText("OrdersTextField").text);
+        }
+
+        [Test]
+        public void PointerRightClick_OnAFriendlyShipWithASquadronSelected_PostsItToScreenThatShip()
+        {
+            TacticalSpaceBattle battle = CreateFleetBattle(
+                2,
+                1,
+                out List<TacticalCapitalShipUnit> ships,
+                out List<TacticalStarfighterUnit> squadrons,
+                out _
+            );
+            ships[0].Ship.StarfighterCapacity = 1;
+            ships[1].Ship.StarfighterCapacity = 1;
+            Begin(battle);
+            FindRosterSlot(2).GetComponent<Button>().onClick.Invoke();
+            bool selected = _controller.Selection.Contains(squadrons[0]);
+            // Clear of the hull it is sent to, so the click lands on the ship and not on it.
+            squadrons[0].X = 0;
+            squadrons[0].Y = 0;
+            _controller.Update(0f);
+
+            Click(ships[1], PointerEventData.InputButton.Right);
+
+            Assert.IsTrue(selected);
+            Assert.AreSame(ships[1], squadrons[0].ScreenedShip);
+            Assert.IsNull(squadrons[0].RecoveryShip);
         }
 
         [Test]
@@ -688,6 +1008,98 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
             squadron = battle.Units.OfType<TacticalStarfighterUnit>().Single();
             _activeBattle = battle;
             return battle;
+        }
+
+        /// <summary>
+        /// Creates a battle in which the player commands several ships and several squadrons
+        /// against one passive enemy ship.
+        /// </summary>
+        /// <param name="shipCount">The number of player ships.</param>
+        /// <param name="squadronCount">The number of player squadrons.</param>
+        /// <param name="ships">Receives the player's ships in roster order.</param>
+        /// <param name="squadrons">Receives the player's squadrons in roster order.</param>
+        /// <param name="enemy">Receives the enemy ship.</param>
+        /// <returns>The created battle.</returns>
+        private TacticalSpaceBattle CreateFleetBattle(
+            int shipCount,
+            int squadronCount,
+            out List<TacticalCapitalShipUnit> ships,
+            out List<TacticalStarfighterUnit> squadrons,
+            out TacticalCapitalShipUnit enemy
+        )
+        {
+            CapitalShip[] attackerShips = Enumerable
+                .Range(0, shipCount)
+                .Select(index => CreateShip($"ship{index}", 100, 10))
+                .ToArray();
+            Starfighter[] fighters = Enumerable
+                .Range(0, squadronCount)
+                .Select(index => new Starfighter
+                {
+                    InstanceID = $"squadron{index}",
+                    DisplayName = $"squadron{index}",
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                    Hyperdrive = 1,
+                    SublightSpeed = 8,
+                    Agility = 4,
+                    LaserCannon = 5,
+                    LaserRange = 12,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                })
+                .ToArray();
+            CapitalShip defenderShip = CreateShip("defender", 100000, 0);
+            TacticalSpaceBattle battle = new TacticalSpaceBattle(
+                CreateConfig(),
+                new SystemRandomProvider(7),
+                attackerShips,
+                fighters,
+                new[] { defenderShip },
+                new List<Starfighter>(),
+                false,
+                false,
+                default,
+                default,
+                CombatSide.Attacker
+            );
+            ships = attackerShips
+                .Select(ship =>
+                    battle.Units.OfType<TacticalCapitalShipUnit>().Single(unit => unit.Ship == ship)
+                )
+                .ToList();
+            squadrons = fighters
+                .Select(fighter =>
+                    battle
+                        .Units.OfType<TacticalStarfighterUnit>()
+                        .Single(unit => unit.Fighter == fighter)
+                )
+                .ToList();
+            enemy = battle
+                .Units.OfType<TacticalCapitalShipUnit>()
+                .Single(unit => unit.Ship == defenderShip);
+            _activeBattle = battle;
+            return battle;
+        }
+
+        /// <summary>
+        /// Returns a frame of keyboard input with only the selection keys held.
+        /// </summary>
+        /// <param name="extend">Whether the key that selects a run of units is held.</param>
+        /// <param name="add">Whether the key that adds one unit is held.</param>
+        /// <returns>The keyboard input.</returns>
+        private static TacticalCameraInput HoldSelectionKeys(bool extend, bool add)
+        {
+            return new TacticalCameraInput(
+                Vector2.zero,
+                0f,
+                0f,
+                0f,
+                false,
+                false,
+                false,
+                extend,
+                add
+            );
         }
 
         /// <summary>

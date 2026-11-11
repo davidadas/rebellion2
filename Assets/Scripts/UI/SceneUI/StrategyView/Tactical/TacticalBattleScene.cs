@@ -78,6 +78,9 @@ public sealed class TacticalBattleScene : MonoBehaviour
     private const float _flashEmission = 3f;
     private const float _fireEmission = 2f;
     private const float _tractorEmission = 2f;
+    private const float _gravityWellEmission = 2f;
+    private const float _gravityWellEmissionRate = 48f;
+    private const float _gravityWellRadiusScale = 1f;
     private const float _jumpArrivalSeconds = 1.6f;
     private const float _jumpDepartureSeconds = 1.2f;
     private const float _jumpDistanceScale = 1.5f;
@@ -92,7 +95,12 @@ public sealed class TacticalBattleScene : MonoBehaviour
     private const float _stationViewPitchDegrees = 20f;
     private const float _stationViewDistanceRadii = 5f;
     private const int _selectionEdgeCount = 12;
+    private const float _deckMarkerMinimumHeight = 0.5f;
+    private const float _deckMarkerLineWidth = 1f;
+    private const float _deckMarkerFootScale = 0.12f;
+    private const float _deckMarkerDim = 0.45f;
     private const float _selectionPadding = 1.1f;
+    private const float _dockedScale = 0.15f;
     private const float _selectionEmission = 1.5f;
     private static readonly Color _attackerPlaceholderColor = new Color(0.55f, 0.58f, 0.66f, 1f);
     private static readonly Color _defenderPlaceholderColor = new Color(0.64f, 0.6f, 0.52f, 1f);
@@ -100,6 +108,7 @@ public sealed class TacticalBattleScene : MonoBehaviour
     private static readonly Color _fireColor = new Color(1f, 0.45f, 0.1f, 1f);
     private static readonly Color _smokeColor = new Color(0.25f, 0.24f, 0.22f, 1f);
     private static readonly Color _tractorColor = new Color(0.3f, 0.6f, 1f, 1f);
+    private static readonly Color _gravityWellColor = new Color(0.85f, 0.42f, 0.1f, 1f);
     private static readonly Color _superlaserColor = new Color(0.35f, 1f, 0.3f, 1f);
 
     [SerializeField]
@@ -122,12 +131,14 @@ public sealed class TacticalBattleScene : MonoBehaviour
         new Dictionary<TacticalBattleStation, UnitPresentation>();
     private readonly List<SuperlaserBeam> _beams = new List<SuperlaserBeam>();
     private readonly List<SelectionBox> _selectionBoxes = new List<SelectionBox>();
+    private readonly List<DeckMarker> _deckMarkers = new List<DeckMarker>();
     private readonly Dictionary<Color, Material> _selectionMaterials =
         new Dictionary<Color, Material>();
     private Material _flashMaterial;
     private Material _fireMaterial;
     private Material _smokeMaterial;
     private Material _tractorMaterial;
+    private Material _gravityWellMaterial;
     private Material _superlaserMaterial;
     private Texture2D _particleTexture;
     private float _jumpDistance = 600f;
@@ -228,14 +239,26 @@ public sealed class TacticalBattleScene : MonoBehaviour
     }
 
     /// <summary>
-    /// Converts a battle position into a scene position on the ground plane.
+    /// Converts a battle position into a scene position: on the battle plane, or at a height
+    /// above it.
     /// </summary>
     /// <param name="x">The battle horizontal coordinate.</param>
     /// <param name="y">The battle vertical coordinate.</param>
+    /// <param name="altitude">The height above the battle plane.</param>
     /// <returns>The local scene position.</returns>
-    internal static Vector3 ToScenePosition(double x, double y)
+    internal static Vector3 ToScenePosition(double x, double y, double altitude = 0)
     {
-        return new Vector3((float)x, 0f, (float)y);
+        return new Vector3((float)x, (float)altitude, (float)y);
+    }
+
+    /// <summary>
+    /// Converts a unit's battle position and height into a scene position.
+    /// </summary>
+    /// <param name="unit">The unit to place.</param>
+    /// <returns>The local scene position.</returns>
+    internal static Vector3 ToScenePosition(TacticalBattleUnit unit)
+    {
+        return ToScenePosition(unit.X, unit.Y, unit.Altitude);
     }
 
     /// <summary>
@@ -325,6 +348,7 @@ public sealed class TacticalBattleScene : MonoBehaviour
 
             PoseHolder(unit, presentation);
             UpdateTractorEffect(unit, presentation);
+            UpdateGravityWellEffect(unit, presentation);
         }
 
         foreach (TacticalBattleStation station in battle.Stations)
@@ -428,6 +452,104 @@ public sealed class TacticalBattleScene : MonoBehaviour
             _selectionBoxes[index].Unit = null;
             _selectionBoxes[index].Root.gameObject.SetActive(false);
         }
+    }
+
+    /// <summary>
+    /// Marks every capital ship that stands above or below the battle plane with a thin stem
+    /// dropped to the plane and a small foot where it lands, in a dim shade of its side's
+    /// color, so the player can tell a ship that is higher from one that is farther away. Call
+    /// it after <see cref="Sync"/>, which places the hulls.
+    /// </summary>
+    /// <param name="battle">The battle being presented.</param>
+    /// <param name="attackerColor">The attacking side's color.</param>
+    /// <param name="defenderColor">The defending side's color.</param>
+    internal void ShowDeckMarkers(
+        TacticalSpaceBattle battle,
+        Color attackerColor,
+        Color defenderColor
+    )
+    {
+        if (battle == null)
+            throw new ArgumentNullException(nameof(battle));
+
+        VerifyReferences();
+        int used = 0;
+        foreach (TacticalBattleUnit unit in battle.Units)
+        {
+            // A ship flying its hyperspace jump is not at its place yet and gets no marker.
+            if (
+                unit.IsStarfighter
+                || Math.Abs(unit.Altitude) < _deckMarkerMinimumHeight
+                || !_units.TryGetValue(unit, out UnitPresentation presentation)
+                || presentation.Holder?.gameObject.activeSelf != true
+                || presentation.Jump != JumpPhase.None
+            )
+                continue;
+
+            if (used == _deckMarkers.Count)
+                _deckMarkers.Add(CreateDeckMarker());
+            DeckMarker marker = _deckMarkers[used];
+            used++;
+            Color side = unit.Side == CombatSide.Attacker ? attackerColor : defenderColor;
+            Color color = new Color(
+                side.r * _deckMarkerDim,
+                side.g * _deckMarkerDim,
+                side.b * _deckMarkerDim,
+                1f
+            );
+            marker.Unit = unit;
+            if (marker.Material == null || marker.Color != color)
+            {
+                marker.Color = color;
+                marker.Material = GetSelectionMaterial(color);
+                marker.Stem.sharedMaterial = marker.Material;
+                marker.Foot.sharedMaterial = marker.Material;
+            }
+
+            Vector3 top = presentation.Holder.localPosition;
+            Vector3 foot = new Vector3(top.x, 0f, top.z);
+            float width = GetLineWidth(modelRoot.TransformPoint(foot), _deckMarkerLineWidth);
+            float footSize = presentation.Diameter * _deckMarkerFootScale;
+            marker.Stem.transform.localPosition = (top + foot) * 0.5f;
+            marker.Stem.transform.localScale = new Vector3(width, Mathf.Abs(top.y), width);
+            marker.Foot.transform.localPosition = foot;
+            marker.Foot.transform.localRotation = presentation.Holder.localRotation;
+            marker.Foot.transform.localScale = new Vector3(footSize, width, footSize);
+            marker.Root.gameObject.SetActive(true);
+        }
+
+        for (int index = used; index < _deckMarkers.Count; index++)
+        {
+            _deckMarkers[index].Unit = null;
+            _deckMarkers[index].Root.gameObject.SetActive(false);
+        }
+    }
+
+    /// <summary>
+    /// Returns the deck marker drawn under or over a unit.
+    /// </summary>
+    /// <param name="unit">The unit to find.</param>
+    /// <param name="stem">Receives the stem between the hull and the battle plane.</param>
+    /// <param name="foot">Receives the foot on the battle plane.</param>
+    /// <returns>True when the unit is marked.</returns>
+    internal bool TryGetDeckMarker(TacticalBattleUnit unit, out Transform stem, out Transform foot)
+    {
+        stem = null;
+        foot = null;
+        if (unit == null)
+            return false;
+
+        foreach (DeckMarker candidate in _deckMarkers)
+        {
+            if (candidate.Unit != unit)
+                continue;
+
+            stem = candidate.Stem.transform;
+            foot = candidate.Foot.transform;
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -541,6 +663,24 @@ public sealed class TacticalBattleScene : MonoBehaviour
     }
 
     /// <summary>
+    /// Gets whether any ship on show is drawn projecting a gravity well; the debug automation
+    /// screenshots it.
+    /// </summary>
+    public bool HasActiveGravityWellEffects
+    {
+        get
+        {
+            foreach (UnitPresentation presentation in _units.Values)
+            {
+                if (IsShowingGravityWell(presentation))
+                    return true;
+            }
+
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Gets whether a superlaser beam is being drawn; the debug automation screenshots it.
     /// </summary>
     public bool HasActiveSuperlaserBeams
@@ -590,6 +730,18 @@ public sealed class TacticalBattleScene : MonoBehaviour
         return unit != null
             && _units.TryGetValue(unit, out UnitPresentation presentation)
             && presentation.TractorActive;
+    }
+
+    /// <summary>
+    /// Returns whether a unit is currently shown projecting a gravity well.
+    /// </summary>
+    /// <param name="unit">The unit to inspect.</param>
+    /// <returns>True when the unit is on show with its gravity-well effect running.</returns>
+    internal bool HasGravityWellEffect(TacticalBattleUnit unit)
+    {
+        return unit != null
+            && _units.TryGetValue(unit, out UnitPresentation presentation)
+            && IsShowingGravityWell(presentation);
     }
 
     /// <summary>
@@ -745,6 +897,25 @@ public sealed class TacticalBattleScene : MonoBehaviour
     }
 
     /// <summary>
+    /// Closes the camera in on the first ship shown projecting a gravity well; the debug
+    /// automation frames its screenshot of the effect this way.
+    /// </summary>
+    /// <returns>True when such a ship was framed.</returns>
+    public bool FrameGravityWell()
+    {
+        foreach (KeyValuePair<TacticalBattleUnit, UnitPresentation> entry in _units)
+        {
+            if (!IsShowingGravityWell(entry.Value))
+                continue;
+
+            FocusOn(entry.Key);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Moves the camera focus to a unit and closes in on it.
     /// </summary>
     /// <param name="unit">The unit to focus on.</param>
@@ -754,7 +925,7 @@ public sealed class TacticalBattleScene : MonoBehaviour
             throw new ArgumentNullException(nameof(unit));
 
         VerifyReferences();
-        _focus = ClampFocus(ToScenePosition(unit.X, unit.Y));
+        _focus = ClampFocus(ToScenePosition(unit));
         _distance = ClampDistance(GetModelDiameter(unit) * _focusDistanceDiameters);
         _viewInitialized = true;
         ApplyCamera();
@@ -771,7 +942,7 @@ public sealed class TacticalBattleScene : MonoBehaviour
             throw new ArgumentNullException(nameof(unit));
 
         VerifyReferences();
-        _focus = ClampFocus(ToScenePosition(unit.X, unit.Y));
+        _focus = ClampFocus(ToScenePosition(unit));
         ApplyCamera();
     }
 
@@ -847,12 +1018,19 @@ public sealed class TacticalBattleScene : MonoBehaviour
     /// <param name="y">The battle vertical coordinate.</param>
     /// <param name="arena">The source-space arena bounds.</param>
     /// <param name="sourcePoint">Receives the source-space point.</param>
+    /// <param name="altitude">The position's height above the battle plane.</param>
     /// <returns>True when the position lies in front of the camera.</returns>
-    internal bool TryProject(double x, double y, RectInt arena, out Vector2 sourcePoint)
+    internal bool TryProject(
+        double x,
+        double y,
+        RectInt arena,
+        out Vector2 sourcePoint,
+        double altitude = 0
+    )
     {
         VerifyReferences();
         return TryProjectWorld(
-            modelRoot.TransformPoint(ToScenePosition(x, y)),
+            modelRoot.TransformPoint(ToScenePosition(x, y, altitude)),
             arena,
             out sourcePoint
         );
@@ -883,7 +1061,7 @@ public sealed class TacticalBattleScene : MonoBehaviour
             _units.TryGetValue(unit, out UnitPresentation presentation)
             && presentation.Holder?.gameObject.activeSelf == true
                 ? presentation.Holder.localPosition
-                : ToScenePosition(unit.X, unit.Y);
+                : ToScenePosition(unit);
         Vector3 center = modelRoot.TransformPoint(local);
         if (!TryProjectWorld(center, arena, out sourcePoint))
             return false;
@@ -939,13 +1117,21 @@ public sealed class TacticalBattleScene : MonoBehaviour
     }
 
     /// <summary>
-    /// Finds the battle position under a source-space point by casting onto the ground plane.
+    /// Finds the battle position under a source-space point by casting onto the battle plane,
+    /// or onto a deck at a height above it. Casting onto a ship's own deck gives the position
+    /// that puts the ship itself under the pointer.
     /// </summary>
     /// <param name="arena">The source-space arena bounds.</param>
     /// <param name="sourcePoint">The source-space point.</param>
     /// <param name="battlePoint">Receives the battle position.</param>
-    /// <returns>True when the point looks down onto the ground plane.</returns>
-    internal bool TryPickGround(RectInt arena, Vector2 sourcePoint, out Vector2 battlePoint)
+    /// <param name="altitude">The height of the deck to cast onto.</param>
+    /// <returns>True when the point looks down onto that deck.</returns>
+    internal bool TryPickGround(
+        RectInt arena,
+        Vector2 sourcePoint,
+        out Vector2 battlePoint,
+        double altitude = 0
+    )
     {
         VerifyReferences();
         battlePoint = default;
@@ -959,7 +1145,10 @@ public sealed class TacticalBattleScene : MonoBehaviour
                 0f
             )
         );
-        Plane ground = new Plane(modelRoot.up, modelRoot.position);
+        Plane ground = new Plane(
+            modelRoot.up,
+            modelRoot.TransformPoint(new Vector3(0f, (float)altitude, 0f))
+        );
         if (!ground.Raycast(ray, out float distance))
             return false;
 
@@ -1082,6 +1271,7 @@ public sealed class TacticalBattleScene : MonoBehaviour
         DestroyMaterial(ref _fireMaterial);
         DestroyMaterial(ref _smokeMaterial);
         DestroyMaterial(ref _tractorMaterial);
+        DestroyMaterial(ref _gravityWellMaterial);
         DestroyMaterial(ref _superlaserMaterial);
         foreach (Material material in _selectionMaterials.Values)
         {
@@ -1146,6 +1336,13 @@ public sealed class TacticalBattleScene : MonoBehaviour
         }
 
         _selectionBoxes.Clear();
+        foreach (DeckMarker marker in _deckMarkers)
+        {
+            if (marker.Root != null)
+                DestroyObject(marker.Root.gameObject);
+        }
+
+        _deckMarkers.Clear();
         foreach (ExplosionEffect effect in _explosions)
         {
             if (effect.Root != null)
@@ -1204,15 +1401,16 @@ public sealed class TacticalBattleScene : MonoBehaviour
     }
 
     /// <summary>
-    /// Clamps a focus to the play space.
+    /// Clamps a focus to the play space, keeping its height: the focus rides at the height of a
+    /// unit the camera is on, and on the battle plane otherwise.
     /// </summary>
     /// <param name="focus">The wanted focus in scene space.</param>
-    /// <returns>The clamped focus on the ground plane.</returns>
+    /// <returns>The clamped focus.</returns>
     private Vector3 ClampFocus(Vector3 focus)
     {
         return new Vector3(
             Mathf.Clamp(focus.x, -_panLimit.x, _panLimit.x),
-            0f,
+            focus.y,
             Mathf.Clamp(focus.z, -_panLimit.y, _panLimit.y)
         );
     }
@@ -1458,7 +1656,7 @@ public sealed class TacticalBattleScene : MonoBehaviour
     {
         presentation.Jump = phase;
         presentation.JumpElapsed = 0f;
-        presentation.JumpOrigin = ToScenePosition(unit.X, unit.Y);
+        presentation.JumpOrigin = ToScenePosition(unit);
         presentation.JumpForward = ToSceneRotation(unit.Heading) * Vector3.forward;
     }
 
@@ -1473,9 +1671,9 @@ public sealed class TacticalBattleScene : MonoBehaviour
         Transform holder = presentation.Holder;
         if (presentation.Jump == JumpPhase.None)
         {
-            holder.localPosition = ToScenePosition(unit.X, unit.Y);
+            holder.localPosition = ToScenePosition(unit);
             holder.localRotation = ToSceneRotation(unit.Heading);
-            holder.localScale = Vector3.one;
+            holder.localScale = Vector3.one * GetDockingScale(unit);
             return;
         }
 
@@ -1497,11 +1695,24 @@ public sealed class TacticalBattleScene : MonoBehaviour
         float remaining = arriving ? 1f - progress : progress;
         float offset = _jumpDistance * remaining * remaining * remaining;
         float stretch = 1f + _jumpStretch * remaining * remaining;
-        Vector3 anchor = arriving ? ToScenePosition(unit.X, unit.Y) : presentation.JumpOrigin;
+        Vector3 anchor = arriving ? ToScenePosition(unit) : presentation.JumpOrigin;
         Vector3 forward = presentation.JumpForward;
         holder.localPosition = anchor + forward * (arriving ? -offset : offset);
         holder.localRotation = Quaternion.LookRotation(forward, Vector3.up);
         holder.localScale = new Vector3(1f, 1f, stretch);
+    }
+
+    /// <summary>
+    /// Returns the size a unit is drawn at: a squadron landing aboard a ship shrinks into its
+    /// hangar over the seconds the landing takes, and everything else is drawn full size.
+    /// </summary>
+    /// <param name="unit">The unit being posed.</param>
+    /// <returns>The scale applied to the unit's model.</returns>
+    private static float GetDockingScale(TacticalBattleUnit unit)
+    {
+        return unit is TacticalStarfighterUnit squadron && squadron.DockingFraction > 0
+            ? Mathf.Lerp(1f, _dockedScale, (float)squadron.DockingFraction)
+            : 1f;
     }
 
     /// <summary>
@@ -1518,7 +1729,13 @@ public sealed class TacticalBattleScene : MonoBehaviour
         presentation.TractorActive = tractored;
         if (tractored)
         {
-            presentation.TractorEffect ??= CreateTractorEffect(presentation);
+            presentation.TractorEffect ??= CreateFieldEffect(
+                presentation,
+                "TractorBeam",
+                GetTractorMaterial(),
+                _tractorRadiusScale,
+                _tractorEmissionRate
+            );
             presentation.TractorEffect.Play();
         }
         else if (presentation.TractorEffect != null)
@@ -1528,19 +1745,71 @@ public sealed class TacticalBattleScene : MonoBehaviour
     }
 
     /// <summary>
-    /// Creates the blue particle stream that falls onto a held ship from all around it.
+    /// Starts or stops a ship's gravity-well effect to match the simulation: an orange-brown
+    /// field falling in on every ship that is holding the enemy in the system, which is how the
+    /// player sees what stands between a fleet and its retreat.
     /// </summary>
-    /// <param name="presentation">The held ship's scene objects.</param>
-    /// <returns>The looping particle system, parented to the ship's holder.</returns>
-    private ParticleSystem CreateTractorEffect(UnitPresentation presentation)
+    /// <param name="unit">The unit being posed.</param>
+    /// <param name="presentation">The unit's scene objects.</param>
+    private void UpdateGravityWellEffect(TacticalBattleUnit unit, UnitPresentation presentation)
     {
-        GameObject effect = new GameObject("TractorBeam", typeof(ParticleSystem));
+        bool projecting = unit is TacticalCapitalShipUnit ship && ship.ProjectsGravityWell;
+        if (projecting == presentation.GravityWellActive)
+            return;
+
+        presentation.GravityWellActive = projecting;
+        if (projecting)
+        {
+            presentation.GravityWellEffect ??= CreateFieldEffect(
+                presentation,
+                "GravityWell",
+                GetGravityWellMaterial(),
+                _gravityWellRadiusScale,
+                _gravityWellEmissionRate
+            );
+            presentation.GravityWellEffect.Play();
+        }
+        else if (presentation.GravityWellEffect != null)
+        {
+            presentation.GravityWellEffect.Stop(false, ParticleSystemStopBehavior.StopEmitting);
+        }
+    }
+
+    /// <summary>
+    /// Returns whether a unit is on show with its gravity-well effect running.
+    /// </summary>
+    /// <param name="presentation">The unit's scene objects.</param>
+    /// <returns>True when the effect is running on a visible hull.</returns>
+    private static bool IsShowingGravityWell(UnitPresentation presentation)
+    {
+        return presentation.GravityWellActive && presentation.Holder?.gameObject.activeSelf == true;
+    }
+
+    /// <summary>
+    /// Creates a particle field that falls in on a ship from a shell around it: blue for a
+    /// tractor beam's hold, orange-brown for a gravity well.
+    /// </summary>
+    /// <param name="presentation">The ship's scene objects.</param>
+    /// <param name="effectName">The effect object's name.</param>
+    /// <param name="material">The particle material.</param>
+    /// <param name="radiusScale">The shell's radius, in hull diameters.</param>
+    /// <param name="emissionRate">The particles emitted each second.</param>
+    /// <returns>The looping particle system, parented to the ship's holder.</returns>
+    private ParticleSystem CreateFieldEffect(
+        UnitPresentation presentation,
+        string effectName,
+        Material material,
+        float radiusScale,
+        float emissionRate
+    )
+    {
+        GameObject effect = new GameObject(effectName, typeof(ParticleSystem));
         effect.layer = PresentationLayers.TacticalBattle;
         effect.transform.SetParent(presentation.Holder, false);
         ParticleSystem system = effect.GetComponent<ParticleSystem>();
         // A new system is already playing, and its duration cannot be set until it stops.
         system.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-        float radius = presentation.Diameter * _tractorRadiusScale;
+        float radius = presentation.Diameter * radiusScale;
         float speed = presentation.Diameter * _tractorInwardSpeed;
 
         ParticleSystem.MainModule main = system.main;
@@ -1555,7 +1824,7 @@ public sealed class TacticalBattleScene : MonoBehaviour
 
         ParticleSystem.EmissionModule emission = system.emission;
         emission.enabled = true;
-        emission.rateOverTime = _tractorEmissionRate;
+        emission.rateOverTime = emissionRate;
 
         ParticleSystem.ShapeModule shape = system.shape;
         shape.enabled = true;
@@ -1570,7 +1839,7 @@ public sealed class TacticalBattleScene : MonoBehaviour
             AnimationCurve.Linear(0f, 1f, 1f, _tractorEndSize)
         );
 
-        ConfigureEffectRenderer(effect, GetTractorMaterial());
+        ConfigureEffectRenderer(effect, material);
         return system;
     }
 
@@ -1581,7 +1850,7 @@ public sealed class TacticalBattleScene : MonoBehaviour
     private void PlayExplosion(TacticalBattleUnit unit)
     {
         PlayExplosion(
-            ToScenePosition(unit.X, unit.Y),
+            ToScenePosition(unit),
             GetModelDiameter(unit),
             _explosionFireCount,
             _explosionSmokeCount
@@ -1662,7 +1931,7 @@ public sealed class TacticalBattleScene : MonoBehaviour
 
         beam.Station = station;
         beam.Target = target;
-        beam.End = ToScenePosition(target.X, target.Y);
+        beam.End = ToScenePosition(target);
         beam.Elapsed = 0f;
         beam.Active = true;
         beam.Root.gameObject.SetActive(true);
@@ -1699,7 +1968,7 @@ public sealed class TacticalBattleScene : MonoBehaviour
     private static void PoseSuperlaserBeam(SuperlaserBeam beam)
     {
         if (beam.Target.IsAlive && !beam.Target.HasWithdrawn)
-            beam.End = ToScenePosition(beam.Target.X, beam.Target.Y);
+            beam.End = ToScenePosition(beam.Target);
 
         float radius = (float)beam.Station.Radius;
         Vector3 center = ToScenePosition(beam.Station.X, beam.Station.Y);
@@ -1790,17 +2059,7 @@ public sealed class TacticalBattleScene : MonoBehaviour
         Vector3 stretch = holder.localScale;
         Vector3 center = Vector3.Scale(presentation.LocalBounds.center, stretch);
         Vector3 half = Vector3.Scale(presentation.LocalBounds.extents, stretch) * _selectionPadding;
-        Transform view = sceneCamera.transform;
-        float depth = Mathf.Max(
-            Vector3.Dot(holder.position - view.position, view.forward),
-            _nearClip
-        );
-        float width =
-            SelectionLineWidth
-            * depth
-            * 2f
-            * Mathf.Tan(FieldOfViewDegrees * 0.5f * Mathf.Deg2Rad)
-            / _arenaHeight;
+        float width = GetLineWidth(holder.position, SelectionLineWidth);
         for (int index = 0; index < _selectionEdgeCount; index++)
         {
             // Four edges run along each axis, one through each corner of the face across it.
@@ -1816,6 +2075,57 @@ public sealed class TacticalBattleScene : MonoBehaviour
             edge.localPosition = center + offset;
             edge.localScale = size;
         }
+    }
+
+    /// <summary>
+    /// Returns how thick a line must be in the scene to draw a given number of source pixels
+    /// wide at a point's distance from the camera.
+    /// </summary>
+    /// <param name="worldPosition">The point the line passes.</param>
+    /// <param name="sourcePixels">The wanted width on screen, in source pixels.</param>
+    /// <returns>The thickness in scene units.</returns>
+    private float GetLineWidth(Vector3 worldPosition, float sourcePixels)
+    {
+        Transform view = sceneCamera.transform;
+        float depth = Mathf.Max(
+            Vector3.Dot(worldPosition - view.position, view.forward),
+            _nearClip
+        );
+        return sourcePixels
+            * depth
+            * 2f
+            * Mathf.Tan(FieldOfViewDegrees * 0.5f * Mathf.Deg2Rad)
+            / _arenaHeight;
+    }
+
+    /// <summary>
+    /// Creates a deck marker: a thin stem and a flat foot, under one root.
+    /// </summary>
+    /// <returns>The new marker, not yet posed or colored.</returns>
+    private DeckMarker CreateDeckMarker()
+    {
+        GameObject root = new GameObject("DeckMarker");
+        root.layer = PresentationLayers.TacticalBattle;
+        root.transform.SetParent(modelRoot, false);
+        Mesh cube = Resources.GetBuiltinResource<Mesh>("Cube.fbx");
+        MeshRenderer[] parts = new MeshRenderer[2];
+        for (int index = 0; index < parts.Length; index++)
+        {
+            GameObject part = new GameObject(
+                index == 0 ? "Stem" : "Foot",
+                typeof(MeshFilter),
+                typeof(MeshRenderer)
+            );
+            part.layer = PresentationLayers.TacticalBattle;
+            part.transform.SetParent(root.transform, false);
+            part.GetComponent<MeshFilter>().sharedMesh = cube;
+            MeshRenderer partRenderer = part.GetComponent<MeshRenderer>();
+            partRenderer.shadowCastingMode = ShadowCastingMode.Off;
+            partRenderer.receiveShadows = false;
+            parts[index] = partRenderer;
+        }
+
+        return new DeckMarker(root.transform, parts[0], parts[1]);
     }
 
     /// <summary>
@@ -1886,7 +2196,7 @@ public sealed class TacticalBattleScene : MonoBehaviour
             if (modelRoot != null)
             {
                 PlayExplosion(
-                    ToScenePosition(torpedo.EndX, torpedo.EndY),
+                    ToScenePosition(torpedo.EndX, torpedo.EndY, torpedo.EndAltitude),
                     _torpedoBlastDiameter,
                     _torpedoBlastFireCount,
                     _torpedoBlastSmokeCount
@@ -2039,6 +2349,24 @@ public sealed class TacticalBattleScene : MonoBehaviour
         if (_smokeMaterial == null)
             _smokeMaterial = CreateEffectMaterial("Tactical Smoke", _smokeColor, 0f);
         return _smokeMaterial;
+    }
+
+    /// <summary>
+    /// Returns the gravity-well particle material, creating it on first use.
+    /// </summary>
+    /// <returns>The gravity-well material.</returns>
+    private Material GetGravityWellMaterial()
+    {
+        if (_gravityWellMaterial == null)
+        {
+            _gravityWellMaterial = CreateEffectMaterial(
+                "Tactical Gravity Well",
+                _gravityWellColor,
+                _gravityWellEmission
+            );
+        }
+
+        return _gravityWellMaterial;
     }
 
     /// <summary>
@@ -2490,6 +2818,10 @@ public sealed class TacticalBattleScene : MonoBehaviour
 
         internal bool TractorActive { get; set; }
 
+        internal ParticleSystem GravityWellEffect { get; set; }
+
+        internal bool GravityWellActive { get; set; }
+
         internal JumpPhase Jump { get; set; }
 
         internal float JumpElapsed { get; set; }
@@ -2524,6 +2856,37 @@ public sealed class TacticalBattleScene : MonoBehaviour
         internal float Elapsed { get; set; }
 
         internal bool Active { get; set; }
+    }
+
+    /// <summary>
+    /// Tracks one pooled deck marker.
+    /// </summary>
+    private sealed class DeckMarker
+    {
+        /// <summary>
+        /// Creates a marker around its two parts.
+        /// </summary>
+        /// <param name="root">The marker's root transform.</param>
+        /// <param name="stem">The bar between the hull and the battle plane.</param>
+        /// <param name="foot">The flat mark on the battle plane.</param>
+        internal DeckMarker(Transform root, MeshRenderer stem, MeshRenderer foot)
+        {
+            Root = root;
+            Stem = stem;
+            Foot = foot;
+        }
+
+        internal Transform Root { get; }
+
+        internal MeshRenderer Stem { get; }
+
+        internal MeshRenderer Foot { get; }
+
+        internal TacticalBattleUnit Unit { get; set; }
+
+        internal Color Color { get; set; }
+
+        internal Material Material { get; set; }
     }
 
     /// <summary>

@@ -26,6 +26,16 @@ namespace Rebellion.Gameplay
 
         public double EndY { get; }
 
+        /// <summary>
+        /// Gets the firing unit's height above the battle plane when it fired.
+        /// </summary>
+        public double StartAltitude { get; }
+
+        /// <summary>
+        /// Gets the target's height above the battle plane when it was fired on.
+        /// </summary>
+        public double EndAltitude { get; }
+
         public bool IsIon { get; }
 
         public bool IsStarfighterShot { get; }
@@ -67,6 +77,8 @@ namespace Rebellion.Gameplay
         /// <param name="remainingSeconds">
         /// The shortest time the shot remains visible; longer flights take longer.
         /// </param>
+        /// <param name="startAltitude">The firing unit's height above the battle plane.</param>
+        /// <param name="endAltitude">The target's height above the battle plane.</param>
         internal TacticalShot(
             CombatSide side,
             double startX,
@@ -77,10 +89,14 @@ namespace Rebellion.Gameplay
             bool isStarfighterShot,
             bool isTorpedo,
             int strength,
-            double remainingSeconds
+            double remainingSeconds,
+            double startAltitude = 0,
+            double endAltitude = 0
         )
         {
             Side = side;
+            StartAltitude = startAltitude;
+            EndAltitude = endAltitude;
             StartX = startX;
             StartY = startY;
             EndX = endX;

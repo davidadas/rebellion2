@@ -131,14 +131,23 @@ or plus and minus zoom, right-drag orbits (Q/E turn, R/F tilt between a low angl
 middle-drag or WASD and the
 arrow keys pan, Home reframes the fleet, and Tab
 selects and frames the next friendly ship, and Space pauses; the Speed button steps playback through
-1x, 2x, 4x and 8x. Clicking a unit (or picking it with
-Tab or the roster) snaps the camera onto it and follows it as it moves, so a fighter stays in view;
+1x, 2x, 4x and 8x. Clicking a unit in the arena or on its roster slot picks it without moving the
+camera; clicking it again while it is the one unit picked zooms the camera in on it and follows it
+as it moves, so a fighter stays in view (Tab frames the ship it picks straight away);
 panning or Home hands the camera back, while zooming and orbiting keep following. A roster bar under the title lists one side's capital
 ships and every one of its squadrons, grouped by fighter type with a gap between groups; when the
 squadrons do not fit beside the ships they take rows of their own, shrinking to a readable minimum
 and wrapping, and the bar grows to hold them. Ships shrink to stay on the first row and wrap
 once they reach the smallest size that still shows their number. Clicking a slot inspects (and, for your own units,
-selects and frames) the unit, and the side toggle switches the listed side. Clicks pick
+selects) the unit, and the side toggle switches the listed side. A selection is built up
+with two keys, read each frame with the camera keys (`TacticalCameraInput`): with Shift held, a
+click on a roster slot selects every unit from the last one picked through it, ships first and
+then squadrons as the bar lists them; with Control held, a click on a slot or on a unit in the
+arena adds that unit or takes it out again, and a drag box adds to the selection instead of
+replacing it. Neither moves the camera, and a right-click then orders the whole selection: ships
+keep their formation on a move, and ships and squadrons alike go for an attacked target. A move
+click is cast onto the deck the selected ships stand on rather than the battle plane, so a ship on
+a raised deck ends up under the pointer and not beneath it. Clicks pick
 units against their drawn hulls. Units choose automatic targets by a priority class: ships whose
 turbolasers and ion cannons outweigh their laser cannons hunt capital ships first, laser-heavy ships
 screen against fighters, and squadrons dogfight before turning on capital ships. A unit takes the
@@ -147,7 +156,30 @@ button flips the priority of the inspected unit, or of the whole selection, on t
 Capital ships turn slowly to point their strongest battery against that class at the target and hold
 that facing between volleys rather than swinging each arc around as it charges.
 Fleets form up in opposite corners of an arena three times the configured starting distance
-across, each facing the other's corner, so battles open at long range and close over time. Ships with tractor
+across, each facing the other's corner, so battles open at long range and close over time. A fleet
+forms up in lines across its heading, as many ships to a line as fit across the arena with a
+quarter of the hulls' width left between them, and a fleet too large for one line stacks up to
+three of them on decks one above another instead of standing in ranks behind each other, so every
+ship starts at the same distance from the enemy: its ships of the line first with the largest in
+the middle, then its escorts (ships whose laser cannons outweigh their heavy batteries,
+`TacticalCapitalShipUnit.IsEscort`) and unarmed ships. One line stands on the battle plane, two half
+a deck above and below it, three on it, above it and below it, a deck being a little more than the
+largest hull in the battle is long (`TacticalSpaceBattle.DeckSpacing`); lines above and below the
+first stand half a slot to the side so no hull hides the one beneath it, and only a fleet too large
+for three decks forms further ranks behind. A formation that would overhang the arena is slid back
+inside it. Height is presentation and elbow room only: every unit has an `Altitude`, a capital ship
+keeps the deck it formed up on, and a squadron drifts toward the height of what it is flying at,
+but ranges, targeting and orders are all measured on the plane, so the battle plays as a flat one.
+Ships on different decks pass over and under each other; ships on the same deck are kept apart.
+Weapon and tractor ranges run from hull to hull. A ship closes until the gap to
+its target is a little over half the range of its main battery against that class of target, and
+then holds (`GetPreferredRange`). Left to itself it also stops as soon as any enemy capital ship is
+that near, waits behind a friend that is already holding its place instead of pushing it on, and
+gives way to such a friend when crowded, so two fleets end as lines standing off from each other
+rather than as one knot of hulls. An escort with no orders keeps station beside the nearest ship of
+the line and shoots at whatever comes within reach instead of chasing fighters into the enemy
+fleet; with no ship of the line left it hunts on its own. A ship under the player's attack order
+goes for its target regardless. Ships with tractor
 beams fight from weapon range, close to beam range only on a capital ship that is running, and hold
 it while its hull stays in range: a held
 ship crawls at a fifth of its speed and cannot complete a hyperspace jump, and a beam ship keeps
@@ -164,12 +196,16 @@ No Escape) and the hint spells it out; the strategic layer hands the battle only
 simulation. A battle in which neither side loses hull or fighters, nor is driven to a new low on
 shields, for `AutoResolveStagnationIterations` rounds ends as a stalemate: shields that dip and heal
 back do not count as progress, and the weaker side withdraws when it can and is destroyed otherwise.
-Every fighter has an airframe worth of
-durability on top of its shields, fighter weapons recharge more slowly than in auto-resolution,
+Every fighter has a thin airframe worth of
+durability, and its shields count for more than their rating on top of it, so an unshielded TIE no
+longer falls to the first hit but still falls several times sooner than an X-wing (squadrons all
+deal the same damage over time, so durability is what sets them apart); fighter weapons recharge
+more slowly than in auto-resolution,
 turbolasers mostly miss fighters (each turbolaser shot at a squadron rolls against
 `TacticalTurbolaserFighterHitChance`, and a miss flies wide past it; laser cannons always hit), and
 capital-ship weapon ranges are doubled for the larger arena; these are tactical-only settings in the
-space-combat config (`TacticalFighterHullStrength`, `TacticalFighterRechargeMultiplier`,
+space-combat config (`TacticalFighterHullStrength`, `TacticalFighterShieldMultiplier`,
+`TacticalFighterRechargeMultiplier`,
 `TacticalTurbolaserFighterHitChance`, `TacticalCapitalWeaponRangeMultiplier`,
 `TacticalShieldRechargeMultiplier`, `TacticalShieldGeneratorRepairMultiplier`) with code defaults,
 since `game.xml` lives in the media repository. Capital-ship shields recharge at half their
@@ -185,12 +221,35 @@ circles on its own ring (a golden-ratio spread of orbit radii, with alternating 
 squadrons attacking the same ship do not fly stacked on top of each other. Your squadrons can be
 selected and sent after an enemy with a right-click; a directed squadron holds that target until it
 is gone, then goes back to choosing its own, and a selected squadron carries a status bar and the
-selection box.
+selection box. A right-click on one of your own capital ships posts the selected squadrons around
+it as a screen (`TacticalSpaceBattle.IssueScreenOrder`): each circles that ship and takes on only
+the enemies that come within a short reach of its hull, letting go of one that gets away again,
+until the ship is gone, the side retreats or hands over to the simulation, or the squadron is
+given another order. Ships selected with the squadrons still take that click as a move order.
 The panel shows a squadron's weapon lanes with their power in the system slots and their ranges and
 charge below. Torpedoes burst in a small explosion where they land, and capital energy bolts are
 drawn thicker the heavier the battery behind them, while ion fire and fighter bolts keep a fixed
-width and no bolt drops below a visible floor. Squadrons always fly at full speed, and a
-squadron waiting to be recovered circles its carrier until the carrier jumps. Every hit on a capital
+width and no bolt drops below a visible floor. Squadrons always fly at full speed. A selected
+squadron can be recalled to a hangar with the panel's Recover button, which sends it to its own
+carrier or, when that has no bay free, to the nearest friendly ship that has one
+(`TacticalSpaceBattle.IssueRecoverOrder`); a squadron that is screening a ship docks with that
+ship when it has a bay. A ship holds as many squadrons as its
+`StarfighterCapacity`, counting those on their way as well as those aboard, and a depleted squadron
+takes a whole bay. A recalled squadron flies straight for its ship, takes three seconds over the
+hull to come aboard (it shrinks into the hangar as it lands), and is then off the battlefield for
+good: it is not launched again, its roster slot turns a cool blue and keeps its count (a lost
+squadron's goes grey), it is lost if the ship is destroyed and it leaves with the ship if the ship
+withdraws. An attack or trench-run order given
+before it is aboard calls the recall off. A retreat recalls every squadron that has no hyperdrive
+at once to ships that can jump (`TacticalBattleForce.RecallSquadrons`); squadrons with a
+hyperdrive leave the bays to them and jump out on their own, giving up any bay they were making
+for. A ship holds its jump until the squadrons bound for it are aboard, and a squadron with
+neither a hyperdrive nor a bay stays with the nearest ship still leaving and is lost once the
+last of them has gone. `SpaceCombatResult.FighterDockings` carries
+each docked squadron and its ship out of the battle: the squadron is left aboard that ship (one
+that never docked makes way for it when the hangar is full,
+`SpaceCombatWithdrawalResolver.SeatFighters`), and a withdrawing fleet takes its docked squadrons
+with it whatever drive they have. Every hit on a capital
 ship also has a small chance (`TacticalShieldGeneratorHitChance`) of knocking its shield generator
 offline, so a strafing squadron's many light hits threaten it more than a few broadsides: the shields
 stop recharging, the panel's Shields system shows offline and the shield text notes the generator,
@@ -201,8 +260,14 @@ Capital-ship
 models are drawn at three times their simulation radius and fighters at 1.6 times; fighter squadrons
 circle the unit they attack inside weapon range, and squadrons with nothing to engage patrol around
 the nearest friendly capital ship instead of parking. The scene plays a pooled burst of flash, fire,
-and smoke particles where a unit is destroyed and streams blue particles onto a ship held in a
-tractor beam; both use the render pipeline's default lit material with a generated soft-disc
+and smoke particles where a unit is destroyed (hulls, bolts, bursts and beams are all drawn at
+their units' heights, and a capital ship off the battle plane carries a thin stem down or up to it
+with a small foot where it lands, in a dim shade of its side's color, so a ship that is higher can
+be told from one that is farther away), streams blue particles onto a ship held in a
+tractor beam, and wraps every ship that is projecting a gravity well (an Interdictor Cruiser or a
+CC-7700 Frigate, by `CapitalShip.HasGravityWell`) in a wider field of orange-brown particles for as
+long as it is in the battle, which shows the player what is holding a fleet in the system; all of
+them use the render pipeline's default lit material with a generated soft-disc
 texture, alpha clipping, and exposure-independent emission, so they need no authored assets. Each unit's model is
 `Units/<ID>/Models/model.glb` beside its display image, loaded through the application
 `ContentModelCache`; units without a model show a placeholder hull. The strategy screen starts parsing the models at a

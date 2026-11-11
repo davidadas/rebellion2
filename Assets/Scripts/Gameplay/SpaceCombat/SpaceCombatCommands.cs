@@ -1052,6 +1052,7 @@ namespace Rebellion.Gameplay
             );
             CompleteFighterWithdrawal(attackerWithdrawalPlan);
             CompleteFighterWithdrawal(defenderWithdrawalPlan);
+            ApplyFighterDockings(result);
             events.AddRange(ApplyShipDamage(result.ShipDamage, result.Planet));
             RemoveEmptyFleets(attackerFleets, defenderFleets);
             BlockadeChangedResult blockade = _blockadeTransitionResolver.Resolve(
@@ -1079,6 +1080,26 @@ namespace Rebellion.Gameplay
                 destroyedUnits
             );
             return events;
+        }
+
+        /// <summary>
+        /// Leaves each squadron that docked during the battle aboard the ship it docked with,
+        /// unless that ship was lost. A squadron of a destroyed carrier that docked elsewhere
+        /// keeps its bay; a squadron that never docked gives one up for it and is left to the
+        /// usual search for a new home.
+        /// </summary>
+        /// <param name="result">The combat result carrying the docking records.</param>
+        private void ApplyFighterDockings(SpaceCombatResult result)
+        {
+            HashSet<CapitalShip> lostShips = result
+                .ShipDamage.Where(damage => damage.Ship != null && damage.HullAfter <= 0)
+                .Select(damage => damage.Ship)
+                .ToHashSet();
+            Dictionary<Starfighter, CapitalShip> dockings = SpaceCombatWithdrawalResolver
+                .GetDockings(result)
+                .Where(docking => !lostShips.Contains(docking.Value))
+                .ToDictionary(docking => docking.Key, docking => docking.Value);
+            _withdrawalResolver.SeatFighters(dockings);
         }
 
         /// <summary>

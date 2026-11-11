@@ -44,6 +44,14 @@ namespace Rebellion.Gameplay
 
         public double Heading { get; internal set; }
 
+        /// <summary>
+        /// Gets the unit's height above the battle plane. A capital ship keeps the height of the
+        /// deck it formed up on; a squadron drifts toward the height of what it is flying at.
+        /// Ranges, targeting and orders ignore it: the battle is fought on the plane, and height
+        /// only gives a fleet room to stand in lines one above another.
+        /// </summary>
+        public double Altitude { get; internal set; }
+
         public abstract ISceneNode Node { get; }
 
         public abstract bool IsAlive { get; }
@@ -52,20 +60,28 @@ namespace Rebellion.Gameplay
 
         public abstract double Radius { get; }
 
-        public bool HasWithdrawn => _hasWithdrawn;
+        /// <summary>
+        /// Gets whether the unit has left the battle alive, under its own power or aboard a ship
+        /// that did.
+        /// </summary>
+        public virtual bool HasWithdrawn => _hasWithdrawn;
 
-        public bool IsWithdrawing => _isWithdrawing;
+        /// <summary>
+        /// Gets whether the unit is on its way out of the battle and has not left yet.
+        /// </summary>
+        public virtual bool IsWithdrawing => _isWithdrawing;
 
         /// <summary>
         /// Gets whether enemies can still engage this unit: a ship running for hyperspace stays
         /// under fire until it is gone.
         /// </summary>
-        public bool IsTargetable => IsAlive && !_hasWithdrawn && !IsOffField;
+        public bool IsTargetable => IsAlive && !HasWithdrawn && !IsOffField;
 
         /// <summary>
         /// Gets whether the unit has flown off the battlefield without leaving the battle, as a
-        /// squadron does inside a battle station's trench. An off-field unit cannot be shot at,
-        /// ordered, or drawn, but its side is not beaten while it is still out there.
+        /// squadron does inside a battle station's trench or aboard a ship's hangar. An off-field
+        /// unit cannot be shot at, ordered, or drawn, but its side is not beaten while it is
+        /// still out there.
         /// </summary>
         public virtual bool IsOffField => false;
 
@@ -216,13 +232,15 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Returns the distance from this unit to the edge of another unit's hull footprint.
+        /// Returns the gap between this unit's hull footprint and another's, which is what
+        /// weapon and tractor-beam ranges cover. A fighter squadron has no footprint, so for it
+        /// this is the distance to the other unit's hull.
         /// </summary>
         /// <param name="other">The unit being engaged.</param>
-        /// <returns>The distance to the other unit's hull footprint, never negative.</returns>
+        /// <returns>The distance between the two hull footprints, never negative.</returns>
         internal double GetEngagementDistanceTo(TacticalBattleUnit other)
         {
-            return Math.Max(0, GetDistanceTo(other) - other.HullFootprint);
+            return Math.Max(0, GetDistanceTo(other) - other.HullFootprint - HullFootprint);
         }
 
         /// <summary>
@@ -269,7 +287,9 @@ namespace Rebellion.Gameplay
                     IsStarfighter,
                     isTorpedo,
                     strength,
-                    shotDisplaySeconds
+                    shotDisplaySeconds,
+                    Altitude,
+                    target.Altitude
                 )
             );
         }
@@ -306,7 +326,9 @@ namespace Rebellion.Gameplay
                     IsStarfighter,
                     false,
                     strength,
-                    shotDisplaySeconds
+                    shotDisplaySeconds,
+                    Altitude,
+                    target.Altitude
                 )
             );
         }

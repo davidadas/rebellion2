@@ -108,6 +108,434 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void Constructor_FleetTooWideForOneLine_StacksItsLinesOnDecks()
+        {
+            CapitalShip[] ships = Enumerable
+                .Range(0, 9)
+                .Select(index => CreateShip($"ship{index}", 400, 10))
+                .ToArray();
+            TacticalSpaceBattle battle = CreateBattle(
+                ships,
+                new[] { CreateShip("defender", 100, 0) }
+            );
+
+            List<TacticalCapitalShipUnit> units = ships
+                .Select(ship => GetShip(battle, ship))
+                .ToList();
+            double footprint = units[0].HullFootprint;
+            double heading = units[0].Heading;
+            List<double> depths = units
+                .Select(unit => unit.X * Math.Cos(heading) + unit.Y * Math.Sin(heading))
+                .ToList();
+            for (int first = 0; first < units.Count; first++)
+            {
+                for (int second = first + 1; second < units.Count; second++)
+                {
+                    // Ships on one deck keep room between their hulls; decks clear each other.
+                    if (Math.Abs(units[first].Altitude - units[second].Altitude) > 0.001)
+                        continue;
+
+                    Assert.GreaterOrEqual(
+                        units[first].GetDistanceTo(units[second]),
+                        2 * footprint * 1.2
+                    );
+                }
+            }
+
+            Assert.IsTrue(units.All(unit => Math.Abs(unit.X) <= battle.HalfWidth));
+            Assert.IsTrue(units.All(unit => Math.Abs(unit.Y) <= battle.HalfHeight));
+            // One line could not hold nine such hulls across this arena. They stand three to a
+            // deck on, above and below the battle plane, all at one distance from the enemy.
+            Assert.Greater(battle.DeckSpacing, footprint);
+            CollectionAssert.AreEquivalent(
+                new[] { 3, 3, 3 },
+                new[] { 0.0, battle.DeckSpacing, -battle.DeckSpacing }
+                    .Select(deck => units.Count(unit => Math.Abs(unit.Altitude - deck) < 0.001))
+                    .ToArray()
+            );
+            Assert.Less(depths.Max() - depths.Min(), 1);
+        }
+
+        [Test]
+        public void Constructor_MixedFleet_PutsTheEscortsOnADeckOfTheirOwn()
+        {
+            CapitalShip[] line = Enumerable
+                .Range(0, 3)
+                .Select(index => CreateShip($"line{index}", 400, 10))
+                .ToArray();
+            CapitalShip[] escorts = Enumerable
+                .Range(0, 3)
+                .Select(index => CreateEscort($"escort{index}", 200, 30, 20))
+                .ToArray();
+            CapitalShip defenderShip = CreateShip("defender", 100, 0);
+            // The escorts are listed first, as a fleet's own order may have them.
+            TacticalSpaceBattle battle = CreateBattle(
+                escorts.Concat(line).ToArray(),
+                new[] { defenderShip }
+            );
+
+            // Two lines of three stand half a deck above and below the battle plane: the ships
+            // of the line on the upper deck, the escorts beneath them.
+            double upper = battle.DeckSpacing / 2;
+            Assert.IsTrue(escorts.All(ship => GetShip(battle, ship).IsEscort));
+            Assert.IsFalse(line.Any(ship => GetShip(battle, ship).IsEscort));
+            Assert.IsTrue(
+                line.All(ship => Math.Abs(GetShip(battle, ship).Altitude - upper) < 0.001)
+            );
+            Assert.IsTrue(
+                escorts.All(ship => Math.Abs(GetShip(battle, ship).Altitude + upper) < 0.001)
+            );
+            Assert.AreEqual(0, GetShip(battle, defenderShip).Altitude);
+        }
+
+        [Test]
+        public void Advance_ShipsOnDifferentDecks_PassOverEachOther()
+        {
+            CapitalShip upperShip = CreateShip("upper", 400, 10);
+            CapitalShip lowerShip = CreateShip("lower", 400, 10);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { upperShip, lowerShip },
+                new[] { CreateShip("defender", 100000, 0) },
+                config: CreateOpenConfig()
+            );
+            TacticalCapitalShipUnit upper = GetShip(battle, upperShip);
+            TacticalCapitalShipUnit lower = GetShip(battle, lowerShip);
+            double apartOnOneDeck = upper.GetDistanceTo(lower);
+            // The two ships are put in the same place on the plane, one a deck above the other.
+            upper.X = lower.X;
+            upper.Y = lower.Y;
+            upper.Altitude = battle.DeckSpacing;
+
+            battle.Advance(TacticalSpaceBattle.RoundSeconds);
+
+            Assert.Greater(apartOnOneDeck, upper.HullFootprint + lower.HullFootprint);
+            Assert.Less(upper.GetDistanceTo(lower), 0.5);
+        }
+
+        [Test]
+        public void Advance_SquadronAttackingAShipOnAnotherDeck_ClimbsToItsHeight()
+        {
+            CapitalShip defenderShip = CreateShip("defender", 100000, 0);
+            Starfighter fighter = CreateFighter("fighter", 12, 5);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { CreateShip("carrier", 500, 0) },
+                new[] { defenderShip },
+                attackerFighters: new[] { fighter }
+            );
+            TacticalCapitalShipUnit defender = GetShip(battle, defenderShip);
+            TacticalStarfighterUnit squadron = battle
+                .Units.OfType<TacticalStarfighterUnit>()
+                .Single();
+            defender.Altitude = 20;
+
+            battle.Advance(TacticalSpaceBattle.RoundSeconds);
+            double early = squadron.Altitude;
+            battle.Advance(8);
+
+            Assert.Greater(early, 0);
+            Assert.Less(early, 20);
+            Assert.AreEqual(20, squadron.Altitude, 0.001);
+        }
+
+        [Test]
+        public void Advance_ShipFiresAtATargetOnAnotherDeck_RecordsBothHeightsOnTheShot()
+        {
+            CapitalShip attackerShip = CreateShip("attacker", 100, 10, range: 150);
+            CapitalShip defenderShip = CreateShip("defender", 1000, 0);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { attackerShip },
+                new[] { defenderShip }
+            );
+            GetShip(battle, attackerShip).Altitude = 7;
+            GetShip(battle, defenderShip).Altitude = -3;
+
+            battle.Advance(TacticalSpaceBattle.RoundSeconds / 4);
+
+            TacticalShot shot = battle.Shots.Single();
+            Assert.AreEqual(7, shot.StartAltitude);
+            Assert.AreEqual(-3, shot.EndAltitude);
+        }
+
+        [Test]
+        public void Advance_ShortRangedShip_FightsFromOffTheTargetsHull()
+        {
+            CapitalShip attacker = CreateShip("attacker", 400, 10, range: 10);
+            CapitalShip defender = CreateShip("defender", 2500, 0);
+            TacticalSpaceBattle battle = CreateBattle(new[] { attacker }, new[] { defender });
+            TacticalCapitalShipUnit ship = GetShip(battle, attacker);
+            TacticalCapitalShipUnit target = GetShip(battle, defender);
+
+            battle.Advance(40);
+
+            // Its guns reach 20 from hull to hull, which is less than the two hulls' own width:
+            // it must stand off the hull and still be able to hit it.
+            double gap = ship.GetDistanceTo(target) - ship.HullFootprint - target.HullFootprint;
+            Assert.Greater(gap, 5);
+            Assert.LessOrEqual(gap, ship.MaximumWeaponRange);
+            Assert.Less(target.CurrentHull, target.MaximumHull);
+        }
+
+        [Test]
+        public void Advance_TwoLinesClosing_StandOffFromEachOtherAndKeepRoomInTheLine()
+        {
+            CapitalShip[] attackers = Enumerable
+                .Range(0, 5)
+                .Select(index => CreateShip($"attacker{index}", 2000, 20, range: 50))
+                .ToArray();
+            CapitalShip[] defenders = Enumerable
+                .Range(0, 5)
+                .Select(index => CreateShip($"defender{index}", 2000, 20, range: 50))
+                .ToArray();
+            TacticalSpaceBattle battle = CreateBattle(
+                attackers,
+                defenders,
+                config: CreateOpenConfig()
+            );
+            List<TacticalCapitalShipUnit> attackerUnits = attackers
+                .Select(ship => GetShip(battle, ship))
+                .ToList();
+            List<TacticalCapitalShipUnit> defenderUnits = defenders
+                .Select(ship => GetShip(battle, ship))
+                .ToList();
+
+            battle.Advance(45);
+
+            double nearestEnemyGap = attackerUnits.Min(attacker =>
+                defenderUnits.Min(defender => GetHullGap(attacker, defender))
+            );
+            double nearestFriendGap = double.MaxValue;
+            foreach (List<TacticalCapitalShipUnit> side in new[] { attackerUnits, defenderUnits })
+            {
+                for (int first = 0; first < side.Count; first++)
+                {
+                    for (int second = first + 1; second < side.Count; second++)
+                    {
+                        nearestFriendGap = Math.Min(
+                            nearestFriendGap,
+                            GetHullGap(side[first], side[second])
+                        );
+                    }
+                }
+            }
+
+            // Guns that reach 100 hold a gap of 55; the lines came together and stopped there.
+            Assert.Greater(nearestEnemyGap, 40);
+            Assert.Less(nearestEnemyGap, 100);
+            Assert.Greater(nearestFriendGap, 5);
+            Assert.IsTrue(defenderUnits.Any(unit => unit.CurrentHull < unit.MaximumHull));
+            Assert.IsTrue(attackerUnits.Any(unit => unit.CurrentHull < unit.MaximumHull));
+        }
+
+        [Test]
+        public void Advance_ShipBehindAFriendHoldingItsPlace_WaitsInsteadOfPushingItOn()
+        {
+            CapitalShip frontShip = CreateShip("front", 400, 10, range: 20);
+            CapitalShip rearShip = CreateShip("rear", 400, 10, range: 20);
+            CapitalShip enemyShip = CreateShip("enemy", 2500, 0);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { frontShip, rearShip },
+                new[] { enemyShip },
+                config: CreateOpenConfig()
+            );
+            TacticalCapitalShipUnit front = GetShip(battle, frontShip);
+            TacticalCapitalShipUnit rear = GetShip(battle, rearShip);
+            TacticalCapitalShipUnit enemy = GetShip(battle, enemyShip);
+            enemy.X = 100;
+            enemy.Y = 0;
+            front.X = enemy.X - front.GetPreferredRange(enemy) + 1;
+            front.Y = 0;
+            rear.X = front.X - (front.HullFootprint + rear.HullFootprint) * 1.25 - 1;
+            rear.Y = 0;
+            double frontStart = front.X;
+
+            battle.Advance(30);
+
+            Assert.AreEqual(frontStart, front.X, 0.5);
+            Assert.AreEqual(0, front.Y, 0.5);
+            Assert.GreaterOrEqual(
+                front.X - rear.X,
+                (front.HullFootprint + rear.HullFootprint) * 1.2
+            );
+            Assert.Greater(rear.GetDistanceTo(enemy), rear.GetPreferredRange(enemy));
+        }
+
+        [Test]
+        public void Advance_AutomaticEscort_StaysWithTheShipOfTheLineInsteadOfChasingFighters()
+        {
+            CapitalShip lineShip = CreateShip("line", 400, 10, range: 20);
+            CapitalShip escortShip = CreateEscort("escort", 200, 30, 5);
+            escortShip.SublightSpeed = 6;
+            CapitalShip nearShip = CreateShip("near", 1000, 0);
+            CapitalShip farShip = CreateShip("far", 1000, 0);
+            Starfighter squadronFighter = CreateFighter("squadron", 12, 0);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { lineShip, escortShip },
+                new[] { nearShip, farShip },
+                defenderFighters: new[] { squadronFighter },
+                config: CreateOpenConfig()
+            );
+            TacticalCapitalShipUnit line = GetShip(battle, lineShip);
+            TacticalCapitalShipUnit escort = GetShip(battle, escortShip);
+            TacticalCapitalShipUnit near = GetShip(battle, nearShip);
+            TacticalCapitalShipUnit far = GetShip(battle, farShip);
+            TacticalStarfighterUnit squadron = battle
+                .Units.OfType<TacticalStarfighterUnit>()
+                .Single();
+            // The ship of the line already has an enemy at its holding distance, and the enemy
+            // squadron circles a ship far across the arena.
+            line.X = 0;
+            line.Y = 0;
+            escort.X = 0;
+            escort.Y = 25;
+            near.X = line.GetPreferredRange(near) - 2;
+            near.Y = 0;
+            far.X = 200;
+            far.Y = 0;
+            squadron.X = 200;
+            squadron.Y = 20;
+
+            battle.Advance(15);
+
+            Assert.IsTrue(escort.IsEscort);
+            Assert.IsFalse(line.IsEscort);
+            Assert.AreSame(squadron, escort.Target);
+            Assert.AreEqual(0, line.X, 1);
+            Assert.LessOrEqual(
+                escort.GetDistanceTo(line),
+                (escort.HullFootprint + line.HullFootprint) * 1.6 + 1
+            );
+        }
+
+        [Test]
+        public void Advance_EscortOnAnotherDeck_RidesCloseOverTheShipOfTheLine()
+        {
+            CapitalShip lineShip = CreateShip("line", 400, 10, range: 20);
+            CapitalShip escortShip = CreateEscort("escort", 200, 30, 5);
+            escortShip.SublightSpeed = 6;
+            CapitalShip nearShip = CreateShip("near", 1000, 0);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { lineShip, escortShip },
+                new[] { nearShip },
+                config: CreateOpenConfig()
+            );
+            TacticalCapitalShipUnit line = GetShip(battle, lineShip);
+            TacticalCapitalShipUnit escort = GetShip(battle, escortShip);
+            TacticalCapitalShipUnit near = GetShip(battle, nearShip);
+            // The ship of the line holds its place; the escort starts a deck above and well
+            // astern, where an escort on the same deck would be content to stay.
+            line.X = 0;
+            line.Y = 0;
+            near.X = line.GetPreferredRange(near) - 2;
+            near.Y = 0;
+            escort.X = -25;
+            escort.Y = 0;
+            escort.Altitude = battle.DeckSpacing;
+
+            battle.Advance(10);
+
+            Assert.AreEqual(0, line.X, 1);
+            Assert.AreEqual(battle.DeckSpacing, escort.Altitude);
+            Assert.LessOrEqual(
+                escort.GetDistanceTo(line),
+                (escort.HullFootprint + line.HullFootprint) * 0.5 + 1
+            );
+        }
+
+        [Test]
+        public void Advance_EscortWithNoShipOfTheLine_ClosesOnItsTarget()
+        {
+            CapitalShip escortShip = CreateEscort("escort", 200, 30, 5);
+            escortShip.SublightSpeed = 6;
+            CapitalShip farShip = CreateShip("far", 1000, 0);
+            Starfighter squadronFighter = CreateFighter("squadron", 12, 0);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { escortShip },
+                new[] { farShip },
+                defenderFighters: new[] { squadronFighter },
+                config: CreateOpenConfig()
+            );
+            TacticalCapitalShipUnit escort = GetShip(battle, escortShip);
+            TacticalCapitalShipUnit far = GetShip(battle, farShip);
+            TacticalStarfighterUnit squadron = battle
+                .Units.OfType<TacticalStarfighterUnit>()
+                .Single();
+            escort.X = 0;
+            escort.Y = 0;
+            far.X = 200;
+            far.Y = 0;
+            squadron.X = 200;
+            squadron.Y = 20;
+            double start = escort.GetDistanceTo(squadron);
+
+            battle.Advance(10);
+
+            Assert.AreSame(squadron, escort.Target);
+            Assert.Less(escort.GetDistanceTo(squadron), start - 40);
+        }
+
+        [Test]
+        public void GetPreferredRange_FewLongGunsAndManyShortOnes_ClosesToWhereTheManyCanFire()
+        {
+            CapitalShip mixedShip = CreateShip("mixed", 400, 5, range: 50);
+            for (int arc = 0; arc < 4; arc++)
+                mixedShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon][arc] = 60;
+            mixedShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 17;
+            CapitalShip heavyShip = CreateShip("heavy", 400, 100, range: 50);
+            CapitalShip defenderShip = CreateShip("defender", 1000, 0);
+            Starfighter squadronFighter = CreateFighter("squadron", 12, 5);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { mixedShip, heavyShip },
+                new[] { defenderShip },
+                defenderFighters: new[] { squadronFighter },
+                config: config
+            );
+            TacticalCapitalShipUnit mixed = GetShip(battle, mixedShip);
+            TacticalCapitalShipUnit heavy = GetShip(battle, heavyShip);
+            TacticalCapitalShipUnit defender = GetShip(battle, defenderShip);
+            TacticalStarfighterUnit squadron = battle
+                .Units.OfType<TacticalStarfighterUnit>()
+                .Single();
+            double laserReach = 17 * config.TacticalCapitalWeaponRangeMultiplier;
+            double turbolaserReach = 50 * config.TacticalCapitalWeaponRangeMultiplier;
+
+            double mixedGap = mixed.GetPreferredRange(squadron) - mixed.HullFootprint;
+            double heavyGap = heavy.GetPreferredRange(squadron) - heavy.HullFootprint;
+            double capitalGap =
+                heavy.GetPreferredRange(defender) - heavy.HullFootprint - defender.HullFootprint;
+
+            // Against fighters the mixed ship's battery is its lasers, so it comes inside their
+            // reach; the heavy ship has only its long guns and holds farther off.
+            Assert.Greater(mixedGap, 0);
+            Assert.Less(mixedGap, laserReach);
+            Assert.Greater(heavyGap, laserReach);
+            Assert.Less(heavyGap, turbolaserReach);
+            Assert.AreEqual(heavyGap, capitalGap, 0.0001);
+        }
+
+        [Test]
+        public void ProjectsGravityWell_InterdictorDestroyed_StopsProjecting()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            CapitalShip interdictorShip = CreateShip("interdictor", 100, 0);
+            interdictorShip.HasGravityWell = true;
+            CapitalShip plainShip = CreateShip("plain", 100, 0);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { CreateShip("attacker", 100, 0) },
+                new[] { interdictorShip, plainShip },
+                config: config
+            );
+            TacticalCapitalShipUnit interdictor = GetShip(battle, interdictorShip);
+
+            bool projectingAtFirst = interdictor.ProjectsGravityWell;
+            interdictor.ApplyDamage(1000, 0, config, new SystemRandomProvider(_seed));
+
+            Assert.IsTrue(projectingAtFirst);
+            Assert.IsFalse(GetShip(battle, plainShip).ProjectsGravityWell);
+            Assert.IsFalse(interdictor.ProjectsGravityWell);
+        }
+
+        [Test]
         public void Advance_FighterInRange_OrbitsItsTarget()
         {
             CapitalShip carrier = CreateShip("carrier", 500, 0);
@@ -305,6 +733,37 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void Constructor_FighterDurability_LeavesAnUnshieldedSquadronFarFrailerThanAShieldedOne()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            Starfighter shielded = CreateFighter("shielded", 12, 5);
+            shielded.ShieldStrength = 5;
+            Starfighter bare = CreateFighter("bare", 12, 5);
+            bare.ShieldStrength = 0;
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { CreateShip("carrier", 500, 10) },
+                new[] { CreateShip("defender", 100000, 0) },
+                attackerFighters: new[] { shielded, bare },
+                config: config
+            );
+            TacticalStarfighterUnit shieldedUnit = battle
+                .Units.OfType<TacticalStarfighterUnit>()
+                .Single(unit => unit.Fighter == shielded);
+            TacticalStarfighterUnit bareUnit = battle
+                .Units.OfType<TacticalStarfighterUnit>()
+                .Single(unit => unit.Fighter == bare);
+            // Exactly what it takes to shoot down the whole unshielded squadron.
+            double damage = config.TacticalFighterHullStrength * 12;
+            SystemRandomProvider random = new SystemRandomProvider(_seed);
+
+            shieldedUnit.ApplyDamage(damage, 0, config, random);
+            bareUnit.ApplyDamage(damage, 0, config, random);
+
+            Assert.IsFalse(bareUnit.IsAlive);
+            Assert.GreaterOrEqual(shieldedUnit.CurrentSquadronSize, 8);
+        }
+
+        [Test]
         public void Constructor_FighterDurability_AddsAnAirframeToTheShields()
         {
             GameConfig.SpaceCombatConfig config = CreateConfig();
@@ -325,9 +784,10 @@ namespace Rebellion.Tests.Gameplay
                 .Units.OfType<TacticalStarfighterUnit>()
                 .Single(unit => unit.Fighter == bare);
             double airframe = config.TacticalFighterHullStrength;
+            double shields = 5 * config.TacticalFighterShieldMultiplier;
             SystemRandomProvider random = new SystemRandomProvider(_seed);
 
-            shieldedUnit.ApplyDamage((airframe + 5) * 5, 0, config, random);
+            shieldedUnit.ApplyDamage((airframe + shields) * 5, 0, config, random);
             bareUnit.ApplyDamage(airframe * 5, 0, config, random);
 
             Assert.AreEqual(7, shieldedUnit.CurrentSquadronSize);
@@ -842,6 +1302,596 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(CombatSide.Defender, result.Winner);
             CollectionAssert.AreEqual(new[] { attacker }, result.WithdrawnUnits);
             Assert.IsEmpty(result.ShipDamage);
+        }
+
+        [Test]
+        public void IssueRecoverOrder_SquadronOverItsCarrier_TakesAFewSecondsToComeAboard()
+        {
+            Starfighter fighter = CreateFighter("fighter", 12, 5);
+            CapitalShip carrier = CreateCarrier("carrier", 2, fighter);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { carrier },
+                new[] { CreateShip("defender", 100000, 0) },
+                attackerFighters: new[] { fighter }
+            );
+            TacticalCapitalShipUnit ship = GetShip(battle, carrier);
+            TacticalStarfighterUnit squadron = GetSquadron(battle, fighter);
+            squadron.X = ship.X;
+            squadron.Y = ship.Y;
+
+            bool offered = battle.CanOrderRecovery(squadron);
+            bool ordered = battle.IssueRecoverOrder(new[] { squadron });
+            battle.Advance(1);
+            double landing = squadron.DockingFraction;
+            bool aboardEarly = squadron.IsDocked;
+            battle.Advance(3);
+
+            Assert.IsTrue(offered);
+            Assert.IsTrue(ordered);
+            Assert.AreSame(ship, squadron.RecoveryShip);
+            Assert.Greater(landing, 0);
+            Assert.Less(landing, 1);
+            Assert.IsFalse(aboardEarly);
+            Assert.IsTrue(squadron.IsDocked);
+            Assert.IsTrue(squadron.IsOffField);
+            Assert.IsTrue(squadron.IsAlive);
+            Assert.IsFalse(squadron.IsTargetable);
+            Assert.IsFalse(battle.CanCommand(squadron));
+            Assert.IsFalse(battle.CanOrderRecovery(squadron));
+            Assert.AreEqual(0, battle.CountFighters(CombatSide.Attacker));
+            Assert.IsFalse(battle.IsComplete);
+        }
+
+        [Test]
+        public void IssueRecoverOrder_SquadronAwayFromItsCarrier_FliesHomeAndDocks()
+        {
+            Starfighter fighter = CreateFighter("fighter", 12, 5);
+            CapitalShip carrier = CreateCarrier("carrier", 2, fighter);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { carrier },
+                new[] { CreateShip("defender", 100000, 0) },
+                attackerFighters: new[] { fighter }
+            );
+            TacticalCapitalShipUnit ship = GetShip(battle, carrier);
+            TacticalStarfighterUnit squadron = GetSquadron(battle, fighter);
+            squadron.X = 0;
+            squadron.Y = 0;
+            double startDistance = squadron.GetDistanceTo(ship);
+
+            battle.IssueRecoverOrder(new[] { squadron });
+            battle.Advance(0.5);
+            bool flying = squadron.DockingFraction <= 0 && !squadron.IsDocked;
+            double closing = squadron.GetDistanceTo(ship);
+            battle.Advance(30);
+
+            Assert.IsTrue(flying);
+            Assert.Less(closing, startDistance);
+            Assert.IsTrue(squadron.IsDocked);
+            Assert.AreEqual(ship.X, squadron.X, 0.0001);
+            Assert.AreEqual(ship.Y, squadron.Y, 0.0001);
+        }
+
+        [Test]
+        public void IssueRecoverOrder_MoreSquadronsThanBays_FillsEachHangarOnceHoweverDepletedTheSquadron()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            Starfighter first = CreateFighter("first", 12, 5);
+            Starfighter second = CreateFighter("second", 12, 5);
+            Starfighter third = CreateFighter("third", 12, 5);
+            CapitalShip carrier = CreateCarrier("carrier", 1, first);
+            CapitalShip tender = CreateCarrier("tender", 1);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { carrier, tender },
+                new[] { CreateShip("defender", 100000, 0) },
+                attackerFighters: new[] { first, second, third },
+                config: config
+            );
+            TacticalStarfighterUnit firstUnit = GetSquadron(battle, first);
+            TacticalStarfighterUnit secondUnit = GetSquadron(battle, second);
+            TacticalStarfighterUnit thirdUnit = GetSquadron(battle, third);
+            // A squadron down to a few fighters still takes a whole bay.
+            firstUnit.ApplyDamage(
+                firstUnit.RemainingDurability * 0.75,
+                0,
+                config,
+                new SystemRandomProvider(_seed)
+            );
+
+            bool ordered = battle.IssueRecoverOrder(
+                new TacticalBattleUnit[] { firstUnit, secondUnit, thirdUnit }
+            );
+
+            Assert.IsTrue(ordered);
+            Assert.Less(firstUnit.CurrentSquadronSize, 12);
+            Assert.AreSame(GetShip(battle, carrier), firstUnit.RecoveryShip);
+            Assert.AreSame(GetShip(battle, tender), secondUnit.RecoveryShip);
+            Assert.IsNull(thirdUnit.RecoveryShip);
+            Assert.IsFalse(battle.CanOrderRecovery(thirdUnit));
+            Assert.IsFalse(battle.IssueRecoverOrder(new[] { thirdUnit }));
+        }
+
+        [Test]
+        public void IssueRecoverOrder_WithAShipNamed_SendsTheSquadronThereAndRefusesAnEnemyShip()
+        {
+            Starfighter fighter = CreateFighter("fighter", 12, 5);
+            CapitalShip carrier = CreateCarrier("carrier", 1, fighter);
+            CapitalShip tender = CreateCarrier("tender", 1);
+            CapitalShip defender = CreateShip("defender", 100000, 0);
+            defender.StarfighterCapacity = 4;
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { carrier, tender },
+                new[] { defender },
+                attackerFighters: new[] { fighter }
+            );
+            TacticalStarfighterUnit squadron = GetSquadron(battle, fighter);
+            TacticalCapitalShipUnit tenderUnit = GetShip(battle, tender);
+
+            bool toTheEnemy = battle.IssueRecoverOrder(
+                new[] { squadron },
+                GetShip(battle, defender)
+            );
+            bool toTheTender = battle.IssueRecoverOrder(new[] { squadron }, tenderUnit);
+
+            Assert.IsFalse(toTheEnemy);
+            Assert.IsTrue(toTheTender);
+            Assert.AreSame(tenderUnit, squadron.RecoveryShip);
+        }
+
+        [Test]
+        public void IssueAttackOrder_SquadronOnItsWayToAHangar_BreaksOffAndFreesTheBay()
+        {
+            Starfighter first = CreateFighter("first", 12, 5);
+            Starfighter second = CreateFighter("second", 12, 5);
+            CapitalShip carrier = CreateCarrier("carrier", 1, first);
+            CapitalShip defender = CreateShip("defender", 100000, 0);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { carrier },
+                new[] { defender },
+                attackerFighters: new[] { first, second }
+            );
+            TacticalStarfighterUnit firstUnit = GetSquadron(battle, first);
+            TacticalStarfighterUnit secondUnit = GetSquadron(battle, second);
+            TacticalCapitalShipUnit enemy = GetShip(battle, defender);
+            firstUnit.X = 0;
+            firstUnit.Y = 0;
+
+            battle.IssueRecoverOrder(new[] { firstUnit });
+            bool bayTaken = !battle.CanOrderRecovery(secondUnit);
+            battle.IssueAttackOrder(new[] { firstUnit }, enemy);
+
+            Assert.IsTrue(bayTaken);
+            Assert.IsNull(firstUnit.RecoveryShip);
+            Assert.AreSame(enemy, firstUnit.Target);
+            Assert.IsTrue(battle.CanOrderRecovery(secondUnit));
+        }
+
+        [Test]
+        public void IssueAttackOrder_SquadronAboardAShip_StaysAboard()
+        {
+            Starfighter fighter = CreateFighter("fighter", 12, 5);
+            CapitalShip carrier = CreateCarrier("carrier", 1, fighter);
+            CapitalShip defender = CreateShip("defender", 100000, 0);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { carrier },
+                new[] { defender },
+                attackerFighters: new[] { fighter }
+            );
+            TacticalCapitalShipUnit ship = GetShip(battle, carrier);
+            TacticalStarfighterUnit squadron = GetSquadron(battle, fighter);
+            squadron.X = ship.X;
+            squadron.Y = ship.Y;
+            battle.IssueRecoverOrder(new[] { squadron });
+            battle.Advance(4);
+
+            battle.IssueAttackOrder(new[] { squadron }, GetShip(battle, defender));
+            bool recalledAgain = battle.IssueRecoverOrder(new[] { squadron });
+            battle.Advance(4);
+
+            Assert.IsTrue(squadron.IsDocked);
+            Assert.IsFalse(squadron.IsDirected);
+            Assert.IsFalse(recalledAgain);
+            Assert.AreSame(ship, squadron.RecoveryShip);
+            Assert.AreEqual(ship.X, squadron.X, 0.0001);
+            Assert.AreEqual(ship.Y, squadron.Y, 0.0001);
+        }
+
+        [Test]
+        public void Advance_ShipDestroyedWithASquadronAboard_LosesTheSquadronWithIt()
+        {
+            Starfighter fighter = CreateFighter("fighter", 12, 5);
+            CapitalShip carrier = CreateCarrier("carrier", 1, fighter);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { carrier },
+                new[] { CreateShip("defender", 100000, 0) },
+                attackerFighters: new[] { fighter }
+            );
+            TacticalCapitalShipUnit ship = GetShip(battle, carrier);
+            TacticalStarfighterUnit squadron = GetSquadron(battle, fighter);
+            squadron.X = ship.X;
+            squadron.Y = ship.Y;
+            battle.IssueRecoverOrder(new[] { squadron });
+            battle.Advance(4);
+            bool aboard = squadron.IsDocked;
+            battle.TakeEvents();
+
+            ship.Destroy();
+            battle.Advance(1);
+            IReadOnlyList<TacticalBattleEvent> events = battle.TakeEvents();
+
+            Assert.IsTrue(aboard);
+            Assert.IsFalse(squadron.IsAlive);
+            Assert.AreEqual(0, squadron.CurrentSquadronSize);
+            Assert.IsTrue(
+                events.Any(battleEvent =>
+                    battleEvent.Kind == TacticalBattleEventKind.UnitDestroyed
+                    && battleEvent.Unit == ship
+                )
+            );
+            Assert.IsFalse(events.Any(battleEvent => battleEvent.Unit == squadron));
+            Assert.IsTrue(battle.IsComplete);
+            SpaceCombatResult result = battle.CreateResult();
+            Assert.AreEqual(
+                0,
+                result.FighterLosses.Single(loss => loss.Fighter == fighter).SquadsAfter
+            );
+            Assert.IsEmpty(result.FighterDockings);
+        }
+
+        [Test]
+        public void CreateResult_SquadronAboardAShip_ReportsTheShipItDockedWith()
+        {
+            Starfighter fighter = CreateFighter("fighter", 12, 5);
+            CapitalShip carrier = CreateCarrier("carrier", 1, fighter);
+            CapitalShip tender = CreateCarrier("tender", 1);
+            CapitalShip defender = CreateShip("defender", 100000, 0);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { carrier, tender },
+                new[] { defender },
+                attackerFighters: new[] { fighter }
+            );
+            TacticalStarfighterUnit squadron = GetSquadron(battle, fighter);
+            TacticalCapitalShipUnit tenderUnit = GetShip(battle, tender);
+            squadron.X = tenderUnit.X;
+            squadron.Y = tenderUnit.Y;
+            battle.IssueRecoverOrder(new[] { squadron }, tenderUnit);
+            battle.Advance(4);
+            bool aboard = squadron.IsDocked;
+
+            GetShip(battle, defender).Destroy();
+            battle.Advance(1);
+            SpaceCombatResult result = battle.CreateResult();
+
+            Assert.IsTrue(aboard);
+            Assert.AreEqual(CombatSide.Attacker, result.Winner);
+            FighterDockingResult docking = result.FighterDockings.Single();
+            Assert.AreSame(fighter, docking.Fighter);
+            Assert.AreSame(tender, docking.Ship);
+            Assert.IsEmpty(result.FighterLosses);
+            Assert.IsEmpty(result.WithdrawnUnits);
+        }
+
+        [Test]
+        public void OrderWithdrawal_SquadronWithoutAHyperdrive_DocksAndLeavesAboardItsCarrier()
+        {
+            Starfighter fighter = CreateFighter("fighter", 12, 5);
+            CapitalShip carrier = CreateCarrier("carrier", 1, fighter);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { carrier },
+                new[] { CreateShip("defender", 100000, 0) },
+                attackerFighters: new[] { fighter },
+                attackerCanWithdraw: true
+            );
+            TacticalCapitalShipUnit ship = GetShip(battle, carrier);
+            TacticalStarfighterUnit squadron = GetSquadron(battle, fighter);
+
+            bool ordered = battle.OrderWithdrawal(CombatSide.Attacker);
+            TacticalCapitalShipUnit recalledTo = squadron.RecoveryShip;
+            battle.Advance(120);
+
+            Assert.IsTrue(ordered);
+            Assert.AreSame(ship, recalledTo);
+            Assert.IsTrue(battle.IsComplete);
+            Assert.IsTrue(squadron.IsDocked);
+            Assert.IsTrue(squadron.HasWithdrawn);
+            SpaceCombatResult result = battle.CreateResult();
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
+            CollectionAssert.AreEquivalent(
+                new object[] { carrier, fighter },
+                result.WithdrawnUnits
+            );
+            Assert.IsEmpty(result.FighterLosses);
+            Assert.AreSame(carrier, result.FighterDockings.Single().Ship);
+        }
+
+        [Test]
+        public void OrderWithdrawal_MoreSquadronsThanBays_LeavesBehindTheOneThatCannotJump()
+        {
+            Starfighter first = CreateFighter("first", 12, 5);
+            Starfighter second = CreateFighter("second", 12, 5);
+            Starfighter third = CreateFighter("third", 12, 5);
+            third.Hyperdrive = 1;
+            CapitalShip carrier = CreateCarrier("carrier", 1, first);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { carrier },
+                new[] { CreateShip("defender", 100000, 0) },
+                attackerFighters: new[] { first, second, third },
+                attackerCanWithdraw: true
+            );
+
+            battle.OrderWithdrawal(CombatSide.Attacker);
+            battle.Advance(240);
+
+            Assert.IsTrue(battle.IsComplete);
+            SpaceCombatResult result = battle.CreateResult();
+            CollectionAssert.AreEquivalent(
+                new object[] { carrier, first, third },
+                result.WithdrawnUnits
+            );
+            FighterLossResult loss = result.FighterLosses.Single();
+            Assert.AreSame(second, loss.Fighter);
+            Assert.AreEqual(0, loss.SquadsAfter);
+            Assert.AreSame(first, result.FighterDockings.Single().Fighter);
+        }
+
+        [Test]
+        public void OrderWithdrawal_SquadronWithAHyperdrive_JumpsOnItsOwnAndLeavesTheBaysToTheRest()
+        {
+            Starfighter jumper = CreateFighter("jumper", 12, 5);
+            jumper.Hyperdrive = 1;
+            Starfighter walker = CreateFighter("walker", 12, 5);
+            CapitalShip carrier = CreateCarrier("carrier", 2, jumper);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { carrier },
+                new[] { CreateShip("defender", 100000, 0) },
+                attackerFighters: new[] { jumper, walker },
+                attackerCanWithdraw: true
+            );
+            TacticalCapitalShipUnit ship = GetShip(battle, carrier);
+            TacticalStarfighterUnit jumperUnit = GetSquadron(battle, jumper);
+            TacticalStarfighterUnit walkerUnit = GetSquadron(battle, walker);
+            battle.IssueRecoverOrder(new[] { jumperUnit });
+            battle.IssueScreenOrder(new[] { walkerUnit }, ship);
+            bool recalledBefore = ReferenceEquals(jumperUnit.RecoveryShip, ship);
+            bool screeningBefore = ReferenceEquals(walkerUnit.ScreenedShip, ship);
+
+            battle.OrderWithdrawal(CombatSide.Attacker);
+            TacticalCapitalShipUnit walkerHangar = walkerUnit.RecoveryShip;
+            TacticalCapitalShipUnit jumperHangar = jumperUnit.RecoveryShip;
+            TacticalCapitalShipUnit walkerScreen = walkerUnit.ScreenedShip;
+            battle.Advance(240);
+
+            Assert.IsTrue(recalledBefore);
+            Assert.IsTrue(screeningBefore);
+            Assert.AreSame(ship, walkerHangar);
+            Assert.IsNull(jumperHangar);
+            Assert.IsNull(walkerScreen);
+            Assert.IsTrue(battle.IsComplete);
+            Assert.IsFalse(jumperUnit.IsDocked);
+            SpaceCombatResult result = battle.CreateResult();
+            CollectionAssert.AreEquivalent(
+                new object[] { carrier, jumper, walker },
+                result.WithdrawnUnits
+            );
+            Assert.IsEmpty(result.FighterLosses);
+            Assert.AreSame(walker, result.FighterDockings.Single().Fighter);
+        }
+
+        [Test]
+        public void OrderWithdrawal_SquadronStillOnItsWayHome_TheCarrierHoldsItsJumpForIt()
+        {
+            Starfighter fighter = CreateFighter("fighter", 12, 5);
+            fighter.SublightSpeed = 2;
+            CapitalShip carrier = CreateCarrier("carrier", 1, fighter);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { carrier },
+                new[] { CreateShip("defender", 100000, 0) },
+                attackerFighters: new[] { fighter },
+                attackerCanWithdraw: true,
+                config: CreateOpenConfig()
+            );
+            TacticalCapitalShipUnit ship = GetShip(battle, carrier);
+            TacticalStarfighterUnit squadron = GetSquadron(battle, fighter);
+            squadron.X = battle.HalfWidth - 10;
+            squadron.Y = 0;
+
+            battle.OrderWithdrawal(CombatSide.Attacker);
+            double waited = 0;
+            while (Math.Abs(ship.X) < battle.HalfWidth + 2 && waited < 120)
+            {
+                battle.Advance(0.5);
+                waited += 0.5;
+            }
+
+            battle.Advance(1);
+            bool pastTheEdge = Math.Abs(ship.X) >= battle.HalfWidth + 2;
+            bool stillComing = !squadron.IsDocked && ReferenceEquals(squadron.RecoveryShip, ship);
+            bool held = !ship.HasWithdrawn && !battle.IsComplete;
+            battle.Advance(400);
+
+            Assert.IsTrue(pastTheEdge);
+            Assert.IsTrue(stillComing);
+            Assert.IsTrue(held);
+            Assert.IsTrue(battle.IsComplete);
+            Assert.IsTrue(ship.HasWithdrawn);
+            Assert.IsTrue(squadron.IsDocked);
+            Assert.IsTrue(squadron.HasWithdrawn);
+            Assert.IsEmpty(battle.CreateResult().FighterLosses);
+        }
+
+        [Test]
+        public void CompleteWithdrawal_SquadronsWithoutHyperdrives_AreTakenAboardAsFarAsTheHangarsReach()
+        {
+            Starfighter first = CreateFighter("first", 12, 5);
+            Starfighter second = CreateFighter("second", 12, 5);
+            Starfighter jumper = CreateFighter("jumper", 12, 5);
+            jumper.Hyperdrive = 1;
+            CapitalShip carrier = CreateCarrier("carrier", 1, first);
+            TacticalBattleForce force = new TacticalBattleForce(
+                CombatSide.Attacker,
+                new[] { carrier },
+                new[] { first, second, jumper },
+                hasEscapeRoute: true,
+                isAutomatic: false,
+                CreateConfig(),
+                default
+            );
+
+            force.CompleteWithdrawal();
+
+            TacticalStarfighterUnit firstUnit = force.Fighters.Single(unit =>
+                unit.Fighter == first
+            );
+            TacticalStarfighterUnit secondUnit = force.Fighters.Single(unit =>
+                unit.Fighter == second
+            );
+            TacticalStarfighterUnit jumperUnit = force.Fighters.Single(unit =>
+                unit.Fighter == jumper
+            );
+            Assert.IsTrue(force.Ships.Single().HasWithdrawn);
+            Assert.IsTrue(firstUnit.IsDocked);
+            Assert.IsTrue(firstUnit.IsAlive);
+            Assert.IsTrue(firstUnit.HasWithdrawn);
+            Assert.IsFalse(secondUnit.IsAlive);
+            Assert.IsFalse(jumperUnit.IsDocked);
+            Assert.IsTrue(jumperUnit.HasWithdrawn);
+        }
+
+        [Test]
+        public void IssueScreenOrder_Squadron_CirclesTheShipInsteadOfGoingAfterTheEnemy()
+        {
+            Starfighter fighter = CreateFighter("fighter", 12, 5);
+            CapitalShip carrier = CreateCarrier("carrier", 1, fighter);
+            CapitalShip consort = CreateShip("consort", 500, 10);
+            CapitalShip defender = CreateShip("defender", 100000, 0);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { carrier, consort },
+                new[] { defender },
+                attackerFighters: new[] { fighter },
+                config: CreateOpenConfig()
+            );
+            TacticalStarfighterUnit squadron = GetSquadron(battle, fighter);
+            TacticalCapitalShipUnit screened = GetShip(battle, consort);
+            TacticalCapitalShipUnit enemy = GetShip(battle, defender);
+            battle.Advance(1);
+            TacticalBattleUnit targetOnItsOwn = squadron.Target;
+
+            bool ordered = battle.IssueScreenOrder(new[] { squadron }, screened);
+            bool orderedOntoAnEnemy = battle.IssueScreenOrder(new[] { squadron }, enemy);
+            battle.Advance(20);
+
+            Assert.AreSame(enemy, targetOnItsOwn);
+            Assert.IsTrue(ordered);
+            Assert.IsFalse(orderedOntoAnEnemy);
+            Assert.AreSame(screened, squadron.ScreenedShip);
+            Assert.IsNull(squadron.Target);
+            Assert.Less(squadron.GetDistanceTo(screened), screened.HullFootprint + 20);
+            Assert.Less(squadron.GetDistanceTo(screened), squadron.GetDistanceTo(enemy));
+        }
+
+        [Test]
+        public void IssueScreenOrder_EnemyComesNearTheShip_TheSquadronTakesItOnAndLetsItGoWhenItLeaves()
+        {
+            Starfighter fighter = CreateFighter("fighter", 12, 5);
+            CapitalShip carrier = CreateCarrier("carrier", 1, fighter);
+            Starfighter raider = CreateFighter("raider", 12, 0);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { carrier },
+                new[] { CreateShip("defender", 100000, 0) },
+                attackerFighters: new[] { fighter },
+                defenderFighters: new[] { raider },
+                config: CreateOpenConfig()
+            );
+            TacticalCapitalShipUnit ship = GetShip(battle, carrier);
+            TacticalStarfighterUnit squadron = GetSquadron(battle, fighter);
+            TacticalStarfighterUnit enemy = GetSquadron(battle, raider);
+            battle.IssueScreenOrder(new[] { squadron }, ship);
+            battle.Advance(0.25);
+            TacticalBattleUnit targetWithNothingNear = squadron.Target;
+
+            enemy.X = ship.X + ship.HullFootprint + 5;
+            enemy.Y = ship.Y;
+            battle.Advance(0.25);
+            TacticalBattleUnit targetWhileNear = squadron.Target;
+            enemy.X = battle.HalfWidth - 10;
+            enemy.Y = 0;
+            battle.Advance(0.25);
+
+            Assert.IsNull(targetWithNothingNear);
+            Assert.AreSame(enemy, targetWhileNear);
+            Assert.IsNull(squadron.Target);
+            Assert.AreSame(ship, squadron.ScreenedShip);
+        }
+
+        [Test]
+        public void IssueAttackOrder_ScreeningSquadron_LeavesItsScreen()
+        {
+            Starfighter fighter = CreateFighter("fighter", 12, 5);
+            CapitalShip carrier = CreateCarrier("carrier", 1, fighter);
+            CapitalShip defender = CreateShip("defender", 100000, 0);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { carrier },
+                new[] { defender },
+                attackerFighters: new[] { fighter }
+            );
+            TacticalStarfighterUnit squadron = GetSquadron(battle, fighter);
+            TacticalCapitalShipUnit enemy = GetShip(battle, defender);
+            battle.IssueScreenOrder(new[] { squadron }, GetShip(battle, carrier));
+            bool screening = squadron.ScreenedShip != null;
+
+            battle.IssueAttackOrder(new[] { squadron }, enemy);
+
+            Assert.IsTrue(screening);
+            Assert.IsNull(squadron.ScreenedShip);
+            Assert.AreSame(enemy, squadron.Target);
+            Assert.IsTrue(squadron.IsDirected);
+        }
+
+        [Test]
+        public void Advance_ScreenedShipDestroyed_ReleasesTheSquadronToFightOnItsOwn()
+        {
+            Starfighter fighter = CreateFighter("fighter", 12, 5);
+            CapitalShip carrier = CreateCarrier("carrier", 1, fighter);
+            CapitalShip consort = CreateShip("consort", 500, 10);
+            CapitalShip defender = CreateShip("defender", 100000, 0);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { carrier, consort },
+                new[] { defender },
+                attackerFighters: new[] { fighter }
+            );
+            TacticalStarfighterUnit squadron = GetSquadron(battle, fighter);
+            TacticalCapitalShipUnit screened = GetShip(battle, consort);
+            battle.IssueScreenOrder(new[] { squadron }, screened);
+            battle.Advance(1);
+            bool screening = ReferenceEquals(squadron.ScreenedShip, screened);
+
+            screened.Destroy();
+            battle.Advance(1);
+
+            Assert.IsTrue(screening);
+            Assert.IsNull(squadron.ScreenedShip);
+            Assert.AreSame(GetShip(battle, defender), squadron.Target);
+        }
+
+        [Test]
+        public void IssueRecoverOrder_ScreeningSquadron_DocksWithTheShipItScreens()
+        {
+            Starfighter fighter = CreateFighter("fighter", 12, 5);
+            CapitalShip carrier = CreateCarrier("carrier", 1, fighter);
+            CapitalShip tender = CreateCarrier("tender", 1);
+            TacticalSpaceBattle battle = CreateBattle(
+                new[] { carrier, tender },
+                new[] { CreateShip("defender", 100000, 0) },
+                attackerFighters: new[] { fighter }
+            );
+            TacticalStarfighterUnit squadron = GetSquadron(battle, fighter);
+            TacticalCapitalShipUnit tenderUnit = GetShip(battle, tender);
+            battle.IssueScreenOrder(new[] { squadron }, tenderUnit);
+
+            bool ordered = battle.IssueRecoverOrder(new[] { squadron });
+
+            Assert.IsTrue(ordered);
+            Assert.AreSame(tenderUnit, squadron.RecoveryShip);
+            Assert.IsNull(squadron.ScreenedShip);
         }
 
         [Test]
@@ -1749,6 +2799,52 @@ namespace Rebellion.Tests.Gameplay
         }
 
         /// <summary>
+        /// Creates the standard combat parameters with the shipped arena size, for tests whose
+        /// fleets need room to stand off from each other.
+        /// </summary>
+        /// <returns>The combat parameters.</returns>
+        private static GameConfig.SpaceCombatConfig CreateOpenConfig()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveStartingDistance = 75;
+            return config;
+        }
+
+        /// <summary>
+        /// Creates an escort: a capital ship armed only with laser cannons on every arc.
+        /// </summary>
+        /// <param name="instanceId">The instance identifier.</param>
+        /// <param name="hull">The hull strength.</param>
+        /// <param name="laserStrength">The laser cannon strength on each arc.</param>
+        /// <param name="range">The laser cannon range.</param>
+        /// <returns>The created ship.</returns>
+        private static CapitalShip CreateEscort(
+            string instanceId,
+            int hull,
+            int laserStrength,
+            int range
+        )
+        {
+            CapitalShip ship = CreateShip(instanceId, hull, 0);
+            for (int arc = 0; arc < 4; arc++)
+                ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon][arc] = laserStrength;
+            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = range;
+            ship.WeaponRecharge = laserStrength;
+            return ship;
+        }
+
+        /// <summary>
+        /// Returns the gap between two units' hull footprints.
+        /// </summary>
+        /// <param name="first">One unit.</param>
+        /// <param name="second">The other unit.</param>
+        /// <returns>The distance between the hulls, negative when they overlap.</returns>
+        private static double GetHullGap(TacticalBattleUnit first, TacticalBattleUnit second)
+        {
+            return first.GetDistanceTo(second) - first.HullFootprint - second.HullFootprint;
+        }
+
+        /// <summary>
         /// Creates a fighter squadron with a laser cannon.
         /// </summary>
         /// <param name="instanceId">The instance identifier.</param>
@@ -1775,6 +2871,46 @@ namespace Rebellion.Tests.Gameplay
                 LaserRange = weaponStrength > 0 ? 12 : 0,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
+        }
+
+        /// <summary>
+        /// Creates an armed carrier with hangar room and puts squadrons aboard it.
+        /// </summary>
+        /// <param name="instanceId">The instance identifier.</param>
+        /// <param name="capacity">The number of squadrons the hangar holds.</param>
+        /// <param name="fighters">The squadrons the carrier brings to the battle.</param>
+        /// <returns>The created carrier.</returns>
+        private static CapitalShip CreateCarrier(
+            string instanceId,
+            int capacity,
+            params Starfighter[] fighters
+        )
+        {
+            CapitalShip carrier = CreateShip(instanceId, 500, 10);
+            carrier.StarfighterCapacity = capacity;
+            foreach (Starfighter fighter in fighters)
+            {
+                carrier.AddChild(fighter);
+                fighter.SetParent(carrier);
+            }
+
+            return carrier;
+        }
+
+        /// <summary>
+        /// Returns the tactical unit wrapping a fighter squadron.
+        /// </summary>
+        /// <param name="battle">The battle to search.</param>
+        /// <param name="fighter">The fighter squadron.</param>
+        /// <returns>The matching tactical unit.</returns>
+        private static TacticalStarfighterUnit GetSquadron(
+            TacticalSpaceBattle battle,
+            Starfighter fighter
+        )
+        {
+            return battle
+                .Units.OfType<TacticalStarfighterUnit>()
+                .Single(unit => unit.Fighter == fighter);
         }
 
         /// <summary>

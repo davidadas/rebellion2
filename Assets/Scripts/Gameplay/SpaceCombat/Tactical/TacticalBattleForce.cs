@@ -92,8 +92,7 @@ namespace Rebellion.Gameplay
         /// <summary>
         /// Gets whether a ship still in the battle projects a gravity well over the system.
         /// </summary>
-        internal bool ProjectsGravityWell =>
-            Ships.Any(ship => ship.IsTargetable && ship.HasGravityWell);
+        internal bool ProjectsGravityWell => Ships.Any(ship => ship.ProjectsGravityWell);
 
         /// <summary>
         /// Gets whether a unit still in the battle can make a hyperspace jump of its own.
@@ -284,9 +283,14 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Calculates the escape progress of units still leaving the battle under their own power.
+        /// Calculates the escape progress of units still leaving the battle under their own
+        /// power, and of squadrons still making for a hangar.
         /// </summary>
-        /// <returns>The combined distance from the battle center of independently withdrawing units.</returns>
+        /// <returns>
+        /// A measure that changes for as long as the withdrawal is getting somewhere: the
+        /// combined distance from the battle center of independently withdrawing units, plus
+        /// how far each recalled squadron still has to go.
+        /// </returns>
         internal double GetWithdrawalProgress()
         {
             double progress = 0;
@@ -296,7 +300,126 @@ namespace Rebellion.Gameplay
                     progress += Math.Abs(unit.X);
             }
 
+            // A squadron making for its hangar is progress too, so a ship holding its jump for
+            // one is not read as a retreat that has stalled.
+            foreach (TacticalStarfighterUnit fighter in Fighters)
+            {
+                if (fighter.IsTargetable && fighter.IsWithdrawing && fighter.RecoveryShip != null)
+                    progress +=
+                        fighter.GetDistanceTo(fighter.RecoveryShip) + fighter.DockingFraction;
+            }
+
             return progress;
+        }
+
+        /// <summary>
+        /// Counts the hangar bays a ship still has free: its capacity, less every squadron
+        /// aboard it or on its way to it. A depleted squadron takes a whole bay.
+        /// </summary>
+        /// <param name="ship">The ship to inspect.</param>
+        /// <returns>The number of squadrons the ship can still take.</returns>
+        internal int GetFreeBays(TacticalCapitalShipUnit ship)
+        {
+            if (ship == null)
+                return 0;
+
+            int held = 0;
+            foreach (TacticalStarfighterUnit fighter in Fighters)
+            {
+                if (ReferenceEquals(fighter.RecoveryShip, ship) && fighter.IsAlive)
+                    held++;
+            }
+
+            return Math.Max(ship.Ship.StarfighterCapacity - held, 0);
+        }
+
+        /// <summary>
+        /// Finds the hangar a squadron should make for: its own carrier while that has a bay
+        /// free, otherwise the nearest friendly ship that has one.
+        /// </summary>
+        /// <param name="fighter">The squadron to recover.</param>
+        /// <param name="mustJump">Whether only a ship that can jump to hyperspace will do.</param>
+        /// <returns>The ship to dock with, or null when no bay is free.</returns>
+        internal TacticalCapitalShipUnit FindHangar(TacticalStarfighterUnit fighter, bool mustJump)
+        {
+            TacticalCapitalShipUnit nearest = null;
+            double nearestDistance = double.MaxValue;
+            foreach (TacticalCapitalShipUnit ship in Ships)
+            {
+                if (!CanRecover(ship, mustJump) || GetFreeBays(ship) <= 0)
+                    continue;
+                if (ReferenceEquals(ship.Ship, fighter.Carrier))
+                    return ship;
+
+                double distance = fighter.GetDistanceTo(ship);
+                if (distance >= nearestDistance)
+                    continue;
+
+                nearest = ship;
+                nearestDistance = distance;
+            }
+
+            return nearest;
+        }
+
+        /// <summary>
+        /// Recalls a squadron to a hangar. It goes to the ship asked for when that has a bay
+        /// free; otherwise it keeps the hangar it was already making for, or picks one.
+        /// </summary>
+        /// <param name="fighter">The squadron to recall.</param>
+        /// <param name="preferred">The ship to dock with, or null to let the squadron pick.</param>
+        /// <param name="mustJump">Whether only a ship that can jump to hyperspace will do.</param>
+        /// <returns>True when the squadron has a hangar to make for.</returns>
+        internal bool TryRecover(
+            TacticalStarfighterUnit fighter,
+            TacticalCapitalShipUnit preferred,
+            bool mustJump
+        )
+        {
+            if (fighter?.IsTargetable != true)
+                return false;
+
+            TacticalCapitalShipUnit current = fighter.RecoveryShip;
+            bool currentHolds = CanRecover(current, mustJump);
+            if (currentHolds && (preferred == null || ReferenceEquals(preferred, current)))
+                return true;
+
+            TacticalCapitalShipUnit hangar =
+                CanRecover(preferred, mustJump) && GetFreeBays(preferred) > 0 ? preferred : null;
+            if (hangar == null && currentHolds)
+                return true;
+
+            hangar ??= FindHangar(fighter, mustJump);
+            if (hangar == null)
+            {
+                fighter.ClearRecovery();
+                return false;
+            }
+
+            fighter.SetRecovery(hangar);
+            return true;
+        }
+
+        /// <summary>
+        /// Returns whether a ship is holding its jump for a squadron recalled to it that is
+        /// still on its way or landing.
+        /// </summary>
+        /// <param name="ship">The ship to inspect.</param>
+        /// <returns>True while a squadron is still coming aboard.</returns>
+        internal bool IsAwaitingSquadrons(TacticalCapitalShipUnit ship)
+        {
+            foreach (TacticalStarfighterUnit fighter in Fighters)
+            {
+                if (
+                    ReferenceEquals(fighter.RecoveryShip, ship)
+                    && !fighter.IsDocked
+                    && fighter.IsTargetable
+                    && fighter.Speed > 0
+                )
+                    return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -323,6 +446,7 @@ namespace Rebellion.Gameplay
                 unit.StartWithdrawal();
             foreach (TacticalBattleStation station in Stations)
                 station.StartWithdrawal(BattleStationRules.JumpRounds);
+            RecallSquadrons();
         }
 
         /// <summary>
@@ -330,6 +454,29 @@ namespace Rebellion.Gameplay
         /// </summary>
         internal void CompleteWithdrawal()
         {
+            // Squadrons that can jump leave on their own and give up any bay they were making
+            // for; those that cannot are taken aboard at once, as far as the hangars reach.
+            foreach (TacticalStarfighterUnit fighter in Fighters)
+            {
+                if (fighter.CanWithdrawIndependently)
+                    fighter.ClearRecovery();
+            }
+
+            foreach (TacticalStarfighterUnit fighter in Fighters)
+            {
+                if (
+                    !fighter.IsAlive
+                    || fighter.HasWithdrawn
+                    || fighter.IsDocked
+                    || fighter.CanWithdrawIndependently
+                )
+                    continue;
+
+                fighter.ClearTrenchRun();
+                if (TryRecover(fighter, null, mustJump: true))
+                    fighter.Dock();
+            }
+
             foreach (
                 TacticalBattleUnit unit in Units.Where(unit =>
                     unit.IsAlive && !unit.HasWithdrawn && unit.CanWithdrawIndependently
@@ -349,46 +496,15 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Resolves stranded units after every mobile survivor has escaped.
+        /// Resolves stranded units after every mobile survivor has escaped. A squadron aboard a
+        /// ship that jumped went with it; whatever else is still here has no way out and is lost.
         /// </summary>
         internal void CompleteDependentWithdrawal()
         {
-            HashSet<Starfighter> carrierDependentFighters = Fighters
-                .Where(fighter =>
-                    fighter.IsAlive && !fighter.HasWithdrawn && !fighter.CanWithdrawIndependently
-                )
-                .Select(fighter => fighter.Fighter)
-                .ToHashSet();
-            Dictionary<Starfighter, CapitalShip> recoveryAssignments =
-                SpaceCombatWithdrawalPlanner.GetRecoveryAssignments(
-                    Ships
-                        .Where(ship =>
-                            ship.IsAlive && ship.HasWithdrawn && ship.CanWithdrawIndependently
-                        )
-                        .Select(ship => ship.Ship)
-                        .Concat(
-                            Stations
-                                .Where(station =>
-                                    station.HasWithdrawn && station.CanWithdrawIndependently
-                                )
-                                .Select(station => station.Ship)
-                        ),
-                    Fighters.ConvertAll(fighter => fighter.Fighter),
-                    carrierDependentFighters
-                );
-
             foreach (
                 TacticalBattleUnit unit in Units.Where(unit => unit.IsAlive && !unit.HasWithdrawn)
             )
-            {
-                if (
-                    unit is TacticalStarfighterUnit fighter
-                    && recoveryAssignments.ContainsKey(fighter.Fighter)
-                )
-                    unit.FinishWithdrawal();
-                else
-                    unit.Destroy();
-            }
+                unit.Destroy();
 
             // A station with no hyperdrive cannot follow its fleet out.
             foreach (TacticalBattleStation station in Stations)
@@ -399,12 +515,50 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Returns every capital ship to automatic engagement.
+        /// Recalls every squadron on the battlefield that cannot jump on its own to a hangar
+        /// aboard a ship that can. Squadrons with a hyperdrive leave the bays to them and jump
+        /// out by themselves; a squadron with neither a hyperdrive nor a bay is stranded.
+        /// </summary>
+        private void RecallSquadrons()
+        {
+            // Screens are dropped, and a squadron that can jump gives up any bay it was making
+            // for, before the bays are handed out.
+            foreach (TacticalStarfighterUnit fighter in Fighters)
+            {
+                fighter.ClearScreen();
+                if (fighter.CanWithdrawIndependently)
+                    fighter.ClearRecovery();
+            }
+
+            foreach (TacticalStarfighterUnit fighter in Fighters)
+            {
+                if (fighter.IsTargetable && !fighter.CanWithdrawIndependently)
+                    TryRecover(fighter, null, mustJump: true);
+            }
+        }
+
+        /// <summary>
+        /// Returns whether a ship can take squadrons aboard: it is still in the battle, and can
+        /// jump to hyperspace when that is asked of it.
+        /// </summary>
+        /// <param name="ship">The ship to inspect, or null.</param>
+        /// <param name="mustJump">Whether the ship must be able to jump to hyperspace.</param>
+        /// <returns>True when squadrons may dock with the ship.</returns>
+        private static bool CanRecover(TacticalCapitalShipUnit ship, bool mustJump)
+        {
+            return ship?.IsTargetable == true && (!mustJump || ship.CanWithdrawIndependently);
+        }
+
+        /// <summary>
+        /// Returns every capital ship to automatic engagement and releases every squadron from
+        /// the ship it was screening.
         /// </summary>
         internal void ClearOrders()
         {
             foreach (TacticalCapitalShipUnit ship in Ships)
                 ship.ClearOrder();
+            foreach (TacticalStarfighterUnit fighter in Fighters)
+                fighter.ClearScreen();
         }
 
         /// <summary>

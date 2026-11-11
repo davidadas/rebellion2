@@ -6,12 +6,14 @@ using UnityEngine.UI;
 
 /// <summary>
 /// One roster slot in the tactical battle's top bar: a unit portrait with a label, a highlight
-/// when the unit is inspected or selected, and a dimmed state once the unit is gone.
+/// when the unit is inspected or selected, a dimmed state once the unit is gone, and a cool tint
+/// for a squadron that has docked aboard a ship.
 /// </summary>
 public sealed class TacticalRosterSlotView : MonoBehaviour
 {
     private static readonly Color _liveColor = Color.white;
     private static readonly Color _goneColor = new Color(0.4f, 0.4f, 0.45f, 0.6f);
+    private static readonly Color _aboardColor = new Color(0.4f, 0.7f, 1f, 0.85f);
     private const int _portraitInset = 2;
     private const int _labelHeight = 12;
     private const int _fullHeight = 30;
@@ -69,11 +71,15 @@ public sealed class TacticalRosterSlotView : MonoBehaviour
 
         portraitImage.texture = data.Portrait;
         portraitImage.enabled = data.Portrait != null;
-        portraitImage.color = data.Alive ? _liveColor : _goneColor;
+        Color tint =
+            data.Alive ? _liveColor
+            : data.Aboard ? _aboardColor
+            : _goneColor;
+        portraitImage.color = tint;
         highlightImage.gameObject.SetActive(data.Highlighted);
         UILayout.SetTextContent(label, data.Label);
         label.gameObject.SetActive(_labelVisible);
-        label.color = data.Alive ? _liveColor : _goneColor;
+        label.color = tint;
         gameObject.SetActive(true);
     }
 

@@ -148,12 +148,16 @@ namespace Rebellion.Gameplay
         /// The units that completed tactical withdrawal, or null when every active participant is
         /// eligible to attempt withdrawal.
         /// </param>
+        /// <param name="dockings">
+        /// The ship each squadron docked with during a tactical battle, or null when none did.
+        /// </param>
         /// <returns>The reserved withdrawal plan.</returns>
         internal SpaceCombatWithdrawalPlan CreatePlan(
             IReadOnlyList<Fleet> fleets,
             Planet planet,
             string ownerInstanceId,
-            ISet<ISceneNode> eligibleUnits = null
+            ISet<ISceneNode> eligibleUnits = null,
+            IReadOnlyDictionary<Starfighter, CapitalShip> dockings = null
         )
         {
             SpaceCombatWithdrawalPlan plan = new SpaceCombatWithdrawalPlan();
@@ -170,7 +174,7 @@ namespace Rebellion.Gameplay
             );
 
             AddFleetDestinations(plan, fleets, planet, eligibleShips);
-            AddFighterDestinations(plan, planet, participatingFighters, eligibleFighters);
+            AddFighterDestinations(plan, planet, participatingFighters, eligibleFighters, dockings);
             return plan;
         }
 
@@ -231,15 +235,34 @@ namespace Rebellion.Gameplay
         /// <param name="planet">The combat planet.</param>
         /// <param name="participatingFighters">Every active fighter participating in combat.</param>
         /// <param name="eligibleFighters">The fighters eligible to complete withdrawal.</param>
+        /// <param name="dockings">The ship each squadron docked with, or null when none did.</param>
         private void AddFighterDestinations(
             SpaceCombatWithdrawalPlan plan,
             Planet planet,
             IReadOnlyList<Starfighter> participatingFighters,
-            IReadOnlyList<Starfighter> eligibleFighters
+            IReadOnlyList<Starfighter> eligibleFighters,
+            IReadOnlyDictionary<Starfighter, CapitalShip> dockings
         )
         {
+            // A squadron that docked during the battle leaves aboard the ship it docked with,
+            // whatever drive it has, as long as that ship has somewhere to go.
+            Dictionary<Starfighter, CapitalShip> aboard =
+                new Dictionary<Starfighter, CapitalShip>();
+            foreach (Starfighter fighter in eligibleFighters ?? Array.Empty<Starfighter>())
+            {
+                if (
+                    dockings == null
+                    || !dockings.TryGetValue(fighter, out CapitalShip ship)
+                    || !plan.Contains(ship)
+                )
+                    continue;
+
+                aboard[fighter] = ship;
+                plan.AddFighterRecovery(fighter, ship);
+            }
+
             List<Starfighter> mobileFighters = (eligibleFighters ?? Array.Empty<Starfighter>())
-                .Where(fighter => fighter.Hyperdrive > 0)
+                .Where(fighter => fighter.Hyperdrive > 0 && !plan.Contains(fighter))
                 .ToList();
             IReadOnlyList<ContainerNode> destinations =
                 mobileFighters.Count == 0
@@ -275,7 +298,8 @@ namespace Rebellion.Gameplay
             Dictionary<Starfighter, CapitalShip> recoveryAssignments = GetRecoveryAssignments(
                 plan.WithdrawnUnits.OfType<CapitalShip>(),
                 recoveryOrder,
-                carrierDependentFighters
+                carrierDependentFighters,
+                aboard
             );
             foreach (KeyValuePair<Starfighter, CapitalShip> assignment in recoveryAssignments)
                 plan.AddFighterRecovery(assignment.Key, assignment.Value);
@@ -322,11 +346,15 @@ namespace Rebellion.Gameplay
         /// <param name="carriers">The capital ships that successfully withdraw.</param>
         /// <param name="participatingFighters">Every active fighter that entered combat.</param>
         /// <param name="carrierDependentFighters">Fighters eligible to leave aboard a carrier.</param>
+        /// <param name="reservedBays">
+        /// Squadrons already placed aboard a carrier, each holding one of its bays, or null.
+        /// </param>
         /// <returns>Carrier assignments for every recoverable dependent fighter.</returns>
         internal static Dictionary<Starfighter, CapitalShip> GetRecoveryAssignments(
             IEnumerable<CapitalShip> carriers,
             IReadOnlyList<Starfighter> participatingFighters,
-            ISet<Starfighter> carrierDependentFighters
+            ISet<Starfighter> carrierDependentFighters,
+            IReadOnlyDictionary<Starfighter, CapitalShip> reservedBays = null
         )
         {
             List<CapitalShip> availableCarriers = (carriers ?? Enumerable.Empty<CapitalShip>())
@@ -336,10 +364,17 @@ namespace Rebellion.Gameplay
             Dictionary<CapitalShip, int> remainingCapacity = availableCarriers.ToDictionary(
                 carrier => carrier,
                 carrier =>
-                    GetAvailableRecoveryCapacity(
-                        carrier,
-                        participatingFighters,
-                        carrierDependentFighters
+                    Math.Max(
+                        GetAvailableRecoveryCapacity(
+                            carrier,
+                            participatingFighters,
+                            carrierDependentFighters
+                        )
+                            - (
+                                reservedBays?.Values.Count(ship => ReferenceEquals(ship, carrier))
+                                ?? 0
+                            ),
+                        0
                     )
             );
             Dictionary<Starfighter, CapitalShip> assignments =

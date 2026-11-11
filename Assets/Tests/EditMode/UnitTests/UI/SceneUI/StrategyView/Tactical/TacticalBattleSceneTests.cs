@@ -355,6 +355,122 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
         }
 
         [Test]
+        public void Sync_ShipOnARaisedDeck_DrawsItAtThatHeightWithAMarkerDownToThePlane()
+        {
+            TacticalSpaceBattle battle = CreateBattle(
+                out TacticalCapitalShipUnit friendly,
+                out TacticalCapitalShipUnit enemy
+            );
+            friendly.Altitude = 12;
+            _scene.Begin(null);
+
+            SyncSettled(battle);
+            _scene.ShowDeckMarkers(battle, Color.green, Color.red);
+
+            Assert.IsTrue(_scene.TryGetUnitTransform(friendly, out Transform holder));
+            Assert.AreEqual((float)friendly.X, holder.localPosition.x, 0.001f);
+            Assert.AreEqual(12f, holder.localPosition.y, 0.001f);
+            Assert.AreEqual((float)friendly.Y, holder.localPosition.z, 0.001f);
+            Assert.IsTrue(
+                _scene.TryGetDeckMarker(friendly, out Transform stem, out Transform foot)
+            );
+            Assert.AreEqual(
+                new Vector3(holder.localPosition.x, 0f, holder.localPosition.z),
+                foot.localPosition
+            );
+            Assert.AreEqual(6f, stem.localPosition.y, 0.001f);
+            Assert.AreEqual(12f, stem.localScale.y, 0.001f);
+            Assert.AreEqual(PresentationLayers.TacticalBattle, stem.gameObject.layer);
+            // A ship on the battle plane needs no marker.
+            Assert.IsFalse(_scene.TryGetDeckMarker(enemy, out _, out _));
+        }
+
+        [Test]
+        public void TryPickGround_OntoARaisedDeck_RoundTripsWithAProjectionAtThatHeight()
+        {
+            TacticalSpaceBattle battle = CreateBattle(out TacticalCapitalShipUnit friendly, out _);
+            _scene.Begin(null);
+            SyncSettled(battle);
+
+            Assert.IsTrue(
+                _scene.TryProject(friendly.X, friendly.Y, _arena, out Vector2 raised, 15)
+            );
+            Assert.IsTrue(_scene.TryProject(friendly.X, friendly.Y, _arena, out Vector2 level));
+            Assert.IsTrue(_scene.TryPickGround(_arena, raised, out Vector2 onDeck, 15));
+            Assert.IsTrue(_scene.TryPickGround(_arena, raised, out Vector2 onPlane));
+
+            // The raised point is drawn higher on screen, and casting it back onto its own deck
+            // finds the same battle position; the plane beneath it is somewhere else.
+            Assert.Less(raised.y, level.y);
+            Assert.AreEqual((float)friendly.X, onDeck.x, 0.2f);
+            Assert.AreEqual((float)friendly.Y, onDeck.y, 0.2f);
+            Assert.Greater(Vector2.Distance(onPlane, onDeck), 1f);
+        }
+
+        [Test]
+        public void FocusOn_UnitOnARaisedDeck_CentersItOnScreen()
+        {
+            TacticalSpaceBattle battle = CreateBattle(out TacticalCapitalShipUnit friendly, out _);
+            friendly.Altitude = 12;
+            _scene.Begin(null);
+            SyncSettled(battle);
+
+            _scene.FocusOn(friendly);
+
+            Assert.IsTrue(_scene.TryProjectUnit(friendly, _arena, out Vector2 point, out _));
+            Assert.AreEqual(_arena.width / 2f, point.x, 1f);
+            Assert.AreEqual(_arena.height / 2f, point.y, 1f);
+        }
+
+        [Test]
+        public void Sync_ShipProjectingAGravityWell_ShowsTheFieldUntilTheShipIsGone()
+        {
+            CapitalShip interdictorShip = CreateShip("Interdictor", 400);
+            interdictorShip.HasGravityWell = true;
+            CapitalShip plainShip = CreateShip("Corvette", 100);
+            TacticalSpaceBattle battle = new TacticalSpaceBattle(
+                CreateConfig(),
+                new SystemRandomProvider(5),
+                new[] { plainShip },
+                new List<Starfighter>(),
+                new[] { interdictorShip },
+                new List<Starfighter>(),
+                false,
+                false,
+                default,
+                default,
+                CombatSide.Attacker
+            );
+            TacticalCapitalShipUnit interdictor = battle
+                .Units.OfType<TacticalCapitalShipUnit>()
+                .Single(unit => unit.Ship == interdictorShip);
+            TacticalCapitalShipUnit plain = battle
+                .Units.OfType<TacticalCapitalShipUnit>()
+                .Single(unit => unit.Ship == plainShip);
+            _scene.Begin(null);
+
+            _scene.Sync(battle, _arena);
+            bool shownWhileProjecting = _scene.HasGravityWellEffect(interdictor);
+            bool shownOnThePlainShip = _scene.HasGravityWellEffect(plain);
+            bool anyWhileProjecting = _scene.HasActiveGravityWellEffects;
+            ParticleSystem field = _scene
+                .GetComponentsInChildren<ParticleSystem>(true)
+                .Single(system => system.name == "GravityWell");
+            bool emittingWhileProjecting = field.isEmitting;
+            string fieldParent = field.transform.parent.name;
+            interdictor.Destroy();
+            _scene.Sync(battle, _arena);
+
+            Assert.IsTrue(shownWhileProjecting);
+            Assert.IsFalse(shownOnThePlainShip);
+            Assert.IsTrue(anyWhileProjecting);
+            Assert.IsTrue(emittingWhileProjecting);
+            Assert.AreEqual("Interdictor", fieldParent);
+            Assert.IsFalse(_scene.HasGravityWellEffect(interdictor));
+            Assert.IsFalse(_scene.HasActiveGravityWellEffects);
+        }
+
+        [Test]
         public void FrameArena_AfterSync_BacksOutOverTheCenterOfThePlaySpace()
         {
             TacticalSpaceBattle battle = CreateBattle(
@@ -657,6 +773,63 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
             {
                 UnityEngine.Object.DestroyImmediate(holder);
             }
+        }
+
+        [Test]
+        public void Sync_SquadronLandingAboardAShip_ShrinksIntoTheHangarAndIsHiddenOnceAboard()
+        {
+            CapitalShip carrierShip = CreateShip("Carrier", 400);
+            carrierShip.StarfighterCapacity = 1;
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "squadron",
+                DisplayName = "squadron",
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                SublightSpeed = 8,
+                Agility = 4,
+                LaserCannon = 5,
+                LaserRange = 12,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            TacticalSpaceBattle battle = new TacticalSpaceBattle(
+                CreateConfig(),
+                new SystemRandomProvider(5),
+                new[] { carrierShip },
+                new[] { fighter },
+                new[] { CreateShip("Corvette", 100) },
+                new List<Starfighter>(),
+                false,
+                false,
+                default,
+                default,
+                CombatSide.Attacker
+            );
+            TacticalCapitalShipUnit carrier = battle
+                .Units.OfType<TacticalCapitalShipUnit>()
+                .Single(unit => unit.Ship == carrierShip);
+            TacticalStarfighterUnit squadron = battle
+                .Units.OfType<TacticalStarfighterUnit>()
+                .Single();
+            _scene.Begin(null);
+            SyncSettled(battle);
+            Assert.IsTrue(_scene.TryGetUnitTransform(squadron, out Transform holder));
+            float full = holder.localScale.x;
+
+            squadron.SetRecovery(carrier);
+            squadron.AdvanceDocking(0.5);
+            _scene.Sync(battle, _arena);
+            float landing = holder.localScale.x;
+            bool shownWhileLanding = holder.gameObject.activeSelf;
+            squadron.AdvanceDocking(0.5);
+            _scene.Sync(battle, _arena);
+
+            Assert.AreEqual(1f, full, 0.001f);
+            Assert.Less(landing, full);
+            Assert.Greater(landing, 0f);
+            Assert.IsTrue(shownWhileLanding);
+            Assert.IsTrue(squadron.IsDocked);
+            Assert.IsFalse(holder.gameObject.activeSelf);
         }
 
         [Test]

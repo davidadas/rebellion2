@@ -2089,7 +2089,9 @@ namespace Rebellion.Game
 
             public double LaserCannonCapitalDamageMultiplier { get; set; }
 
-            public double TacticalFighterHullStrength { get; set; } = 10;
+            public double TacticalFighterHullStrength { get; set; } = 5;
+
+            public double TacticalFighterShieldMultiplier { get; set; } = 3;
 
             public double TacticalFighterRechargeMultiplier { get; set; } = 0.6;
 
@@ -2146,6 +2148,7 @@ namespace Rebellion.Game
                     CommanderCombatDivisor = CommanderCombatDivisor,
                     LaserCannonCapitalDamageMultiplier = LaserCannonCapitalDamageMultiplier,
                     TacticalFighterHullStrength = TacticalFighterHullStrength,
+                    TacticalFighterShieldMultiplier = TacticalFighterShieldMultiplier,
                     TacticalTurbolaserFighterHitChance = TacticalTurbolaserFighterHitChance,
                     TacticalFighterRechargeMultiplier = TacticalFighterRechargeMultiplier,
                     TacticalCapitalWeaponRangeMultiplier = TacticalCapitalWeaponRangeMultiplier,

@@ -2829,11 +2829,12 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Reads this frame's keyboard camera controls for the tactical battle: WASD or the arrow
-    /// keys pan, Q and E turn, R and F tilt, plus and minus zoom, Home reframes the fleet, Tab
-    /// selects and frames the next friendly ship, and Space pauses.
+    /// Reads this frame's keyboard controls for the tactical battle: WASD or the arrow keys
+    /// pan, Q and E turn, R and F tilt, plus and minus zoom, Home reframes the fleet, Tab
+    /// selects and frames the next friendly ship, and Space pauses. Shift held makes a roster
+    /// click select a run of units, and Control (or Command) held makes a click add one.
     /// </summary>
-    /// <returns>The camera input for this frame.</returns>
+    /// <returns>The keyboard input for this frame.</returns>
     private static TacticalCameraInput ReadTacticalCameraInput()
     {
         float panX = KeyAxis(KeyCode.D, KeyCode.RightArrow) - KeyAxis(KeyCode.A, KeyCode.LeftArrow);
@@ -2852,7 +2853,12 @@ public sealed class StrategyController
             zoom,
             Input.GetKeyDown(KeyCode.Home),
             Input.GetKeyDown(KeyCode.Tab),
-            Input.GetKeyDown(KeyCode.Space)
+            Input.GetKeyDown(KeyCode.Space),
+            Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift),
+            Input.GetKey(KeyCode.LeftControl)
+                || Input.GetKey(KeyCode.RightControl)
+                || Input.GetKey(KeyCode.LeftCommand)
+                || Input.GetKey(KeyCode.RightCommand)
         );
     }
 

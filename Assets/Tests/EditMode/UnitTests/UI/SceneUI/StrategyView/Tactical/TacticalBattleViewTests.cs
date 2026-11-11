@@ -320,6 +320,62 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
             Assert.AreEqual(1f, FindText("AutoButtonLabel").color.a, 0.001f);
         }
 
+        [Test]
+        public void Render_Roster_SquadronAboardAShip_IsTintedApartFromALiveOneAndALostOne()
+        {
+            TacticalRosterRenderData roster = new TacticalRosterRenderData(
+                "Empire",
+                null,
+                new[]
+                {
+                    new[]
+                    {
+                        new TacticalRosterSlotRenderData("12", null, false, true),
+                        new TacticalRosterSlotRenderData("9", null, false, false, aboard: true),
+                        new TacticalRosterSlotRenderData("0", null, false, false),
+                    },
+                }
+            );
+
+            _view.Render(CreateData(unitCount: 0, shotCount: 0, roster: roster));
+            Color[] tints = _view
+                .GetComponentsInChildren<TacticalRosterSlotView>(false)
+                .Where(slot => slot.name != "RosterSlotTemplate")
+                .Select(slot =>
+                    slot.GetComponentsInChildren<RawImage>(true)
+                        .Single(image => image.name == "SlotPortraitImage")
+                        .color
+                )
+                .ToArray();
+
+            Assert.AreEqual(3, tints.Length);
+            Assert.AreEqual(Color.white, tints[0]);
+            Assert.AreNotEqual(tints[0], tints[1]);
+            Assert.AreNotEqual(tints[2], tints[1]);
+            Assert.Greater(tints[1].b, tints[1].r);
+            Assert.AreEqual(tints[2].r, tints[2].g, 0.001f);
+        }
+
+        [Test]
+        public void Render_RecoverInteractable_LightsTheRecoverButtonAndRoutesItsClick()
+        {
+            int requests = 0;
+            _view.RecoverRequested += () => requests++;
+            Button recover = TacticalBattleViewTestFactory.FindButton(_view, "RecoverButton");
+
+            _view.Render(CreateData(unitCount: 0, shotCount: 0));
+            bool idle = recover.interactable;
+            float idleAlpha = FindText("RecoverButtonLabel").color.a;
+            _view.Render(CreateData(unitCount: 0, shotCount: 0, recoverInteractable: true));
+            recover.onClick.Invoke();
+
+            Assert.IsFalse(idle);
+            Assert.Less(idleAlpha, 0.5f);
+            Assert.IsTrue(recover.interactable);
+            Assert.AreEqual(1f, FindText("RecoverButtonLabel").color.a, 0.001f);
+            Assert.AreEqual(1, requests);
+        }
+
         /// <summary>
         /// Renders a roster holding only ships and returns the bounds of its visible slots.
         /// </summary>
@@ -496,6 +552,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
         /// <param name="panel">The optional information panel.</param>
         /// <param name="roster">The optional roster bar.</param>
         /// <param name="superlaser">The optional superlaser charge bar.</param>
+        /// <param name="recoverInteractable">Whether the recover button accepts input.</param>
         /// <returns>The frame data.</returns>
         private static TacticalBattleRenderData CreateData(
             int unitCount,
@@ -503,7 +560,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
             RectInt? selectionBox = null,
             TacticalPanelRenderData panel = null,
             TacticalRosterRenderData roster = null,
-            TacticalSuperlaserRenderData superlaser = null
+            TacticalSuperlaserRenderData superlaser = null,
+            bool recoverInteractable = false
         )
         {
             TacticalUnitRenderData[] units = Enumerable
@@ -553,7 +611,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
                 shots,
                 selectionBox,
                 roster,
-                superlaser
+                superlaser,
+                recoverInteractable
             );
         }
 

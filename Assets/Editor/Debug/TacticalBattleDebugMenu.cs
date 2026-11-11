@@ -39,6 +39,14 @@ public static class TacticalBattleDebugMenu
         "Rebellion/Debug/Play Tactical Battle Test (Empire with Death Star)";
     private const string _empireWithStationAutomatedMenuPath =
         "Rebellion/Debug/Play Tactical Battle Test (Empire with Death Star, automated)";
+    private const string _empireFleetBattleMenuPath =
+        "Rebellion/Debug/Play Tactical Battle Test (Fleet battle, Empire)";
+    private const string _allianceFleetBattleMenuPath =
+        "Rebellion/Debug/Play Tactical Battle Test (Fleet battle, Alliance)";
+    private const string _empireFleetBattleAutomatedMenuPath =
+        "Rebellion/Debug/Play Tactical Battle Test (Fleet battle, Empire, automated)";
+    private const string _allianceFleetBattleAutomatedMenuPath =
+        "Rebellion/Debug/Play Tactical Battle Test (Fleet battle, Alliance, automated)";
     private const int _manyFighterSquadronCount = 100;
     private const int _stationTestSquadronCount = 8;
     private const double _stationShotDelaySeconds = 2.5;
@@ -46,9 +54,11 @@ public static class TacticalBattleDebugMenu
     private const string _stationKey = "Rebellion.TacticalBattleDebug.Station";
     private const string _autoButtonName = "AutoButton";
     private const string _rosterSideButtonName = "RosterSideButton";
+    private const string _recoverButtonName = "RecoverButton";
+    private const double _gravityWellShotDelaySeconds = 4.0;
     private const double _selectionShotDelaySeconds = 6.0;
     private const double _selectionShotStepSeconds = 0.5;
-    private const int _selectionShotStageCount = 6;
+    private const int _selectionShotStageCount = 9;
     private const string _allianceFactionId = "FNALL1";
     private const string _empireFactionId = "FNEMP1";
     private const string _saveFileName = "tactical-battle-test";
@@ -62,6 +72,54 @@ public static class TacticalBattleDebugMenu
     private const double _mainMenuSettleSeconds = 1.0;
     private const double _takeCommandTimeoutSeconds = 45.0;
     private static readonly double[] _screenshotDelays = { 0.8, 3.0, 15.0, 45.0, 120.0 };
+
+    // The fleet-battle test's Imperial fleet: a line of Star Destroyers, an Interdictor to hold
+    // the enemy in the system, and a screen of escorts. Hangars: 33 squadrons.
+    private static readonly ShipGroup[] _empireBattleShips =
+    {
+        new ShipGroup("CSEM006", 5), // Imperial Star Destroyer
+        new ShipGroup("CSEM010", 1), // Interdictor Cruiser
+        new ShipGroup("CSEM005", 1), // Victory Destroyer I
+        new ShipGroup("CSEM012", 1), // Strike Cruiser
+        new ShipGroup("CSEM004", 2), // Carrack Light Cruiser
+        new ShipGroup("CSEM007", 2), // Lancer Frigate
+    };
+
+    // Each Star Destroyer's six bays: two TIE Fighter squadrons, two of Interceptors, one of
+    // Bombers and one of Defenders.
+    private static readonly string[] _empireBattleSquadrons =
+    {
+        "SFEM01",
+        "SFEM03",
+        "SFEM01",
+        "SFEM03",
+        "SFEM02",
+        "SFEM04",
+    };
+
+    // The fleet-battle test's Alliance fleet: Mon Calamari Cruisers with frigates, corvettes,
+    // gunships, a carrier and a CC-7700, the Alliance's own interdictor. Hangars: 22 squadrons.
+    private static readonly ShipGroup[] _allianceBattleShips =
+    {
+        new ShipGroup("ALCS008", 4), // Mon Calamari Cruiser
+        new ShipGroup("ALCS005", 1), // Alliance Escort Carrier
+        new ShipGroup("CSAL011", 1), // Assault Frigate
+        new ShipGroup("CSAL010", 1), // CC-7700 Frigate
+        new ShipGroup("ALCS007", 2), // Nebulon-B Frigate
+        new ShipGroup("ALCS006", 2), // Corellian Corvette
+        new ShipGroup("CSAL009", 2), // Corellian Gunship
+    };
+
+    // X-wings and A-wings twice over for every Y-wing and B-wing squadron.
+    private static readonly string[] _allianceBattleSquadrons =
+    {
+        "SFAL02",
+        "SFAL03",
+        "SFAL01",
+        "SFAL02",
+        "SFAL03",
+        "SFAL04",
+    };
     private static double _mainMenuReadyTime;
     private static double _strategyReadyTime;
     private static double _commandedTime;
@@ -72,6 +130,7 @@ public static class TacticalBattleDebugMenu
     private static bool _stationShotTaken;
     private static bool _stationGoneShotTaken;
     private static bool _handedOver;
+    private static bool _gravityWellShotTaken;
     private static int _selectionShotStage;
     private static double _selectionShotTime;
     private static string _pendingEventShot;
@@ -183,6 +242,44 @@ public static class TacticalBattleDebugMenu
     }
 
     /// <summary>
+    /// Creates and plays a set-piece fleet battle as the Empire: five Imperial Star Destroyers
+    /// with an Interdictor, Lancers and other escorts against four Mon Calamari Cruisers and
+    /// their escorts, every hangar full, at a planet with nothing else in orbit.
+    /// </summary>
+    [MenuItem(_empireFleetBattleMenuPath, false, 310)]
+    public static void PlayTacticalBattleTestFleetBattleAsEmpire()
+    {
+        PlayTacticalBattleTest(_empireFactionId, automated: false, fleetBattle: true);
+    }
+
+    /// <summary>
+    /// Creates and plays the set-piece fleet battle as the Alliance.
+    /// </summary>
+    [MenuItem(_allianceFleetBattleMenuPath, false, 311)]
+    public static void PlayTacticalBattleTestFleetBattleAsAlliance()
+    {
+        PlayTacticalBattleTest(_allianceFactionId, automated: false, fleetBattle: true);
+    }
+
+    /// <summary>
+    /// The automated form of the set-piece fleet battle as the Empire.
+    /// </summary>
+    [MenuItem(_empireFleetBattleAutomatedMenuPath, false, 312)]
+    public static void PlayTacticalBattleTestFleetBattleAsEmpireAutomated()
+    {
+        PlayTacticalBattleTest(_empireFactionId, automated: true, fleetBattle: true);
+    }
+
+    /// <summary>
+    /// The automated form of the set-piece fleet battle as the Alliance.
+    /// </summary>
+    [MenuItem(_allianceFleetBattleAutomatedMenuPath, false, 313)]
+    public static void PlayTacticalBattleTestFleetBattleAsAllianceAutomated()
+    {
+        PlayTacticalBattleTest(_allianceFactionId, automated: true, fleetBattle: true);
+    }
+
+    /// <summary>
     /// Generates a fresh campaign, moves an enemy fleet into the player's home system, and
     /// returns the game ready to save.
     /// </summary>
@@ -194,12 +291,17 @@ public static class TacticalBattleDebugMenu
     /// <param name="withStation">
     /// Whether a planet-destroying battle station joins the fleet of the faction that builds it.
     /// </param>
-    /// <returns>The generated game with a contested home system.</returns>
+    /// <param name="fleetBattle">
+    /// Whether to stage the set-piece fleet battle at a planet of its own instead of contesting
+    /// the home system with the generated fleets.
+    /// </param>
+    /// <returns>The generated game with a contested system.</returns>
     internal static GameRoot CreateContestedGame(
         ContentPack pack,
         string playerFactionId,
         int playerSquadronCount = 0,
-        bool withStation = false
+        bool withStation = false,
+        bool fleetBattle = false
     )
     {
         if (pack == null)
@@ -221,6 +323,11 @@ public static class TacticalBattleDebugMenu
         Faction enemy =
             game.GetFactions().FirstOrDefault(faction => faction.InstanceID != player.InstanceID)
             ?? throw new InvalidOperationException("The scenario has no opposing faction.");
+        if (fleetBattle)
+        {
+            AddFleetBattle(game, pack, player, enemy);
+            return game;
+        }
 
         List<Fleet> fleets = game.Galaxy.GetChildren<Fleet>(recursive: true).ToList();
         Fleet homeFleet = fleets
@@ -268,11 +375,13 @@ public static class TacticalBattleDebugMenu
     /// The squadron count to top the player's home fleet up to, or zero to leave it as generated.
     /// </param>
     /// <param name="withStation">Whether a battle station joins the battle.</param>
+    /// <param name="fleetBattle">Whether to stage the set-piece fleet battle instead.</param>
     private static void PlayTacticalBattleTest(
         string playerFactionId,
         bool automated,
         int playerSquadronCount = 0,
-        bool withStation = false
+        bool withStation = false,
+        bool fleetBattle = false
     )
     {
         StrategyViewPrefabBuilder.Rebuild();
@@ -281,7 +390,8 @@ public static class TacticalBattleDebugMenu
             pack,
             playerFactionId,
             playerSquadronCount,
-            withStation
+            withStation,
+            fleetBattle
         );
         SaveGameManager.Instance.SaveGameData(game, _saveFileName, _saveDisplayName);
         Debug.Log(
@@ -301,6 +411,7 @@ public static class TacticalBattleDebugMenu
         _stationShotTaken = false;
         _stationGoneShotTaken = false;
         _handedOver = false;
+        _gravityWellShotTaken = false;
         _selectionShotStage = 0;
         _pendingEventShot = null;
         SceneAsset bootScene = AssetDatabase.LoadAssetAtPath<SceneAsset>(_bootScenePath);
@@ -308,6 +419,119 @@ public static class TacticalBattleDebugMenu
             EditorSceneManager.playModeStartScene = bootScene;
         if (!EditorApplication.isPlaying)
             EditorApplication.EnterPlaymode();
+    }
+
+    /// <summary>
+    /// Stages the set-piece fleet battle: a new fleet for each faction at a planet that has no
+    /// fleet or garrison fighters of its own, so the battle is exactly the two fleets listed in
+    /// this class, with every hangar full.
+    /// </summary>
+    /// <param name="game">The generated game.</param>
+    /// <param name="pack">The content pack whose templates the units are built from.</param>
+    /// <param name="player">The faction the player commands.</param>
+    /// <param name="enemy">The opposing faction.</param>
+    private static void AddFleetBattle(
+        GameRoot game,
+        ContentPack pack,
+        Faction player,
+        Faction enemy
+    )
+    {
+        Planet planet =
+            SelectBattlefield(game, player)
+            ?? throw new InvalidOperationException(
+                "No planet is free to stage the fleet battle at."
+            );
+        UnitFactory factory = new UnitFactory(
+            pack.GameData.Buildings,
+            pack.GameData.CapitalShips,
+            pack.GameData.Starfighters,
+            pack.GameData.Regiments,
+            pack.GameData.SpecialForces
+        );
+        foreach (Faction faction in new[] { player, enemy })
+        {
+            bool imperial = faction.InstanceID == _empireFactionId;
+            Fleet fleet = CreateBattleFleet(
+                game,
+                factory,
+                faction,
+                planet,
+                imperial ? _empireBattleShips : _allianceBattleShips,
+                imperial ? _empireBattleSquadrons : _allianceBattleSquadrons
+            );
+            IReadOnlyList<CapitalShip> ships = fleet.GetChildren<CapitalShip>();
+            int squadrons = ships.Sum(ship => ship.GetChildren<Starfighter>().Count);
+            Debug.Log(
+                $"Tactical battle test: {faction.InstanceID} brings {fleet.GetDisplayName()} to {planet.GetDisplayName()} with {ships.Count} ships and {squadrons} squadrons: {string.Join(", ", ships.GroupBy(ship => ship.GetDisplayName()).Select(group => $"{group.Count()} {group.Key}"))}."
+            );
+        }
+    }
+
+    /// <summary>
+    /// Picks the planet the set-piece fleet battle is fought at: one with no fleet in orbit or
+    /// on its way and no garrison fighters, away from either headquarters, and one of the
+    /// player's own when there is such a planet.
+    /// </summary>
+    /// <param name="game">The generated game.</param>
+    /// <param name="player">The faction the player commands.</param>
+    /// <returns>The planet, or null when every planet has a fleet or fighters.</returns>
+    private static Planet SelectBattlefield(GameRoot game, Faction player)
+    {
+        return game.GetSceneNodesByType<Planet>()
+            .Where(planet =>
+                !planet.IsDestroyed
+                && !planet.IsHeadquarters
+                && planet.GetChildren<Fleet>().Count == 0
+                && planet.GetChildren<Starfighter>().Count == 0
+            )
+            .OrderByDescending(planet => planet.OwnerInstanceID == player.InstanceID)
+            .FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Builds a fleet from a list of ship types at a planet and fills every hangar, cycling
+    /// through a list of fighter types bay by bay across the fleet.
+    /// </summary>
+    /// <param name="game">The generated game.</param>
+    /// <param name="factory">The factory that builds units from the pack's templates.</param>
+    /// <param name="faction">The faction that owns the fleet.</param>
+    /// <param name="planet">The planet the fleet stands at.</param>
+    /// <param name="shipGroups">The fleet's ships, by type.</param>
+    /// <param name="squadronTypeIds">The fighter types its hangars are filled with, in order.</param>
+    /// <returns>The new fleet.</returns>
+    private static Fleet CreateBattleFleet(
+        GameRoot game,
+        UnitFactory factory,
+        Faction faction,
+        Planet planet,
+        IReadOnlyList<ShipGroup> shipGroups,
+        IReadOnlyList<string> squadronTypeIds
+    )
+    {
+        string owner = faction.InstanceID;
+        Fleet fleet = faction.CreateFleet();
+        game.AttachNode(fleet, planet);
+        int bay = 0;
+        foreach (ShipGroup group in shipGroups)
+        {
+            for (int number = 0; number < group.Count; number++)
+            {
+                CapitalShip ship = factory.Create<CapitalShip>(group.TypeId, owner);
+                game.AttachNode(ship, fleet);
+                while (ship.GetExcessStarfighterCapacity() > 0)
+                {
+                    Starfighter squadron = factory.Create<Starfighter>(
+                        squadronTypeIds[bay % squadronTypeIds.Count],
+                        owner
+                    );
+                    game.AttachNode(squadron, ship);
+                    bay++;
+                }
+            }
+        }
+
+        return fleet;
     }
 
     /// <summary>
@@ -657,6 +881,18 @@ public static class TacticalBattleDebugMenu
             scene.FrameArena();
         }
         else if (
+            !_gravityWellShotTaken
+            && _selectionShotStage == 0
+            && now - _commandedTime > _gravityWellShotDelaySeconds
+            && scene?.HasActiveGravityWellEffects == true
+        )
+        {
+            // Taken before anything is selected, while the camera still follows nothing.
+            _gravityWellShotTaken = true;
+            _pendingEventShot = "gravity-well";
+            scene.FrameGravityWell();
+        }
+        else if (
             !_stationShotTaken
             && now - _commandedTime > _stationShotDelaySeconds
             && scene?.HasVisibleStation == true
@@ -692,11 +928,13 @@ public static class TacticalBattleDebugMenu
     }
 
     /// <summary>
-    /// Photographs the selection box once in an automated run. It picks the player's first ship
-    /// from the roster and captures it, does the same for the enemy's first ship, then hands the
-    /// roster and the camera back. Each step waits for the one before it to be drawn, and a
-    /// capture never shares a step with a change, because the Game view is captured at the end
-    /// of the frame.
+    /// Photographs the selection box once in an automated run. It picks and zooms to the
+    /// player's first ship from the roster and captures it, does the same for the enemy's first
+    /// ship, then hands the roster and the camera back. Last it picks the player's first
+    /// squadron, recalls it to a hangar with the Recover button and captures that; the timed
+    /// shots that follow show the squadron's roster slot once it is aboard. Each step waits for
+    /// the one before it to be drawn, and a capture never shares a step with a change, because
+    /// the Game view is captured at the end of the frame.
     /// </summary>
     /// <param name="now">The editor time, in seconds.</param>
     /// <param name="scene">The tactical scene, or null when it is not in the hierarchy.</param>
@@ -715,6 +953,8 @@ public static class TacticalBattleDebugMenu
         {
             case 0:
             case 3:
+                // The first press picks the unit and the second zooms the camera in on it.
+                PressFirstRosterSlot(view);
                 PressFirstRosterSlot(view);
                 break;
             case 1:
@@ -726,9 +966,21 @@ public static class TacticalBattleDebugMenu
             case 4:
                 CaptureShots("selection-enemy", scene);
                 break;
-            default:
+            case 5:
                 PressButton(view, _rosterSideButtonName);
                 scene?.FrameArena();
+                break;
+            case 6:
+                PressFirstSquadronSlot(view);
+                break;
+            case 7:
+                if (PressButton(view, _recoverButtonName))
+                    Debug.Log("TACTICAL-AUTO recalled the first squadron to a hangar.");
+                else
+                    Debug.LogWarning("TACTICAL-AUTO could not press Recover.");
+                break;
+            default:
+                CaptureShots("recover", scene);
                 break;
         }
 
@@ -750,6 +1002,27 @@ public static class TacticalBattleDebugMenu
             button.onClick.Invoke();
         else
             Debug.LogWarning("TACTICAL-AUTO found no roster slot to press.");
+    }
+
+    /// <summary>
+    /// Clicks the roster bar's first squadron slot, which picks the listed side's first squadron.
+    /// </summary>
+    /// <param name="view">The tactical battle view, or null when it is not in the hierarchy.</param>
+    private static void PressFirstSquadronSlot(TacticalBattleView view)
+    {
+        TacticalRosterSlotView slot = view
+            ?.GetComponentsInChildren<TacticalRosterSlotView>(false)
+            .FirstOrDefault(candidate =>
+                candidate.name.StartsWith(
+                    TacticalBattleView.RosterSquadronSlotPrefix,
+                    StringComparison.Ordinal
+                )
+            );
+        UnityEngine.UI.Button button = slot?.GetComponent<UnityEngine.UI.Button>();
+        if (button?.interactable == true)
+            button.onClick.Invoke();
+        else
+            Debug.LogWarning("TACTICAL-AUTO found no squadron slot to press.");
     }
 
     /// <summary>
@@ -808,5 +1081,26 @@ public static class TacticalBattleDebugMenu
         SessionState.EraseBool(_automatedKey);
         SessionState.EraseBool(_stationKey);
         EditorSceneManager.playModeStartScene = null;
+    }
+
+    /// <summary>
+    /// Names one ship type in a test fleet and how many of it the fleet has.
+    /// </summary>
+    private readonly struct ShipGroup
+    {
+        /// <summary>
+        /// Creates a group of ships of one type.
+        /// </summary>
+        /// <param name="typeId">The capital ship type.</param>
+        /// <param name="count">How many ships of that type the fleet has.</param>
+        internal ShipGroup(string typeId, int count)
+        {
+            TypeId = typeId;
+            Count = count;
+        }
+
+        internal string TypeId { get; }
+
+        internal int Count { get; }
     }
 }

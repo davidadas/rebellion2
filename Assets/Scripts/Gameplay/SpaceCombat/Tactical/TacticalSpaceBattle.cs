@@ -21,12 +21,24 @@ namespace Rebellion.Gameplay
         private const double _stepRounds = 0.25;
         private const double _arenaHeightRatio = 0.52;
         private const double _withdrawalMargin = 2;
+
+        // A squadron over its hangar takes three seconds to come aboard.
+        private const double _dockingRounds = 3 / RoundSeconds;
         private const double _shotDisplaySeconds = 0.3;
         private const double _arenaScale = 3;
         private const double _spawnLineFraction = 0.8;
         private const double _spawnCornerFraction = 0.6;
         private const double _shipSpacing = 8;
         private const double _shipClearance = 1.1;
+        private const double _formationClearance = 1.25;
+        private const double _escortStationFactor = 1.6;
+        private const double _escortDeckStationFactor = 0.5;
+        private const double _blockedMargin = 2;
+        private const double _blockingArc = Math.PI / 3;
+        private const int _deckCount = 3;
+        private const double _deckSpacingFactor = 1.2;
+        private const double _deckTolerance = 0.25;
+        private const double _fighterClimbFraction = 0.5;
         private const double _fighterLaunchOffset = 3;
         private const double _fighterLaunchSpacing = 2;
         private const double _planetaryFighterOffset = 8;
@@ -34,6 +46,11 @@ namespace Rebellion.Gameplay
         private const double _orbitRadiusFraction = 0.6;
         private const double _orbitRangeCeiling = 0.9;
         private const double _patrolClearance = 6;
+
+        // A screening squadron takes on what comes this near its ship's hull, and lets go of a
+        // target that gets the slack beyond it away again.
+        private const double _screenClearance = 25;
+        private const double _screenSlack = 10;
         private const double _pinnedTravelFraction = 0.25;
         private const double _attackApproachFraction = 0.85;
         private const double _roundEpsilon = 1e-9;
@@ -53,6 +70,7 @@ namespace Rebellion.Gameplay
             new Dictionary<TacticalBattleUnit, List<PendingHit>>();
         private readonly double _scanInterval;
         private readonly List<TacticalBattleEvent> _events = new List<TacticalBattleEvent>();
+        private readonly List<TacticalBattleUnit> _screenTargets = new List<TacticalBattleUnit>();
         private readonly HashSet<TacticalBattleUnit> _reportedDestroyed =
             new HashSet<TacticalBattleUnit>();
         private readonly HashSet<TacticalBattleUnit> _reportedWithdrawn =
@@ -78,6 +96,13 @@ namespace Rebellion.Gameplay
         public double HalfWidth { get; }
 
         public double HalfHeight { get; }
+
+        /// <summary>
+        /// Gets the height between one deck of a formation and the next: a little more than the
+        /// largest hull in the battle is long, so a ship on one deck clears the ships on the
+        /// decks above and below it.
+        /// </summary>
+        public double DeckSpacing { get; }
 
         public bool IsComplete => _isComplete;
 
@@ -163,6 +188,10 @@ namespace Rebellion.Gameplay
             _units.AddRange(_defender.Units);
             HalfWidth = Math.Max(config.AutoResolveStartingDistance, 1) * _arenaScale;
             HalfHeight = HalfWidth * _arenaHeightRatio;
+            double largestFootprint = 0;
+            foreach (TacticalBattleUnit unit in _units)
+                largestFootprint = Math.Max(largestFootprint, unit.HullFootprint);
+            DeckSpacing = largestFootprint * _deckSpacingFactor;
             _scanInterval = Math.Max(config.AutoResolveTargetScanDivisor, 1);
             _superlaserRechargeRounds = BattleStationRules.GetRechargeRounds(config);
             _stations.AddRange(_attacker.Stations);
@@ -446,6 +475,89 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Returns whether the player can recall a squadron to a hangar right now: it takes
+        /// orders, it is not already making for one, and a friendly ship has a bay free.
+        /// </summary>
+        /// <param name="unit">The unit to inspect.</param>
+        /// <returns>True when the squadron would take a recover order.</returns>
+        public bool CanOrderRecovery(TacticalBattleUnit unit)
+        {
+            return unit is TacticalStarfighterUnit fighter
+                && CanCommand(fighter)
+                && fighter.RecoveryShip == null
+                && GetForce(fighter.Side).FindHangar(fighter, mustJump: false) != null;
+        }
+
+        /// <summary>
+        /// Recalls the commandable squadrons in a selection to a hangar. Each flies to a ship
+        /// with a bay free, takes a few seconds to come aboard, and is then off the battlefield
+        /// for the rest of the battle: it is lost if that ship is destroyed and leaves with it
+        /// if it withdraws. A ship holds as many squadrons as its hangar capacity, however
+        /// depleted they are.
+        /// </summary>
+        /// <param name="units">The selected units.</param>
+        /// <param name="hangar">
+        /// The friendly capital ship to dock with, or null to send each squadron to the ship it
+        /// is screening, else to its own carrier, or to the nearest ship with room when that
+        /// has none.
+        /// </param>
+        /// <returns>True when at least one squadron has a hangar to make for.</returns>
+        public bool IssueRecoverOrder(
+            IEnumerable<TacticalBattleUnit> units,
+            TacticalBattleUnit hangar = null
+        )
+        {
+            TacticalCapitalShipUnit preferred = hangar as TacticalCapitalShipUnit;
+            if (
+                hangar != null
+                && (preferred == null || preferred.Side != PlayerSide || !preferred.IsTargetable)
+            )
+                return false;
+
+            bool ordered = false;
+            foreach (TacticalBattleUnit unit in units ?? Enumerable.Empty<TacticalBattleUnit>())
+            {
+                if (unit is not TacticalStarfighterUnit fighter || !CanCommand(fighter))
+                    continue;
+
+                ordered |= GetForce(fighter.Side)
+                    .TryRecover(fighter, preferred ?? fighter.ScreenedShip, mustJump: false);
+            }
+
+            return ordered;
+        }
+
+        /// <summary>
+        /// Posts the commandable squadrons in a selection as a screen around a friendly capital
+        /// ship. Each circles that ship and engages only the enemies that come near it, until
+        /// the ship is gone, the side retreats, or the squadron is given another order.
+        /// </summary>
+        /// <param name="units">The selected units.</param>
+        /// <param name="ship">The friendly capital ship to screen.</param>
+        /// <returns>True when at least one squadron took the order.</returns>
+        public bool IssueScreenOrder(IEnumerable<TacticalBattleUnit> units, TacticalBattleUnit ship)
+        {
+            if (
+                ship is not TacticalCapitalShipUnit screened
+                || screened.Side != PlayerSide
+                || !screened.IsTargetable
+            )
+                return false;
+
+            bool ordered = false;
+            foreach (TacticalBattleUnit unit in units ?? Enumerable.Empty<TacticalBattleUnit>())
+            {
+                if (unit is not TacticalStarfighterUnit fighter || !CanCommand(fighter))
+                    continue;
+
+                fighter.SetScreen(screened);
+                ordered = true;
+            }
+
+            return ordered;
+        }
+
+        /// <summary>
         /// Estimates the chance that a trench run on a station succeeds if the squadrons in a
         /// selection join the squadrons already flying it.
         /// </summary>
@@ -654,6 +766,8 @@ namespace Rebellion.Gameplay
             AddStationResults(result, _defender.Stations);
             AddFighterResults(result, _attacker.Fighters);
             AddFighterResults(result, _defender.Fighters);
+            AddDockingResults(result, _attacker.Fighters);
+            AddDockingResults(result, _defender.Fighters);
             result.AttackingUnits.AddRange(CaptureCombatUnits(_attacker));
             result.DefendingUnits.AddRange(CaptureCombatUnits(_defender));
             result.Winner = DetermineWinner();
@@ -900,7 +1014,13 @@ namespace Rebellion.Gameplay
 
             foreach (TacticalStarfighterUnit fighter in force.Fighters)
             {
-                if (fighter.IsTargetable && fighter.HasTorpedoes && fighter.TrenchRunTarget == null)
+                // A squadron recalled to a hangar is left to come home.
+                if (
+                    fighter.IsTargetable
+                    && fighter.HasTorpedoes
+                    && fighter.TrenchRunTarget == null
+                    && fighter.RecoveryShip == null
+                )
                     fighter.SetTrenchRun(station);
             }
         }
@@ -1119,8 +1239,13 @@ namespace Rebellion.Gameplay
             }
 
             fighter.ClearTrenchRun();
-            if (GetForce(fighter.Side).WithdrawalOrdered)
-                fighter.StartWithdrawal();
+            TacticalBattleForce force = GetForce(fighter.Side);
+            if (!force.WithdrawalOrdered)
+                return;
+
+            // Back from the trench into a retreat: the squadron makes for a hangar like the rest.
+            fighter.StartWithdrawal();
+            force.TryRecover(fighter, null, mustJump: true);
         }
 
         /// <summary>
@@ -1200,13 +1325,28 @@ namespace Rebellion.Gameplay
                 if (!fighter.IsTargetable || fighter.TrenchRunTarget != null)
                     continue;
 
+                // A screen lasts as long as the ship it was posted around.
+                if (fighter.ScreenedShip?.IsTargetable == false)
+                    fighter.ClearScreen();
+
                 fighter.AdvanceScanCooldown(rounds);
-                // A player-directed target is kept until it is gone.
-                if (
+                // A screening squadron takes on only what comes near its ship, and lets go of a
+                // target that gets away from it.
+                TacticalCapitalShipUnit screened = fighter.ScreenedShip;
+                bool lost =
                     fighter.Target?.IsTargetable != true
-                    || (!fighter.IsDirected && ShouldRetarget(fighter, fighter.IsScanDue))
-                )
-                    fighter.SetTarget(SelectFighterTarget(fighter, targets), _scanInterval);
+                    || (
+                        screened != null && !IsInsideScreen(screened, fighter.Target, _screenSlack)
+                    );
+                // A player-directed target is kept until it is gone.
+                if (lost || (!fighter.IsDirected && ShouldRetarget(fighter, fighter.IsScanDue)))
+                    fighter.SetTarget(
+                        SelectFighterTarget(
+                            fighter,
+                            screened == null ? targets : GetScreenTargets(screened, targets)
+                        ),
+                        _scanInterval
+                    );
             }
         }
 
@@ -1311,8 +1451,38 @@ namespace Rebellion.Gameplay
                 if (unit is TacticalCapitalShipUnit ship)
                     MoveShip(ship, force, rounds);
                 else if (unit is TacticalStarfighterUnit fighter)
-                    MoveFighter(fighter, force, rounds);
+                    ClimbToward(fighter, MoveFighter(fighter, force, rounds), rounds);
             }
+        }
+
+        /// <summary>
+        /// Eases a squadron toward the height of whatever it is flying at, at a fraction of its
+        /// speed, so fighters cross between decks instead of jumping from one to another.
+        /// </summary>
+        /// <param name="fighter">The squadron.</param>
+        /// <param name="altitude">The height it is making for.</param>
+        /// <param name="rounds">The elapsed combat rounds.</param>
+        private static void ClimbToward(
+            TacticalStarfighterUnit fighter,
+            double altitude,
+            double rounds
+        )
+        {
+            double step = Math.Max(fighter.Speed, 1) * _fighterClimbFraction * rounds;
+            fighter.Altitude += Math.Clamp(altitude - fighter.Altitude, -step, step);
+        }
+
+        /// <summary>
+        /// Returns whether two units stand on different decks, and so cannot be in each other's
+        /// way however close they are on the plane.
+        /// </summary>
+        /// <param name="first">One unit.</param>
+        /// <param name="second">The other unit.</param>
+        /// <returns>True when the units' heights differ by a good part of a deck.</returns>
+        private bool AreOnDifferentDecks(TacticalBattleUnit first, TacticalBattleUnit second)
+        {
+            return DeckSpacing > 0
+                && Math.Abs(first.Altitude - second.Altitude) > DeckSpacing * _deckTolerance;
         }
 
         /// <summary>
@@ -1372,8 +1542,11 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Pushes capital ships apart so their hull footprints never overlap, whichever side they
-        /// belong to; each ship in an overlapping pair yields half of the shortfall.
+        /// Pushes capital ships on the same deck apart so their hull footprints never overlap,
+        /// whichever side they belong to, and so ships of one fleet keep room between their
+        /// hulls. The two ships of
+        /// a pair that is too close share the shortfall, unless one of them is a friend holding
+        /// its place in the line, which the other then gives way to.
         /// </summary>
         private void SeparateShips()
         {
@@ -1396,7 +1569,17 @@ namespace Rebellion.Gameplay
                 {
                     TacticalCapitalShipUnit a = ships[first];
                     TacticalCapitalShipUnit b = ships[second];
-                    double minimum = (a.HullFootprint + b.HullFootprint) * _shipClearance;
+                    // Ships on different decks pass over and under each other.
+                    if (AreOnDifferentDecks(a, b))
+                        continue;
+
+                    // Ships of one fleet keep formation room between their hulls; enemies, and
+                    // ships running for the edge, are only kept from overlapping.
+                    double clearance =
+                        a.Side == b.Side && !a.IsWithdrawing && !b.IsWithdrawing
+                            ? _formationClearance
+                            : _shipClearance;
+                    double minimum = (a.HullFootprint + b.HullFootprint) * clearance;
                     double distance = a.GetDistanceTo(b);
                     if (distance >= minimum)
                         continue;
@@ -1405,13 +1588,22 @@ namespace Rebellion.Gameplay
                         distance > _arrivalTolerance
                             ? a.GetAngleTo(b)
                             : (a.Side == CombatSide.Attacker ? Math.PI / 2 : -Math.PI / 2);
-                    double shift = (minimum - distance) / 2;
-                    a.X -= Math.Cos(angle) * shift;
-                    a.Y -= Math.Sin(angle) * shift;
-                    b.X += Math.Cos(angle) * shift;
-                    b.Y += Math.Sin(angle) * shift;
-                    ClampToArena(a);
-                    ClampToArena(b);
+                    double shift = minimum - distance;
+                    // A ship fighting from its place keeps it, and a friend still finding its
+                    // own gives all the way; otherwise the two share the shortfall.
+                    double shareA =
+                        a.Side == b.Side && a.IsOnStation != b.IsOnStation
+                            ? (a.IsOnStation ? 0 : 1)
+                            : 0.5;
+                    a.X -= Math.Cos(angle) * shift * shareA;
+                    a.Y -= Math.Sin(angle) * shift * shareA;
+                    b.X += Math.Cos(angle) * shift * (1 - shareA);
+                    b.Y += Math.Sin(angle) * shift * (1 - shareA);
+                    // A withdrawing ship is on its way out past the edge and is not pulled back.
+                    if (!a.IsWithdrawing)
+                        ClampToArena(a);
+                    if (!b.IsWithdrawing)
+                        ClampToArena(b);
                 }
             }
         }
@@ -1428,6 +1620,7 @@ namespace Rebellion.Gameplay
             double rounds
         )
         {
+            ship.IsOnStation = false;
             if (ship.IsWithdrawing)
             {
                 SteerShip(ship, GetRetreatX(force.Side), ship.Y, rounds, clamp: false);
@@ -1444,12 +1637,31 @@ namespace Rebellion.Gameplay
                 return;
             }
 
+            // An escort left to itself stays with the ships of the line and shoots at what
+            // comes within reach, rather than chasing fighters into the enemy fleet.
             TacticalBattleUnit target = ship.Target;
+            TacticalCapitalShipUnit screened =
+                ship.IsEscort && ship.IsAutomatic ? FindScreenedShip(ship, force) : null;
+            if (screened != null)
+            {
+                KeepStation(ship, screened, target, rounds);
+                return;
+            }
+
             if (target?.IsTargetable != true || !ship.IsArmed)
                 return;
 
+            // A ship choosing its own way stops short of the enemy line: once any enemy ship is
+            // as near as it would hold from that ship, it fights from where it is, even if its
+            // own target is farther off. And it waits behind a friend already fighting from the
+            // place ahead of it instead of shouldering that ship toward the enemy. A ship under
+            // the player's attack order goes for its target regardless.
             double preferredRange = ship.GetPreferredRange(target);
-            if (ship.GetDistanceTo(target) > preferredRange)
+            bool inPlace =
+                ship.GetDistanceTo(target) <= preferredRange
+                || (ship.IsAutomatic && HasReachedEnemyLine(ship, force));
+            bool waiting = !inPlace && ship.IsAutomatic && IsBlockedByFriend(ship, force, target);
+            if (!inPlace && !waiting)
             {
                 double angle = ship.GetAngleTo(target);
                 double approach = preferredRange * _attackApproachFraction;
@@ -1463,11 +1675,162 @@ namespace Rebellion.Gameplay
                 return;
             }
 
+            ship.IsOnStation = inPlace;
             ship.Heading = TacticalBattleGeometry.TurnToward(
                 ship.Heading,
                 ship.GetDesiredFacing(target),
                 ship.TurnRate * rounds
             );
+        }
+
+        /// <summary>
+        /// Returns whether a ship has come as near the enemy line as it means to: some enemy
+        /// capital ship is already inside the distance the ship would hold from it.
+        /// </summary>
+        /// <param name="ship">The advancing ship.</param>
+        /// <param name="force">The ship's force.</param>
+        /// <returns>True when an enemy capital ship is within the ship's holding distance.</returns>
+        private bool HasReachedEnemyLine(TacticalCapitalShipUnit ship, TacticalBattleForce force)
+        {
+            TacticalBattleForce opposing = ReferenceEquals(force, _attacker)
+                ? _defender
+                : _attacker;
+            foreach (TacticalCapitalShipUnit enemy in opposing.Ships)
+            {
+                if (
+                    enemy.IsTargetable
+                    && ship.GetDistanceTo(enemy) <= ship.GetPreferredRange(enemy)
+                )
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Returns whether a friendly ship that is holding its place on the same deck lies
+        /// close ahead on a ship's course to its target, leaving no room to pass.
+        /// </summary>
+        /// <param name="ship">The advancing ship.</param>
+        /// <param name="force">The ship's force.</param>
+        /// <param name="target">The unit the ship is closing on.</param>
+        /// <returns>True when the ship should wait where it is.</returns>
+        private bool IsBlockedByFriend(
+            TacticalCapitalShipUnit ship,
+            TacticalBattleForce force,
+            TacticalBattleUnit target
+        )
+        {
+            double course = ship.GetAngleTo(target);
+            foreach (TacticalCapitalShipUnit friend in force.Ships)
+            {
+                if (
+                    friend == ship
+                    || !friend.IsOnStation
+                    || !friend.IsTargetable
+                    || AreOnDifferentDecks(ship, friend)
+                )
+                    continue;
+
+                double room =
+                    (ship.HullFootprint + friend.HullFootprint) * _formationClearance
+                    + _blockedMargin;
+                if (ship.GetDistanceTo(friend) > room)
+                    continue;
+
+                double offCourse = Math.Abs(
+                    TacticalBattleGeometry.NormalizeAngle(ship.GetAngleTo(friend) - course)
+                );
+                if (offCourse < _blockingArc)
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Finds the ship of the line an escort screens: the nearest armed friendly ship that is
+        /// not itself an escort and is still fighting.
+        /// </summary>
+        /// <param name="escort">The escort.</param>
+        /// <param name="force">The escort's force.</param>
+        /// <returns>The ship to stay with, or null when no ship of the line is left.</returns>
+        private static TacticalCapitalShipUnit FindScreenedShip(
+            TacticalCapitalShipUnit escort,
+            TacticalBattleForce force
+        )
+        {
+            TacticalCapitalShipUnit nearest = null;
+            double nearestDistance = double.MaxValue;
+            foreach (TacticalCapitalShipUnit candidate in force.Ships)
+            {
+                if (
+                    candidate == escort
+                    || candidate.IsEscort
+                    || !candidate.IsArmed
+                    || !candidate.IsTargetable
+                    || candidate.IsWithdrawing
+                )
+                    continue;
+
+                double distance = escort.GetDistanceTo(candidate);
+                if (distance < nearestDistance)
+                {
+                    nearest = candidate;
+                    nearestDistance = distance;
+                }
+            }
+
+            return nearest;
+        }
+
+        /// <summary>
+        /// Keeps an escort beside the ship it screens: it closes up when it has fallen behind and
+        /// otherwise holds, turning its guns on its target.
+        /// </summary>
+        /// <param name="escort">The escort.</param>
+        /// <param name="screened">The ship of the line it stays with.</param>
+        /// <param name="target">The escort's current target, or null.</param>
+        /// <param name="rounds">The elapsed combat rounds.</param>
+        private void KeepStation(
+            TacticalCapitalShipUnit escort,
+            TacticalCapitalShipUnit screened,
+            TacticalBattleUnit target,
+            double rounds
+        )
+        {
+            // On the same deck the escort stands off beside its charge; on another deck it has
+            // nothing to keep clear of and rides close over or under it.
+            double station =
+                (escort.HullFootprint + screened.HullFootprint)
+                * (
+                    AreOnDifferentDecks(escort, screened)
+                        ? _escortDeckStationFactor
+                        : _escortStationFactor
+                );
+            if (escort.GetDistanceTo(screened) > station)
+            {
+                double angle = escort.GetAngleTo(screened);
+                double approach = station * _attackApproachFraction;
+                SteerShip(
+                    escort,
+                    screened.X - Math.Cos(angle) * approach,
+                    screened.Y - Math.Sin(angle) * approach,
+                    rounds,
+                    clamp: true
+                );
+                return;
+            }
+
+            escort.IsOnStation = true;
+            if (target?.IsTargetable == true && escort.IsArmed)
+            {
+                escort.Heading = TacticalBattleGeometry.TurnToward(
+                    escort.Heading,
+                    escort.GetDesiredFacing(target),
+                    escort.TurnRate * rounds
+                );
+            }
         }
 
         /// <summary>
@@ -1511,14 +1874,38 @@ namespace Rebellion.Gameplay
         /// <param name="fighter">The fighter squadron.</param>
         /// <param name="force">The squadron's force.</param>
         /// <param name="rounds">The elapsed combat rounds.</param>
-        private void MoveFighter(
+        /// <returns>
+        /// The height the squadron should be making for: that of the unit it is flying at, the
+        /// battle plane for a station beyond the arena, or its own when it has nothing to match.
+        /// </returns>
+        private double MoveFighter(
             TacticalStarfighterUnit fighter,
             TacticalBattleForce force,
             double rounds
         )
         {
+            if (fighter.IsDocked)
+            {
+                // A squadron aboard rides with its ship.
+                fighter.X = fighter.RecoveryShip.X;
+                fighter.Y = fighter.RecoveryShip.Y;
+                return fighter.RecoveryShip.Altitude;
+            }
+
             if (fighter.IsInTrench)
-                return;
+                return fighter.Altitude;
+
+            // A squadron with no hyperdrive keeps looking for a bay while its fleet withdraws:
+            // one opens when a squadron bound for it is lost.
+            if (
+                fighter.RecoveryShip == null
+                && fighter.IsWithdrawing
+                && !fighter.CanWithdrawIndependently
+            )
+                force.TryRecover(fighter, null, mustJump: true);
+
+            if (fighter.RecoveryShip != null && FlyToHangar(fighter, force, rounds))
+                return fighter.RecoveryShip.Altitude;
 
             if (fighter.IsWithdrawing)
             {
@@ -1528,10 +1915,11 @@ namespace Rebellion.Gameplay
                 if (carrier == null)
                 {
                     MoveDirect(fighter, GetRetreatX(force.Side), fighter.Y, rounds, clamp: false);
-                    return;
+                    return fighter.Altitude;
                 }
 
-                // Recovering squadrons close on their carrier and circle it until it jumps.
+                // A squadron with no bay to go to stays with the nearest ship still leaving; it
+                // is lost when the last of them has jumped.
                 double carrierDistance = fighter.GetDistanceTo(carrier);
                 double recoveryRadius =
                     carrier.HullFootprint + _patrolClearance * fighter.OrbitRadiusScale;
@@ -1539,13 +1927,13 @@ namespace Rebellion.Gameplay
                     MoveDirect(fighter, carrier.X, carrier.Y, rounds, clamp: false);
                 else
                     Orbit(fighter, carrier.X, carrier.Y, carrierDistance, recoveryRadius, rounds);
-                return;
+                return carrier.Altitude;
             }
 
             if (fighter.TrenchRunTarget != null)
             {
                 FlyTrenchRun(fighter, rounds);
-                return;
+                return 0;
             }
 
             if (IsOutsideArena(fighter))
@@ -1558,7 +1946,7 @@ namespace Rebellion.Gameplay
                     rounds,
                     clamp: false
                 );
-                return;
+                return fighter.Altitude;
             }
 
             TacticalBattleUnit target = fighter.Target;
@@ -1566,16 +1954,20 @@ namespace Rebellion.Gameplay
                 target?.IsTargetable == true ? fighter.GetEngagementRange(target.IsStarfighter) : 0;
             if (engagementRange <= 0)
             {
-                // Nothing to engage: fly a patrol circle around the nearest friendly ship.
-                PatrolNearFleet(fighter, force, rounds);
-                return;
+                // Nothing to engage: a screening squadron circles its ship, any other flies a
+                // patrol circle around the nearest friendly ship.
+                TacticalCapitalShipUnit anchor =
+                    fighter.ScreenedShip != null
+                        ? CircleShip(fighter, fighter.ScreenedShip, rounds)
+                        : PatrolNearFleet(fighter, force, rounds);
+                return anchor?.Altitude ?? fighter.Altitude;
             }
 
             double distance = fighter.GetDistanceTo(target);
             if (fighter.GetEngagementDistanceTo(target) <= engagementRange)
             {
                 OrbitTarget(fighter, target, distance, engagementRange, rounds);
-                return;
+                return target.Altitude;
             }
 
             MoveDirect(
@@ -1586,6 +1978,48 @@ namespace Rebellion.Gameplay
                 clamp: true,
                 engagementRange + target.HullFootprint
             );
+            return target.Altitude;
+        }
+
+        /// <summary>
+        /// Flies a recalled squadron to its hangar and lands it: it makes straight for the ship,
+        /// off the battlefield if need be, and once over the hull it rides with the ship for the
+        /// few seconds it takes to come aboard. A squadron whose ship is gone before it lands
+        /// looks for another bay.
+        /// </summary>
+        /// <param name="fighter">The recalled squadron.</param>
+        /// <param name="force">The squadron's force.</param>
+        /// <param name="rounds">The elapsed combat rounds.</param>
+        /// <returns>
+        /// True while the squadron has a hangar to fly for; false when none is left and it is
+        /// back to its other orders.
+        /// </returns>
+        private bool FlyToHangar(
+            TacticalStarfighterUnit fighter,
+            TacticalBattleForce force,
+            double rounds
+        )
+        {
+            if (
+                !fighter.RecoveryShip.IsTargetable
+                && !force.TryRecover(fighter, null, force.WithdrawalOrdered)
+            )
+                return false;
+
+            TacticalCapitalShipUnit ship = fighter.RecoveryShip;
+            double reach = Math.Max(ship.Radius, fighter.Speed * rounds);
+            if (fighter.DockingFraction <= 0 && fighter.GetDistanceTo(ship) > reach)
+            {
+                MoveDirect(fighter, ship.X, ship.Y, rounds, clamp: false);
+                if (fighter.GetDistanceTo(ship) > reach)
+                    return true;
+            }
+
+            fighter.X = ship.X;
+            fighter.Y = ship.Y;
+            fighter.Heading = ship.Heading;
+            fighter.AdvanceDocking(rounds / _dockingRounds);
+            return true;
         }
 
         /// <summary>
@@ -1646,13 +2080,75 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Returns whether a unit is near enough to a screened ship for its screen to take it
+        /// on: within the screen's clearance of the ship's hull, hull to hull.
+        /// </summary>
+        /// <param name="screened">The ship being screened.</param>
+        /// <param name="unit">The opposing unit.</param>
+        /// <param name="slack">Extra distance allowed beyond the clearance.</param>
+        /// <returns>True when the unit is inside the screen.</returns>
+        private static bool IsInsideScreen(
+            TacticalCapitalShipUnit screened,
+            TacticalBattleUnit unit,
+            double slack
+        )
+        {
+            return screened.GetEngagementDistanceTo(unit) <= _screenClearance + slack;
+        }
+
+        /// <summary>
+        /// Lists the opposing units a ship's screen may take on: those near the ship.
+        /// </summary>
+        /// <param name="screened">The ship being screened.</param>
+        /// <param name="targets">The targetable opposing units.</param>
+        /// <returns>The reusable list of units inside the screen.</returns>
+        private IReadOnlyList<TacticalBattleUnit> GetScreenTargets(
+            TacticalCapitalShipUnit screened,
+            IReadOnlyList<TacticalBattleUnit> targets
+        )
+        {
+            _screenTargets.Clear();
+            foreach (TacticalBattleUnit target in targets)
+            {
+                if (IsInsideScreen(screened, target, 0))
+                    _screenTargets.Add(target);
+            }
+
+            return _screenTargets;
+        }
+
+        /// <summary>
+        /// Flies a squadron around a friendly capital ship just outside its hull, closing on the
+        /// ship first when it is some way off.
+        /// </summary>
+        /// <param name="fighter">The squadron.</param>
+        /// <param name="ship">The ship to circle.</param>
+        /// <param name="rounds">The rounds of movement to apply.</param>
+        /// <returns>The ship the squadron circles.</returns>
+        private TacticalCapitalShipUnit CircleShip(
+            TacticalStarfighterUnit fighter,
+            TacticalCapitalShipUnit ship,
+            double rounds
+        )
+        {
+            double distance = fighter.GetDistanceTo(ship);
+            double radius = ship.HullFootprint + _patrolClearance * fighter.OrbitRadiusScale;
+            if (distance > radius * 2)
+                MoveDirect(fighter, ship.X, ship.Y, rounds, clamp: true);
+            else
+                Orbit(fighter, ship.X, ship.Y, distance, radius, rounds);
+            return ship;
+        }
+
+        /// <summary>
         /// Keeps an idle squadron flying: it circles the nearest friendly capital ship just
         /// outside its hull, or holds position when the fleet has no ships left.
         /// </summary>
         /// <param name="fighter">The squadron without a target it can engage.</param>
         /// <param name="force">The squadron's force.</param>
         /// <param name="rounds">The rounds of movement to apply.</param>
-        private void PatrolNearFleet(
+        /// <returns>The ship the squadron circles, or null when the fleet has none left.</returns>
+        private TacticalCapitalShipUnit PatrolNearFleet(
             TacticalStarfighterUnit fighter,
             TacticalBattleForce force,
             double rounds
@@ -1674,7 +2170,7 @@ namespace Rebellion.Gameplay
             }
 
             if (anchor == null)
-                return;
+                return null;
 
             Orbit(
                 fighter,
@@ -1684,6 +2180,7 @@ namespace Rebellion.Gameplay
                 anchor.HullFootprint + _patrolClearance * fighter.OrbitRadiusScale,
                 rounds
             );
+            return anchor;
         }
 
         /// <summary>
@@ -1765,11 +2262,12 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Finds the nearest friendly carrier that can still carry a stranded squadron away.
+        /// Finds the nearest friendly carrier still able to jump, for a squadron with no bay to
+        /// go to and no hyperdrive to stay with while the fleet leaves.
         /// </summary>
         /// <param name="fighter">The carrier-dependent squadron.</param>
         /// <param name="force">The squadron's force.</param>
-        /// <returns>The nearest eligible carrier, or null.</returns>
+        /// <returns>The nearest such carrier, or null.</returns>
         private static TacticalCapitalShipUnit FindRecoveryCarrier(
             TacticalStarfighterUnit fighter,
             TacticalBattleForce force
@@ -1889,8 +2387,12 @@ namespace Rebellion.Gameplay
 
             foreach (TacticalBattleUnit unit in force.Units)
             {
-                // A ship held in a tractor beam cannot make its jump.
-                if (unit is TacticalCapitalShipUnit ship && ship.IsTractored)
+                // A ship held in a tractor beam cannot make its jump, and one with squadrons
+                // still coming aboard holds it for them.
+                if (
+                    unit is TacticalCapitalShipUnit ship
+                    && (ship.IsTractored || force.IsAwaitingSquadrons(ship))
+                )
                     continue;
 
                 if (
@@ -2018,25 +2520,7 @@ namespace Rebellion.Gameplay
             // The battle line runs across the heading.
             double acrossX = -forwardY;
             double acrossY = forwardX;
-            int shipCount = force.Ships.Count;
-            double largestFootprint =
-                shipCount > 0 ? force.Ships.Max(ship => ship.HullFootprint) : 0;
-            double spacing =
-                shipCount > 1
-                    ? Math.Min(
-                        Math.Max(_shipSpacing, 2 * largestFootprint * _shipClearance),
-                        2 * HalfHeight / (shipCount + 1)
-                    )
-                    : 0;
-            for (int index = 0; index < shipCount; index++)
-            {
-                TacticalCapitalShipUnit ship = force.Ships[index];
-                double offset = (index - (shipCount - 1) / 2.0) * spacing;
-                ship.X = cornerX + acrossX * offset;
-                ship.Y = cornerY + acrossY * offset;
-                ship.Heading = heading;
-                ClampToArena(ship);
-            }
+            PlaceShips(force, cornerX, cornerY, heading);
 
             Dictionary<CapitalShip, int> launchedCounts = new Dictionary<CapitalShip, int>();
             int planetaryIndex = 0;
@@ -2055,6 +2539,7 @@ namespace Rebellion.Gameplay
                     double across = GetAlternatingOffset(launched) * _fighterLaunchSpacing;
                     fighter.X = carrier.X + forwardX * ahead + acrossX * across;
                     fighter.Y = carrier.Y + forwardY * ahead + acrossY * across;
+                    fighter.Altitude = carrier.Altitude;
                 }
                 else
                 {
@@ -2065,6 +2550,133 @@ namespace Rebellion.Gameplay
 
                 ClampToArena(fighter);
             }
+        }
+
+        /// <summary>
+        /// Forms a force's capital ships up around its corner in lines across its heading. A line
+        /// holds as many ships as fit across the arena with room between their hulls, and a fleet
+        /// too large for one line stacks up to three of them on decks one above another, so every
+        /// ship stands at the same distance from the enemy: the ships of the line first, largest
+        /// in the middle, then the escorts and unarmed ships. Only a fleet too large for three
+        /// decks forms further ranks behind. A formation that would overhang the arena is slid
+        /// back inside it.
+        /// </summary>
+        /// <param name="force">The force to place.</param>
+        /// <param name="cornerX">The horizontal coordinate the formation is centered on.</param>
+        /// <param name="cornerY">The vertical coordinate the formation is centered on.</param>
+        /// <param name="heading">The heading the force faces.</param>
+        private void PlaceShips(
+            TacticalBattleForce force,
+            double cornerX,
+            double cornerY,
+            double heading
+        )
+        {
+            List<TacticalCapitalShipUnit> ships = force
+                .Ships.OrderBy(ship => ship.IsEscort || !ship.IsArmed ? 1 : 0)
+                .ThenByDescending(ship => ship.MaximumHull)
+                .ToList();
+            if (ships.Count == 0)
+                return;
+
+            double forwardX = Math.Cos(heading);
+            double forwardY = Math.Sin(heading);
+            double acrossX = -forwardY;
+            double acrossY = forwardX;
+            double spacing = Math.Max(
+                _shipSpacing,
+                2 * ships.Max(ship => ship.HullFootprint) * _formationClearance
+            );
+            int lineCapacity = Math.Max((int)Math.Floor(2 * HalfHeight / spacing), 1);
+            int rankCapacity = lineCapacity * _deckCount;
+            int ranks = (ships.Count + rankCapacity - 1) / rankCapacity;
+            for (int rank = 0; rank < ranks; rank++)
+            {
+                int first = rank * rankCapacity;
+                int inRank = Math.Min(rankCapacity, ships.Count - first);
+                // As few lines as hold the rank's ships, filled evenly rather than leaving a
+                // last line of one.
+                int lines = (inRank + lineCapacity - 1) / lineCapacity;
+                int perLine = (inRank + lines - 1) / lines;
+                double behind = (rank - (ranks - 1) / 2.0) * spacing;
+                for (int index = 0; index < inRank; index++)
+                {
+                    TacticalCapitalShipUnit ship = ships[first + index];
+                    int line = index / perLine;
+                    int inLine = Math.Min(perLine, inRank - line * perLine);
+                    // Slots alternate outward from the middle; an even line is centered between
+                    // two. A line above or below the first stands half a slot to one side when
+                    // its ships would otherwise hide the ones beneath them.
+                    double slot =
+                        GetAlternatingOffset(index % perLine) - (inLine % 2 == 0 ? 0.5 : 0);
+                    if (line > 0 && inLine % 2 == perLine % 2)
+                        slot += line == 1 ? 0.5 : -0.5;
+                    ship.X = cornerX + acrossX * slot * spacing - forwardX * behind;
+                    ship.Y = cornerY + acrossY * slot * spacing - forwardY * behind;
+                    ship.Altitude = GetDeck(line, lines) * DeckSpacing;
+                    ship.Heading = heading;
+                }
+            }
+
+            SlideInsideArena(ships);
+        }
+
+        /// <summary>
+        /// Returns the deck one line of a formation stands on, in deck spacings above the battle
+        /// plane. One line stands on the plane; two stand half a deck above and below it; three
+        /// stand on it, above it and below it. The first line, which holds the largest ships,
+        /// takes the middle place, or the upper one of two.
+        /// </summary>
+        /// <param name="line">The zero-based line within its rank.</param>
+        /// <param name="lines">The number of lines in the rank.</param>
+        /// <returns>The deck, in deck spacings above the plane.</returns>
+        private static double GetDeck(int line, int lines)
+        {
+            if (lines <= 1)
+                return 0;
+            if (lines == 2)
+                return line == 0 ? 0.5 : -0.5;
+            return line == 0 ? 0
+                : line == 1 ? 1
+                : -1;
+        }
+
+        /// <summary>
+        /// Moves a formation as a whole so that none of its ships lies beyond the arena's edge,
+        /// centering it on an axis it is too large for, then clamps any ship still outside.
+        /// </summary>
+        /// <param name="ships">The ships of the formation.</param>
+        private void SlideInsideArena(IReadOnlyList<TacticalCapitalShipUnit> ships)
+        {
+            double pastLeft = ships.Max(ship => -Math.Max(HalfWidth - ship.Radius, 0) - ship.X);
+            double pastRight = ships.Max(ship => ship.X - Math.Max(HalfWidth - ship.Radius, 0));
+            double pastBottom = ships.Max(ship => -Math.Max(HalfHeight - ship.Radius, 0) - ship.Y);
+            double pastTop = ships.Max(ship => ship.Y - Math.Max(HalfHeight - ship.Radius, 0));
+            double shiftX = GetSlide(pastLeft, pastRight);
+            double shiftY = GetSlide(pastBottom, pastTop);
+            foreach (TacticalCapitalShipUnit ship in ships)
+            {
+                ship.X += shiftX;
+                ship.Y += shiftY;
+                ClampToArena(ship);
+            }
+        }
+
+        /// <summary>
+        /// Returns how far to slide a formation along one axis given how far it overhangs each
+        /// end: back inside from the end it overhangs, or to the middle when it cannot fit.
+        /// </summary>
+        /// <param name="pastLow">How far the formation lies beyond the low edge, if positive.</param>
+        /// <param name="pastHigh">How far the formation lies beyond the high edge, if positive.</param>
+        /// <returns>The signed distance to move the formation.</returns>
+        private static double GetSlide(double pastLow, double pastHigh)
+        {
+            // Too large for the axis: share the overhang between both ends.
+            if (pastLow + pastHigh > 0)
+                return (pastLow - pastHigh) / 2;
+            if (pastLow > 0)
+                return pastLow;
+            return pastHigh > 0 ? -pastHigh : 0;
         }
 
         /// <summary>
@@ -2160,14 +2772,22 @@ namespace Rebellion.Gameplay
         {
             foreach (TacticalBattleUnit unit in _units)
             {
+                // A squadron aboard a ship shares the ship's end: no blast or jump of its own.
+                bool aboard = unit is TacticalStarfighterUnit squadron && squadron.IsDocked;
                 if (!unit.IsAlive && _reportedDestroyed.Add(unit))
-                    _events.Add(
-                        new TacticalBattleEvent(TacticalBattleEventKind.UnitDestroyed, unit)
-                    );
+                {
+                    if (!aboard)
+                        _events.Add(
+                            new TacticalBattleEvent(TacticalBattleEventKind.UnitDestroyed, unit)
+                        );
+                }
                 else if (unit.HasWithdrawn && _reportedWithdrawn.Add(unit))
-                    _events.Add(
-                        new TacticalBattleEvent(TacticalBattleEventKind.UnitWithdrew, unit)
-                    );
+                {
+                    if (!aboard)
+                        _events.Add(
+                            new TacticalBattleEvent(TacticalBattleEventKind.UnitWithdrew, unit)
+                        );
+                }
             }
 
             foreach (TacticalBattleStation station in _stations)
@@ -2283,6 +2903,32 @@ namespace Rebellion.Gameplay
                         Fighter = fighter.Fighter,
                         SquadsBefore = fighter.InitialSquadronSize,
                         SquadsAfter = fighter.CurrentSquadronSize,
+                    }
+                );
+            }
+        }
+
+        /// <summary>
+        /// Appends the squadrons that ended the battle aboard a ship, so each stays with the ship
+        /// it docked with.
+        /// </summary>
+        /// <param name="result">The result receiving docking records.</param>
+        /// <param name="fighters">The resolved fighter squadrons.</param>
+        private static void AddDockingResults(
+            SpaceCombatResult result,
+            IReadOnlyList<TacticalStarfighterUnit> fighters
+        )
+        {
+            foreach (TacticalStarfighterUnit fighter in fighters)
+            {
+                if (!fighter.IsDocked || !fighter.IsAlive)
+                    continue;
+
+                result.FighterDockings.Add(
+                    new FighterDockingResult
+                    {
+                        Fighter = fighter.Fighter,
+                        Ship = fighter.RecoveryShip.Ship,
                     }
                 );
             }

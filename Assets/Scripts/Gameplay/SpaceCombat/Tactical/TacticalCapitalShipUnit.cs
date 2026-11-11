@@ -25,7 +25,7 @@ namespace Rebellion.Gameplay
     {
         private const double _turnRateBase = 0.08;
         private const double _turnRatePerManeuverability = 0.05;
-        private const double _preferredRangeFraction = 0.7;
+        private const double _preferredRangeFraction = 0.55;
         private const double _tractorApproachFraction = 0.9;
         private const double _tractoredSpeedFactor = 0.2;
         private const double _shieldsDownFraction = 0.05;
@@ -58,6 +58,8 @@ namespace Rebellion.Gameplay
         private readonly double _maximumHull;
         private readonly double _maximumShields;
         private readonly double _maximumWeaponRange;
+        private readonly double _capitalBatteryRange;
+        private readonly double _fighterBatteryRange;
         private readonly double _rangeMultiplier;
         private readonly double _radius;
         private readonly Queue<int> _rechargeQueue = new Queue<int>();
@@ -118,9 +120,28 @@ namespace Rebellion.Gameplay
         public bool HasHyperdrive => Ship.Hyperdrive > 0;
 
         /// <summary>
-        /// Gets whether the ship projects a gravity well that holds enemy ships in the system.
+        /// Gets whether the ship is fitted with gravity well projectors.
         /// </summary>
         public bool HasGravityWell => Ship.HasGravityWell;
+
+        /// <summary>
+        /// Gets whether the ship is projecting a gravity well right now, holding enemy ships in
+        /// the system: it has the projectors and is still in the battle.
+        /// </summary>
+        public bool ProjectsGravityWell => HasGravityWell && IsTargetable;
+
+        /// <summary>
+        /// Gets whether the ship is an escort: its laser cannons outweigh its heavy batteries, so
+        /// it screens the ships of the line against fighters instead of joining the line.
+        /// </summary>
+        public bool IsEscort { get; }
+
+        /// <summary>
+        /// Gets or sets whether the ship is holding the place it fights from: its target, or the
+        /// enemy line, is as near as it means to get. Friends closing up behind wait for it and
+        /// give way to it rather than pushing it on.
+        /// </summary>
+        internal bool IsOnStation { get; set; }
 
         /// <summary>
         /// Gets the ship's tractor beam strength, or zero when it carries no beam.
@@ -235,12 +256,15 @@ namespace Rebellion.Gameplay
             }
 
             _maximumWeaponRange = GetMaximumWeaponRange();
+            _capitalBatteryRange = GetMainBatteryRange(targetsFighters: false);
+            _fighterBatteryRange = GetMainBatteryRange(targetsFighters: true);
             // Heavy batteries hunt capital ships; laser-heavy escorts screen against fighters.
-            TargetPriority =
+            IsEscort =
                 SumArcStrength(_laserCannons)
-                > SumArcStrength(_turbolasers) + SumArcStrength(_ionCannons)
-                    ? TacticalTargetPriority.Starfighters
-                    : TacticalTargetPriority.CapitalShips;
+                > SumArcStrength(_turbolasers) + SumArcStrength(_ionCannons);
+            TargetPriority = IsEscort
+                ? TacticalTargetPriority.Starfighters
+                : TacticalTargetPriority.CapitalShips;
         }
 
         /// <summary>
@@ -531,23 +555,22 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Returns the distance the ship closes to against a target: inside its weapon range,
-        /// and, when it carries a tractor beam, near enough to hold a capital ship that is running.
+        /// Returns the distance the ship closes to against a target and then holds: the gap
+        /// between the two hulls is a comfortable fraction of the range of its main battery
+        /// against that class of target, so ships stand off from each other instead of closing
+        /// until their hulls meet. A ship with a tractor beam comes nearer to hold a capital
+        /// ship that is running.
         /// </summary>
         /// <param name="target">The unit being engaged.</param>
         /// <returns>The preferred center-to-center distance.</returns>
         internal double GetPreferredRange(TacticalBattleUnit target)
         {
-            double range = _maximumWeaponRange * _preferredRangeFraction;
+            double battery = target.IsStarfighter ? _fighterBatteryRange : _capitalBatteryRange;
+            double gap = battery * _preferredRangeFraction;
             if (HasTractorBeam && target is TacticalCapitalShipUnit && target.IsWithdrawing)
-            {
-                range = Math.Min(
-                    range,
-                    (TractorBeamRange + target.HullFootprint) * _tractorApproachFraction
-                );
-            }
+                gap = Math.Min(gap, TractorBeamRange * _tractorApproachFraction);
 
-            return range;
+            return gap + target.HullFootprint + HullFootprint;
         }
 
         /// <summary>
@@ -652,10 +675,11 @@ namespace Rebellion.Gameplay
             if (TacticalBattleGeometry.GetArc(GetBearingTo(candidate)) != (PrimaryWeaponArc)arc)
                 return false;
 
+            // Weapons reach from hull to hull, as tractor beams do.
             weaponStrength = GetWeaponStrength(
                 type,
                 arc,
-                GetDistanceTo(candidate),
+                GetEngagementDistanceTo(candidate),
                 requireRange: true
             );
             if (weaponStrength <= 0)
@@ -883,6 +907,43 @@ namespace Rebellion.Gameplay
             }
 
             return range * _rangeMultiplier;
+        }
+
+        /// <summary>
+        /// Returns the range of the ship's main battery against one class of target: the weapon
+        /// type that does the most expected damage to that class across all arcs. A ship with a
+        /// few long guns and many short ones closes to where the many can fire.
+        /// </summary>
+        /// <param name="targetsFighters">Whether the target is a fighter squadron.</param>
+        /// <returns>
+        /// The main battery's range, scaled for the tactical arena, or the longest weapon range
+        /// when nothing the ship carries can hurt that class.
+        /// </returns>
+        private double GetMainBatteryRange(bool targetsFighters)
+        {
+            double strongest = 0;
+            double range = 0;
+            foreach (PrimaryWeaponType weaponType in _weaponTypes)
+            {
+                int[] values = GetWeaponValuesByType(weaponType);
+                if (values == null || values.Length <= CapitalShip.PrimaryWeaponRangeIndex)
+                    continue;
+
+                double strength =
+                    SumArcStrength(values)
+                    * GetTargetTypeMultiplier(weaponType, targetsFighters)
+                    * GetHitChance(weaponType, targetsFighters);
+                double weaponRange = values[CapitalShip.PrimaryWeaponRangeIndex] * _rangeMultiplier;
+                if (weaponRange <= 0 || strength < strongest)
+                    continue;
+                if (strength > strongest || weaponRange > range)
+                {
+                    strongest = strength;
+                    range = weaponRange;
+                }
+            }
+
+            return strongest > 0 ? range : _maximumWeaponRange;
         }
 
         /// <summary>

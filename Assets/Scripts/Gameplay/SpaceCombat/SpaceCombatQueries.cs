@@ -184,15 +184,25 @@ namespace Rebellion.Gameplay
         /// <param name="eligibleUnits">
         /// The units that completed tactical withdrawal, or null to consider every participant.
         /// </param>
+        /// <param name="dockings">
+        /// The ship each squadron docked with during a tactical battle, or null when none did.
+        /// </param>
         /// <returns>The reserved withdrawal plan.</returns>
         internal SpaceCombatWithdrawalPlan GetWithdrawalPlan(
             IReadOnlyList<Fleet> fleets,
             Planet planet,
             string ownerInstanceId,
-            ISet<ISceneNode> eligibleUnits = null
+            ISet<ISceneNode> eligibleUnits = null,
+            IReadOnlyDictionary<Starfighter, CapitalShip> dockings = null
         )
         {
-            return _withdrawalPlanner.CreatePlan(fleets, planet, ownerInstanceId, eligibleUnits);
+            return _withdrawalPlanner.CreatePlan(
+                fleets,
+                planet,
+                ownerInstanceId,
+                eligibleUnits,
+                dockings
+            );
         }
 
         /// <summary>

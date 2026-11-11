@@ -20,6 +20,7 @@ namespace Rebellion.Gameplay
         private const int _torpedoLane = 1;
         private const int _ionLane = 2;
         private const int _laneCount = 3;
+        private const double _dockingEpsilon = 1e-9;
 
         private readonly double _durabilityPerFighter;
         private readonly double _laserCannonCapitalDamageMultiplier;
@@ -55,11 +56,42 @@ namespace Rebellion.Gameplay
         public bool IsInTrench { get; private set; }
 
         /// <summary>
+        /// Gets the capital ship the squadron has been recalled to: the hangar it is flying for,
+        /// is landing in, or is aboard. Null while the squadron is free to fight.
+        /// </summary>
+        public TacticalCapitalShipUnit RecoveryShip { get; private set; }
+
+        /// <summary>
+        /// Gets whether the squadron is aboard its recovery ship. A docked squadron is off the
+        /// battlefield for good: it is not launched again, it leaves when the ship leaves, and it
+        /// is lost if the ship is destroyed.
+        /// </summary>
+        public bool IsDocked { get; private set; }
+
+        /// <summary>
+        /// Gets how far the squadron has come with landing aboard its recovery ship: 0 until it
+        /// arrives over the hangar, rising to 1 as it comes aboard.
+        /// </summary>
+        public double DockingFraction { get; private set; }
+
+        /// <summary>
+        /// Gets the friendly capital ship the squadron has been posted to screen: it circles
+        /// that ship and takes on only what comes near it. Null while the squadron fights on
+        /// its own.
+        /// </summary>
+        public TacticalCapitalShipUnit ScreenedShip { get; private set; }
+
+        /// <summary>
         /// Gets whether the squadron carries the torpedoes a trench run needs.
         /// </summary>
         public bool HasTorpedoes => Fighter.Torpedoes > 0;
 
-        public override bool IsOffField => IsInTrench;
+        public override bool IsOffField => IsInTrench || IsDocked;
+
+        public override bool HasWithdrawn =>
+            base.HasWithdrawn || (IsDocked && RecoveryShip.HasWithdrawn);
+
+        public override bool IsWithdrawing => base.IsWithdrawing && !IsDocked;
 
         /// <summary>
         /// Gets or sets the direction the squadron circles its target: 1 counterclockwise,
@@ -88,13 +120,16 @@ namespace Rebellion.Gameplay
 
         public override ISceneNode Node => Fighter;
 
-        public override bool IsAlive => _currentDurability > 0;
+        // A squadron aboard a ship is lost with it.
+        public override bool IsAlive =>
+            _currentDurability > 0 && (!IsDocked || RecoveryShip.IsAlive);
 
         public override bool IsStarfighter => true;
 
         public override double Radius => _squadronRadius;
 
-        internal override bool CanWithdrawIndependently => Fighter.Hyperdrive > 0;
+        // A squadron aboard a ship goes where the ship goes, whatever drive it has.
+        internal override bool CanWithdrawIndependently => Fighter.Hyperdrive > 0 && !IsDocked;
 
         internal override double RemainingDurability => _currentDurability;
 
@@ -124,11 +159,13 @@ namespace Rebellion.Gameplay
             Carrier = fighter.GetParent() as CapitalShip;
             InitialSquadronSize = Math.Max(fighter.CurrentSquadronSize, 0);
             _commandBonus = Math.Max(commandBonus, 0);
-            // Every fighter has an airframe to shoot through and shields add to it, so TIEs fall
-            // sooner than X-wings instead of popping at the first hit.
+            // Every fighter has an airframe to shoot through, and its shields count for more
+            // than their rating on top of it. An unshielded TIE no longer pops at the first hit,
+            // but it still falls several times sooner than an X-wing.
             _durabilityPerFighter = Math.Max(
                 Math.Max(config.TacticalFighterHullStrength, 0)
-                    + Math.Max(fighter.ShieldStrength, 0),
+                    + Math.Max(fighter.ShieldStrength, 0)
+                        * Math.Max(config.TacticalFighterShieldMultiplier, 0),
                 1
             );
             _laserCannonCapitalDamageMultiplier = Math.Max(
@@ -168,6 +205,8 @@ namespace Rebellion.Gameplay
             TrenchRunTarget = null;
             IsInTrench = false;
             _scanCooldown = 0;
+            ClearRecovery();
+            ScreenedShip = null;
         }
 
         /// <summary>
@@ -181,6 +220,8 @@ namespace Rebellion.Gameplay
             IsInTrench = false;
             Target = null;
             IsDirected = false;
+            ClearRecovery();
+            ScreenedShip = null;
         }
 
         /// <summary>
@@ -200,6 +241,108 @@ namespace Rebellion.Gameplay
             TrenchRunTarget = null;
             IsInTrench = false;
             _scanCooldown = 0;
+        }
+
+        /// <summary>
+        /// Recalls the squadron to a capital ship's hangar: it drops its target and any trench
+        /// run and flies straight for the ship. A squadron already aboard a ship stays there.
+        /// </summary>
+        /// <param name="ship">The friendly ship to dock with.</param>
+        internal void SetRecovery(TacticalCapitalShipUnit ship)
+        {
+            if (ship == null)
+                throw new ArgumentNullException(nameof(ship));
+            if (IsDocked || ReferenceEquals(RecoveryShip, ship))
+                return;
+
+            RecoveryShip = ship;
+            DockingFraction = 0;
+            ScreenedShip = null;
+            TrenchRunTarget = null;
+            IsInTrench = false;
+            Target = null;
+            IsDirected = false;
+        }
+
+        /// <summary>
+        /// Posts the squadron as a screen around a friendly capital ship: it drops its target,
+        /// any trench run and any recall, circles the ship, and from then on engages only what
+        /// comes near it. A squadron already aboard a ship stays there.
+        /// </summary>
+        /// <param name="ship">The friendly ship to screen.</param>
+        internal void SetScreen(TacticalCapitalShipUnit ship)
+        {
+            if (ship == null)
+                throw new ArgumentNullException(nameof(ship));
+            if (IsDocked)
+                return;
+
+            ClearRecovery();
+            ScreenedShip = ship;
+            TrenchRunTarget = null;
+            IsInTrench = false;
+            Target = null;
+            IsDirected = false;
+            _scanCooldown = 0;
+        }
+
+        /// <summary>
+        /// Releases the squadron from the ship it was screening and returns it to ordinary
+        /// engagement.
+        /// </summary>
+        internal void ClearScreen()
+        {
+            if (ScreenedShip == null)
+                return;
+
+            ScreenedShip = null;
+            _scanCooldown = 0;
+        }
+
+        /// <summary>
+        /// Calls off a recall that has not been completed and returns the squadron to ordinary
+        /// engagement. A squadron already aboard a ship stays there.
+        /// </summary>
+        internal void ClearRecovery()
+        {
+            if (IsDocked || RecoveryShip == null)
+                return;
+
+            RecoveryShip = null;
+            DockingFraction = 0;
+            _scanCooldown = 0;
+        }
+
+        /// <summary>
+        /// Brings the squadron a step further aboard its recovery ship, and takes it off the
+        /// battlefield once the landing is complete.
+        /// </summary>
+        /// <param name="fraction">The share of the whole landing covered by this step.</param>
+        internal void AdvanceDocking(double fraction)
+        {
+            if (IsDocked || RecoveryShip == null)
+                return;
+
+            DockingFraction = Math.Min(DockingFraction + Math.Max(fraction, 0), 1);
+            if (DockingFraction >= 1 - _dockingEpsilon)
+                Dock();
+        }
+
+        /// <summary>
+        /// Takes the squadron aboard its recovery ship at once.
+        /// </summary>
+        internal void Dock()
+        {
+            if (IsDocked || RecoveryShip == null)
+                return;
+
+            IsDocked = true;
+            DockingFraction = 1;
+            Target = null;
+            IsDirected = false;
+            X = RecoveryShip.X;
+            Y = RecoveryShip.Y;
+            Altitude = RecoveryShip.Altitude;
         }
 
         /// <summary>

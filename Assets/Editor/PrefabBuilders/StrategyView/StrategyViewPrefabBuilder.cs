@@ -84,6 +84,7 @@ public static class StrategyViewPrefabBuilder
     private const int _tacticalPanelWidth = 213;
     private const int _tacticalHudButtonHeight = 24;
     private const int _tacticalHudButtonGap = 6;
+    private const int _tacticalRecoverButtonWidth = 58;
     private const int _tacticalHudMargin = 8;
     private const int _tacticalRosterTop = 24;
     private const int _tacticalRosterHeight = 30;
@@ -7686,14 +7687,32 @@ public static class StrategyViewPrefabBuilder
             TextAlignmentOptions.TopLeft
         );
 
+        // The recover button shares the row: it acts on the selected squadrons, the targets
+        // button on the inspected unit.
+        int targetPriorityWidth =
+            contentWidth - _tacticalRecoverButtonWidth - _tacticalHudButtonGap;
         Button targetPriority = CreateTacticalHudButton(
             "TargetPriorityButton",
             panel,
             margin,
             314,
-            contentWidth,
+            targetPriorityWidth,
             "Targets: Capital ships first",
             out TextMeshProUGUI targetPriorityLabel
+        );
+        // The longer caption shrinks to stay inside the narrower button, on one line.
+        targetPriorityLabel.textWrappingMode = TextWrappingModes.NoWrap;
+        targetPriorityLabel.enableAutoSizing = true;
+        targetPriorityLabel.fontSizeMin = 8;
+        targetPriorityLabel.fontSizeMax = 11;
+        Button recover = CreateTacticalHudButton(
+            "RecoverButton",
+            panel,
+            margin + targetPriorityWidth + _tacticalHudButtonGap,
+            314,
+            _tacticalRecoverButtonWidth,
+            "Recover",
+            out TextMeshProUGUI recoverLabel
         );
 
         TextMeshProUGUI attackerStatus = CreatePanelLabel(
@@ -7824,6 +7843,8 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "tacticsTextField", tacticsText);
         AssignReference(view, "targetPriorityButton", targetPriority);
         AssignReference(view, "targetPriorityLabel", targetPriorityLabel);
+        AssignReference(view, "recoverButton", recover);
+        AssignReference(view, "recoverLabel", recoverLabel);
         AssignReference(view, "attackerStatusTextField", attackerStatus);
         AssignReference(view, "defenderStatusTextField", defenderStatus);
         AssignReference(view, "statusTextField", clock);

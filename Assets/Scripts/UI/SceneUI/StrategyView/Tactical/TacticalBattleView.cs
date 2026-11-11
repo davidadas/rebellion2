@@ -157,6 +157,12 @@ public sealed class TacticalBattleView
     [SerializeField]
     private TextMeshProUGUI targetPriorityLabel;
 
+    [SerializeField]
+    private Button recoverButton;
+
+    [SerializeField]
+    private TextMeshProUGUI recoverLabel;
+
     [Header("Battle")]
     [SerializeField]
     private TextMeshProUGUI attackerStatusTextField;
@@ -193,6 +199,16 @@ public sealed class TacticalBattleView
 
     [SerializeField]
     private TextMeshProUGUI speedLabel;
+
+    /// <summary>
+    /// The name every capital-ship slot in the roster bar starts with; its index follows.
+    /// </summary>
+    public const string RosterShipSlotPrefix = "RosterShipSlot";
+
+    /// <summary>
+    /// The name every squadron slot in the roster bar starts with; its index follows.
+    /// </summary>
+    public const string RosterSquadronSlotPrefix = "RosterSquadronSlot";
 
     private readonly List<TacticalUnitView> _unitViews = new List<TacticalUnitView>();
     private readonly List<RawImage> _shotImages = new List<RawImage>();
@@ -266,6 +282,11 @@ public sealed class TacticalBattleView
     /// Raised when the panel's target-priority button is pressed.
     /// </summary>
     internal event Action TargetPriorityToggleRequested;
+
+    /// <summary>
+    /// Raised when the panel's recover button is pressed.
+    /// </summary>
+    internal event Action RecoverRequested;
 
     /// <summary>
     /// Raised when the roster's side toggle is pressed.
@@ -404,6 +425,7 @@ public sealed class TacticalBattleView
         SetButtonState(retreatButton, retreatLabel, data.RetreatInteractable);
         UILayout.SetTextContent(autoLabel, data.AutoLabel);
         SetButtonState(autoButton, autoLabel, data.AutoInteractable);
+        SetButtonState(recoverButton, recoverLabel, data.RecoverInteractable);
         UILayout.SetTextContent(pauseLabel, data.PauseLabel);
         UILayout.SetTextContent(speedLabel, data.SpeedLabel);
 
@@ -728,7 +750,11 @@ public sealed class TacticalBattleView
         while (pool.Count <= index)
         {
             TacticalRosterSlotView slot = Instantiate(rosterSlotTemplate, rosterLayer);
-            slot.name = $"{rosterSlotTemplate.name}{pool.Count}";
+            // Named for its pool, so a ship slot and a squadron slot can be told apart.
+            string prefix = ReferenceEquals(pool, _rosterSquadronSlots)
+                ? RosterSquadronSlotPrefix
+                : RosterShipSlotPrefix;
+            slot.name = $"{prefix}{pool.Count}";
             pool.Add(slot);
         }
 
@@ -1062,6 +1088,7 @@ public sealed class TacticalBattleView
         Bind(pauseButton, () => PauseToggleRequested?.Invoke());
         Bind(speedButton, () => SpeedCycleRequested?.Invoke());
         Bind(targetPriorityButton, () => TargetPriorityToggleRequested?.Invoke());
+        Bind(recoverButton, () => RecoverRequested?.Invoke());
         Bind(rosterSideButton, () => RosterSidePressed?.Invoke());
         Bind(superlaserButton, () => SuperlaserPressed?.Invoke());
     }
@@ -1126,6 +1153,8 @@ public sealed class TacticalBattleView
         Require(tacticsTextField, nameof(tacticsTextField));
         Require(targetPriorityButton, nameof(targetPriorityButton));
         Require(targetPriorityLabel, nameof(targetPriorityLabel));
+        Require(recoverButton, nameof(recoverButton));
+        Require(recoverLabel, nameof(recoverLabel));
         Require(attackerStatusTextField, nameof(attackerStatusTextField));
         Require(defenderStatusTextField, nameof(defenderStatusTextField));
         Require(statusTextField, nameof(statusTextField));

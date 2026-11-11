@@ -338,6 +338,12 @@ internal sealed class TacticalBattleRenderData
     /// </summary>
     public TacticalSuperlaserRenderData Superlaser { get; }
 
+    /// <summary>
+    /// Gets whether the recover button accepts input: a selected squadron can be recalled to a
+    /// hangar.
+    /// </summary>
+    public bool RecoverInteractable { get; }
+
     public string Status => $"{AttackerStatus}   vs   {DefenderStatus}   |   {ClockStatus}";
 
     /// <summary>
@@ -363,6 +369,7 @@ internal sealed class TacticalBattleRenderData
     /// <param name="selectionBox">The source-space drag-selection bounds, when dragging.</param>
     /// <param name="roster">The roster bar, or null to hide it.</param>
     /// <param name="superlaser">The superlaser charge bar, or null to hide it.</param>
+    /// <param name="recoverInteractable">Whether the recover button accepts input.</param>
     public TacticalBattleRenderData(
         string title,
         string attackerStatus,
@@ -383,7 +390,8 @@ internal sealed class TacticalBattleRenderData
         IReadOnlyList<TacticalShotRenderData> shots,
         RectInt? selectionBox,
         TacticalRosterRenderData roster,
-        TacticalSuperlaserRenderData superlaser = null
+        TacticalSuperlaserRenderData superlaser = null,
+        bool recoverInteractable = false
     )
     {
         Title = title ?? string.Empty;
@@ -406,6 +414,7 @@ internal sealed class TacticalBattleRenderData
         SelectionBox = selectionBox;
         Roster = roster;
         Superlaser = superlaser;
+        RecoverInteractable = recoverInteractable;
     }
 }
 
@@ -421,17 +430,22 @@ public sealed class TacticalRosterSlotRenderData
     /// <param name="portrait">The unit portrait, or null.</param>
     /// <param name="highlighted">Whether the unit is inspected or selected.</param>
     /// <param name="alive">Whether the unit is still in the battle.</param>
+    /// <param name="aboard">
+    /// Whether the unit is a squadron out of the fight but safe aboard a ship's hangar.
+    /// </param>
     public TacticalRosterSlotRenderData(
         string label,
         Texture2D portrait,
         bool highlighted,
-        bool alive
+        bool alive,
+        bool aboard = false
     )
     {
         Label = label ?? string.Empty;
         Portrait = portrait;
         Highlighted = highlighted;
         Alive = alive;
+        Aboard = aboard;
     }
 
     public string Label { get; }
@@ -441,6 +455,12 @@ public sealed class TacticalRosterSlotRenderData
     public bool Highlighted { get; }
 
     public bool Alive { get; }
+
+    /// <summary>
+    /// Gets whether the unit is a squadron that has docked aboard a ship: out of the fight like
+    /// a lost one, but still alive.
+    /// </summary>
+    public bool Aboard { get; }
 }
 
 /// <summary>

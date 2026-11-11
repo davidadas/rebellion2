@@ -18,6 +18,12 @@ internal sealed class TacticalBattleProjector
 
     private const float _withdrawingAlpha = 0.45f;
     private const float _overlayExtentFraction = 0.8f;
+
+    /// <summary>
+    /// The tip added to the hint while units are selected.
+    /// </summary>
+    internal const string SelectionTip =
+        "Ctrl-click adds a unit; Shift-click in the roster takes a run.";
     private const float _capitalShotThickness = 2f;
     private const float _fighterShotThickness = 1f;
     private const float _torpedoShotThickness = 3f;
@@ -208,8 +214,32 @@ internal sealed class TacticalBattleProjector
                 focus,
                 rosterSide == CombatSide.Attacker ? attackerLabel : defenderLabel
             ),
-            ProjectSuperlaser(battle, superlaserArmed)
+            ProjectSuperlaser(battle, superlaserArmed),
+            CanRecoverAny(battle, selection)
         );
+    }
+
+    /// <summary>
+    /// Returns whether a recover order would send any selected squadron to a hangar.
+    /// </summary>
+    /// <param name="battle">The battle being presented.</param>
+    /// <param name="selection">The selected units.</param>
+    /// <returns>True when at least one selected squadron can be recalled.</returns>
+    private static bool CanRecoverAny(
+        TacticalSpaceBattle battle,
+        IReadOnlyCollection<TacticalBattleUnit> selection
+    )
+    {
+        if (selection == null)
+            return false;
+
+        foreach (TacticalBattleUnit unit in selection)
+        {
+            if (battle.CanOrderRecovery(unit))
+                return true;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -375,7 +405,13 @@ internal sealed class TacticalBattleProjector
                         squadron.CurrentSquadronSize.ToString(),
                         GetPortrait(squadron.Node, uiContext),
                         ReferenceEquals(squadron, focus) || selection?.Contains(squadron) == true,
-                        squadron.IsAlive && !squadron.HasWithdrawn
+                        // A squadron aboard a ship is out of the fight: its slot leaves the
+                        // live look for the hangar tint and keeps its count, where a lost
+                        // squadron's goes grey and reads zero.
+                        squadron.IsAlive
+                            && !squadron.HasWithdrawn
+                            && !squadron.IsDocked,
+                        squadron.IsAlive && !squadron.HasWithdrawn && squadron.IsDocked
                     )
                 );
             }
@@ -633,18 +669,21 @@ internal sealed class TacticalBattleProjector
         // The bolt's head leads by the shot's progress; its tail never trails behind the muzzle.
         double head = distance * shot.Progress;
         double tail = Math.Max(head - shot.BoltLength, 0);
+        double climb = (shot.EndAltitude - shot.StartAltitude) / distance;
         if (
             !scene.TryProject(
                 shot.StartX + dx / distance * tail,
                 shot.StartY + dy / distance * tail,
                 arena,
-                out Vector2 start
+                out Vector2 start,
+                shot.StartAltitude + climb * tail
             )
             || !scene.TryProject(
                 shot.StartX + dx / distance * head,
                 shot.StartY + dy / distance * head,
                 arena,
-                out Vector2 end
+                out Vector2 end,
+                shot.StartAltitude + climb * head
             )
         )
             return null;
@@ -842,12 +881,22 @@ internal sealed class TacticalBattleProjector
     /// <returns>The orders text.</returns>
     private static string DescribeFighterOrders(TacticalStarfighterUnit fighter)
     {
+        if (fighter.IsDocked)
+            return $"Orders: Aboard {fighter.RecoveryShip.DisplayName}";
+        if (fighter.RecoveryShip != null)
+            return fighter.DockingFraction > 0
+                ? $"Orders: Docking with {fighter.RecoveryShip.DisplayName}"
+                : $"Orders: Return to {fighter.RecoveryShip.DisplayName}";
         if (fighter.IsWithdrawing)
-            return "Orders: Return and withdraw";
+            return fighter.Fighter.Hyperdrive > 0
+                ? "Orders: Withdraw to hyperspace"
+                : "Orders: Stranded, no hangar has room";
         if (fighter.IsInTrench)
             return $"Orders: In the {fighter.TrenchRunTarget.DisplayName} trench";
         if (fighter.TrenchRunTarget != null)
             return $"Orders: Trench run on {fighter.TrenchRunTarget.DisplayName}";
+        if (fighter.ScreenedShip != null)
+            return $"Orders: Screening {fighter.ScreenedShip.DisplayName}";
 
         if (fighter.Target == null)
             return "Orders: Patrolling";
@@ -1025,8 +1074,12 @@ internal sealed class TacticalBattleProjector
         )
             return hint;
 
+        // The hint field holds four lines: the reason retreat is blocked comes before the tip
+        // about building a selection, which is shown only when there is room for it.
         string block = DescribeWithdrawalBlock(battle.GetWithdrawalStatus(battle.PlayerSide.Value));
-        return block == null ? hint : $"{block} {hint}";
+        if (block != null)
+            return $"{block} {hint}";
+        return selection?.Count > 0 ? $"{hint} {SelectionTip}" : hint;
     }
 
     /// <summary>
@@ -1107,13 +1160,13 @@ internal sealed class TacticalBattleProjector
             return DescribeSelectionHint(selection);
         if (selection?.Count == 1)
             return selection.First().IsStarfighter
-                ? "Right-click an enemy to send the squadron after it."
+                ? "Right-click an enemy to attack, or one of your ships to screen it."
                 : "Right-click to move or attack.";
         if (focus != null)
             return HasPlayerShips(battle)
                 ? "Click one of your units to command it. Tab cycles your ships."
                 : "Click one of your squadrons to command it.";
-        return "Click a unit to inspect and follow it. Drag to select several. Wheel zooms, right-drag orbits, WASD pans, Home reframes, Space pauses.";
+        return "Click a unit to select it, again to zoom to it. Drag selects several. Wheel zooms, right-drag orbits, WASD pans, Home reframes.";
     }
 
     /// <summary>
@@ -1169,7 +1222,7 @@ internal sealed class TacticalBattleProjector
         string shipText = ships == 1 ? "1 ship" : $"{ships} ships";
         string squadronText = squadrons == 1 ? "1 squadron" : $"{squadrons} squadrons";
         if (ships == 0)
-            return $"{squadronText} selected. Right-click an enemy to attack.";
+            return $"{squadronText} selected. Right-click an enemy to attack, or one of your ships to screen it.";
         if (squadrons == 0)
             return $"{shipText} selected. Right-click to move or attack.";
         return $"{shipText} and {squadronText} selected. Right-click to move or attack.";

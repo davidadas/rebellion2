@@ -86,7 +86,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
             Assert.IsTrue(data.AutoInteractable);
             Assert.AreEqual("Pause", data.PauseLabel);
             Assert.AreEqual("Speed 1x", data.SpeedLabel);
-            Assert.AreEqual("Right-click to move or attack.", data.Hint);
+            Assert.AreEqual(
+                "Right-click to move or attack. " + TacticalBattleProjector.SelectionTip,
+                data.Hint
+            );
             Assert.IsNotNull(data.Panel);
             Assert.AreEqual(friendly.DisplayName, data.Panel.Name);
             Assert.IsNull(data.SelectionBox);
@@ -343,9 +346,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
                 )
                 .ClockStatus;
 
-            Assert.AreEqual("2 squadrons selected. Right-click an enemy to attack.", squadronsOnly);
             Assert.AreEqual(
-                "1 ship and 1 squadron selected. Right-click to move or attack.",
+                "2 squadrons selected. Right-click an enemy to attack, or one of your ships to screen it. "
+                    + TacticalBattleProjector.SelectionTip,
+                squadronsOnly
+            );
+            Assert.AreEqual(
+                "1 ship and 1 squadron selected. Right-click to move or attack. "
+                    + TacticalBattleProjector.SelectionTip,
                 mixed
             );
             Assert.AreEqual(
@@ -499,6 +507,43 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
         }
 
         [Test]
+        public void Project_UnitsSelected_AddsTheSelectionKeysToTheHint()
+        {
+            TacticalSpaceBattle battle = CreateBattle(
+                out TacticalCapitalShipUnit friendly,
+                out _,
+                attackerCanWithdraw: true
+            );
+            TacticalBattleProjector projector = new TacticalBattleProjector();
+
+            TacticalBattleRenderData selected = Project(
+                projector,
+                battle,
+                _arena,
+                null,
+                new[] { friendly },
+                friendly,
+                null,
+                false,
+                1f
+            );
+            TacticalBattleRenderData unselected = Project(
+                projector,
+                battle,
+                _arena,
+                null,
+                new TacticalBattleUnit[0],
+                null,
+                null,
+                false,
+                1f
+            );
+
+            StringAssert.EndsWith(TacticalBattleProjector.SelectionTip, selected.Hint);
+            StringAssert.DoesNotContain(TacticalBattleProjector.SelectionTip, unselected.Hint);
+        }
+
+        [Test]
         public void Project_WithFactionThemes_DrawsEachShipsBarInItsFactionColor()
         {
             TacticalSpaceBattle battle = CreateBattle(
@@ -639,6 +684,138 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
                 enemy,
                 TacticalBattleProjector.GetRosterShips(battle, CombatSide.Defender)[0]
             );
+        }
+
+        [Test]
+        public void Project_SquadronRecalledToAHangar_ReportsItsOrdersAndDimsItsSlotOnceAboard()
+        {
+            CapitalShip attackerShip = CreateShip("Carrier", 100, 10);
+            attackerShip.OwnerInstanceID = _empireFactionId;
+            attackerShip.StarfighterCapacity = 1;
+            CapitalShip defenderShip = CreateShip("Corvette", 100000, 0);
+            defenderShip.OwnerInstanceID = _allianceFactionId;
+            Starfighter tie = CreateSquadron("tie", "TIE Fighter", 12);
+            TacticalSpaceBattle battle = new TacticalSpaceBattle(
+                CreateConfig(),
+                new SystemRandomProvider(11),
+                new[] { attackerShip },
+                new[] { tie },
+                new[] { defenderShip },
+                new List<Starfighter>(),
+                true,
+                false,
+                default,
+                default,
+                CombatSide.Attacker
+            );
+            TacticalStarfighterUnit squadron = battle
+                .Units.OfType<TacticalStarfighterUnit>()
+                .Single();
+            TacticalCapitalShipUnit carrier = battle
+                .Units.OfType<TacticalCapitalShipUnit>()
+                .Single(unit => unit.Ship == attackerShip);
+            TacticalBattleProjector projector = new TacticalBattleProjector();
+
+            TacticalBattleRenderData free = Project(
+                projector,
+                battle,
+                _arena,
+                null,
+                new[] { squadron },
+                squadron,
+                null,
+                false,
+                1f
+            );
+            battle.IssueRecoverOrder(new[] { squadron });
+            TacticalBattleRenderData returning = Project(
+                projector,
+                battle,
+                _arena,
+                null,
+                new[] { squadron },
+                squadron,
+                null,
+                false,
+                1f
+            );
+            squadron.X = carrier.X;
+            squadron.Y = carrier.Y;
+            battle.Advance(4);
+            TacticalBattleRenderData aboard = Project(
+                projector,
+                battle,
+                _arena,
+                null,
+                Array.Empty<TacticalBattleUnit>(),
+                squadron,
+                null,
+                false,
+                1f
+            );
+
+            Assert.IsTrue(free.RecoverInteractable);
+            Assert.AreEqual(
+                "Right-click an enemy to attack, or one of your ships to screen it. "
+                    + TacticalBattleProjector.SelectionTip,
+                free.Hint
+            );
+            Assert.IsFalse(returning.RecoverInteractable);
+            Assert.AreEqual("Orders: Return to Carrier", returning.Panel.OrdersText);
+            Assert.IsTrue(returning.Roster.SquadronGroups[0][0].Alive);
+            Assert.IsFalse(returning.Roster.SquadronGroups[0][0].Aboard);
+            Assert.IsTrue(squadron.IsDocked);
+            Assert.IsFalse(aboard.RecoverInteractable);
+            Assert.AreEqual("Orders: Aboard Carrier", aboard.Panel.OrdersText);
+            Assert.IsFalse(aboard.Roster.SquadronGroups[0][0].Alive);
+            Assert.IsTrue(aboard.Roster.SquadronGroups[0][0].Aboard);
+            Assert.AreEqual("12", aboard.Roster.SquadronGroups[0][0].Label);
+        }
+
+        [Test]
+        public void Project_SquadronScreeningAShip_NamesTheShipInItsOrders()
+        {
+            CapitalShip attackerShip = CreateShip("Carrier", 100, 10);
+            attackerShip.OwnerInstanceID = _empireFactionId;
+            CapitalShip defenderShip = CreateShip("Corvette", 100000, 0);
+            defenderShip.OwnerInstanceID = _allianceFactionId;
+            Starfighter tie = CreateSquadron("tie", "TIE Fighter", 12);
+            TacticalSpaceBattle battle = new TacticalSpaceBattle(
+                CreateConfig(),
+                new SystemRandomProvider(11),
+                new[] { attackerShip },
+                new[] { tie },
+                new[] { defenderShip },
+                new List<Starfighter>(),
+                true,
+                false,
+                default,
+                default,
+                CombatSide.Attacker
+            );
+            TacticalStarfighterUnit squadron = battle
+                .Units.OfType<TacticalStarfighterUnit>()
+                .Single();
+            TacticalCapitalShipUnit carrier = battle
+                .Units.OfType<TacticalCapitalShipUnit>()
+                .Single(unit => unit.Ship == attackerShip);
+            TacticalBattleProjector projector = new TacticalBattleProjector();
+
+            bool ordered = battle.IssueScreenOrder(new[] { squadron }, carrier);
+            TacticalBattleRenderData data = Project(
+                projector,
+                battle,
+                _arena,
+                null,
+                new[] { squadron },
+                squadron,
+                null,
+                false,
+                1f
+            );
+
+            Assert.IsTrue(ordered);
+            Assert.AreEqual("Orders: Screening Carrier", data.Panel.OrdersText);
         }
 
         [Test]
