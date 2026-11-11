@@ -3306,6 +3306,9 @@ namespace Rebellion.Gameplay
         )
         {
             bool active = result.NewPercent != 0;
+            if (receivesBenefits && !active && result.EndedByOwnershipChange)
+                return;
+
             MessageResultType resultType = (receivesBenefits, active) switch
             {
                 (false, true) => MessageResultType.SmugglingLosses,

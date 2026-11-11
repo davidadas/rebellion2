@@ -188,8 +188,10 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(2, changes.Length);
             Assert.AreEqual("FACTION1", changes[0].Controller.InstanceID);
             Assert.AreEqual(0, changes[0].NewPercent);
+            Assert.IsTrue(changes[0].EndedByOwnershipChange);
             Assert.AreEqual("FACTION2", changes[1].Controller.InstanceID);
             Assert.AreEqual(0, changes[1].OldPercent);
+            Assert.IsFalse(changes[1].EndedByOwnershipChange);
         }
 
         [Test]
