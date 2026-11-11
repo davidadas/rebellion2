@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.PlayerRequests;
 using Rebellion.SceneGraph;
 using Rebellion.Util.DependencyInjection;
 
@@ -13,14 +16,21 @@ using Rebellion.Util.DependencyInjection;
 public sealed class ConstructionOrderController
 {
     private readonly IServiceLocator services;
+    private readonly IPlayerRequestDispatcher playerRequests;
 
     /// <summary>
     /// Creates a construction order controller.
     /// </summary>
     /// <param name="services">Resolves the active game's commands and queries.</param>
-    public ConstructionOrderController(IServiceLocator services)
+    /// <param name="playerRequests">Completes production requests through the session action boundary.</param>
+    public ConstructionOrderController(
+        IServiceLocator services,
+        IPlayerRequestDispatcher playerRequests
+    )
     {
         this.services = services ?? throw new ArgumentNullException(nameof(services));
+        this.playerRequests =
+            playerRequests ?? throw new ArgumentNullException(nameof(playerRequests));
     }
 
     /// <summary>
@@ -131,19 +141,27 @@ public sealed class ConstructionOrderController
     /// <param name="destination">The node that will receive manufactured units.</param>
     /// <param name="selected">The selected build template.</param>
     /// <param name="buildCount">The requested quantity.</param>
-    /// <param name="playerFactionId">The player faction identifier.</param>
     /// <returns>True when the production lane accepted the order.</returns>
-    public bool TrySetConstructionOrder(
+    public async Task<bool> TrySetConstructionOrderAsync(
         Planet producer,
         ISceneNode destination,
         IManufacturable selected,
-        int buildCount,
-        string playerFactionId
+        int buildCount
     )
     {
-        return services
-            .GetService<ManufacturingCommands>()
-            .SetManufacturingOrder(producer, selected, destination, buildCount, playerFactionId);
+        if (selected == null)
+            return false;
+        PlayerRequestOutcome result = await playerRequests.ExecuteAsync(
+            new SetManufacturingOrderRequest
+            {
+                ProducerPlanetID = producer?.InstanceID,
+                DestinationID = destination?.InstanceID,
+                TemplateTypeID = selected.GetTypeID(),
+                ManufacturingType = selected.GetManufacturingType(),
+                Quantity = buildCount,
+            }
+        );
+        return result.Accepted;
     }
 
     /// <summary>

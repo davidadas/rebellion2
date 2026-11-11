@@ -191,6 +191,10 @@ public class StrategyAdvisorNotificationTheme
 
     public AdvisorSubjectNotification SubjectNotification { get; set; }
 
+    public int? MaxPendingTicks { get; set; }
+
+    public int? RepeatCooldownTicks { get; set; }
+
     public StrategyAdvisorAnimationTheme Droid { get; set; }
 
     public StrategyAdvisorAnimationTheme Protocol { get; set; }

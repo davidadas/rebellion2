@@ -2,6 +2,9 @@
     "name": "GameAssembly",
     "rootNamespace": "",
     "references": [
+        "com.Epic.OnlineServices",
+        "com.playeveryware.eos.core",
+        "com.playeveryware.eos",
         "Rebellion.InputActions",
         "Unity.InputSystem",
         "Unity.TextMeshPro",

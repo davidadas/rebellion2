@@ -95,6 +95,136 @@ namespace Rebellion.Architecture.Tests
             rule.Check(_architecture);
         }
 
+        [TestCase("AppBootstrap")]
+        [TestCase("LoadingScreenController")]
+        [TestCase("GameLaunchContext")]
+        [TestCase("GameSessionManager")]
+        [TestCase("IGameSessionOwner")]
+        [TestCase("SaveGameManager")]
+        [TestCase("GameContentBinding")]
+        [TestCase("Rebellion.Gameplay.GameSession")]
+        [TestCase("Rebellion.Game.Scripting.GameConditional")]
+        [TestCase("Rebellion.Multiplayer.MultiplayerCoordinator")]
+        public void OwnershipBoundary_TypeName_ExistsInInspectedAssembly(string typeName)
+        {
+            Assert.That(typeof(GameRoot).Assembly.GetType(typeName, false), Is.Not.Null);
+        }
+
+        [Test]
+        public void GameConditional_Dependencies_ExcludeSceneGraphIdentity()
+        {
+            Types()
+                .That()
+                .HaveFullName("Rebellion.Game.Scripting.GameConditional")
+                .Should()
+                .NotDependOnAny(
+                    Types().That().ResideInNamespaceMatching("^Rebellion\\.SceneGraph(?:\\.|$)")
+                )
+                .Check(_architecture);
+        }
+
+        [Test]
+        public void GameSessionManager_Dependencies_ExcludePresentationAndMultiplayerImplementations()
+        {
+            Types()
+                .That()
+                .HaveFullName("GameSessionManager")
+                .Should()
+                .NotDependOnAny(
+                    Types()
+                        .That()
+                        .ResideInNamespaceMatching("^Rebellion\\.(?:Multiplayer|UI)(?:\\.|$)")
+                        .Or()
+                        .HaveFullName("AppBootstrap")
+                        .Or()
+                        .HaveFullName("LoadingScreenController")
+                )
+                .Check(_architecture);
+        }
+
+        [Test]
+        public void MultiplayerCoordinator_Dependencies_ExcludeApplicationBootstrapAndScenePresentation()
+        {
+            Types()
+                .That()
+                .HaveFullName("Rebellion.Multiplayer.MultiplayerCoordinator")
+                .Should()
+                .NotDependOnAny(
+                    Types()
+                        .That()
+                        .HaveFullName("AppBootstrap")
+                        .Or()
+                        .HaveFullName("LoadingScreenController")
+                        .Or()
+                        .HaveFullName("GameLaunchContext")
+                )
+                .Check(_architecture);
+        }
+
+        [Test]
+        public void GameSession_Dependencies_ExcludeSessionManagementAndSaveStorage()
+        {
+            Types()
+                .That()
+                .HaveFullName("Rebellion.Gameplay.GameSession")
+                .Should()
+                .NotDependOnAny(
+                    Types()
+                        .That()
+                        .HaveFullName("GameSessionManager")
+                        .Or()
+                        .HaveFullName("IGameSessionOwner")
+                        .Or()
+                        .HaveFullName("SaveGameManager")
+                        .Or()
+                        .HaveFullName("AppBootstrap")
+                        .Or()
+                        .ResideInNamespaceMatching("^Rebellion\\.(?:Multiplayer|UI)(?:\\.|$)")
+                )
+                .Check(_architecture);
+        }
+
+        [Test]
+        public void SaveGameManager_Dependencies_ExcludeSessionAndMultiplayerCoordination()
+        {
+            Types()
+                .That()
+                .HaveFullName("SaveGameManager")
+                .Should()
+                .NotDependOnAny(
+                    Types()
+                        .That()
+                        .HaveFullName("GameSessionManager")
+                        .Or()
+                        .HaveFullName("IGameSessionOwner")
+                        .Or()
+                        .ResideInNamespaceMatching("^Rebellion\\.Multiplayer(?:\\.|$)")
+                )
+                .Check(_architecture);
+        }
+
+        [Test]
+        public void GameContentBinding_Dependencies_ExcludeApplicationAndStorageOwners()
+        {
+            Types()
+                .That()
+                .HaveFullName("GameContentBinding")
+                .Should()
+                .NotDependOnAny(
+                    Types()
+                        .That()
+                        .HaveFullName("GameSessionManager")
+                        .Or()
+                        .HaveFullName("SaveGameManager")
+                        .Or()
+                        .HaveFullName("AppBootstrap")
+                        .Or()
+                        .ResideInNamespaceMatching("^Rebellion\\.(?:Multiplayer|UI)(?:\\.|$)")
+                )
+                .Check(_architecture);
+        }
+
+        [TestCase("Rebellion.Util.IO")]
         [TestCase("Rebellion.Util.Logging")]
         [TestCase("Rebellion.Util.Mathematics")]
         [TestCase("Rebellion.Util.Random")]

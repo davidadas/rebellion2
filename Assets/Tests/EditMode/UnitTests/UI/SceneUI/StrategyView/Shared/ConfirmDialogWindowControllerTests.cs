@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
@@ -112,7 +113,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         [Test]
         public void OpenScrap_ValidSelection_CreatesModalSessionPlaysPromptAndMarksDirty()
         {
-            _controller.OpenScrap(new ISceneNode[] { _sourceShip }, Confirm);
+            _controller.OpenScrap(new ISceneNode[] { _sourceShip }, ConfirmAsync);
 
             UIWindow window = _windowManager.Windows.Single();
             Assert.AreEqual("ConfirmDialogWindow", window.Content.name);
@@ -131,7 +132,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         [Test]
         public void RenderWindows_OpenScrap_RendersPromptSelectionAndConfiguredArtwork()
         {
-            _controller.OpenScrap(new ISceneNode[] { _sourceShip }, Confirm);
+            _controller.OpenScrap(new ISceneNode[] { _sourceShip }, ConfirmAsync);
             UIWindow window = _windowManager.Windows.Single();
             _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
@@ -186,7 +187,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             _uiContext.Game.AttachNode(specialForces, _sourceShip);
             _uiContext.Game.AttachNode(officer, _sourceShip);
 
-            _controller.OpenScrap(new ISceneNode[] { _sourceShip }, Confirm);
+            _controller.OpenScrap(new ISceneNode[] { _sourceShip }, ConfirmAsync);
             UIWindow window = _windowManager.Windows.Single();
             _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
@@ -229,6 +230,39 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
+        public void ConfirmButton_OperationRejected_KeepsDialogOpenUntilLocalCancellation()
+        {
+            _controller.OpenScrap(new ISceneNode[] { _sourceShip }, () => Task.FromResult(false));
+            UIWindow window = _windowManager.Windows.Single();
+            _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            FindButton(view, "ConfirmButtonImage").onClick.Invoke();
+
+            Assert.That(_requestedCloseWindow, Is.Null);
+            Assert.DoesNotThrow(() => _controller.RenderWindow(view, window));
+            FindButton(view, "CancelButtonImage").onClick.Invoke();
+            Assert.That(_requestedCloseWindow, Is.SameAs(window));
+        }
+
+        [Test]
+        public async Task ConfirmButton_OperationPending_ClosesOnlyAfterAcceptanceAsync()
+        {
+            TaskCompletionSource<bool> completion = new TaskCompletionSource<bool>();
+            _controller.OpenScrap(new ISceneNode[] { _sourceShip }, () => completion.Task);
+            UIWindow window = _windowManager.Windows.Single();
+            _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            FindButton(view, "ConfirmButtonImage").onClick.Invoke();
+            Assert.That(_requestedCloseWindow, Is.Null);
+            completion.SetResult(true);
+            await Task.Yield();
+
+            Assert.That(_requestedCloseWindow, Is.SameAs(window));
+        }
+
+        [Test]
         public void ConfirmButton_RepeatedChoice_InvokesActionOnce()
         {
             ConfirmDialogWindowView view = OpenScrapAndInitializeView(out _);
@@ -254,7 +288,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         {
             Building building = new Building { DisplayName = "Shield Generator" };
 
-            _controller.OpenStopConstruction(new ISceneNode[] { building }, Confirm);
+            _controller.OpenStopConstruction(new ISceneNode[] { building }, ConfirmAsync);
             UIWindow window = _windowManager.Windows.Single();
             _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
@@ -283,7 +317,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         {
             Officer officer = new Officer { DisplayName = "General Veers" };
 
-            _controller.OpenRetire(new ISceneNode[] { officer }, Confirm);
+            _controller.OpenRetire(new ISceneNode[] { officer }, ConfirmAsync);
             UIWindow window = _windowManager.Windows.Single();
             _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
@@ -306,7 +340,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         [Test]
         public void OpenMove_Selection_RendersProvidedTransitTimeWithoutPromptSound()
         {
-            _controller.OpenMove(new ISceneNode[] { _sourceShip }, 12, Confirm);
+            _controller.OpenMove(new ISceneNode[] { _sourceShip }, 12, ConfirmAsync);
             UIWindow window = _windowManager.Windows.Single();
             _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
@@ -325,7 +359,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         {
             Mission mission = new TestMission { DisplayName = "Diplomacy" };
 
-            _controller.OpenMissionAbort(mission, Confirm);
+            _controller.OpenMissionAbort(mission, ConfirmAsync);
             UIWindow window = _windowManager.Windows.Single();
             _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
@@ -345,7 +379,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Mission firstMission = new TestMission { DisplayName = "Diplomacy" };
             Mission secondMission = new TestMission { DisplayName = "Espionage" };
 
-            _controller.OpenMissionAbort(new[] { firstMission, secondMission }, Confirm);
+            _controller.OpenMissionAbort(new[] { firstMission, secondMission }, ConfirmAsync);
             UIWindow window = _windowManager.Windows.Single();
             _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
@@ -482,7 +516,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         /// <returns>The result of open scrap and initialize view.</returns>
         private ConfirmDialogWindowView OpenScrapAndInitializeView(out UIWindow window)
         {
-            _controller.OpenScrap(new ISceneNode[] { _sourceShip }, Confirm);
+            _controller.OpenScrap(new ISceneNode[] { _sourceShip }, ConfirmAsync);
             window = _windowManager.Windows.Single();
             _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
@@ -492,9 +526,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         /// <summary>
         /// Executes confirm.
         /// </summary>
-        private void Confirm()
+        /// <returns>The completed fixture action.</returns>
+        private Task<bool> ConfirmAsync()
         {
             _confirmedCount++;
+            return Task.FromResult(true);
         }
 
         /// <summary>

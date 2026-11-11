@@ -116,6 +116,136 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
         }
 
         [Test]
+        public void RenderCurrent_ParticipantSelections_RendersEveryOwnerFrame()
+        {
+            Color32[] colors = { new(255, 0, 0, 255), new(0, 255, 0, 255) };
+            _view.OpenAt(
+                this,
+                20,
+                30,
+                100,
+                new[]
+                {
+                    new ContextMenuCommandItem(
+                        new TestCommand("Fast", true),
+                        selectionColors: colors
+                    ),
+                }
+            );
+
+            _view.RenderCurrent();
+
+            ContextMenuCommandView row = FindRenderedRows(FindRenderedPanels().Single()).Single();
+            UISelectionFrameView[] frames = row.GetComponentsInChildren<UISelectionFrameView>();
+            Assert.AreEqual(2, frames.Length);
+            CollectionAssert.AreEqual(
+                colors,
+                frames
+                    .Select(frame => (Color32)frame.GetComponentInChildren<Image>().color)
+                    .ToArray()
+            );
+        }
+
+        [Test]
+        public void RenderCurrent_ReusedRowWithOneSelection_HidesPreviousSecondOwnerFrame()
+        {
+            Color32[] colors = { new(255, 0, 0, 255), new(0, 255, 0, 255) };
+            _view.OpenAt(
+                this,
+                20,
+                30,
+                100,
+                new[]
+                {
+                    new ContextMenuCommandItem(
+                        new TestCommand("Fast", true),
+                        selectionColors: colors
+                    ),
+                }
+            );
+            _view.RenderCurrent();
+
+            _view.OpenAt(
+                this,
+                20,
+                30,
+                100,
+                new[]
+                {
+                    new ContextMenuCommandItem(
+                        new TestCommand("Fast", true),
+                        selectionColors: new[] { colors[1] }
+                    ),
+                }
+            );
+            _view.RenderCurrent();
+
+            ContextMenuCommandView row = FindRenderedRows(FindRenderedPanels().Single()).Single();
+            UISelectionFrameView frame = row.GetComponentsInChildren<UISelectionFrameView>()
+                .Single();
+            Assert.AreEqual(colors[1], (Color32)frame.GetComponentInChildren<Image>().color);
+        }
+
+        [Test]
+        public void RenderCurrent_OpenSelectionChanges_UpdatesMarkersWithoutLosingHover()
+        {
+            ContextMenuSelectionState selection = new();
+            selection.SetColors(new Color32[] { new(255, 0, 0, 255) });
+            ContextMenuCommandItem item = new(
+                new TestCommand("Fast", true),
+                selectionState: selection
+            );
+            _view.OpenAt(this, 20, 30, 100, new[] { item });
+            _view.RenderCurrent();
+            ContextMenuCommandView original = FindRenderedRows(FindRenderedPanels().Single())
+                .Single();
+            original.OnPointerEnter(new PointerEventData(null));
+
+            Color32 updated = new(0, 255, 0, 255);
+            selection.SetColors(new[] { updated });
+            _view.RenderCurrent();
+
+            ContextMenuCommandView row = FindRenderedRows(FindRenderedPanels().Single()).Single();
+            Assert.AreSame(original, row);
+            Assert.IsTrue(item.Active);
+            Assert.AreEqual(
+                updated,
+                (Color32)
+                    row.GetComponentInChildren<UISelectionFrameView>()
+                        .GetComponentInChildren<Image>()
+                        .color
+            );
+        }
+
+        [Test]
+        public void RenderCurrent_OwnerWithdrawsSelection_RemovesItsFrame()
+        {
+            ContextMenuSelectionState selection = new();
+            selection.SetColors(new Color32[] { new(255, 0, 0, 255) });
+            _view.OpenAt(
+                this,
+                20,
+                30,
+                100,
+                new[]
+                {
+                    new ContextMenuCommandItem(
+                        new TestCommand("Fast", true),
+                        selected: true,
+                        selectionState: selection
+                    ),
+                }
+            );
+            _view.RenderCurrent();
+
+            selection.SetColors(Array.Empty<Color32>());
+            _view.RenderCurrent();
+
+            ContextMenuCommandView row = FindRenderedRows(FindRenderedPanels().Single()).Single();
+            Assert.IsEmpty(row.GetComponentsInChildren<UISelectionFrameView>());
+        }
+
+        [Test]
         public void OpenAt_SurfaceEdges_KeepsPanelWithinAuthoredSurface()
         {
             RectTransform surface = _view.transform as RectTransform;

@@ -216,7 +216,6 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
     /// </summary>
     private void OnDestroy()
     {
-        EndRenamePresentation();
         UnbindControls();
         UnbindScrollEvents();
         UnbindItemViews();

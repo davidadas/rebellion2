@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
@@ -39,10 +41,16 @@ public interface IBattleAlertWindowActions
 public sealed class BattleAlertWindowController
 {
     private readonly Action<UIWindow> closeWindow;
+    private readonly Func<bool> hasPendingCombat;
     private readonly Func<PendingCombatResult> getPendingCombat;
     private readonly Func<string, Planet> findVisiblePlanet;
-    private readonly Func<SpaceCombatResult> resolveRetreat;
-    private readonly Func<SpaceCombatResult> autoResolve;
+    private readonly Func<Task<SpaceCombatResult>> resolveRetreat;
+    private readonly Func<Task<SpaceCombatResult>> autoResolve;
+    private readonly HashSet<BattleAlertWindowView> pendingChoices =
+        new HashSet<BattleAlertWindowView>();
+    private readonly Queue<SpaceCombatResult> completedCombats = new Queue<SpaceCombatResult>();
+    private readonly ConditionalWeakTable<SpaceCombatResult, object> observedCombats =
+        new ConditionalWeakTable<SpaceCombatResult, object>();
     private readonly Func<UIContext> getUIContext;
     private readonly Func<Vector2Int> getWindowPosition;
     private readonly Action markDirty;
@@ -59,7 +67,8 @@ public sealed class BattleAlertWindowController
     /// <summary>
     /// Creates a battle-alert controller from explicit combat operations.
     /// </summary>
-    /// <param name="getPendingCombat">Returns the current pending encounter.</param>
+    /// <param name="hasPendingCombat">Reports whether an encounter is awaiting resolution.</param>
+    /// <param name="getPendingCombat">Builds the current encounter's presentation snapshot.</param>
     /// <param name="resolveRetreat">Resolves a player retreat.</param>
     /// <param name="autoResolve">Automatically resolves the pending encounter.</param>
     /// <param name="getUIContext">Returns the current strategy UI context.</param>
@@ -73,9 +82,10 @@ public sealed class BattleAlertWindowController
     /// <param name="closeWindow">Closes a registered strategy window.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
     internal BattleAlertWindowController(
+        Func<bool> hasPendingCombat,
         Func<PendingCombatResult> getPendingCombat,
-        Func<SpaceCombatResult> resolveRetreat,
-        Func<SpaceCombatResult> autoResolve,
+        Func<Task<SpaceCombatResult>> resolveRetreat,
+        Func<Task<SpaceCombatResult>> autoResolve,
         Func<UIContext> getUIContext,
         Func<string, Planet> findVisiblePlanet,
         Action<string> playSfx,
@@ -88,6 +98,8 @@ public sealed class BattleAlertWindowController
         Action markDirty
     )
     {
+        this.hasPendingCombat =
+            hasPendingCombat ?? throw new ArgumentNullException(nameof(hasPendingCombat));
         this.getPendingCombat =
             getPendingCombat ?? throw new ArgumentNullException(nameof(getPendingCombat));
         this.resolveRetreat =
@@ -118,6 +130,14 @@ public sealed class BattleAlertWindowController
     }
 
     /// <summary>
+    /// Discards outcomes queued by the game being replaced.
+    /// </summary>
+    public void ResetSession()
+    {
+        completedCombats.Clear();
+    }
+
+    /// <summary>
     /// Subscribes the controller to a battle-alert view exactly once.
     /// </summary>
     /// <param name="view">The battle-alert view to bind.</param>
@@ -135,7 +155,7 @@ public sealed class BattleAlertWindowController
             throw new MissingReferenceException($"{view.name} is missing UIWindow.");
 
         BattleAlertWindowSession session = new BattleAlertWindowSession(window);
-        session.ReconcileMode(GetWindowMode(getPendingCombat(), null));
+        session.ReconcileMode(GetWindowMode(hasPendingCombat(), null));
         sessions.Add(view, session);
         view.ChoiceRequested += HandleChoiceRequested;
         view.CloseRequested += HandleCloseRequested;
@@ -177,20 +197,23 @@ public sealed class BattleAlertWindowController
     /// <summary>
     /// Reconciles battle-alert window lifecycle with the current pending encounter.
     /// </summary>
-    /// <returns>True when a battle-alert window was opened or closed.</returns>
+    /// <returns>True when a battle-alert window opened, closed, or changed to a completed result.</returns>
     public bool SyncPendingCombatWindow()
     {
         EnsureInitialized();
-        PendingCombatResult pending = getPendingCombat();
         BattleAlertWindowView existing = FindWindow();
 
-        if (pending == null)
+        if (TryPresentCompletedCombat(existing))
+            return true;
+
+        bool hasPending = hasPendingCombat();
+        if (!hasPending)
         {
             if (existing == null)
                 return false;
 
             BattleAlertWindowSession session = GetSession(existing);
-            if (session.Result != null)
+            if (session.Result != null || pendingChoices.Contains(existing))
                 return false;
 
             CloseWindow(existing);
@@ -200,7 +223,7 @@ public sealed class BattleAlertWindowController
         if (existing != null)
         {
             BattleAlertWindowSession session = GetSession(existing);
-            session.ReconcileMode(GetWindowMode(pending, session.Result));
+            session.ReconcileMode(GetWindowMode(hasPending, session.Result));
             return false;
         }
 
@@ -209,6 +232,72 @@ public sealed class BattleAlertWindowController
             return false;
 
         PlayPendingMusic();
+        return true;
+    }
+
+    /// <summary>
+    /// Presents local combat outcomes released by the shared simulation result pipeline.
+    /// Repeated delivery of the same result cannot reopen a dismissed result or replay its audio.
+    /// </summary>
+    /// <param name="results">The settled domain results, without processing any reactions again.</param>
+    public void PresentResolvedResults(IReadOnlyList<GameResult> results)
+    {
+        if (results == null)
+            throw new ArgumentNullException(nameof(results));
+        EnsureInitialized();
+        string playerFactionID = null;
+        bool queued = false;
+        foreach (GameResult result in results)
+        {
+            if (result is not SpaceCombatResult combat)
+                continue;
+            playerFactionID ??= GetPlayerFactionID();
+            if (
+                BattleResultPresentation.GetSideForOwner(combat, playerFactionID) == null
+                || observedCombats.TryGetValue(combat, out _)
+            )
+                continue;
+
+            observedCombats.Add(combat, new object());
+            completedCombats.Enqueue(combat);
+            queued = true;
+        }
+
+        if (queued)
+            TryPresentCompletedCombat(FindWindow());
+    }
+
+    /// <summary>
+    /// Displays the next completed encounter without replacing an open result or an unresolved decision.
+    /// </summary>
+    /// <param name="view">The current battle-alert view, when open.</param>
+    /// <returns>True when a queued outcome became visible.</returns>
+    private bool TryPresentCompletedCombat(BattleAlertWindowView view)
+    {
+        if (
+            completedCombats.Count == 0
+            || view != null && GetSession(view).Result != null
+            || hasPendingCombat()
+        )
+            return false;
+
+        view ??= OpenWindow();
+        if (view == null)
+            return false;
+
+        SpaceCombatResult result = completedCombats.Dequeue();
+        BattleResultPresentation presentation = BattleResultPresentation.Create(result);
+        SetCombatResult(view, presentation);
+        if (
+            result.ManualRetreatingFactionID == GetPlayerFactionID()
+            || result.AttackerOutcome == SpaceCombatSideOutcome.Withdrawn
+                && result.DefenderOutcome == SpaceCombatSideOutcome.Withdrawn
+        )
+            stopMusic();
+        else
+            PlayResultAudio(presentation);
+        actions.RebuildBattleSnapshot();
+        markDirty();
         return true;
     }
 
@@ -338,61 +427,31 @@ public sealed class BattleAlertWindowController
     /// </summary>
     /// <param name="view">The requesting battle-alert view.</param>
     /// <param name="choice">The requested combat choice.</param>
-    private void HandleChoiceRequested(BattleAlertWindowView view, BattleAlertChoice choice)
+    private async void HandleChoiceRequested(BattleAlertWindowView view, BattleAlertChoice choice)
     {
         if (
             !sessions.TryGetValue(view, out BattleAlertWindowSession session)
             || session.Result != null
+            || !pendingChoices.Add(view)
         )
             return;
 
-        switch (choice)
+        try
         {
-            case BattleAlertChoice.Retreat:
-                ResolveRetreat(view);
-                break;
-            case BattleAlertChoice.AutoResolve:
-                ResolveAutomatically(view);
-                break;
+            switch (choice)
+            {
+                case BattleAlertChoice.Retreat:
+                    await resolveRetreat();
+                    break;
+                case BattleAlertChoice.AutoResolve:
+                    await autoResolve();
+                    break;
+            }
         }
-    }
-
-    /// <summary>
-    /// Resolves a retreat and preserves completed-result presentation in the requesting window.
-    /// </summary>
-    /// <param name="view">The requesting battle-alert view.</param>
-    private void ResolveRetreat(BattleAlertWindowView view)
-    {
-        SpaceCombatResult result = resolveRetreat();
-        if (result == null)
-            return;
-
-        SetCombatResult(view, BattleResultPresentation.Create(result));
-        stopMusic();
-        actions.RebuildBattleSnapshot();
-        markDirty();
-    }
-
-    /// <summary>
-    /// Resolves combat automatically and reconciles the result window lifecycle.
-    /// </summary>
-    /// <param name="view">The requesting battle-alert view.</param>
-    private void ResolveAutomatically(BattleAlertWindowView view)
-    {
-        SpaceCombatResult result = autoResolve();
-        if (result != null)
+        finally
         {
-            BattleResultPresentation presentation = BattleResultPresentation.Create(result);
-            SetCombatResult(view, presentation);
-            PlayResultAudio(presentation);
-            actions.RebuildBattleSnapshot();
-            markDirty();
-            return;
+            pendingChoices.Remove(view);
         }
-
-        actions.RebuildBattleSnapshot();
-        CloseWindow(view);
-        markDirty();
     }
 
     /// <summary>
@@ -614,18 +673,18 @@ public sealed class BattleAlertWindowController
     /// <summary>
     /// Returns the presentation mode represented by the current combat state.
     /// </summary>
-    /// <param name="pending">The current pending encounter.</param>
+    /// <param name="hasPending">Whether an encounter is awaiting resolution.</param>
     /// <param name="result">The completed result owned by the window.</param>
     /// <returns>The mode that should be presented.</returns>
     private static BattleAlertWindowMode GetWindowMode(
-        PendingCombatResult pending,
+        bool hasPending,
         BattleResultPresentation result
     )
     {
         if (result != null)
             return BattleAlertWindowMode.Result;
 
-        return pending == null ? BattleAlertWindowMode.Hidden : BattleAlertWindowMode.Pending;
+        return hasPending ? BattleAlertWindowMode.Pending : BattleAlertWindowMode.Hidden;
     }
 
     /// <summary>
