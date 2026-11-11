@@ -332,6 +332,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         }
 
         [Test]
+        public void BuildCountInputSubmitted_ValidOrder_QueuesEnteredQuantity()
+        {
+            SetBuildTemplates();
+            ConstructionWindowView view = OpenAdvisorWindow(out UIWindow _);
+            TMP_InputField input = view.GetComponentInChildren<TMP_InputField>(true);
+
+            input.onSubmit.Invoke("12");
+
+            ManufacturingOrder order = ManufacturingQueries.GetManufacturingOrder(
+                _planet.Planet,
+                ManufacturingType.Ship
+            );
+            Assert.IsNotNull(order);
+            Assert.AreEqual(12, order.Quantity);
+        }
+
+        [Test]
         public void OpenFromAdvisor_AfterSuccessfulOrder_RemembersProductAcrossPlanets()
         {
             CapitalShip[] templates = SetBuildTemplates();
