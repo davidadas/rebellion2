@@ -81,7 +81,7 @@ namespace Rebellion.Tests.Game
             Assert.IsFalse(_game.UseDeterministicRuntimeIdentifiers);
             Assert.IsTrue(Guid.TryParseExact(first, "N", out _));
             Assert.AreNotEqual(first, second);
-            Assert.Zero(_game.RuntimeIdentifierIndex);
+            Assert.Zero(_game.IDCounter);
         }
 
         [Test]
@@ -131,33 +131,42 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(randomIndex, game.RandomIndex);
         }
 
-        [Test]
-        public void GenerateRuntimeIdentifier_SerializedGame_ContinuesPersistedSequence()
+        [TestCase(false)]
+        [TestCase(true)]
+        public void GenerateRuntimeIdentifier_ConfiguredRestoredGame_ContinuesPersistedSequence(
+            bool legacyName
+        )
         {
             GameRoot game = CreateRuntimeIdentityGame(314159);
             game.GenerateRuntimeIdentifier();
             game.GenerateRuntimeIdentifier();
 
-            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(
+            System.Xml.Linq.XElement document = System.Xml.Linq.XElement.Parse(
                 SerializationHelper.Serialize(game)
             );
-            Assert.IsTrue(restored.UseDeterministicRuntimeIdentifiers);
+            System.Xml.Linq.XElement counter = document.Element(nameof(GameRoot.IDCounter));
+            Assert.That(counter, Is.Not.Null);
+            Assert.That(document.Element("RuntimeIdentifierIndex"), Is.Null);
+            if (legacyName)
+                counter.Name = "RuntimeIdentifierIndex";
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(document.ToString());
+            restored.UseDeterministicRuntimeIdentifiers = true;
 
-            Assert.AreEqual(game.RuntimeIdentifierIndex, restored.RuntimeIdentifierIndex);
+            Assert.AreEqual(game.IDCounter, restored.IDCounter);
             Assert.AreEqual(game.GenerateRuntimeIdentifier(), restored.GenerateRuntimeIdentifier());
         }
 
         [Test]
-        public void Random_SerializedAlternateSeed_ContinuesSameStream()
+        public void Random_SerializedInjectedSeed_ContinuesSameStreamFromSummary()
         {
             GameRoot game = CreateRuntimeIdentityGame(123);
             game.Random = new SystemRandomProvider(456);
             game.Random.NextInt(int.MinValue, int.MaxValue);
-            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(
-                SerializationHelper.Serialize(game)
-            );
+            string xml = SerializationHelper.Serialize(game);
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(xml);
 
-            Assert.That(restored.Summary.Seed, Is.EqualTo(123));
+            Assert.That(restored.Summary.Seed, Is.EqualTo(456));
+            Assert.That(System.Xml.Linq.XElement.Parse(xml).Element("RandomSeed"), Is.Null);
             Assert.That(((SystemRandomProvider)restored.Random).Seed, Is.EqualTo(456));
             Assert.That(restored.RandomIndex, Is.EqualTo(game.RandomIndex));
             Assert.That(
@@ -179,7 +188,7 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(sector.InstanceID, planet.ParentInstanceID);
             Assert.AreSame(sector, game.GetSceneNodeByInstanceID<PlanetSector>(sector.InstanceID));
             Assert.AreSame(planet, game.GetSceneNodeByInstanceID<Planet>(planet.InstanceID));
-            Assert.AreEqual(2, game.RuntimeIdentifierIndex);
+            Assert.AreEqual(2, game.IDCounter);
         }
 
         [Test]
@@ -191,7 +200,7 @@ namespace Rebellion.Tests.Game
             game.AddSceneNodeByInstanceID(sector);
 
             Assert.AreEqual("existing-sector", sector.InstanceID);
-            Assert.Zero(game.RuntimeIdentifierIndex);
+            Assert.Zero(game.IDCounter);
         }
 
         [Test]
@@ -274,7 +283,7 @@ namespace Rebellion.Tests.Game
 
             Assert.AreEqual(firstFleet.InstanceID, secondFleet.InstanceID);
             Assert.AreEqual(secondMessageId, firstMessage.InstanceID);
-            Assert.AreEqual(first.RuntimeIdentifierIndex, second.RuntimeIdentifierIndex);
+            Assert.AreEqual(first.IDCounter, second.IDCounter);
         }
 
         [Test]

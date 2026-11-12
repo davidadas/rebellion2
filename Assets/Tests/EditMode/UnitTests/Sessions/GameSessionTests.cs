@@ -104,7 +104,7 @@ namespace Rebellion.Tests.Gameplay
                 first,
             };
             long randomPosition = _game.RandomIndex;
-            long identityPosition = _game.RuntimeIdentifierIndex;
+            long identityPosition = _game.IDCounter;
             int published = 0;
             _session.Pipeline.ResultsResolved += _ => published++;
 
@@ -133,7 +133,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.That(first.ManufacturingQueueSequence, Is.EqualTo(51));
             Assert.That(second.ManufacturingQueueSequence, Is.EqualTo(19));
             Assert.That(_game.RandomIndex, Is.EqualTo(randomPosition));
-            Assert.That(_game.RuntimeIdentifierIndex, Is.EqualTo(identityPosition));
+            Assert.That(_game.IDCounter, Is.EqualTo(identityPosition));
             Assert.That(published, Is.Zero);
         }
 

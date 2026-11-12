@@ -142,7 +142,6 @@ namespace Rebellion.Gameplay
         /// <param name="faction">The faction no longer in shortfall.</param>
         private void ClearMaintenanceShortfall(Faction faction)
         {
-            faction.MaintenanceShortfallNotified = false;
             faction.NextMaintenanceAutoscrapTick = null;
         }
 
@@ -160,10 +159,9 @@ namespace Rebellion.Gameplay
             List<GameResult> results
         )
         {
-            if (faction.MaintenanceShortfallNotified)
+            if (faction.NextMaintenanceAutoscrapTick.HasValue)
                 return;
 
-            faction.MaintenanceShortfallNotified = true;
             results.Add(
                 new MaintenanceRequiredResult
                 {

@@ -14,6 +14,32 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class MissionTests
     {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void GetAbortReason_SavedUnchangedRoster_DoesNotInventParticipantChanges(
+            bool initiated
+        )
+        {
+            (GameRoot game, _, Planet targetPlanet, Officer officer, _) =
+                MissionSceneBuilder.Build();
+            Mission mission = CreateSabotageMission(
+                "empire",
+                targetPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                CreateSabotageTarget(game, targetPlanet)
+            );
+            if (initiated)
+                mission.Initiate(10);
+
+            Mission loaded = SerializationHelper.Deserialize<Mission>(
+                SerializationHelper.Serialize(mission)
+            );
+            loaded.SetParent(targetPlanet);
+
+            Assert.That(loaded.GetAbortReason(game), Is.Null);
+        }
+
         [Test]
         public void GetAbortReason_SavedChangedRoster_PreservesFailureWithOnlyBaselineIDs()
         {

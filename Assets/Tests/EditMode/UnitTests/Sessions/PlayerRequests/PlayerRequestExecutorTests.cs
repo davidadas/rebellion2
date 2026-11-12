@@ -1054,15 +1054,15 @@ namespace Rebellion.Tests.PlayerRequests
         public void Execute_SendPeerChatWithDeterministicIdentities_ConsumesOneRuntimeIdentity()
         {
             _game.UseDeterministicRuntimeIdentifiers = true;
-            long identityBefore = _game.RuntimeIdentifierIndex;
+            long identityBefore = _game.IDCounter;
             long randomBefore = _game.RandomIndex;
 
             _executor.Execute(_ownerID, new SendPeerChatRequest { Text = "Message" });
 
             Message message = _opponent.Messages[MessageType.Chat].Single();
-            Assert.AreEqual(identityBefore + 1, _game.RuntimeIdentifierIndex);
+            Assert.AreEqual(identityBefore + 1, _game.IDCounter);
             Assert.IsTrue(Guid.TryParseExact(message.InstanceID, "N", out _));
-            Assert.AreEqual(identityBefore + 1, _game.RuntimeIdentifierIndex);
+            Assert.AreEqual(identityBefore + 1, _game.IDCounter);
             Assert.AreEqual(randomBefore, _game.RandomIndex);
         }
 
@@ -1093,7 +1093,7 @@ namespace Rebellion.Tests.PlayerRequests
                     .Single()
                     .InstanceID
             );
-            Assert.AreEqual(_game.RuntimeIdentifierIndex, copy.RuntimeIdentifierIndex);
+            Assert.AreEqual(_game.IDCounter, copy.IDCounter);
         }
 
         /// <summary>

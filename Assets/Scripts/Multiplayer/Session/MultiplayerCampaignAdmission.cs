@@ -124,6 +124,8 @@ namespace Rebellion.Multiplayer
             game.UseDeterministicRuntimeIdentifiers = true;
             game.GetFactionPlayer(admitted.HostFactionID).DisplayName = hostName;
             game.GetFactionPlayer(admitted.GuestFactionID).DisplayName = guestName;
+            game.GetFactionPlayer(admitted.HostFactionID).GameSpeedSelectionRevision = 0;
+            game.GetFactionPlayer(admitted.GuestFactionID).GameSpeedSelectionRevision = 0;
         }
     }
 }

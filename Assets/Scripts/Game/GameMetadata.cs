@@ -17,8 +17,9 @@ namespace Rebellion.Game
         [PersistableMember(Name = nameof(MultiplayerCampaign))]
         private MultiplayerCampaignIdentity _multiplayerCampaign;
 
-        [PersistableMember(Name = nameof(SharedSaveToken))]
-        private string _sharedSaveToken;
+        [PersistableMember(Name = nameof(SaveID))]
+        [PersistableReadAlias("SharedSaveToken")]
+        private string _saveId;
 
         [PersistableMember(Name = nameof(SaveDisplayName))]
         private string _saveDisplayName;
@@ -70,13 +71,13 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Gets or sets the shared checkpoint identity assigned by the persistence coordinator.
+        /// Gets or sets the identity shared by both participant copies of one save.
         /// </summary>
         [PersistableIgnore]
-        public string SharedSaveToken
+        public string SaveID
         {
-            get => _sharedSaveToken;
-            set => _sharedSaveToken = value;
+            get => _saveId;
+            set => _saveId = value;
         }
 
         /// <summary>

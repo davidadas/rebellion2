@@ -55,8 +55,8 @@ namespace Rebellion.Tests.Gameplay
                 firstOfficer.Movement.MovementGroupID,
                 secondOfficer.Movement.MovementGroupID
             );
-            Assert.AreEqual(1, first.RuntimeIdentifierIndex);
-            Assert.AreEqual(first.RuntimeIdentifierIndex, second.RuntimeIdentifierIndex);
+            Assert.AreEqual(1, first.IDCounter);
+            Assert.AreEqual(first.IDCounter, second.IDCounter);
             Assert.AreEqual(firstRandomIndex, first.RandomIndex);
             Assert.AreEqual(secondRandomIndex, second.RandomIndex);
         }
