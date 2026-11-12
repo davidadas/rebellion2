@@ -126,8 +126,8 @@ namespace Rebellion.Multiplayer
         )
         {
             if (
-                !Guid.TryParseExact(authoritative?.Metadata?.SharedSaveToken, "N", out _)
-                || authoritative.Metadata.SharedSaveToken != localSave?.Metadata?.SharedSaveToken
+                !Guid.TryParseExact(authoritative?.Metadata?.SaveID, "N", out _)
+                || authoritative.Metadata.SaveID != localSave?.Metadata?.SaveID
                 || authoritative.Metadata.PackID != localSave.Metadata.PackID
                 || authoritative.Metadata.PackVersion != localSave.Metadata.PackVersion
                 || authoritative.Metadata.ScenarioID != localSave.Metadata.ScenarioID

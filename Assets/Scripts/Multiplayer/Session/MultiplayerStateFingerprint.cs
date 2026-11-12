@@ -64,6 +64,8 @@ namespace Rebellion.Multiplayer
             {
                 Game = session.Game,
                 RuntimeRules = session.Game.Config,
+                DeterministicRuntimeIdentifiers = session.Game.UseDeterministicRuntimeIdentifiers,
+                RandomSeed = random.Seed,
             };
             Accumulator accumulator = new();
             Visit(state, ref accumulator, new HashContext(_simulationPlans, CreateSimulationPlan));
@@ -90,8 +92,8 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Omits only the UI state explicitly owned by an individual participant.
-        /// Durable message actions and shared player settings remain part of verification.
+        /// Verifies shared live player names and selection revisions alongside durable model state,
+        /// excluding the UI state explicitly owned by an individual participant.
         /// </summary>
         /// <param name="type">The model type being inspected.</param>
         /// <returns>The simulation-specific cached member plan.</returns>
@@ -103,7 +105,12 @@ namespace Rebellion.Multiplayer
                     type,
                     plan.Scalar,
                     plan.Code,
-                    plan.Members.Where(member => member.Name != nameof(Player.UIState)).ToArray(),
+                    plan.Members.Where(member => member.Name != nameof(Player.UIState))
+                        .Append(typeof(Player).GetProperty(nameof(Player.DisplayName)))
+                        .Append(
+                            typeof(Player).GetProperty(nameof(Player.GameSpeedSelectionRevision))
+                        )
+                        .ToArray(),
                     plan.InlineCollection
                 )
                 : plan;
@@ -202,6 +209,8 @@ namespace Rebellion.Multiplayer
         {
             public GameRoot Game { get; set; }
             public GameConfig RuntimeRules { get; set; }
+            public bool DeterministicRuntimeIdentifiers { get; set; }
+            public int RandomSeed { get; set; }
         }
 
         /// <summary>

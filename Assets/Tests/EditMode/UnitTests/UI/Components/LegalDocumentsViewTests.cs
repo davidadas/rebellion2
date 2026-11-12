@@ -185,7 +185,11 @@ namespace Rebellion.Tests.UI.Components
         {
             int continued = 0;
             int accepted = 0;
-            _view.MultiplayerAccepted += () => continued++;
+            _view.MultiplayerAccepted += () =>
+            {
+                continued++;
+                _view.Hide();
+            };
             _view.Accepted += () => accepted++;
             _view.ShowMultiplayerAgreement();
 
@@ -201,6 +205,36 @@ namespace Rebellion.Tests.UI.Components
 
             Assert.AreEqual(1, continued);
             Assert.AreEqual(0, accepted);
+            Assert.IsFalse(_view.IsVisible);
+        }
+
+        [Test]
+        public void ShowMultiplayerAgreement_AcceptanceNotSaved_AllowsRetryWithoutAgreeingAgain()
+        {
+            int attempts = 0;
+            _view.MultiplayerAccepted += () =>
+            {
+                attempts++;
+                if (attempts == 1)
+                    _view.ShowError("Your acceptance could not be saved. Please try again.");
+                else
+                    _view.Hide();
+            };
+            _view.ShowMultiplayerAgreement();
+
+            _accept.onClick.Invoke();
+            _accept.onClick.Invoke();
+
+            Assert.IsTrue(_view.IsVisible);
+            Assert.AreEqual(1, attempts);
+            Assert.AreEqual(
+                "Your acceptance could not be saved. Please try again.",
+                _view.transform.Find("DocumentPanel/Console/Status").GetComponent<TMP_Text>().text
+            );
+
+            _accept.onClick.Invoke();
+
+            Assert.AreEqual(2, attempts);
             Assert.IsFalse(_view.IsVisible);
         }
 
@@ -243,7 +277,11 @@ namespace Rebellion.Tests.UI.Components
         public void ShowMultiplayerAgreement_Reopened_RequiresBothDocumentsAgain()
         {
             int accepted = 0;
-            _view.MultiplayerAccepted += () => accepted++;
+            _view.MultiplayerAccepted += () =>
+            {
+                accepted++;
+                _view.Hide();
+            };
             _view.ShowMultiplayerAgreement();
             _accept.onClick.Invoke();
             _accept.onClick.Invoke();

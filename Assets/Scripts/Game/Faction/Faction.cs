@@ -154,11 +154,6 @@ namespace Rebellion.Game.Factions
         }
 
         /// <summary>
-        /// Gets or sets whether the current maintenance shortfall has already been reported.
-        /// </summary>
-        public bool MaintenanceShortfallNotified { get; set; }
-
-        /// <summary>
         /// Gets or sets the next automatic scrap pulse, or null when no shortfall timer is active.
         /// </summary>
         public int? NextMaintenanceAutoscrapTick { get; set; }

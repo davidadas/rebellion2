@@ -452,6 +452,7 @@ namespace Rebellion.Tests.Multiplayer
             peers.GuestSimulation.ReplaceGame(
                 MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash)
             );
+            peers.GuestGame.UseDeterministicRuntimeIdentifiers = true;
             foreach (GameRoot game in new[] { peers.HostGame, peers.GuestGame })
                 game.AttachNode(
                     new Regiment { InstanceID = "added", OwnerInstanceID = _hostFactionID },
@@ -990,7 +991,7 @@ namespace Rebellion.Tests.Multiplayer
             peers.Flush();
 
             Assert.IsTrue(Completed(request).Accepted);
-            Assert.AreEqual(1, peers.HostGame.RuntimeIdentifierIndex);
+            Assert.AreEqual(1, peers.HostGame.IDCounter);
             peers.AssertSharedState();
         }
 
@@ -2020,6 +2021,8 @@ namespace Rebellion.Tests.Multiplayer
                     MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash),
                     content
                 );
+                HostGame.UseDeterministicRuntimeIdentifiers = true;
+                GuestGame.UseDeterministicRuntimeIdentifiers = true;
                 HostGame.LocalPlayerFactionID = _hostFactionID;
                 GuestGame.LocalPlayerFactionID = _guestFactionID;
                 HostClock = new GameManager(() => HostGame, HostSimulation.Tick);

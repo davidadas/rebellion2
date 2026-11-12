@@ -81,29 +81,18 @@ namespace Rebellion.Game
         [PersistableIgnore]
         private IRandomNumberProvider _random;
 
-        [PersistableIgnore]
-        private int? _restoredSeed;
-
-        [PersistableMember(Name = "RandomSeed")]
-        private int PersistedRandomSeed
-        {
-            get => (_random as SystemRandomProvider)?.Seed ?? _restoredSeed ?? Summary.Seed;
-            set
-            {
-                _restoredSeed = value;
-                if (_random is SystemRandomProvider current && current.Seed != value)
-                    _random = new SystemRandomProvider(value, _restoredIndex);
-            }
-        }
-
+        /// <summary>
+        /// Gets or replaces the gameplay random stream, retaining its seed in the saved summary.
+        /// </summary>
         [PersistableIgnore]
         public IRandomNumberProvider Random
         {
-            get => _random ??= new SystemRandomProvider(PersistedRandomSeed, _restoredIndex);
+            get => _random ??= new SystemRandomProvider(Summary.Seed, _restoredIndex);
             set
             {
                 _random = value;
-                _restoredSeed = (value as SystemRandomProvider)?.Seed;
+                if (value is SystemRandomProvider seeded)
+                    Summary.Seed = seeded.Seed;
             }
         }
 
@@ -118,7 +107,7 @@ namespace Rebellion.Game
             {
                 _restoredIndex = value;
                 if (_random is SystemRandomProvider srp && srp.CallCount != value)
-                    _random = new SystemRandomProvider(PersistedRandomSeed, value);
+                    _random = new SystemRandomProvider(Summary.Seed, value);
             }
         }
 
@@ -129,19 +118,22 @@ namespace Rebellion.Game
             set => PersistedRandomIndex = value;
         }
 
-        [PersistableMember(Name = nameof(RuntimeIdentifierIndex))]
-        private long _runtimeIdentifierIndex;
+        [PersistableMember(Name = nameof(IDCounter))]
+        [PersistableReadAlias("RuntimeIdentifierIndex")]
+        private long _idCounter;
 
         /// <summary>
-        /// Gets or sets whether accepted runtime entities use the game's persisted identity sequence.
+        /// Gets or sets whether this runtime uses the game's persisted identity sequence.
+        /// Multiplayer admission enables the sequence before accepting gameplay operations.
         /// </summary>
+        [PersistableIgnore]
         public bool UseDeterministicRuntimeIdentifiers { get; set; }
 
         /// <summary>
-        /// Gets the position of the campaign's runtime identity sequence independently of gameplay randomness.
+        /// Gets the number of IDs allocated from this game's deterministic sequence.
         /// </summary>
         [PersistableIgnore]
-        public long RuntimeIdentifierIndex => _runtimeIdentifierIndex;
+        public long IDCounter => _idCounter;
 
         // Game state.
         [PersistableMember(Name = nameof(CurrentTick))]
@@ -246,7 +238,7 @@ namespace Rebellion.Game
                 return Guid.NewGuid().ToString("N");
 
             ulong seed = MixRuntimeIdentifier(unchecked((uint)Summary.Seed + 0x9e3779b97f4a7c15UL));
-            ulong position = MixRuntimeIdentifier((ulong)checked(++_runtimeIdentifierIndex));
+            ulong position = MixRuntimeIdentifier((ulong)checked(++_idCounter));
             return new Guid(
                 unchecked((int)(seed >> 32)),
                 unchecked((short)(seed >> 16)),

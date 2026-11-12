@@ -362,9 +362,9 @@ public static class OptionsMenuPrefabBuilder
             "LEGAL DOCUMENTS",
             20,
             new Color(0.875f, 0.910f, 0.941f),
-            180
+            120
         );
-        SetSourceRect((RectTransform)legalDocuments.transform, 20, 320, 180, 18);
+        SetSourceRect((RectTransform)legalDocuments.transform, 229, 271, 120, 18);
         AssignReference(view, "_legalDocumentsButton", legalDocuments);
         AssignReference(view, "_analyticsRow", analyticsRow);
         AssignReference(view, "_gameLaunchSpeedDropdown", gameLaunchSpeedDropdown);

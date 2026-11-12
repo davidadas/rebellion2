@@ -18,6 +18,56 @@ namespace Rebellion.Tests.Gameplay
     public class MaintenanceCommandsTests
     {
         [Test]
+        public void ProcessTick_SavedRecoveredShortfall_NotifiesForNextEpisode()
+        {
+            GameRoot game = CreateGame();
+            Faction faction = CreateFaction("owner", "Owner");
+            game.GetFactions().Add(faction);
+            PlanetSector sector = new() { InstanceID = "sector" };
+            Planet planet = CreatePlanet("planet", "Planet", faction.InstanceID);
+            planet.NumRawResourceNodes = 0;
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
+            Regiment regiment = new()
+            {
+                InstanceID = "regiment",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaintenanceCost = 1,
+            };
+            game.AttachNode(regiment, planet);
+            MaintenanceTickProcessor processor = new(new MaintenanceCommands(game, new FixedRNG()));
+            Assert.That(
+                processor.ProcessTick(game).OfType<MaintenanceRequiredResult>().Count(),
+                Is.EqualTo(1)
+            );
+
+            GameConfig config = game.Config;
+            game = SerializationHelper.Deserialize<GameRoot>(SerializationHelper.Serialize(game));
+            game.SetConfig(config);
+            game.RebuildSceneState();
+            faction = game.GetFactions().Single();
+            regiment = game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID);
+            processor = new MaintenanceTickProcessor(new MaintenanceCommands(game, new FixedRNG()));
+            regiment.MaintenanceCost = 0;
+            processor.ProcessTick(game);
+            Assert.That(faction.NextMaintenanceAutoscrapTick, Is.Null);
+            regiment.MaintenanceCost = 1;
+            game.CurrentTick++;
+
+            Assert.That(
+                processor.ProcessTick(game).OfType<MaintenanceRequiredResult>().Count(),
+                Is.EqualTo(1)
+            );
+            Assert.That(
+                faction.NextMaintenanceAutoscrapTick,
+                Is.EqualTo(
+                    game.CurrentTick + config.Production.MaintenanceShortfallAutoscrapInterval
+                )
+            );
+        }
+
+        [Test]
         public void ProcessTick_SavedShortfall_PreservesDueScrapPulseWithoutRepeatingNotification()
         {
             GameRoot game = CreateGame();

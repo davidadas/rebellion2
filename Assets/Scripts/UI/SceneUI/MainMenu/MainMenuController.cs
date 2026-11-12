@@ -116,7 +116,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
         _multiplayerCoordinator.LaunchRequested += HandleMultiplayerLaunchRequested;
         _analyticsConsentView.Allowed += HandleAnalyticsAllowed;
         _analyticsConsentView.Declined += HandleAnalyticsDeclined;
-        _legalDocumentsView.MultiplayerAccepted += ContinueToMultiplayer;
+        _legalDocumentsView.MultiplayerAccepted += HandleMultiplayerAgreementAccepted;
         _legalDocumentsView.Closed += HandleLegalDocumentsClosed;
     }
 
@@ -200,7 +200,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             _multiplayerCoordinator.LaunchRequested -= HandleMultiplayerLaunchRequested;
         _analyticsConsentView.Allowed -= HandleAnalyticsAllowed;
         _analyticsConsentView.Declined -= HandleAnalyticsDeclined;
-        _legalDocumentsView.MultiplayerAccepted -= ContinueToMultiplayer;
+        _legalDocumentsView.MultiplayerAccepted -= HandleMultiplayerAgreementAccepted;
         _legalDocumentsView.Closed -= HandleLegalDocumentsClosed;
         _legalDocumentsView.Hide();
 
@@ -589,7 +589,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     }
 
     /// <summary>
-    /// Presents both required documents before every entry into multiplayer.
+    /// Presents the required documents when their current version has not been accepted.
     /// </summary>
     private void OpenMultiplayerMenu()
     {
@@ -608,12 +608,42 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             return;
         }
 
+        if (
+            _legalDocumentsView.Agreement.IsAccepted(
+                _appBootstrap.GetUserSettingsManager().Settings
+            )
+        )
+        {
+            ContinueToMultiplayer();
+            return;
+        }
+
         _legalDocumentsView.ShowMultiplayerAgreement();
         _appBootstrap.GetCancelStack()?.Register(this);
     }
 
     /// <summary>
-    /// Opens multiplayer discovery only after the player agrees to both documents.
+    /// Persists explicit agreement before closing the prompt and entering multiplayer.
+    /// </summary>
+    private void HandleMultiplayerAgreementAccepted()
+    {
+        try
+        {
+            _appBootstrap.GetUserSettingsManager().AcceptAgreement(_legalDocumentsView.Agreement);
+        }
+        catch (Exception exception)
+        {
+            _legalDocumentsView.ShowError("Your acceptance could not be saved. Please try again.");
+            Debug.LogException(exception);
+            return;
+        }
+
+        _legalDocumentsView.Hide();
+        ContinueToMultiplayer();
+    }
+
+    /// <summary>
+    /// Opens multiplayer discovery after the current documents have been accepted.
     /// </summary>
     private void ContinueToMultiplayer()
     {

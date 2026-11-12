@@ -553,7 +553,7 @@ namespace Rebellion.Multiplayer
                 || offer.sequence != _lastAppliedSequence
                 || offer.tick != _session.Game.CurrentTick
                 || offer.randomIndex != _session.Game.RandomIndex
-                || offer.identifierIndex != _session.Game.RuntimeIdentifierIndex
+                || offer.identifierIndex != _session.Game.IDCounter
                 || offer.stateFingerprint != MultiplayerStateFingerprint.ComputeSimulation(_session)
             )
                 throw new InvalidDataException(
@@ -598,7 +598,7 @@ namespace Rebellion.Multiplayer
                 || !_session.Tick.IsSettled
                 || envelope.tick != game.CurrentTick + 1
                 || envelope.randomIndex != game.RandomIndex
-                || envelope.identifierIndex != game.RuntimeIdentifierIndex
+                || envelope.identifierIndex != game.IDCounter
             )
                 throw new InvalidDataException(
                     "The peer reached a different position before the next day."
@@ -652,7 +652,7 @@ namespace Rebellion.Multiplayer
             {
                 tick = _session.Game.CurrentTick,
                 randomIndex = _session.Game.RandomIndex,
-                identifierIndex = _session.Game.RuntimeIdentifierIndex,
+                identifierIndex = _session.Game.IDCounter,
             };
         }
 

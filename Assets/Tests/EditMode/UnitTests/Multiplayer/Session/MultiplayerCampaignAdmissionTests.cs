@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Xml;
+using System.Xml.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Multiplayer;
@@ -10,6 +11,69 @@ namespace Rebellion.Tests.Multiplayer
 {
     public sealed class MultiplayerCampaignAdmissionTests
     {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ConfigureGame_ReloadedCampaign_RebuildsAuthenticatedRuntimeDetails(
+            bool legacyRevision
+        )
+        {
+            GameRoot game = CreateSavedGame();
+            game.UseDeterministicRuntimeIdentifiers = true;
+            game.GetFactionPlayer("alliance").RequestedGameSpeed = TickSpeed.Fast;
+            game.GetFactionPlayer("alliance").GameSpeedSelectionRevision = 9;
+            using MemoryStream save = new();
+            GameSerializer serializer = new(typeof(GameRoot));
+            serializer.Serialize(save, game);
+            save.Position = 0;
+            if (legacyRevision)
+            {
+                XDocument document = XDocument.Load(save);
+                foreach (XElement player in document.Root.Element("Players").Elements())
+                    player.Add(new XElement(nameof(Player.GameSpeedSelectionRevision), 9));
+                save.SetLength(0);
+                document.Save(save);
+                save.Position = 0;
+            }
+            GameRoot loaded = (GameRoot)serializer.Deserialize(save);
+
+            Assert.That(loaded.GetFactionPlayer("alliance").DisplayName, Is.Null);
+            Assert.That(
+                loaded.GetFactionPlayer("alliance").GameSpeedSelectionRevision,
+                Is.EqualTo(legacyRevision ? 9 : 0)
+            );
+            Assert.That(loaded.UseDeterministicRuntimeIdentifiers, Is.False);
+            MultiplayerCampaignAdmission.ConfigureGame(
+                loaded,
+                CreateIdentity(),
+                new MultiplayerLaunchConfiguration(
+                    loaded.Summary,
+                    "alliance",
+                    "alliance",
+                    "empire",
+                    loaded
+                ),
+                true,
+                "Current host name",
+                "Current guest name"
+            );
+
+            Assert.That(
+                loaded.GetFactionPlayer("alliance").DisplayName,
+                Is.EqualTo("Current host name")
+            );
+            Assert.That(
+                loaded.GetFactionPlayer("empire").DisplayName,
+                Is.EqualTo("Current guest name")
+            );
+            Assert.That(
+                loaded.GetFactionPlayer("alliance").RequestedGameSpeed,
+                Is.EqualTo(TickSpeed.Fast)
+            );
+            Assert.That(loaded.UseDeterministicRuntimeIdentifiers, Is.True);
+            Assert.That(loaded.GetFactionPlayer("alliance").GameSpeedSelectionRevision, Is.Zero);
+            Assert.That(loaded.GetFactionPlayer("empire").GameSpeedSelectionRevision, Is.Zero);
+        }
+
         [TestCase(null)]
         [TestCase("  Player <A> & \U0001F680\t\n  ")]
         public void ConfigureGame_ValidParticipantNames_PreservesSaveableNames(string name)

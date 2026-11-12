@@ -56,7 +56,7 @@ namespace Rebellion.Tests.Multiplayer
         )
         {
             GameRoot game = StartWaitingGame(role);
-            string previousToken = game.Metadata.SharedSaveToken;
+            string previousToken = game.Metadata.SaveID;
 
             Assert.IsTrue(_sessionManager.CanRequestSave);
             Assert.IsTrue(await _sessionManager.SaveGameAsync("survivor", "Surviving campaign"));
@@ -74,7 +74,7 @@ namespace Rebellion.Tests.Multiplayer
             Assert.AreEqual("guest-account", saved.Metadata.MultiplayerCampaign.GuestUserID);
             Assert.AreEqual("FNALL1", saved.Metadata.MultiplayerCampaign.HostFactionID);
             Assert.AreEqual("FNEMP1", saved.Metadata.MultiplayerCampaign.GuestFactionID);
-            Assert.AreNotEqual(previousToken, saved.Metadata.SharedSaveToken);
+            Assert.AreNotEqual(previousToken, saved.Metadata.SaveID);
             Assert.AreEqual(TickSpeed.Paused, saved.GameSpeed);
             Assert.AreEqual(1, _publications);
             Assert.AreEqual(1, _store.GetSavedGames(role == MultiplayerRole.Host).Count);
@@ -135,14 +135,14 @@ namespace Rebellion.Tests.Multiplayer
         )
         {
             GameRoot game = StartWaitingGame(role);
-            string token = game.Metadata.SharedSaveToken;
+            string token = game.Metadata.SaveID;
             _sessionManager.BlockGameOperations();
 
             Assert.IsFalse(_sessionManager.CanRequestSave);
             Assert.IsFalse(await _sessionManager.SaveGameAsync("unsafe", "Unsafe"));
             Assert.IsEmpty(_store.GetSavedGames());
             Assert.AreEqual(0, _publications);
-            Assert.AreEqual(token, game.Metadata.SharedSaveToken);
+            Assert.AreEqual(token, game.Metadata.SaveID);
         }
 
         [TestCase(MultiplayerRole.Host)]
@@ -152,13 +152,13 @@ namespace Rebellion.Tests.Multiplayer
         )
         {
             GameRoot game = StartWaitingGame(role);
-            string token = game.Metadata.SharedSaveToken;
+            string token = game.Metadata.SaveID;
 
             Assert.ThrowsAsync<XmlException>(() =>
                 _sessionManager.SaveGameAsync("rejected", "Name \u0001")
             );
 
-            Assert.AreEqual(token, game.Metadata.SharedSaveToken);
+            Assert.AreEqual(token, game.Metadata.SaveID);
             Assert.AreEqual(0, _publications);
             Assert.IsEmpty(_store.GetSavedGames());
         }
@@ -242,7 +242,7 @@ namespace Rebellion.Tests.Multiplayer
                 Metadata = new GameMetadata
                 {
                     CampaignID = Guid.NewGuid().ToString("N"),
-                    SharedSaveToken = "previous-shared-checkpoint",
+                    SaveID = "previous-shared-checkpoint",
                     MultiplayerCampaign = new MultiplayerCampaignIdentity
                     {
                         HostUserID = "host-account",

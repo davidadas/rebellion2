@@ -343,7 +343,7 @@ namespace Rebellion.Multiplayer
 
             GameRoot current = runtime.GetActiveGame();
             InitializeCampaignIdentity(current);
-            current.Metadata.SharedSaveToken = command.token;
+            current.Metadata.SaveID = command.token;
             Task<bool> publication;
             if (command.automatic)
             {
@@ -435,7 +435,7 @@ namespace Rebellion.Multiplayer
             GameRoot current = _sessionManager.GetActiveGame();
             if (
                 metadata.CampaignID != current.Metadata.CampaignID
-                || metadata.SharedSaveToken != command.token
+                || metadata.SaveID != command.token
                 || metadata.CurrentTick != current.CurrentTick
             )
                 throw new InvalidDataException(
@@ -497,7 +497,7 @@ namespace Rebellion.Multiplayer
         )
         {
             var cancellationToken = _sessionCancellation.Token;
-            if (string.IsNullOrEmpty(game.Metadata.SharedSaveToken))
+            if (string.IsNullOrEmpty(game.Metadata.SaveID))
                 return;
             SaveGameManager store = _saveGames;
             string localFileName = SaveGameManager.GetMultiplayerSaveFileName(
