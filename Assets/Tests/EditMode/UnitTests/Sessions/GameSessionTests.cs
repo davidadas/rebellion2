@@ -3538,6 +3538,66 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ExecuteCommandAsync_FinishedTacticalBattle_PublishesItsResultAndSettlesTheTick()
+        {
+            GameConfig config = CreateSpaceCombatConfig();
+            config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 0;
+            GameRoot game = TestGame.Create(config);
+            game.Random = new FixedRNG();
+            Faction alliance = new Faction { InstanceID = "ALLIANCE" };
+            Faction empire = new Faction { InstanceID = "EMPIRE" };
+            game.GetFactions().Add(alliance);
+            game.GetFactions().Add(empire);
+            game.SetFactionController(alliance.InstanceID, "PLAYER", PlayerControllerType.Human);
+            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
+            Planet battlePlanet = CreatePlanet("BATTLE", empire.InstanceID, 10);
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(battlePlanet, sector);
+            Fleet attacker = CreateCombatFleet(
+                game,
+                "ATTACKER",
+                alliance.InstanceID,
+                battlePlanet,
+                hullStrength: 10000,
+                weaponPower: 10000
+            );
+            Fleet defender = CreateCombatFleet(
+                game,
+                "DEFENDER",
+                empire.InstanceID,
+                battlePlanet,
+                hullStrength: 1,
+                weaponPower: 0
+            );
+            // The synthetic ships have no drive or recharge; give them enough to close and fire.
+            CapitalShip attackerShip = attacker.GetChildren<CapitalShip>().Single();
+            attackerShip.SublightSpeed = 3;
+            attackerShip.WeaponRecharge = 1;
+            defender.GetChildren<CapitalShip>().Single().SublightSpeed = 3;
+            GameSession session = new GameSession(game, TestGameData.Create(config));
+            session.Tick.ProcessTick();
+            SpaceCombatCommands combat = session.GetService<SpaceCombatCommands>();
+            Assert.IsTrue(combat.HasPendingDecision, "The test must begin with a pending battle.");
+            TacticalSpaceBattle battle = session.Tick.BeginTacticalCombat(alliance.InstanceID);
+            for (int step = 0; step < 40 && !battle.IsComplete; step++)
+                battle.Advance(30);
+            Assert.IsTrue(battle.IsComplete, "The test battle must finish.");
+            List<GameResult> resolved = new List<GameResult>();
+            session.Pipeline.ResultsResolved += resolved.AddRange;
+
+            Task<SpaceCombatResult> command = session.ExecuteCommandAsync(() =>
+                session.Tick.ResolveTacticalCombat(battle)
+            );
+
+            Assert.IsTrue(command.IsCompletedSuccessfully);
+            Assert.IsNotNull(command.Result);
+            CollectionAssert.Contains(resolved, command.Result);
+            Assert.IsFalse(combat.HasPendingDecision);
+            Assert.IsTrue(session.Tick.IsSettled);
+            Assert.IsTrue(session.CanExecuteCommands);
+        }
+
+        [Test]
         public void ExecuteCommandAsync_SuspendedTick_DefersUntilTickFinishes()
         {
             _game.SetGameSpeed(TickSpeed.Fast);
