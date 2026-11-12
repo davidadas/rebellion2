@@ -1388,8 +1388,7 @@ namespace Rebellion.Game.Galaxy
             switch (child)
             {
                 case Fleet fleet:
-                    return !fleet.HasPlanetDestroyer
-                        || FindPlanetDestroyer(excludedFleet: fleet) == null;
+                    return CanAcceptFleet(fleet, null);
                 case Mission _:
                     return true;
                 case Officer officer:
@@ -1415,6 +1414,20 @@ namespace Rebellion.Game.Galaxy
                 default:
                     return false;
             }
+        }
+
+        /// <summary>
+        /// Returns whether a fleet may enter this system. A system holds only one planet
+        /// destroyer, so a fleet that brings one is refused while another is here. A ship the
+        /// fleet leaves behind does not arrive with it and is not counted.
+        /// </summary>
+        /// <param name="fleet">The arriving fleet.</param>
+        /// <param name="shipsLeftBehind">The ships that do not travel with the fleet, or null.</param>
+        /// <returns>True when the fleet may enter the system.</returns>
+        internal bool CanAcceptFleet(Fleet fleet, IReadOnlyCollection<CapitalShip> shipsLeftBehind)
+        {
+            return !fleet.HasPlanetDestroyerWithout(shipsLeftBehind)
+                || FindPlanetDestroyer(excludedFleet: fleet) == null;
         }
 
         /// <summary>

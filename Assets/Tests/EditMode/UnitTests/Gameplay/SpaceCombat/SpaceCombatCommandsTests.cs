@@ -3464,6 +3464,33 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ResolvePendingRetreat_PlanetDestroyerLeftBehind_MovesItsEscortsToASystemHoldingAnother()
+        {
+            GameRoot game = CreateGame();
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat");
+            (Planet empireHome, _) = CreatePlanet(game, "empireHome", owner: "empire");
+            Fleet garrison = CreateFleet(game, "garrison", "empire", empireHome, 1, 100, 1);
+            garrison.GetChildren<CapitalShip>().Single().CanDestroyPlanets = true;
+            Fleet retreatingFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 2, 100, 1);
+            CapitalShip strandedStation = retreatingFleet.GetChildren<CapitalShip>()[0];
+            strandedStation.CanDestroyPlanets = true;
+            strandedStation.Hyperdrive = 0;
+            CapitalShip escort = retreatingFleet.GetChildren<CapitalShip>()[1];
+            CreateFleet(game, "af1", "alliance", combatPlanet, 1, 1000, 100);
+            SpaceCombatCommands manager = MakeSpaceCombat(game);
+
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
+            List<GameResult> results = manager.ResolvePendingRetreat("empire");
+
+            Assert.IsNotNull(results);
+            Assert.AreSame(empireHome, retreatingFleet.GetParentOfType<Planet>());
+            Assert.IsNotNull(retreatingFleet.Movement);
+            Assert.AreSame(retreatingFleet, escort.GetParent());
+            Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>(strandedStation.InstanceID));
+        }
+
+        [Test]
         public void ResolvePendingRetreat_StrandedFleetCarriesNonHyperdriveFighter_DestroysFighter()
         {
             GameRoot game = CreateGame();

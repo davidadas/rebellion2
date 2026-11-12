@@ -32,6 +32,8 @@ public sealed class TacticalRosterSlotView : MonoBehaviour
     private TextMeshProUGUI label;
 
     private UnityAction _listener;
+    private Action<int> _pressed;
+    private int _index;
     private float _labelFontSize = -1f;
     private bool _labelVisible = true;
 
@@ -51,23 +53,30 @@ public sealed class TacticalRosterSlotView : MonoBehaviour
         if (button != null && _listener != null)
             button.onClick.RemoveListener(_listener);
         _listener = null;
+        _pressed = null;
     }
 
     /// <summary>
-    /// Shows a roster entry and routes clicks to a callback.
+    /// Shows a roster entry and routes clicks to a callback. The roster is drawn every frame,
+    /// so the click listener is bound once for the slot's lifetime and a render only updates
+    /// what it reports.
     /// </summary>
     /// <param name="data">The entry to show.</param>
-    /// <param name="pressed">Invoked when the slot is clicked.</param>
-    internal void Render(TacticalRosterSlotRenderData data, Action pressed)
+    /// <param name="index">The entry's index, passed to the callback.</param>
+    /// <param name="pressed">Invoked with the index when the slot is clicked.</param>
+    internal void Render(TacticalRosterSlotRenderData data, int index, Action<int> pressed)
     {
         if (data == null)
             throw new ArgumentNullException(nameof(data));
 
         VerifyReferences();
-        if (_listener != null)
-            button.onClick.RemoveListener(_listener);
-        _listener = () => pressed?.Invoke();
-        button.onClick.AddListener(_listener);
+        _index = index;
+        _pressed = pressed;
+        if (_listener == null)
+        {
+            _listener = HandlePressed;
+            button.onClick.AddListener(_listener);
+        }
 
         portraitImage.texture = data.Portrait;
         portraitImage.enabled = data.Portrait != null;
@@ -116,6 +125,14 @@ public sealed class TacticalRosterSlotView : MonoBehaviour
             _labelHeight
         );
         label.fontSize = Math.Max(_labelFontSize * height / _fullHeight, _minimumLabelFontSize);
+    }
+
+    /// <summary>
+    /// Reports a click with the index of the entry the slot is showing.
+    /// </summary>
+    private void HandlePressed()
+    {
+        _pressed?.Invoke(_index);
     }
 
     /// <summary>

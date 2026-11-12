@@ -300,6 +300,20 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
+        /// Returns whether the fleet still carries a planet-destroying capital ship once some of
+        /// its ships are gone. A fleet that withdraws from a battle leaves its lost ships behind,
+        /// so a planet destroyer among them does not travel with it.
+        /// </summary>
+        /// <param name="shipsLeftBehind">The ships that do not travel with the fleet, or null.</param>
+        /// <returns>True when a planet destroyer travels with the fleet.</returns>
+        internal bool HasPlanetDestroyerWithout(IReadOnlyCollection<CapitalShip> shipsLeftBehind)
+        {
+            return _capitalShips.Any(ship =>
+                ship.CanDestroyPlanets && shipsLeftBehind?.Contains(ship) != true
+            );
+        }
+
+        /// <summary>
         /// Returns the planet destroyer that keeps a ship out of this fleet. A system holds only
         /// one planet destroyer, so a second is refused whether the first is in this fleet or in
         /// another fleet at, or on its way to, the same planet.

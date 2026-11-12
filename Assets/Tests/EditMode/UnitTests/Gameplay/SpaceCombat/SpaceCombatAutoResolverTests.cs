@@ -1332,6 +1332,48 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void Resolve_ShieldGeneratorUnderRepair_DoesNotRechargeShields()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 10);
+            CapitalShip defender = CreateShip("defender", hull: 100, weaponStrength: 0);
+            defender.MaxShieldStrength = 100;
+            defender.ShieldRechargeRate = 100;
+            defender.ShieldGeneratorRepairDays = 100;
+
+            SpaceCombatResult result = Resolve(
+                new[] { attacker },
+                new[] { defender },
+                defenderCanWithdraw: true
+            );
+
+            Assert.Less(GetShipOutcome(result, defender).HullAfter, 100);
+        }
+
+        [Test]
+        public void Resolve_ShieldGeneratorRepairedDuringTheBattle_RechargesShieldsAgain()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 1);
+            CapitalShip defender = CreateShip("defender", hull: 100, weaponStrength: 0);
+            defender.MaxShieldStrength = 100;
+            defender.ShieldRechargeRate = 100;
+            defender.ShieldGeneratorRepairDays = 1;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.TacticalShieldGeneratorRepairMultiplier = 2;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new[] { attacker },
+                new List<Starfighter>(),
+                new[] { defender },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(100, GetShipOutcome(result, defender).HullAfter);
+            Assert.Greater(result.IterationsCompleted, 200);
+        }
+
+        [Test]
         public void Resolve_ShieldsDepleteBeyondStagnationWindow_ContinuesCombat()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 10);

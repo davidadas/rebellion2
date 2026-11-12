@@ -1566,6 +1566,7 @@ namespace Rebellion.Gameplay
             private readonly int[] _turbolasers;
             private int _attackDelay;
             private int _movementDelay;
+            private double _shieldGeneratorDowntime;
 
             internal double CurrentHull { get; private set; }
             internal double CurrentShields { get; private set; }
@@ -1633,6 +1634,10 @@ namespace Rebellion.Gameplay
                 );
                 CurrentHull = InitialHull;
                 CurrentShields = _maximumShields;
+                // Generator damage carried in from a commanded battle is still being repaired.
+                _shieldGeneratorDowntime = ShieldGeneratorRules.GetDowntime(
+                    ship.ShieldGeneratorRepairDays
+                );
                 for (int arc = 0; arc < _maximumArcCharge.Length; arc++)
                 {
                     _maximumArcCharge[arc] = GetRawArcStrength(arc);
@@ -1884,6 +1889,11 @@ namespace Rebellion.Gameplay
                 int delayRecovery = Math.Max(config.AutoResolveComponentDelayRecovery, 1);
                 _attackDelay = Math.Max(_attackDelay - delayRecovery, 0);
                 _movementDelay = Math.Max(_movementDelay - delayRecovery, 0);
+                _shieldGeneratorDowntime = ShieldGeneratorRules.Recover(
+                    _shieldGeneratorDowntime,
+                    1,
+                    config
+                );
                 RechargeShields();
                 RechargeWeapons();
             }
@@ -1994,10 +2004,14 @@ namespace Rebellion.Gameplay
             }
 
             /// <summary>
-            /// Recharges shields according to current hull condition.
+            /// Recharges shields according to current hull condition. A shield generator that
+            /// is still under repair recharges nothing.
             /// </summary>
             private void RechargeShields()
             {
+                if (_shieldGeneratorDowntime > 0)
+                    return;
+
                 double condition = CurrentHull / _maximumHull;
                 CurrentShields = Math.Min(
                     _maximumShields,

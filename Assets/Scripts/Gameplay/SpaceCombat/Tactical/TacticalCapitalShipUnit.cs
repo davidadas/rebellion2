@@ -29,7 +29,6 @@ namespace Rebellion.Gameplay
         private const double _tractorApproachFraction = 0.9;
         private const double _tractoredSpeedFactor = 0.2;
         private const double _shieldsDownFraction = 0.05;
-        private const double _roundsPerRepairDay = 20;
         private const double _maximumShieldDelay = 200;
         private const double _baseRadius = 2;
         private const double _hullRadiusDivisor = 16;
@@ -114,8 +113,7 @@ namespace Rebellion.Gameplay
         /// Gets the generator repair still owed, in strategic recovery ticks, to carry out of
         /// the battle.
         /// </summary>
-        public int ShieldGeneratorRepairDays =>
-            (int)Math.Ceiling(_shieldDelay / _roundsPerRepairDay);
+        public int ShieldGeneratorRepairDays => ShieldGeneratorRules.GetRepairDays(_shieldDelay);
 
         public bool HasHyperdrive => Ship.Hyperdrive > 0;
 
@@ -248,7 +246,7 @@ namespace Rebellion.Gameplay
             CurrentHull = InitialHull;
             CurrentShields = _maximumShields;
             // Generator damage carried in from an earlier battle is still being repaired.
-            _shieldDelay = Math.Max(ship.ShieldGeneratorRepairDays, 0) * _roundsPerRepairDay;
+            _shieldDelay = ShieldGeneratorRules.GetDowntime(ship.ShieldGeneratorRepairDays);
             for (int arc = 0; arc < _maximumArcCharge.Length; arc++)
             {
                 _maximumArcCharge[arc] = GetRawArcStrength(arc);
@@ -545,11 +543,7 @@ namespace Rebellion.Gameplay
             double delayRecovery = Math.Max(config.AutoResolveComponentDelayRecovery, 1) * rounds;
             _attackDelay = Math.Max(_attackDelay - delayRecovery, 0);
             _movementDelay = Math.Max(_movementDelay - delayRecovery, 0);
-            // A knocked-out generator takes far longer to bring back than other components, so
-            // the loss shapes the rest of the battle rather than a few volleys.
-            double generatorRecovery =
-                delayRecovery / Math.Max(config.TacticalShieldGeneratorRepairMultiplier, 1);
-            _shieldDelay = Math.Max(_shieldDelay - generatorRecovery, 0);
+            _shieldDelay = ShieldGeneratorRules.Recover(_shieldDelay, rounds, config);
             RechargeShields(rounds, config);
             RechargeWeapons(rounds);
         }

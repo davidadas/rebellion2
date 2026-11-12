@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
@@ -221,6 +222,33 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Tactical
             Assert.AreEqual(1, pressedShip);
             Assert.AreEqual(0, pressedSquadron);
             Assert.IsFalse(FindObject("Roster").activeSelf);
+        }
+
+        [Test]
+        public void Render_RosterDrawnAgain_ReportsASlotClickOnceToTheCurrentHandler()
+        {
+            List<int> pressedShips = new List<int>();
+            TacticalRosterRenderData roster = new TacticalRosterRenderData(
+                "Alliance",
+                new[]
+                {
+                    new TacticalRosterSlotRenderData("1", null, true, true),
+                    new TacticalRosterSlotRenderData("2", null, false, true),
+                },
+                null
+            );
+
+            _view.Render(CreateData(unitCount: 0, shotCount: 0, roster: roster));
+            _view.RosterShipPressed += pressedShips.Add;
+            _view.Render(CreateData(unitCount: 0, shotCount: 0, roster: roster));
+            _view.Render(CreateData(unitCount: 0, shotCount: 0, roster: roster));
+            TacticalRosterSlotView[] slots = _view.GetComponentsInChildren<TacticalRosterSlotView>(
+                false
+            );
+            slots[1].GetComponent<Button>().onClick.Invoke();
+
+            Assert.AreEqual(2, slots.Length);
+            CollectionAssert.AreEqual(new[] { 1 }, pressedShips);
         }
 
         [Test]

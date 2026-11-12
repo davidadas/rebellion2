@@ -402,6 +402,9 @@ stop recharging, the panel's Shields system shows offline and the shield text no
 and the ship works the damage off over the battle. Whatever repair is still owed leaves the battle
 with the ship as `CapitalShip.ShieldGeneratorRepairDays` (via `ShipDamageResult`), shows on the
 strategic status card, and the recovery tick repairs it a day at a time, twice as fast in dock.
+An auto-resolved battle honours the repair still owed (`ShieldGeneratorRules`, shared by both
+resolvers): the ship's shields do not recharge until the generator is worked back, at the same
+rate. It never knocks a generator out itself and leaves the repair days owed as they were.
 Capital-ship
 models are drawn at three times their simulation radius and fighters at 1.6 times; fighter squadrons
 circle the unit they attack inside weapon range, and squadrons with nothing to engage patrol around
@@ -425,7 +428,10 @@ it, counting ships still under construction and fleets on their way there. `Plan
 fleet that carries a second and `Fleet` refuses the ship itself, both in `CanAcceptChild` (which
 movement, evacuation, withdrawal and manufacturing destinations consult) and when a node is added
 directly; a manufacturing order for one is limited to a single ship bound for a system that has
-none.
+none. A fleet withdrawing from a battle is judged as it will arrive: a planet destroyer it loses in
+the battle, or strands without a hyperdrive, is gone before the fleet moves and does not keep its
+escorts out of a system that holds another (`SpaceCombatWithdrawalPlanner`,
+`Planet.CanAcceptFleet`).
 A capital ship that can destroy planets (the Death Star) does not join the battle line. It stands
 off beyond its own edge of the arena as a `TacticalBattleStation`, where nothing can shoot at it,
 and takes part in two ways. Its superlaser opens the battle charged: the owning player clicks the

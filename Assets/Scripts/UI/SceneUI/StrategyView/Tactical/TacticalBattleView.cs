@@ -724,11 +724,10 @@ public sealed class TacticalBattleView
                 y += slotHeight + _rosterSlotGap;
             }
 
-            int pressedIndex = slotIndex;
             TacticalRosterSlotView slot = GetRosterSlot(pool, slotIndex);
             UILayout.SetSourceRect(slot.transform as RectTransform, x, y, slotWidth, slotHeight);
             slot.Resize(slotWidth, slotHeight, showLabel);
-            slot.Render(entry, () => pressed?.Invoke(pressedIndex));
+            slot.Render(entry, slotIndex, pressed);
             x += slotWidth + _rosterSlotGap;
             slotIndex++;
         }
