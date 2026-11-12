@@ -1626,6 +1626,30 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void CreateMessages_SmugglingEndedByOwnershipChange_OmitsEndReports()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            target.OwnerInstanceID = alliance.InstanceID;
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                SmugglingDefinitions(),
+                new SmugglingChangedResult
+                {
+                    Planet = target,
+                    Controller = empire,
+                    Beneficiary = alliance,
+                    OldPercent = 50,
+                    NewPercent = 0,
+                    EndedByOwnershipChange = true,
+                }
+            );
+
+            Assert.IsEmpty(deliveries);
+        }
+
+        [Test]
         public void CreateMessages_ManufacturingIdle_UsesQueueTypeDefinition()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();

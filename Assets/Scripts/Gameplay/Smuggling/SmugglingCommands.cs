@@ -278,6 +278,7 @@ namespace Rebellion.Gameplay
                     Beneficiary = FindFaction(state.BeneficiaryInstanceID),
                     OldPercent = state.DiversionPercent,
                     NewPercent = 0,
+                    EndedByOwnershipChange = planet.OwnerInstanceID != state.ControllerInstanceID,
                     Tick = _game.CurrentTick,
                 }
             );

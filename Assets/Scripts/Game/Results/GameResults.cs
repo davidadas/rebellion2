@@ -111,6 +111,7 @@ namespace Rebellion.Game.Results
         public Faction Beneficiary { get; set; }
         public int OldPercent { get; set; }
         public int NewPercent { get; set; }
+        public bool EndedByOwnershipChange { get; set; }
     }
 
     /// <summary>

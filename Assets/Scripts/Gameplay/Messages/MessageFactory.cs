@@ -3248,6 +3248,9 @@ namespace Rebellion.Gameplay
         {
             foreach (SmugglingChangedResult result in results)
             {
+                if (result.NewPercent == 0 && result.EndedByOwnershipChange)
+                    continue;
+
                 AddSmugglingDelivery(deliveries, result.Controller, result, false);
                 AddSmugglingDelivery(deliveries, result.Beneficiary, result, true);
             }
