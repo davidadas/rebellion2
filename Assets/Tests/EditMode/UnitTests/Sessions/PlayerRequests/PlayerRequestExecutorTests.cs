@@ -481,6 +481,34 @@ namespace Rebellion.Tests.PlayerRequests
         }
 
         [Test]
+        public void Execute_StartMissionWithDifferentPlanetTarget_DoesNotCreateMission()
+        {
+            SpecialForces participant = new SpecialForces
+            {
+                InstanceID = "recon-agent",
+                OwnerInstanceID = _ownerID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                AllowedMissionTypeIDs = new List<string> { ReconnaissanceMission.MissionTypeID },
+            };
+            _game.AttachNode(participant, _origin);
+
+            PlayerRequestOutcome result = _executor.Execute(
+                _ownerID,
+                new StartMissionRequest
+                {
+                    MissionTypeID = ReconnaissanceMission.MissionTypeID,
+                    ObservedLocation = _opponentPlanet,
+                    ObservedTarget = _origin,
+                    MainParticipantIDs = new[] { participant.InstanceID },
+                }
+            );
+
+            Assert.IsFalse(result.Accepted);
+            Assert.IsEmpty(_game.GetSceneNodesByType<Mission>());
+            Assert.AreSame(_origin, participant.GetParent());
+        }
+
+        [Test]
         public void Execute_AbortOtherFactionMission_DoesNotInterruptMission()
         {
             SabotageMission mission = new SabotageMission
