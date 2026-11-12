@@ -32,7 +32,9 @@ namespace Rebellion.Tests.UI.Runtime
                 _game,
                 _themeLibrary,
                 _encyclopediaCatalog,
-                TestContent.Assets.GetTexture
+                TestContent.Assets.GetTexture,
+                null,
+                TestContent.Assets.GetSmoothTexture
             );
         }
 
@@ -147,6 +149,18 @@ namespace Rebellion.Tests.UI.Runtime
             Assert.AreSame(first, second);
             Assert.AreEqual(FilterMode.Point, first.filterMode);
             Assert.AreEqual(TextureWrapMode.Clamp, first.wrapMode);
+        }
+
+        [Test]
+        public void GetSmoothTexture_ConfiguredPath_ReturnsSmoothContentTexture()
+        {
+            string path = _context.GetPlayerFactionTheme().ConfirmDialogTheme.BackgroundImagePath;
+
+            Texture2D texture = _context.GetSmoothTexture(path);
+
+            Assert.IsNotNull(texture);
+            Assert.AreEqual(FilterMode.Trilinear, texture.filterMode);
+            Assert.Greater(texture.mipmapCount, 1);
         }
 
         [Test]

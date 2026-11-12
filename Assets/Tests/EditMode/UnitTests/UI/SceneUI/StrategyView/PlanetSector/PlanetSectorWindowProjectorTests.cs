@@ -305,49 +305,49 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(new Vector2Int(3, 5), presentation.GalaxyOffset);
             Assert.AreSame(_uiContext.GetTexture(planetTexturePath), presentation.PlanetTexture);
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     playerTheme.PlanetOverlayTheme.PlanetOverlayIcons.Buildings.NormalImagePath
                 ),
                 presentation.FacilityTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     playerTheme.PlanetOverlayTheme.PlanetOverlayIcons.Buildings.HoverImagePath
                 ),
                 presentation.FacilityPressedTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     playerTheme.PlanetOverlayTheme.PlanetOverlayIcons.Defenses.NormalImagePath
                 ),
                 presentation.DefenseTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     playerTheme.PlanetOverlayTheme.PlanetOverlayIcons.Defenses.HoverImagePath
                 ),
                 presentation.DefensePressedTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     opposingTheme.PlanetOverlayTheme.PlanetOverlayIcons.Fleets.NormalImagePath
                 ),
                 presentation.FleetTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     opposingTheme.PlanetOverlayTheme.PlanetOverlayIcons.Fleets.HoverImagePath
                 ),
                 presentation.FleetPressedTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     opposingTheme.PlanetOverlayTheme.PlanetOverlayIcons.Missions.NormalImagePath
                 ),
                 presentation.MissionTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     opposingTheme.PlanetOverlayTheme.PlanetOverlayIcons.Missions.HoverImagePath
                 ),
                 presentation.MissionPressedTexture
@@ -644,13 +644,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
             FactionTheme playerTheme = _uiContext.GetPlayerFactionTheme();
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     playerTheme.PlanetOverlayTheme.PlanetOverlayIcons.Missions.NormalImagePath
                 ),
                 presentation.MissionTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     playerTheme.PlanetOverlayTheme.PlanetOverlayIcons.Missions.HoverImagePath
                 ),
                 presentation.MissionPressedTexture
@@ -804,13 +804,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 data.Planets[0].UprisingTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     opposingTheme.PlanetOverlayTheme.PlanetOverlayIcons.Missions.NormalImagePath
                 ),
                 data.Planets[0].MissionTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     opposingTheme.PlanetOverlayTheme.PlanetOverlayIcons.Missions.HoverImagePath
                 ),
                 data.Planets[0].MissionPressedTexture
@@ -838,25 +838,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
             PlanetSectorPlanetRenderData presentation = data.Planets[0];
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     neutralTheme.PlanetOverlayTheme.PlanetOverlayIcons.Buildings.NormalImagePath
                 ),
                 presentation.FacilityTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     neutralTheme.PlanetOverlayTheme.PlanetOverlayIcons.Buildings.HoverImagePath
                 ),
                 presentation.FacilityPressedTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     neutralTheme.PlanetOverlayTheme.PlanetOverlayIcons.Defenses.NormalImagePath
                 ),
                 presentation.DefenseTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     neutralTheme.PlanetOverlayTheme.PlanetOverlayIcons.Defenses.HoverImagePath
                 ),
                 presentation.DefensePressedTexture
@@ -931,13 +931,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
             FactionTheme playerTheme = _uiContext.GetPlayerFactionTheme();
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     playerTheme.PlanetOverlayTheme.PlanetOverlayIcons.Missions.NormalImagePath
                 ),
                 presentation.MissionTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     playerTheme.PlanetOverlayTheme.PlanetOverlayIcons.Missions.HoverImagePath
                 ),
                 presentation.MissionPressedTexture
