@@ -186,7 +186,7 @@ namespace Rebellion.PlayerRequests
         }
 
         /// <summary>
-        /// Starts a mission while preserving observed target state and resolving owned participants.
+        /// Starts a mission using observed target state, shared planet identities, and owned participants.
         /// </summary>
         /// <param name="actor">The issuing faction.</param>
         /// <param name="request">The planned mission and observed target data.</param>
@@ -213,7 +213,7 @@ namespace Rebellion.PlayerRequests
             {
                 MissionTypeID = request.MissionTypeID,
                 Location = request.ObservedLocation,
-                SelectedTarget = request.ObservedTarget,
+                SelectedTarget = ResolveObservedMissionTarget(request),
                 MainParticipants = main,
                 DecoyParticipants = decoys,
                 Discipline = request.Discipline,
@@ -223,6 +223,46 @@ namespace Rebellion.PlayerRequests
                 _session.GetService<MissionQueries>().CanCreateMission(context)
                     && _session.GetService<MissionCommands>().InitiateMission(context)
             );
+        }
+
+        /// <summary>
+        /// Reconnects copied target references using only the request's observed location tree.
+        /// </summary>
+        /// <param name="request">The mission's observed location and separately serialized target.</param>
+        /// <returns>The observed target with its planetary identity and ancestor links restored.</returns>
+        private static ISceneNode ResolveObservedMissionTarget(StartMissionRequest request)
+        {
+            Planet location = request.ObservedLocation;
+            ISceneNode selectedTarget = request.ObservedTarget;
+            if (
+                selectedTarget is Planet selectedPlanet
+                && !string.IsNullOrEmpty(location?.InstanceID)
+                && string.Equals(
+                    selectedPlanet.InstanceID,
+                    location.InstanceID,
+                    StringComparison.Ordinal
+                )
+            )
+                return location;
+
+            if (
+                location == null
+                || selectedTarget is not BaseSceneNode detachedTarget
+                || detachedTarget.GetParent() != null
+                || string.IsNullOrEmpty(detachedTarget.ParentInstanceID)
+            )
+                return selectedTarget;
+
+            ISceneNode observedParent = null;
+            location.TraverseIncludingDisabled(node =>
+            {
+                if (node.InstanceID == detachedTarget.ParentInstanceID)
+                    observedParent = node;
+                foreach (ISceneNode child in node.GetChildren(includeDisabled: true))
+                    ((BaseSceneNode)child).ParentNode = node;
+            });
+            detachedTarget.ParentNode = observedParent;
+            return detachedTarget;
         }
 
         /// <summary>
