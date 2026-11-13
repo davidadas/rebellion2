@@ -248,8 +248,10 @@ escorts out of a system that holds another (`SpaceCombatWithdrawalPlanner`,
 `Planet.CanAcceptFleet`).
 
 `SpaceCombatAutoResolver` keeps a withdrawing unit in the fight until it is gone. The unit can be
-shot at, and shoots back, while it flies back out to its own edge of the battlefield (0.6 starting
-distances) and then `AutoResolveWithdrawalDistance` beyond it.
+shot at, and shoots back, while it covers a fixed escape leg: 0.6 starting distances, as far as a
+starting line lies from its own edge of the battlefield, and then `AutoResolveWithdrawalDistance`
+beyond it. The leg is the same however far the unit has advanced, because the resolver tracks no
+positions.
 
 A capital ship that can destroy planets does not join the battle line in an auto-resolved battle.
 It stands off where no weapon can reach it (`BattleStationState`, under the rules in
@@ -258,7 +260,8 @@ its first shot for ten rounds (resolver iterations), then destroys the toughest 
 outright and recharges over `BattleStationSuperlaserRechargeRounds`. The other side destroys the
 station by sending its torpedo squadrons to fly the trench: they cover six starting distances,
 under fire like any other unit, and the run is decided once every squadron sent has arrived or
-been lost on the way. A run needs torpedoes. With them it succeeds at
+been lost on the way. A flight under way counts as progress, so the battle is not settled as a
+stalemate before the run is rolled. A run needs torpedoes. With them it succeeds at
 `BattleStationTrenchRunBaseChance` while the fighters flying it at least match the enemy fighters
 still in the fight, and less in proportion when outnumbered, never below
 `BattleStationTrenchRunMinimumChance`. Success destroys the station; failure costs every squadron
@@ -372,7 +375,8 @@ No Escape) and the hint spells it out; the strategic layer hands the battle only
 (`SpaceCombatWithdrawalResolver.HasEscapeRoute`) and leaves the gravity-well check to the
 simulation. A battle in which neither side loses hull or fighters, nor is driven to a new low on
 shields, for `AutoResolveStagnationIterations` rounds ends as a stalemate: shields that dip and heal
-back do not count as progress, and the weaker side withdraws when it can and is destroyed otherwise.
+back do not count as progress, squadrons flying a trench do, and the weaker side withdraws when it
+can and is destroyed otherwise.
 Every fighter has a thin airframe worth of
 durability, and its shields count for more than their rating on top of it, so an unshielded TIE no
 longer falls to the first hit but still falls several times sooner than an X-wing (squadrons all

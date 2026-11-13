@@ -2399,6 +2399,35 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void Advance_TrenchFlightLongerThanTheStagnationWindow_IsStillFlownAndRolled()
+        {
+            CapitalShip station = CreateStation("station");
+            Starfighter fighter = CreateTorpedoFighter("x-wing", 12);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.BattleStationTrenchRunBaseChance = 1;
+            config.AutoResolveStagnationIterations = 2;
+            TacticalSpaceBattle battle = CreateStationBattle(
+                new[] { CreateShip("attacker", 100, 0) },
+                new[] { station },
+                attackerFighters: new[] { fighter },
+                playerSide: CombatSide.Attacker,
+                config: config
+            );
+            TacticalBattleStation stationUnit = battle.Stations.Single();
+            TacticalStarfighterUnit squadron = battle
+                .Units.OfType<TacticalStarfighterUnit>()
+                .Single();
+
+            // Nothing else changes while the squadron flies to the station, and the flight takes
+            // far longer than the two rounds the stagnation check allows.
+            battle.IssueTrenchRunOrder(new[] { squadron }, stationUnit);
+            battle.Advance(15);
+
+            Assert.IsFalse(stationUnit.IsAlive);
+            Assert.AreEqual(CombatSide.Attacker, battle.CreateResult().Winner);
+        }
+
+        [Test]
         public void IssueTrenchRunOrder_SquadronWithoutTorpedoes_FailsAndIsLost()
         {
             Starfighter fighter = CreateFighter("a-wing", 12, 5);

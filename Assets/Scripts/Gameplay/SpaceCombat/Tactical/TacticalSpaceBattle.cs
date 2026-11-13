@@ -839,7 +839,8 @@ namespace Rebellion.Gameplay
             // Progress is damage that sticks (hull, airframes) or a side's total durability
             // reaching a new low, which is a shield siege gaining ground. Shields that merely dip
             // and heal back are not progress: counting them let two forces that could not break
-            // each other's shields fight on to the round cap.
+            // each other's shields fight on to the round cap. Squadrons flying a trench are
+            // progress too: nothing else may change until they arrive, and every flight ends.
             double attackerDurability = _attacker.GetLastingDurability();
             double defenderDurability = _defender.GetLastingDurability();
             double attackerTotal = _attacker.GetDurability();
@@ -852,7 +853,9 @@ namespace Rebellion.Gameplay
                 || attackerTotal < _lowestAttackerDurability - _durabilityProgressThreshold
                 || defenderTotal < _lowestDefenderDurability - _durabilityProgressThreshold
                 || Math.Abs(attackerProgress - _previousAttackerProgress) > double.Epsilon
-                || Math.Abs(defenderProgress - _previousDefenderProgress) > double.Epsilon;
+                || Math.Abs(defenderProgress - _previousDefenderProgress) > double.Epsilon
+                || _attacker.HasTrenchRunUnderWay
+                || _defender.HasTrenchRunUnderWay;
             _stagnantRounds = stateChanged ? 0 : _stagnantRounds + 1;
             _previousAttackerDurability = attackerDurability;
             _previousDefenderDurability = defenderDurability;
