@@ -417,7 +417,7 @@ internal sealed class PlanetSectorWindowProjector
             PlanetIcon.Mission => icons?.Missions,
             _ => null,
         };
-        return uiContext.GetTexture(pressed ? theme?.HoverImagePath : theme?.NormalImagePath);
+        return uiContext.GetSmoothTexture(pressed ? theme?.HoverImagePath : theme?.NormalImagePath);
     }
 
     /// <summary>
