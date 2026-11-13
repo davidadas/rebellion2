@@ -134,15 +134,15 @@ namespace Rebellion.Tests.ContentEditor.UI
                 FactionTheme theme = ContentEditorPresentation
                     .GetFactionThemes(project)[index - 1]
                     .Theme;
-                Texture2D expected = assets.GetTexture(
+                Texture2D expected = assets.GetSmoothTexture(
                     theme.PlanetOverlayTheme.PlanetOverlayIcons.Fleets.NormalImagePath
                 );
-                Assert.IsTrue(
-                    view.GetComponentsInChildren<PlanetSectorPlanetView>()
-                        .First()
-                        .GetComponentsInChildren<RawImage>()
-                        .Any(image => image.texture == expected)
-                );
+                Assert.IsNotNull(expected);
+                RawImage fleetImage = view.GetComponentsInChildren<PlanetSectorPlanetView>()
+                    .First()
+                    .GetComponentsInChildren<RawImage>()
+                    .Single(image => image.name == "FleetImage");
+                Assert.AreSame(expected, fleetImage.texture);
             }
             chooser.value = 0;
             Assert.IsFalse(project.IsDirty);

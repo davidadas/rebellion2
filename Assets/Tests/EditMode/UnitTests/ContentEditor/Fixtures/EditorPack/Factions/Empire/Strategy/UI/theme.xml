@@ -40,8 +40,8 @@
       </UnitTileIcons>
       <PlanetOverlayIcons>
         <Fleets>
-          <NormalImagePath>Pack/Factions/Empire/Strategy/UI/Windows/Fleet/planetsector-planet-fleet-up</NormalImagePath>
-          <HoverImagePath>Pack/Factions/Empire/Strategy/UI/Windows/Fleet/planetsector-planet-fleet-pressed</HoverImagePath>
+          <NormalImagePath>Pack/Factions/Empire/Strategy/UI/Windows/Fleet/planet-fleet-normal</NormalImagePath>
+          <HoverImagePath>Pack/Factions/Empire/Strategy/UI/Windows/Fleet/planet-fleet-highlighted</HoverImagePath>
         </Fleets>
         <Defenses>
           <NormalImagePath>Pack/Factions/Empire/Strategy/UI/Windows/Defense/planetsector-planet-defense-up</NormalImagePath>

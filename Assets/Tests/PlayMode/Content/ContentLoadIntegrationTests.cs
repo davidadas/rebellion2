@@ -709,7 +709,8 @@ namespace Rebellion.Tests.Content
                     new FactionThemeLibrary(pack.GameData.FactionThemes),
                     new EncyclopediaCatalog(System.Array.Empty<EncyclopediaEntry>()),
                     assets.GetTexture,
-                    assets.GetTextureContentBounds
+                    assets.GetTextureContentBounds,
+                    assets.GetSmoothTexture
                 );
                 using CancellationTokenSource cancellation =
                     CancellationTokenSource.CreateLinkedTokenSource(
