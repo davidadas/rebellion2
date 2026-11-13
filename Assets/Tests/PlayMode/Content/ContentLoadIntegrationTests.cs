@@ -14,7 +14,6 @@ using Rebellion.Generation;
 using Rebellion.Multiplayer;
 using Rebellion.Util.IO;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.SceneManagement;
@@ -30,11 +29,10 @@ namespace Rebellion.Tests.Content
         private const string _settingsBackupKey = "ContentLoadIntegrationTests.SettingsBackup";
 
         /// <summary>
-        /// Enters play mode in an empty scene so only this test creates application services.
+        /// Preserves preferences and resets launch state before creating application services.
         /// </summary>
-        /// <returns>The play-mode summary sequence.</returns>
-        [UnitySetUp]
-        public IEnumerator SetUp()
+        [SetUp]
+        public void SetUp()
         {
             string settingsPath = Path.Combine(UserDataPaths.Root, "user-settings.json");
             SessionState.SetString(
@@ -45,8 +43,7 @@ namespace Rebellion.Tests.Content
                     )
                     : "-"
             );
-            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            yield return new EnterPlayMode();
+            GameLaunchContext.Reset(TestContent.Pack);
         }
 
         /// <summary>
@@ -71,9 +68,12 @@ namespace Rebellion.Tests.Content
                 if (scene.IsValid() && scene.isLoaded)
                 {
                     if (SceneManager.GetActiveScene() == scene)
-                        SceneManager.SetActiveScene(
-                            SceneManager.CreateScene("ContentLoadTestCleanup")
-                        );
+                    {
+                        Scene cleanup = SceneManager.GetSceneByName("ContentLoadTestCleanup");
+                        if (!cleanup.IsValid())
+                            cleanup = SceneManager.CreateScene("ContentLoadTestCleanup");
+                        SceneManager.SetActiveScene(cleanup);
+                    }
                     yield return SceneManager.UnloadSceneAsync(scene);
                 }
             }
@@ -81,7 +81,6 @@ namespace Rebellion.Tests.Content
             if (MultiplayerCoordinator.Instance != null)
                 Object.Destroy(MultiplayerCoordinator.Instance.gameObject);
             yield return null;
-            yield return new ExitPlayMode();
             string settingsPath = Path.Combine(UserDataPaths.Root, "user-settings.json");
             string settingsBackup = SessionState.GetString(_settingsBackupKey, "-");
             if (settingsBackup == "-")
@@ -482,7 +481,8 @@ namespace Rebellion.Tests.Content
             };
             Task preload = assets.PreloadAsync(manifest, cancellation.Token);
 
-            DestroyApplication();
+            Assert.IsFalse(preload.IsCompleted);
+            Object.DestroyImmediate(bootstrap.gameObject);
             float deadline = Time.realtimeSinceStartup + 5f;
             while (!preload.IsCompleted && Time.realtimeSinceStartup < deadline)
                 yield return null;

@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -31,12 +30,9 @@ namespace Rebellion.Tests.UI.Input
         /// <summary>
         /// Creates an isolated runtime input system and raycastable canvas.
         /// </summary>
-        /// <returns>The play-mode setup sequence.</returns>
-        [UnitySetUp]
-        public IEnumerator SetUp()
+        [SetUp]
+        public void SetUp()
         {
-            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            yield return new EnterPlayMode();
             _inputFixture = new InputTestFixture();
             _inputFixture.Setup();
             InputSystem.settings.disableRedundantEventsMerging = AssetDatabase
@@ -54,7 +50,7 @@ namespace Rebellion.Tests.UI.Input
             _legacyInput = eventRoot.AddComponent<QueuedMouseTestInput>();
             StandaloneInputModule module = eventRoot.AddComponent<QueuedMouseInputModule>();
             module.inputOverride = _legacyInput;
-            _assets = new ContentAssets(ContentPackLoader.OpenActive().FileResolver);
+            _assets = new ContentAssets(TestContent.Pack.FileResolver);
             _events.SetFocus(true);
             ProcessFrame();
             ProcessFrame();
@@ -71,7 +67,6 @@ namespace Rebellion.Tests.UI.Input
             yield return null;
             _assets?.Dispose();
             _inputFixture?.TearDown();
-            yield return new ExitPlayMode();
         }
 
         [UnityTest]
