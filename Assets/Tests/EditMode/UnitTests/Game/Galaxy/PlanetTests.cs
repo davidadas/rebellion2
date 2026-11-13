@@ -29,6 +29,58 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
+        public void CanAcceptChild_FleetWithPlanetDestroyer_IsRefusedWhileTheSystemHoldsOne()
+        {
+            Fleet present = CreatePlanetDestroyerFleet(
+                "present",
+                "FNEMP1",
+                out CapitalShip station
+            );
+            Fleet arriving = CreatePlanetDestroyerFleet("arriving", "FNEMP2", out _);
+            Fleet ordinary = new Fleet { InstanceID = "ordinary", OwnerInstanceID = "FNEMP1" };
+
+            bool acceptedByAnEmptySystem = _planet.CanAcceptChild(arriving);
+            _planet.AddChild(present);
+            present.SetParent(_planet);
+
+            Assert.IsTrue(acceptedByAnEmptySystem);
+            Assert.IsFalse(_planet.CanAcceptChild(arriving));
+            Assert.IsTrue(_planet.CanAcceptChild(present));
+            Assert.IsTrue(_planet.CanAcceptChild(ordinary));
+            Assert.AreSame(station, _planet.FindPlanetDestroyer());
+            Assert.IsNull(_planet.FindPlanetDestroyer(excludedFleet: present));
+            Assert.IsNull(_planet.FindPlanetDestroyer(excludedShip: station));
+            Assert.Throws<SceneAccessException>(() => _planet.AddChild(arriving));
+            Assert.AreEqual(1, _planet.GetPlanetDestroyers().Count());
+        }
+
+        /// <summary>
+        /// Creates a fleet that carries one planet-destroying capital ship.
+        /// </summary>
+        /// <param name="instanceId">The fleet instance identifier.</param>
+        /// <param name="ownerInstanceId">The owning faction.</param>
+        /// <param name="station">Receives the planet destroyer.</param>
+        /// <returns>The created fleet.</returns>
+        private static Fleet CreatePlanetDestroyerFleet(
+            string instanceId,
+            string ownerInstanceId,
+            out CapitalShip station
+        )
+        {
+            Fleet fleet = new Fleet { InstanceID = instanceId, OwnerInstanceID = ownerInstanceId };
+            station = new CapitalShip
+            {
+                InstanceID = $"{instanceId}-station",
+                DisplayName = $"{instanceId}-station",
+                OwnerInstanceID = ownerInstanceId,
+                CanDestroyPlanets = true,
+            };
+            fleet.AddChild(station);
+            station.SetParent(fleet);
+            return fleet;
+        }
+
+        [Test]
         public void GetProductionFacilities_DestroyedPlanet_ReturnsNoUsableCapacity()
         {
             _planet.NumRawResourceNodes = 10;

@@ -986,7 +986,50 @@ namespace Rebellion.Game.Galaxy
         /// <param name="fleet">The fleet to add.</param>
         public void AddFleet(Fleet fleet)
         {
+            // A system holds only one planet destroyer, however the fleet comes to be here.
+            CapitalShip present =
+                fleet?.HasPlanetDestroyer == true
+                    ? FindPlanetDestroyer(excludedFleet: fleet)
+                    : null;
+            if (present != null)
+                throw new SceneAccessException(
+                    $"Cannot add \"{fleet.GetDisplayName()}\" to \"{GetDisplayName()}\": "
+                        + $"\"{present.GetDisplayName()}\" is already in the system, and a system "
+                        + "holds only one planet destroyer."
+                );
+
             _fleets.Add(fleet);
+        }
+
+        /// <summary>
+        /// Returns every planet-destroying capital ship in this system: those stationed here,
+        /// those still under construction, and those in fleets on their way here.
+        /// </summary>
+        /// <returns>The planet destroyers in the system.</returns>
+        public IEnumerable<CapitalShip> GetPlanetDestroyers()
+        {
+            return _fleets
+                .SelectMany(fleet => fleet.GetChildren<CapitalShip>(includeDisabled: true))
+                .Where(ship => ship.CanDestroyPlanets);
+        }
+
+        /// <summary>
+        /// Returns the planet destroyer that keeps another out of this system. A system holds
+        /// only one of them, whoever owns it.
+        /// </summary>
+        /// <param name="excludedFleet">A fleet whose ships are not counted, or null.</param>
+        /// <param name="excludedShip">A ship that is not counted, or null.</param>
+        /// <returns>A planet destroyer already in the system, or null.</returns>
+        public CapitalShip FindPlanetDestroyer(
+            Fleet excludedFleet = null,
+            CapitalShip excludedShip = null
+        )
+        {
+            return GetPlanetDestroyers()
+                .FirstOrDefault(ship =>
+                    !ReferenceEquals(ship, excludedShip)
+                    && (excludedFleet == null || !ReferenceEquals(ship.GetParent(), excludedFleet))
+                );
         }
 
         /// <summary>
@@ -1328,8 +1371,9 @@ namespace Rebellion.Game.Galaxy
 
         /// <summary>
         /// Returns true if this planet can accept the child. Destroyed planets reject manufactured
-        /// surface units. Fleets and Missions are always
-        /// accepted. Uncolonized planets accept regiments and facilities under construction;
+        /// surface units. Missions are always accepted, and so are fleets, except that a fleet
+        /// carrying a planet destroyer is refused while the system already holds one.
+        /// Uncolonized planets accept regiments and facilities under construction;
         /// an owned uncolonized planet with a stationed friendly unit also accepts its owner's
         /// other surface units. Colonized planets accept surface children when ownership and
         /// capacity rules permit them.
@@ -1343,7 +1387,8 @@ namespace Rebellion.Game.Galaxy
 
             switch (child)
             {
-                case Fleet _:
+                case Fleet fleet:
+                    return CanAcceptFleet(fleet, null);
                 case Mission _:
                     return true;
                 case Officer officer:
@@ -1372,6 +1417,20 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
+        /// Returns whether a fleet may enter this system. A system holds only one planet
+        /// destroyer, so a fleet that brings one is refused while another is here. A ship the
+        /// fleet leaves behind does not arrive with it and is not counted.
+        /// </summary>
+        /// <param name="fleet">The arriving fleet.</param>
+        /// <param name="shipsLeftBehind">The ships that do not travel with the fleet, or null.</param>
+        /// <returns>True when the fleet may enter the system.</returns>
+        internal bool CanAcceptFleet(Fleet fleet, IReadOnlyCollection<CapitalShip> shipsLeftBehind)
+        {
+            return !fleet.HasPlanetDestroyerWithout(shipsLeftBehind)
+                || FindPlanetDestroyer(excludedFleet: fleet) == null;
+        }
+
+        /// <summary>
         /// Returns whether the planet can accept a child alongside other planned additions.
         /// </summary>
         /// <param name="child">The candidate child node.</param>
@@ -1386,6 +1445,14 @@ namespace Rebellion.Game.Galaxy
                 && (
                     child is not Building
                     || GetAvailableEnergy() > plannedChildren.OfType<Building>().Count()
+                )
+                && (
+                    child is not Fleet { HasPlanetDestroyer: true }
+                    || !plannedChildren
+                        .OfType<Fleet>()
+                        .Any(planned =>
+                            planned.HasPlanetDestroyer && !ReferenceEquals(planned, child)
+                        )
                 );
         }
 

@@ -2098,6 +2098,12 @@ namespace Rebellion.Game
 
             public double AutoResolveTorpedoDamagePerStrength { get; set; }
 
+            public double BattleStationSuperlaserRechargeRounds { get; set; }
+
+            public double BattleStationTrenchRunBaseChance { get; set; }
+
+            public double BattleStationTrenchRunMinimumChance { get; set; }
+
             public double AutoResolveFighterWeaponRechargeMultiplier { get; set; }
 
             public double AutoResolveFighterShieldRechargePerCraft { get; set; }
@@ -2143,6 +2149,9 @@ namespace Rebellion.Game
                         FighterIonCannonFighterDamageMultiplier,
                     AutoResolveWeaponDamagePerStrength = AutoResolveWeaponDamagePerStrength,
                     AutoResolveTorpedoDamagePerStrength = AutoResolveTorpedoDamagePerStrength,
+                    BattleStationSuperlaserRechargeRounds = BattleStationSuperlaserRechargeRounds,
+                    BattleStationTrenchRunBaseChance = BattleStationTrenchRunBaseChance,
+                    BattleStationTrenchRunMinimumChance = BattleStationTrenchRunMinimumChance,
                     AutoResolveFighterWeaponRechargeMultiplier =
                         AutoResolveFighterWeaponRechargeMultiplier,
                     AutoResolveFighterShieldRechargePerCraft =

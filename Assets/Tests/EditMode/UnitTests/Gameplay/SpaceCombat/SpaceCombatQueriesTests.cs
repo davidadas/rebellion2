@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.SceneGraph;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -249,6 +250,49 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void GetWithdrawalPlan_PlanetDestroyerLostInTheBattle_SendsItsEscortsToASystemHoldingAnother()
+        {
+            (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
+                CreateScenario();
+            CapitalShip escort = fleet.GetChildren<CapitalShip>().Single();
+            CapitalShip station = AddPlanetDestroyer(game, fleet, "station");
+            (Planet refuge, _) = CreatePlanet(game, "home", owner: "alliance");
+            AddPlanetDestroyer(game, AddFleet(game, refuge, "garrison", "alliance"), "other");
+
+            SpaceCombatWithdrawalPlan plan = queries.GetWithdrawalPlan(
+                new[] { fleet },
+                planet,
+                "alliance",
+                new HashSet<ISceneNode> { escort }
+            );
+
+            Assert.AreSame(refuge, plan.FleetDestinations[fleet]);
+            Assert.IsTrue(plan.Contains(escort));
+            Assert.IsFalse(plan.Contains(station));
+        }
+
+        [Test]
+        public void GetWithdrawalPlan_PlanetDestroyerLeavesWithItsFleet_RefusesASystemHoldingAnother()
+        {
+            (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
+                CreateScenario();
+            CapitalShip escort = fleet.GetChildren<CapitalShip>().Single();
+            CapitalShip station = AddPlanetDestroyer(game, fleet, "station");
+            (Planet refuge, _) = CreatePlanet(game, "home", owner: "alliance");
+            AddPlanetDestroyer(game, AddFleet(game, refuge, "garrison", "alliance"), "other");
+
+            SpaceCombatWithdrawalPlan plan = queries.GetWithdrawalPlan(
+                new[] { fleet },
+                planet,
+                "alliance",
+                new HashSet<ISceneNode> { escort, station }
+            );
+
+            Assert.IsFalse(plan.CanWithdraw);
+            Assert.IsEmpty(plan.FleetDestinations);
+        }
+
+        [Test]
         public void TryFindContestedForces_PlanetOwner_DefendsAgainstOpposingFleet()
         {
             GameRoot game = CreateGame();
@@ -322,6 +366,29 @@ namespace Rebellion.Tests.Gameplay
                 fleet
             );
             return fleet;
+        }
+
+        /// <summary>
+        /// Adds an active hyperspace-capable planet destroyer to a fleet.
+        /// </summary>
+        /// <param name="game">The game containing the fleet.</param>
+        /// <param name="fleet">The fleet receiving the ship.</param>
+        /// <param name="instanceID">The ship identifier.</param>
+        /// <returns>The attached planet destroyer.</returns>
+        private static CapitalShip AddPlanetDestroyer(GameRoot game, Fleet fleet, string instanceID)
+        {
+            CapitalShip station = new CapitalShip
+            {
+                InstanceID = instanceID,
+                OwnerInstanceID = fleet.OwnerInstanceID,
+                CanDestroyPlanets = true,
+                Hyperdrive = 1,
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(station, fleet);
+            return station;
         }
     }
 }

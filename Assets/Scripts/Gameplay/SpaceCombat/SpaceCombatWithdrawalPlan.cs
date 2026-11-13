@@ -169,7 +169,7 @@ namespace Rebellion.Gameplay
                 eligibleUnits
             );
 
-            AddFleetDestinations(plan, fleets, planet, eligibleShips);
+            AddFleetDestinations(plan, fleets, planet, participatingShips, eligibleShips);
             AddFighterDestinations(plan, planet, participatingFighters, eligibleFighters);
             return plan;
         }
@@ -180,17 +180,27 @@ namespace Rebellion.Gameplay
         /// <param name="plan">The plan receiving fleet destinations.</param>
         /// <param name="fleets">The participating fleets in stable encounter order.</param>
         /// <param name="planet">The combat planet.</param>
+        /// <param name="participatingShips">Every active ship that entered combat.</param>
         /// <param name="eligibleShips">The ships eligible to complete withdrawal.</param>
         private void AddFleetDestinations(
             SpaceCombatWithdrawalPlan plan,
             IReadOnlyList<Fleet> fleets,
             Planet planet,
+            IReadOnlyList<CapitalShip> participatingShips,
             IReadOnlyList<CapitalShip> eligibleShips
         )
         {
             List<CapitalShip> mobileShips = (eligibleShips ?? Array.Empty<CapitalShip>())
                 .Where(ship => ship.Hyperdrive > 0)
                 .ToList();
+            // A ship that fought and is not leaving is lost with the battle: destroyed in it, or
+            // stranded without a hyperdrive. It is gone before its fleet moves, so the fleet is
+            // judged without it wherever the destination depends on what the fleet carries.
+            HashSet<CapitalShip> shipsLeftBehind = (
+                participatingShips ?? Array.Empty<CapitalShip>()
+            )
+                .Except(mobileShips)
+                .ToHashSet();
             List<Fleet> mobileFleets = (fleets ?? Array.Empty<Fleet>())
                 .Where(fleet =>
                     fleet != null
@@ -199,12 +209,22 @@ namespace Rebellion.Gameplay
                     )
                 )
                 .ToList();
-            Fleet representativeFleet = mobileFleets.FirstOrDefault();
+            // The fleets leave together for one planet. A fleet that takes a planet destroyer
+            // with it has the fewest places it can go, since a system holds only one, so it picks
+            // for them all.
+            Fleet representativeFleet =
+                mobileFleets.FirstOrDefault(fleet =>
+                    fleet.HasPlanetDestroyerWithout(shipsLeftBehind)
+                ) ?? mobileFleets.FirstOrDefault();
             if (representativeFleet == null)
                 return;
 
             Planet destination = _movement
-                .FindSafeRelocationDestinations(representativeFleet, planet)
+                .FindSafeRelocationDestinations(
+                    representativeFleet,
+                    planet,
+                    shipsLeftBehind: shipsLeftBehind
+                )
                 .OfType<Planet>()
                 .FirstOrDefault();
             if (destination == null)

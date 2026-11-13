@@ -746,7 +746,11 @@ namespace Rebellion.Gameplay
                 attackerCanWithdraw,
                 defenderCanWithdraw,
                 attackerCommand,
-                defenderCommand
+                defenderCommand,
+                attackerShips
+                    .Concat(defenderShips)
+                    .Where(ship => SpaceCombatQueries.IsShieldedByPlanet(ship, planet))
+                    .ToList()
             );
             IncludeCommandOfficers(result.AttackingUnits, attackerCommandOfficers);
             IncludeCommandOfficers(result.DefendingUnits, defenderCommandOfficers);
