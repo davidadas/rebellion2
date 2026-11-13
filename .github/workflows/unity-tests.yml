@@ -241,6 +241,10 @@ jobs:
           trap 'docker rm "$CONTAINER_ID" >/dev/null 2>&1 || true' EXIT
           mkdir -p .unity-lint-assemblies
 
+          for dll in Unity.CompilationPipeline.Common.dll Unity.Cecil.dll; do
+            docker cp "$CONTAINER_ID:/opt/unity/Editor/Data/Managed/$dll" ".unity-lint-assemblies/$dll"
+          done
+
           docker cp "$CONTAINER_ID:/opt/unity/Editor/Data/Managed/UnityEngine/." .unity-lint-assemblies/ 2>/dev/null || true
           if docker cp "$CONTAINER_ID:/opt/unity/Editor/Data/Managed/UnityEditor/." .unity-lint-assemblies/ 2>/dev/null; then
             echo "Copied UnityEditor assemblies from Managed/UnityEditor"
