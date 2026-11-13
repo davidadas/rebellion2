@@ -351,6 +351,8 @@ namespace Rebellion.Tests.Game.Units
         public void SerializeAndDeserialize_CapitalShipWithChildren_MaintainsState()
         {
             _capitalShip.ManufacturingQueueSequence = 7;
+            _capitalShip.NextRepairTick = 42;
+            _capitalShip.RepairIntervalTicks = 30;
             _capitalShip.ShipNamePoolID = "POOL";
             _capitalShip.AssignName("Named Ship");
             Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
@@ -387,6 +389,8 @@ namespace Rebellion.Tests.Game.Units
                 "ManufacturingQueueSequence should be correctly deserialized."
             );
             Assert.AreEqual(_capitalShip.UprisingDefense, deserialized.UprisingDefense);
+            Assert.AreEqual(_capitalShip.NextRepairTick, deserialized.NextRepairTick);
+            Assert.AreEqual(_capitalShip.RepairIntervalTicks, deserialized.RepairIntervalTicks);
             Assert.AreEqual("POOL", deserialized.ShipNamePoolID);
             Assert.AreEqual("Named Ship", deserialized.DisplayName);
             Assert.IsTrue(deserialized.HasAssignedName);

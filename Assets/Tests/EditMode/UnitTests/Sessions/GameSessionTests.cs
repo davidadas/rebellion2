@@ -4020,6 +4020,8 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 MaxHullStrength = 100,
                 CurrentHullStrength = 99,
+                NextRepairTick = 1,
+                RepairIntervalTicks = 1,
                 StarfighterCapacity = 1,
             };
             Starfighter fighter = new Starfighter

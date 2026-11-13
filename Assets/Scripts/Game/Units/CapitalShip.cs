@@ -78,6 +78,12 @@ namespace Rebellion.Game.Units
         [PersistableMember(Name = nameof(CurrentHullStrength))]
         private int _currentHullStrength;
 
+        [PersistableMember(Name = nameof(NextRepairTick))]
+        private int _nextRepairTick;
+
+        [PersistableMember(Name = nameof(RepairIntervalTicks))]
+        private int _repairIntervalTicks;
+
         [PersistableMember(Name = nameof(DamageControl))]
         private int _damageControl;
 
@@ -209,6 +215,20 @@ namespace Rebellion.Game.Units
         {
             get => _currentHullStrength;
             set => _currentHullStrength = value;
+        }
+
+        [PersistableIgnore]
+        public int NextRepairTick
+        {
+            get => _nextRepairTick;
+            set => _nextRepairTick = value;
+        }
+
+        [PersistableIgnore]
+        public int RepairIntervalTicks
+        {
+            get => _repairIntervalTicks;
+            set => _repairIntervalTicks = value;
         }
 
         [PersistableIgnore]
@@ -398,6 +418,8 @@ namespace Rebellion.Game.Units
             copy.UprisingDefense = UprisingDefense;
             copy.MaxHullStrength = MaxHullStrength;
             copy.CurrentHullStrength = CurrentHullStrength;
+            copy.NextRepairTick = NextRepairTick;
+            copy.RepairIntervalTicks = RepairIntervalTicks;
             copy.DamageControl = DamageControl;
             copy.MaxShieldStrength = MaxShieldStrength;
             copy.ShieldRechargeRate = ShieldRechargeRate;
@@ -794,6 +816,27 @@ namespace Rebellion.Game.Units
         public void RepairHull(int amount)
         {
             CurrentHullStrength = Math.Min(MaxHullStrength, CurrentHullStrength + amount);
+        }
+
+        /// <summary>
+        /// Schedules the next hull-repair pulse.
+        /// </summary>
+        /// <param name="currentTick">The tick from which to measure the interval.</param>
+        /// <param name="intervalTicks">The positive number of ticks before the next pulse.</param>
+        public void ScheduleRepair(int currentTick, int intervalTicks)
+        {
+            int clampedInterval = Math.Max(1, intervalTicks);
+            NextRepairTick = checked(currentTick + clampedInterval);
+            RepairIntervalTicks = clampedInterval;
+        }
+
+        /// <summary>
+        /// Clears the hull-repair timer.
+        /// </summary>
+        public void ClearRepairSchedule()
+        {
+            NextRepairTick = 0;
+            RepairIntervalTicks = 0;
         }
 
         /// <summary>
