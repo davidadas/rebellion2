@@ -42,8 +42,8 @@ namespace Rebellion.Gameplay
     /// </summary>
     public sealed class SpaceCombatAutoResolver
     {
-        // How far a force's starting line lies from its own edge of the battlefield, in
-        // starting distances. A withdrawing unit flies back out past that edge.
+        // The first part of the escape leg a withdrawing unit covers, in starting distances:
+        // as far as a starting line lies from its own edge of the battlefield.
         private const double _startingEdgeDistanceFactor = 0.6;
 
         private readonly GameConfig.SpaceCombatConfig _config;
@@ -149,13 +149,17 @@ namespace Rebellion.Gameplay
                 double defenderDurability = GetTacticalDurability(defender);
                 double attackerWithdrawalProgress = GetWithdrawalProgress(attacker);
                 double defenderWithdrawalProgress = GetWithdrawalProgress(defender);
+                // Squadrons flying a trench are progress too: nothing else may change until
+                // they arrive, and every flight ends.
                 bool stateChanged =
                     Math.Abs(attackerDurability - previousAttackerDurability) > double.Epsilon
                     || Math.Abs(defenderDurability - previousDefenderDurability) > double.Epsilon
                     || Math.Abs(attackerWithdrawalProgress - previousAttackerWithdrawalProgress)
                         > double.Epsilon
                     || Math.Abs(defenderWithdrawalProgress - previousDefenderWithdrawalProgress)
-                        > double.Epsilon;
+                        > double.Epsilon
+                    || attacker.HasTrenchRunUnderWay
+                    || defender.HasTrenchRunUnderWay;
                 stagnantIterations = stateChanged ? 0 : stagnantIterations + 1;
                 previousAttackerDurability = attackerDurability;
                 previousDefenderDurability = defenderDurability;
@@ -612,8 +616,10 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Returns how far a unit flies to leave the battle: back out to its own edge of the
-        /// battlefield, and then the configured distance beyond it.
+        /// Returns the escape leg a unit covers to leave the battle: as far as a starting line
+        /// lies from its own edge of the battlefield, and then the configured distance beyond it.
+        /// The leg is the same however far the unit has advanced, because the resolver tracks no
+        /// positions: a unit's approach keeps growing for as long as the battle lasts.
         /// </summary>
         /// <returns>The distance a withdrawing unit covers before it is gone.</returns>
         private double GetWithdrawalDistance()

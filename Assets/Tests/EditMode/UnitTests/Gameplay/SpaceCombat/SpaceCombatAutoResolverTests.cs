@@ -1680,7 +1680,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Resolve_WithdrawingShip_FliesOutPastItsOwnEdgeBeforeItIsGone()
+        public void Resolve_WithdrawingShip_CoversTheEscapeLegBeforeItIsGone()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 5);
             CapitalShip defender = CreateShip("defender", hull: 100000, weaponStrength: 1);
@@ -1699,8 +1699,8 @@ namespace Rebellion.Tests.Gameplay
                 defenderCanWithdraw: true
             );
 
-            // Sixty back to its own edge (0.6 starting distances) and fifteen beyond it: eight
-            // iterations at speed ten, and the battle ends on the next.
+            // The escape leg is sixty (0.6 starting distances) plus fifteen: eight iterations
+            // at speed ten, and the battle ends on the next.
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
             Assert.AreEqual(9, result.IterationsCompleted);
         }
@@ -2290,6 +2290,33 @@ namespace Rebellion.Tests.Gameplay
                 damage.Ship == station && damage.HullAfter == 0
             );
             Assert.AreEqual(expectedDestroyed, destroyed);
+        }
+
+        [Test]
+        public void Resolve_TrenchFlightLongerThanTheStagnationWindow_IsStillFlownAndRolled()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.BattleStationTrenchRunBaseChance = 1;
+            config.AutoResolveStagnationIterations = 20;
+            CapitalShip station = CreateStation("station");
+            Starfighter torpedoFighter = CreateTorpedoFighter("y-wing", 12);
+
+            // Six starting distances at speed eight is 57 rounds, and nothing else changes while
+            // the squadron is on its way.
+            SpaceCombatResult result = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { torpedoFighter },
+                new[] { station },
+                new List<Starfighter>()
+            );
+
+            Assert.AreEqual(
+                0,
+                result.ShipDamage.Single(damage => damage.Ship == station).HullAfter
+            );
+            Assert.AreEqual(CombatSide.Attacker, result.Winner);
+            Assert.Greater(result.IterationsCompleted, 20);
         }
 
         [Test]
