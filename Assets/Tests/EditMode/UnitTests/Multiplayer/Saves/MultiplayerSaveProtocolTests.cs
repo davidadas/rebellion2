@@ -206,6 +206,31 @@ namespace Rebellion.Tests.Multiplayer
         }
 
         [Test]
+        public void IsAutosavePending_HostScheduled_ClearsWhenCheckpointCompletes()
+        {
+            using PeerPair peers = new();
+
+            peers.Guest.RequestAutosave();
+            peers.Host.RequestAutosave();
+
+            Assert.IsFalse(peers.Guest.IsAutosavePending);
+            Assert.IsTrue(peers.Host.IsAutosavePending);
+            peers.Flush();
+            Assert.IsFalse(peers.Host.IsAutosavePending);
+        }
+
+        [Test]
+        public void IsAutosavePending_HostCheckpointFails_ClearsPendingState()
+        {
+            using PeerPair peers = new();
+            peers.Host.RequestAutosave();
+
+            peers.Host.ReportFailure(new IOException("Host disk is unavailable."));
+
+            Assert.IsFalse(peers.Host.IsAutosavePending);
+        }
+
+        [Test]
         public void RequestAutosave_LoadWaitingForDay_PreservesOutgoingCheckpointBeforeTransfer()
         {
             using PeerPair peers = new();

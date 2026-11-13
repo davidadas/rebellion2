@@ -23,6 +23,7 @@ public sealed class StrategyHudRenderData
     public TickSpeed Speed { get; }
     public IReadOnlyList<StrategyHudPlayerSpeedSelection> PlayerSpeeds { get; }
     public string ConnectionNotice { get; }
+    public bool IsAutosaving { get; }
 
     public StrategyHudResourceBreakdown ResourceBreakdown { get; }
 
@@ -37,6 +38,7 @@ public sealed class StrategyHudRenderData
     /// <param name="resourceBreakdown">The current resource-facility totals.</param>
     /// <param name="playerSpeeds">Each human participant's acknowledged speed selection.</param>
     /// <param name="connectionNotice">The current interrupted connection status, or empty.</param>
+    /// <param name="isAutosaving">Whether the HUD should show that an autosave is in progress.</param>
     public StrategyHudRenderData(
         string tickText,
         string rawMaterialsText,
@@ -45,7 +47,8 @@ public sealed class StrategyHudRenderData
         IEnumerable<MessageType> unacknowledgedMessageTypes,
         StrategyHudResourceBreakdown resourceBreakdown = null,
         IEnumerable<StrategyHudPlayerSpeedSelection> playerSpeeds = null,
-        string connectionNotice = null
+        string connectionNotice = null,
+        bool isAutosaving = false
     )
     {
         TickText = tickText ?? string.Empty;
@@ -53,6 +56,7 @@ public sealed class StrategyHudRenderData
         RefinedMaterialsText = refinedMaterialsText ?? string.Empty;
         Speed = speed;
         ConnectionNotice = connectionNotice ?? string.Empty;
+        IsAutosaving = isAutosaving;
         PlayerSpeeds = Array.AsReadOnly(
             playerSpeeds?.ToArray() ?? Array.Empty<StrategyHudPlayerSpeedSelection>()
         );

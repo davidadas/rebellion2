@@ -479,6 +479,7 @@ namespace Rebellion.Tests.App
         private sealed class TestPersistenceCoordinator : IGameSessionOwner
         {
             public bool CanRequestSave => true;
+            public bool IsAutosaving => false;
             internal readonly TaskCompletionSource<bool> Completion = new();
             internal string LoadedFileName;
 

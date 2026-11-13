@@ -61,6 +61,11 @@ namespace Rebellion.Multiplayer
         public bool IsTransferringScene { get; private set; }
 
         /// <summary>
+        /// Gets whether a host-scheduled autosave is queued or its checkpoint has not completed.
+        /// </summary>
+        public bool IsAutosavePending => _autosaveQueued && !_disposed && Failure == null;
+
+        /// <summary>
         /// Reports checkpoint failures without concealing a possible partial durable write.
         /// </summary>
         public event Action<Exception> Faulted;

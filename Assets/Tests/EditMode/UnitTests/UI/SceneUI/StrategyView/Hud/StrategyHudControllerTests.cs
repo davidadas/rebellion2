@@ -131,6 +131,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual("PAUSED", data.TickCounter.Text);
         }
 
+        [TestCase(TickSpeed.Medium)]
+        [TestCase(TickSpeed.Paused)]
+        public void CreateViewData_Autosaving_ShowsSavingInsteadOfTickOrPaused(TickSpeed speed)
+        {
+            StrategyHudViewData data = _controller.CreateViewData(
+                new StrategyHudRenderData("42", "100", "200", speed, null, isAutosaving: true),
+                new FactionTheme()
+            );
+
+            Assert.AreEqual("SAVING", data.TickCounter.Text);
+        }
+
         [Test]
         public void CreateViewData_RunningSpeed_ShowsTick()
         {

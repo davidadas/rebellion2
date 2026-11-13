@@ -35,6 +35,12 @@ namespace Rebellion.Multiplayer
                     && Failure == null;
 
         /// <summary>
+        /// Gets whether the host's scheduled autosave is queued or its shared checkpoint is still
+        /// being written. Guests never write autosaves, so this is always false for them.
+        /// </summary>
+        public bool IsAutosaving => _saveProtocol?.IsAutosavePending == true;
+
+        /// <summary>
         /// Preserves this participant's live presentation before notifying the scene of a replacement.
         /// </summary>
         /// <param name="game">The configured incoming graph with authenticated participant ownership.</param>
@@ -128,10 +134,7 @@ namespace Rebellion.Multiplayer
                 || !_synchronizationReady
                 || _turnProtocol?.HasDeclaredVictory == true
                 || _saveProtocol == null
-                || settings?.AutosaveEnabled != true
-                || settings.AutosaveIntervalTicks <= 0
-                || _sessionManager.GetActiveGame().CurrentTick <= 0
-                || _sessionManager.GetActiveGame().CurrentTick % settings.AutosaveIntervalTicks != 0
+                || !SaveGameManager.IsAutosaveDue(_sessionManager.GetActiveGame(), settings)
             )
                 return;
             _hostAutosaveSettings = new UserGameplaySettings

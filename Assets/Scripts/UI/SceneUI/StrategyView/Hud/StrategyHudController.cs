@@ -284,7 +284,7 @@ public sealed class StrategyHudController : IContextMenuReceiver
         return new StrategyHudViewData(
             backgroundTexture: ResolveTexture(hudTheme?.ImagePath),
             tickCounter: CreateCounter(
-                data.Speed == TickSpeed.Paused ? "PAUSED" : data.TickText,
+                GetTickCounterText(data),
                 textColor,
                 hudTheme?.TickCounterSourceLayout
             ),
@@ -326,6 +326,19 @@ public sealed class StrategyHudController : IContextMenuReceiver
                 theme?.StrategyWindowPlacements?.WindowBounds
             )
         );
+    }
+
+    /// <summary>
+    /// Selects the tick counter text. An autosave in progress takes precedence over the paused
+    /// label because it is short-lived and explains a brief hitch.
+    /// </summary>
+    /// <param name="data">The immutable current HUD facts.</param>
+    /// <returns>SAVING, PAUSED, or the current tick.</returns>
+    internal static string GetTickCounterText(StrategyHudRenderData data)
+    {
+        if (data.IsAutosaving)
+            return "SAVING";
+        return data.Speed == TickSpeed.Paused ? "PAUSED" : data.TickText;
     }
 
     /// <summary>
