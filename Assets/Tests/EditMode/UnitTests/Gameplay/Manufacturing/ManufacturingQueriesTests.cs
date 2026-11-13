@@ -7,6 +7,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.SceneGraph;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -66,6 +67,76 @@ namespace Rebellion.Tests.Gameplay
                     destination,
                     1,
                     "empire"
+                )
+            );
+        }
+
+        [Test]
+        public void CanAcceptManufacturingOrder_PlanetDestroyer_IsLimitedToOnePerSystem()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet producer = CreateOrderTestShipyardPlanet(game, "producer", "empire");
+            Planet empty = CreateOrderTestPlanet(game, "empty", "empire");
+            Planet occupied = CreateOrderTestPlanet(game, "occupied", "empire");
+            Fleet stationFleet = new Fleet
+            {
+                InstanceID = "station-fleet",
+                OwnerInstanceID = "empire",
+            };
+            Fleet otherFleet = new Fleet { InstanceID = "other-fleet", OwnerInstanceID = "empire" };
+            CapitalShip present = new CapitalShip
+            {
+                InstanceID = "present",
+                OwnerInstanceID = "empire",
+                CanDestroyPlanets = true,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(stationFleet, occupied);
+            game.AttachNode(otherFleet, occupied);
+            game.AttachNode(present, stationFleet);
+            CapitalShip template = new CapitalShip
+            {
+                TypeID = "station",
+                DisplayName = "station",
+                ConstructionCost = 10,
+                MaintenanceCost = 0,
+                BaseBuildSpeed = 1,
+                CanDestroyPlanets = true,
+                ManufacturingFactionInstanceIDs = new List<string> { "empire" },
+            };
+            CapitalShip cruiserTemplate = new CapitalShip
+            {
+                TypeID = "cruiser",
+                DisplayName = "cruiser",
+                ConstructionCost = 10,
+                MaintenanceCost = 0,
+                BaseBuildSpeed = 1,
+                ManufacturingFactionInstanceIDs = new List<string> { "empire" },
+            };
+
+            bool Accepts(IManufacturable item, ISceneNode destination, int count) =>
+                ManufacturingQueries.CanAcceptManufacturingOrder(
+                    producer,
+                    item,
+                    destination,
+                    count,
+                    "empire"
+                );
+
+            Assert.IsTrue(Accepts(template, empty, 1));
+            Assert.IsFalse(Accepts(template, empty, 2));
+            Assert.IsFalse(Accepts(template, occupied, 1));
+            Assert.IsFalse(Accepts(template, otherFleet, 1));
+            Assert.IsFalse(Accepts(template, stationFleet, 1));
+            Assert.IsTrue(Accepts(cruiserTemplate, occupied, 2));
+            Assert.IsTrue(
+                ManufacturingQueries.CanAcceptManufacturingOrder(
+                    producer,
+                    template,
+                    occupied,
+                    1,
+                    "empire",
+                    replacedOrder: present
                 )
             );
         }

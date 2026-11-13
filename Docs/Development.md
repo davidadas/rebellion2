@@ -237,6 +237,37 @@ are retained for seven days; creating them does not publish a release or update 
 
 Gameplay feature folders retain commands for operations, queries for inspection and estimates, tick processors for time-driven work, and observers for result-driven reactions. A supporting class does not need its own tick to belong to a gameplay feature.
 
+A system holds at most one capital ship that can destroy planets (one Death Star), whoever owns
+it, counting ships still under construction and fleets on their way there. `Planet` refuses a
+fleet that carries a second and `Fleet` refuses the ship itself, both in `CanAcceptChild` (which
+movement, evacuation, withdrawal and manufacturing destinations consult) and when a node is added
+directly; a manufacturing order for one is limited to a single ship bound for a system that has
+none. A fleet withdrawing from a battle is judged as it will arrive: a planet destroyer it loses in
+the battle, or strands without a hyperdrive, is gone before the fleet moves and does not keep its
+escorts out of a system that holds another (`SpaceCombatWithdrawalPlanner`,
+`Planet.CanAcceptFleet`).
+
+`SpaceCombatAutoResolver` keeps a withdrawing unit in the fight until it is gone. The unit can be
+shot at, and shoots back, while it flies back out to its own edge of the battlefield (0.6 starting
+distances) and then `AutoResolveWithdrawalDistance` beyond it.
+
+A capital ship that can destroy planets does not join the battle line in an auto-resolved battle.
+It stands off where no weapon can reach it (`BattleStationState`, under the rules in
+`BattleStationRules`) and takes part in two ways. Its superlaser opens the battle charged, holds
+its first shot for ten rounds (resolver iterations), then destroys the toughest enemy capital ship
+outright and recharges over `BattleStationSuperlaserRechargeRounds`. The other side destroys the
+station by sending its torpedo squadrons to fly the trench: they cover six starting distances,
+under fire like any other unit, and the run is decided once every squadron sent has arrived or
+been lost on the way. A run needs torpedoes. With them it succeeds at
+`BattleStationTrenchRunBaseChance` while the fighters flying it at least match the enemy fighters
+still in the fight, and less in proportion when outnumbered, never below
+`BattleStationTrenchRunMinimumChance`. Success destroys the station; failure costs every squadron
+that flew the run. No run is possible while a completed shield generator on the planet lists the
+station's type (`Building.ProtectedUnitTypeIDs`, the Death Star Shield). A side with a station in
+the fight does not retreat at the strength threshold, a station is never the loser of a stalemate,
+and a side with nothing left to fight but a station it cannot attack withdraws. The three settings
+are authored in the application `game.xml` with the other space-combat rules.
+
 `ContentEditor` is a separate assembly included in Unity and the standalone authoring player. Its
 workspace controller handles editing requests, its session owns selection and continuous edits, and
 its projector supplies presentation data. Projects and documents own editable state; storage owns

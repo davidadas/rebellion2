@@ -320,6 +320,12 @@ namespace Rebellion.Gameplay
             IReadOnlyCollection<IManufacturable> replacedItems = null
         )
         {
+            if (
+                template is CapitalShip { CanDestroyPlanets: true }
+                && !HasRoomForPlanetDestroyer(destination, count, replacedItems)
+            )
+                return false;
+
             string ownerInstanceId = producer.GetOwnerInstanceID();
             if (destination is Planet planet)
             {
@@ -373,6 +379,29 @@ namespace Rebellion.Gameplay
                     ownerInstanceId,
                     replacedItems
                 );
+        }
+
+        /// <summary>
+        /// Determines whether an order for a planet destroyer fits the rule that a system holds
+        /// only one: the order is for a single ship, bound for a system that has none apart from
+        /// ships the order replaces.
+        /// </summary>
+        /// <param name="destination">The planet, fleet or ship that receives the completed item.</param>
+        /// <param name="count">The number of copies to queue.</param>
+        /// <param name="replacedItems">The active lane items removed before the order is built.</param>
+        /// <returns>True when the destination system has room for the planet destroyer.</returns>
+        private static bool HasRoomForPlanetDestroyer(
+            ISceneNode destination,
+            int count,
+            IReadOnlyCollection<IManufacturable> replacedItems
+        )
+        {
+            if (count > 1)
+                return false;
+
+            Planet system = destination as Planet ?? destination?.GetParentOfType<Planet>();
+            return system?.GetPlanetDestroyers().Any(ship => replacedItems?.Contains(ship) != true)
+                != true;
         }
 
         /// <summary>
