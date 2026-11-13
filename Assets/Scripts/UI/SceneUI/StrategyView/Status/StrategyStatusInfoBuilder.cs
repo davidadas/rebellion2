@@ -674,6 +674,14 @@ internal sealed class StrategyStatusInfoBuilder
         );
         info.Rows.Add(
             new StrategyStatusRow(
+                "Shield Generator:",
+                capitalShip.ShieldGeneratorRepairDays > 0
+                    ? $"Damaged, {capitalShip.ShieldGeneratorRepairDays} days to repair"
+                    : "Operational"
+            )
+        );
+        info.Rows.Add(
+            new StrategyStatusRow(
                 "Maximum Shield Strength:",
                 capitalShip.MaxShieldStrength.ToString()
             )

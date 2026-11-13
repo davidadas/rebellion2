@@ -156,6 +156,17 @@
       <AutoResolveComponentDelayMinimum>30</AutoResolveComponentDelayMinimum>
       <AutoResolveComponentDelayMaximum>50</AutoResolveComponentDelayMaximum>
       <AutoResolveComponentDelayRecovery>1</AutoResolveComponentDelayRecovery>
+      <BattleStationSuperlaserRechargeRounds>360</BattleStationSuperlaserRechargeRounds>
+      <BattleStationTrenchRunBaseChance>0.9</BattleStationTrenchRunBaseChance>
+      <BattleStationTrenchRunMinimumChance>0.25</BattleStationTrenchRunMinimumChance>
+      <TacticalFighterHullStrength>5</TacticalFighterHullStrength>
+      <TacticalFighterShieldMultiplier>3</TacticalFighterShieldMultiplier>
+      <TacticalFighterRechargeMultiplier>0.6</TacticalFighterRechargeMultiplier>
+      <TacticalTurbolaserFighterHitChance>0.15</TacticalTurbolaserFighterHitChance>
+      <TacticalCapitalWeaponRangeMultiplier>2</TacticalCapitalWeaponRangeMultiplier>
+      <TacticalShieldGeneratorHitChance>0.03</TacticalShieldGeneratorHitChance>
+      <TacticalShieldRechargeMultiplier>0.5</TacticalShieldRechargeMultiplier>
+      <TacticalShieldGeneratorRepairMultiplier>2</TacticalShieldGeneratorRepairMultiplier>
     </SpaceCombat>
   </Combat>
   <Uprising>

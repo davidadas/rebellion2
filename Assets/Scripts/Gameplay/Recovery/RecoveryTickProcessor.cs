@@ -255,9 +255,9 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Repairs hull damage on each damaged capital ship.
+        /// Repairs hull damage and shield generators on each damaged capital ship.
         /// Ships at friendly orbital shipyards repair faster.
-        /// Emits a result only when the ship is fully repaired.
+        /// Emits a result only when the ship's hull is fully repaired.
         /// </summary>
         /// <param name="game">The game state being advanced.</param>
         /// <param name="config">The recovery configuration.</param>
@@ -271,10 +271,16 @@ namespace Rebellion.Gameplay
             foreach (CapitalShip ship in game.GetSceneNodesByType<CapitalShip>())
             {
                 if (
-                    !ship.IsDamaged()
-                    || ship.ManufacturingStatus != ManufacturingStatus.Complete
+                    ship.ManufacturingStatus != ManufacturingStatus.Complete
                     || ((IMovable)ship).GetTransitMovement() != null
                 )
+                    continue;
+
+                // A knocked-out shield generator mends a tick at a time, twice as fast in dock.
+                if (ship.ShieldGeneratorRepairDays > 0)
+                    ship.RepairShieldGenerator(IsAtFriendlyShipyard(ship) ? 2 : 1);
+
+                if (!ship.IsDamaged())
                     continue;
 
                 int before = ship.CurrentHullStrength;

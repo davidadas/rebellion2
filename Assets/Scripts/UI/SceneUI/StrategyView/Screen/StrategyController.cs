@@ -96,6 +96,9 @@ public sealed class StrategyController
     [SerializeField]
     private ConfirmationDialogView briefingSkipConfirmation;
 
+    [SerializeField]
+    private TacticalBattleView tacticalBattle;
+
     private CancelStack cancelStack;
     private GameManager gameManager;
     private GameSession session;
@@ -140,6 +143,7 @@ public sealed class StrategyController
     private AdvisorReportWindowController advisorReportWindowController;
     private StatusWindowController statusWindowController;
     private BattleAlertWindowController battleAlertWindowController;
+    private TacticalBattleController tacticalBattleController;
     private MissionCreateWindowController missionCreateWindowController;
     private ConfirmDialogWindowController confirmDialogWindowController;
     private AdvisorCommandController advisorCommandController;
@@ -758,6 +762,18 @@ public sealed class StrategyController
         if (_appInputController != null)
             _appInputController.OptionsMenuRequested += HandleToggleOptions;
         WireStrategyInputActions();
+        if (tacticalBattle != null)
+        {
+            tacticalBattleController = new TacticalBattleController(
+                tacticalBattle,
+                () => uiContext,
+                PlaySfx,
+                MarkDirty,
+                IsTacticalSoundAvailable,
+                GetTacticalModelCache,
+                PlayTacticalCutscene
+            );
+        }
         battleAlertWindowController = new BattleAlertWindowController(
             () => session.GetService<SpaceCombatCommands>().HasPendingDecision,
             () =>
@@ -777,7 +793,9 @@ public sealed class StrategyController
             strategyWindowManager,
             windowPlacementController.GetBattleAlertWindowPosition,
             CloseWindow,
-            MarkDirty
+            MarkDirty,
+            tacticalBattleController == null ? null : BeginTacticalBattle,
+            CanTakeTacticalCommand
         );
         confirmDialogWindowController = new ConfirmDialogWindowController(
             () => uiContext,
@@ -1073,6 +1091,7 @@ public sealed class StrategyController
     /// </summary>
     private void OnDisable()
     {
+        AbortTacticalBattle();
         UnregisterCancelHandlers();
         targetingController?.Cancel();
         contextMenuController?.Cancel();
@@ -1086,6 +1105,7 @@ public sealed class StrategyController
     /// </summary>
     private void OnDestroy()
     {
+        AbortTacticalBattle();
         briefingController?.Dispose();
         if (_appBootstrap != null)
         {
@@ -1153,14 +1173,34 @@ public sealed class StrategyController
             return;
         }
 
+        if (tacticalBattleController?.IsActive == true)
+        {
+            bool optionsOpen = _optionsMenuController?.IsOpen == true;
+            tacticalBattleController.SetVisible(!optionsOpen);
+            if (!optionsOpen)
+                tacticalBattleController.Update(Time.deltaTime, ReadTacticalCameraInput());
+            if (dirty)
+                Render();
+            return;
+        }
+
         if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
             HandleTargetingSubmit();
 
         if (battleAlertWindowController.SyncPendingCombatWindow())
         {
             dirty = true;
-            if (session.GetService<SpaceCombatCommands>().HasPendingDecision)
+            SpaceCombatCommands combat = session.GetService<SpaceCombatCommands>();
+            if (combat.HasPendingDecision)
+            {
                 PauseForGameplayOption(UserGameplayOption.PauseWhenSpaceBattleBegins);
+                if (
+                    CanTakeTacticalCommand()
+                    && combat.TryGetPendingCombat(out PendingCombatResult pendingCombat)
+                    && pendingCombat?.RequiresBothResponses == false
+                )
+                    PreloadTacticalModels(pendingCombat);
+            }
         }
 
         Faction playerFaction = session.Game.GetPlayerFaction();
@@ -2150,6 +2190,7 @@ public sealed class StrategyController
     /// <param name="game">The replacement active game.</param>
     private void HandleGameReplaced(GameRoot game)
     {
+        AbortTacticalBattle();
         UIStateSection uiState = GetStrategyUIState();
         idleBarController.ResetSession(uiState.IgnoredItems);
         bookmarkController.ResetSession(uiState.BookmarkedItems);
@@ -2754,6 +2795,235 @@ public sealed class StrategyController
     void IBattleAlertWindowActions.RebuildBattleSnapshot()
     {
         RebuildSnapshot();
+    }
+
+    /// <summary>
+    /// Starts parsing the hull and fighter models at a contested planet while the battle alert
+    /// is on screen, so taking command does not open on placeholders and a loading hitch.
+    /// </summary>
+    /// <param name="pending">The pending encounter.</param>
+    private void PreloadTacticalModels(PendingCombatResult pending)
+    {
+        ContentModelCache cache = tacticalBattleController == null ? null : GetTacticalModelCache();
+        Planet planet = session.Game.GetSceneNodeByInstanceID<Planet>(pending.PlanetInstanceID);
+        if (cache == null || planet == null)
+            return;
+
+        List<string> addresses = planet
+            .GetChildren<CapitalShip>(recursive: true)
+            .Cast<ISceneNode>()
+            .Concat(planet.GetChildren<Starfighter>(recursive: true))
+            .Select(TacticalBattleScene.GetNodeModelAddress)
+            .Where(address => !string.IsNullOrEmpty(address))
+            .Distinct()
+            .ToList();
+        if (addresses.Count == 0)
+            return;
+
+        // A model that fails to parse falls back to a placeholder when the battle opens, which
+        // reports it; here the failure only needs to be observed.
+        _ = cache
+            .PreloadAsync(addresses)
+            .ContinueWith(
+                task => _ = task.Exception,
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted
+                    | TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default
+            );
+    }
+
+    /// <summary>
+    /// Takes command of the pending space battle, as the battle alert's Take Command button
+    /// does. Used by editor debug tooling to reach the tactical battle without clicking.
+    /// </summary>
+    /// <returns>True when a tactical battle began.</returns>
+    public bool TryTakeCommandOfPendingBattle()
+    {
+        return BeginTacticalBattle();
+    }
+
+    /// <summary>
+    /// Opens the interactive tactical battle for the pending encounter.
+    /// </summary>
+    /// <returns>True when the battle started.</returns>
+    private bool BeginTacticalBattle()
+    {
+        if (session == null || !CanTakeTacticalCommand() || tacticalBattleController.IsActive)
+            return false;
+
+        SpaceCombatCommands combat = session.GetService<SpaceCombatCommands>();
+        if (
+            combat == null
+            || !combat.TryGetPendingCombat(out PendingCombatResult pending)
+            || pending.RequiresBothResponses
+        )
+            return false;
+
+        TacticalSpaceBattle battle = session.Tick.BeginTacticalCombat(PlayerFactionId);
+        if (battle == null)
+            return false;
+
+        battleAlertWindowController.ClosePendingWindow();
+        tacticalBattleController.Begin(
+            battle,
+            session.Game.GetSceneNodeByInstanceID<Planet>(pending.PlanetInstanceID),
+            pending.AttackerOwnerInstanceID,
+            pending.DefenderOwnerInstanceID,
+            GetFactionDisplayName(pending.AttackerOwnerInstanceID),
+            GetFactionDisplayName(pending.DefenderOwnerInstanceID),
+            CompleteTacticalBattle
+        );
+        cancelStack?.Register(tacticalBattleController);
+        _appInputController?.PushContext(InputContext.Tactical);
+        MarkDirty();
+        return true;
+    }
+
+    /// <summary>
+    /// Returns whether this session can fight a battle interactively. A tactical battle is
+    /// simulated on one machine, so a coordinated campaign, whose peers must apply the same
+    /// ordered requests, resolves its encounters without one.
+    /// </summary>
+    /// <returns>True when the tactical battle layer exists and the session runs locally.</returns>
+    private bool CanTakeTacticalCommand()
+    {
+        return tacticalBattleController != null && runtime?.HasCoordinatedSession != true;
+    }
+
+    /// <summary>
+    /// Applies a finished tactical battle at the session's command boundary. The result
+    /// reaches the battle alert through the result pipeline, like every other resolution.
+    /// </summary>
+    /// <param name="battle">The finished tactical battle.</param>
+    private async void CompleteTacticalBattle(TacticalSpaceBattle battle)
+    {
+        ReleaseTacticalBattle();
+        GameSession resolvingSession = session;
+        try
+        {
+            await resolvingSession.ExecuteCommandAsync(() =>
+                resolvingSession.Tick.ResolveTacticalCombat(battle)
+            );
+        }
+        catch (OperationCanceledException)
+        {
+            // Replacing the session cancels a battle that was not applied yet.
+            return;
+        }
+
+        if (ReferenceEquals(session, resolvingSession))
+            RefreshStrategyState();
+    }
+
+    /// <summary>
+    /// Dismisses an unfinished tactical battle, leaving the encounter pending.
+    /// </summary>
+    private void AbortTacticalBattle()
+    {
+        if (tacticalBattleController?.IsActive == true)
+            ReleaseTacticalBattle();
+    }
+
+    /// <summary>
+    /// Restores strategy input routing after the tactical battle layer closes.
+    /// </summary>
+    private void ReleaseTacticalBattle()
+    {
+        cancelStack?.Unregister(tacticalBattleController);
+        _appInputController?.PopContext();
+        tacticalBattleController.End();
+    }
+
+    /// <summary>
+    /// Returns whether a tactical battle sound exists in the active content.
+    /// </summary>
+    /// <param name="path">The sound-effect content path.</param>
+    /// <returns>True when the sound can be loaded.</returns>
+    private static bool IsTacticalSoundAvailable(string path)
+    {
+        return AppBootstrap.Instance?.GetContentAssets()?.ResolveFile(path, ".wav") != null;
+    }
+
+    /// <summary>
+    /// Reads this frame's keyboard controls for the tactical battle: WASD or the arrow keys
+    /// pan, Q and E turn, R and F tilt, plus and minus zoom, Home reframes the fleet, Tab
+    /// selects and frames the next friendly ship, and Space pauses. Shift held makes a roster
+    /// click select a run of units, and Control (or Command) held makes a click add one.
+    /// </summary>
+    /// <returns>The keyboard input for this frame.</returns>
+    private static TacticalCameraInput ReadTacticalCameraInput()
+    {
+        float panX = KeyAxis(KeyCode.D, KeyCode.RightArrow) - KeyAxis(KeyCode.A, KeyCode.LeftArrow);
+        float panY = KeyAxis(KeyCode.W, KeyCode.UpArrow) - KeyAxis(KeyCode.S, KeyCode.DownArrow);
+        float yaw = KeyAxis(KeyCode.E, KeyCode.None) - KeyAxis(KeyCode.Q, KeyCode.None);
+        float pitch = KeyAxis(KeyCode.R, KeyCode.None) - KeyAxis(KeyCode.F, KeyCode.None);
+        float zoom = 0f;
+        if (Input.GetKeyDown(KeyCode.Equals) || Input.GetKeyDown(KeyCode.KeypadPlus))
+            zoom += 1f;
+        if (Input.GetKeyDown(KeyCode.Minus) || Input.GetKeyDown(KeyCode.KeypadMinus))
+            zoom -= 1f;
+        return new TacticalCameraInput(
+            new Vector2(panX, panY),
+            yaw,
+            pitch,
+            zoom,
+            // Most Mac keyboards have no Home key, so H reframes as well.
+            Input.GetKeyDown(KeyCode.Home) || Input.GetKeyDown(KeyCode.H),
+            Input.GetKeyDown(KeyCode.Tab),
+            Input.GetKeyDown(KeyCode.Space),
+            Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift),
+            Input.GetKey(KeyCode.LeftControl)
+                || Input.GetKey(KeyCode.RightControl)
+                || Input.GetKey(KeyCode.LeftCommand)
+                || Input.GetKey(KeyCode.RightCommand)
+        );
+    }
+
+    /// <summary>
+    /// Returns 1 while either key is held, otherwise 0.
+    /// </summary>
+    /// <param name="key">The primary key.</param>
+    /// <param name="alternate">An alternate key.</param>
+    /// <returns>The held state as an axis value.</returns>
+    private static float KeyAxis(KeyCode key, KeyCode alternate)
+    {
+        return Input.GetKey(key) || Input.GetKey(alternate) ? 1f : 0f;
+    }
+
+    /// <summary>
+    /// Returns the application-owned model cache used for tactical battle unit models.
+    /// </summary>
+    /// <returns>The model cache, or null before the application has bootstrapped.</returns>
+    private static ContentModelCache GetTacticalModelCache()
+    {
+        return AppBootstrap.Instance?.GetContentModelCache();
+    }
+
+    /// <summary>
+    /// Plays a full-screen movie over the tactical battle, such as a trench run's outcome.
+    /// </summary>
+    /// <param name="path">The movie's content address.</param>
+    /// <param name="finished">Invoked once the movie has ended or been skipped.</param>
+    private static void PlayTacticalCutscene(string path, Action finished)
+    {
+        AppBootstrap.EnsureExists().GetCutsceneManager().Play(path, finished);
+    }
+
+    /// <summary>
+    /// Returns a faction's display name for the tactical battle status line.
+    /// </summary>
+    /// <param name="factionInstanceId">The faction instance identifier.</param>
+    /// <returns>The faction display name, or the identifier when the faction is unknown.</returns>
+    private string GetFactionDisplayName(string factionInstanceId)
+    {
+        foreach (Faction faction in session?.Game?.GetFactions() ?? new List<Faction>())
+        {
+            if (faction?.InstanceID == factionInstanceId)
+                return faction.GetDisplayName();
+        }
+
+        return factionInstanceId;
     }
 
     /// <summary>
@@ -4021,6 +4291,7 @@ public sealed class StrategyController
                 && !briefingActive
                 && _appInputController?.ShortcutsSuppressed != true
                 && _optionsMenuController?.IsOpen != true
+                && tacticalBattleController?.IsActive != true
                 && !UIInputFocus.IsTextEntryActive()
             )
                 command();

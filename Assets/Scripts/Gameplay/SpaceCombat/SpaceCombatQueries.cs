@@ -203,15 +203,25 @@ namespace Rebellion.Gameplay
         /// <param name="eligibleUnits">
         /// The units that completed tactical withdrawal, or null to consider every participant.
         /// </param>
+        /// <param name="dockings">
+        /// The ship each squadron docked with during a tactical battle, or null when none did.
+        /// </param>
         /// <returns>The reserved withdrawal plan.</returns>
         internal SpaceCombatWithdrawalPlan GetWithdrawalPlan(
             IReadOnlyList<Fleet> fleets,
             Planet planet,
             string ownerInstanceId,
-            ISet<ISceneNode> eligibleUnits = null
+            ISet<ISceneNode> eligibleUnits = null,
+            IReadOnlyDictionary<Starfighter, CapitalShip> dockings = null
         )
         {
-            return _withdrawalPlanner.CreatePlan(fleets, planet, ownerInstanceId, eligibleUnits);
+            return _withdrawalPlanner.CreatePlan(
+                fleets,
+                planet,
+                ownerInstanceId,
+                eligibleUnits,
+                dockings
+            );
         }
 
         /// <summary>
@@ -395,6 +405,30 @@ namespace Rebellion.Gameplay
                         string.IsNullOrEmpty(ownerInstanceId)
                         || fighter.GetOwnerInstanceID() == ownerInstanceId
                     ) && IsActiveStarfighter(fighter)
+                );
+        }
+
+        /// <summary>
+        /// Determines whether a completed shield generator on a planet protects a capital ship
+        /// there, as a Death Star Shield protects a Death Star: fighters cannot attack a ship
+        /// under such a shield.
+        /// </summary>
+        /// <param name="ship">The capital ship to inspect.</param>
+        /// <param name="planet">The planet the ship is at.</param>
+        /// <returns>True when one of the ship owner's generators on the planet lists its type.</returns>
+        internal static bool IsShieldedByPlanet(CapitalShip ship, Planet planet)
+        {
+            if (ship == null || planet == null || string.IsNullOrEmpty(ship.TypeID))
+                return false;
+
+            string ownerInstanceId = ship.GetOwnerInstanceID();
+            return planet
+                .GetChildren<Building>()
+                .Any(building =>
+                    building.ManufacturingStatus == ManufacturingStatus.Complete
+                    && building.Movement == null
+                    && building.GetOwnerInstanceID() == ownerInstanceId
+                    && building.ProtectedUnitTypeIDs?.Contains(ship.TypeID) == true
                 );
         }
 

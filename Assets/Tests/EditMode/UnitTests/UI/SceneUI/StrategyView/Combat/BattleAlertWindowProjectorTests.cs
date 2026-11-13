@@ -90,7 +90,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(3, data.Pending.CommandButtons.Count);
             Assert.IsTrue(data.Pending.CommandButtons[0].Interactable);
             Assert.IsTrue(data.Pending.CommandButtons[1].Interactable);
-            Assert.IsFalse(data.Pending.CommandButtons[2].Interactable);
+            Assert.IsTrue(data.Pending.CommandButtons[2].Interactable);
             Assert.IsNotNull(data.BackgroundTexture);
             Assert.IsNotNull(data.FrameTexture);
         }
@@ -131,6 +131,44 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(viewAsAttacker, data.Pending.CommandButtons[1].Selected);
             Assert.IsFalse(data.Pending.CommandButtons[0].Selected);
             StringAssert.DoesNotContain("responses", data.Pending.Title);
+        }
+
+        [Test]
+        public void Project_PendingSummaryWithoutTakeCommand_DisablesTakeCommandButton()
+        {
+            (
+                GameRoot Game,
+                UIContext Context,
+                Planet Planet,
+                GameFleet PlayerFleet,
+                GameFleet OpponentFleet
+            ) scene = CreateScene();
+            PendingCombatResult pending = new PendingCombatResult
+            {
+                PlanetInstanceID = scene.Planet.InstanceID,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
+                AttackerCanRetreat = true,
+            };
+            BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
+
+            BattleAlertWindowRenderData data = projector.Project(
+                BattleAlertWindowMode.Pending,
+                BattleAlertPanel.Summary,
+                BattleResultPanel.Summary,
+                BattleResultCategory.CapitalShips,
+                pending,
+                null,
+                _playerFactionId,
+                10,
+                20,
+                scene.Context,
+                scene.Planet,
+                takeCommandAvailable: false
+            );
+
+            Assert.IsTrue(data.Pending.CommandButtons[1].Interactable);
+            Assert.IsFalse(data.Pending.CommandButtons[2].Interactable);
         }
 
         [Test]

@@ -262,6 +262,32 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ProcessTick_DamagedShieldGenerator_RepairsOneTickAtATime()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+
+            Fleet fleet = new Fleet { InstanceID = "f1", OwnerInstanceID = "empire" };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "s1",
+                OwnerInstanceID = "empire",
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
+                ShieldGeneratorRepairDays = 3,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
+
+            system.ProcessTick(game);
+
+            Assert.AreEqual(2, ship.ShieldGeneratorRepairDays);
+            Assert.AreEqual(100, ship.CurrentHullStrength);
+        }
+
+        [Test]
         public void ProcessTick_DamagedShipAtFriendlyShipyard_RepairsFast()
         {
             (GameRoot game, Planet planet) = BuildScene();

@@ -655,6 +655,12 @@ namespace Rebellion.Game.Results
         public CapitalShip Ship { get; set; }
         public int HullBefore { get; set; }
         public int HullAfter { get; set; }
+
+        /// <summary>
+        /// Gets or sets the shield-generator repair ticks still owed after the battle, or null
+        /// when the battle leaves the generator's state alone.
+        /// </summary>
+        public int? ShieldGeneratorRepairDays { get; set; }
     }
 
     /// <summary>
@@ -665,6 +671,16 @@ namespace Rebellion.Game.Results
         public Starfighter Fighter { get; set; }
         public int SquadsBefore { get; set; }
         public int SquadsAfter { get; set; }
+    }
+
+    /// <summary>
+    /// A fighter squadron that ended space combat aboard a capital ship it docked with during
+    /// the battle (nested in SpaceCombatResult). The squadron stays with that ship afterwards.
+    /// </summary>
+    public class FighterDockingResult
+    {
+        public Starfighter Fighter { get; set; }
+        public CapitalShip Ship { get; set; }
     }
 
     /// <summary>
@@ -806,6 +822,8 @@ namespace Rebellion.Game.Results
         public SpaceCombatSideOutcome DefenderOutcome { get; set; }
         public List<ShipDamageResult> ShipDamage { get; set; } = new List<ShipDamageResult>();
         public List<FighterLossResult> FighterLosses { get; set; } = new List<FighterLossResult>();
+        public List<FighterDockingResult> FighterDockings { get; set; } =
+            new List<FighterDockingResult>();
         public List<CombatUnitSnapshot> AttackingUnits { get; set; } =
             new List<CombatUnitSnapshot>();
         public List<CombatUnitSnapshot> DefendingUnits { get; set; } =

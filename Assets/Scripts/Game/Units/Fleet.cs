@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Galaxy;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -49,6 +50,12 @@ namespace Rebellion.Game.Units
         // Child Nodes.
         [PersistableMember(Name = "CapitalShips")]
         private List<CapitalShip> _capitalShips = new List<CapitalShip>();
+
+        /// <summary>
+        /// Gets whether the fleet carries a planet-destroying capital ship, complete or still
+        /// under construction.
+        /// </summary>
+        public bool HasPlanetDestroyer => _capitalShips.Any(ship => ship.CanDestroyPlanets);
 
         /// <summary>
         /// Default constructor used for deserialization.
@@ -280,16 +287,82 @@ namespace Rebellion.Game.Units
                 throw new SceneAccessException(capitalShip, this);
             }
 
+            // A system holds only one planet destroyer, however the ship comes to be here.
+            CapitalShip present = FindConflictingPlanetDestroyer(capitalShip);
+            if (present != null)
+                throw new SceneAccessException(
+                    $"Cannot add \"{capitalShip.GetDisplayName()}\" to \"{GetDisplayName()}\": "
+                        + $"\"{present.GetDisplayName()}\" is already in the system, and a system "
+                        + "holds only one planet destroyer."
+                );
+
             _capitalShips.Add(capitalShip);
         }
 
         /// <summary>
-        /// Returns true if the child is a CapitalShip owned by the same faction as this fleet.
+        /// Returns whether the fleet still carries a planet-destroying capital ship once some of
+        /// its ships are gone. A fleet that withdraws from a battle leaves its lost ships behind,
+        /// so a planet destroyer among them does not travel with it.
+        /// </summary>
+        /// <param name="shipsLeftBehind">The ships that do not travel with the fleet, or null.</param>
+        /// <returns>True when a planet destroyer travels with the fleet.</returns>
+        internal bool HasPlanetDestroyerWithout(IReadOnlyCollection<CapitalShip> shipsLeftBehind)
+        {
+            return _capitalShips.Any(ship =>
+                ship.CanDestroyPlanets && shipsLeftBehind?.Contains(ship) != true
+            );
+        }
+
+        /// <summary>
+        /// Returns the planet destroyer that keeps a ship out of this fleet. A system holds only
+        /// one planet destroyer, so a second is refused whether the first is in this fleet or in
+        /// another fleet at, or on its way to, the same planet.
+        /// </summary>
+        /// <param name="ship">The ship that would join the fleet.</param>
+        /// <returns>The planet destroyer already in the system, or null when the ship may join.</returns>
+        public CapitalShip FindConflictingPlanetDestroyer(CapitalShip ship)
+        {
+            if (ship?.CanDestroyPlanets != true)
+                return null;
+
+            return _capitalShips.FirstOrDefault(other =>
+                    other.CanDestroyPlanets && !ReferenceEquals(other, ship)
+                ) ?? GetParentOfType<Planet>()?.FindPlanetDestroyer(excludedShip: ship);
+        }
+
+        /// <summary>
+        /// Returns true if the child is a CapitalShip owned by the same faction as this fleet,
+        /// and is not a second planet destroyer for the system the fleet is in.
         /// </summary>
         /// <param name="child">The candidate child node.</param>
-        /// <returns>True if child is a same-faction CapitalShip; otherwise false.</returns>
+        /// <returns>True if the fleet can take the ship; otherwise false.</returns>
         public override bool CanAcceptChild(ISceneNode child) =>
-            child is CapitalShip cs && cs.GetOwnerInstanceID() == GetOwnerInstanceID();
+            child is CapitalShip cs
+            && cs.GetOwnerInstanceID() == GetOwnerInstanceID()
+            && FindConflictingPlanetDestroyer(cs) == null;
+
+        /// <summary>
+        /// Returns whether the fleet can accept a ship alongside other planned additions: two
+        /// planet destroyers cannot be planned into one fleet together.
+        /// </summary>
+        /// <param name="child">The candidate child node.</param>
+        /// <param name="plannedChildren">The children already planned for addition.</param>
+        /// <returns>True when the ship can be accepted.</returns>
+        internal override bool CanAcceptChild(
+            ISceneNode child,
+            IReadOnlyCollection<ISceneNode> plannedChildren
+        )
+        {
+            return CanAcceptChild(child)
+                && (
+                    child is not CapitalShip { CanDestroyPlanets: true }
+                    || !plannedChildren
+                        .OfType<CapitalShip>()
+                        .Any(planned =>
+                            planned.CanDestroyPlanets && !ReferenceEquals(planned, child)
+                        )
+                );
+        }
 
         /// <summary>
         /// Adds a child node to the fleet. Only capital ships are accepted directly;

@@ -1029,40 +1029,64 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void TryExecute_MixedDestroyerFleet_RecordsFirstOperationalDestroyerType()
+        public void TryExecute_DestroyerAmongOrdinaryShips_RecordsTheDestroyerType()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
             Fleet fleet = AddBombardmentFleet(game, planet, "alliance", 0, typeId: "ordinary");
-            foreach (
-                (string typeId, ManufacturingStatus status, int hull) in new[]
-                {
-                    ("building", ManufacturingStatus.Building, 100),
-                    ("destroyed", ManufacturingStatus.Complete, 0),
-                    ("first-destroyer", ManufacturingStatus.Complete, 100),
-                    ("second-destroyer", ManufacturingStatus.Complete, 100),
-                }
-            )
-            {
-                game.AttachNode(
-                    new CapitalShip
-                    {
-                        TypeID = typeId,
-                        OwnerInstanceID = "alliance",
-                        CanDestroyPlanets = true,
-                        ManufacturingStatus = status,
-                        MaxHullStrength = 100,
-                        CurrentHullStrength = hull,
-                    },
-                    fleet
-                );
-            }
+            game.AttachNode(
+                CreatePlanetDestroyer("destroyer", ManufacturingStatus.Complete, hull: 100),
+                fleet
+            );
 
             BombardmentResult result = MakeBombardment(game, new SequenceRNG())
                 .TryExecute(new List<Fleet> { fleet }, planet, BombardmentType.DestroyPlanet);
 
             Assert.IsTrue(result.PlanetDestroyed);
-            Assert.AreEqual("first-destroyer", result.PlanetDestroyerTypeID);
+            Assert.AreEqual("destroyer", result.PlanetDestroyerTypeID);
+        }
+
+        [TestCase(ManufacturingStatus.Building, 100)]
+        [TestCase(ManufacturingStatus.Complete, 0)]
+        public void TryExecute_DestroyerNotOperational_DoesNotDestroyThePlanet(
+            ManufacturingStatus status,
+            int hull
+        )
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
+            Fleet fleet = AddBombardmentFleet(game, planet, "alliance", 0, typeId: "ordinary");
+            game.AttachNode(CreatePlanetDestroyer("destroyer", status, hull), fleet);
+
+            BombardmentResult result = MakeBombardment(game, new SequenceRNG())
+                .TryExecute(new List<Fleet> { fleet }, planet, BombardmentType.DestroyPlanet);
+
+            Assert.IsNull(result);
+            Assert.IsFalse(planet.IsDestroyed);
+        }
+
+        /// <summary>
+        /// Creates an Alliance capital ship that can destroy planets.
+        /// </summary>
+        /// <param name="typeId">The ship type identifier.</param>
+        /// <param name="status">The manufacturing status.</param>
+        /// <param name="hull">The current hull strength, out of 100.</param>
+        /// <returns>The created ship.</returns>
+        private static CapitalShip CreatePlanetDestroyer(
+            string typeId,
+            ManufacturingStatus status,
+            int hull
+        )
+        {
+            return new CapitalShip
+            {
+                TypeID = typeId,
+                OwnerInstanceID = "alliance",
+                CanDestroyPlanets = true,
+                ManufacturingStatus = status,
+                MaxHullStrength = 100,
+                CurrentHullStrength = hull,
+            };
         }
 
         [Test]

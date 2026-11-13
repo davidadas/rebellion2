@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -50,6 +51,66 @@ namespace Rebellion.Tests.Game.Units
             _fleet.AddChild(_capitalShip1);
 
             Assert.Contains(_capitalShip1, _fleet.GetChildren<CapitalShip>().ToList());
+        }
+
+        [Test]
+        public void CanAcceptChild_SecondPlanetDestroyerInTheSystem_IsRefusedWhicheverFleetHoldsTheFirst()
+        {
+            Planet planet = new Planet
+            {
+                InstanceID = "PLANET1",
+                OwnerInstanceID = "FACTION1",
+                IsColonized = true,
+            };
+            Fleet otherFleet = new Fleet { InstanceID = "FLEET2", OwnerInstanceID = "FACTION1" };
+            CapitalShip first = CreatePlanetDestroyer("STATION1");
+            CapitalShip second = CreatePlanetDestroyer("STATION2");
+            planet.AddTestChild(_fleet);
+            planet.AddTestChild(otherFleet);
+            otherFleet.AddTestChild(first);
+            _fleet.SetParent(planet);
+            otherFleet.SetParent(planet);
+            first.SetParent(otherFleet);
+
+            bool secondJoiningTheSystem = _fleet.CanAcceptChild(second);
+            bool firstChangingFleets = _fleet.CanAcceptChild(first);
+            bool ordinaryShip = _fleet.CanAcceptChild(_capitalShip1);
+
+            Assert.IsFalse(secondJoiningTheSystem);
+            Assert.IsTrue(firstChangingFleets);
+            Assert.IsTrue(ordinaryShip);
+            Assert.AreSame(first, _fleet.FindConflictingPlanetDestroyer(second));
+            Assert.Throws<SceneAccessException>(() => _fleet.AddChild(second));
+            Assert.IsFalse(_fleet.HasPlanetDestroyer);
+        }
+
+        [Test]
+        public void CanAcceptChild_SecondPlanetDestroyerInOneFleet_IsRefusedAwayFromAnyPlanet()
+        {
+            CapitalShip first = CreatePlanetDestroyer("STATION1");
+            CapitalShip second = CreatePlanetDestroyer("STATION2");
+            _fleet.AddChild(first);
+
+            Assert.IsTrue(_fleet.HasPlanetDestroyer);
+            Assert.IsFalse(_fleet.CanAcceptChild(second));
+            Assert.Throws<SceneAccessException>(() => _fleet.AddChild(second));
+            Assert.IsTrue(_fleet.CanAcceptChild(_capitalShip1));
+        }
+
+        /// <summary>
+        /// Creates a planet-destroying capital ship owned by the fixture's faction.
+        /// </summary>
+        /// <param name="instanceId">The instance identifier.</param>
+        /// <returns>The created ship.</returns>
+        private static CapitalShip CreatePlanetDestroyer(string instanceId)
+        {
+            return new CapitalShip
+            {
+                InstanceID = instanceId,
+                DisplayName = instanceId,
+                OwnerInstanceID = "FACTION1",
+                CanDestroyPlanets = true,
+            };
         }
 
         [Test]

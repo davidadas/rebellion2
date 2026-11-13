@@ -81,6 +81,9 @@ namespace Rebellion.Game.Units
         [PersistableMember(Name = nameof(DamageControl))]
         private int _damageControl;
 
+        [PersistableMember(Name = nameof(ShieldGeneratorRepairDays))]
+        private int _shieldGeneratorRepairDays;
+
         [PersistableMember(Name = nameof(MaxShieldStrength))]
         private int _maxShieldStrength;
 
@@ -209,6 +212,17 @@ namespace Rebellion.Game.Units
         {
             get => _currentHullStrength;
             set => _currentHullStrength = value;
+        }
+
+        /// <summary>
+        /// Gets or sets how many recovery ticks the shield generator still needs before the
+        /// shields recharge again; zero while the generator works.
+        /// </summary>
+        [PersistableIgnore]
+        public int ShieldGeneratorRepairDays
+        {
+            get => _shieldGeneratorRepairDays;
+            set => _shieldGeneratorRepairDays = Math.Max(value, 0);
         }
 
         [PersistableIgnore]
@@ -399,6 +413,7 @@ namespace Rebellion.Game.Units
             copy.MaxHullStrength = MaxHullStrength;
             copy.CurrentHullStrength = CurrentHullStrength;
             copy.DamageControl = DamageControl;
+            copy.ShieldGeneratorRepairDays = ShieldGeneratorRepairDays;
             copy.MaxShieldStrength = MaxShieldStrength;
             copy.ShieldRechargeRate = ShieldRechargeRate;
             copy.Hyperdrive = Hyperdrive;
@@ -794,6 +809,15 @@ namespace Rebellion.Game.Units
         public void RepairHull(int amount)
         {
             CurrentHullStrength = Math.Min(MaxHullStrength, CurrentHullStrength + amount);
+        }
+
+        /// <summary>
+        /// Advances shield-generator repairs by a number of recovery ticks.
+        /// </summary>
+        /// <param name="days">Recovery ticks of repair work completed.</param>
+        public void RepairShieldGenerator(int days)
+        {
+            ShieldGeneratorRepairDays -= Math.Max(days, 0);
         }
 
         /// <summary>

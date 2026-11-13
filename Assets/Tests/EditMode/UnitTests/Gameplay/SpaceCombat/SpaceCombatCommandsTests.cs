@@ -2415,7 +2415,7 @@ namespace Rebellion.Tests.Gameplay
                 owner: "alliance"
             );
             CreatePlanet(game, "empire-fallback", owner: "empire");
-            Fleet attackingFleet = CreateFleet(
+            CreateFleet(
                 game,
                 "attacker",
                 "empire",
@@ -2425,7 +2425,6 @@ namespace Rebellion.Tests.Gameplay
                 76,
                 shieldRechargeRate: 0
             );
-            CapitalShip attackingShip = attackingFleet.GetChildren<CapitalShip>().Single();
             Fleet retreatingFleet = CreateFleet(
                 game,
                 "retreating-fleet",
@@ -2464,7 +2463,6 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreSame(allianceFallback, retreatingFleet.GetParentOfType<Planet>());
             Assert.IsNotNull(retreatingFleet.Movement);
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(trappedFleet.InstanceID));
-            Assert.AreEqual(attackingShip.MaxHullStrength, attackingShip.CurrentHullStrength);
         }
 
         [Test]
@@ -3466,6 +3464,33 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ResolvePendingRetreat_PlanetDestroyerLeftBehind_MovesItsEscortsToASystemHoldingAnother()
+        {
+            GameRoot game = CreateGame();
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat");
+            (Planet empireHome, _) = CreatePlanet(game, "empireHome", owner: "empire");
+            Fleet garrison = CreateFleet(game, "garrison", "empire", empireHome, 1, 100, 1);
+            garrison.GetChildren<CapitalShip>().Single().CanDestroyPlanets = true;
+            Fleet retreatingFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 2, 100, 1);
+            CapitalShip strandedStation = retreatingFleet.GetChildren<CapitalShip>()[0];
+            strandedStation.CanDestroyPlanets = true;
+            strandedStation.Hyperdrive = 0;
+            CapitalShip escort = retreatingFleet.GetChildren<CapitalShip>()[1];
+            CreateFleet(game, "af1", "alliance", combatPlanet, 1, 1000, 100);
+            SpaceCombatCommands manager = MakeSpaceCombat(game);
+
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
+            List<GameResult> results = manager.ResolvePendingRetreat("empire");
+
+            Assert.IsNotNull(results);
+            Assert.AreSame(empireHome, retreatingFleet.GetParentOfType<Planet>());
+            Assert.IsNotNull(retreatingFleet.Movement);
+            Assert.AreSame(retreatingFleet, escort.GetParent());
+            Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>(strandedStation.InstanceID));
+        }
+
+        [Test]
         public void ResolvePendingRetreat_StrandedFleetCarriesNonHyperdriveFighter_DestroysFighter()
         {
             GameRoot game = CreateGame();
@@ -3903,6 +3928,328 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void BeginTacticalCombat_PendingEncounter_ReturnsBattleForPlayerSide()
+        {
+            (_, SpaceCombatCommands commands, Fleet empireFleet, Fleet allianceFleet) =
+                CreatePendingEncounter();
+            Assert.IsTrue(commands.TryGetPendingCombat(out PendingCombatResult pending));
+            CombatSide expectedSide =
+                pending.AttackerOwnerInstanceID == "empire"
+                    ? CombatSide.Attacker
+                    : CombatSide.Defender;
+
+            TacticalSpaceBattle battle = commands.BeginTacticalCombat("empire");
+
+            Assert.IsNotNull(battle);
+            Assert.AreEqual(expectedSide, battle.PlayerSide);
+            Assert.AreEqual(2, battle.Units.Count);
+            Assert.IsFalse(battle.IsComplete);
+            Assert.IsTrue(commands.HasPendingDecision);
+            Assert.IsTrue(empireFleet.IsInCombat);
+            Assert.IsTrue(allianceFleet.IsInCombat);
+        }
+
+        [Test]
+        public void BeginTacticalCombat_EnemyGravityWell_HoldsThePlayerUntilTheShipIsDestroyed()
+        {
+            (GameRoot game, SpaceCombatCommands commands, _, Fleet allianceFleet) =
+                CreatePendingEncounter();
+            CapitalShip interdictorShip = allianceFleet.GetChildren<CapitalShip>()[0];
+            interdictorShip.HasGravityWell = true;
+            CapitalShip escort = new CapitalShip
+            {
+                InstanceID = "alliance-escort",
+                OwnerInstanceID = "alliance",
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                WeaponRecharge = 1,
+            };
+            game.AttachNode(escort, allianceFleet);
+
+            TacticalSpaceBattle battle = commands.BeginTacticalCombat("empire");
+            CombatSide playerSide = battle.PlayerSide.Value;
+            CombatSide allianceSide =
+                playerSide == CombatSide.Attacker ? CombatSide.Defender : CombatSide.Attacker;
+            TacticalWithdrawalStatus statusWhileHeld = battle.GetWithdrawalStatus(playerSide);
+            TacticalCapitalShipUnit interdictor = battle
+                .Units.OfType<TacticalCapitalShipUnit>()
+                .Single(unit => unit.Ship == interdictorShip);
+            interdictor.ApplyDamage(1000, 0, game.Config.Combat.SpaceCombat, game.Random);
+
+            Assert.AreEqual(TacticalWithdrawalStatus.Interdicted, statusWhileHeld);
+            Assert.AreEqual(
+                TacticalWithdrawalStatus.Available,
+                battle.GetWithdrawalStatus(allianceSide)
+            );
+            Assert.AreEqual(
+                TacticalWithdrawalStatus.Available,
+                battle.GetWithdrawalStatus(playerSide)
+            );
+            Assert.IsTrue(battle.OrderWithdrawal(playerSide));
+        }
+
+        [Test]
+        public void IsShieldedByPlanet_OwnersCompletedGeneratorListsTheShipType_ReturnsTrue()
+        {
+            Planet planet = new Planet { InstanceID = "shield-planet", OwnerInstanceID = "empire" };
+            CapitalShip station = new CapitalShip
+            {
+                InstanceID = "station",
+                TypeID = "station-type",
+                OwnerInstanceID = "empire",
+            };
+            CapitalShip otherType = new CapitalShip
+            {
+                InstanceID = "cruiser",
+                TypeID = "cruiser-type",
+                OwnerInstanceID = "empire",
+            };
+            Building shield = new Building
+            {
+                InstanceID = "station-shield",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                ProtectedUnitTypeIDs = { "station-type" },
+            };
+            planet.AddTestChild(shield);
+
+            bool shielded = SpaceCombatQueries.IsShieldedByPlanet(station, planet);
+            bool otherTypeShielded = SpaceCombatQueries.IsShieldedByPlanet(otherType, planet);
+            shield.ManufacturingStatus = ManufacturingStatus.Building;
+            bool shieldedWhileBuilding = SpaceCombatQueries.IsShieldedByPlanet(station, planet);
+
+            Assert.IsTrue(shielded);
+            Assert.IsFalse(otherTypeShielded);
+            Assert.IsFalse(shieldedWhileBuilding);
+            Assert.IsFalse(SpaceCombatQueries.IsShieldedByPlanet(station, null));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ProcessTick_TorpedoSquadronAgainstAStation_DestroysItUnlessAPlanetaryShieldProtectsIt(
+            bool shielded
+        )
+        {
+            GameRoot game = CreateAutomaticCombatGame();
+            game.Config.Combat.SpaceCombat.BattleStationTrenchRunBaseChance = 1;
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "empire");
+            CreatePlanet(game, "allianceHome", owner: "alliance");
+            Fleet stationFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 1, 25000, 0);
+            CapitalShip station = stationFleet.GetChildren<CapitalShip>().Single();
+            station.TypeID = "station-type";
+            station.CanDestroyPlanets = true;
+            if (shielded)
+            {
+                combatPlanet.AddTestChild(
+                    new Building
+                    {
+                        InstanceID = "station-shield",
+                        OwnerInstanceID = "empire",
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                        ProtectedUnitTypeIDs = { "station-type" },
+                    }
+                );
+            }
+
+            Fleet strikeFleet = CreateFleet(game, "af1", "alliance", combatPlanet, 1, 100, 0);
+            CapitalShip carrier = strikeFleet.GetChildren<CapitalShip>().Single();
+            carrier.StarfighterCapacity = 1;
+            Starfighter torpedoSquadron = new Starfighter
+            {
+                InstanceID = "y-wing",
+                OwnerInstanceID = "alliance",
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                ShieldStrength = 1,
+                Hyperdrive = 1,
+                SublightSpeed = 8,
+                Torpedoes = 4,
+                TorpedoRange = 7,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(torpedoSquadron, carrier);
+            SpaceCombatCommands manager = MakeSpaceCombat(game);
+
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
+
+            bool stationSurvived =
+                game.GetSceneNodeByInstanceID<CapitalShip>(station.InstanceID) != null;
+            Assert.AreEqual(shielded, stationSurvived);
+        }
+
+        [Test]
+        public void ResolvePendingTactical_IncompleteBattle_ThrowsInvalidOperationException()
+        {
+            (_, SpaceCombatCommands commands, _, _) = CreatePendingEncounter();
+            TacticalSpaceBattle battle = commands.BeginTacticalCombat("empire");
+
+            Assert.Throws<InvalidOperationException>(() => commands.ResolvePendingTactical(battle));
+            Assert.IsTrue(commands.HasPendingDecision);
+        }
+
+        [Test]
+        public void ResolvePendingTactical_CompletedBattle_AppliesDamageAndClearsPending()
+        {
+            (GameRoot game, SpaceCombatCommands commands, Fleet empireFleet, Fleet allianceFleet) =
+                CreatePendingEncounter();
+            game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 0;
+            CapitalShip empireShip = empireFleet.GetChildren<CapitalShip>()[0];
+            CapitalShip allianceShip = allianceFleet.GetChildren<CapitalShip>()[0];
+            allianceShip.CurrentHullStrength = 10;
+            // The test fleets have no sublight speed; give both ships drive so they close to range
+            // from the tactical spawn lines instead of stalemating out of reach.
+            empireShip.SublightSpeed = 3;
+            allianceShip.SublightSpeed = 3;
+            TacticalSpaceBattle battle = commands.BeginTacticalCombat("empire");
+            for (int step = 0; step < 40 && !battle.IsComplete; step++)
+                battle.Advance(30);
+            Assert.IsTrue(battle.IsComplete);
+
+            List<GameResult> results = commands.ResolvePendingTactical(battle);
+
+            SpaceCombatResult combatResult = GetCombatResult(results);
+            Assert.IsFalse(commands.HasPendingDecision);
+            Assert.IsFalse(empireFleet.IsInCombat);
+            Assert.LessOrEqual(empireShip.CurrentHullStrength, 100);
+            int empireHullAfter = combatResult
+                .ShipDamage.Where(damage => damage.Ship == empireShip)
+                .Select(damage => damage.HullAfter)
+                .DefaultIfEmpty(empireShip.MaxHullStrength)
+                .Single();
+            Assert.AreEqual(empireShip.CurrentHullStrength, empireHullAfter);
+            Assert.AreEqual(
+                0,
+                combatResult.ShipDamage.Single(damage => damage.Ship == allianceShip).HullAfter
+            );
+            Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>(allianceShip.InstanceID));
+            Assert.IsTrue(
+                results
+                    .OfType<GameObjectDestroyedResult>()
+                    .Any(result => result.DestroyedObject == allianceShip)
+            );
+            Assert.AreEqual(
+                combatResult.AttackerOwnerInstanceID == "empire"
+                    ? CombatSide.Attacker
+                    : CombatSide.Defender,
+                combatResult.Winner
+            );
+        }
+
+        [Test]
+        public void ResolvePendingTactical_SquadronDockedAboardAnotherShip_KeepsTheBayAndItsResidentMakesWay()
+        {
+            (GameRoot game, SpaceCombatCommands commands, Fleet empireFleet, Fleet allianceFleet) =
+                CreatePendingEncounter();
+            game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 0;
+            CapitalShip carrier = empireFleet.GetChildren<CapitalShip>()[0];
+            carrier.StarfighterCapacity = 1;
+            carrier.SublightSpeed = 3;
+            CapitalShip tender = new CapitalShip
+            {
+                InstanceID = "empire-tender",
+                OwnerInstanceID = "empire",
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
+                Hyperdrive = 1,
+                SublightSpeed = 3,
+                StarfighterCapacity = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                WeaponRecharge = 1,
+            };
+            game.AttachNode(tender, empireFleet);
+            Starfighter visitor = CreateTacticalSquadron("empire-visitor", "empire", 0);
+            game.AttachNode(visitor, carrier);
+            Starfighter resident = CreateTacticalSquadron("empire-resident", "empire", 0);
+            game.AttachNode(resident, tender);
+            CapitalShip allianceShip = allianceFleet.GetChildren<CapitalShip>()[0];
+            DisarmAndArmor(allianceShip);
+            TacticalSpaceBattle battle = commands.BeginTacticalCombat("empire");
+            TacticalStarfighterUnit visitorUnit = battle
+                .Units.OfType<TacticalStarfighterUnit>()
+                .Single(unit => unit.Fighter == visitor);
+            TacticalCapitalShipUnit tenderUnit = battle
+                .Units.OfType<TacticalCapitalShipUnit>()
+                .Single(unit => unit.Ship == tender);
+            visitorUnit.X = tenderUnit.X;
+            visitorUnit.Y = tenderUnit.Y;
+            bool ordered = battle.IssueRecoverOrder(new[] { visitorUnit }, tenderUnit);
+            battle.Advance(4);
+            bool aboard = visitorUnit.IsDocked;
+            battle
+                .Units.OfType<TacticalCapitalShipUnit>()
+                .Single(unit => unit.Ship == allianceShip)
+                .Destroy();
+            battle.Advance(1);
+            Assert.IsTrue(battle.IsComplete);
+
+            List<GameResult> results = commands.ResolvePendingTactical(battle);
+
+            Assert.IsTrue(ordered);
+            Assert.IsTrue(aboard);
+            SpaceCombatResult combatResult = GetCombatResult(results);
+            Assert.AreSame(tender, combatResult.FighterDockings.Single().Ship);
+            Assert.AreSame(tender, visitor.GetParent());
+            Assert.AreSame(carrier, resident.GetParent());
+            Assert.IsEmpty(combatResult.FighterLosses);
+        }
+
+        [Test]
+        public void ResolvePendingTactical_FleetWithdrawsWithItsSquadronsAboard_CarriesThemAwayWhateverTheirDrive()
+        {
+            (GameRoot game, SpaceCombatCommands commands, Fleet empireFleet, Fleet allianceFleet) =
+                CreatePendingEncounter();
+            CapitalShip carrier = empireFleet.GetChildren<CapitalShip>()[0];
+            carrier.StarfighterCapacity = 2;
+            carrier.SublightSpeed = 3;
+            Starfighter walker = CreateTacticalSquadron("empire-walker", "empire", 0);
+            game.AttachNode(walker, carrier);
+            Starfighter jumper = CreateTacticalSquadron("empire-jumper", "empire", 1);
+            game.AttachNode(jumper, carrier);
+            DisarmAndArmor(allianceFleet.GetChildren<CapitalShip>()[0]);
+            TacticalSpaceBattle battle = commands.BeginTacticalCombat("empire");
+            // A retreat leaves a squadron that can jump to make its own way out, so this one is
+            // recalled by hand first and is aboard when the retreat is ordered.
+            TacticalStarfighterUnit jumperUnit = battle
+                .Units.OfType<TacticalStarfighterUnit>()
+                .Single(unit => unit.Fighter == jumper);
+            TacticalCapitalShipUnit carrierUnit = battle
+                .Units.OfType<TacticalCapitalShipUnit>()
+                .Single(unit => unit.Ship == carrier);
+            jumperUnit.X = carrierUnit.X;
+            jumperUnit.Y = carrierUnit.Y;
+            battle.IssueRecoverOrder(new[] { jumperUnit });
+            battle.Advance(4);
+            bool aboard = jumperUnit.IsDocked;
+
+            bool ordered = battle.OrderWithdrawal(battle.PlayerSide.Value);
+            for (int step = 0; step < 40 && !battle.IsComplete; step++)
+                battle.Advance(30);
+            Assert.IsTrue(battle.IsComplete);
+            List<GameResult> results = commands.ResolvePendingTactical(battle);
+
+            Assert.IsTrue(aboard);
+            Assert.IsTrue(ordered);
+            SpaceCombatResult combatResult = GetCombatResult(results);
+            Assert.AreEqual(
+                SpaceCombatSideOutcome.Withdrawn,
+                combatResult.AttackerOwnerInstanceID == "empire"
+                    ? combatResult.AttackerOutcome
+                    : combatResult.DefenderOutcome
+            );
+            Assert.AreEqual(2, combatResult.FighterDockings.Count);
+            CollectionAssert.Contains(combatResult.WithdrawnUnits, carrier);
+            CollectionAssert.Contains(combatResult.WithdrawnUnits, walker);
+            CollectionAssert.Contains(combatResult.WithdrawnUnits, jumper);
+            Assert.IsEmpty(combatResult.FighterLosses);
+            Assert.AreSame(carrier, walker.GetParent());
+            Assert.AreSame(carrier, jumper.GetParent());
+            Assert.IsNotNull(game.GetSceneNodeByInstanceID<Starfighter>(walker.InstanceID));
+            Assert.IsNotNull(game.GetSceneNodeByInstanceID<Starfighter>(jumper.InstanceID));
+        }
+
+        [Test]
         public void TryGetPendingCombat_GravityWellActivated_RefreshesRetreatAvailability()
         {
             (GameRoot game, SpaceCombatCommands commands, Fleet empireFleet, Fleet allianceFleet) =
@@ -3927,6 +4274,47 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(42, after.Tick);
             Assert.IsTrue(commands.HasPendingDecision);
             Assert.IsNull(empireFleet.Movement);
+        }
+
+        /// <summary>
+        /// Creates a laser-armed squadron fit to fly in a tactical battle.
+        /// </summary>
+        /// <param name="instanceId">The instance identifier.</param>
+        /// <param name="ownerId">The owning faction.</param>
+        /// <param name="hyperdrive">The hyperdrive rating; zero ties it to a carrier.</param>
+        /// <returns>The created squadron.</returns>
+        private static Starfighter CreateTacticalSquadron(
+            string instanceId,
+            string ownerId,
+            int hyperdrive
+        )
+        {
+            return new Starfighter
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = ownerId,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                Hyperdrive = hyperdrive,
+                SublightSpeed = 8,
+                Agility = 4,
+                LaserCannon = 5,
+                LaserRange = 12,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+        }
+
+        /// <summary>
+        /// Turns a ship into a target that neither shoots nor falls on its own, so a tactical
+        /// test decides when the battle ends.
+        /// </summary>
+        /// <param name="ship">The ship to change.</param>
+        private static void DisarmAndArmor(CapitalShip ship)
+        {
+            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new int[] { 0, 0, 0, 0, 0 };
+            ship.MaxHullStrength = 100000;
+            ship.CurrentHullStrength = 100000;
+            ship.SublightSpeed = 3;
         }
 
         /// <summary>
@@ -4316,7 +4704,10 @@ namespace Rebellion.Tests.Gameplay
                         AutoResolveComponentDelayMinimum = 30,
                         AutoResolveComponentDelayMaximum = 50,
                         AutoResolveComponentDelayRecovery = 1,
-                    },
+                        BattleStationSuperlaserRechargeRounds = 360,
+                        BattleStationTrenchRunBaseChance = 0.9,
+                        BattleStationTrenchRunMinimumChance = 0.25,
+                    }.WithShippedTacticalSettings(),
                 },
             };
             GameRoot game = TestGame.Create(config);

@@ -2098,6 +2098,28 @@ namespace Rebellion.Game
 
             public double AutoResolveTorpedoDamagePerStrength { get; set; }
 
+            public double BattleStationSuperlaserRechargeRounds { get; set; }
+
+            public double BattleStationTrenchRunBaseChance { get; set; }
+
+            public double BattleStationTrenchRunMinimumChance { get; set; }
+
+            public double TacticalFighterHullStrength { get; set; }
+
+            public double TacticalFighterShieldMultiplier { get; set; }
+
+            public double TacticalFighterRechargeMultiplier { get; set; }
+
+            public double TacticalTurbolaserFighterHitChance { get; set; }
+
+            public double TacticalCapitalWeaponRangeMultiplier { get; set; }
+
+            public double TacticalShieldGeneratorHitChance { get; set; }
+
+            public double TacticalShieldRechargeMultiplier { get; set; }
+
+            public double TacticalShieldGeneratorRepairMultiplier { get; set; }
+
             public double AutoResolveFighterWeaponRechargeMultiplier { get; set; }
 
             public double AutoResolveFighterShieldRechargePerCraft { get; set; }
@@ -2143,6 +2165,18 @@ namespace Rebellion.Game
                         FighterIonCannonFighterDamageMultiplier,
                     AutoResolveWeaponDamagePerStrength = AutoResolveWeaponDamagePerStrength,
                     AutoResolveTorpedoDamagePerStrength = AutoResolveTorpedoDamagePerStrength,
+                    BattleStationSuperlaserRechargeRounds = BattleStationSuperlaserRechargeRounds,
+                    BattleStationTrenchRunBaseChance = BattleStationTrenchRunBaseChance,
+                    BattleStationTrenchRunMinimumChance = BattleStationTrenchRunMinimumChance,
+                    TacticalFighterHullStrength = TacticalFighterHullStrength,
+                    TacticalFighterShieldMultiplier = TacticalFighterShieldMultiplier,
+                    TacticalTurbolaserFighterHitChance = TacticalTurbolaserFighterHitChance,
+                    TacticalFighterRechargeMultiplier = TacticalFighterRechargeMultiplier,
+                    TacticalCapitalWeaponRangeMultiplier = TacticalCapitalWeaponRangeMultiplier,
+                    TacticalShieldGeneratorHitChance = TacticalShieldGeneratorHitChance,
+                    TacticalShieldRechargeMultiplier = TacticalShieldRechargeMultiplier,
+                    TacticalShieldGeneratorRepairMultiplier =
+                        TacticalShieldGeneratorRepairMultiplier,
                     AutoResolveFighterWeaponRechargeMultiplier =
                         AutoResolveFighterWeaponRechargeMultiplier,
                     AutoResolveFighterShieldRechargePerCraft =

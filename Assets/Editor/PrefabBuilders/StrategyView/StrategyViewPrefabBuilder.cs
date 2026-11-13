@@ -74,6 +74,22 @@ public static class StrategyViewPrefabBuilder
     private const string _modalBackgroundDimName = "ModalBackgroundDim";
     private const string _overlayLayerName = "Overlay";
     private const string _contextMenuName = "ContextMenu";
+    private const string _tacticalBattleLayerName = "TacticalBattle";
+    private const string _tacticalBattleRigName = "TacticalBattleRig";
+    private const float _builtInDirectionalLightIntensityToHdrp = Mathf.PI;
+
+    // Kept near the world origin so camera projection and picking stay precise in float math.
+    private static readonly Vector3 _tacticalRigOrigin = new Vector3(0f, 1000f, 0f);
+    private static readonly Color _tacticalAmbientColor = new Color(0.26f, 0.27f, 0.32f, 1f);
+    private const int _tacticalPanelWidth = 213;
+    private const int _tacticalHudButtonHeight = 24;
+    private const int _tacticalHudButtonGap = 6;
+    private const int _tacticalRecoverButtonWidth = 58;
+    private const int _tacticalHudMargin = 8;
+    private const int _tacticalRosterTop = 24;
+    private const int _tacticalRosterHeight = 30;
+    private const int _tacticalHintHeight = 42;
+    private const int _tacticalHudFirstRow = 420;
     private const string _contextMenuPanelTemplateName = "PanelTemplate";
     private const string _contextMenuCommandTemplateName = "CommandTemplate";
     private const string _galaxyBackgroundImageName = "BackgroundImage";
@@ -994,6 +1010,10 @@ public static class StrategyViewPrefabBuilder
         GalacticInformationLegendView galacticInformationLegend =
             CreateGalacticInformationLegendView(root.transform);
         StrategyContextMenuPresenter contextMenu = CreateContextMenu(root.transform);
+        TacticalBattleView tacticalBattleView = CreateTacticalBattleView(
+            root.transform,
+            sceneRoot.transform
+        );
         ConfirmationDialogView briefingSkipConfirmation =
             CommonUIPrefabBuilder.InstantiateConfirmationDialog(root.transform);
         briefingSkipConfirmation.gameObject.name = "ConfirmDialog";
@@ -1025,6 +1045,7 @@ public static class StrategyViewPrefabBuilder
         AssignReference(controller, "galaxyMap", galaxyMapView);
         AssignReference(controller, "bookmarkBar", bookmarkBarView);
         AssignReference(controller, "briefingSkipConfirmation", briefingSkipConfirmation);
+        AssignReference(controller, "tacticalBattle", tacticalBattleView);
         AssignReference(bookmarkBarView, "slotTemplate", bookmarkSlotTemplate);
         AssignWindowPrefabs(
             windowsView,
@@ -1448,6 +1469,7 @@ public static class StrategyViewPrefabBuilder
         Camera camera = cameraObject.AddComponent<Camera>();
         camera.clearFlags = CameraClearFlags.SolidColor;
         camera.backgroundColor = Color.black;
+        camera.cullingMask = ~(1 << PresentationLayers.TacticalBattle);
         cameraObject.AddComponent<AudioListener>();
 
         GameObject eventSystemObject = new GameObject("EventSystem");
@@ -7447,6 +7469,860 @@ public static class StrategyViewPrefabBuilder
         AssignInt(view, "destinationCursorSize", _destinationCursorSize);
         AssignInt(view, "destinationCursorRadius", _destinationCursorRadius);
         return view;
+    }
+
+    /// <summary>
+    /// Authors the hidden full-screen tactical battle layer: the arena with its unit and shot
+    /// templates, and the right-hand information panel with status bars, systems, personnel,
+    /// orders, battle status, and controls.
+    /// </summary>
+    /// <param name="parent">The Strategy root transform.</param>
+    /// <param name="sceneRoot">The scene-instance root that owns the off-canvas 3D rig.</param>
+    /// <returns>The configured tactical battle view.</returns>
+    private static TacticalBattleView CreateTacticalBattleView(
+        Transform parent,
+        Transform sceneRoot
+    )
+    {
+        GameObject layer = CreateLayer(_tacticalBattleLayerName, parent);
+        RectTransform layerRect = layer.GetComponent<RectTransform>();
+        SetStrategySurfaceRect(layerRect);
+        TacticalBattleView view = EnableRuntimeComponent(layer.AddComponent<TacticalBattleView>());
+        int surfaceWidth = Mathf.RoundToInt(_screenWidth);
+        int surfaceHeight = Mathf.RoundToInt(_screenHeight);
+        int arenaWidth = surfaceWidth - _tacticalPanelWidth;
+
+        RawImage background = CreatePanelImage("BackgroundImage", layer.transform, Color.black);
+        FillParent(background.rectTransform);
+        background.raycastTarget = true;
+
+        RectTransform arena = CreateSourceRectLayer(
+            "Arena",
+            layer.transform,
+            arenaWidth,
+            surfaceHeight
+        );
+        // Overlays for units near the arena's edge must not spill onto the information panel.
+        arena.gameObject.AddComponent<RectMask2D>();
+        RawImage starfield = CreatePanelImage("StarfieldImage", arena, Color.white);
+        FillParent(starfield.rectTransform);
+        starfield.enabled = false;
+        RawImage planet = CreatePanelImage("PlanetImage", arena, Color.white);
+        SetSourceRect(planet.rectTransform, 0, 0, 120, 120);
+        planet.gameObject.SetActive(false);
+        RawImage sceneImage = CreatePanelImage("SceneImage", arena, Color.white);
+        FillParent(sceneImage.rectTransform);
+        sceneImage.enabled = false;
+        TacticalBattleScene sceneView = CreateTacticalBattleRig(sceneRoot, sceneImage);
+        RectTransform shotLayer = CreateChildLayer("Shots", arena);
+        RectTransform unitLayer = CreateChildLayer("Units", arena);
+        RawImage shotTemplate = CreatePanelImage("ShotTemplate", shotLayer, Color.white);
+        SetSourceRect(shotTemplate.rectTransform, 0, 0, 8, 2);
+        shotTemplate.gameObject.SetActive(false);
+        TacticalUnitView unitTemplate = CreateTacticalUnitTemplate(unitLayer);
+        RawImage selectionBox = CreatePanelImage(
+            "SelectionBoxImage",
+            arena,
+            new Color(1f, 1f, 1f, 0.15f)
+        );
+        SetSourceRect(selectionBox.rectTransform, 0, 0, 1, 1);
+        selectionBox.gameObject.SetActive(false);
+
+        TextMeshProUGUI title = CreateTextLabel("TitleTextField", layer.transform);
+        title.alignment = TextAlignmentOptions.TopLeft;
+        SetSourceRect(title.rectTransform, _tacticalHudMargin, 6, 400, 16);
+
+        // Roster bar under the title: side toggle, ship slots, then every squadron grouped by type.
+        RectTransform roster = CreateSourceRectLayer(
+            "Roster",
+            layer.transform,
+            arenaWidth - 2 * _tacticalHudMargin,
+            _tacticalRosterHeight
+        );
+        SetSourceRect(
+            roster,
+            _tacticalHudMargin,
+            _tacticalRosterTop,
+            arenaWidth - 2 * _tacticalHudMargin,
+            _tacticalRosterHeight
+        );
+        roster.gameObject.AddComponent<RectMask2D>();
+        Button rosterSide = CreateTacticalHudButton(
+            "RosterSideButton",
+            roster,
+            0,
+            0,
+            64,
+            "Side",
+            out TextMeshProUGUI rosterSideLabel
+        );
+        TacticalRosterSlotView rosterSlotTemplate = CreateTacticalRosterSlotTemplate(roster);
+
+        RectTransform panel = CreateSourceRectLayer(
+            "InfoPanel",
+            layer.transform,
+            _tacticalPanelWidth,
+            surfaceHeight
+        );
+        SetSourceRect(panel, arenaWidth, 0, _tacticalPanelWidth, surfaceHeight);
+        RawImage panelBackground = CreatePanelImage(
+            "PanelBackgroundImage",
+            panel,
+            new Color(0.11f, 0.12f, 0.15f, 1f)
+        );
+        FillParent(panelBackground.rectTransform);
+        panelBackground.raycastTarget = true;
+        int margin = _tacticalHudMargin;
+        int contentWidth = _tacticalPanelWidth - 2 * margin;
+        Color frameColor = new Color(0.2f, 0.22f, 0.28f, 1f);
+        Color dimText = new Color(0.78f, 0.82f, 0.9f, 1f);
+
+        // The superlaser charge bar sits above the unit header and shows only while the player
+        // commands a battle station; the view makes room by drawing the header smaller under it.
+        Button superlaser = CreateTacticalHudButton(
+            "SuperlaserButton",
+            panel,
+            margin,
+            4,
+            contentWidth,
+            "Superlaser",
+            out TextMeshProUGUI superlaserLabel
+        );
+        RawImage superlaserBackground = (RawImage)superlaser.targetGraphic;
+        superlaserBackground.color = new Color(0.07f, 0.09f, 0.11f, 1f);
+        RawImage superlaserBar = CreatePanelImage(
+            "SuperlaserBarImage",
+            superlaser.transform,
+            new Color(0.25f, 0.8f, 0.3f, 1f)
+        );
+        SetSourceRect(superlaserBar.rectTransform, 0, 0, contentWidth, _tacticalHudButtonHeight);
+        superlaserBar.transform.SetAsFirstSibling();
+        superlaser.gameObject.SetActive(false);
+
+        RawImage portraitFrame = CreatePanelImage("PortraitFrameImage", panel, frameColor);
+        SetSourceRect(portraitFrame.rectTransform, margin, 8, contentWidth, 64);
+        RawImage portrait = CreatePanelImage("PortraitImage", panel, Color.white);
+        SetSourceRect(portrait.rectTransform, margin + 2, 10, 60, 60);
+        portrait.gameObject.SetActive(false);
+        TextMeshProUGUI nameLabel = CreatePanelLabel(
+            "NameTextField",
+            panel,
+            margin + 68,
+            12,
+            contentWidth - 68,
+            16,
+            12,
+            Color.white,
+            TextAlignmentOptions.TopLeft
+        );
+        TextMeshProUGUI subtitleLabel = CreatePanelLabel(
+            "SubtitleTextField",
+            panel,
+            margin + 68,
+            32,
+            contentWidth - 68,
+            14,
+            10,
+            dimText,
+            TextAlignmentOptions.TopLeft
+        );
+
+        CreatePanelLabel(
+            "ShieldLabel",
+            panel,
+            margin,
+            82,
+            48,
+            12,
+            10,
+            dimText,
+            TextAlignmentOptions.TopLeft
+        ).text = "Shields";
+        RawImage shieldBackground = CreatePanelBar(
+            "ShieldBarBackgroundImage",
+            panel,
+            margin + 50,
+            84,
+            100,
+            8,
+            new Color(0f, 0f, 0f, 0.6f)
+        );
+        RawImage shieldFill = CreatePanelBar(
+            "ShieldBarImage",
+            panel,
+            margin + 50,
+            84,
+            100,
+            8,
+            new Color(0.35f, 0.65f, 1f, 1f)
+        );
+        TextMeshProUGUI shieldValue = CreatePanelLabel(
+            "ShieldTextField",
+            panel,
+            margin + 154,
+            82,
+            43,
+            12,
+            9,
+            Color.white,
+            TextAlignmentOptions.TopRight
+        );
+        CreatePanelLabel(
+            "HullLabel",
+            panel,
+            margin,
+            98,
+            48,
+            12,
+            10,
+            dimText,
+            TextAlignmentOptions.TopLeft
+        ).text = "Hull";
+        RawImage hullBackground = CreatePanelBar(
+            "HullBarBackgroundImage",
+            panel,
+            margin + 50,
+            100,
+            100,
+            8,
+            new Color(0f, 0f, 0f, 0.6f)
+        );
+        RawImage hullFill = CreatePanelBar(
+            "HullBarImage",
+            panel,
+            margin + 50,
+            100,
+            100,
+            8,
+            new Color(0.35f, 0.9f, 0.35f, 1f)
+        );
+        TextMeshProUGUI hullValue = CreatePanelLabel(
+            "HullTextField",
+            panel,
+            margin + 154,
+            98,
+            43,
+            12,
+            9,
+            Color.white,
+            TextAlignmentOptions.TopRight
+        );
+
+        CreatePanelLabel(
+            "SystemsLabel",
+            panel,
+            margin,
+            118,
+            contentWidth,
+            12,
+            10,
+            dimText,
+            TextAlignmentOptions.TopLeft
+        ).text = "Systems";
+        List<RawImage> systemImages = new List<RawImage>();
+        List<TextMeshProUGUI> systemLabels = new List<TextMeshProUGUI>();
+        for (int index = 0; index < 4; index++)
+        {
+            RawImage box = CreatePanelImage($"System{index}Image", panel, frameColor);
+            SetSourceRect(box.rectTransform, margin + index * 50, 132, 46, 22);
+            TextMeshProUGUI boxLabel = CreateTextLabel($"System{index}Label", box.transform);
+            FillParent(boxLabel.rectTransform);
+            boxLabel.alignment = TextAlignmentOptions.Center;
+            boxLabel.fontSize = 8;
+            boxLabel.color = Color.white;
+            boxLabel.text = "—";
+            systemImages.Add(box);
+            systemLabels.Add(boxLabel);
+        }
+
+        CreatePanelLabel(
+            "ArcsLabel",
+            panel,
+            margin,
+            160,
+            contentWidth,
+            12,
+            10,
+            dimText,
+            TextAlignmentOptions.TopLeft
+        ).text = "Weapon arcs";
+        string[] arcNames = { "F", "A", "P", "S" };
+        List<RawImage> arcBackgrounds = new List<RawImage>();
+        List<RawImage> arcFills = new List<RawImage>();
+        for (int index = 0; index < arcNames.Length; index++)
+        {
+            int column = index % 2;
+            int row = index / 2;
+            int arcX = margin + column * 100;
+            int arcY = 176 + row * 14;
+            CreatePanelLabel(
+                $"Arc{arcNames[index]}Label",
+                panel,
+                arcX,
+                arcY - 2,
+                12,
+                12,
+                9,
+                dimText,
+                TextAlignmentOptions.TopLeft
+            ).text = arcNames[index];
+            arcBackgrounds.Add(
+                CreatePanelBar(
+                    $"Arc{arcNames[index]}BarBackgroundImage",
+                    panel,
+                    arcX + 14,
+                    arcY,
+                    80,
+                    8,
+                    new Color(0f, 0f, 0f, 0.6f)
+                )
+            );
+            arcFills.Add(
+                CreatePanelBar(
+                    $"Arc{arcNames[index]}BarImage",
+                    panel,
+                    arcX + 14,
+                    arcY,
+                    80,
+                    8,
+                    new Color(1f, 0.85f, 0.35f, 1f)
+                )
+            );
+        }
+
+        CreatePanelLabel(
+            "PersonnelLabel",
+            panel,
+            margin,
+            206,
+            contentWidth,
+            12,
+            10,
+            dimText,
+            TextAlignmentOptions.TopLeft
+        ).text = "Personnel";
+        List<RawImage> personnelImages = new List<RawImage>();
+        for (int index = 0; index < 4; index++)
+        {
+            RawImage frame = CreatePanelImage($"Personnel{index}FrameImage", panel, frameColor);
+            SetSourceRect(frame.rectTransform, margin + index * 50, 220, 46, 46);
+            RawImage portraitImage = CreatePanelImage($"Personnel{index}Image", panel, Color.white);
+            SetSourceRect(portraitImage.rectTransform, margin + index * 50 + 1, 221, 44, 44);
+            portraitImage.gameObject.SetActive(false);
+            personnelImages.Add(portraitImage);
+        }
+        TextMeshProUGUI personnelText = CreatePanelLabel(
+            "PersonnelTextField",
+            panel,
+            margin,
+            268,
+            contentWidth,
+            12,
+            9,
+            Color.white,
+            TextAlignmentOptions.TopLeft
+        );
+        TextMeshProUGUI ordersText = CreatePanelLabel(
+            "OrdersTextField",
+            panel,
+            margin,
+            286,
+            contentWidth,
+            12,
+            10,
+            Color.white,
+            TextAlignmentOptions.TopLeft
+        );
+        TextMeshProUGUI tacticsText = CreatePanelLabel(
+            "TacticsTextField",
+            panel,
+            margin,
+            300,
+            contentWidth,
+            12,
+            10,
+            Color.white,
+            TextAlignmentOptions.TopLeft
+        );
+
+        // The recover button shares the row: it acts on the selected squadrons, the targets
+        // button on the inspected unit.
+        int targetPriorityWidth =
+            contentWidth - _tacticalRecoverButtonWidth - _tacticalHudButtonGap;
+        Button targetPriority = CreateTacticalHudButton(
+            "TargetPriorityButton",
+            panel,
+            margin,
+            314,
+            targetPriorityWidth,
+            "Targets: Capital ships first",
+            out TextMeshProUGUI targetPriorityLabel
+        );
+        // The longer caption shrinks to stay inside the narrower button, on one line.
+        targetPriorityLabel.textWrappingMode = TextWrappingModes.NoWrap;
+        targetPriorityLabel.enableAutoSizing = true;
+        targetPriorityLabel.fontSizeMin = 8;
+        targetPriorityLabel.fontSizeMax = 11;
+        Button recover = CreateTacticalHudButton(
+            "RecoverButton",
+            panel,
+            margin + targetPriorityWidth + _tacticalHudButtonGap,
+            314,
+            _tacticalRecoverButtonWidth,
+            "Recover",
+            out TextMeshProUGUI recoverLabel
+        );
+
+        TextMeshProUGUI attackerStatus = CreatePanelLabel(
+            "AttackerStatusTextField",
+            panel,
+            margin,
+            338,
+            contentWidth,
+            12,
+            9,
+            Color.white,
+            TextAlignmentOptions.TopLeft
+        );
+        TextMeshProUGUI defenderStatus = CreatePanelLabel(
+            "DefenderStatusTextField",
+            panel,
+            margin,
+            350,
+            contentWidth,
+            12,
+            9,
+            Color.white,
+            TextAlignmentOptions.TopLeft
+        );
+        TextMeshProUGUI clock = CreatePanelLabel(
+            "StatusTextField",
+            panel,
+            margin,
+            362,
+            contentWidth,
+            12,
+            9,
+            Color.white,
+            TextAlignmentOptions.TopLeft
+        );
+        TextMeshProUGUI hint = CreatePanelLabel(
+            "SelectionTextField",
+            panel,
+            margin,
+            376,
+            contentWidth,
+            _tacticalHintHeight,
+            9,
+            dimText,
+            TextAlignmentOptions.TopLeft
+        );
+        hint.textWrappingMode = TextWrappingModes.Normal;
+        // Four lines fit; anything longer ends in an ellipsis instead of drawing over the buttons.
+        hint.overflowMode = TextOverflowModes.Ellipsis;
+
+        int buttonWidth = (contentWidth - _tacticalHudButtonGap) / 2;
+        int secondColumn = margin + buttonWidth + _tacticalHudButtonGap;
+        int firstRow = _tacticalHudFirstRow;
+        int secondRow = firstRow + _tacticalHudButtonHeight + _tacticalHudButtonGap;
+        Button retreat = CreateTacticalHudButton(
+            "RetreatButton",
+            panel,
+            margin,
+            firstRow,
+            buttonWidth,
+            "Retreat",
+            out TextMeshProUGUI retreatLabel
+        );
+        Button auto = CreateTacticalHudButton(
+            "AutoButton",
+            panel,
+            secondColumn,
+            firstRow,
+            buttonWidth,
+            "Auto: Off",
+            out TextMeshProUGUI autoLabel
+        );
+        Button pause = CreateTacticalHudButton(
+            "PauseButton",
+            panel,
+            margin,
+            secondRow,
+            buttonWidth,
+            "Pause",
+            out TextMeshProUGUI pauseLabel
+        );
+        Button speed = CreateTacticalHudButton(
+            "SpeedButton",
+            panel,
+            secondColumn,
+            secondRow,
+            buttonWidth,
+            "Speed 1x",
+            out TextMeshProUGUI speedLabel
+        );
+
+        AssignReference(view, "backgroundImage", background);
+        AssignReference(view, "arenaLayer", arena);
+        AssignReference(view, "starfieldImage", starfield);
+        AssignReference(view, "planetImage", planet);
+        AssignReference(view, "sceneImage", sceneImage);
+        AssignReference(view, "sceneView", sceneView);
+        AssignReference(view, "unitLayer", unitLayer);
+        AssignReference(view, "shotLayer", shotLayer);
+        AssignReference(view, "unitTemplate", unitTemplate);
+        AssignReference(view, "shotTemplate", shotTemplate);
+        AssignReference(view, "selectionBoxImage", selectionBox);
+        AssignReference(view, "titleTextField", title);
+        AssignReference(view, "rosterLayer", roster);
+        AssignReference(view, "rosterSideButton", rosterSide);
+        AssignReference(view, "rosterSideLabel", rosterSideLabel);
+        AssignReference(view, "rosterSlotTemplate", rosterSlotTemplate);
+        AssignReference(view, "superlaserButton", superlaser);
+        AssignReference(view, "superlaserBarImage", superlaserBar);
+        AssignReference(view, "superlaserLabel", superlaserLabel);
+        AssignReference(view, "portraitFrameImage", portraitFrame);
+        AssignReference(view, "portraitImage", portrait);
+        AssignReference(view, "nameTextField", nameLabel);
+        AssignReference(view, "subtitleTextField", subtitleLabel);
+        AssignReference(view, "shieldBarBackgroundImage", shieldBackground);
+        AssignReference(view, "shieldBarImage", shieldFill);
+        AssignReference(view, "shieldTextField", shieldValue);
+        AssignReference(view, "hullBarBackgroundImage", hullBackground);
+        AssignReference(view, "hullBarImage", hullFill);
+        AssignReference(view, "hullTextField", hullValue);
+        AssignReferenceArray(view, "systemImages", systemImages);
+        AssignReferenceArray(view, "systemLabels", systemLabels);
+        AssignReferenceArray(view, "arcBarBackgroundImages", arcBackgrounds);
+        AssignReferenceArray(view, "arcBarImages", arcFills);
+        AssignReferenceArray(view, "personnelImages", personnelImages);
+        AssignReference(view, "personnelTextField", personnelText);
+        AssignReference(view, "ordersTextField", ordersText);
+        AssignReference(view, "tacticsTextField", tacticsText);
+        AssignReference(view, "targetPriorityButton", targetPriority);
+        AssignReference(view, "targetPriorityLabel", targetPriorityLabel);
+        AssignReference(view, "recoverButton", recover);
+        AssignReference(view, "recoverLabel", recoverLabel);
+        AssignReference(view, "attackerStatusTextField", attackerStatus);
+        AssignReference(view, "defenderStatusTextField", defenderStatus);
+        AssignReference(view, "statusTextField", clock);
+        AssignReference(view, "selectionTextField", hint);
+        AssignReference(view, "retreatButton", retreat);
+        AssignReference(view, "retreatLabel", retreatLabel);
+        AssignReference(view, "autoButton", auto);
+        AssignReference(view, "autoLabel", autoLabel);
+        AssignReference(view, "pauseButton", pause);
+        AssignReference(view, "pauseLabel", pauseLabel);
+        AssignReference(view, "speedButton", speed);
+        AssignReference(view, "speedLabel", speedLabel);
+        layer.SetActive(false);
+        return view;
+    }
+
+    /// <summary>
+    /// Authors the off-canvas 3D rig that renders tactical battle unit models: an isolated
+    /// orthographic camera, a key and a fill light, and the root that holds unit models. The
+    /// scene component sizes the camera and its render target at runtime.
+    /// </summary>
+    /// <param name="sceneRoot">The scene-instance root that owns the rig.</param>
+    /// <param name="outputImage">The arena image that shows the camera's render target.</param>
+    /// <returns>The configured scene component.</returns>
+    private static TacticalBattleScene CreateTacticalBattleRig(
+        Transform sceneRoot,
+        RawImage outputImage
+    )
+    {
+        const int layer = PresentationLayers.TacticalBattle;
+        HdrpRenderTargetBuilder.AddIsolatedVolume(sceneRoot);
+        HdrpRenderTargetBuilder.AddTacticalAmbientVolume(sceneRoot, _tacticalAmbientColor);
+
+        GameObject rig = new GameObject(_tacticalBattleRigName);
+        rig.transform.SetParent(sceneRoot, false);
+        rig.transform.position = _tacticalRigOrigin;
+        TacticalBattleScene scene = EnableRuntimeComponent(rig.AddComponent<TacticalBattleScene>());
+
+        GameObject modelRoot = new GameObject("Units");
+        modelRoot.transform.SetParent(rig.transform, false);
+
+        GameObject keyLightObject = new GameObject("KeyLight", typeof(Light));
+        keyLightObject.transform.SetParent(rig.transform, false);
+        keyLightObject.transform.localRotation = Quaternion.Euler(55f, -35f, 0f);
+        Light keyLight = keyLightObject.GetComponent<Light>();
+        keyLight.type = LightType.Directional;
+        HdrpRenderTargetBuilder.ConfigureLight(
+            keyLight,
+            1.6f * _builtInDirectionalLightIntensityToHdrp
+        );
+        keyLight.color = new Color(1f, 0.97f, 0.92f, 1f);
+        keyLight.cullingMask = 1 << layer;
+        keyLight.shadows = LightShadows.None;
+
+        GameObject fillLightObject = new GameObject("FillLight", typeof(Light));
+        fillLightObject.transform.SetParent(rig.transform, false);
+        fillLightObject.transform.localRotation = Quaternion.Euler(20f, 140f, 0f);
+        Light fillLight = fillLightObject.GetComponent<Light>();
+        fillLight.type = LightType.Directional;
+        HdrpRenderTargetBuilder.ConfigureLight(
+            fillLight,
+            0.6f * _builtInDirectionalLightIntensityToHdrp
+        );
+        fillLight.color = new Color(0.6f, 0.7f, 0.9f, 1f);
+        fillLight.cullingMask = 1 << layer;
+        fillLight.shadows = LightShadows.None;
+
+        GameObject cameraObject = new GameObject("Camera", typeof(Camera));
+        cameraObject.transform.SetParent(rig.transform, false);
+        Quaternion cameraRotation = Quaternion.Euler(
+            TacticalBattleScene.DefaultPitchDegrees,
+            0f,
+            0f
+        );
+        cameraObject.transform.localRotation = cameraRotation;
+        cameraObject.transform.localPosition = -(cameraRotation * Vector3.forward) * 150f;
+        Camera camera = cameraObject.GetComponent<Camera>();
+        camera.clearFlags = CameraClearFlags.SolidColor;
+        camera.backgroundColor = new Color(0f, 0f, 0f, 0f);
+        camera.orthographic = false;
+        camera.fieldOfView = TacticalBattleScene.FieldOfViewDegrees;
+        camera.nearClipPlane = 0.3f;
+        camera.farClipPlane = 4000f;
+        camera.cullingMask = 1 << layer;
+        camera.allowHDR = false;
+        camera.allowMSAA = false;
+        camera.enabled = false;
+        HdrpRenderTargetBuilder.ConfigureCamera(camera, includeTacticalAmbientLighting: true);
+
+        AssignReference(scene, "sceneCamera", camera);
+        AssignReference(scene, "modelRoot", modelRoot.transform);
+        AssignReference(scene, "outputImage", outputImage);
+        AssignReference(
+            scene,
+            "litMaterial",
+            HdrpRenderTargetBuilder.LoadOrCreateTacticalLitMaterial()
+        );
+        AssignReference(
+            scene,
+            "particleMaterial",
+            HdrpRenderTargetBuilder.LoadOrCreateTacticalParticleMaterial()
+        );
+        rig.SetActive(false);
+        return scene;
+    }
+
+    /// <summary>
+    /// Authors one flat tactical panel button with a centered caption.
+    /// </summary>
+    /// <param name="name">The button object name.</param>
+    /// <param name="parent">The panel transform.</param>
+    /// <param name="x">The source-space x-coordinate within the panel.</param>
+    /// <param name="y">The source-space y-coordinate within the panel.</param>
+    /// <param name="width">The source-space button width.</param>
+    /// <param name="caption">The initial caption.</param>
+    /// <param name="label">Receives the caption label.</param>
+    /// <returns>The configured button.</returns>
+    private static Button CreateTacticalHudButton(
+        string name,
+        Transform parent,
+        int x,
+        int y,
+        int width,
+        string caption,
+        out TextMeshProUGUI label
+    )
+    {
+        RawImage image = CreatePanelImage(name, parent, new Color(0.2f, 0.26f, 0.36f, 1f));
+        SetSourceRect(image.rectTransform, x, y, width, _tacticalHudButtonHeight);
+        image.raycastTarget = true;
+        Button button = image.gameObject.AddComponent<Button>();
+        button.targetGraphic = image;
+        // The battle reads the keyboard itself: Space pauses and WASD pans. Left in uGUI's own
+        // navigation, the button clicked last would be pressed or walked off by the same keys.
+        button.navigation = new Navigation { mode = Navigation.Mode.None };
+        // A disabled button reads as clearly off: darker and half transparent.
+        ColorBlock colors = button.colors;
+        colors.disabledColor = new Color(0.45f, 0.45f, 0.5f, 0.55f);
+        button.colors = colors;
+        label = CreateTextLabel(name + "Label", image.transform);
+        FillParent(label.rectTransform);
+        label.alignment = TextAlignmentOptions.Center;
+        label.fontSize = 11;
+        label.color = Color.white;
+        label.text = caption;
+        return button;
+    }
+
+    /// <summary>
+    /// Authors one panel text field at a source-space rectangle.
+    /// </summary>
+    /// <param name="name">The label object name.</param>
+    /// <param name="parent">The panel transform.</param>
+    /// <param name="x">The source-space x-coordinate within the panel.</param>
+    /// <param name="y">The source-space y-coordinate within the panel.</param>
+    /// <param name="width">The source-space width.</param>
+    /// <param name="height">The source-space height.</param>
+    /// <param name="fontSize">The font size.</param>
+    /// <param name="color">The text color.</param>
+    /// <param name="alignment">The text alignment.</param>
+    /// <returns>The configured label.</returns>
+    private static TextMeshProUGUI CreatePanelLabel(
+        string name,
+        Transform parent,
+        int x,
+        int y,
+        int width,
+        int height,
+        int fontSize,
+        Color color,
+        TextAlignmentOptions alignment
+    )
+    {
+        TextMeshProUGUI label = CreateTextLabel(name, parent);
+        SetSourceRect(label.rectTransform, x, y, width, height);
+        label.fontSize = fontSize;
+        label.color = color;
+        label.alignment = alignment;
+        label.text = string.Empty;
+        return label;
+    }
+
+    /// <summary>
+    /// Authors one horizontal status bar image at a source-space rectangle.
+    /// </summary>
+    /// <param name="name">The bar object name.</param>
+    /// <param name="parent">The panel transform.</param>
+    /// <param name="x">The source-space x-coordinate within the panel.</param>
+    /// <param name="y">The source-space y-coordinate within the panel.</param>
+    /// <param name="width">The source-space width.</param>
+    /// <param name="height">The source-space height.</param>
+    /// <param name="color">The bar color.</param>
+    /// <returns>The configured bar image.</returns>
+    private static RawImage CreatePanelBar(
+        string name,
+        Transform parent,
+        int x,
+        int y,
+        int width,
+        int height,
+        Color color
+    )
+    {
+        RawImage bar = CreatePanelImage(name, parent, color);
+        SetSourceRect(bar.rectTransform, x, y, width, height);
+        return bar;
+    }
+
+    /// <summary>
+    /// Authors the inactive roster slot template: a clickable frame holding a highlight, a unit
+    /// portrait, and a short label in its lower-right corner.
+    /// </summary>
+    /// <param name="parent">The roster layer.</param>
+    /// <returns>The configured slot view.</returns>
+    private static TacticalRosterSlotView CreateTacticalRosterSlotTemplate(Transform parent)
+    {
+        RawImage frame = CreatePanelImage(
+            "RosterSlotTemplate",
+            parent,
+            new Color(0.14f, 0.16f, 0.22f, 1f)
+        );
+        SetSourceRect(frame.rectTransform, 0, 0, 34, 30);
+        frame.raycastTarget = true;
+        Button button = frame.gameObject.AddComponent<Button>();
+        button.targetGraphic = frame;
+        button.navigation = new Navigation { mode = Navigation.Mode.None };
+        TacticalRosterSlotView slot = EnableRuntimeComponent(
+            frame.gameObject.AddComponent<TacticalRosterSlotView>()
+        );
+        RawImage highlight = CreatePanelImage(
+            "SlotHighlightImage",
+            frame.transform,
+            new Color(1f, 0.85f, 0.35f, 0.9f)
+        );
+        FillParent(highlight.rectTransform);
+        highlight.gameObject.SetActive(false);
+        RawImage portrait = CreatePanelImage("SlotPortraitImage", frame.transform, Color.white);
+        SetSourceRect(portrait.rectTransform, 2, 2, 30, 26);
+        TextMeshProUGUI label = CreateTextLabel("SlotLabel", frame.transform);
+        SetSourceRect(label.rectTransform, 2, 16, 30, 12);
+        label.alignment = TextAlignmentOptions.BottomRight;
+        label.fontSize = 9;
+        label.color = Color.white;
+        AssignReference(slot, "button", button);
+        AssignReference(slot, "highlightImage", highlight);
+        AssignReference(slot, "portraitImage", portrait);
+        AssignReference(slot, "label", label);
+        frame.gameObject.SetActive(false);
+        return slot;
+    }
+
+    /// <summary>
+    /// Authors the inactive unit template cloned for every tactical unit.
+    /// </summary>
+    /// <param name="parent">The unit layer transform.</param>
+    /// <returns>The configured unit template.</returns>
+    private static TacticalUnitView CreateTacticalUnitTemplate(Transform parent)
+    {
+        GameObject unit = CreateLayer("UnitTemplate", parent);
+        RectTransform rect = unit.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0f, 1f);
+        rect.anchorMax = new Vector2(0f, 1f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = new Vector2(40f, 40f);
+        TacticalUnitView view = EnableRuntimeComponent(unit.AddComponent<TacticalUnitView>());
+        RawImage sprite = CreateCenteredPanelImage(
+            "SpriteImage",
+            unit.transform,
+            Color.white,
+            40,
+            16
+        );
+        RawImage barBackground = CreatePanelImage(
+            "BarBackgroundImage",
+            unit.transform,
+            new Color(0f, 0f, 0f, 0.6f)
+        );
+        SetSourceRect(barBackground.rectTransform, 0, 41, 40, 5);
+        RawImage hullBar = CreatePanelImage("HullBarImage", unit.transform, Color.green);
+        SetSourceRect(hullBar.rectTransform, 0, 41, 40, 2);
+        RawImage shieldBar = CreatePanelImage(
+            "ShieldBarImage",
+            unit.transform,
+            new Color(0.35f, 0.65f, 1f, 1f)
+        );
+        SetSourceRect(shieldBar.rectTransform, 0, 44, 40, 2);
+        AssignReference(view, "spriteImage", sprite);
+        AssignReference(view, "barBackgroundImage", barBackground);
+        AssignReference(view, "hullBarImage", hullBar);
+        AssignReference(view, "shieldBarImage", shieldBar);
+        unit.SetActive(false);
+        return view;
+    }
+
+    /// <summary>
+    /// Authors one RawImage centered on its parent with an explicit size.
+    /// </summary>
+    /// <param name="name">The image object name.</param>
+    /// <param name="parent">The parent transform.</param>
+    /// <param name="color">The image tint.</param>
+    /// <param name="width">The source-space width.</param>
+    /// <param name="height">The source-space height.</param>
+    /// <returns>The configured RawImage.</returns>
+    private static RawImage CreateCenteredPanelImage(
+        string name,
+        Transform parent,
+        Color color,
+        int width,
+        int height
+    )
+    {
+        RawImage image = CreatePanelImage(name, parent, color);
+        RectTransform rect = image.rectTransform;
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = new Vector2(width, height);
+        return image;
     }
 
     /// <summary>

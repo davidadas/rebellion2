@@ -286,7 +286,7 @@ public sealed class AppBootstrap : MonoBehaviour
     /// </summary>
     /// <param name="fileName">The save identifier to load.</param>
     /// <returns>True when loading or content reconstruction was started.</returns>
-    internal bool LoadSave(string fileName)
+    public bool LoadSave(string fileName)
     {
         if (_sessionManager?.HasCoordinatedSession == true)
             return false;

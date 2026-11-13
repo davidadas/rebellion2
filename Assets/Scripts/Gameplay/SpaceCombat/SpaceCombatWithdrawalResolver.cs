@@ -45,22 +45,40 @@ namespace Rebellion.Gameplay
             string ownerInstanceId
         )
         {
+            return !SpaceCombatQueries.IsRetreatBlockedByGravityWell(planet, opponents)
+                && HasEscapeRoute(fleets, planet, ownerInstanceId);
+        }
+
+        /// <summary>
+        /// Determines whether a combat side has a hyperspace route out of the system: a unit with
+        /// a hyperdrive, a safe destination, and no standing order to hold the planet. Enemy
+        /// gravity wells are judged separately, because the tactical battle tracks them live.
+        /// </summary>
+        /// <param name="fleets">The fleets on the withdrawing side.</param>
+        /// <param name="planet">The combat planet.</param>
+        /// <param name="ownerInstanceId">The withdrawing owner identifier.</param>
+        /// <returns>True when the side could jump out if nothing held it.</returns>
+        internal bool HasEscapeRoute(
+            IReadOnlyList<Fleet> fleets,
+            Planet planet,
+            string ownerInstanceId
+        )
+        {
             Faction faction =
                 planet == null || string.IsNullOrEmpty(ownerInstanceId)
                     ? null
                     : _game.GetFactionByOwnerInstanceID(ownerInstanceId);
             if (
-                (
-                    faction != null
-                    && _game.IsFactionAIControlled(faction)
-                    && planet.GetOwnerInstanceID() == faction.InstanceID
-                    && planet.GetInstanceID() == faction.HQInstanceID
-                )
-                || !_spaceCombatQueries.CanRetreatForces(fleets, opponents, planet, ownerInstanceId)
+                faction != null
+                && _game.IsFactionAIControlled(faction)
+                && planet.GetOwnerInstanceID() == faction.InstanceID
+                && planet.GetInstanceID() == faction.HQInstanceID
             )
                 return false;
 
-            return true;
+            return _spaceCombatQueries
+                .GetWithdrawalPlan(fleets, planet, ownerInstanceId)
+                .CanWithdraw;
         }
 
         /// <summary>
@@ -134,7 +152,8 @@ namespace Rebellion.Gameplay
                 fleets,
                 origin,
                 ownerInstanceId,
-                tacticallyWithdrawnUnits
+                tacticallyWithdrawnUnits,
+                GetDockings(result)
             );
             RecordWithdrawalOutcomes(
                 result,
@@ -154,18 +173,110 @@ namespace Rebellion.Gameplay
         /// <param name="plan">The applied withdrawal plan.</param>
         internal void ApplyFighterRecovery(SpaceCombatWithdrawalPlan plan)
         {
+            SeatFighters(plan?.FighterRecoveryAssignments);
+        }
+
+        /// <summary>
+        /// Maps each squadron that docked during a tactical battle to the ship it is aboard.
+        /// </summary>
+        /// <param name="result">The combat result carrying the docking records.</param>
+        /// <returns>The docking ship of every squadron that ended the battle aboard one.</returns>
+        internal static Dictionary<Starfighter, CapitalShip> GetDockings(SpaceCombatResult result)
+        {
+            Dictionary<Starfighter, CapitalShip> dockings =
+                new Dictionary<Starfighter, CapitalShip>();
             foreach (
-                KeyValuePair<Starfighter, CapitalShip> assignment in (
-                    plan?.FighterRecoveryAssignments ?? new Dictionary<Starfighter, CapitalShip>()
-                ).Where(assignment =>
-                    !ReferenceEquals(
-                        assignment.Key.GetParentOfType<CapitalShip>(),
-                        assignment.Value
-                    )
-                )
+                FighterDockingResult docking in result?.FighterDockings
+                    ?? new List<FighterDockingResult>()
             )
             {
-                _game.MoveNode(assignment.Key, assignment.Value);
+                if (docking?.Fighter != null && docking.Ship != null)
+                    dockings[docking.Fighter] = docking.Ship;
+            }
+
+            return dockings;
+        }
+
+        /// <summary>
+        /// Puts squadrons aboard the ships assigned to them. A squadron whose ship has a bay
+        /// free goes straight aboard; one whose ship is full trades places with a squadron there
+        /// that was not assigned to it, because the bay belongs to the one that docked.
+        /// </summary>
+        /// <param name="assignments">The ship each squadron belongs aboard, or null.</param>
+        internal void SeatFighters(IReadOnlyDictionary<Starfighter, CapitalShip> assignments)
+        {
+            if (assignments == null)
+                return;
+
+            List<KeyValuePair<Starfighter, CapitalShip>> pending = assignments
+                .Where(assignment =>
+                    assignment.Key?.GetParent() != null
+                    && assignment.Value?.GetParent() != null
+                    && !ReferenceEquals(assignment.Key.GetParent(), assignment.Value)
+                )
+                .ToList();
+            // Each squadron that goes aboard may free the bay another is waiting for.
+            bool moved = true;
+            while (moved)
+            {
+                moved = false;
+                for (int index = pending.Count - 1; index >= 0; index--)
+                {
+                    if (!pending[index].Value.CanAcceptChild(pending[index].Key))
+                        continue;
+
+                    _game.MoveNode(pending[index].Key, pending[index].Value);
+                    pending.RemoveAt(index);
+                    moved = true;
+                }
+            }
+
+            foreach (KeyValuePair<Starfighter, CapitalShip> assignment in pending)
+                TradePlaces(assignment.Key, assignment.Value, assignments);
+        }
+
+        /// <summary>
+        /// Seats a squadron aboard a full ship by trading places with a squadron there that was
+        /// not assigned to it. When nobody can make way, the squadron stays where it was.
+        /// </summary>
+        /// <param name="fighter">The squadron to seat.</param>
+        /// <param name="ship">The ship it belongs aboard.</param>
+        /// <param name="assignments">The ship each squadron belongs aboard.</param>
+        private void TradePlaces(
+            Starfighter fighter,
+            CapitalShip ship,
+            IReadOnlyDictionary<Starfighter, CapitalShip> assignments
+        )
+        {
+            ISceneNode home = fighter.GetParent();
+            if (home == null || ReferenceEquals(home, ship))
+                return;
+            if (ship.CanAcceptChild(fighter))
+            {
+                _game.MoveNode(fighter, ship);
+                return;
+            }
+
+            Starfighter resident = ship.GetChildren<Starfighter>()
+                .FirstOrDefault(candidate =>
+                    candidate.ManufacturingStatus == ManufacturingStatus.Complete
+                    && !(
+                        assignments.TryGetValue(candidate, out CapitalShip assigned)
+                        && ReferenceEquals(assigned, ship)
+                    )
+                );
+            if (resident == null)
+                return;
+
+            _game.DetachNode(fighter);
+            if (home.CanAcceptChild(resident))
+            {
+                _game.MoveNode(resident, home);
+                _game.AttachNode(fighter, ship);
+            }
+            else
+            {
+                _game.AttachNode(fighter, home);
             }
         }
 

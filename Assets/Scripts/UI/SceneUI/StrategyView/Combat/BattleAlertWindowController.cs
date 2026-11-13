@@ -46,6 +46,8 @@ public sealed class BattleAlertWindowController
     private readonly Func<string, Planet> findVisiblePlanet;
     private readonly Func<Task<SpaceCombatResult>> resolveRetreat;
     private readonly Func<Task<SpaceCombatResult>> autoResolve;
+    private readonly Func<bool> canTakeCommand;
+    private readonly Func<bool> takeCommand;
     private readonly HashSet<BattleAlertWindowView> pendingChoices =
         new HashSet<BattleAlertWindowView>();
     private readonly Queue<SpaceCombatResult> completedCombats = new Queue<SpaceCombatResult>();
@@ -81,6 +83,14 @@ public sealed class BattleAlertWindowController
     /// <param name="getWindowPosition">Returns the authored battle-alert placement.</param>
     /// <param name="closeWindow">Closes a registered strategy window.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
+    /// <param name="takeCommand">
+    /// Opens the tactical battle for the pending encounter and returns whether it started, or
+    /// null when interactive command is unavailable.
+    /// </param>
+    /// <param name="canTakeCommand">
+    /// Reports whether this session can fight a battle interactively, or null when every
+    /// session can. A tactical battle runs on one machine, so a shared campaign cannot.
+    /// </param>
     internal BattleAlertWindowController(
         Func<bool> hasPendingCombat,
         Func<PendingCombatResult> getPendingCombat,
@@ -95,9 +105,13 @@ public sealed class BattleAlertWindowController
         UIWindowManager windowManager,
         Func<Vector2Int> getWindowPosition,
         Action<UIWindow> closeWindow,
-        Action markDirty
+        Action markDirty,
+        Func<bool> takeCommand = null,
+        Func<bool> canTakeCommand = null
     )
     {
+        this.takeCommand = takeCommand;
+        this.canTakeCommand = canTakeCommand;
         this.hasPendingCombat =
             hasPendingCombat ?? throw new ArgumentNullException(nameof(hasPendingCombat));
         this.getPendingCombat =
@@ -339,6 +353,21 @@ public sealed class BattleAlertWindowController
     }
 
     /// <summary>
+    /// Closes the battle-alert window while it still presents a pending encounter.
+    /// </summary>
+    /// <returns>True when a pending window was closed.</returns>
+    internal bool ClosePendingWindow()
+    {
+        BattleAlertWindowView view = FindWindow();
+        if (view == null || HasCombatResult(view))
+            return false;
+
+        CloseWindow(view);
+        markDirty();
+        return true;
+    }
+
+    /// <summary>
     /// Finds the registered battle-alert view.
     /// </summary>
     /// <returns>The open battle-alert view, or null when none is registered.</returns>
@@ -418,8 +447,23 @@ public sealed class BattleAlertWindowController
             x,
             y,
             getUIContext(),
-            pendingPlanet
+            pendingPlanet,
+            CanTakeCommand(pending)
         );
+    }
+
+    /// <summary>
+    /// Returns whether the player can fight the pending encounter interactively. An encounter
+    /// that waits for two human responses is settled by those responses, not by one side's
+    /// battle.
+    /// </summary>
+    /// <param name="pending">The pending encounter.</param>
+    /// <returns>True when taking command is offered.</returns>
+    private bool CanTakeCommand(PendingCombatResult pending)
+    {
+        return takeCommand != null
+            && pending?.RequiresBothResponses == false
+            && canTakeCommand?.Invoke() != false;
     }
 
     /// <summary>
@@ -445,6 +489,12 @@ public sealed class BattleAlertWindowController
                     break;
                 case BattleAlertChoice.AutoResolve:
                     await autoResolve();
+                    break;
+                case BattleAlertChoice.TakeCommand:
+                    // An encounter that can no longer be fought falls back to automatic
+                    // resolution; one that was never offered interactively is left alone.
+                    if (CanTakeCommand(getPendingCombat()) && !takeCommand())
+                        await autoResolve();
                     break;
             }
         }

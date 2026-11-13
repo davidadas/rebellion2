@@ -11,11 +11,19 @@ public static class HdrpRenderTargetBuilder
 {
     private const int _volumeLayer = 30;
     private const int _flatAmbientVolumeLayer = 29;
+    private const int _tacticalAmbientVolumeLayer = 24;
     private const int _planetPostProcessingVolumeLayer = 28;
     private const string _volumeProfilePath =
         "Assets/Settings/Rendering/RenderTargetVolumeProfile.asset";
     private const string _flatAmbientVolumeProfilePath =
         "Assets/Settings/Rendering/RenderTargetFlatAmbientVolumeProfile.asset";
+    private const string _tacticalAmbientVolumeProfilePath =
+        "Assets/Settings/Rendering/TacticalBattleAmbientVolumeProfile.asset";
+    private const string _tacticalLitMaterialPath =
+        "Assets/Settings/Rendering/TacticalBattleLitMaterial.mat";
+    private const string _tacticalParticleMaterialPath =
+        "Assets/Settings/Rendering/TacticalBattleParticleMaterial.mat";
+    private const float _tacticalParticleAlphaCutoff = 0.5f;
     private const string _planetPostProcessingVolumeProfilePath =
         "Assets/Settings/Rendering/PlanetRenderTargetVolumeProfile.asset";
 
@@ -49,7 +57,63 @@ public static class HdrpRenderTargetBuilder
         Volume volume = volumeObject.GetComponent<Volume>();
         volume.isGlobal = true;
         volume.priority = 1001f;
-        volume.sharedProfile = LoadOrCreateFlatAmbientVolumeProfile(ambientColor);
+        volume.sharedProfile = LoadOrCreateFlatAmbientVolumeProfile(
+            _flatAmbientVolumeProfilePath,
+            ambientColor
+        );
+    }
+
+    /// <summary>
+    /// Adds the flat ambient-lighting volume of the tactical battle rig. It has a layer and a
+    /// profile of its own: the battle is lit far brighter than the menu and loading
+    /// presentations that share the other flat ambient volume, and a loading screen can be on
+    /// show while the strategy scene that holds the battle rig is loaded.
+    /// </summary>
+    /// <param name="parent">The generated prefab root that owns the volume.</param>
+    /// <param name="ambientColor">The linear-space ambient color.</param>
+    public static void AddTacticalAmbientVolume(Transform parent, Color ambientColor)
+    {
+        GameObject volumeObject = new GameObject("TacticalBattleAmbientVolume", typeof(Volume));
+        volumeObject.layer = _tacticalAmbientVolumeLayer;
+        volumeObject.transform.SetParent(parent, false);
+
+        Volume volume = volumeObject.GetComponent<Volume>();
+        volume.isGlobal = true;
+        volume.priority = 1001f;
+        volume.sharedProfile = LoadOrCreateFlatAmbientVolumeProfile(
+            _tacticalAmbientVolumeProfilePath,
+            ambientColor
+        );
+    }
+
+    /// <summary>
+    /// Loads the opaque, double-sided lit material that the tactical battle clones for its
+    /// placeholders, markers, beams and repaired hulls, and restores its settings. The battle
+    /// builds its materials while it runs; cloning an authored asset keeps the shader and its
+    /// variants in a player build, where the pipeline's default material does not exist.
+    /// </summary>
+    /// <returns>The lit template material.</returns>
+    public static Material LoadOrCreateTacticalLitMaterial()
+    {
+        return LoadOrCreateTacticalMaterial(
+            _tacticalLitMaterialPath,
+            doubleSided: true,
+            alphaCutout: false
+        );
+    }
+
+    /// <summary>
+    /// Loads the alpha-cutout lit material that the tactical battle clones for its particle
+    /// effects, and restores its settings.
+    /// </summary>
+    /// <returns>The particle template material.</returns>
+    public static Material LoadOrCreateTacticalParticleMaterial()
+    {
+        return LoadOrCreateTacticalMaterial(
+            _tacticalParticleMaterialPath,
+            doubleSided: false,
+            alphaCutout: true
+        );
     }
 
     /// <summary>
@@ -99,12 +163,16 @@ public static class HdrpRenderTargetBuilder
     /// Whether the camera includes the planet-specific color and bloom volume.
     /// </param>
     /// <param name="antialiasing">The HDRP post-process antialiasing mode.</param>
+    /// <param name="includeTacticalAmbientLighting">
+    /// Whether the camera includes the tactical battle's own ambient-lighting volume.
+    /// </param>
     public static void ConfigureCamera(
         Camera camera,
         bool includeFlatAmbientLighting = false,
         bool includePlanetPostProcessing = false,
         HDAdditionalCameraData.AntialiasingMode antialiasing =
-            HDAdditionalCameraData.AntialiasingMode.None
+            HDAdditionalCameraData.AntialiasingMode.None,
+        bool includeTacticalAmbientLighting = false
     )
     {
         HDAdditionalCameraData cameraData =
@@ -118,6 +186,7 @@ public static class HdrpRenderTargetBuilder
             1 << _volumeLayer
             | 1 << GraphicsManager.RuntimeVolumeLayer
             | (includeFlatAmbientLighting ? 1 << _flatAmbientVolumeLayer : 0)
+            | (includeTacticalAmbientLighting ? 1 << _tacticalAmbientVolumeLayer : 0)
             | (includePlanetPostProcessing ? 1 << _planetPostProcessingVolumeLayer : 0);
         ConfigureFrameSetting(cameraData, FrameSettingsField.ExposureControl, false);
         ConfigureFrameSetting(
@@ -180,21 +249,72 @@ public static class HdrpRenderTargetBuilder
     }
 
     /// <summary>
-    /// Loads the optional flat ambient-lighting profile and restores its required overrides.
+    /// Loads a tactical-battle template material, creating it from the pipeline's default
+    /// material when it is missing, and restores the settings the battle relies on.
     /// </summary>
+    /// <param name="path">The material asset path.</param>
+    /// <param name="doubleSided">Whether both faces are drawn.</param>
+    /// <param name="alphaCutout">Whether texels below the alpha cutoff are discarded.</param>
+    /// <returns>The template material.</returns>
+    private static Material LoadOrCreateTacticalMaterial(
+        string path,
+        bool doubleSided,
+        bool alphaCutout
+    )
+    {
+        Material source =
+            GraphicsSettings.currentRenderPipeline != null
+                ? GraphicsSettings.currentRenderPipeline.defaultMaterial
+                : null;
+        if (source == null)
+            throw new System.InvalidOperationException(
+                "The render pipeline has no default material to author the tactical materials from."
+            );
+
+        Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (material == null)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
+            material = new Material(source);
+            AssetDatabase.CreateAsset(material, path);
+        }
+        else
+        {
+            material.shader = source.shader;
+            material.CopyPropertiesFromMaterial(source);
+        }
+
+        CullMode culling = doubleSided ? CullMode.Off : CullMode.Back;
+        material.SetFloat("_DoubleSidedEnable", doubleSided ? 1f : 0f);
+        material.SetFloat("_CullMode", (float)culling);
+        material.SetFloat("_CullModeForward", (float)culling);
+        material.SetFloat("_AlphaCutoffEnable", alphaCutout ? 1f : 0f);
+        if (alphaCutout)
+            material.SetFloat("_AlphaCutoff", _tacticalParticleAlphaCutoff);
+        // The keywords, passes and render queue follow from the settings above.
+        HDMaterial.ValidateMaterial(material);
+        EditorUtility.SetDirty(material);
+        return material;
+    }
+
+    /// <summary>
+    /// Loads a flat ambient-lighting profile and restores its required overrides.
+    /// </summary>
+    /// <param name="path">The profile asset path.</param>
     /// <param name="ambientColor">The linear-space ambient color.</param>
     /// <returns>The flat ambient-lighting volume profile.</returns>
-    private static VolumeProfile LoadOrCreateFlatAmbientVolumeProfile(Color ambientColor)
+    private static VolumeProfile LoadOrCreateFlatAmbientVolumeProfile(
+        string path,
+        Color ambientColor
+    )
     {
-        VolumeProfile profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(
-            _flatAmbientVolumeProfilePath
-        );
+        VolumeProfile profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(path);
         if (profile == null)
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(_flatAmbientVolumeProfilePath));
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
             profile = ScriptableObject.CreateInstance<VolumeProfile>();
-            profile.name = "RenderTargetFlatAmbientVolumeProfile";
-            AssetDatabase.CreateAsset(profile, _flatAmbientVolumeProfilePath);
+            profile.name = Path.GetFileNameWithoutExtension(path);
+            AssetDatabase.CreateAsset(profile, path);
         }
 
         profile.components.RemoveAll(component => component == null);
