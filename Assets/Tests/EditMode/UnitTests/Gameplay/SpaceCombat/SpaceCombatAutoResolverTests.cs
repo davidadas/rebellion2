@@ -2216,7 +2216,7 @@ namespace Rebellion.Tests.Gameplay
         public void Resolve_PlanetDestroyer_StaysOutOfTheLineAndBurnsOneShipPerRecharge()
         {
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.TacticalSuperlaserRechargeSeconds = 10;
+            config.BattleStationSuperlaserRechargeRounds = 20;
             CapitalShip station = CreateStation("station");
             CapitalShip[] targets =
             {
@@ -2246,7 +2246,7 @@ namespace Rebellion.Tests.Gameplay
         public void Resolve_TorpedoSquadronsAgainstStation_FlyItsTrenchAndDestroyIt()
         {
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.TacticalTrenchRunBaseChance = 1;
+            config.BattleStationTrenchRunBaseChance = 1;
             CapitalShip station = CreateStation("station");
             Starfighter torpedoFighter = CreateTorpedoFighter("y-wing", 12);
             Starfighter escortFighter = CreateFighter("a-wing", 12, 0);
@@ -2275,7 +2275,7 @@ namespace Rebellion.Tests.Gameplay
         public void Resolve_FailedTrenchRun_CostsEverySquadronThatFlewIt()
         {
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.TacticalTrenchRunBaseChance = 0;
+            config.BattleStationTrenchRunBaseChance = 0;
             CapitalShip station = CreateStation("station");
             Starfighter torpedoFighter = CreateTorpedoFighter("y-wing", 12);
             Starfighter escortFighter = CreateFighter("a-wing", 12, 0);
@@ -2298,6 +2298,40 @@ namespace Rebellion.Tests.Gameplay
             // With its torpedoes gone the survivor has no way to hurt the station and leaves.
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
             CollectionAssert.Contains(result.WithdrawnUnits, escortFighter);
+        }
+
+        [TestCase(0, true)]
+        [TestCase(20, true)]
+        [TestCase(120, false)]
+        public void Resolve_TrenchRunAgainstDefendingFighters_SucceedsLessOftenTheMoreItIsOutnumbered(
+            int defendingFighters,
+            bool expectedDestroyed
+        )
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.BattleStationTrenchRunBaseChance = 1;
+            config.BattleStationTrenchRunMinimumChance = 0.2;
+            CapitalShip station = CreateStation("station");
+            Starfighter torpedoFighter = CreateTorpedoFighter("y-wing", 12);
+            List<Starfighter> defenders = new List<Starfighter>();
+            if (defendingFighters > 0)
+                defenders.Add(CreateFighter("tie", defendingFighters, 0));
+
+            // Twelve fighters fly the run and the roll is 0.5. The chance is 1 unopposed, 12/20
+            // against twenty defenders, and the floor of 0.2 against a hundred and twenty.
+            SpaceCombatResult result = Resolve(
+                config,
+                new[] { CreatePassiveTarget("carrier", 100) },
+                new[] { torpedoFighter },
+                new[] { station },
+                defenders,
+                random: new TrenchRunRNG()
+            );
+
+            bool destroyed = result.ShipDamage.Any(damage =>
+                damage.Ship == station && damage.HullAfter == 0
+            );
+            Assert.AreEqual(expectedDestroyed, destroyed);
         }
 
         [Test]
@@ -2362,7 +2396,7 @@ namespace Rebellion.Tests.Gameplay
         public void Resolve_SquadronsOnATrenchRun_AreShotAtOnTheWayIn()
         {
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.TacticalTrenchRunBaseChance = 1;
+            config.BattleStationTrenchRunBaseChance = 1;
             config.AutoResolveTargetScanDivisor = 1;
             CapitalShip station = CreateStation("station");
             CapitalShip picket = CreateShip("picket", hull: 1000, weaponStrength: 0);
@@ -2418,7 +2452,7 @@ namespace Rebellion.Tests.Gameplay
         public void Resolve_StalemateAgainstAStation_IsNeverLostByTheStationSide()
         {
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.TacticalSuperlaserRechargeSeconds = 100000;
+            config.BattleStationSuperlaserRechargeRounds = 200000;
             CapitalShip station = CreateStation("station");
             CapitalShip target = CreatePassiveTarget("target", 100000);
 
@@ -2604,7 +2638,10 @@ namespace Rebellion.Tests.Gameplay
                 AutoResolveComponentDelayMinimum = 30,
                 AutoResolveComponentDelayMaximum = 50,
                 AutoResolveComponentDelayRecovery = 1,
-            }.WithShippedTacticalSettings();
+                BattleStationSuperlaserRechargeRounds = 360,
+                BattleStationTrenchRunBaseChance = 0.9,
+                BattleStationTrenchRunMinimumChance = 0.25,
+            };
         }
 
         /// <summary>
@@ -2798,6 +2835,29 @@ namespace Rebellion.Tests.Gameplay
             public int NextInt(int min, int max)
             {
                 return min == 1 && max == 11 ? 3 : min;
+            }
+        }
+
+        private sealed class TrenchRunRNG : IRandomNumberProvider
+        {
+            /// <summary>
+            /// Executes next double.
+            /// </summary>
+            /// <returns>The result of next double.</returns>
+            public double NextDouble()
+            {
+                return 0.5;
+            }
+
+            /// <summary>
+            /// Executes next int.
+            /// </summary>
+            /// <param name="min">The min.</param>
+            /// <param name="max">The max.</param>
+            /// <returns>The result of next int.</returns>
+            public int NextInt(int min, int max)
+            {
+                return min;
             }
         }
 

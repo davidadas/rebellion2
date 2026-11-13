@@ -60,7 +60,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsNotNull(createdFleet);
             Assert.IsTrue(Guid.TryParseExact(createdFleet.InstanceID, "N", out _));
             Assert.AreEqual(createdFleet.InstanceID, ship.ParentInstanceID);
-            Assert.AreEqual(1, _game.RuntimeIdentifierIndex);
+            Assert.AreEqual(1, _game.IDCounter);
         }
 
         [Test]

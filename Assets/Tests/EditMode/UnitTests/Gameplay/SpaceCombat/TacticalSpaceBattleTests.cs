@@ -2279,7 +2279,7 @@ namespace Rebellion.Tests.Gameplay
             CapitalShip victim = CreateShip("victim", 100000, 0);
             CapitalShip other = CreateShip("other", 100000, 0);
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.TacticalSuperlaserRechargeSeconds = 20;
+            config.BattleStationSuperlaserRechargeRounds = 40;
             TacticalSpaceBattle battle = CreateStationBattle(
                 new[] { CreateStation("station"), CreateShip("escort", 100, 0) },
                 new[] { victim, other },
@@ -2361,7 +2361,7 @@ namespace Rebellion.Tests.Gameplay
             CapitalShip station = CreateStation("station");
             Starfighter fighter = CreateTorpedoFighter("x-wing", 12);
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.TacticalTrenchRunBaseChance = 1;
+            config.BattleStationTrenchRunBaseChance = 1;
             TacticalSpaceBattle battle = CreateStationBattle(
                 new[] { CreateShip("attacker", 100, 0) },
                 new[] { station },
@@ -2486,7 +2486,7 @@ namespace Rebellion.Tests.Gameplay
             Starfighter torpedoFighter = CreateTorpedoFighter("y-wing", 12);
             Starfighter escortFighter = CreateFighter("a-wing", 12, 5);
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.TacticalTrenchRunBaseChance = 1;
+            config.BattleStationTrenchRunBaseChance = 1;
             TacticalSpaceBattle battle = CreateStationBattle(
                 new[] { CreateShip("attacker", 100, 0) },
                 new[] { CreateStation("station"), CreateShip("escort", 100000, 0) },
@@ -2629,7 +2629,7 @@ namespace Rebellion.Tests.Gameplay
         public void Advance_AutomaticSideFacingOnlyAStationItCannotAttack_Withdraws()
         {
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.TacticalSuperlaserRechargeSeconds = 100000;
+            config.BattleStationSuperlaserRechargeRounds = 200000;
             TacticalSpaceBattle battle = CreateStationBattle(
                 new[] { CreateShip("first", 1000, 50), CreateShip("second", 1000, 50) },
                 new[] { CreateStation("station"), CreateShip("escort", 10, 0) },

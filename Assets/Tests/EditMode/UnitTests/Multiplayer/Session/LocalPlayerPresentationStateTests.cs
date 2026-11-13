@@ -24,7 +24,7 @@ namespace Rebellion.Tests.Multiplayer
             localState.GetOrCreateSection("AdvisorNotifications").Values["deadline"] = "150";
             GameRoot incoming = CreateGame("stale-host-copy");
             incoming.CurrentTick = 120;
-            incoming.Metadata.SharedSaveToken = Guid.NewGuid().ToString("N");
+            incoming.Metadata.SaveID = Guid.NewGuid().ToString("N");
             PlayerUIState hostState = incoming.GetFactionPlayer(_hostFactionID).UIState;
 
             bool restored = retained.TryRestore(incoming, _guestFactionID);
@@ -114,12 +114,25 @@ namespace Rebellion.Tests.Multiplayer
             Assert.IsNull(LocalPlayerPresentationState.Capture(generated, _guestFactionID));
         }
 
-        [Test]
-        public void TryRestoreSavedCheckpoint_MatchingCopy_UsesSavedLocalStateWithoutChangingWorld()
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TryRestoreSavedCheckpoint_MatchingCopy_UsesSavedLocalStateWithoutChangingWorld(
+            bool legacyName
+        )
         {
             GameRoot hostCheckpoint = CreateGame("stale-guest-at-save");
             hostCheckpoint.CurrentTick = 40;
             GameRoot localCheckpoint = CreateGame("guest-at-save");
+            System.Xml.Linq.XElement document = System.Xml.Linq.XElement.Parse(
+                SerializationHelper.Serialize(localCheckpoint)
+            );
+            System.Xml.Linq.XElement metadata = document.Element("Metadata");
+            System.Xml.Linq.XElement saveID = metadata.Element(nameof(GameMetadata.SaveID));
+            Assert.That(saveID, Is.Not.Null);
+            Assert.That(metadata.Element("SharedSaveToken"), Is.Null);
+            if (legacyName)
+                saveID.Name = "SharedSaveToken";
+            localCheckpoint = SerializationHelper.Deserialize<GameRoot>(document.ToString());
             PlayerUIState savedLocal = localCheckpoint.GetFactionPlayer(_guestFactionID).UIState;
             PlayerUIState hostState = hostCheckpoint.GetFactionPlayer(_hostFactionID).UIState;
 
@@ -154,10 +167,10 @@ namespace Rebellion.Tests.Multiplayer
             switch (changed)
             {
                 case "missing-token":
-                    authoritative.Metadata.SharedSaveToken = null;
+                    authoritative.Metadata.SaveID = null;
                     break;
                 case "different-token":
-                    localCopy.Metadata.SharedSaveToken = Guid.NewGuid().ToString("N");
+                    localCopy.Metadata.SaveID = Guid.NewGuid().ToString("N");
                     break;
                 case "different-campaign":
                     localCopy.Metadata.CampaignID = Guid.NewGuid().ToString("N");
@@ -204,7 +217,7 @@ namespace Rebellion.Tests.Multiplayer
                 Metadata = new GameMetadata
                 {
                     CampaignID = "11111111111111111111111111111111",
-                    SharedSaveToken = "22222222222222222222222222222222",
+                    SaveID = "22222222222222222222222222222222",
                     PackID = "pack",
                     PackVersion = "1",
                     ScenarioID = "scenario",

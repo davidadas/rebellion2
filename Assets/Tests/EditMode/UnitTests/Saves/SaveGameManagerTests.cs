@@ -2082,7 +2082,7 @@ namespace Rebellion.Tests.Managers
         {
             GameRoot host = BuildMultiplayerGame();
             host.CurrentTick = 40;
-            host.Metadata.SharedSaveToken = Guid.NewGuid().ToString("N");
+            host.Metadata.SaveID = Guid.NewGuid().ToString("N");
             string hostName = SaveGameManager.GetMultiplayerSaveFileName(
                 host.Metadata.CampaignID,
                 true,
@@ -2112,7 +2112,7 @@ namespace Rebellion.Tests.Managers
             GameMetadata restoredGuest = _saveGameManager.LoadGameData(guestName).Metadata;
             Assert.AreEqual(savedAt, guest.Metadata.LastSavedUtc);
             Assert.AreEqual(restoredHost.LastSavedUtc, restoredGuest.LastSavedUtc);
-            Assert.AreEqual(restoredHost.SharedSaveToken, restoredGuest.SharedSaveToken);
+            Assert.AreEqual(restoredHost.SaveID, restoredGuest.SaveID);
             Assert.AreEqual(restoredHost.CampaignID, restoredGuest.CampaignID);
             Assert.AreEqual(restoredHost.SaveVersion, restoredGuest.SaveVersion);
             Assert.AreEqual(restoredHost.SaveDisplayName, restoredGuest.SaveDisplayName);
@@ -2330,10 +2330,10 @@ namespace Rebellion.Tests.Managers
         {
             GameRoot host = BuildMultiplayerGame();
             host.CurrentTick = 40;
-            host.Metadata.SharedSaveToken = Guid.NewGuid().ToString("N");
+            host.Metadata.SaveID = Guid.NewGuid().ToString("N");
             await _saveGameManager.SaveGameDataAsync(host, "host", "Shared checkpoint");
             DateTime savedAt = host.Metadata.LastSavedUtc;
-            string token = host.Metadata.SharedSaveToken;
+            string token = host.Metadata.SaveID;
             GameRoot guest = BuildMultiplayerGame();
             guest.CurrentTick = 40;
 
@@ -2343,14 +2343,14 @@ namespace Rebellion.Tests.Managers
                 host.Metadata
             );
             host.Metadata.SaveDisplayName = "Later host state";
-            host.Metadata.SharedSaveToken = Guid.NewGuid().ToString("N");
+            host.Metadata.SaveID = Guid.NewGuid().ToString("N");
             await publication;
 
             GameMetadata restored = _saveGameManager.LoadGameData("guest").Metadata;
             GameMetadata cache = _saveGameManager.GetSaveMetadata("guest");
             Assert.That(restored.LastSavedUtc, Is.EqualTo(savedAt));
-            Assert.That(restored.SharedSaveToken, Is.EqualTo(token));
-            Assert.That(cache.SharedSaveToken, Is.EqualTo(token));
+            Assert.That(restored.SaveID, Is.EqualTo(token));
+            Assert.That(cache.SaveID, Is.EqualTo(token));
             Assert.That(cache.SaveDisplayName, Is.EqualTo("Shared checkpoint"));
         }
 

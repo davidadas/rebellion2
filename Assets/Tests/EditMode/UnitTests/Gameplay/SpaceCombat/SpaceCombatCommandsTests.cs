@@ -4026,6 +4026,59 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsFalse(SpaceCombatQueries.IsShieldedByPlanet(station, null));
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ProcessTick_TorpedoSquadronAgainstAStation_DestroysItUnlessAPlanetaryShieldProtectsIt(
+            bool shielded
+        )
+        {
+            GameRoot game = CreateAutomaticCombatGame();
+            game.Config.Combat.SpaceCombat.BattleStationTrenchRunBaseChance = 1;
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "empire");
+            CreatePlanet(game, "allianceHome", owner: "alliance");
+            Fleet stationFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 1, 25000, 0);
+            CapitalShip station = stationFleet.GetChildren<CapitalShip>().Single();
+            station.TypeID = "station-type";
+            station.CanDestroyPlanets = true;
+            if (shielded)
+            {
+                combatPlanet.AddTestChild(
+                    new Building
+                    {
+                        InstanceID = "station-shield",
+                        OwnerInstanceID = "empire",
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                        ProtectedUnitTypeIDs = { "station-type" },
+                    }
+                );
+            }
+
+            Fleet strikeFleet = CreateFleet(game, "af1", "alliance", combatPlanet, 1, 100, 0);
+            CapitalShip carrier = strikeFleet.GetChildren<CapitalShip>().Single();
+            carrier.StarfighterCapacity = 1;
+            Starfighter torpedoSquadron = new Starfighter
+            {
+                InstanceID = "y-wing",
+                OwnerInstanceID = "alliance",
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                ShieldStrength = 1,
+                Hyperdrive = 1,
+                SublightSpeed = 8,
+                Torpedoes = 4,
+                TorpedoRange = 7,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(torpedoSquadron, carrier);
+            SpaceCombatCommands manager = MakeSpaceCombat(game);
+
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
+
+            bool stationSurvived =
+                game.GetSceneNodeByInstanceID<CapitalShip>(station.InstanceID) != null;
+            Assert.AreEqual(shielded, stationSurvived);
+        }
+
         [Test]
         public void ResolvePendingTactical_IncompleteBattle_ThrowsInvalidOperationException()
         {
@@ -4651,6 +4704,9 @@ namespace Rebellion.Tests.Gameplay
                         AutoResolveComponentDelayMinimum = 30,
                         AutoResolveComponentDelayMaximum = 50,
                         AutoResolveComponentDelayRecovery = 1,
+                        BattleStationSuperlaserRechargeRounds = 360,
+                        BattleStationTrenchRunBaseChance = 0.9,
+                        BattleStationTrenchRunMinimumChance = 0.25,
                     }.WithShippedTacticalSettings(),
                 },
             };

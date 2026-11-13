@@ -9,12 +9,14 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Missions;
 using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
 using Rebellion.PlayerRequests;
+using Rebellion.SceneGraph;
 using UnityEngine;
 
 namespace Rebellion.Tests.Multiplayer
@@ -24,6 +26,158 @@ namespace Rebellion.Tests.Multiplayer
     {
         private const string _hostFactionID = "FNALL1";
         private const string _guestFactionID = "FNEMP1";
+
+        [TestCase(MultiplayerRole.Host)]
+        [TestCase(MultiplayerRole.Guest)]
+        public void Pump_PlanetMissionRequest_StartsMatchingMissionOnBothPeers(MultiplayerRole role)
+        {
+            using PeerPair peers = new();
+            bool host = role == MultiplayerRole.Host;
+            string actor = host ? _hostFactionID : _guestFactionID;
+            string originID = host ? "host-planet" : "guest-planet";
+            string targetID = host ? "guest-planet" : "host-planet";
+            foreach (GameRoot game in new[] { peers.HostGame, peers.GuestGame })
+            {
+                game.AttachNode(
+                    new SpecialForces
+                    {
+                        InstanceID = "mission-agent",
+                        OwnerInstanceID = actor,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                        AllowedMissionTypeIDs = new List<string>
+                        {
+                            ReconnaissanceMission.MissionTypeID,
+                        },
+                    },
+                    game.GetSceneNodeByInstanceID<Planet>(originID)
+                );
+            }
+            GameRoot issuerGame = host ? peers.HostGame : peers.GuestGame;
+            GameSession issuerSession = host ? peers.HostSimulation : peers.GuestSimulation;
+            Planet target = issuerGame.GetSceneNodeByInstanceID<Planet>(targetID);
+            SpecialForces agent = issuerGame.GetSceneNodeByInstanceID<SpecialForces>(
+                "mission-agent"
+            );
+            Assert.IsTrue(
+                issuerSession
+                    .GetService<MissionQueries>()
+                    .CanCreateMission(
+                        new MissionContext
+                        {
+                            MissionTypeID = ReconnaissanceMission.MissionTypeID,
+                            Location = target,
+                            SelectedTarget = target,
+                            MainParticipants = new List<IMissionParticipant> { agent },
+                        }
+                    ),
+                "The mission must be eligible before crossing the multiplayer boundary."
+            );
+
+            Task<PlayerRequestOutcome> request = (host ? peers.Host : peers.Guest).ExecuteAsync(
+                new StartMissionRequest
+                {
+                    MissionTypeID = ReconnaissanceMission.MissionTypeID,
+                    ObservedLocation = target,
+                    ObservedTarget = target,
+                    MainParticipantIDs = new[] { agent.InstanceID },
+                }
+            );
+            peers.Flush();
+
+            Assert.IsTrue(request.Result.Accepted, request.Result.RejectionReason);
+            foreach (GameRoot game in new[] { peers.HostGame, peers.GuestGame })
+            {
+                Mission mission = game.GetSceneNodesByType<Mission>().Single();
+                Assert.IsInstanceOf<ReconnaissanceMission>(mission);
+                Assert.IsTrue(mission.HasInitiated);
+                Assert.AreEqual(targetID, mission.LocationInstanceID);
+            }
+            peers.AssertSharedState();
+        }
+
+        [TestCase(MultiplayerRole.Host, false)]
+        [TestCase(MultiplayerRole.Guest, false)]
+        [TestCase(MultiplayerRole.Host, true)]
+        [TestCase(MultiplayerRole.Guest, true)]
+        public void Pump_EntityMissionRequest_PreservesObservedTargetHierarchy(
+            MultiplayerRole role,
+            bool targetOfficerAboardShip
+        )
+        {
+            using PeerPair peers = new();
+            bool host = role == MultiplayerRole.Host;
+            string actor = host ? _hostFactionID : _guestFactionID;
+            string opponent = host ? _guestFactionID : _hostFactionID;
+            string originID = host ? "host-planet" : "guest-planet";
+            string targetID = host ? "guest-planet" : "host-planet";
+            string targetShipID = host ? "guest-ship" : "host-ship";
+            string missionType = targetOfficerAboardShip
+                ? AssassinationMission.MissionTypeID
+                : SabotageMission.MissionTypeID;
+            foreach (GameRoot game in new[] { peers.HostGame, peers.GuestGame })
+            {
+                game.AttachNode(
+                    new Officer
+                    {
+                        InstanceID = "mission-agent",
+                        OwnerInstanceID = actor,
+                        Ratings = new Dictionary<SkillRating, int> { { SkillRating.Combat, 50 } },
+                    },
+                    game.GetSceneNodeByInstanceID<Planet>(originID)
+                );
+                ISceneNode target = targetOfficerAboardShip
+                    ? new Officer { InstanceID = "mission-target", OwnerInstanceID = opponent }
+                    : new Regiment
+                    {
+                        InstanceID = "mission-target",
+                        OwnerInstanceID = opponent,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    };
+                game.AttachNode(
+                    target,
+                    targetOfficerAboardShip
+                        ? game.GetSceneNodeByInstanceID<CapitalShip>(targetShipID)
+                        : game.GetSceneNodeByInstanceID<Planet>(targetID)
+                );
+            }
+            GameRoot issuerGame = host ? peers.HostGame : peers.GuestGame;
+            GameSession issuerSession = host ? peers.HostSimulation : peers.GuestSimulation;
+            Planet location = issuerGame.GetSceneNodeByInstanceID<Planet>(targetID);
+            ISceneNode observedTarget = issuerGame.GetSceneNodeByInstanceID<ISceneNode>(
+                "mission-target"
+            );
+            Officer agent = issuerGame.GetSceneNodeByInstanceID<Officer>("mission-agent");
+            Assert.IsTrue(
+                issuerSession
+                    .GetService<MissionQueries>()
+                    .CanCreateMission(
+                        new MissionContext
+                        {
+                            MissionTypeID = missionType,
+                            Location = location,
+                            SelectedTarget = observedTarget,
+                            MainParticipants = new List<IMissionParticipant> { agent },
+                        }
+                    ),
+                "The entity-target mission must be eligible before serialization."
+            );
+
+            Task<PlayerRequestOutcome> request = (host ? peers.Host : peers.Guest).ExecuteAsync(
+                new StartMissionRequest
+                {
+                    MissionTypeID = missionType,
+                    ObservedLocation = location,
+                    ObservedTarget = observedTarget,
+                    MainParticipantIDs = new[] { agent.InstanceID },
+                }
+            );
+            peers.Flush();
+
+            Assert.IsTrue(request.Result.Accepted, request.Result.RejectionReason);
+            Assert.AreEqual(1, peers.HostGame.GetSceneNodesByType<Mission>().Count);
+            Assert.AreEqual(1, peers.GuestGame.GetSceneNodesByType<Mission>().Count);
+            peers.AssertSharedState();
+        }
 
         [Test]
         public void WaitForCampaignCompletionAsync_NoVictory_DoesNotEndRunningGame()
@@ -452,6 +606,7 @@ namespace Rebellion.Tests.Multiplayer
             peers.GuestSimulation.ReplaceGame(
                 MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash)
             );
+            peers.GuestGame.UseDeterministicRuntimeIdentifiers = true;
             foreach (GameRoot game in new[] { peers.HostGame, peers.GuestGame })
                 game.AttachNode(
                     new Regiment { InstanceID = "added", OwnerInstanceID = _hostFactionID },
@@ -990,7 +1145,7 @@ namespace Rebellion.Tests.Multiplayer
             peers.Flush();
 
             Assert.IsTrue(Completed(request).Accepted);
-            Assert.AreEqual(1, peers.HostGame.RuntimeIdentifierIndex);
+            Assert.AreEqual(1, peers.HostGame.IDCounter);
             peers.AssertSharedState();
         }
 
@@ -2020,6 +2175,8 @@ namespace Rebellion.Tests.Multiplayer
                     MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash),
                     content
                 );
+                HostGame.UseDeterministicRuntimeIdentifiers = true;
+                GuestGame.UseDeterministicRuntimeIdentifiers = true;
                 HostGame.LocalPlayerFactionID = _hostFactionID;
                 GuestGame.LocalPlayerFactionID = _guestFactionID;
                 HostClock = new GameManager(() => HostGame, HostSimulation.Tick);

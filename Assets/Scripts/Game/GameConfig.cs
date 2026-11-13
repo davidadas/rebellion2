@@ -2098,6 +2098,12 @@ namespace Rebellion.Game
 
             public double AutoResolveTorpedoDamagePerStrength { get; set; }
 
+            public double BattleStationSuperlaserRechargeRounds { get; set; }
+
+            public double BattleStationTrenchRunBaseChance { get; set; }
+
+            public double BattleStationTrenchRunMinimumChance { get; set; }
+
             public double TacticalFighterHullStrength { get; set; }
 
             public double TacticalFighterShieldMultiplier { get; set; }
@@ -2113,12 +2119,6 @@ namespace Rebellion.Game
             public double TacticalShieldRechargeMultiplier { get; set; }
 
             public double TacticalShieldGeneratorRepairMultiplier { get; set; }
-
-            public double TacticalSuperlaserRechargeSeconds { get; set; }
-
-            public double TacticalTrenchRunBaseChance { get; set; }
-
-            public double TacticalTrenchRunMinimumChance { get; set; }
 
             public double AutoResolveFighterWeaponRechargeMultiplier { get; set; }
 
@@ -2165,6 +2165,9 @@ namespace Rebellion.Game
                         FighterIonCannonFighterDamageMultiplier,
                     AutoResolveWeaponDamagePerStrength = AutoResolveWeaponDamagePerStrength,
                     AutoResolveTorpedoDamagePerStrength = AutoResolveTorpedoDamagePerStrength,
+                    BattleStationSuperlaserRechargeRounds = BattleStationSuperlaserRechargeRounds,
+                    BattleStationTrenchRunBaseChance = BattleStationTrenchRunBaseChance,
+                    BattleStationTrenchRunMinimumChance = BattleStationTrenchRunMinimumChance,
                     TacticalFighterHullStrength = TacticalFighterHullStrength,
                     TacticalFighterShieldMultiplier = TacticalFighterShieldMultiplier,
                     TacticalTurbolaserFighterHitChance = TacticalTurbolaserFighterHitChance,
@@ -2174,9 +2177,6 @@ namespace Rebellion.Game
                     TacticalShieldRechargeMultiplier = TacticalShieldRechargeMultiplier,
                     TacticalShieldGeneratorRepairMultiplier =
                         TacticalShieldGeneratorRepairMultiplier,
-                    TacticalSuperlaserRechargeSeconds = TacticalSuperlaserRechargeSeconds,
-                    TacticalTrenchRunBaseChance = TacticalTrenchRunBaseChance,
-                    TacticalTrenchRunMinimumChance = TacticalTrenchRunMinimumChance,
                     AutoResolveFighterWeaponRechargeMultiplier =
                         AutoResolveFighterWeaponRechargeMultiplier,
                     AutoResolveFighterShieldRechargePerCraft =

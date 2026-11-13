@@ -23,9 +23,9 @@ public static class TacticalCombatTestSettings
         config.TacticalShieldGeneratorHitChance = 0.03;
         config.TacticalShieldRechargeMultiplier = 0.5;
         config.TacticalShieldGeneratorRepairMultiplier = 2;
-        config.TacticalSuperlaserRechargeSeconds = 180;
-        config.TacticalTrenchRunBaseChance = 0.9;
-        config.TacticalTrenchRunMinimumChance = 0.25;
+        config.BattleStationSuperlaserRechargeRounds = 360;
+        config.BattleStationTrenchRunBaseChance = 0.9;
+        config.BattleStationTrenchRunMinimumChance = 0.25;
         return config;
     }
 }

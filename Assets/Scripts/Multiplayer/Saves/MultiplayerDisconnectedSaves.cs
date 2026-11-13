@@ -62,7 +62,7 @@ namespace Rebellion.Multiplayer
                 fileName
             );
             // A local publication must not claim to match an older copy on the absent peer.
-            game.Metadata.SharedSaveToken = Guid.NewGuid().ToString("N");
+            game.Metadata.SaveID = Guid.NewGuid().ToString("N");
             bool saved = await _sessionManager.SaveGameLocallyAsync(localFileName, displayName);
             if (saved && ReferenceEquals(_sessionManager.GetActiveGameSession(), _session))
                 _checkpointPublished?.Invoke();

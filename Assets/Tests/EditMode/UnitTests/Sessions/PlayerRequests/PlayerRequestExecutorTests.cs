@@ -481,6 +481,34 @@ namespace Rebellion.Tests.PlayerRequests
         }
 
         [Test]
+        public void Execute_StartMissionWithDifferentPlanetTarget_DoesNotCreateMission()
+        {
+            SpecialForces participant = new SpecialForces
+            {
+                InstanceID = "recon-agent",
+                OwnerInstanceID = _ownerID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                AllowedMissionTypeIDs = new List<string> { ReconnaissanceMission.MissionTypeID },
+            };
+            _game.AttachNode(participant, _origin);
+
+            PlayerRequestOutcome result = _executor.Execute(
+                _ownerID,
+                new StartMissionRequest
+                {
+                    MissionTypeID = ReconnaissanceMission.MissionTypeID,
+                    ObservedLocation = _opponentPlanet,
+                    ObservedTarget = _origin,
+                    MainParticipantIDs = new[] { participant.InstanceID },
+                }
+            );
+
+            Assert.IsFalse(result.Accepted);
+            Assert.IsEmpty(_game.GetSceneNodesByType<Mission>());
+            Assert.AreSame(_origin, participant.GetParent());
+        }
+
+        [Test]
         public void Execute_AbortOtherFactionMission_DoesNotInterruptMission()
         {
             SabotageMission mission = new SabotageMission
@@ -1054,15 +1082,15 @@ namespace Rebellion.Tests.PlayerRequests
         public void Execute_SendPeerChatWithDeterministicIdentities_ConsumesOneRuntimeIdentity()
         {
             _game.UseDeterministicRuntimeIdentifiers = true;
-            long identityBefore = _game.RuntimeIdentifierIndex;
+            long identityBefore = _game.IDCounter;
             long randomBefore = _game.RandomIndex;
 
             _executor.Execute(_ownerID, new SendPeerChatRequest { Text = "Message" });
 
             Message message = _opponent.Messages[MessageType.Chat].Single();
-            Assert.AreEqual(identityBefore + 1, _game.RuntimeIdentifierIndex);
+            Assert.AreEqual(identityBefore + 1, _game.IDCounter);
             Assert.IsTrue(Guid.TryParseExact(message.InstanceID, "N", out _));
-            Assert.AreEqual(identityBefore + 1, _game.RuntimeIdentifierIndex);
+            Assert.AreEqual(identityBefore + 1, _game.IDCounter);
             Assert.AreEqual(randomBefore, _game.RandomIndex);
         }
 
@@ -1093,7 +1121,7 @@ namespace Rebellion.Tests.PlayerRequests
                     .Single()
                     .InstanceID
             );
-            Assert.AreEqual(_game.RuntimeIdentifierIndex, copy.RuntimeIdentifierIndex);
+            Assert.AreEqual(_game.IDCounter, copy.IDCounter);
         }
 
         /// <summary>

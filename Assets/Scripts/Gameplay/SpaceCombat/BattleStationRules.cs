@@ -30,8 +30,7 @@ namespace Rebellion.Gameplay
         /// <returns>The recharge time in combat rounds.</returns>
         internal static double GetRechargeRounds(GameConfig.SpaceCombatConfig config)
         {
-            return Math.Max(config.TacticalSuperlaserRechargeSeconds, 0)
-                / TacticalSpaceBattle.RoundSeconds;
+            return Math.Max(config.BattleStationSuperlaserRechargeRounds, 0);
         }
 
         /// <summary>
@@ -55,9 +54,9 @@ namespace Rebellion.Gameplay
             if (!armed || attackers <= 0)
                 return 0;
 
-            double baseChance = Math.Max(Math.Min(config.TacticalTrenchRunBaseChance, 1), 0);
+            double baseChance = Math.Max(Math.Min(config.BattleStationTrenchRunBaseChance, 1), 0);
             double minimumChance = Math.Min(
-                Math.Max(config.TacticalTrenchRunMinimumChance, 0),
+                Math.Max(config.BattleStationTrenchRunMinimumChance, 0),
                 baseChance
             );
             return defenders <= attackers

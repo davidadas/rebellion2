@@ -110,10 +110,7 @@ namespace Rebellion.Tests.Multiplayer
                 "save_20261027_010203"
             );
             CollectionAssert.AreEqual(peers.HostFiles[hostName], peers.GuestFiles[guestName]);
-            Assert.AreEqual(
-                peers.HostMetadata.SharedSaveToken,
-                peers.GuestMetadata.SharedSaveToken
-            );
+            Assert.AreEqual(peers.HostMetadata.SaveID, peers.GuestMetadata.SaveID);
             Assert.AreEqual(peers.HostMetadata.LastSavedUtc, peers.GuestMetadata.LastSavedUtc);
         }
 
@@ -203,10 +200,7 @@ namespace Rebellion.Tests.Multiplayer
             Assert.AreEqual(1, peers.HostFiles.Count);
             Assert.IsEmpty(peers.GuestFiles);
             Assert.AreEqual(peers.HostMetadata.LastSavedUtc, peers.GuestMetadata.LastSavedUtc);
-            Assert.AreEqual(
-                peers.HostMetadata.SharedSaveToken,
-                peers.GuestMetadata.SharedSaveToken
-            );
+            Assert.AreEqual(peers.HostMetadata.SaveID, peers.GuestMetadata.SaveID);
             Assert.IsFalse(peers.Host.BlocksGameplay);
             Assert.IsFalse(peers.Guest.BlocksGameplay);
         }
@@ -433,7 +427,7 @@ namespace Rebellion.Tests.Multiplayer
                 false
             );
             peers.Flush();
-            string firstToken = peers.HostMetadata.SharedSaveToken;
+            string firstToken = peers.HostMetadata.SaveID;
 
             Task<bool> second = (guestFirst ? peers.Host : peers.Guest).RequestAsync(
                 "second",
@@ -469,11 +463,8 @@ namespace Rebellion.Tests.Multiplayer
                 );
                 CollectionAssert.AreEqual(peers.HostFiles[hostName], peers.GuestFiles[guestName]);
             }
-            Assert.That(peers.HostMetadata.SharedSaveToken, Is.Not.EqualTo(firstToken));
-            Assert.That(
-                peers.GuestMetadata.SharedSaveToken,
-                Is.EqualTo(peers.HostMetadata.SharedSaveToken)
-            );
+            Assert.That(peers.HostMetadata.SaveID, Is.Not.EqualTo(firstToken));
+            Assert.That(peers.GuestMetadata.SaveID, Is.EqualTo(peers.HostMetadata.SaveID));
             Assert.That(peers.Host.Failure, Is.Null);
             Assert.That(peers.Guest.Failure, Is.Null);
         }
@@ -691,7 +682,7 @@ namespace Rebellion.Tests.Multiplayer
                         }
                     );
                 }
-                HostMetadata.SharedSaveToken = command.token;
+                HostMetadata.SaveID = command.token;
                 HostMetadata.LastSavedUtc = new DateTime(2026, 10, 27, 1, 2, 3, DateTimeKind.Utc);
                 byte[] payload = MultiplayerSnapshotCodec.Serialize(
                     typeof(GameMetadata),

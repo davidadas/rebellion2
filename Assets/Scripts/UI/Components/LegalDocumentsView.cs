@@ -112,7 +112,7 @@ public sealed class LegalDocumentsView : MonoBehaviour, ICancelable
     }
 
     /// <summary>
-    /// Requires both documents to be agreed to for each multiplayer entry.
+    /// Opens the multiplayer entry prompt with separate agreement to both documents.
     /// </summary>
     public void ShowMultiplayerAgreement()
     {
@@ -241,10 +241,7 @@ public sealed class LegalDocumentsView : MonoBehaviour, ICancelable
         if (_mode == DocumentMode.Agreement)
             Accepted?.Invoke();
         else if (_mode == DocumentMode.Multiplayer)
-        {
-            Hide();
             MultiplayerAccepted?.Invoke();
-        }
     }
 
     /// <summary>

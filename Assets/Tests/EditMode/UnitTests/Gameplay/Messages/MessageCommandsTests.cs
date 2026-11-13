@@ -29,9 +29,9 @@ namespace Rebellion.Tests.Gameplay
                 }
             );
 
-            Assert.AreEqual(1, game.RuntimeIdentifierIndex);
+            Assert.AreEqual(1, game.IDCounter);
             Assert.IsTrue(Guid.TryParseExact(message.InstanceID, "N", out _));
-            Assert.AreEqual(1, game.RuntimeIdentifierIndex);
+            Assert.AreEqual(1, game.IDCounter);
         }
 
         [Test]
@@ -47,7 +47,7 @@ namespace Rebellion.Tests.Gameplay
             commands.Deliver(CreateDeliveries(factory, (faction, "Battle", "Result", report)));
 
             Assert.AreEqual("saved-report", report.InstanceID);
-            Assert.Zero(game.RuntimeIdentifierIndex);
+            Assert.Zero(game.IDCounter);
         }
 
         [Test]
@@ -62,7 +62,7 @@ namespace Rebellion.Tests.Gameplay
 
             commands.Deliver(CreateDeliveries(factory, (faction, "Battle", "Result", report)));
 
-            Assert.AreEqual(1, game.RuntimeIdentifierIndex);
+            Assert.AreEqual(1, game.IDCounter);
             Assert.IsTrue(Guid.TryParseExact(report.InstanceID, "N", out _));
         }
 

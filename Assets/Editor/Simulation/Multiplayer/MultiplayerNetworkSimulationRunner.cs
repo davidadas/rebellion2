@@ -547,7 +547,7 @@ public static class MultiplayerNetworkSimulationRunner
         report.finalStateHash = HashBytes(Encoding.UTF8.GetBytes(hostXml));
         report.finalFingerprint = hostFingerprint;
         report.finalRandomIndex = host.RandomIndex;
-        report.finalIdentifierIndex = host.RuntimeIdentifierIndex;
+        report.finalIdentifierIndex = host.IDCounter;
     }
 
     /// <summary>

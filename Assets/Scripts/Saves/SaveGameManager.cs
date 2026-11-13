@@ -517,7 +517,7 @@ public class SaveGameManager
             throw new ArgumentNullException(nameof(game));
         if (
             metadata?.MultiplayerCampaign == null
-            || !Guid.TryParseExact(metadata.SharedSaveToken, "N", out _)
+            || !Guid.TryParseExact(metadata.SaveID, "N", out _)
         )
             throw new ArgumentException(
                 "A coordinated save requires shared checkpoint metadata.",

@@ -56,6 +56,39 @@ namespace Rebellion.Tests.Multiplayer
         }
 
         [Test]
+        public void ComputeSimulation_DifferentLivePlayerName_DetectsDifference()
+        {
+            _restored.Game.GetFactionPlayer("owner").DisplayName = "Current player";
+
+            Assert.AreNotEqual(
+                MultiplayerStateFingerprint.ComputeSimulation(_source),
+                MultiplayerStateFingerprint.ComputeSimulation(_restored)
+            );
+        }
+
+        [Test]
+        public void ComputeSimulation_DifferentLiveSpeedRevision_DetectsDifference()
+        {
+            _restored.Game.GetFactionPlayer("owner").GameSpeedSelectionRevision++;
+
+            Assert.AreNotEqual(
+                MultiplayerStateFingerprint.ComputeSimulation(_source),
+                MultiplayerStateFingerprint.ComputeSimulation(_restored)
+            );
+        }
+
+        [Test]
+        public void ComputeSimulation_DifferentRuntimeIdentityMode_DetectsDifference()
+        {
+            _restored.Game.UseDeterministicRuntimeIdentifiers = true;
+
+            Assert.AreNotEqual(
+                MultiplayerStateFingerprint.ComputeSimulation(_source),
+                MultiplayerStateFingerprint.ComputeSimulation(_restored)
+            );
+        }
+
+        [Test]
         public void ComputeSimulation_IndependentEventDefinitions_MatchAfterSnapshotRestore()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -116,6 +149,7 @@ namespace Rebellion.Tests.Multiplayer
         {
             GameRoot state = _restored.Game;
             state.Random = new SystemRandomProvider(456, state.RandomIndex);
+            state.Summary.Seed = _source.Game.Summary.Seed;
             _restored.ReplaceGame(state);
             Assert.AreEqual(_source.Game.Summary.Seed, _restored.Game.Summary.Seed);
             Assert.AreEqual(_source.Game.RandomIndex, _restored.Game.RandomIndex);
