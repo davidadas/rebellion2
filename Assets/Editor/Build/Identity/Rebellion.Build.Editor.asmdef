@@ -1,0 +1,11 @@
+{
+    "name": "Rebellion.Build.Editor",
+    "references": [
+        "GameAssembly",
+        "Unity.Rebellion.Build.CodeGen"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "autoReferenced": false
+}
