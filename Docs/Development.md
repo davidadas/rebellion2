@@ -12,6 +12,9 @@
 Access to development content does not grant redistribution rights. **NEVER share, upload, commit,
 or otherwise redistribute `rebellion2-media`, `Assets/Content`, or any copyrighted game asset.**
 
+Windows output recovery and troubleshooting overrides are described in
+[Windows audio recovery](WindowsAudio.md).
+
 ## Setup
 
 1. Clone `rebellion2` and `rebellion2-media` beside one another.
