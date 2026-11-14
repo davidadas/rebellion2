@@ -54,6 +54,8 @@ namespace Rebellion.Tests.Gameplay
                     .Where(result => result.GameObject == damage.Ship)
                     .Sum(result => result.DamageValue);
                 Assert.AreEqual(damage.HullBefore - damage.HullAfter, totalDamage);
+                if (damage.HullAfter > 0)
+                    Assert.Greater(damage.Ship.NextRepairTick, game.CurrentTick);
             }
             CombatUnitSnapshot empireShipSnapshot = combatResult.AttackingUnits.Single(unit =>
                 unit.Unit.GetInstanceID() == empireShip.GetInstanceID()

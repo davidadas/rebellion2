@@ -342,8 +342,8 @@
     <MaxInjuryPoints>32767</MaxInjuryPoints>
     <FastHealAmount>2</FastHealAmount>
     <NormalHealAmount>1</NormalHealAmount>
-    <FastRepairAmount>2</FastRepairAmount>
-    <NormalRepairAmount>1</NormalRepairAmount>
+    <FastRepairIntervalTicks>2</FastRepairIntervalTicks>
+    <NormalRepairIntervalTicks>30</NormalRepairIntervalTicks>
     <FastReplacementIntervalTicks>2</FastReplacementIntervalTicks>
     <NormalReplacementIntervalTicks>30</NormalReplacementIntervalTicks>
   </Recovery>

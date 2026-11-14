@@ -1051,6 +1051,7 @@ namespace Rebellion.Gameplay
         )
         {
             List<GameResult> events = new List<GameResult>();
+            HashSet<(string PlanetInstanceId, string OwnerInstanceId)> shipyardLocations = null;
 
             foreach (ShipDamageResult damage in damageResults)
             {
@@ -1058,6 +1059,7 @@ namespace Rebellion.Gameplay
                 if (ship == null)
                     continue;
 
+                bool wasDamaged = ship.IsDamaged();
                 ship.CurrentHullStrength = damage.HullAfter;
 
                 events.Add(
@@ -1100,6 +1102,14 @@ namespace Rebellion.Gameplay
                     );
                     GameLogger.Log($"Ship destroyed: {ship.GetDisplayName()}");
                 }
+                else if (!wasDamaged && ship.IsDamaged())
+                {
+                    shipyardLocations ??= RecoveryLocationRules.BuildShipyardIndex(_game);
+                    ship.ScheduleRepair(
+                        _game.CurrentTick,
+                        ShipRecoveryRules.GetRepairInterval(_game, ship, shipyardLocations)
+                    );
+                }
             }
 
             return events;
@@ -1125,7 +1135,7 @@ namespace Rebellion.Gameplay
             );
             HashSet<(string PlanetInstanceId, string OwnerInstanceId)> shipyardLocations =
                 needsReplacementSchedule
-                    ? FighterRecoveryRules.BuildShipyardIndex(_game)
+                    ? RecoveryLocationRules.BuildShipyardIndex(_game)
                     : new HashSet<(string PlanetInstanceId, string OwnerInstanceId)>();
             foreach (FighterLossResult loss in lossResults)
             {
