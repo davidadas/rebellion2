@@ -2,8 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using Unity.CompilationPipeline.Common.Diagnostics;
@@ -14,16 +12,7 @@ using Unity.CompilationPipeline.Common.ILPostProcessing;
 /// </summary>
 internal sealed class SimulationBuildIdentityPostProcessor : ILPostProcessor
 {
-    private const string _metadataKey = "SimulationBuild";
     private const string _attributeTypeName = "System.Reflection.AssemblyMetadataAttribute";
-    private const string _legacyGeneratedPath = "Assets/Scripts/AssemblyBuildIdentity.g.cs";
-    private static readonly string[] _dependencyInputs =
-    {
-        "Assets/Scripts/GameAssembly.asmdef",
-        "Packages/manifest.json",
-        "Packages/packages-lock.json",
-        "ProjectSettings/ProjectVersion.txt",
-    };
 
     /// <summary>
     /// Returns this stateless compiler processor.
@@ -75,7 +64,8 @@ internal sealed class SimulationBuildIdentityPostProcessor : ILPostProcessor
             CustomAttribute attribute = assembly.CustomAttributes[index];
             if (
                 attribute.AttributeType.FullName == _attributeTypeName
-                && (string)attribute.ConstructorArguments[0].Value == _metadataKey
+                && (string)attribute.ConstructorArguments[0].Value
+                    == SimulationBuildIdentityInputs.MetadataKey
             )
                 assembly.CustomAttributes.RemoveAt(index);
         }
@@ -87,10 +77,16 @@ internal sealed class SimulationBuildIdentityPostProcessor : ILPostProcessor
         constructor.Parameters.Add(new ParameterDefinition(module.TypeSystem.String));
         CustomAttribute identity = new(constructor);
         identity.ConstructorArguments.Add(
-            new CustomAttributeArgument(module.TypeSystem.String, _metadataKey)
+            new CustomAttributeArgument(
+                module.TypeSystem.String,
+                SimulationBuildIdentityInputs.MetadataKey
+            )
         );
         identity.ConstructorArguments.Add(
-            new CustomAttributeArgument(module.TypeSystem.String, ComputeIdentity())
+            new CustomAttributeArgument(
+                module.TypeSystem.String,
+                SimulationBuildIdentityInputs.ComputeIdentity()
+            )
         );
         assembly.CustomAttributes.Add(identity);
 
@@ -109,34 +105,5 @@ internal sealed class SimulationBuildIdentityPostProcessor : ILPostProcessor
             new InMemoryAssembly(output.ToArray(), outputSymbols.ToArray()),
             new List<DiagnosticMessage>()
         );
-    }
-
-    /// <summary>
-    /// Hashes normalized source and dependency inputs independently of checkout root and line endings.
-    /// </summary>
-    /// <returns>The compiled source-input digest.</returns>
-    private static string ComputeIdentity()
-    {
-        using MemoryStream bytes = new();
-        foreach (
-            string input in Directory
-                .GetFiles("Assets/Scripts", "*.cs", SearchOption.AllDirectories)
-                .Select(path => path.Replace('\\', '/'))
-                .Where(path => path != _legacyGeneratedPath)
-                .Concat(_dependencyInputs)
-                .OrderBy(path => path, StringComparer.Ordinal)
-        )
-        {
-            byte[] part = Encoding.UTF8.GetBytes(
-                input
-                    + "\0"
-                    + File.ReadAllText(input).Replace("\r\n", "\n").Replace('\r', '\n')
-                    + "\0"
-            );
-            bytes.Write(part, 0, part.Length);
-        }
-        bytes.Position = 0;
-        using SHA256 hash = SHA256.Create();
-        return BitConverter.ToString(hash.ComputeHash(bytes)).Replace("-", string.Empty);
     }
 }
