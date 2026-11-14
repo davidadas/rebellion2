@@ -42,10 +42,6 @@ namespace Rebellion.Gameplay
     /// </summary>
     public sealed class SpaceCombatAutoResolver
     {
-        // The first part of the escape leg a withdrawing unit covers, in starting distances:
-        // as far as a starting line lies from its own edge of the battlefield.
-        private const double _startingEdgeDistanceFactor = 0.6;
-
         private readonly GameConfig.SpaceCombatConfig _config;
         private readonly IRandomNumberProvider _random;
 
@@ -612,20 +608,7 @@ namespace Rebellion.Gameplay
                 unit.AdvanceTacticalState(_config, _random);
             }
 
-            force.CompleteReadyWithdrawals(GetWithdrawalDistance());
-        }
-
-        /// <summary>
-        /// Returns the escape leg a unit covers to leave the battle: as far as a starting line
-        /// lies from its own edge of the battlefield, and then the configured distance beyond it.
-        /// The leg is the same however far the unit has advanced, because the resolver tracks no
-        /// positions: a unit's approach keeps growing for as long as the battle lasts.
-        /// </summary>
-        /// <returns>The distance a withdrawing unit covers before it is gone.</returns>
-        private double GetWithdrawalDistance()
-        {
-            return Math.Max(_config.AutoResolveStartingDistance, 0) * _startingEdgeDistanceFactor
-                + Math.Max(_config.AutoResolveWithdrawalDistance, 0);
+            force.CompleteReadyWithdrawals(Math.Max(_config.AutoResolveWithdrawalDistance, 0));
         }
 
         /// <summary>
@@ -1355,15 +1338,14 @@ namespace Rebellion.Gameplay
             internal abstract double RemainingDurability { get; }
             internal abstract bool CanScanForTargets { get; }
             internal virtual bool IsAttackDelayed => false;
-            internal bool CanFire => IsTargetable && !IsAttackDelayed;
+            internal bool CanFire => IsTargetable && !IsWithdrawing && !IsAttackDelayed;
             internal bool HasWithdrawn { get; private set; }
             internal bool IsWithdrawing { get; private set; }
 
             /// <summary>
-            /// Gets whether enemies can still engage this unit: one running for hyperspace stays
-            /// under fire, and returns it, until it is gone.
+            /// Gets whether enemies can still engage this unit.
             /// </summary>
-            internal bool IsTargetable => IsAlive && !HasWithdrawn && !IsOffField;
+            internal bool IsTargetable => IsAlive && !HasWithdrawn && !IsWithdrawing && !IsOffField;
 
             /// <summary>
             /// Gets whether the unit has left the fight without leaving the battle, as a squadron

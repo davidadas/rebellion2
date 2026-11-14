@@ -247,12 +247,6 @@ the battle, or strands without a hyperdrive, is gone before the fleet moves and 
 escorts out of a system that holds another (`SpaceCombatWithdrawalPlanner`,
 `Planet.CanAcceptFleet`).
 
-`SpaceCombatAutoResolver` keeps a withdrawing unit in the fight until it is gone. The unit can be
-shot at, and shoots back, while it covers a fixed escape leg: 0.6 starting distances, as far as a
-starting line lies from its own edge of the battlefield, and then `AutoResolveWithdrawalDistance`
-beyond it. The leg is the same however far the unit has advanced, because the resolver tracks no
-positions.
-
 A capital ship that can destroy planets does not join the battle line in an auto-resolved battle.
 It stands off where no weapon can reach it (`BattleStationState`, under the rules in
 `BattleStationRules`) and takes part in two ways. Its superlaser opens the battle charged, holds
