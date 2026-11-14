@@ -74,7 +74,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void GetAbortReason_UprisingEndedBeforeExecution_ReturnsFailure()
+        public void GetAbortReason_UprisingEndedBeforeExecution_ReturnsTargetUnavailable()
         {
             (
                 GameRoot game,
@@ -98,14 +98,14 @@ namespace Rebellion.Tests.Game.Missions
             empirePlanet.EndUprising();
 
             Assert.AreEqual(
-                MissionCompletionReason.Failure,
+                MissionCompletionReason.TargetUnavailable,
                 mission.GetAbortReason(game),
                 "Mission should be canceled when uprising ends before mission executes"
             );
         }
 
         [Test]
-        public void GetAbortReason_TargetCapturedBeforeExecution_ReturnsFailure()
+        public void GetAbortReason_TargetCapturedBeforeExecution_ReturnsTargetChangedSides()
         {
             (
                 GameRoot game,
@@ -129,7 +129,7 @@ namespace Rebellion.Tests.Game.Missions
             empirePlanet.OwnerInstanceID = "rebels";
 
             Assert.AreEqual(
-                MissionCompletionReason.Failure,
+                MissionCompletionReason.TargetChangedSides,
                 mission.GetAbortReason(game),
                 "Mission should be canceled when its target is captured before execution"
             );
@@ -451,6 +451,87 @@ namespace Rebellion.Tests.Game.Missions
             );
 
             Assert.Zero(probability);
+        }
+
+        [Test]
+        public void GetObjectiveSuccessProbability_NormalGarrisonSufficient_ReturnsSkillProbability()
+        {
+            var (game, planet, mission) = BuildCompletionScene(
+                TestConfig.Create(),
+                2,
+                40,
+                subdue: true
+            );
+
+            Assert.AreEqual(
+                40,
+                mission.GetObjectiveSuccessProbability(mission.GetMainParticipants(), game, planet),
+                0.000001
+            );
+        }
+
+        [Test]
+        public void TryExecuteMission_NormalGarrisonSufficient_EndsUprising()
+        {
+            var (game, planet, mission) = BuildCompletionScene(
+                CreateCompletionConfig(),
+                2,
+                40,
+                subdue: true
+            );
+            UprisingResolver resolver = CreateCompletionResolver(game, new QueueRNG(0, 0));
+
+            resolver.TryExecuteMission(mission, out List<GameResult> results);
+
+            Assert.IsFalse(planet.IsInUprising);
+            Assert.AreEqual(
+                MissionOutcome.Success,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+        }
+
+        [Test]
+        public void TryCreate_UncolonizedOwnedPlanet_ReturnsNull()
+        {
+            var (_, planet, _, officer, _) = MissionSceneBuilder.Build();
+            planet.BeginUprising();
+            planet.IsColonized = false;
+
+            Assert.IsNull(
+                CreateSubdueUprisingMission(
+                    "empire",
+                    planet,
+                    new List<IMissionParticipant> { officer },
+                    new List<IMissionParticipant>()
+                )
+            );
+        }
+
+        [Test]
+        public void GetObjectiveSuccessProbability_SuppressingGarrison_IncreasesParticipantScore()
+        {
+            GameConfig config = CreateCompletionConfig();
+            config.Uprising.SuppressionRegiments.Add("guard", "empire");
+            config.ProbabilityTables.Mission.SubdueUprising = new Dictionary<int, int>
+            {
+                { 40, 0 },
+                { 42, 100 },
+            };
+            var (game, planet, mission) = BuildCompletionScene(config, 2, 40, subdue: true);
+            foreach (Regiment regiment in planet.GetAllRegiments())
+                regiment.TypeID = "guard";
+
+            Assert.AreEqual(
+                100,
+                mission.GetObjectiveSuccessProbability(mission.GetMainParticipants(), game, planet)
+            );
+            Assert.IsTrue(
+                mission.RollParticipantSuccess(
+                    mission.GetMainParticipants()[0],
+                    new FixedRNG(0),
+                    game
+                )
+            );
         }
 
         /// <summary>

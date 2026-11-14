@@ -2226,6 +2226,66 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual("no effect", message.Body);
         }
 
+        [TestCase("FNALL1")]
+        [TestCase("FNEMP1")]
+        public void CreateMessages_FailedInciteMission_UsesRecipientThemeBackground(string owner)
+        {
+            var (game, alliance, empire, _, target) = BuildTwoFactionMessageScene();
+            Mission mission = new InciteUprisingMission { OwnerInstanceID = owner };
+            game.AttachNode(mission, target);
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    TestContent.Data.MessageDefinitions,
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionTypeID = mission.ConfigKey,
+                        Location = target,
+                        Outcome = MissionOutcome.Failed,
+                        CompletionReason = MissionCompletionReason.Failure,
+                    }
+                ),
+                owner == alliance.InstanceID ? alliance : empire
+            );
+
+            Assert.AreEqual("mission_report", message.BackgroundImageKey);
+        }
+
+        [Test]
+        public void CreateMessages_UprisingProgressWithoutSpecificDefinition_FallsBackToMissionReport()
+        {
+            var (game, alliance, _, _, target) = BuildTwoFactionMessageScene();
+            Mission mission = new InciteUprisingMission { OwnerInstanceID = alliance.InstanceID };
+            game.AttachNode(mission, target);
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.MissionReport,
+                            MessageType.Mission,
+                            "report",
+                            "progress",
+                            outcome: MessageResultOutcome.Failed,
+                            missionTypeId: mission.ConfigKey
+                        ),
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionTypeID = mission.ConfigKey,
+                        Outcome = MissionOutcome.Failed,
+                        CompletionReason = MissionCompletionReason.UprisingProgress,
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual("progress", message.Body);
+        }
+
         [Test]
         public void CreateMessages_ContinuingMissionReport_CarriesMissionInstanceID()
         {
@@ -2514,6 +2574,24 @@ namespace Rebellion.Tests.Gameplay
             MissionOutcome.Failed,
             "has joined the Empire"
         )]
+        [TestCase(
+            InciteUprisingMission.MissionTypeID,
+            MissionCompletionReason.UprisingProgress,
+            MissionOutcome.Failed,
+            "uprising on Yavin is continuing"
+        )]
+        [TestCase(
+            SubdueUprisingMission.MissionTypeID,
+            MissionCompletionReason.TargetUnavailable,
+            MissionOutcome.Failed,
+            "target is no longer available"
+        )]
+        [TestCase(
+            SubdueUprisingMission.MissionTypeID,
+            MissionCompletionReason.TargetChangedSides,
+            MissionOutcome.Failed,
+            "has joined the Empire"
+        )]
         public void CreateMessages_AuthoredCompletionReason_ReturnsExpectedReport(
             string missionTypeId,
             MissionCompletionReason completionReason,
@@ -2526,6 +2604,8 @@ namespace Rebellion.Tests.Gameplay
             {
                 ResearchMission.MissionTypeID => new ResearchMission(),
                 DiplomacyMission.MissionTypeID => new DiplomacyMission(),
+                InciteUprisingMission.MissionTypeID => new InciteUprisingMission(),
+                SubdueUprisingMission.MissionTypeID => new SubdueUprisingMission(),
                 _ => new SabotageMission(),
             };
             mission.DisplayName = missionTypeId;

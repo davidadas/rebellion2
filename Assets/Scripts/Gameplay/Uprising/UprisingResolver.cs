@@ -140,6 +140,12 @@ namespace Rebellion.Gameplay
             MissionCompletionReason completionReason = objectiveAchieved
                 ? MissionCompletionReason.Success
                 : MissionCompletionReason.Failure;
+            if (
+                !objectiveAchieved
+                && mission is InciteUprisingMission
+                && mission.GetParentOfType<Planet>()?.IsInUprising == true
+            )
+                completionReason = MissionCompletionReason.UprisingProgress;
             results.Add(mission.BuildCompletedResult(outcome, completionReason, _game));
             return results;
         }
@@ -219,7 +225,15 @@ namespace Rebellion.Gameplay
                 return true;
 
             Faction controller = GetControllingFaction(planet);
-            if (controller == null || CalculateGarrisonSurplus(planet, controller) < 0)
+            if (
+                controller == null
+                || CountControllingRegiments(planet, controller)
+                    < UprisingQueries.CalculateNormalGarrisonRequirement(
+                        planet,
+                        controller,
+                        _game.Config.AI.Garrison
+                    )
+            )
                 return false;
 
             planet.EndUprising();
@@ -790,17 +804,15 @@ namespace Rebellion.Gameplay
                         _game.Config.AI.Garrison,
                         supportForController,
                         controllerTroopCount,
-                        missionAdjustment
+                        missionAdjustment,
+                        planet.GetUprisingSuppression(config)
                     )
             );
 
-            uprisingEffect = GameConfig.UprisingConfig.GetConsequence(
-                config.PrimaryConsequenceTable,
-                combinedScore
-            );
+            uprisingEffect = ProbabilityTable.Lookup(config.PrimaryConsequenceTable, combinedScore);
 
-            if (uprisingEffect > 0)
-                uprisingSeverity = GameConfig.UprisingConfig.GetConsequence(
+            if (config.PrimaryConsequenceTable.Count > 0)
+                uprisingSeverity = ProbabilityTable.Lookup(
                     config.SecondaryConsequenceTable,
                     combinedScore
                 );
@@ -1048,7 +1060,8 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Gets stationary, living controller officers in one capture state.
+        /// Gets stationary, living officers on the surface or a local mission.
+        /// Free officers must serve the controller; captives must be held by the controller.
         /// </summary>
         /// <param name="planet">The planet whose officers are inspected.</param>
         /// <param name="controllerInstanceId">The controlling faction identifier.</param>
@@ -1062,8 +1075,19 @@ namespace Rebellion.Gameplay
         {
             return planet
                 .GetAllOfficers()
+                .Concat(
+                    planet
+                        .GetChildren<Mission>()
+                        .SelectMany(mission =>
+                            mission
+                                .GetMainParticipants(includeDisabled: true)
+                                .Concat(mission.GetDecoyParticipants(includeDisabled: true))
+                        )
+                        .OfType<Officer>()
+                )
                 .Where(officer =>
-                    officer.GetOwnerInstanceID() == controllerInstanceId
+                    (isCaptured ? officer.CaptorInstanceID : officer.GetOwnerInstanceID())
+                        == controllerInstanceId
                     && officer.Movement == null
                     && !officer.IsKilled
                     && officer.IsCaptured == isCaptured
@@ -1079,16 +1103,13 @@ namespace Rebellion.Gameplay
         /// <param name="results">The result collection receiving the state change.</param>
         private void FreeOfficer(Officer officer, Planet planet, List<GameResult> results)
         {
-            officer.ReleaseFromCaptivity();
-
             results.Add(
-                new OfficerCaptureStateResult
-                {
-                    TargetOfficer = officer,
-                    IsCaptured = false,
-                    Context = planet,
-                    Tick = _game.CurrentTick,
-                }
+                CaptiveStateTransition.Release(
+                    officer,
+                    planet,
+                    _game.CurrentTick,
+                    officer.CaptorInstanceID
+                )
             );
         }
 

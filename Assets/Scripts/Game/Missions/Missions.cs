@@ -1225,7 +1225,11 @@ namespace Rebellion.Game.Missions
                 return null;
 
             string owner = planet.GetOwnerInstanceID();
-            if (string.IsNullOrEmpty(owner) || owner == ctx.OwnerInstanceId || planet.IsInUprising)
+            if (
+                !planet.IsPopulated()
+                || string.IsNullOrEmpty(owner)
+                || owner == ctx.OwnerInstanceId
+            )
                 return null;
 
             return new InciteUprisingMission(
@@ -1255,7 +1259,29 @@ namespace Rebellion.Game.Missions
 
             int leadershipSkill = agent.GetEffectiveRating(SkillRating.Leadership);
             int enemySupport = planet.GetOpposingPopularSupport(OwnerInstanceID);
-            return leadershipSkill - enemySupport;
+            int suppression =
+                context.State?.GetUprisingSuppression()
+                ?? planet.GetUprisingSuppression(context.Game.Config.Uprising);
+            return leadershipSkill - enemySupport - suppression;
+        }
+
+        /// <summary>
+        /// Stops the mission when its populated enemy target is no longer available.
+        /// </summary>
+        /// <param name="game">The active game.</param>
+        /// <returns>The invalidation reason, or null while the target remains eligible.</returns>
+        protected override MissionCompletionReason? GetMissionInvalidationReason(GameRoot game)
+        {
+            MissionCompletionReason? reason = base.GetMissionInvalidationReason(game);
+            if (reason.HasValue)
+                return reason;
+            Planet planet = (Planet)GetParent();
+            if (
+                string.IsNullOrEmpty(planet.OwnerInstanceID)
+                || planet.OwnerInstanceID == OwnerInstanceID
+            )
+                return MissionCompletionReason.TargetChangedSides;
+            return planet.IsPopulated() ? null : MissionCompletionReason.TargetUnavailable;
         }
 
         /// <summary>
@@ -1297,13 +1323,16 @@ namespace Rebellion.Game.Missions
                 participants as IReadOnlyList<IMissionParticipant>
                 ?? participants?.ToArray()
                 ?? Array.Empty<IMissionParticipant>();
-            double skillProbability = base.GetObjectiveSuccessProbability(team, context);
-            if (skillProbability <= 0)
-                return 0;
             GameRoot game = context.Game;
             Planet planet = GetMissionPlanet(context);
             MissionEvaluationState state =
                 context.State ?? new MissionEvaluationState(game, planet);
+            double skillProbability = base.GetObjectiveSuccessProbability(
+                team,
+                new MissionEvaluationContext(game, planet, context.Target, state)
+            );
+            if (skillProbability <= 0)
+                return 0;
             if (state.GetGarrisonCount(OwnerInstanceID) > 0)
                 return 0;
             int adjustment = GetMissionAdjustment(
@@ -1352,22 +1381,17 @@ namespace Rebellion.Game.Missions
                 game.Config.AI.Garrison,
                 planet.GetPopularSupport(controller.InstanceID),
                 troopCount,
-                adjustment
+                adjustment,
+                state.GetUprisingSuppression()
             );
             double successes = 0;
             for (int sum = 0; sum <= 2 * config.DiceRange; sum++)
             {
                 int score = IntegerMath.SaturateToInt(sum + 2L * config.DiceAddend + baseScore);
-                int effect = GameConfig.UprisingConfig.GetConsequence(
-                    config.PrimaryConsequenceTable,
-                    score
-                );
+                int effect = ProbabilityTable.Lookup(config.PrimaryConsequenceTable, score);
                 int severity =
-                    effect > 0
-                        ? GameConfig.UprisingConfig.GetConsequence(
-                            config.SecondaryConsequenceTable,
-                            score
-                        )
+                    config.PrimaryConsequenceTable.Count > 0
+                        ? ProbabilityTable.Lookup(config.SecondaryConsequenceTable, score)
                         : 0;
                 int losses = (effect == 2 ? 1 : 0) + (severity == 2 ? 1 : 0);
                 if ((completionMask & (1 << losses)) != 0)
@@ -3079,7 +3103,11 @@ namespace Rebellion.Game.Missions
             if (!(ctx.Location is Planet planet))
                 return null;
 
-            if (!planet.IsInUprising || planet.GetOwnerInstanceID() != ctx.OwnerInstanceId)
+            if (
+                !planet.IsPopulated()
+                || !planet.IsInUprising
+                || planet.GetOwnerInstanceID() != ctx.OwnerInstanceId
+            )
                 return null;
 
             return new SubdueUprisingMission(
@@ -3102,12 +3130,12 @@ namespace Rebellion.Game.Missions
             if (reason.HasValue)
                 return reason;
 
-            return
-                GetParent() is Planet p
-                && p.IsInUprising
-                && p.GetOwnerInstanceID() == OwnerInstanceID
+            Planet planet = (Planet)GetParent();
+            if (planet.OwnerInstanceID != OwnerInstanceID)
+                return MissionCompletionReason.TargetChangedSides;
+            return planet.IsPopulated() && planet.IsInUprising
                 ? null
-                : MissionCompletionReason.Failure;
+                : MissionCompletionReason.TargetUnavailable;
         }
 
         /// <summary>
@@ -3127,8 +3155,12 @@ namespace Rebellion.Game.Missions
                     "SubdueUprisingMission must be attached to a Planet."
                 );
 
+            int suppression =
+                context.State?.GetUprisingSuppression()
+                ?? planet.GetUprisingSuppression(context.Game.Config.Uprising);
             return agent.GetEffectiveRating(SkillRating.Leadership)
-                - planet.GetOpposingPopularSupport(OwnerInstanceID);
+                - planet.GetOpposingPopularSupport(OwnerInstanceID)
+                + suppression;
         }
 
         /// <summary>
@@ -3154,15 +3186,18 @@ namespace Rebellion.Game.Missions
             MissionEvaluationContext context
         )
         {
-            double skillProbability = base.GetObjectiveSuccessProbability(participants, context);
-            if (skillProbability <= 0)
-                return 0;
             GameRoot game = context.Game;
             Planet planet = GetMissionPlanet(context);
             if (planet?.IsInUprising != true)
                 return 0;
             MissionEvaluationState state =
                 context.State ?? new MissionEvaluationState(game, planet);
+            double skillProbability = base.GetObjectiveSuccessProbability(
+                participants,
+                new MissionEvaluationContext(game, planet, context.Target, state)
+            );
+            if (skillProbability <= 0)
+                return 0;
             if (
                 state.TryGetOutcomeProbability(
                     ConfigKey,
@@ -3198,7 +3233,7 @@ namespace Rebellion.Game.Missions
                     continue;
                 if (
                     state.GetGarrisonCount(owner)
-                    >= projection.GetGarrisonRequirement(
+                    >= projection.GetNormalGarrisonRequirement(
                         game.GetFactionByOwnerInstanceID(owner),
                         game.Config.AI.Garrison
                     )

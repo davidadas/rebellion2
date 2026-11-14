@@ -1271,7 +1271,8 @@ namespace Rebellion.Gameplay
                     or MissionCompletionReason.Success
                     or MissionCompletionReason.Failure
                     or MissionCompletionReason.Foiled
-                    or MissionCompletionReason.ResearchBreakthrough;
+                    or MissionCompletionReason.ResearchBreakthrough
+                    or MissionCompletionReason.UprisingProgress;
 
         /// <summary>
         /// Gets the display name for a completed mission result.

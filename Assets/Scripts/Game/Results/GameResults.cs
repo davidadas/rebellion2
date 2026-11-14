@@ -32,6 +32,7 @@ namespace Rebellion.Game.Results
         NoResearchFacilities,
         ResearchProgress,
         ResearchBreakthrough,
+        UprisingProgress,
     }
 
     public enum ForceEventType

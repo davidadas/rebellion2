@@ -13,6 +13,23 @@ namespace Rebellion.Tests.Gameplay
     public class UprisingQueriesTests
     {
         [Test]
+        public void CalculateNormalGarrisonRequirement_ActiveUprising_ExcludesUprisingMultiplier()
+        {
+            Planet planet = new() { IsColonized = true };
+            planet.SetPopularSupport("owner", 40);
+            planet.BeginUprising();
+            Faction owner = new() { InstanceID = "owner" };
+            GameConfig.GarrisonConfig config = TestConfig.Create().AI.Garrison;
+
+            Assert.AreEqual(
+                2,
+                UprisingQueries.CalculateNormalGarrisonRequirement(planet, owner, config)
+            );
+            Assert.IsTrue(planet.IsInUprising);
+            Assert.AreEqual(4, UprisingQueries.CalculateGarrisonRequirement(planet, owner, config));
+        }
+
+        [Test]
         public void CalculateGarrisonRequirement_UncolonizedPlanet_ReturnsZero()
         {
             Planet planet = new Planet

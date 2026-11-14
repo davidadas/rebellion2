@@ -1656,7 +1656,11 @@ namespace Rebellion.Tests.Gameplay
             game.Config.Uprising.DiceAddend = 0;
             game.Config.Uprising.MissionLeadershipDivisor = 10;
             game.Config.Uprising.InciteMissionSupportShift = -10;
-            game.Config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int> { { 10, 2 } };
+            game.Config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int>
+            {
+                { int.MinValue, 0 },
+                { 10, 2 },
+            };
             game.Config.Uprising.SecondaryConsequenceTable.Clear();
             officer.SetBaseRating(SkillRating.Leadership, 100);
             target.PopularSupport = new Dictionary<string, int>
@@ -1806,7 +1810,11 @@ namespace Rebellion.Tests.Gameplay
             game.Config.Uprising.DiceAddend = 0;
             game.Config.Uprising.MissionLeadershipDivisor = 10;
             game.Config.Uprising.InciteMissionSupportShift = -10;
-            game.Config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int> { { 10, 2 } };
+            game.Config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int>
+            {
+                { int.MinValue, 0 },
+                { 10, 2 },
+            };
             game.Config.Uprising.SecondaryConsequenceTable.Clear();
             game.Config.AI.Garrison.SupportThreshold = 60;
             game.Config.SupportShift.OwnershipTransferThreshold = 60;

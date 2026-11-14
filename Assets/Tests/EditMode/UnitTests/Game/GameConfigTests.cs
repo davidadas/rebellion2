@@ -33,8 +33,25 @@ namespace Rebellion.Tests.Game
             copy.Jedi.MissionEncounterPriorityOfficerInstanceIDs.Clear();
             copy.DifficultyModifiers[GameDifficulty.Hard].ManufacturingSpeedPercent += 1;
             copy.Movement.DistanceDivisor += 1;
+            copy.Uprising.SuppressionRegiments.Clear();
 
             Assert.AreEqual(before, SerializationHelper.Serialize(source));
+        }
+
+        [Test]
+        public void Serialize_ConfiguredSuppressionRegiments_PreservesMappings()
+        {
+            GameConfig config = TestConfig.Create();
+            config.Uprising.SuppressionRegiments.Clear();
+            config.Uprising.SuppressionRegiments.Add("guard", "owner");
+            string xml = SerializationHelper.Serialize(config);
+
+            Assert.AreEqual(
+                "owner",
+                SerializationHelper.Deserialize<GameConfig>(xml).Uprising.SuppressionRegiments[
+                    "guard"
+                ]
+            );
         }
 
         [Test]

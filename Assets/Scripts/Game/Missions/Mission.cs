@@ -82,6 +82,7 @@ namespace Rebellion.Game.Missions
             private readonly Planet _planet;
             private Dictionary<string, int> _garrisonCounts;
             private string[] _garrisonOwners;
+            private int _uprisingSuppression;
             private Dictionary<(string OwnerId, int Shift), Planet> _supportProjections;
             private IReadOnlyList<Mission> _activeMissions;
             private Dictionary<Mission, int> _leadership;
@@ -119,6 +120,16 @@ namespace Rebellion.Game.Missions
             {
                 EnsureGarrisonCounts();
                 return _garrisonOwners;
+            }
+
+            /// <summary>
+            /// Returns uprising suppression from the observed garrison used for mission odds.
+            /// </summary>
+            /// <returns>The cached suppression from stationary, completed regiments.</returns>
+            public int GetUprisingSuppression()
+            {
+                EnsureGarrisonCounts();
+                return _uprisingSuppression;
             }
 
             /// <summary>
@@ -227,6 +238,8 @@ namespace Rebellion.Game.Missions
                         continue;
                     _garrisonCounts.TryGetValue(owner, out int count);
                     _garrisonCounts[owner] = count + 1;
+                    if (regiment.SuppressesUprisings(_game.Config.Uprising))
+                        _uprisingSuppression++;
                 }
                 _garrisonOwners = _garrisonCounts.Keys.ToArray();
             }
@@ -818,10 +831,16 @@ namespace Rebellion.Game.Missions
         )
         {
             SuccessfulParticipantInstanceID = null;
+            Planet planet = GetMissionPlanet(new MissionEvaluationContext(game));
+            MissionEvaluationContext context = new MissionEvaluationContext(
+                game,
+                planet,
+                state: new MissionEvaluationState(game, planet)
+            );
             List<(Officer Participant, double Probability)> officerAttempts = GetMainParticipants()
                 .OfType<Officer>()
                 .Select(officer =>
-                    (Participant: officer, Probability: GetAgentProbability(officer, game))
+                    (Participant: officer, Probability: GetAgentProbability(officer, context))
                 )
                 .OrderBy(attempt => attempt.Probability)
                 .ThenBy(attempt => attempt.Participant.InstanceID, StringComparer.Ordinal)
@@ -843,7 +862,7 @@ namespace Rebellion.Game.Missions
                     .OrderBy(participant => participant.InstanceID, StringComparer.Ordinal)
             )
             {
-                if (!RollParticipantSuccess(specialForces, provider, game))
+                if (!RollProbability(provider, GetAgentProbability(specialForces, context)))
                     continue;
 
                 SuccessfulParticipantInstanceID = specialForces.InstanceID;

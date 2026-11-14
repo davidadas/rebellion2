@@ -352,6 +352,32 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsEmpty(results.OfType<OfficerKilledResult>());
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ProcessTick_OfficerOnLocalMission_OnlyInjuresArrivedParticipant(bool moving)
+        {
+            var (game, planet, resolver, officer) = BuildOfficerIncident(0, new StubRNG());
+            Mission mission = MissionTestFactory.TryCreate(
+                SubdueUprisingMission.MissionTypeID,
+                game,
+                "empire",
+                planet,
+                new List<IMissionParticipant> { officer }
+            );
+            game.AttachNode(mission, planet);
+            game.MoveNode(officer, mission);
+            mission.Initiate(100);
+            if (moving)
+                officer.Movement = TestMovement.Create();
+
+            IReadOnlyList<GameResult> results = new UprisingTickProcessor(resolver).ProcessTick(
+                game
+            );
+
+            Assert.AreEqual(!moving, officer.InjuryPoints > 0);
+            Assert.AreEqual(moving ? 0 : 1, results.OfType<OfficerInjuredResult>().Count());
+        }
+
         [Test]
         public void ProcessTick_OfficerIncidentWithoutEligibleOfficers_DoesNotInjureAnyone()
         {
@@ -383,9 +409,9 @@ namespace Rebellion.Tests.Gameplay
             Officer captive = new Officer
             {
                 InstanceID = "o1",
-                OwnerInstanceID = "empire",
+                OwnerInstanceID = "rebels",
                 IsCaptured = true,
-                CaptorInstanceID = "rebels",
+                CaptorInstanceID = "empire",
                 CanEscape = true,
                 NextEscapeAttemptTick = 10,
             };
@@ -404,6 +430,52 @@ namespace Rebellion.Tests.Gameplay
                 results.OfType<OfficerCaptureStateResult>().Any(r => !r.IsCaptured),
                 "Should emit OfficerCaptureStateResult with IsCaptured=false"
             );
+        }
+
+        [TestCase(4, 1)]
+        [TestCase(5, 2)]
+        public void ProcessTick_CaptiveRelease_SelectsOfficersHeldByController(
+            int consequence,
+            int released
+        )
+        {
+            var (game, planet, resolver) = BuildScene(ownerSupport: 10, troopCount: 1);
+            game.Config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int> { { 0, 0 } };
+            game.Config.Uprising.SecondaryConsequenceTable = new Dictionary<int, int>
+            {
+                { 0, consequence },
+            };
+            for (int index = 0; index < 2; index++)
+                game.AttachNode(
+                    new Officer
+                    {
+                        InstanceID = $"prisoner-{index}",
+                        OwnerInstanceID = "rebels",
+                        IsCaptured = true,
+                        CaptorInstanceID = "empire",
+                    },
+                    planet
+                );
+            Officer otherCaptive = new()
+            {
+                InstanceID = "other-captive",
+                OwnerInstanceID = "empire",
+                IsCaptured = true,
+                CaptorInstanceID = "rebels",
+            };
+            game.AttachNode(otherCaptive, planet);
+            ScheduleIncident(planet, 1);
+            game.CurrentTick = 1;
+
+            IReadOnlyList<GameResult> results = new UprisingTickProcessor(resolver).ProcessTick(
+                game
+            );
+
+            Assert.AreEqual(
+                released,
+                results.OfType<OfficerCaptureStateResult>().Count(result => !result.IsCaptured)
+            );
+            Assert.IsTrue(otherCaptive.IsCaptured);
         }
 
         [Test]
@@ -642,6 +714,7 @@ namespace Rebellion.Tests.Gameplay
             game.Config.Uprising.DiceAddend = 0;
             game.Config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int>
             {
+                { int.MinValue, 0 },
                 { destructionThreshold, 1 },
             };
             game.Config.Uprising.SecondaryConsequenceTable.Clear();
@@ -663,6 +736,53 @@ namespace Rebellion.Tests.Gameplay
                 expectedDestruction,
                 game.GetSceneNodeByInstanceID<Building>(facility.InstanceID) == null
             );
+        }
+
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        public void ProcessTick_SuppressingGarrison_ReducesIncidentScore(
+            bool suppressing,
+            bool destroyed
+        )
+        {
+            var (game, planet, resolver) = BuildScene(ownerSupport: 10, troopCount: 1);
+            game.Config.Uprising.DiceRange = 0;
+            game.Config.Uprising.DiceAddend = 0;
+            game.Config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int>
+            {
+                { int.MinValue, 0 },
+                { 4, 1 },
+            };
+            game.Config.Uprising.SecondaryConsequenceTable.Clear();
+            game.Config.Uprising.SuppressionRegiments.Add("guard", "empire");
+            planet.GetAllRegiments().Single().TypeID = suppressing ? "guard" : "ordinary";
+            planet.EnergyCapacity = 1;
+            Building facility = EntityFactory.CreateBuilding("facility", "empire");
+            facility.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(facility, planet);
+            ScheduleIncident(planet, 1);
+            game.CurrentTick = 1;
+
+            new UprisingTickProcessor(resolver).ProcessTick(game);
+
+            Assert.AreEqual(
+                destroyed,
+                game.GetSceneNodeByInstanceID<Building>(facility.InstanceID) == null
+            );
+        }
+
+        [Test]
+        public void ProcessTick_ZeroPrimaryConsequence_StillResolvesSecondaryConsequence()
+        {
+            var (game, planet, resolver) = BuildScene(ownerSupport: 10, troopCount: 1);
+            game.Config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int> { { 0, 0 } };
+            game.Config.Uprising.SecondaryConsequenceTable = new Dictionary<int, int> { { 0, 2 } };
+            ScheduleIncident(planet, 1);
+            game.CurrentTick = 1;
+
+            new UprisingTickProcessor(resolver).ProcessTick(game);
+
+            Assert.Zero(planet.GetRegimentCount());
         }
 
         [Test]
