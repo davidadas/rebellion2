@@ -218,7 +218,10 @@ namespace Rebellion.Multiplayer
                     return;
                 if (result != Result.Success)
                 {
-                    Disconnect("Receive failed: " + result);
+                    Disconnect(
+                        "Receive failed: " + result,
+                        MultiplayerDisconnectReason.TransportError
+                    );
                     return;
                 }
                 if (
@@ -241,7 +244,7 @@ namespace Rebellion.Multiplayer
                 }
                 catch (Exception exception)
                 {
-                    Disconnect(exception.Message);
+                    Disconnect(exception.Message, MultiplayerDisconnectReason.ProtocolError);
                     return;
                 }
             }
@@ -287,7 +290,8 @@ namespace Rebellion.Multiplayer
         /// Ends a connection after a transport or lobby membership failure.
         /// </summary>
         /// <param name="reason">The disconnect reason.</param>
-        public void Disconnect(string reason)
+        /// <param name="disconnectReason">The observed cause, independent of the display message.</param>
+        public void Disconnect(string reason, MultiplayerDisconnectReason disconnectReason)
         {
             if (_disconnected)
                 return;
@@ -295,7 +299,8 @@ namespace Rebellion.Multiplayer
             _events.Enqueue(
                 new MultiplayerTransportEvent(
                     MultiplayerTransportEventType.Disconnected,
-                    error: reason
+                    error: reason,
+                    disconnectReason: disconnectReason
                 )
             );
         }
@@ -332,7 +337,10 @@ namespace Rebellion.Multiplayer
             };
             Result result = _p2p.AcceptConnection(ref options);
             if (result != Result.Success)
-                Disconnect("Accept connection failed: " + result);
+                Disconnect(
+                    "Accept connection failed: " + result,
+                    MultiplayerDisconnectReason.TransportError
+                );
         }
 
         /// <summary>
@@ -355,7 +363,10 @@ namespace Rebellion.Multiplayer
         private void OnConnectionInterrupted(ref OnPeerConnectionInterruptedInfo data)
         {
             if (!_disposed && data.RemoteUserId.Equals(_remoteUser))
-                Disconnect("The connection to the other player was interrupted.");
+                Disconnect(
+                    "The connection to the other player was interrupted.",
+                    MultiplayerDisconnectReason.ConnectionLost
+                );
         }
 
         /// <summary>
@@ -365,7 +376,10 @@ namespace Rebellion.Multiplayer
         private void OnConnectionClosed(ref OnRemoteConnectionClosedInfo data)
         {
             if (!_disposed && data.RemoteUserId.Equals(_remoteUser))
-                Disconnect("Connection closed: " + data.Reason);
+                Disconnect(
+                    "Connection closed: " + data.Reason,
+                    EpicMultiplayerDisconnect.FromConnectionReason(data.Reason)
+                );
         }
 
         /// <summary>
@@ -396,7 +410,7 @@ namespace Rebellion.Multiplayer
             catch (Exception exception)
             {
                 if (!_disposed)
-                    Disconnect(exception.Message);
+                    Disconnect(exception.Message, MultiplayerDisconnectReason.ProtocolError);
             }
         }
 

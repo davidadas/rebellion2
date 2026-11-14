@@ -526,8 +526,11 @@ namespace Rebellion.Multiplayer
         /// Reopens a waiting host or returns a disconnected guest to discovery.
         /// </summary>
         /// <param name="reason">The transport's departure message.</param>
-        /// <param name="peerEndedSession">Whether an explicit session-end packet was received.</param>
-        private void HandlePeerDeparture(string reason, bool peerEndedSession = false)
+        /// <param name="disconnectReason">The cause observed by the provider or session protocol.</param>
+        private void HandlePeerDeparture(
+            string reason,
+            MultiplayerDisconnectReason disconnectReason
+        )
         {
             if (_turnProtocol?.TryCompleteCampaignAfterPeerDeparture() == true)
             {
@@ -536,7 +539,7 @@ namespace Rebellion.Multiplayer
             }
             _analyticsTracker?.RecordDisconnected(
                 _sessionManager?.GetActiveGame()?.CurrentTick,
-                peerEndedSession ? "peer_ended_session" : "transport_closed"
+                disconnectReason
             );
             if (_returningToRecovery && _launchConfiguration == null)
             {

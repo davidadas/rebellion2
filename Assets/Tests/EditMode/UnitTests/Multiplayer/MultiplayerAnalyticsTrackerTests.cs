@@ -114,13 +114,76 @@ namespace Rebellion.Tests.Multiplayer
                 false
             );
 
-            _tracker.RecordDisconnected(150, "transport_closed");
-            _tracker.RecordDisconnected(151, "transport_closed");
+            _tracker.RecordDisconnected(150, MultiplayerDisconnectReason.ConnectionLost);
+            _tracker.RecordDisconnected(151, MultiplayerDisconnectReason.ConnectionLost);
 
             Assert.AreEqual(2, _sink.Events.Count);
             Assert.AreEqual("disconnected", _sink.Events[1].Parameters["connection_state"]);
             Assert.AreEqual(150, _sink.Events[1].Parameters["current_tick"]);
-            Assert.AreEqual("transport_closed", _sink.Events[1].Parameters["connection_reason"]);
+            Assert.AreEqual("connection_lost", _sink.Events[1].Parameters["connection_reason"]);
+        }
+
+        [TestCase(MultiplayerDisconnectReason.Unknown, "connection_closed_unknown")]
+        [TestCase(MultiplayerDisconnectReason.LocalSessionClosed, "local_session_closed")]
+        [TestCase(MultiplayerDisconnectReason.PeerEndedSession, "peer_ended_session")]
+        [TestCase(MultiplayerDisconnectReason.PeerClosedConnection, "peer_closed_connection")]
+        [TestCase(MultiplayerDisconnectReason.LobbyClosed, "lobby_closed")]
+        [TestCase(MultiplayerDisconnectReason.RemovedFromLobby, "removed_from_lobby")]
+        [TestCase(MultiplayerDisconnectReason.ConnectionLost, "connection_lost")]
+        [TestCase(MultiplayerDisconnectReason.TransportError, "transport_error")]
+        [TestCase(MultiplayerDisconnectReason.ProtocolError, "protocol_error")]
+        public void RecordDisconnected_ObservedCause_RecordsSeparateCategory(
+            MultiplayerDisconnectReason reason,
+            string expectedCategory
+        )
+        {
+            _tracker.RecordLobbyJoined("lobby", "guest-account", Summary());
+
+            _tracker.RecordDisconnected(null, reason);
+
+            Assert.That(
+                _sink.Events.Last().Parameters["connection_reason"],
+                Is.EqualTo(expectedCategory)
+            );
+        }
+
+        [TestCase(Epic.OnlineServices.P2P.ConnectionClosedReason.ClosedByPeer)]
+        [TestCase(Epic.OnlineServices.P2P.ConnectionClosedReason.Unknown)]
+        public void RecordDisconnected_RemoteSocketClosure_DoesNotRecordConnectionLoss(
+            Epic.OnlineServices.P2P.ConnectionClosedReason reason
+        )
+        {
+            _tracker.RecordLobbyJoined("lobby", "guest-account", Summary());
+
+            _tracker.RecordDisconnected(
+                null,
+                EpicMultiplayerDisconnect.FromConnectionReason(reason)
+            );
+
+            Assert.That(
+                _sink.Events.Last().Parameters["connection_reason"],
+                Is.Not.EqualTo("connection_lost")
+            );
+        }
+
+        [Test]
+        public void RecordDisconnected_ExplicitLobbyExit_RecordsOneIntentionalDeparture()
+        {
+            _tracker.RecordLobbyJoined("lobby", "guest-account", Summary());
+
+            _tracker.RecordDisconnected(
+                null,
+                EpicMultiplayerDisconnect.FromLobbyStatus(
+                    Epic.OnlineServices.Lobby.LobbyMemberStatus.Left
+                )
+            );
+            _tracker.RecordDisconnected(null, MultiplayerDisconnectReason.ConnectionLost);
+
+            Assert.That(_sink.Events.Count, Is.EqualTo(2));
+            Assert.That(
+                _sink.Events.Last().Parameters["connection_reason"],
+                Is.EqualTo("peer_ended_session")
+            );
         }
 
         [Test]
@@ -128,7 +191,7 @@ namespace Rebellion.Tests.Multiplayer
         {
             _tracker.RecordLobbyCreated("lobby", "host-account", Summary());
 
-            _tracker.RecordDisconnected(null, "transport_closed");
+            _tracker.RecordDisconnected(null, MultiplayerDisconnectReason.ConnectionLost);
 
             Assert.AreEqual(1, _sink.Events.Count);
         }
@@ -138,7 +201,7 @@ namespace Rebellion.Tests.Multiplayer
         {
             GameRoot game = Game(MultiplayerRole.Host);
             _tracker.RecordGameConnected(game, MultiplayerRole.Host, "before", false);
-            _tracker.RecordDisconnected(150, "transport_closed");
+            _tracker.RecordDisconnected(150, MultiplayerDisconnectReason.ConnectionLost);
 
             _tracker.RecordGameConnected(game, MultiplayerRole.Host, "after", true);
 
@@ -158,7 +221,7 @@ namespace Rebellion.Tests.Multiplayer
             _tracker.RecordLobbyJoined("lobby", "guest-account", Summary());
             _tracker.BeginGameLoad("initialization");
 
-            _tracker.RecordDisconnected(null, "transport_closed");
+            _tracker.RecordDisconnected(null, MultiplayerDisconnectReason.ConnectionLost);
 
             Entry entry = _sink.Events.Last();
             Assert.AreEqual("loading", entry.Parameters["connection_phase"]);
@@ -175,7 +238,7 @@ namespace Rebellion.Tests.Multiplayer
                 "id",
                 false
             );
-            _tracker.RecordDisconnected(150, "transport_closed");
+            _tracker.RecordDisconnected(150, MultiplayerDisconnectReason.ConnectionLost);
 
             _tracker.RecordClosed(150);
 
@@ -209,7 +272,7 @@ namespace Rebellion.Tests.Multiplayer
 
             _tracker.RecordStopped(120);
             _tracker.RecordStopped(120);
-            _tracker.RecordDisconnected(121, "transport_closed");
+            _tracker.RecordDisconnected(121, MultiplayerDisconnectReason.ConnectionLost);
 
             CollectionAssert.AreEqual(
                 new[] { "connected", "stopped", "disconnected" },
@@ -228,7 +291,7 @@ namespace Rebellion.Tests.Multiplayer
             );
             _tracker.Reset();
 
-            _tracker.RecordDisconnected(121, "transport_closed");
+            _tracker.RecordDisconnected(121, MultiplayerDisconnectReason.ConnectionLost);
 
             Assert.AreEqual(1, _sink.Events.Count);
         }
@@ -244,7 +307,7 @@ namespace Rebellion.Tests.Multiplayer
             );
             _sink.Enabled = false;
 
-            _tracker.RecordDisconnected(120, "transport_closed");
+            _tracker.RecordDisconnected(120, MultiplayerDisconnectReason.ConnectionLost);
 
             Assert.AreEqual(1, _sink.Events.Count);
         }

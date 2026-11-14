@@ -516,7 +516,7 @@ namespace Rebellion.Multiplayer
                         break;
                     case MultiplayerTransportEventType.Disconnected:
                         _synchronizationReady = false;
-                        HandlePeerDeparture(transportEvent.Error);
+                        HandlePeerDeparture(transportEvent.Error, transportEvent.DisconnectReason);
                         break;
                 }
             }
@@ -640,7 +640,10 @@ namespace Rebellion.Multiplayer
                         _turnProtocol.Receive(packet);
                         break;
                     case MultiplayerMessageType.Disconnect:
-                        HandlePeerDeparture("The other player ended the session", true);
+                        HandlePeerDeparture(
+                            "The other player ended the session",
+                            MultiplayerDisconnectReason.PeerEndedSession
+                        );
                         break;
                     case MultiplayerMessageType.LobbyState:
                         HandleLobbyState(packet);
