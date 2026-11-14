@@ -2226,9 +2226,17 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual("no effect", message.Body);
         }
 
-        [TestCase("FNALL1")]
-        [TestCase("FNEMP1")]
-        public void CreateMessages_FailedInciteMission_UsesRecipientThemeBackground(string owner)
+        [TestCase("FNALL1", MissionOutcome.Failed, MissionCompletionReason.Failure)]
+        [TestCase("FNEMP1", MissionOutcome.Failed, MissionCompletionReason.Failure)]
+        [TestCase("FNALL1", MissionOutcome.Success, MissionCompletionReason.Success)]
+        [TestCase("FNEMP1", MissionOutcome.Success, MissionCompletionReason.Success)]
+        [TestCase("FNALL1", MissionOutcome.Failed, MissionCompletionReason.UprisingProgress)]
+        [TestCase("FNEMP1", MissionOutcome.Failed, MissionCompletionReason.UprisingProgress)]
+        public void CreateMessages_InciteReport_UsesRecipientThemeBackground(
+            string owner,
+            MissionOutcome outcome,
+            MissionCompletionReason reason
+        )
         {
             var (game, alliance, empire, _, target) = BuildTwoFactionMessageScene();
             Mission mission = new InciteUprisingMission { OwnerInstanceID = owner };
@@ -2242,14 +2250,114 @@ namespace Rebellion.Tests.Gameplay
                         Mission = mission,
                         MissionTypeID = mission.ConfigKey,
                         Location = target,
-                        Outcome = MissionOutcome.Failed,
-                        CompletionReason = MissionCompletionReason.Failure,
+                        Outcome = outcome,
+                        CompletionReason = reason,
                     }
                 ),
                 owner == alliance.InstanceID ? alliance : empire
             );
 
             Assert.AreEqual("mission_report", message.BackgroundImageKey);
+        }
+
+        [TestCase("FNALL1", "Alliance")]
+        [TestCase("FNEMP1", "Empire")]
+        public void CreateMessages_SubdueSuccess_UsesRestoredOrderArtwork(
+            string owner,
+            string faction
+        )
+        {
+            var (game, alliance, empire, _, target) = BuildTwoFactionMessageScene();
+            Mission mission = new SubdueUprisingMission { OwnerInstanceID = owner };
+            game.AttachNode(mission, target);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    TestContent.Data.MessageDefinitions,
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionTypeID = mission.ConfigKey,
+                        Location = target,
+                        Outcome = MissionOutcome.Success,
+                        CompletionReason = MissionCompletionReason.Success,
+                    }
+                ),
+                owner == alliance.InstanceID ? alliance : empire
+            );
+
+            Assert.AreEqual(
+                $"Pack/Factions/{faction}/Strategy/Messages/Images/uprising-ended",
+                message.DisplayImagePath
+            );
+        }
+
+        [TestCase(InciteUprisingMission.MissionTypeID, MissionCompletionReason.TargetChangedSides)]
+        [TestCase(SubdueUprisingMission.MissionTypeID, MissionCompletionReason.TargetChangedSides)]
+        [TestCase(SubdueUprisingMission.MissionTypeID, MissionCompletionReason.TargetUnavailable)]
+        [TestCase(SabotageMission.MissionTypeID, MissionCompletionReason.TargetUnavailable)]
+        public void CreateMessages_InterruptedMission_UsesRecipientThemeBackground(
+            string missionType,
+            MissionCompletionReason reason
+        )
+        {
+            var (game, alliance, _, _, target) = BuildTwoFactionMessageScene();
+            Mission mission = missionType switch
+            {
+                InciteUprisingMission.MissionTypeID => new InciteUprisingMission(),
+                SubdueUprisingMission.MissionTypeID => new SubdueUprisingMission(),
+                _ => new SabotageMission(),
+            };
+            mission.OwnerInstanceID = alliance.InstanceID;
+            game.AttachNode(mission, target);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    TestContent.Data.MessageDefinitions,
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionTypeID = mission.ConfigKey,
+                        Location = target,
+                        Outcome = MissionOutcome.Failed,
+                        CompletionReason = reason,
+                    }
+                ),
+                alliance
+            );
+
+            Assert.That(message.BackgroundImageKey, Is.EqualTo("mission_report"));
+        }
+
+        [Test]
+        public void CreateMessages_UprisingIncident_ReportsIntelligenceOnlyToTheRecipient()
+        {
+            var (game, alliance, empire, _, target) = BuildTwoFactionMessageScene();
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                TestContent.Data.MessageDefinitions,
+                new PlanetUprisingIncidentResult
+                {
+                    Planet = target,
+                    Faction = empire,
+                    Recipient = alliance,
+                }
+            );
+
+            Assert.That(deliveries, Has.Count.EqualTo(1));
+            Assert.That(deliveries[0].Recipient, Is.SameAs(alliance));
+            Assert.That(
+                deliveries[0].AdvisorSubjectNotification,
+                Is.EqualTo(AdvisorSubjectNotification.Report)
+            );
+            Assert.That(deliveries[0].Message.BackgroundImageKey, Is.EqualTo("informants"));
+            Assert.That(
+                deliveries[0].Message.NavigationTargetInstanceID,
+                Is.EqualTo(target.InstanceID)
+            );
         }
 
         [Test]

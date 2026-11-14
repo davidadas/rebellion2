@@ -293,6 +293,10 @@ namespace Rebellion.Game.Missions
         // Mission progress.
         public int MaxProgress { get; set; }
         public int CurrentProgress { get; set; }
+
+        /// <summary>
+        /// Whether the arrival encounter has cleared. This remains set between repeated attempts.
+        /// </summary>
         public bool DetectionResolved { get; set; }
         public bool PreObjectiveEncounterResolved { get; set; }
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
@@ -22,6 +23,7 @@ namespace Rebellion.Gameplay
         private readonly IRandomNumberProvider _provider;
         private readonly PlanetaryControlCommands _planetaryControl;
         private readonly DuelResolver _duelResolver;
+        private readonly FogOfWarRecorder _intelligence = new();
         private readonly Dictionary<Planet, int> _garrisonSurplusByPlanet =
             new Dictionary<Planet, int>();
 
@@ -533,6 +535,7 @@ namespace Rebellion.Gameplay
             List<GameResult> results
         )
         {
+            RevealIncidentIntelligence(planet, faction, results);
             int ownerSupport = planet.GetPopularSupport(faction.InstanceID);
             int troopCount = CountControllingRegiments(planet, faction);
 
@@ -554,6 +557,54 @@ namespace Rebellion.Gameplay
                     faction,
                     _game.Config.Uprising.InciteMissionSupportShift
                 );
+        }
+
+        /// <summary>
+        /// Records the information supplied by informants before incident consequences change it.
+        /// </summary>
+        /// <param name="planet">The planet supplying the information.</param>
+        /// <param name="controller">The faction controlling the planet before the incident.</param>
+        /// <param name="results">The collection receiving the incident report.</param>
+        private void RevealIncidentIntelligence(
+            Planet planet,
+            Faction controller,
+            List<GameResult> results
+        )
+        {
+            List<PlanetIntelligenceCategory> categories = _game
+                .Config
+                .Uprising
+                .IncidentIntelligence;
+            if (categories.Count == 0)
+                return;
+            Faction recipient = _game
+                .GetFactions()
+                .FirstOrDefault(faction => faction != controller);
+            PlanetSector sector = planet.GetParentOfType<PlanetSector>();
+            if (recipient == null || sector == null)
+                return;
+
+            PlanetIntelligenceCategory category = categories[
+                _provider.NextInt(0, categories.Count)
+            ];
+            _intelligence.RecordIntelligenceSnapshot(
+                recipient,
+                planet,
+                sector,
+                _game.CurrentTick,
+                category,
+                includeDescendants: false
+            );
+            results.Add(
+                new PlanetUprisingIncidentResult
+                {
+                    Planet = planet,
+                    Faction = controller,
+                    Recipient = recipient,
+                    Intelligence = category,
+                    Tick = _game.CurrentTick,
+                }
+            );
         }
 
         /// <summary>
@@ -1015,7 +1066,7 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Frees one randomly selected captured controller-owned officer on the planet.
+        /// Frees one randomly selected officer held captive by the controller on the planet.
         /// </summary>
         /// <param name="planet">The planet experiencing the uprising.</param>
         /// <param name="controllerInstanceId">The controlling faction's instance ID.</param>
@@ -1039,7 +1090,7 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Frees all captured controller-owned officers on the planet.
+        /// Frees all officers held captive by the controller on the planet.
         /// </summary>
         /// <param name="planet">The planet experiencing the uprising.</param>
         /// <param name="controllerInstanceId">The controlling faction's instance ID.</param>

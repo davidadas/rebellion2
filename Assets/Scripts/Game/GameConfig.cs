@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Units;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
@@ -1715,6 +1716,12 @@ namespace Rebellion.Game
         public class UprisingConfig
         {
             /// <summary>
+            /// Equally likely intelligence categories revealed to the opposing faction before an incident.
+            /// An empty list disables incident intelligence.
+            /// </summary>
+            public List<PlanetIntelligenceCategory> IncidentIntelligence { get; set; } = new();
+
+            /// <summary>
             /// Maps suppressing regiment types to the faction that must control them.
             /// Each matching stationary regiment contributes one point of suppression.
             /// </summary>
@@ -1764,6 +1771,9 @@ namespace Rebellion.Game
             public UprisingConfig CreateCopy() =>
                 new UprisingConfig
                 {
+                    IncidentIntelligence = new List<PlanetIntelligenceCategory>(
+                        IncidentIntelligence
+                    ),
                     DiceRange = DiceRange,
                     SuppressionRegiments = new Dictionary<string, string>(SuppressionRegiments),
                     DiceAddend = DiceAddend,

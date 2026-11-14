@@ -152,6 +152,18 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// An uprising incident supplied a faction with information about its location.
+    /// The recorded information precedes any losses or support changes from the incident.
+    /// </summary>
+    public class PlanetUprisingIncidentResult : GameResult
+    {
+        public Planet Planet { get; set; }
+        public Faction Faction { get; set; }
+        public Faction Recipient { get; set; }
+        public PlanetIntelligenceCategory Intelligence { get; set; }
+    }
+
+    /// <summary>
     /// Ownership of a planet changed hands.
     /// </summary>
     public class PlanetOwnershipChangedResult : GameResult

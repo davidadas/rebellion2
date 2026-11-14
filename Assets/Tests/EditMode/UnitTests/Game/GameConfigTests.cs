@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Game
@@ -34,8 +35,28 @@ namespace Rebellion.Tests.Game
             copy.DifficultyModifiers[GameDifficulty.Hard].ManufacturingSpeedPercent += 1;
             copy.Movement.DistanceDivisor += 1;
             copy.Uprising.SuppressionRegiments.Clear();
+            copy.Uprising.IncidentIntelligence.Clear();
 
             Assert.AreEqual(before, SerializationHelper.Serialize(source));
+        }
+
+        [Test]
+        public void Serialize_ConfiguredIncidentIntelligence_PreservesCombinedCategories()
+        {
+            GameConfig config = TestConfig.Create();
+            config.Uprising.IncidentIntelligence.Clear();
+            config.Uprising.IncidentIntelligence.Add(
+                PlanetIntelligenceCategory.Officers | PlanetIntelligenceCategory.SpecialForces
+            );
+
+            GameConfig loaded = SerializationHelper.Deserialize<GameConfig>(
+                SerializationHelper.Serialize(config)
+            );
+
+            CollectionAssert.AreEqual(
+                config.Uprising.IncidentIntelligence,
+                loaded.Uprising.IncidentIntelligence
+            );
         }
 
         [Test]

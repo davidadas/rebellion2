@@ -3,6 +3,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
@@ -15,6 +16,49 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class UprisingResolverTests
     {
+        [Test]
+        public void ProcessTick_Incident_RevealsOneCategoryToTheOpposingFaction()
+        {
+            var (game, planet, resolver) = BuildScene(ownerSupport: 10, troopCount: 2);
+            game.Config.Uprising.IncidentIntelligence.Add(PlanetIntelligenceCategory.PlanetControl);
+            ScheduleIncident(planet, 1);
+            game.CurrentTick = 1;
+
+            IReadOnlyList<GameResult> results = new UprisingTickProcessor(resolver).ProcessTick(
+                game
+            );
+
+            Faction recipient = game.GetFactionByOwnerInstanceID("rebels");
+            PlanetSnapshot snapshot = recipient.Fog.Snapshots["sector1"].Planets[planet.InstanceID];
+            Assert.That(snapshot.PopularSupport["empire"], Is.EqualTo(10));
+            Assert.That(snapshot.Regiments, Is.Empty);
+            PlanetUprisingIncidentResult report = results
+                .OfType<PlanetUprisingIncidentResult>()
+                .Single();
+            Assert.That(report.Recipient, Is.SameAs(recipient));
+            Assert.That(report.Intelligence, Is.EqualTo(PlanetIntelligenceCategory.PlanetControl));
+            Assert.That(game.GetFactionByOwnerInstanceID("empire").Fog.Snapshots, Is.Empty);
+        }
+
+        [Test]
+        public void ProcessTick_IncidentWithLosses_RecordsIntelligenceBeforeDestroyingUnits()
+        {
+            var (game, planet, resolver) = BuildScene(ownerSupport: 10, troopCount: 2);
+            game.Config.Uprising.IncidentIntelligence.Add(PlanetIntelligenceCategory.Regiments);
+            game.Config.Uprising.PrimaryConsequenceTable.Clear();
+            game.Config.Uprising.PrimaryConsequenceTable.Add(int.MinValue, 2);
+            game.Config.Uprising.SecondaryConsequenceTable.Clear();
+            ScheduleIncident(planet, 1);
+            game.CurrentTick = 1;
+
+            new UprisingTickProcessor(resolver).ProcessTick(game);
+
+            Faction recipient = game.GetFactionByOwnerInstanceID("rebels");
+            PlanetSnapshot snapshot = recipient.Fog.Snapshots["sector1"].Planets[planet.InstanceID];
+            Assert.That(snapshot.Regiments, Has.Count.EqualTo(2));
+            Assert.That(planet.GetAllRegiments(), Has.Count.EqualTo(1));
+        }
+
         [Test]
         public void RecordGarrisonWarning_LoadedCurrentWorld_DoesNotReplayEarlierChange()
         {
@@ -1186,6 +1230,7 @@ namespace Rebellion.Tests.Gameplay
         )
         {
             GameConfig config = TestConfig.Create();
+            config.Uprising.IncidentIntelligence.Clear();
             config.Uprising.ActiveSupportDriftMinTicks = 1;
             config.Uprising.ActiveSupportDriftMaxTicks = 1;
             config.Uprising.IncidentPulseMinTicks = 1;

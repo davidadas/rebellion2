@@ -709,38 +709,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Reveals the target's current state when diplomacy discovers that it changed sides.
-        /// </summary>
-        /// <param name="game">The authoritative game state.</param>
-        /// <param name="provider">The random provider, unused by this interruption.</param>
-        /// <returns>The intelligence observation produced by the interrupted mission.</returns>
-        internal override List<GameResult> ResolveInterruption(
-            GameRoot game,
-            IRandomNumberProvider provider
-        )
-        {
-            if (
-                GetParent() is not Planet planet
-                || string.IsNullOrEmpty(planet.GetOwnerInstanceID())
-                || planet.GetOwnerInstanceID() == OwnerInstanceID
-            )
-                return new List<GameResult>();
-
-            Faction recipient = game?.GetFactionByOwnerInstanceID(OwnerInstanceID);
-            return recipient == null
-                ? new List<GameResult>()
-                : new List<GameResult>
-                {
-                    new IntelligenceRevealedResult
-                    {
-                        Recipient = recipient,
-                        Observations = new List<ISceneNode> { planet },
-                        Tick = game.CurrentTick,
-                    },
-                };
-        }
-
-        /// <summary>
         /// Returns the participant's raw diplomacy mission score for the current target.
         /// </summary>
         /// <param name="agent">The participant whose diplomacy rating is evaluated.</param>

@@ -601,6 +601,79 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
+        /// Records local control, orbital forces, and command personnel observed by a mission.
+        /// Surface forces, facilities, resources, and unranked personnel retain their previous observations.
+        /// </summary>
+        /// <param name="faction">The faction receiving the information.</param>
+        /// <param name="planet">The mission's location.</param>
+        /// <param name="sector">The containing sector.</param>
+        /// <param name="currentTick">The observation tick.</param>
+        public void RecordMissionSnapshot(
+            Faction faction,
+            Planet planet,
+            PlanetSector sector,
+            int currentTick
+        )
+        {
+            if (faction == null || planet == null || sector == null)
+                return;
+
+            planet.AddVisitor(faction.InstanceID);
+            PlanetSectorSnapshot sectorSnapshot = GetOrCreatePlanetSectorSnapshot(faction, sector);
+            faction.Fog.PlanetToSector[planet.InstanceID] = sector.InstanceID;
+            PlanetSnapshot snapshot = GetOrCreatePlanetSnapshot(sectorSnapshot, planet);
+            Dictionary<string, Officer> localOfficers = planet
+                .GetChildren<Officer>()
+                .Concat(
+                    planet
+                        .GetChildren<Fleet>()
+                        .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
+                        .SelectMany(ship => ship.GetChildren<Officer>())
+                )
+                .ToDictionary(officer => officer.InstanceID);
+            Officer[] rememberedCommanders = snapshot
+                .Officers.Concat(
+                    snapshot.Fleets.SelectMany(fleet => fleet.GetChildren<Officer>(recursive: true))
+                )
+                .Where(officer => officer.CurrentRank != OfficerRank.None)
+                .ToArray();
+            UpdatePlanetControlState(snapshot, planet, currentTick);
+            snapshot.IsInUprising = planet.IsInUprising;
+            snapshot.RevealedCategories |=
+                PlanetIntelligenceCategory.PlanetControl | PlanetIntelligenceCategory.CapitalShips;
+            snapshot.FleetsObservedAtTick = currentTick;
+            UpdateFleetIntelligence(
+                faction,
+                planet,
+                snapshot,
+                PlanetIntelligenceCategory.CapitalShips | PlanetIntelligenceCategory.Starfighters
+            );
+            foreach (Officer remembered in rememberedCommanders)
+            {
+                localOfficers.TryGetValue(remembered.InstanceID, out Officer current);
+                RemoveEntityFromSnapshot(snapshot, remembered.InstanceID);
+                if (
+                    current != null
+                    && current.ParentInstanceID
+                        == (remembered.ParentInstanceID ?? planet.InstanceID)
+                    && (current.OwnerInstanceID != faction.InstanceID || current.IsCaptured)
+                )
+                    RecordUnitIntelligence(snapshot, current);
+            }
+            foreach (
+                Officer officer in localOfficers.Values.Where(officer =>
+                    officer.CurrentRank != OfficerRank.None
+                )
+            )
+            {
+                if (officer.OwnerInstanceID != faction.InstanceID || officer.IsCaptured)
+                    RecordUnitIntelligence(snapshot, officer);
+            }
+            ReconcileEntityLocations(faction, planet.InstanceID, snapshot);
+            RemoveUnrepresentedEntityLocations(faction);
+        }
+
+        /// <summary>
         /// Returns the existing planet snapshot or creates its initial strategic state.
         /// </summary>
         /// <param name="sectorSnapshot">The sector snapshot.</param>

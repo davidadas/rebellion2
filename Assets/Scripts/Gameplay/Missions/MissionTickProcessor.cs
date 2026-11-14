@@ -143,13 +143,13 @@ namespace Rebellion.Gameplay
             string foilingFactionInstanceID = null;
             if (!mission.DetectionResolved)
             {
-                mission.DetectionResolved = true;
                 wasDetected = _resolver.ResolveEncounter(
                     mission,
                     MissionEncounterPhase.Arrival,
                     results,
                     out foilingFactionInstanceID
                 );
+                mission.DetectionResolved = !wasDetected;
                 if (mission.GetParent() == null)
                     return CompleteStep(mission, results);
             }

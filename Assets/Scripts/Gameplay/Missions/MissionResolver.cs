@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
@@ -33,6 +34,7 @@ namespace Rebellion.Gameplay
         private readonly JediCommands _jediCommands;
         private readonly DuelCommands _duelCommands;
         private readonly MissionForceEncounterSelector _forceEncounters;
+        private readonly FogOfWarRecorder _intelligence = new();
 
         /// <summary>
         /// Gets the random provider shared by mission lifecycle operations.
@@ -89,6 +91,10 @@ namespace Rebellion.Gameplay
             List<GameResult> results
         )
         {
+            Planet target = mission.GetParent() as Planet;
+            bool startsAtTarget = startingParticipants.Any(participant =>
+                participant.GetParentOfType<Planet>() == target
+            );
             List<GameResult> departureResults = new List<GameResult>();
             bool departureFoiled = ResolveDepartureEncounters(
                 mission,
@@ -97,6 +103,17 @@ namespace Rebellion.Gameplay
                 out string foilingFactionInstanceID
             );
             AddMissionResults(mission, departureResults, results);
+            if (
+                target != null
+                && startsAtTarget
+                && (departureFoiled || mission.GetParent() == null)
+            )
+                _intelligence.RecordMissionSnapshot(
+                    _game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID),
+                    target,
+                    target.GetParentOfType<PlanetSector>(),
+                    _game.CurrentTick
+                );
             if (mission.GetParent() == null)
                 return;
             if (departureFoiled)
@@ -181,8 +198,14 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="mission">The mission selected while its participants still belong to it.</param>
         /// <param name="results">The batch receiving interruption and teardown results.</param>
-        internal void InterruptMission(Mission mission, List<GameResult> results)
+        /// <param name="departingParticipants">Participants removed while resolving this interruption.</param>
+        internal void InterruptMission(
+            Mission mission,
+            List<GameResult> results,
+            IEnumerable<IMissionParticipant> departingParticipants = null
+        )
         {
+            RecordMissionIntelligence(mission, departingParticipants);
             AddMissionResults(mission, mission.ResolveInterruption(_game, _provider), results);
             TearDownMission(mission, null, results);
         }
@@ -217,7 +240,7 @@ namespace Rebellion.Gameplay
 
             mission.AcceptCurrentParticipantRoster();
             if (mission.GetAbortReason(_game).HasValue)
-                InterruptMission(mission, results);
+                InterruptMission(mission, results, attachedOfficers);
         }
 
         /// <summary>
@@ -289,7 +312,7 @@ namespace Rebellion.Gameplay
 
             mission.AcceptCurrentParticipantRoster();
             if (mission.GetAbortReason(_game).HasValue)
-                InterruptMission(mission, results);
+                InterruptMission(mission, results, attachedOfficers);
         }
 
         /// <summary>
@@ -547,12 +570,45 @@ namespace Rebellion.Gameplay
             List<GameResult> results
         )
         {
+            RecordMissionIntelligence(mission, completedResult?.Participants);
             if (completedResult == null)
                 TearDownMission(mission, null, results);
             else if (completedResult.CanContinue)
                 mission.Repeat(RollMissionDuration(mission));
             else
                 TearDownMission(mission, completedResult, results);
+        }
+
+        /// <summary>
+        /// Records local intelligence when an arrived mission finishes or repeats.
+        /// Participants still travelling do not supply information about their destination.
+        /// </summary>
+        /// <param name="mission">The mission reaching its finalization boundary.</param>
+        /// <param name="departingParticipants">Participants removed before finalization observes the roster.</param>
+        private void RecordMissionIntelligence(
+            Mission mission,
+            IEnumerable<IMissionParticipant> departingParticipants = null
+        )
+        {
+            if (!mission.HasInitiated || mission.GetParent() is not Planet planet)
+                return;
+            if (
+                !mission.DetectionResolved
+                && !mission
+                    .GetAllParticipants(includeDisabled: true)
+                    .Concat(departingParticipants ?? Enumerable.Empty<IMissionParticipant>())
+                    .Any(participant =>
+                        participant.MissionReturnLocationInstanceID == planet.InstanceID
+                    )
+            )
+                return;
+
+            _intelligence.RecordMissionSnapshot(
+                _game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID),
+                planet,
+                planet.GetParentOfType<PlanetSector>(),
+                _game.CurrentTick
+            );
         }
 
         /// <summary>

@@ -15,6 +15,91 @@ namespace Rebellion.Tests.Game.FogOfWar
     [TestFixture]
     public class FogOfWarRecorderTests : FogOfWarTestBase
     {
+        [Test]
+        public void RecordMissionSnapshot_HostilePlanet_RevealsOnlyLocalControlAndOrbitalForces()
+        {
+            _coruscant.PopularSupport[_empire.InstanceID] = 30;
+            _coruscant.BeginUprising();
+            _coruscant.IsHeadquarters = true;
+            _coruscant.NumRawResourceNodes = 8;
+            _game.AttachNode(CreateRegiment("GROUND", _empire), _coruscant);
+            _game.AttachNode(CreateStarfighter("SURFACE", _empire), _coruscant);
+            _game.AttachNode(CreateOfficer("AGENT", _empire), _coruscant);
+            Fleet fleet = CreateFleet("FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "SHIP");
+            ship.RegimentCapacity = ship.StarfighterCapacity = 1;
+            _game.AttachNode(CreateRegiment("CARGO", _empire), ship);
+            _game.AttachNode(CreateStarfighter("FIGHTER", _empire), ship);
+            Officer commander = CreateOfficer("COMMANDER", _empire);
+            commander.CurrentRank = OfficerRank.Admiral;
+            _game.AttachNode(commander, ship);
+
+            new FogOfWarRecorder().RecordMissionSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
+            Assert.That(snapshot.PopularSupport[_empire.InstanceID], Is.EqualTo(30));
+            Assert.That(snapshot.IsInUprising, Is.True);
+            Assert.That(snapshot.IsHeadquarters, Is.False);
+            Assert.That(snapshot.NumRawResourceNodes, Is.Zero);
+            Assert.That(snapshot.Regiments, Is.Empty);
+            Assert.That(snapshot.Starfighters, Is.Empty);
+            Assert.That(snapshot.Officers, Is.Empty);
+            CapitalShip observedShip = snapshot.Fleets.Single().GetChildren<CapitalShip>().Single();
+            Assert.That(
+                observedShip.GetChildren<Starfighter>().Single().InstanceID,
+                Is.EqualTo("FIGHTER")
+            );
+            Assert.That(observedShip.GetChildren<Regiment>(), Is.Empty);
+            Assert.That(
+                observedShip.GetChildren<Officer>().Single().InstanceID,
+                Is.EqualTo("COMMANDER")
+            );
+        }
+
+        [Test]
+        public void RecordMissionSnapshot_PreviousCargoIntelligence_PreservesUnrefreshedKnowledge()
+        {
+            Fleet fleet = CreateFleet("FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "SHIP");
+            ship.RegimentCapacity = 1;
+            Regiment cargo = CreateRegiment("CARGO", _empire);
+            _game.AttachNode(cargo, ship);
+            FogOfWarRecorder recorder = new();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 5);
+            _game.DetachNode(cargo);
+
+            recorder.RecordMissionSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            CapitalShip observedShip = GetSnapshot(_coreSector, _coruscant)
+                .Fleets.Single()
+                .GetChildren<CapitalShip>()
+                .Single();
+            Assert.That(
+                observedShip.GetChildren<Regiment>().Single().InstanceID,
+                Is.EqualTo("CARGO")
+            );
+        }
+
+        [Test]
+        public void RecordMissionSnapshot_KnownOfficerLosesCommand_RefreshesTheKnownOfficer()
+        {
+            Officer officer = CreateOfficer("OFFICER", _empire);
+            officer.CurrentRank = OfficerRank.General;
+            _game.AttachNode(officer, _coruscant);
+            FogOfWarRecorder recorder = new();
+            recorder.RecordMissionSnapshot(_alliance, _coruscant, _coreSector, 5);
+            officer.CurrentRank = OfficerRank.None;
+
+            recorder.RecordMissionSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            Assert.That(
+                GetSnapshot(_coreSector, _coruscant).Officers.Single().CurrentRank,
+                Is.EqualTo(OfficerRank.None)
+            );
+        }
+
         [TestCase("officer", false)]
         [TestCase("regiment", false)]
         [TestCase("special forces", false)]
