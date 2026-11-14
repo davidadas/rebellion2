@@ -10,37 +10,10 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Gameplay
 {
     /// <summary>
-    /// Resolves fighter replacement timing from squadron location and available facilities.
+    /// Resolves locations that can accelerate unit recovery.
     /// </summary>
-    internal static class FighterRecoveryRules
+    internal static class RecoveryLocationRules
     {
-        /// <summary>
-        /// Returns the replacement interval currently available to a squadron.
-        /// </summary>
-        /// <param name="game">The active game state and recovery configuration.</param>
-        /// <param name="squadron">The squadron whose replacement interval is required.</param>
-        /// <param name="shipyardLocations">The indexed locations of operational shipyards.</param>
-        /// <returns>The positive number of ticks between replacement pulses.</returns>
-        internal static int GetReplacementInterval(
-            GameRoot game,
-            Starfighter squadron,
-            ISet<(string PlanetInstanceId, string OwnerInstanceId)> shipyardLocations
-        )
-        {
-            if (game == null)
-                throw new ArgumentNullException(nameof(game));
-            if (squadron == null)
-                throw new ArgumentNullException(nameof(squadron));
-            if (shipyardLocations == null)
-                throw new ArgumentNullException(nameof(shipyardLocations));
-
-            GameConfig.RecoveryConfig config = game.Config.Recovery;
-            int interval = HasFriendlyOperationalShipyard(squadron, shipyardLocations)
-                ? config.FastReplacementIntervalTicks
-                : config.NormalReplacementIntervalTicks;
-            return Math.Max(1, interval);
-        }
-
         /// <summary>
         /// Builds an index of planets and owners that have an operational shipyard.
         /// </summary>
@@ -74,28 +47,131 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Returns whether a stationary squadron is hosted at a friendly operational shipyard.
+        /// Returns whether a stationary unit is hosted at a friendly operational shipyard.
         /// </summary>
-        /// <param name="squadron">The squadron to inspect.</param>
+        /// <param name="unit">The unit to inspect.</param>
+        /// <param name="movable">The unit movement contract.</param>
         /// <param name="shipyardLocations">The indexed locations of operational shipyards.</param>
-        /// <returns>True when accelerated replacement is available.</returns>
-        private static bool HasFriendlyOperationalShipyard(
-            Starfighter squadron,
+        /// <returns>True when accelerated recovery is available.</returns>
+        internal static bool HasFriendlyOperationalShipyard(
+            ISceneNode unit,
+            IMovable movable,
             ISet<(string PlanetInstanceId, string OwnerInstanceId)> shipyardLocations
         )
         {
-            if (((IMovable)squadron).GetTransitMovement() != null)
+            if (unit == null)
+                throw new ArgumentNullException(nameof(unit));
+            if (movable == null)
+                throw new ArgumentNullException(nameof(movable));
+            if (shipyardLocations == null)
+                throw new ArgumentNullException(nameof(shipyardLocations));
+            if (movable.GetTransitMovement() != null)
                 return false;
 
-            Planet planet = squadron.GetParentOfType<Planet>();
+            Planet planet = unit.GetParentOfType<Planet>();
             return planet != null
-                && planet.OwnerInstanceID == squadron.OwnerInstanceID
-                && shipyardLocations.Contains((planet.InstanceID, squadron.OwnerInstanceID));
+                && planet.OwnerInstanceID == unit.OwnerInstanceID
+                && shipyardLocations.Contains((planet.InstanceID, unit.OwnerInstanceID));
         }
     }
 
     /// <summary>
-    /// Updates fighter replacement schedules when movement changes recovery eligibility.
+    /// Resolves fighter replacement timing from squadron location and available facilities.
+    /// </summary>
+    internal static class FighterRecoveryRules
+    {
+        /// <summary>
+        /// Returns the replacement interval currently available to a squadron.
+        /// </summary>
+        /// <param name="game">The active game state and recovery configuration.</param>
+        /// <param name="squadron">The squadron whose replacement interval is required.</param>
+        /// <param name="shipyardLocations">The indexed locations of operational shipyards.</param>
+        /// <returns>The positive number of ticks between replacement pulses.</returns>
+        internal static int GetReplacementInterval(
+            GameRoot game,
+            Starfighter squadron,
+            ISet<(string PlanetInstanceId, string OwnerInstanceId)> shipyardLocations
+        )
+        {
+            if (game == null)
+                throw new ArgumentNullException(nameof(game));
+            if (squadron == null)
+                throw new ArgumentNullException(nameof(squadron));
+            if (shipyardLocations == null)
+                throw new ArgumentNullException(nameof(shipyardLocations));
+
+            GameConfig.RecoveryConfig config = game.Config.Recovery;
+            int interval = RecoveryLocationRules.HasFriendlyOperationalShipyard(
+                squadron,
+                squadron,
+                shipyardLocations
+            )
+                ? config.FastReplacementIntervalTicks
+                : config.NormalReplacementIntervalTicks;
+            return Math.Max(1, interval);
+        }
+    }
+
+    /// <summary>
+    /// Resolves capital-ship repair timing and pulse strength.
+    /// </summary>
+    internal static class ShipRecoveryRules
+    {
+        private const int _repairPulseDivisor = 10;
+
+        /// <summary>
+        /// Returns the repair interval currently available to a capital ship.
+        /// </summary>
+        /// <param name="game">The active game state and recovery configuration.</param>
+        /// <param name="ship">The capital ship whose repair interval is required.</param>
+        /// <param name="shipyardLocations">The indexed locations of operational shipyards.</param>
+        /// <returns>The positive number of ticks between repair pulses.</returns>
+        internal static int GetRepairInterval(
+            GameRoot game,
+            CapitalShip ship,
+            ISet<(string PlanetInstanceId, string OwnerInstanceId)> shipyardLocations
+        )
+        {
+            if (game == null)
+                throw new ArgumentNullException(nameof(game));
+            if (ship == null)
+                throw new ArgumentNullException(nameof(ship));
+            if (shipyardLocations == null)
+                throw new ArgumentNullException(nameof(shipyardLocations));
+
+            GameConfig.RecoveryConfig config = game.Config.Recovery;
+            bool repairsFast = RecoveryLocationRules.HasFriendlyOperationalShipyard(
+                ship,
+                ship,
+                shipyardLocations
+            );
+            int interval = repairsFast
+                ? config.FastRepairIntervalTicks
+                : config.NormalRepairIntervalTicks;
+            if (interval <= 0)
+            {
+                interval = repairsFast
+                    ? config.FastReplacementIntervalTicks
+                    : config.NormalReplacementIntervalTicks;
+            }
+            return Math.Max(1, interval);
+        }
+
+        /// <summary>
+        /// Returns the hull restored by one repair pulse.
+        /// </summary>
+        /// <param name="ship">The capital ship being repaired.</param>
+        /// <returns>One tenth of the ship's maximum hull strength, with at least one point restored.</returns>
+        internal static int GetRepairAmount(CapitalShip ship)
+        {
+            if (ship == null)
+                throw new ArgumentNullException(nameof(ship));
+            return Math.Max(1, ship.MaxHullStrength / _repairPulseDivisor);
+        }
+    }
+
+    /// <summary>
+    /// Updates recovery schedules when movement changes shipyard eligibility.
     /// </summary>
     internal sealed class RecoveryObserver : IResultObserver, IDisposable
     {
@@ -103,7 +179,7 @@ namespace Rebellion.Gameplay
         private IDisposable _arrivalSubscription;
 
         /// <summary>
-        /// Creates fighter recovery transition observation for one game.
+        /// Creates recovery transition observation for one game.
         /// </summary>
         /// <param name="game">The active game state.</param>
         public RecoveryObserver(GameRoot game)
@@ -112,7 +188,7 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Registers the fighter recovery transition callback.
+        /// Registers the recovery transition callback.
         /// </summary>
         /// <param name="results">The bus that delivers completed arrivals.</param>
         public void Connect(GameResultBus results)
@@ -135,13 +211,14 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Reschedules depleted squadrons from the tick on which their arrival changes eligibility.
+        /// Reschedules damaged ships and depleted squadrons when arrival changes eligibility.
         /// </summary>
         /// <param name="results">The completed unit arrivals.</param>
         /// <returns>No additional results because scheduling only changes recovery state.</returns>
         public List<GameResult> HandleResults(IReadOnlyList<UnitArrivedResult> results)
         {
-            Dictionary<Starfighter, int> arrivals = new Dictionary<Starfighter, int>();
+            Dictionary<Starfighter, int> fighterArrivals = new Dictionary<Starfighter, int>();
+            Dictionary<CapitalShip, int> shipArrivals = new Dictionary<CapitalShip, int>();
             foreach (UnitArrivedResult result in results ?? Array.Empty<UnitArrivedResult>())
             {
                 foreach (Starfighter squadron in GetArrivingSquadrons(result?.Unit))
@@ -150,16 +227,25 @@ namespace Rebellion.Gameplay
                         squadron.HasLosses()
                         && squadron.ManufacturingStatus == ManufacturingStatus.Complete
                     )
-                        arrivals[squadron] = result.Tick;
+                        fighterArrivals[squadron] = result.Tick;
+                }
+
+                foreach (CapitalShip ship in GetArrivingShips(result?.Unit))
+                {
+                    if (
+                        ship.IsDamaged()
+                        && ship.ManufacturingStatus == ManufacturingStatus.Complete
+                    )
+                        shipArrivals[ship] = result.Tick;
                 }
             }
 
-            if (arrivals.Count == 0)
+            if (fighterArrivals.Count == 0 && shipArrivals.Count == 0)
                 return new List<GameResult>();
 
             HashSet<(string PlanetInstanceId, string OwnerInstanceId)> shipyardLocations =
-                FighterRecoveryRules.BuildShipyardIndex(_game);
-            foreach ((Starfighter squadron, int arrivalTick) in arrivals)
+                RecoveryLocationRules.BuildShipyardIndex(_game);
+            foreach ((Starfighter squadron, int arrivalTick) in fighterArrivals)
             {
                 int interval = FighterRecoveryRules.GetReplacementInterval(
                     _game,
@@ -171,6 +257,13 @@ namespace Rebellion.Gameplay
                     || squadron.ReplacementIntervalTicks != interval
                 )
                     squadron.ScheduleReplacement(arrivalTick, interval);
+            }
+
+            foreach ((CapitalShip ship, int arrivalTick) in shipArrivals)
+            {
+                int interval = ShipRecoveryRules.GetRepairInterval(_game, ship, shipyardLocations);
+                if (ship.NextRepairTick <= 0 || ship.RepairIntervalTicks != interval)
+                    ship.ScheduleRepair(arrivalTick, interval);
             }
 
             return new List<GameResult>();
@@ -188,6 +281,20 @@ namespace Rebellion.Gameplay
             if (unit is ContainerNode container)
                 return container.GetChildren<Starfighter>(recursive: true);
             return Array.Empty<Starfighter>();
+        }
+
+        /// <summary>
+        /// Enumerates damaged capital ships contained by one arriving unit.
+        /// </summary>
+        /// <param name="unit">The unit that completed transit.</param>
+        /// <returns>The arriving capital ships.</returns>
+        private static IEnumerable<CapitalShip> GetArrivingShips(IGameEntity unit)
+        {
+            if (unit is CapitalShip ship)
+                return new[] { ship };
+            if (unit is ContainerNode container)
+                return container.GetChildren<CapitalShip>(recursive: true);
+            return Array.Empty<CapitalShip>();
         }
     }
 
@@ -210,10 +317,11 @@ namespace Rebellion.Gameplay
         {
             List<GameResult> results = new List<GameResult>();
             GameConfig.RecoveryConfig config = game.Config.Recovery;
+            HashSet<(string PlanetInstanceId, string OwnerInstanceId)> shipyardLocations = null;
 
             HealOfficers(game, config, results);
-            RepairShips(game, config, results);
-            ReplaceSquadronLosses(game, results);
+            RepairShips(game, results, ref shipyardLocations);
+            ReplaceSquadronLosses(game, results, ref shipyardLocations);
 
             return results;
         }
@@ -255,36 +363,62 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Repairs hull damage on each damaged capital ship.
-        /// Ships at friendly orbital shipyards repair faster.
+        /// Repairs hull damage when each damaged capital ship's repair timer expires.
+        /// Friendly operational shipyards shorten the interval between repair pulses.
         /// Emits a result only when the ship is fully repaired.
         /// </summary>
         /// <param name="game">The game state being advanced.</param>
-        /// <param name="config">The recovery configuration.</param>
         /// <param name="results">Collection to append repair results to.</param>
+        /// <param name="shipyardLocations">The lazily built shipyard index shared by recovery phases.</param>
         private static void RepairShips(
             GameRoot game,
-            GameConfig.RecoveryConfig config,
-            List<GameResult> results
+            List<GameResult> results,
+            ref HashSet<(string PlanetInstanceId, string OwnerInstanceId)> shipyardLocations
         )
         {
-            foreach (CapitalShip ship in game.GetSceneNodesByType<CapitalShip>())
+            List<CapitalShip> ships = game.GetSceneNodesByType<CapitalShip>();
+            if (
+                !ships.Any(ship =>
+                    ship.IsDamaged()
+                    && ship.ManufacturingStatus == ManufacturingStatus.Complete
+                    && ((IMovable)ship).GetTransitMovement() == null
+                )
+            )
+            {
+                foreach (CapitalShip ship in ships)
+                    ship.ClearRepairSchedule();
+                return;
+            }
+
+            shipyardLocations ??= RecoveryLocationRules.BuildShipyardIndex(game);
+            foreach (CapitalShip ship in ships)
             {
                 if (
                     !ship.IsDamaged()
                     || ship.ManufacturingStatus != ManufacturingStatus.Complete
                     || ((IMovable)ship).GetTransitMovement() != null
                 )
+                {
+                    ship.ClearRepairSchedule();
+                    continue;
+                }
+
+                int interval = ShipRecoveryRules.GetRepairInterval(game, ship, shipyardLocations);
+                if (ship.NextRepairTick <= 0 || ship.RepairIntervalTicks != interval)
+                {
+                    ship.ScheduleRepair(game.CurrentTick, interval);
+                    continue;
+                }
+
+                if (game.CurrentTick < ship.NextRepairTick)
                     continue;
 
                 int before = ship.CurrentHullStrength;
-                int amount = IsAtFriendlyShipyard(ship)
-                    ? config.FastRepairAmount
-                    : config.NormalRepairAmount;
-                ship.RepairHull(amount);
+                ship.RepairHull(ShipRecoveryRules.GetRepairAmount(ship));
 
                 if (!ship.IsDamaged())
                 {
+                    ship.ClearRepairSchedule();
                     results.Add(
                         new ShipHullDamageResult
                         {
@@ -294,6 +428,10 @@ namespace Rebellion.Gameplay
                             Tick = game.CurrentTick,
                         }
                     );
+                }
+                else
+                {
+                    ship.ScheduleRepair(game.CurrentTick, interval);
                 }
             }
         }
@@ -305,7 +443,12 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="game">The game state being advanced.</param>
         /// <param name="results">Collection to append replacement results to.</param>
-        private static void ReplaceSquadronLosses(GameRoot game, List<GameResult> results)
+        /// <param name="shipyardLocations">The lazily built shipyard index shared by recovery phases.</param>
+        private static void ReplaceSquadronLosses(
+            GameRoot game,
+            List<GameResult> results,
+            ref HashSet<(string PlanetInstanceId, string OwnerInstanceId)> shipyardLocations
+        )
         {
             List<Starfighter> squadrons = game.GetSceneNodesByType<Starfighter>();
             if (
@@ -320,8 +463,7 @@ namespace Rebellion.Gameplay
                 return;
             }
 
-            HashSet<(string PlanetInstanceId, string OwnerInstanceId)> shipyardLocations =
-                FighterRecoveryRules.BuildShipyardIndex(game);
+            shipyardLocations ??= RecoveryLocationRules.BuildShipyardIndex(game);
             foreach (Starfighter squadron in squadrons)
             {
                 if (
@@ -371,26 +513,6 @@ namespace Rebellion.Gameplay
                     squadron.ScheduleReplacement(game.CurrentTick, interval);
                 }
             }
-        }
-
-        /// <summary>
-        /// Returns true if the ship is at a friendly planet with an operational orbital shipyard.
-        /// </summary>
-        /// <param name="ship">The capital ship to check.</param>
-        /// <returns>True when a friendly operational shipyard can accelerate repairs.</returns>
-        private static bool IsAtFriendlyShipyard(CapitalShip ship)
-        {
-            Planet planet = ship.GetParentOfType<Planet>();
-            return planet != null
-                && planet.OwnerInstanceID == ship.OwnerInstanceID
-                && planet
-                    .GetChildren<Building>()
-                    .Any(building =>
-                        building.OwnerInstanceID == ship.OwnerInstanceID
-                        && building.BuildingType == BuildingType.Shipyard
-                        && building.ManufacturingStatus == ManufacturingStatus.Complete
-                        && building.Movement == null
-                    );
         }
     }
 }

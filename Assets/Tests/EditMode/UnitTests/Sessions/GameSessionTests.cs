@@ -3988,7 +3988,7 @@ namespace Rebellion.Tests.Gameplay
             GameConfig config = new GameConfig();
             config.Jedi.FastHealThreshold = 80;
             config.Recovery.NormalHealAmount = 1;
-            config.Recovery.FastRepairAmount = 1;
+            config.Recovery.FastRepairIntervalTicks = 1;
             config.Recovery.FastReplacementIntervalTicks = 1;
             config.Smuggling.LossPercentByMinimumSupport[0] = 0;
             GameRoot game = TestGame.Create(config);
@@ -4020,6 +4020,8 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 MaxHullStrength = 100,
                 CurrentHullStrength = 99,
+                NextRepairTick = 1,
+                RepairIntervalTicks = 1,
                 StarfighterCapacity = 1,
             };
             Starfighter fighter = new Starfighter

@@ -262,9 +262,10 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ProcessTick_DamagedShipAtFriendlyShipyard_RepairsFast()
+        public void ProcessTick_DamagedShipAtFriendlyShipyard_RepairsTenPercentAtFastInterval()
         {
             (GameRoot game, Planet planet) = BuildScene();
+            game.CurrentTick = 10;
 
             Fleet fleet = new Fleet { InstanceID = "f1", OwnerInstanceID = "empire" };
             CapitalShip ship = new CapitalShip
@@ -291,18 +292,100 @@ namespace Rebellion.Tests.Gameplay
             RecoveryTickProcessor system = new RecoveryTickProcessor();
 
             system.ProcessTick(game);
+            Assert.AreEqual(80, ship.CurrentHullStrength);
+            Assert.AreEqual(12, ship.NextRepairTick);
 
-            Assert.AreEqual(
-                85,
-                ship.CurrentHullStrength,
-                "Ship at a friendly orbital shipyard should repair 5 per tick"
-            );
+            game.CurrentTick = 12;
+            system.ProcessTick(game);
+
+            Assert.AreEqual(90, ship.CurrentHullStrength);
+            Assert.AreEqual(14, ship.NextRepairTick);
         }
 
         [Test]
-        public void ProcessTick_DamagedShipAtFriendlyPlanetWithoutShipyard_RepairsSlowly()
+        public void ProcessTick_RepairAndReplacementIntervalsDiffer_UsesRepairIntervalForShip()
         {
             (GameRoot game, Planet planet) = BuildScene();
+            game.CurrentTick = 10;
+            game.Config.Recovery.FastRepairIntervalTicks = 7;
+            game.Config.Recovery.FastReplacementIntervalTicks = 2;
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "s1",
+                OwnerInstanceID = "empire",
+                MaxHullStrength = 100,
+                CurrentHullStrength = 80,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "shipyard",
+                    OwnerInstanceID = "empire",
+                    BuildingType = BuildingType.Shipyard,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+
+            new RecoveryTickProcessor().ProcessTick(game);
+
+            Assert.AreEqual(7, ship.RepairIntervalTicks);
+            Assert.AreEqual(17, ship.NextRepairTick);
+        }
+
+        [TestCase(true, 7)]
+        [TestCase(false, 11)]
+        public void ProcessTick_RepairIntervalMissing_UsesMatchingReplacementInterval(
+            bool hasShipyard,
+            int expectedInterval
+        )
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            game.CurrentTick = 10;
+            game.Config.Recovery.FastRepairIntervalTicks = 0;
+            game.Config.Recovery.NormalRepairIntervalTicks = 0;
+            game.Config.Recovery.FastReplacementIntervalTicks = 7;
+            game.Config.Recovery.NormalReplacementIntervalTicks = 11;
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "s1",
+                OwnerInstanceID = "empire",
+                MaxHullStrength = 100,
+                CurrentHullStrength = 80,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            if (hasShipyard)
+            {
+                game.AttachNode(
+                    new Building
+                    {
+                        InstanceID = "shipyard",
+                        OwnerInstanceID = "empire",
+                        BuildingType = BuildingType.Shipyard,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    planet
+                );
+            }
+
+            new RecoveryTickProcessor().ProcessTick(game);
+
+            Assert.AreEqual(expectedInterval, ship.RepairIntervalTicks);
+            Assert.AreEqual(10 + expectedInterval, ship.NextRepairTick);
+        }
+
+        [Test]
+        public void ProcessTick_DamagedShipWithoutShipyard_RepairsTenPercentAtNormalInterval()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            game.CurrentTick = 10;
             Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
             CapitalShip ship = new CapitalShip
             {
@@ -315,15 +398,74 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
 
-            new RecoveryTickProcessor().ProcessTick(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
+            system.ProcessTick(game);
+            game.CurrentTick = 39;
+            system.ProcessTick(game);
 
-            Assert.AreEqual(81, ship.CurrentHullStrength);
+            Assert.AreEqual(80, ship.CurrentHullStrength);
+
+            game.CurrentTick = 40;
+            system.ProcessTick(game);
+
+            Assert.AreEqual(90, ship.CurrentHullStrength);
         }
 
         [Test]
-        public void ProcessTick_DamagedShipAtIncompleteFriendlyShipyard_RepairsSlowly()
+        public void ProcessTick_DamagedThreeThousandHullShip_RestoresThreeHundredHullPerPulse()
         {
             (GameRoot game, Planet planet) = BuildScene();
+            game.CurrentTick = 40;
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "s1",
+                OwnerInstanceID = "empire",
+                MaxHullStrength = 3000,
+                CurrentHullStrength = 1500,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                NextRepairTick = 40,
+                RepairIntervalTicks = 30,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+
+            new RecoveryTickProcessor().ProcessTick(game);
+
+            Assert.AreEqual(1800, ship.CurrentHullStrength);
+            Assert.AreEqual(70, ship.NextRepairTick);
+        }
+
+        [Test]
+        public void ProcessTick_DamagedLowStrengthShip_RestoresAtLeastOneHullPerPulse()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            game.CurrentTick = 40;
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "s1",
+                OwnerInstanceID = "empire",
+                MaxHullStrength = 2,
+                CurrentHullStrength = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                NextRepairTick = 40,
+                RepairIntervalTicks = 30,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+
+            new RecoveryTickProcessor().ProcessTick(game);
+
+            Assert.AreEqual(2, ship.CurrentHullStrength);
+            Assert.AreEqual(0, ship.NextRepairTick);
+        }
+
+        [Test]
+        public void ProcessTick_DamagedShipAtIncompleteFriendlyShipyard_UsesNormalInterval()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            game.CurrentTick = 10;
             Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
             CapitalShip ship = new CapitalShip
             {
@@ -348,7 +490,9 @@ namespace Rebellion.Tests.Gameplay
 
             new RecoveryTickProcessor().ProcessTick(game);
 
-            Assert.AreEqual(81, ship.CurrentHullStrength);
+            Assert.AreEqual(80, ship.CurrentHullStrength);
+            Assert.AreEqual(30, ship.RepairIntervalTicks);
+            Assert.AreEqual(40, ship.NextRepairTick);
         }
 
         [Test]
@@ -396,9 +540,49 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ProcessTick_DamagedShipAtEnemyPlanet_RepairsSlowly()
+        public void HandleResults_DamagedShipArrivesAtFriendlyShipyard_UsesFastInterval()
         {
             (GameRoot game, Planet planet) = BuildScene();
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "s1",
+                OwnerInstanceID = "empire",
+                MaxHullStrength = 100,
+                CurrentHullStrength = 80,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                NextRepairTick = 100,
+                RepairIntervalTicks = 30,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "shipyard",
+                    OwnerInstanceID = "empire",
+                    BuildingType = BuildingType.Shipyard,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+
+            new RecoveryObserver(game).HandleResults(
+                new[]
+                {
+                    new UnitArrivedResult { Unit = fleet, Tick = 10 },
+                }
+            );
+
+            Assert.AreEqual(2, ship.RepairIntervalTicks);
+            Assert.AreEqual(12, ship.NextRepairTick);
+        }
+
+        [Test]
+        public void ProcessTick_DamagedShipAtEnemyPlanet_UsesNormalInterval()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            game.CurrentTick = 10;
             planet.OwnerInstanceID = "rebels";
 
             Fleet fleet = new Fleet { InstanceID = "f1", OwnerInstanceID = "empire" };
@@ -417,11 +601,9 @@ namespace Rebellion.Tests.Gameplay
 
             system.ProcessTick(game);
 
-            Assert.AreEqual(
-                81,
-                ship.CurrentHullStrength,
-                "Ship at enemy planet should repair 1 per tick"
-            );
+            Assert.AreEqual(80, ship.CurrentHullStrength);
+            Assert.AreEqual(30, ship.RepairIntervalTicks);
+            Assert.AreEqual(40, ship.NextRepairTick);
         }
 
         [Test]
@@ -461,6 +643,8 @@ namespace Rebellion.Tests.Gameplay
                 MaxHullStrength = 100,
                 CurrentHullStrength = 98,
                 ManufacturingStatus = ManufacturingStatus.Complete,
+                NextRepairTick = 10,
+                RepairIntervalTicks = 2,
             };
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
@@ -476,6 +660,7 @@ namespace Rebellion.Tests.Gameplay
             );
 
             RecoveryTickProcessor system = new RecoveryTickProcessor();
+            game.CurrentTick = 10;
 
             system.ProcessTick(game);
 
@@ -499,11 +684,14 @@ namespace Rebellion.Tests.Gameplay
                 MaxHullStrength = 100,
                 CurrentHullStrength = 99,
                 ManufacturingStatus = ManufacturingStatus.Complete,
+                NextRepairTick = 10,
+                RepairIntervalTicks = 30,
             };
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
 
             RecoveryTickProcessor system = new RecoveryTickProcessor();
+            game.CurrentTick = 10;
 
             IReadOnlyList<GameResult> results = system.ProcessTick(game);
 
@@ -526,11 +714,14 @@ namespace Rebellion.Tests.Gameplay
                 MaxHullStrength = 100,
                 CurrentHullStrength = 80,
                 ManufacturingStatus = ManufacturingStatus.Complete,
+                NextRepairTick = 10,
+                RepairIntervalTicks = 30,
             };
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
 
             RecoveryTickProcessor system = new RecoveryTickProcessor();
+            game.CurrentTick = 10;
 
             IReadOnlyList<GameResult> results = system.ProcessTick(game);
 
@@ -908,8 +1099,8 @@ namespace Rebellion.Tests.Gameplay
             {
                 NormalHealAmount = 1,
                 FastHealAmount = 3,
-                NormalRepairAmount = 1,
-                FastRepairAmount = 5,
+                NormalRepairIntervalTicks = 30,
+                FastRepairIntervalTicks = 2,
                 NormalReplacementIntervalTicks = 30,
                 FastReplacementIntervalTicks = 2,
             };

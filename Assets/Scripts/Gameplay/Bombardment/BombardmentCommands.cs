@@ -279,12 +279,14 @@ namespace Rebellion.Gameplay
                     hullDamage[target] += damage - absorbed;
             }
 
+            HashSet<(string PlanetInstanceId, string OwnerInstanceId)> shipyardLocations = null;
             foreach (CapitalShip ship in targets)
             {
                 int damage = hullDamage[ship];
                 if (damage <= 0)
                     continue;
 
+                bool wasDamaged = ship.IsDamaged();
                 int hullBefore = ship.CurrentHullStrength;
                 ship.CurrentHullStrength = Math.Max(0, hullBefore - damage);
                 result.AttackerShipDamage.Add(
@@ -297,7 +299,17 @@ namespace Rebellion.Gameplay
                 );
 
                 if (ship.CurrentHullStrength > 0)
+                {
+                    if (!wasDamaged && ship.IsDamaged())
+                    {
+                        shipyardLocations ??= RecoveryLocationRules.BuildShipyardIndex(_game);
+                        ship.ScheduleRepair(
+                            _game.CurrentTick,
+                            ShipRecoveryRules.GetRepairInterval(_game, ship, shipyardLocations)
+                        );
+                    }
                     continue;
+                }
 
                 result.DestroyedCapitalShips.Add(ship);
                 RecordDestroyedEmbarkedCombatUnits(ship, planet, result.Events);
