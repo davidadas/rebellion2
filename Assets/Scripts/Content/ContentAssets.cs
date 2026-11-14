@@ -27,6 +27,10 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         string,
         Texture2D
     >(StringComparer.Ordinal);
+    private readonly Dictionary<string, Texture2D> smoothTextures = new Dictionary<
+        string,
+        Texture2D
+    >(StringComparer.Ordinal);
     private readonly Dictionary<Texture2D, string> textureAddresses =
         new Dictionary<Texture2D, string>();
     private readonly Dictionary<Texture2D, RectInt> textureContentBounds =
@@ -151,6 +155,16 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     }
 
     /// <summary>
+    /// Resolves and caches a mipmapped texture for artwork that is substantially reduced on screen.
+    /// </summary>
+    /// <param name="path">The application or pack content address.</param>
+    /// <returns>The smoothly filtered texture, or null when the address cannot be loaded.</returns>
+    public Texture2D GetSmoothTexture(string path)
+    {
+        return GetTexture(path, smoothTextures, true, true, FilterMode.Trilinear);
+    }
+
+    /// <summary>
     /// Gets the smallest texture rectangle containing every visible pixel.
     /// </summary>
     /// <param name="texture">The addressed texture to inspect.</param>
@@ -226,11 +240,15 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     /// <param name="path">The path.</param>
     /// <param name="cache">The cache.</param>
     /// <param name="markNonReadable">Whether mark non readable.</param>
+    /// <param name="mipChain">Whether to generate progressively smaller texture levels.</param>
+    /// <param name="filterMode">The sampling mode applied when the texture is resized.</param>
     /// <returns>The requested texture.</returns>
     private Texture2D GetTexture(
         string path,
         IDictionary<string, Texture2D> cache,
-        bool markNonReadable
+        bool markNonReadable,
+        bool mipChain = false,
+        FilterMode filterMode = FilterMode.Point
     )
     {
         ThrowIfDisposed();
@@ -259,7 +277,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         try
         {
             byte[] bytes = File.ReadAllBytes(filePath);
-            texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            texture = new Texture2D(2, 2, TextureFormat.RGBA32, mipChain);
             if (!ImageConversion.LoadImage(texture, bytes, markNonReadable))
             {
                 DestroyAsset(texture);
@@ -279,7 +297,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         }
 
         texture.name = Path.GetFileNameWithoutExtension(filePath);
-        texture.filterMode = FilterMode.Point;
+        texture.filterMode = filterMode;
         texture.wrapMode = TextureWrapMode.Clamp;
         cache.Add(normalizedPath, texture);
         textureAddresses[texture] = normalizedPath;
@@ -477,11 +495,14 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
             DestroyAsset(texture);
         foreach (Texture2D texture in readableTextures.Values)
             DestroyAsset(texture);
+        foreach (Texture2D texture in smoothTextures.Values)
+            DestroyAsset(texture);
 
         audioClips.Clear();
         audioLoads.Clear();
         textures.Clear();
         readableTextures.Clear();
+        smoothTextures.Clear();
         textureAddresses.Clear();
         textureContentBounds.Clear();
         sprites.Clear();

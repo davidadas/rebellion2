@@ -6,18 +6,24 @@ using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.PlayerRequests;
+using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
 using Rebellion.PlayerRequests;
 using Rebellion.SceneGraph;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.TestTools;
+using UnityEngine.UI;
+using AssetDatabase = UnityEditor.AssetDatabase;
 
 namespace Rebellion.Tests.Multiplayer
 {
@@ -26,6 +32,439 @@ namespace Rebellion.Tests.Multiplayer
     {
         private const string _hostFactionID = "FNALL1";
         private const string _guestFactionID = "FNEMP1";
+
+        /// <summary>
+        /// Leaves Play Mode even when a UI assertion fails.
+        /// </summary>
+        /// <returns>The mode-exit sequence.</returns>
+        [UnityTearDown]
+        public IEnumerator TearDownPlayMode()
+        {
+            if (Application.isPlaying)
+                yield return new ExitPlayMode();
+        }
+
+        [TestCaseSource(nameof(MissionStartCases))]
+        public void Pump_MissionFamilyRequest_PreservesMatchingContinuationAfterReload(
+            MultiplayerRole role,
+            string missionType,
+            ResearchDiscipline? discipline,
+            bool repeating
+        )
+        {
+            using PeerPair peers = new();
+            string actor = role == MultiplayerRole.Host ? _hostFactionID : _guestFactionID;
+            MissionContext hostContext = PrepareMission(
+                peers.HostGame,
+                actor,
+                missionType,
+                discipline
+            );
+            MissionContext guestContext = PrepareMission(
+                peers.GuestGame,
+                actor,
+                missionType,
+                discipline
+            );
+            bool host = role == MultiplayerRole.Host;
+            GameSession session = host ? peers.HostSimulation : peers.GuestSimulation;
+            MissionContext context = host ? hostContext : guestContext;
+            context.IsRepeating = repeating;
+            Assert.IsTrue(
+                session.GetService<MissionQueries>().CanCreateMission(context),
+                "Fixture eligibility"
+            );
+
+            Task<PlayerRequestOutcome> request = (host ? peers.Host : peers.Guest).ExecuteAsync(
+                CreateMissionRequest(context)
+            );
+            peers.Flush();
+
+            Assert.IsTrue(request.Result.Accepted, request.Result.RejectionReason);
+            foreach (GameRoot game in new[] { peers.HostGame, peers.GuestGame })
+            {
+                Mission mission = game.GetSceneNodesByType<Mission>().Single();
+                Assert.AreEqual(missionType, mission.ConfigKey);
+                Assert.AreEqual(actor, mission.OwnerInstanceID);
+                Assert.IsTrue(mission.HasInitiated);
+                if (mission is EspionageMission espionage)
+                    Assert.AreEqual(repeating, espionage.IsRepeating);
+            }
+            peers.AssertSharedState();
+            MultiplayerSnapshot saved = MultiplayerSnapshotCodec.Capture(session);
+            using PeerPair resumed = new(saved, TestGameData.Create(peers.HostGame.Config));
+            for (int day = 0; day < 5; day++)
+            {
+                if (!peers.Host.CanBeginHostTick)
+                {
+                    Assert.IsFalse(resumed.Host.CanBeginHostTick);
+                    break;
+                }
+                AdvanceMissionDay(peers);
+                AdvanceMissionDay(resumed);
+                Assert.AreEqual(
+                    MultiplayerSnapshotCodec.ComputeStateFingerprint(peers.HostGame),
+                    MultiplayerSnapshotCodec.ComputeStateFingerprint(resumed.HostGame),
+                    $"{role} {missionType}: restored mission diverged on day {day + 1}"
+                );
+            }
+        }
+
+        [TestCaseSource(nameof(MissionStartCases))]
+        public void Pump_FogOfWarMissionRequest_StartsMatchingMissionOnBothPeers(
+            MultiplayerRole role,
+            string missionType,
+            ResearchDiscipline? discipline,
+            bool repeating
+        )
+        {
+            using PeerPair peers = new();
+            string actor = role == MultiplayerRole.Host ? _hostFactionID : _guestFactionID;
+            bool host = role == MultiplayerRole.Host;
+            MissionContext hostContext = PrepareMission(
+                peers.HostGame,
+                actor,
+                missionType,
+                discipline
+            );
+            MissionContext guestContext = PrepareMission(
+                peers.GuestGame,
+                actor,
+                missionType,
+                discipline
+            );
+            foreach (
+                var entry in new[]
+                {
+                    (peers.HostGame, hostContext),
+                    (peers.GuestGame, guestContext),
+                }
+            )
+            {
+                Planet location = (Planet)entry.Item2.Location;
+                new Rebellion.Game.FogOfWar.FogOfWarRecorder().RecordEspionageSnapshot(
+                    entry.Item1.GetFactionByOwnerInstanceID(actor),
+                    location,
+                    location.GetParentOfType<PlanetSector>(),
+                    entry.Item1.CurrentTick
+                );
+            }
+            SettlePreparedState(peers);
+            GameRoot issuer = host ? peers.HostGame : peers.GuestGame;
+            GameSession session = host ? peers.HostSimulation : peers.GuestSimulation;
+            MissionContext context = host ? hostContext : guestContext;
+            Planet observed = session
+                .GetService<FogOfWarQueries>()
+                .BuildFactionView(issuer.GetFactionByOwnerInstanceID(actor))
+                .GetChildren<PlanetSector>()
+                .SelectMany(sector => sector.GetChildren<Planet>())
+                .Single(planet => planet.InstanceID == context.Location.InstanceID);
+            ISceneNode selected = null;
+            observed.TraverseIncludingDisabled(node =>
+            {
+                if (node.InstanceID == context.SelectedTarget.InstanceID)
+                    selected = node;
+            });
+            Assert.IsNotNull(selected, "The player must be able to see the selected target.");
+            Assert.AreNotSame(context.Location, observed);
+            context.Location = observed;
+            context.SelectedTarget = selected;
+            context.IsRepeating = repeating;
+            Assert.IsTrue(
+                session.GetService<MissionQueries>().CanCreateMission(context),
+                "Observed fixture eligibility"
+            );
+
+            Task<PlayerRequestOutcome> request = (host ? peers.Host : peers.Guest).ExecuteAsync(
+                CreateMissionRequest(context)
+            );
+            peers.Flush();
+
+            Assert.IsTrue(Completed(request).Accepted, Completed(request).RejectionReason);
+            Assert.AreEqual(
+                missionType,
+                peers.HostGame.GetSceneNodesByType<Mission>().Single().ConfigKey
+            );
+            peers.AssertSharedState();
+        }
+
+        [TestCaseSource(nameof(InvalidMissionCases))]
+        public void Pump_InvalidMissionRequest_RejectsWithoutMutatingEitherPeer(
+            MultiplayerRole role,
+            string scenario
+        )
+        {
+            using PeerPair peers = new();
+            string actor = role == MultiplayerRole.Host ? _hostFactionID : _guestFactionID;
+            bool host = role == MultiplayerRole.Host;
+            MissionContext hostContext = PrepareMission(
+                peers.HostGame,
+                actor,
+                SabotageMission.MissionTypeID,
+                null
+            );
+            MissionContext guestContext = PrepareMission(
+                peers.GuestGame,
+                actor,
+                SabotageMission.MissionTypeID,
+                null
+            );
+            MissionContext context = host ? hostContext : guestContext;
+            StartMissionRequest order = CreateMissionRequest(context);
+            switch (scenario)
+            {
+                case "empty":
+                    order.MainParticipantIDs = Array.Empty<string>();
+                    break;
+                case "missing":
+                    order.MainParticipantIDs = new[] { "missing-agent" };
+                    break;
+                case "duplicate":
+                    order.MainParticipantIDs = new[] { "matrix-agent", "matrix-agent" };
+                    break;
+                case "missing-decoy":
+                    order.DecoyParticipantIDs = new[] { "missing-agent" };
+                    break;
+                case "overlap":
+                    order.DecoyParticipantIDs = new[] { "matrix-agent" };
+                    break;
+                case "duplicate-decoy":
+                    order.DecoyParticipantIDs = new[] { "matrix-decoy", "matrix-decoy" };
+                    break;
+                case "foreign":
+                    order.MainParticipantIDs = new[] { "foreign-agent" };
+                    break;
+                case "foreign-decoy":
+                    order.DecoyParticipantIDs = new[] { "foreign-agent" };
+                    break;
+                case "wrong-planet":
+                    order.ObservedLocation = (Planet)
+                        context.MainParticipants[0].GetParentOfType<Planet>();
+                    break;
+                case "unsupported-repeat":
+                    order.IsRepeating = true;
+                    break;
+                case "unknown-mission":
+                    order.MissionTypeID = "missing-mission";
+                    break;
+            }
+            foreach (GameRoot game in new[] { peers.HostGame, peers.GuestGame })
+            {
+                Planet origin = game.GetSceneNodeByInstanceID<Planet>(
+                    host ? "host-planet" : "guest-planet"
+                );
+                game.AttachNode(
+                    new Officer { InstanceID = "matrix-decoy", OwnerInstanceID = actor },
+                    origin
+                );
+                game.AttachNode(
+                    new Officer
+                    {
+                        InstanceID = "foreign-agent",
+                        OwnerInstanceID = host ? _guestFactionID : _hostFactionID,
+                    },
+                    game.GetSceneNodeByInstanceID<Planet>(host ? "guest-planet" : "host-planet")
+                );
+            }
+            SettlePreparedState(peers);
+            Task<PlayerRequestOutcome> request = (host ? peers.Host : peers.Guest).ExecuteAsync(
+                order
+            );
+            foreach (GameRoot game in new[] { peers.HostGame, peers.GuestGame })
+            {
+                if (scenario == "injured")
+                    game.GetSceneNodeByInstanceID<Officer>("matrix-agent").InjuryPoints = 1;
+                if (scenario == "destroyed")
+                    game.GetSceneNodeByInstanceID<Planet>(context.Location.InstanceID).IsDestroyed =
+                        true;
+            }
+            string before = MultiplayerSnapshotCodec.ComputeStateFingerprint(peers.HostGame);
+
+            peers.Flush();
+
+            Assert.IsFalse(Completed(request).Accepted);
+            Assert.IsNotEmpty(Completed(request).RejectionReason);
+            Assert.IsEmpty(peers.HostGame.GetSceneNodesByType<Mission>());
+            Assert.AreEqual(
+                before,
+                MultiplayerSnapshotCodec.ComputeStateFingerprint(peers.HostGame)
+            );
+            peers.AssertSharedState();
+            Assert.IsTrue(peers.Host.CanBeginHostTick);
+        }
+
+        [TestCase(MultiplayerRole.Host)]
+        [TestCase(MultiplayerRole.Guest)]
+        public void Receive_DuplicateMissionPackets_StartsOnlyOneMission(MultiplayerRole role)
+        {
+            using PeerPair peers = new();
+            string actor = role == MultiplayerRole.Host ? _hostFactionID : _guestFactionID;
+            MissionContext host = PrepareMission(
+                peers.HostGame,
+                actor,
+                SabotageMission.MissionTypeID,
+                null
+            );
+            MissionContext guest = PrepareMission(
+                peers.GuestGame,
+                actor,
+                SabotageMission.MissionTypeID,
+                null
+            );
+            Task<PlayerRequestOutcome> request = (
+                role == MultiplayerRole.Host ? peers.Host : peers.Guest
+            ).ExecuteAsync(CreateMissionRequest(role == MultiplayerRole.Host ? host : guest));
+            if (role == MultiplayerRole.Guest)
+                peers.ToHost.Enqueue(peers.ToHost.Peek());
+            peers.DeliverToHost();
+            peers.Host.Pump();
+            peers.ToGuest.Enqueue(peers.ToGuest.Peek());
+
+            peers.Flush();
+
+            Assert.IsTrue(Completed(request).Accepted);
+            Assert.AreEqual(1, peers.HostGame.GetSceneNodesByType<Mission>().Count);
+            Assert.AreEqual(1, peers.GuestGame.GetSceneNodesByType<Mission>().Count);
+            peers.AssertSharedState();
+        }
+
+        [TestCase(MultiplayerRole.Host, MultiplayerRole.Host)]
+        [TestCase(MultiplayerRole.Host, MultiplayerRole.Guest)]
+        [TestCase(MultiplayerRole.Guest, MultiplayerRole.Host)]
+        [TestCase(MultiplayerRole.Guest, MultiplayerRole.Guest)]
+        public void Pump_UnreceivedMissionCommitRecovery_RetainsSurvivorMissionAndAllowsResubmission(
+            MultiplayerRole issuer,
+            MultiplayerRole survivor
+        )
+        {
+            using PeerPair previous = new();
+            string actor = issuer == MultiplayerRole.Host ? _hostFactionID : _guestFactionID;
+            MissionContext host = PrepareMission(
+                previous.HostGame,
+                actor,
+                SabotageMission.MissionTypeID,
+                null
+            );
+            MissionContext guest = PrepareMission(
+                previous.GuestGame,
+                actor,
+                SabotageMission.MissionTypeID,
+                null
+            );
+            SettlePreparedState(previous);
+            (issuer == MultiplayerRole.Host ? previous.Host : previous.Guest).ExecuteAsync(
+                CreateMissionRequest(issuer == MultiplayerRole.Host ? host : guest)
+            );
+            previous.DeliverToHost();
+            previous.Host.Pump();
+            MultiplayerPacket oldCommit = previous.ToGuest.Dequeue();
+            MultiplayerSnapshot checkpoint = MultiplayerSnapshotCodec.Capture(
+                survivor == MultiplayerRole.Host
+                    ? previous.HostSimulation
+                    : previous.GuestSimulation
+            );
+            using PeerPair resumed = new(checkpoint, TestGameData.Create(previous.HostGame.Config));
+
+            resumed.Guest.Receive(oldCommit);
+            resumed.Flush();
+
+            Assert.AreEqual(
+                survivor == MultiplayerRole.Host ? 1 : 0,
+                resumed.HostGame.GetSceneNodesByType<Mission>().Count
+            );
+            resumed.AssertSharedState();
+            if (survivor == MultiplayerRole.Guest)
+            {
+                GameRoot game =
+                    issuer == MultiplayerRole.Host ? resumed.HostGame : resumed.GuestGame;
+                Task<PlayerRequestOutcome> retry = (
+                    issuer == MultiplayerRole.Host ? resumed.Host : resumed.Guest
+                ).ExecuteAsync(
+                    new StartMissionRequest
+                    {
+                        MissionTypeID = SabotageMission.MissionTypeID,
+                        ObservedLocation = game.GetSceneNodeByInstanceID<Planet>(
+                            host.Location.InstanceID
+                        ),
+                        ObservedTarget = game.GetSceneNodeByInstanceID<Regiment>("matrix-target"),
+                        MainParticipantIDs = new[] { "matrix-agent" },
+                    }
+                );
+                resumed.Flush();
+                Assert.IsTrue(Completed(retry).Accepted);
+            }
+            Assert.AreEqual(1, resumed.HostGame.GetSceneNodesByType<Mission>().Count);
+            for (int day = 0; day < 5; day++)
+                AdvanceMissionDay(resumed);
+        }
+
+        [TestCase(MultiplayerRole.Host, 314159)]
+        [TestCase(MultiplayerRole.Guest, 314159)]
+        [TestCase(MultiplayerRole.Host, 271828)]
+        [TestCase(MultiplayerRole.Guest, 271828)]
+        public void Pump_MissionQueuedDuringTickWithJitter_StartsOnceAfterSafeBoundary(
+            MultiplayerRole role,
+            int seed
+        )
+        {
+            using PeerPair peers = new();
+            string actor = role == MultiplayerRole.Host ? _hostFactionID : _guestFactionID;
+            MissionContext host = PrepareMission(
+                peers.HostGame,
+                actor,
+                SabotageMission.MissionTypeID,
+                null
+            );
+            MissionContext guest = PrepareMission(
+                peers.GuestGame,
+                actor,
+                SabotageMission.MissionTypeID,
+                null
+            );
+            Assert.IsTrue(peers.Host.TryBeginTick(true));
+            peers.DeliverToGuest();
+            peers.Guest.Pump();
+            Assert.IsTrue(peers.Guest.TryBeginTick(false));
+            IEnumerator hostTick = peers.HostSimulation.Tick.ProcessTickIncrementally();
+            IEnumerator guestTick = peers.GuestSimulation.Tick.ProcessTickIncrementally();
+            try
+            {
+                Assert.IsTrue(hostTick.MoveNext());
+                Assert.IsTrue(guestTick.MoveNext());
+                Task<PlayerRequestOutcome> request = (
+                    role == MultiplayerRole.Host ? peers.Host : peers.Guest
+                ).ExecuteAsync(CreateMissionRequest(role == MultiplayerRole.Host ? host : guest));
+                peers.Host.Pump();
+                peers.Guest.Pump();
+                Assert.IsEmpty(peers.HostGame.GetSceneNodesByType<Mission>());
+                Assert.IsFalse(request.IsCompleted);
+                peers.FlushWithJitter(
+                    new[] { request },
+                    new System.Random(seed),
+                    hostTick,
+                    guestTick
+                );
+                Assert.IsTrue(Completed(request).Accepted);
+                Assert.AreEqual(1, peers.HostGame.GetSceneNodesByType<Mission>().Count);
+                peers.AssertSharedState();
+            }
+            finally
+            {
+                (hostTick as IDisposable)?.Dispose();
+                (guestTick as IDisposable)?.Dispose();
+            }
+            for (int day = 0; day < 5; day++)
+                AdvanceMissionDay(peers);
+        }
+
+        [UnityTest]
+        public IEnumerator ExecuteAsync_AllMissionFamiliesFromConfirmationButton_StartsMatchingMissionOnBothPeers()
+        {
+            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            yield return new EnterPlayMode();
+            yield return ConfirmMissionCases();
+            yield return new ExitPlayMode();
+        }
 
         [TestCase(MultiplayerRole.Host)]
         [TestCase(MultiplayerRole.Guest)]
@@ -2012,6 +2451,178 @@ namespace Rebellion.Tests.Multiplayer
         }
 
         /// <summary>
+        /// Publishes fixture setup reactions before issuing network requests.
+        /// </summary>
+        /// <param name="peers">The matching prepared simulations.</param>
+        private static void SettlePreparedState(PeerPair peers)
+        {
+            foreach (GameSession session in new[] { peers.HostSimulation, peers.GuestSimulation })
+                Assert.IsTrue(session.ExecuteCommandAsync(() => true).GetAwaiter().GetResult());
+            peers.AssertSharedState();
+        }
+
+        /// <summary>
+        /// Covers ownership, selection, eligibility, and stale-state rejections for both peers.
+        /// </summary>
+        /// <returns>The invalid mission scenarios.</returns>
+        private static IEnumerable<TestCaseData> InvalidMissionCases()
+        {
+            foreach (MultiplayerRole role in new[] { MultiplayerRole.Host, MultiplayerRole.Guest })
+            foreach (
+                string scenario in new[]
+                {
+                    "empty",
+                    "missing",
+                    "foreign",
+                    "duplicate",
+                    "missing-decoy",
+                    "foreign-decoy",
+                    "overlap",
+                    "duplicate-decoy",
+                    "injured",
+                    "destroyed",
+                    "wrong-planet",
+                    "unsupported-repeat",
+                    "unknown-mission",
+                }
+            )
+                yield return new TestCaseData(role, scenario);
+        }
+
+        /// <summary>
+        /// Exercises authored controls after the Play Mode domain transition.
+        /// </summary>
+        /// <returns>The confirmation and asynchronous UI completion sequence.</returns>
+        private IEnumerator ConfirmMissionCases()
+        {
+            GameObject holder = new GameObject("Mission UI audit");
+            holder.SetActive(false);
+            GameObject root = UnityEngine.Object.Instantiate(
+                AssetDatabase
+                    .LoadAssetAtPath<GameObject>(
+                        "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab"
+                    )
+                    .GetComponentInChildren<StrategyWindowLayerView>(true)
+                    .gameObject,
+                holder.transform
+            );
+            holder.SetActive(true);
+            UIWindowManager manager = root.GetComponent<UIWindowManager>();
+            StrategyWindowLayerView layer = root.GetComponent<StrategyWindowLayerView>();
+            manager.SetContentSource(TestContent.Assets);
+            try
+            {
+                foreach (TestCaseData scenario in MissionStartCases())
+                {
+                    MultiplayerRole role = (MultiplayerRole)scenario.Arguments[0];
+                    string type = (string)scenario.Arguments[1];
+                    ResearchDiscipline? discipline = (ResearchDiscipline?)scenario.Arguments[2];
+                    bool repeating = (bool)scenario.Arguments[3];
+                    using PeerPair peers = new();
+                    string actor = role == MultiplayerRole.Host ? _hostFactionID : _guestFactionID;
+                    MissionContext host = PrepareMission(peers.HostGame, actor, type, discipline);
+                    MissionContext guest = PrepareMission(peers.GuestGame, actor, type, discipline);
+                    bool isHost = role == MultiplayerRole.Host;
+                    GameRoot game = isHost ? peers.HostGame : peers.GuestGame;
+                    GameSession session = isHost ? peers.HostSimulation : peers.GuestSimulation;
+                    MissionContext context = isHost ? host : guest;
+                    context.IsRepeating = repeating;
+                    MissionOption option = session
+                        .GetService<MissionQueries>()
+                        .GetAvailableMissionOptions(context)
+                        .Single(candidate =>
+                            candidate.MissionTypeID == type && candidate.Discipline == discipline
+                        );
+                    string label = option.DisplayName + (repeating ? " (Repeat)" : string.Empty);
+                    UIContext ui = TestContent.CreateUIContext(
+                        game,
+                        TestContent.CreateThemeLibrary(),
+                        new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
+                    );
+                    bool closed = false;
+                    MissionCreateWindowController controller = new(
+                        session,
+                        isHost ? peers.Host : peers.Guest,
+                        () => ui,
+                        _ => { },
+                        layer,
+                        manager,
+                        () => Vector2Int.zero,
+                        window =>
+                        {
+                            closed = true;
+                            manager.DestroyWindow(window);
+                        },
+                        () => { },
+                        getShowMissionOdds: () => false
+                    );
+                    controller.Initialize(new MissionWindowActions());
+                    Planet planet = (Planet)context.Location;
+                    StrategyMissionTarget target = new(
+                        new GalaxyMapPlanet(
+                            planet.GetParentOfType<PlanetSector>(),
+                            planet,
+                            planet.PlanetIconPath
+                        ),
+                        context.SelectedTarget
+                    );
+                    Assert.IsTrue(
+                        controller.Open(
+                            target,
+                            context.MainParticipants.Cast<ISceneNode>().ToArray()
+                        ),
+                        $"{role} {label}: open"
+                    );
+                    UIWindow window = manager.Windows.Single();
+                    manager.TryGetWindowView(window, out MissionCreateWindowView view);
+                    controller.RenderWindow(view, window);
+                    view.GetComponentsInChildren<Button>(true)
+                        .Single(button => button.name == "DropdownButtonImage")
+                        .onClick.Invoke();
+                    controller.RenderWindow(view, window);
+                    StrategyDropdownItemView row =
+                        view.GetComponentsInChildren<StrategyDropdownItemView>(true)
+                            .Single(item =>
+                                item.gameObject.activeSelf
+                                && item.GetComponentsInChildren<TMPro.TMP_Text>(true)
+                                    .Any(text => text.text == label)
+                            );
+                    row.GetComponentInChildren<Button>(true).onClick.Invoke();
+                    controller.RenderWindow(view, window);
+                    Button confirm = view.GetComponentsInChildren<Button>(true)
+                        .Single(button => button.name == "OkButtonImage");
+                    Assert.IsTrue(
+                        confirm.IsInteractable(),
+                        $"{role} {label}: confirmation enabled"
+                    );
+                    confirm.onClick.Invoke();
+                    confirm.onClick.Invoke();
+                    Assert.IsFalse(closed, $"{role} {label}: queued request is not acceptance");
+                    peers.Flush();
+                    for (int frame = 0; frame < 10 && !closed; frame++)
+                        yield return null;
+                    Assert.IsTrue(closed, $"{role} {label}: confirmation did not complete");
+                    foreach (GameRoot peerGame in new[] { peers.HostGame, peers.GuestGame })
+                    {
+                        Mission mission = peerGame.GetSceneNodesByType<Mission>().Single();
+                        Assert.AreEqual(type, mission.ConfigKey, $"{role} {label}");
+                        if (mission is ResearchMission research)
+                            Assert.AreEqual(discipline, research.Discipline);
+                        if (mission is EspionageMission espionage)
+                            Assert.AreEqual(repeating, espionage.IsRepeating);
+                    }
+                    peers.AssertSharedState();
+                    TestContext.WriteLine($"Confirmed {role}: {label}");
+                    yield return null;
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(holder);
+            }
+        }
+
+        /// <summary>
         /// Reads a completed request without allowing a lost protocol completion to block the test runner.
         /// </summary>
         /// <param name="request">The request whose completion is required.</param>
@@ -2079,6 +2690,237 @@ namespace Rebellion.Tests.Multiplayer
                     Type = BombardmentType.DestroyPlanet,
                 }
             );
+        }
+
+        /// <summary>
+        /// Enumerates every mission family, research discipline, and repeat option for both peers.
+        /// </summary>
+        /// <returns>The supported mission scenarios.</returns>
+        private static IEnumerable<TestCaseData> MissionStartCases()
+        {
+            string[] missions =
+            {
+                DiplomacyMission.MissionTypeID,
+                EspionageMission.MissionTypeID,
+                ReconnaissanceMission.MissionTypeID,
+                RecruitmentMission.MissionTypeID,
+                InciteUprisingMission.MissionTypeID,
+                SubdueUprisingMission.MissionTypeID,
+                JediTrainingMission.MissionTypeID,
+                AbductionMission.MissionTypeID,
+                AssassinationMission.MissionTypeID,
+                RescueMission.MissionTypeID,
+                SabotageMission.MissionTypeID,
+            };
+            foreach (MultiplayerRole role in new[] { MultiplayerRole.Host, MultiplayerRole.Guest })
+            {
+                foreach (string mission in missions)
+                    yield return new TestCaseData(role, mission, null, false);
+                foreach (
+                    ResearchDiscipline discipline in Enum.GetValues(typeof(ResearchDiscipline))
+                )
+                {
+                    if (discipline != ResearchDiscipline.None)
+                        yield return new TestCaseData(
+                            role,
+                            ResearchMission.MissionTypeID,
+                            discipline,
+                            false
+                        );
+                }
+                yield return new TestCaseData(role, EspionageMission.MissionTypeID, null, true);
+            }
+        }
+
+        /// <summary>
+        /// Prepares an eligible participant roster and objective for one mission family.
+        /// </summary>
+        /// <param name="game">The simulation receiving the fixture.</param>
+        /// <param name="actor">The issuing faction.</param>
+        /// <param name="missionType">The mission family.</param>
+        /// <param name="discipline">The research discipline, when applicable.</param>
+        /// <returns>The eligible local mission context.</returns>
+        private static MissionContext PrepareMission(
+            GameRoot game,
+            string actor,
+            string missionType,
+            ResearchDiscipline? discipline
+        )
+        {
+            bool friendly =
+                missionType
+                is DiplomacyMission.MissionTypeID
+                    or RecruitmentMission.MissionTypeID
+                    or ResearchMission.MissionTypeID
+                    or JediTrainingMission.MissionTypeID
+                    or SubdueUprisingMission.MissionTypeID;
+            string originID = actor == _hostFactionID ? "host-planet" : "guest-planet";
+            string opponent = actor == _hostFactionID ? _guestFactionID : _hostFactionID;
+            string targetID =
+                friendly ? originID
+                : actor == _hostFactionID ? "guest-planet"
+                : "host-planet";
+            Planet origin = game.GetSceneNodeByInstanceID<Planet>(originID);
+            Planet location = game.GetSceneNodeByInstanceID<Planet>(targetID);
+            location.AddVisitor(actor);
+            IMissionParticipant agent =
+                missionType == ReconnaissanceMission.MissionTypeID
+                    ? new SpecialForces
+                    {
+                        InstanceID = "matrix-agent",
+                        OwnerInstanceID = actor,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                        AllowedMissionTypeIDs = new List<string>
+                        {
+                            ReconnaissanceMission.MissionTypeID,
+                        },
+                    }
+                    : new Officer
+                    {
+                        InstanceID = "matrix-agent",
+                        OwnerInstanceID = actor,
+                        IsMain = true,
+                        IsJediTrainer = missionType == JediTrainingMission.MissionTypeID,
+                        ForceValue =
+                            missionType == JediTrainingMission.MissionTypeID
+                                ? game.Config.Jedi.ForceQualifiedThreshold + 1
+                                : 0,
+                        ShipResearch = 50,
+                        TroopResearch = 50,
+                        FacilityResearch = 50,
+                        Ratings = new Dictionary<SkillRating, int>
+                        {
+                            { SkillRating.Combat, 50 },
+                            { SkillRating.Diplomacy, 50 },
+                            { SkillRating.Espionage, 50 },
+                            { SkillRating.Leadership, 50 },
+                        },
+                    };
+            game.AttachNode(agent, origin);
+            List<IMissionParticipant> participants = new() { agent };
+            ISceneNode selected = location;
+            if (missionType == RecruitmentMission.MissionTypeID)
+                game.GetUnrecruitedOfficers()
+                    .Add(
+                        new Officer
+                        {
+                            InstanceID = "matrix-recruit",
+                            RecruitingFactionInstanceIDs = new List<string> { actor },
+                        }
+                    );
+            if (missionType == SubdueUprisingMission.MissionTypeID)
+                location.BeginUprising();
+            if (missionType == ResearchMission.MissionTypeID)
+            {
+                location.EnergyCapacity = 10;
+                ManufacturingType production = discipline switch
+                {
+                    ResearchDiscipline.ShipDesign => ManufacturingType.Ship,
+                    ResearchDiscipline.TroopTraining => ManufacturingType.Troop,
+                    _ => ManufacturingType.Building,
+                };
+                game.AttachNode(
+                    new Building
+                    {
+                        InstanceID = "matrix-facility",
+                        OwnerInstanceID = actor,
+                        ProductionType = production,
+                        ProcessRate = 1,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    location
+                );
+            }
+            if (missionType == JediTrainingMission.MissionTypeID)
+            {
+                Officer student = new Officer
+                {
+                    InstanceID = "matrix-student",
+                    OwnerInstanceID = actor,
+                    ForceValue = 1,
+                };
+                game.AttachNode(student, origin);
+                participants.Add(student);
+            }
+            if (
+                missionType
+                is AbductionMission.MissionTypeID
+                    or AssassinationMission.MissionTypeID
+                    or RescueMission.MissionTypeID
+            )
+            {
+                Officer target = new Officer
+                {
+                    InstanceID = "matrix-target",
+                    OwnerInstanceID = missionType == RescueMission.MissionTypeID ? actor : opponent,
+                    IsCaptured = missionType == RescueMission.MissionTypeID,
+                };
+                game.AttachNode(target, location);
+                selected = target;
+            }
+            if (missionType == SabotageMission.MissionTypeID)
+            {
+                Regiment target = new Regiment
+                {
+                    InstanceID = "matrix-target",
+                    OwnerInstanceID = opponent,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                };
+                game.AttachNode(target, location);
+                selected = target;
+            }
+            return new MissionContext
+            {
+                MissionTypeID = missionType,
+                Location = location,
+                SelectedTarget = selected,
+                MainParticipants = participants,
+                DecoyParticipants = new List<IMissionParticipant>(),
+                Discipline = discipline,
+            };
+        }
+
+        /// <summary>
+        /// Copies a planned mission into the player request contract.
+        /// </summary>
+        /// <param name="context">The observed objective and live participants.</param>
+        /// <returns>The network-serializable request.</returns>
+        private static StartMissionRequest CreateMissionRequest(MissionContext context)
+        {
+            return new StartMissionRequest
+            {
+                MissionTypeID = context.MissionTypeID,
+                ObservedLocation = (Planet)context.Location,
+                ObservedTarget = context.SelectedTarget,
+                MainParticipantIDs = context.MainParticipants.Select(p => p.InstanceID).ToArray(),
+                DecoyParticipantIDs = context.DecoyParticipants.Select(p => p.InstanceID).ToArray(),
+                Discipline = context.Discipline,
+                IsRepeating = context.IsRepeating,
+            };
+        }
+
+        /// <summary>
+        /// Completes one authorized day and verifies both independent worlds.
+        /// </summary>
+        /// <param name="peers">The participating simulations.</param>
+        private static void AdvanceMissionDay(PeerPair peers)
+        {
+            Assert.IsTrue(peers.Host.TryBeginTick(true));
+            peers.DeliverToGuest();
+            peers.Guest.Pump();
+            Assert.IsTrue(peers.Guest.TryBeginTick(false));
+            peers.HostSimulation.Tick.ProcessTick();
+            peers.GuestSimulation.Tick.ProcessTick();
+            peers.Flush();
+            peers.AssertSharedState();
+        }
+
+        private sealed class MissionWindowActions : IMissionCreateWindowActions
+        {
+            /// <summary>
+            /// Leaves unrelated information navigation outside the confirmation fixture.
+            /// </summary>
+            public void OpenMissionCreateInfo() { }
         }
 
         /// <summary>
