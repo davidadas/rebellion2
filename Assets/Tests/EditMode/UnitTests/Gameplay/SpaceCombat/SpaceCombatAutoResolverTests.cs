@@ -1227,13 +1227,28 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(28, GetShipOutcome(result, defender).HullAfter);
         }
 
-        [Test]
-        public void Resolve_DamagedFighterSquadron_StartsWithProportionalShields()
+        [TestCase(12, 12, 5, 60, 12)]
+        [TestCase(12, 12, 5, 68, 11)]
+        [TestCase(12, 6, 5, 30, 6)]
+        [TestCase(12, 6, 5, 38, 5)]
+        [TestCase(1, 1, 5, 13, 0)]
+        [TestCase(12, 12, 0, 8, 11)]
+        public void Resolve_FighterShieldCapacity_ScalesWithSurvivingCraft(
+            int maximumCraft,
+            int survivingCraft,
+            int shieldsPerCraft,
+            int damage,
+            int expectedCraft
+        )
         {
-            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 12);
-            Starfighter defender = CreateFighter("defender", squadronSize: 12, weaponStrength: 0);
-            defender.CurrentSquadronSize = 6;
-            defender.ShieldStrength = 8;
+            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: damage);
+            Starfighter defender = CreateFighter(
+                "defender",
+                squadronSize: maximumCraft,
+                weaponStrength: 0
+            );
+            defender.CurrentSquadronSize = survivingCraft;
+            defender.ShieldStrength = shieldsPerCraft;
             GameConfig.SpaceCombatConfig config = CreateConfig();
             config.AutoResolveMaximumIterations = 1;
             config.AutoResolveTargetScanDivisor = 1;
@@ -1248,7 +1263,31 @@ namespace Rebellion.Tests.Gameplay
                 defenderCanWithdraw: true
             );
 
-            Assert.AreEqual(5, GetFighterOutcome(result, defender).SquadronSizeAfter);
+            Assert.AreEqual(expectedCraft, GetFighterOutcome(result, defender).SquadronSizeAfter);
+        }
+
+        [Test]
+        public void Resolve_FighterShieldRecovery_CapsCapacityToRemainingHull()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 70);
+            Starfighter defender = CreateFighter("defender", squadronSize: 12, weaponStrength: 0);
+            defender.ShieldStrength = 5;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveMaximumIterations = 2;
+            config.AutoResolveTargetScanDivisor = 1;
+            config.AutoResolveStartingDistance = 0;
+            config.AutoResolveFighterShieldRechargePerCraft = 10;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new[] { attacker },
+                new List<Starfighter>(),
+                new List<CapitalShip>(),
+                new[] { defender },
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(9, GetFighterOutcome(result, defender).SquadronSizeAfter);
         }
 
         [Test]
