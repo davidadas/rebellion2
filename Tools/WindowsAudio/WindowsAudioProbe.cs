@@ -30,7 +30,7 @@ namespace Rebellion.Diagnostics
             )
             {
                 report.AutoFlush = true;
-                report.WriteLine("Windows audio format check v1");
+                report.WriteLine("Windows audio format check v2");
                 report.WriteLine("UTC: " + DateTime.UtcNow.ToString("o"));
                 report.WriteLine(
                     "OS: " + Environment.OSVersion + "; runtime: " + Environment.Version
@@ -46,6 +46,8 @@ namespace Rebellion.Diagnostics
                 report.WriteLine(
                     "Result 0 means success; result 1 means a closest format, not an exact match."
                 );
+                WriteGameLog(report);
+                report.WriteLine("\nWindows format checks");
                 int initialized = CoInitializeEx(IntPtr.Zero, 2);
                 report.WriteLine("COM initialization: " + Result(initialized));
                 Marshal.ThrowExceptionForHR(initialized);
@@ -65,6 +67,55 @@ namespace Rebellion.Diagnostics
                 {
                     CoUninitialize();
                 }
+            }
+        }
+
+        /// <summary>
+        /// Includes the latest saved player log before any synchronous audio-driver checks.
+        /// </summary>
+        /// <param name="report">The report being written.</param>
+        private static void WriteGameLog(StreamWriter report)
+        {
+            string path = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "AppData",
+                "LocalLow",
+                "AdasGames",
+                "Rebellion 2",
+                "Player.log"
+            );
+            report.WriteLine("\nGame log from the last saved run");
+            report.WriteLine("Path: " + path);
+            try
+            {
+                using (
+                    FileStream stream = new FileStream(
+                        path,
+                        FileMode.Open,
+                        FileAccess.Read,
+                        FileShare.ReadWrite | FileShare.Delete
+                    )
+                )
+                using (StreamReader reader = new StreamReader(stream))
+                {
+                    report.WriteLine(
+                        "Last written UTC: " + File.GetLastWriteTimeUtc(path).ToString("o")
+                    );
+                    report.WriteLine("--- Begin Player.log ---");
+                    char[] buffer = new char[4096];
+                    int count;
+                    while ((count = reader.Read(buffer, 0, buffer.Length)) > 0)
+                        report.Write(buffer, 0, count);
+                    report.WriteLine("\n--- End Player.log ---");
+                }
+            }
+            catch (IOException error)
+            {
+                report.WriteLine("Player.log unavailable: " + error.Message);
+            }
+            catch (UnauthorizedAccessException error)
+            {
+                report.WriteLine("Player.log unavailable: " + error.Message);
             }
         }
 

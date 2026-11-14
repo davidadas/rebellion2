@@ -1,0 +1,12 @@
+Rebellion 2 audio check
+
+1. Close the game after a launch with missing sound.
+2. Extract this ZIP into a folder, then double-click Run.cmd inside it.
+3. Send back audio-format-report.txt from that folder.
+
+No installation, administrator access, Git, Unity, or developer tools are needed.
+The check reads Windows audio capabilities and includes the latest saved game log.
+It does not play sound, change audio settings, or send anything over the network.
+
+The console stays open when the check finishes. If it displays an error or stops
+responding, keep the error and the partial audio-format-report.txt file.

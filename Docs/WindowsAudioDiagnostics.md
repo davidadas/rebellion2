@@ -4,7 +4,25 @@ This standalone check compares the formats Windows accepts on each active audio 
 It runs without Unity, installed game content, a .NET SDK, or a C++ compiler. Windows PowerShell
 compiles the small collector in memory using the .NET Framework already included with Windows.
 
-## Running the check
+## Sending the check to a player
+
+Create the portable ZIP on a maintainer's checkout with Python 3:
+
+```bash
+python3 Tools/WindowsAudio/Package.py Rebellion2-audio-check.zip
+```
+
+Send that ZIP to the player. It contains only the collector, two runners and short instructions;
+it excludes existing reports, game logs, media and other checkout files. The player does not need
+Git, a GitHub account, a repository checkout, Python, Unity, or a compiler installation.
+
+The player closes the game after a silent launch, extracts the ZIP, double-clicks `Run.cmd`, and
+sends back `audio-format-report.txt` from the extracted folder. The report automatically includes
+the latest saved `Player.log`, its path and its modification time before checking audio devices.
+The game log comes from the last saved game run; the format measurements come from the current
+diagnostic run. If the game log is unavailable, the report records that and continues.
+
+## Running from a checkout
 
 Use 64-bit Windows 10 or Windows 11. Close the game before running the check.
 
@@ -52,7 +70,9 @@ that an independent client can open that format; it does not establish what Unit
 whether the game played audio. Correlate the report with the affected run's `Player.log`.
 
 The collector never starts playback, changes Windows audio settings, installs a driver, starts
-the game, or enables the proposed custom output fallback. Native driver calls are synchronous;
+the game, or enables the proposed custom output fallback. It reads the game's configured Windows
+log location, `%USERPROFILE%\AppData\LocalLow\AdasGames\Rebellion 2\Player.log`, without scanning
+other folders. Native driver calls are synchronous;
 if the console stops responding, close it and retain the partial report. The file is flushed
-as each result is written. Reports contain output-device names and IDs, so review them before
-posting them publicly.
+as each result is written. Reports contain output-device names, IDs and the saved game log, so
+review them before posting them publicly.
