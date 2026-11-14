@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
@@ -14,6 +15,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 
         private GalacticInformationDisplayProjector _projector;
         private UIContext _uiContext;
+        private GalacticInformationFilterTheme _minesFilter;
+        private (int Low, int Medium, int High, string Image) _savedMinesFilter;
 
         /// <summary>
         /// Sets up.
@@ -32,6 +35,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _projector = new GalacticInformationDisplayProjector(() => _uiContext);
+            _minesFilter = _uiContext
+                .GetPlayerFactionTheme()
+                .GalacticInformationDisplay.GetFilter(GalacticInformationFilterMode.Mines);
+            _savedMinesFilter = (
+                _minesFilter.LowThreshold,
+                _minesFilter.MediumThreshold,
+                _minesFilter.HighThreshold,
+                _minesFilter.LegendImagePath
+            );
+        }
+
+        /// <summary>
+        /// Restores shared theme data after isolated marker-range scenarios.
+        /// </summary>
+        [TearDown]
+        public void TearDown()
+        {
+            if (_minesFilter != null)
+                (
+                    _minesFilter.LowThreshold,
+                    _minesFilter.MediumThreshold,
+                    _minesFilter.HighThreshold,
+                    _minesFilter.LegendImagePath
+                ) = _savedMinesFilter;
         }
 
         [Test]
@@ -163,7 +190,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
-        public void ProjectLegend_ConfiguredFilter_ReturnsAuthoredLegendPresentation()
+        public void ProjectLegend_ConfiguredFilter_ReturnsNativeLegendAndThemedFrame()
         {
             GalacticInformationDisplayTheme theme = _uiContext
                 .GetPlayerFactionTheme()
@@ -171,10 +198,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             GalacticInformationFilterTheme filter = theme.GetFilter(
                 GalacticInformationFilterMode.Uprisings
             );
-            Texture2D legendTexture = _uiContext.GetTexture(filter.LegendImagePath);
-            Texture2D closeTexture = _uiContext.GetTexture(theme.CloseUpImagePath);
-            Vector2Int legendSize = UILayout.GetTextureSourceSize(legendTexture);
-            Vector2Int closeSize = UILayout.GetTextureSourceSize(closeTexture);
             Vector2Int position = new Vector2Int(17, 23);
 
             GalacticInformationLegendRenderData data = _projector.ProjectLegend(
@@ -183,13 +206,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
 
             Assert.IsNotNull(data);
-            Assert.AreEqual(
-                new RectInt(position.x, position.y, legendSize.x, legendSize.y),
-                data.Bounds
+            Assert.AreEqual(position, data.Bounds.position);
+            Assert.AreEqual(filter.Label, data.Title.Text);
+            Assert.AreEqual(theme.GetBackgroundColor(), data.BackgroundColor);
+            CollectionAssert.AreEqual(
+                new[] { "Uprisings", "No uprisings" },
+                data.Rows.Take(2).Select(row => row.Label)
             );
-            Assert.AreSame(legendTexture, data.Texture);
-            Assert.AreEqual(legendSize.x, data.Frame.Width);
-            Assert.AreEqual(legendSize.y, data.Frame.Height);
+            CollectionAssert.AreEqual(
+                new[] { "Alliance", "Neutral", "Unexplored" },
+                data.Rows.Skip(2).Select(row => row.Label)
+            );
+            Assert.AreEqual(data.Bounds.width, data.Frame.Width);
+            Assert.AreEqual(data.Bounds.height, data.Frame.Height);
             Assert.AreEqual(8, data.Frame.Textures.Count);
             for (int i = 0; i < data.Frame.Textures.Count; i++)
             {
@@ -198,20 +227,80 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                     data.Frame.Textures[i]
                 );
             }
-            Assert.AreEqual(
-                new RectInt(
-                    legendSize.x - closeSize.x - theme.CloseSourceInset.X,
-                    theme.CloseSourceInset.Y,
-                    closeSize.x,
-                    closeSize.y
-                ),
-                data.CloseBounds
+            Assert.IsTrue(
+                new RectInt(0, 0, data.Bounds.width, data.Bounds.height).Contains(
+                    data.CloseBounds.position
+                )
             );
-            Assert.AreSame(closeTexture, data.CloseTexture);
-            Assert.AreSame(
-                _uiContext.GetTexture(theme.ClosePressedImagePath),
-                data.ClosePressedTexture
+            Assert.IsTrue(
+                data.Rows.All(row =>
+                    row.Bounds.xMax <= data.Bounds.width && row.Bounds.yMax <= data.Bounds.height
+                )
             );
+        }
+
+        [Test]
+        public void ProjectLegend_CustomThresholds_UsesConfiguredRangesWithoutLegendBitmap()
+        {
+            GalacticInformationFilterTheme filter = _uiContext
+                .GetPlayerFactionTheme()
+                .GalacticInformationDisplay.GetFilter(GalacticInformationFilterMode.Mines);
+            filter.LowThreshold = 2;
+            filter.MediumThreshold = 5;
+            filter.HighThreshold = 9;
+            filter.LegendImagePath = "missing-bitmap";
+
+            GalacticInformationLegendRenderData data = _projector.ProjectLegend(filter.Mode);
+
+            CollectionAssert.AreEqual(
+                new[] { "9+", "5–8", "2–4", "0–1" },
+                data.Rows.Take(4).Select(row => row.Label)
+            );
+        }
+
+        [Test]
+        public void ProjectLegend_OverlappingThresholds_OmitsUnreachableBands()
+        {
+            GalacticInformationFilterTheme filter = _uiContext
+                .GetPlayerFactionTheme()
+                .GalacticInformationDisplay.GetFilter(GalacticInformationFilterMode.Mines);
+            filter.LowThreshold = 10;
+            filter.MediumThreshold = 2;
+            filter.HighThreshold = 6;
+
+            GalacticInformationLegendRenderData data = _projector.ProjectLegend(filter.Mode);
+
+            CollectionAssert.AreEqual(
+                new[] { "6+", "2–5", "0–1" },
+                data.Rows.Take(3).Select(row => row.Label)
+            );
+        }
+
+        [Test]
+        public void ProjectLegend_PopularSupport_ShowsPercentagesWithinSupportBounds()
+        {
+            GalacticInformationLegendRenderData data = _projector.ProjectLegend(
+                GalacticInformationFilterMode.PopularSupport
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { "81–100%", "60–80%", "50–59%", "0–49%" },
+                data.Rows.Take(4).Select(row => row.Label)
+            );
+        }
+
+        [TestCase(GalacticInformationFilterMode.IdleFleets)]
+        [TestCase(GalacticInformationFilterMode.FleetsEnroute)]
+        [TestCase(GalacticInformationFilterMode.FleetWaypoints)]
+        [TestCase(GalacticInformationFilterMode.IdlePersonnel)]
+        [TestCase(GalacticInformationFilterMode.ActivePersonnel)]
+        public void ProjectLegend_FactionPresenceFilter_ShowsMixedPresenceKey(
+            GalacticInformationFilterMode mode
+        )
+        {
+            GalacticInformationLegendRenderData data = _projector.ProjectLegend(mode);
+
+            Assert.IsTrue(data.Rows.Any(row => row.Label == "Mixed presence"));
         }
 
         [Test]
@@ -223,6 +312,27 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
 
             Assert.IsNull(data);
+        }
+
+        [Test]
+        public void ProjectLegend_PendingTextures_ReturnsReadableNativeText()
+        {
+            UIContext context = new UIContext(
+                _uiContext.Game,
+                TestContent.CreateThemeLibrary(),
+                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>()),
+                _ => null
+            );
+            GalacticInformationDisplayProjector projector = new(() => context);
+
+            GalacticInformationLegendRenderData data = projector.ProjectLegend(
+                GalacticInformationFilterMode.Mines
+            );
+
+            Assert.IsNotNull(data);
+            Assert.AreEqual("Mines", data.Title.Text);
+            Assert.IsNotEmpty(data.Rows);
+            Assert.IsTrue(data.Rows.All(row => row.Texture == null));
         }
 
         /// <summary>

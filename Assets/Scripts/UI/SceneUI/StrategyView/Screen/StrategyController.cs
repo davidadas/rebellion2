@@ -91,6 +91,9 @@ public sealed class StrategyController
     private GalacticInformationLegendView galacticInformationLegend;
 
     [SerializeField]
+    private UIRaycastArea galacticInformationLegendTrigger;
+
+    [SerializeField]
     private BookmarkBarView bookmarkBar;
 
     [SerializeField]
@@ -352,7 +355,8 @@ public sealed class StrategyController
             PlaySfx,
             runtime.PlayerRequests,
             PlaySfxInstance,
-            audioManager.GetLoadedSfxDuration
+            audioManager.GetLoadedSfxDuration,
+            () => galacticInformationDisplayController?.CanShowLegend == true
         );
         strategyHudController.BindNotificationContext(
             () => session.Game.GetFactionPlayer(session.Game.GetPlayerFaction().InstanceID).UIState,
@@ -409,6 +413,7 @@ public sealed class StrategyController
         galacticInformationDisplayController.FilterChanged += SaveGalacticInformationFilter;
         galacticInformationDisplayController.Initialize(this);
         galacticInformationDisplayController.BindLegendView(galacticInformationLegend);
+        galacticInformationDisplayController.BindLegendTrigger(galacticInformationLegendTrigger);
     }
 
     /// <summary>
@@ -1485,6 +1490,9 @@ public sealed class StrategyController
 
         RequireRectTransform(galacticInformationDisplayPrefab, "GalacticInformationDisplay prefab");
         RequireRectTransform(galacticInformationLegend, "GalacticInformationLegend");
+        if (galacticInformationLegendTrigger == null)
+            throw new MissingReferenceException("GalacticInformationLegendTrigger is missing.");
+        RequireRectTransform(galacticInformationLegendTrigger, "GalacticInformationLegendTrigger");
     }
 
     /// <summary>
@@ -1713,6 +1721,7 @@ public sealed class StrategyController
     /// </summary>
     private void RenderGalaxyMap()
     {
+        galacticInformationDisplayController?.RefreshPresentation();
         if (galaxyMapController == null)
             return;
 
@@ -2217,6 +2226,8 @@ public sealed class StrategyController
     {
         if (action == StrategyHudAction.GalacticInformationDisplay)
             OpenGalacticInformationDisplay();
+        else if (action == StrategyHudAction.GalacticInformationLegend)
+            OpenGalacticInformationLegend();
         else
             ExecuteHudAction(action);
 
@@ -2404,6 +2415,14 @@ public sealed class StrategyController
     void IGalacticInformationDisplayActions.RequestGalacticInformationRender()
     {
         dirty = true;
+    }
+
+    /// <summary>
+    /// Opens the legend requested by its map control through the strategy interaction owner.
+    /// </summary>
+    void IGalacticInformationDisplayActions.OpenGalacticInformationLegend()
+    {
+        OpenGalacticInformationLegend();
     }
 
     /// <summary>
@@ -3429,6 +3448,18 @@ public sealed class StrategyController
         strategyContextMenu?.Reset();
         EnsureGalacticInformationDisplay();
         galacticInformationDisplayController?.Show();
+    }
+
+    /// <summary>
+    /// Opens the current map legend after cancelling competing targeting and context menus.
+    /// </summary>
+    private void OpenGalacticInformationLegend()
+    {
+        targetingController?.Cancel();
+        contextMenuController?.Cancel();
+        strategyContextMenu?.Reset();
+        galacticInformationDisplayController?.ShowLegend();
+        dirty = true;
     }
 
     /// <summary>

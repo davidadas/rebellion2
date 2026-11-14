@@ -46,6 +46,7 @@ public sealed class StrategyHudController : IContextMenuReceiver
     /// <param name="playerRequests">Completes advisor requests through the session action boundary.</param>
     /// <param name="playSfxInstance">Plays an independently stoppable advisor response.</param>
     /// <param name="getAudioDuration">Gets the duration of a loaded advisor response.</param>
+    /// <param name="canShowMapLegend">Returns whether the current map display has an available legend.</param>
     public StrategyHudController(
         Func<Faction> getPlayerFaction,
         Func<FactionTheme> getPlayerTheme,
@@ -53,7 +54,8 @@ public sealed class StrategyHudController : IContextMenuReceiver
         Action<string> playSfx,
         IPlayerRequestDispatcher playerRequests,
         Func<string, AudioPlaybackHandle> playSfxInstance = null,
-        Func<string, float> getAudioDuration = null
+        Func<string, float> getAudioDuration = null,
+        Func<bool> canShowMapLegend = null
     )
     {
         if (getPlayerFaction == null)
@@ -69,7 +71,8 @@ public sealed class StrategyHudController : IContextMenuReceiver
             playSfx,
             playerRequests,
             playSfxInstance: playSfxInstance,
-            getAudioDuration: getAudioDuration
+            getAudioDuration: getAudioDuration,
+            canShowMapLegend: canShowMapLegend
         );
     }
 

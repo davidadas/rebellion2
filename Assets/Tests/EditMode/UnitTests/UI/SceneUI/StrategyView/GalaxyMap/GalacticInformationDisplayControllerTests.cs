@@ -23,6 +23,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         private GalacticInformationDisplayController _controller;
         private GalacticInformationDisplayView _displayView;
         private GalacticInformationLegendView _legendView;
+        private UIRaycastArea _legendTrigger;
         private List<string> _playedSounds;
         private GameObject _rootObject;
         private UIContext _uiContext;
@@ -79,6 +80,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             _controller.Initialize(_actions);
             _controller.BindLegendView(_legendView);
             _controller.BindDisplayView(_displayView);
+            _legendTrigger = _rootObject
+                .GetComponentsInChildren<UIRaycastArea>(true)
+                .Single(area => area.name == "GalacticInformationLegendTrigger");
+            _controller.BindLegendTrigger(_legendTrigger);
+            _actions.OpenLegend = _controller.ShowLegend;
         }
 
         /// <summary>
@@ -267,6 +273,135 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, _actions.RenderRequestCount);
         }
 
+        [Test]
+        public void RestoreFilter_ActiveDisplay_ShowsOnlyTheCompactControl()
+        {
+            _controller.RestoreFilter(GalacticInformationFilterMode.Mines);
+
+            Assert.IsTrue(_legendTrigger.gameObject.activeSelf);
+            Assert.IsFalse(_legendView.Visible);
+            Assert.IsTrue(_controller.CanShowLegend);
+        }
+
+        [Test]
+        public void ShowLegend_DisplayOff_KeepsLegendAndControlHidden()
+        {
+            _controller.ShowLegend();
+
+            Assert.IsFalse(_legendView.Visible);
+            Assert.IsFalse(_legendTrigger.gameObject.activeSelf);
+            Assert.IsFalse(_controller.CanShowLegend);
+        }
+
+        [Test]
+        public void ShowLegend_ActiveDisplay_KeepsTheSelectorClosed()
+        {
+            _controller.RestoreFilter(GalacticInformationFilterMode.Mines);
+
+            _controller.ShowLegend();
+
+            Assert.IsTrue(_controller.LegendOpen);
+            Assert.IsFalse(_controller.Open);
+        }
+
+        [Test]
+        public void LegendControl_ActiveDisplay_OpensItsKeyAndHidesControl()
+        {
+            _controller.RestoreFilter(GalacticInformationFilterMode.Mines);
+            PointerEventData pointer = new(null) { button = PointerEventData.InputButton.Left };
+
+            _legendTrigger.OnPointerDown(pointer);
+            _legendTrigger.OnPointerUp(pointer);
+            _legendTrigger.OnPointerClick(pointer);
+
+            Assert.IsTrue(_legendView.Visible);
+            Assert.IsTrue(_controller.LegendOpen);
+            Assert.IsFalse(_legendTrigger.gameObject.activeSelf);
+            Assert.AreEqual(
+                "Mines",
+                _legendView
+                    .GetComponentsInChildren<TMPro.TextMeshProUGUI>(true)
+                    .Single(field => field.name == "TitleTextField")
+                    .text
+            );
+        }
+
+        [Test]
+        public void CloseControl_OpenLegend_RestoresTheCompactControl()
+        {
+            _controller.RestoreFilter(GalacticInformationFilterMode.Mines);
+            _controller.ShowLegend();
+            UIRaycastArea close = _legendView
+                .GetComponentsInChildren<UIRaycastArea>(true)
+                .Single(area => area.name == "CloseHitArea");
+
+            close.OnPointerClick(
+                new PointerEventData(null) { button = PointerEventData.InputButton.Left }
+            );
+
+            Assert.IsFalse(_legendView.Visible);
+            Assert.IsTrue(_legendTrigger.gameObject.activeSelf);
+        }
+
+        [Test]
+        public void TryCancel_OpenLegend_ClosesLegendAndConsumesEscape()
+        {
+            _controller.RestoreFilter(GalacticInformationFilterMode.Mines);
+            _controller.ShowLegend();
+
+            bool cancelled = _controller.TryCancel();
+
+            Assert.IsTrue(cancelled);
+            Assert.IsFalse(_legendView.Visible);
+            Assert.IsTrue(_legendTrigger.gameObject.activeSelf);
+            Assert.IsFalse(_controller.TryCancel());
+        }
+
+        [Test]
+        public void TryCancel_DestroyedMapControl_ClosesLegendSafely()
+        {
+            _controller.RestoreFilter(GalacticInformationFilterMode.Mines);
+            _controller.ShowLegend();
+            UnityEngine.Object.DestroyImmediate(_legendTrigger.gameObject);
+
+            bool cancelled = _controller.TryCancel();
+
+            Assert.IsTrue(cancelled);
+            Assert.IsFalse(_controller.LegendOpen);
+        }
+
+        [Test]
+        public void SelectFilter_DisplayOff_HidesLegendAndControl()
+        {
+            _controller.RestoreFilter(GalacticInformationFilterMode.Mines);
+            _controller.ShowLegend();
+
+            _controller.SelectFilter(GalacticInformationFilterMode.DisplayOff);
+
+            Assert.IsFalse(_legendView.Visible);
+            Assert.IsFalse(_legendTrigger.gameObject.activeSelf);
+            Assert.IsFalse(_controller.CanShowLegend);
+        }
+
+        [Test]
+        public void SelectFilter_DifferentDisplay_DismissesPreviousKeyAndOpensCurrentKeyOnRequest()
+        {
+            _controller.RestoreFilter(GalacticInformationFilterMode.Mines);
+            _controller.ShowLegend();
+
+            _controller.SelectFilter(GalacticInformationFilterMode.Uprisings);
+            Assert.IsFalse(_legendView.Visible);
+            _controller.ShowLegend();
+
+            Assert.AreEqual(
+                "Uprisings",
+                _legendView
+                    .GetComponentsInChildren<TMPro.TextMeshProUGUI>(true)
+                    .Single(field => field.name == "TitleTextField")
+                    .text
+            );
+        }
+
         /// <summary>
         /// Finds raycast area.
         /// </summary>
@@ -282,6 +417,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         private sealed class TestActions : IGalacticInformationDisplayActions
         {
             public int RenderRequestCount { get; set; }
+            public Action OpenLegend { get; set; }
+
+            /// <summary>
+            /// Routes the legend request to the bound feature controller.
+            /// </summary>
+            public void OpenGalacticInformationLegend()
+            {
+                OpenLegend?.Invoke();
+            }
 
             /// <summary>
             /// Executes request galactic information render.

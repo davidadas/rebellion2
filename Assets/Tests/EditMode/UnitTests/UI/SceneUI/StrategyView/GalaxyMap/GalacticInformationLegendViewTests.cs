@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using NUnit.Framework;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -14,8 +15,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         private const int _sourceDesktopHeight = 480;
         private const int _sourceDesktopWidth = 853;
 
-        private Texture2D _closePressedTexture;
-        private Texture2D _closeTexture;
         private Texture2D _frameTexture;
         private Texture2D _legendTexture;
         private GameObject _rootObject;
@@ -30,8 +29,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             _view = _rootObject.GetComponentInChildren<GalacticInformationLegendView>(true);
             _legendTexture = new Texture2D(180, 135);
-            _closeTexture = new Texture2D(36, 36);
-            _closePressedTexture = new Texture2D(36, 36);
             _frameTexture = new Texture2D(18, 18);
             RectTransform parent = (_view.transform as RectTransform).parent as RectTransform;
             parent.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, _sourceDesktopWidth);
@@ -50,14 +47,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_frameTexture);
-            UnityEngine.Object.DestroyImmediate(_closePressedTexture);
-            UnityEngine.Object.DestroyImmediate(_closeTexture);
             UnityEngine.Object.DestroyImmediate(_legendTexture);
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
         [Test]
-        public void Render_Legend_AppliesBoundsArtworkFrameAndCloseControl()
+        public void Render_Legend_AppliesNativeTextMarkersFrameAndCloseControl()
         {
             GalacticInformationLegendRenderData data = CreateLegend(new Vector2Int(150, 120));
 
@@ -68,16 +63,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 new RectInt(150, 120, 180, 135),
                 UILayout.GetSourceRect(_view.transform as RectTransform)
             );
-            RawImage legend = FindComponent<RawImage>("LegendImage");
-            Assert.AreSame(_legendTexture, legend.texture);
-            Assert.IsTrue(legend.enabled);
-            Assert.IsTrue(legend.raycastTarget);
+            Image background = FindComponent<Image>("BackgroundImage");
+            Assert.AreEqual(Color.black, background.color);
+            Assert.IsTrue(background.raycastTarget);
             Assert.AreEqual(
                 new RectInt(0, 0, 180, 135),
-                UILayout.GetSourceRect(legend.rectTransform)
+                UILayout.GetSourceRect(background.rectTransform)
             );
-            RawImage close = FindComponent<RawImage>("CloseImage");
-            Assert.AreSame(_closeTexture, close.texture);
+            Assert.AreEqual("Mines", FindComponent<TextMeshProUGUI>("TitleTextField").text);
+            Assert.AreEqual(
+                "Marker colors",
+                FindComponent<TextMeshProUGUI>("KeyHeadingTextField").text
+            );
+            var rows = _view
+                .GetComponentsInChildren<GalacticInformationLegendRowView>(true)
+                .Where(row => row.gameObject.activeSelf)
+                .ToArray();
+            CollectionAssert.AreEqual(
+                new[] { "6+", "3–5" },
+                rows.Select(row => row.GetComponentInChildren<TextMeshProUGUI>(true).text)
+            );
+            Assert.AreSame(_legendTexture, rows[0].GetComponentInChildren<RawImage>(true).texture);
+            TextMeshProUGUI close = FindComponent<TextMeshProUGUI>("CloseTextField");
             Assert.AreEqual(
                 new RectInt(160, 8, 12, 12),
                 UILayout.GetSourceRect(close.rectTransform)
@@ -119,20 +126,44 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
-        public void Render_MissingLegendTexture_HidesLegend()
+        public void Render_FewerRows_HidesUnusedMarkerRows()
         {
+            _view.Render(CreateLegend(new Vector2Int(150, 120)));
             GalacticInformationLegendRenderData data = new GalacticInformationLegendRenderData(
                 new RectInt(150, 120, 180, 135),
-                null,
+                new GalacticInformationTextRenderData(
+                    "Uprisings",
+                    Color.cyan,
+                    new RectInt(10, 6, 140, 22)
+                ),
+                Color.black,
+                new GalacticInformationTextRenderData(
+                    "Marker colors",
+                    Color.cyan,
+                    new RectInt(10, 80, 160, 20)
+                ),
+                new[]
+                {
+                    new GalacticInformationLegendRowRenderData(
+                        new RectInt(10, 32, 160, 22),
+                        _legendTexture,
+                        "In uprising"
+                    ),
+                },
                 CreateFrame(),
-                new RectInt(160, 8, 12, 12),
-                _closeTexture,
-                _closePressedTexture
+                new RectInt(160, 8, 12, 12)
             );
 
             _view.Render(data);
 
-            Assert.IsFalse(_view.gameObject.activeSelf);
+            Assert.IsTrue(_view.gameObject.activeSelf);
+            Assert.AreEqual(
+                1,
+                _view
+                    .GetComponentsInChildren<GalacticInformationLegendRowView>(true)
+                    .Count(row => row.gameObject.activeSelf)
+            );
+            Assert.AreEqual("Uprisings", FindComponent<TextMeshProUGUI>("TitleTextField").text);
         }
 
         [Test]
@@ -146,7 +177,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
-        public void CloseHitArea_PressReleaseAndClick_UpdatesTextureAndRaisesRequest()
+        public void CloseHitArea_PressReleaseAndClick_UpdatesNativeControlAndRaisesRequest()
         {
             int closeCount = 0;
             _view.CloseRequested += () => closeCount++;
@@ -158,9 +189,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             };
 
             hitArea.OnPointerDown(eventData);
-            Assert.AreSame(_closePressedTexture, FindComponent<RawImage>("CloseImage").texture);
+            Assert.AreEqual(Color.cyan, FindComponent<TextMeshProUGUI>("CloseTextField").color);
             hitArea.OnPointerUp(eventData);
-            Assert.AreSame(_closeTexture, FindComponent<RawImage>("CloseImage").texture);
+            Assert.AreEqual(Color.white, FindComponent<TextMeshProUGUI>("CloseTextField").color);
             hitArea.OnPointerClick(eventData);
 
             Assert.AreEqual(1, closeCount);
@@ -206,11 +237,32 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         {
             return new GalacticInformationLegendRenderData(
                 new RectInt(position.x, position.y, 180, 135),
-                _legendTexture,
+                new GalacticInformationTextRenderData(
+                    "Mines",
+                    Color.cyan,
+                    new RectInt(10, 6, 140, 22)
+                ),
+                Color.black,
+                new GalacticInformationTextRenderData(
+                    "Marker colors",
+                    Color.cyan,
+                    new RectInt(10, 80, 160, 20)
+                ),
+                new[]
+                {
+                    new GalacticInformationLegendRowRenderData(
+                        new RectInt(10, 32, 160, 22),
+                        _legendTexture,
+                        "6+"
+                    ),
+                    new GalacticInformationLegendRowRenderData(
+                        new RectInt(10, 54, 160, 22),
+                        _legendTexture,
+                        "3–5"
+                    ),
+                },
                 CreateFrame(),
-                new RectInt(160, 8, 12, 12),
-                _closeTexture,
-                _closePressedTexture
+                new RectInt(160, 8, 12, 12)
             );
         }
 
