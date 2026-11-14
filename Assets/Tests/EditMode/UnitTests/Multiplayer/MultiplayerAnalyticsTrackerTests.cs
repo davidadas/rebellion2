@@ -147,18 +147,15 @@ namespace Rebellion.Tests.Multiplayer
             );
         }
 
-        [TestCase(Epic.OnlineServices.P2P.ConnectionClosedReason.ClosedByPeer)]
-        [TestCase(Epic.OnlineServices.P2P.ConnectionClosedReason.Unknown)]
+        [TestCase(MultiplayerDisconnectReason.PeerClosedConnection)]
+        [TestCase(MultiplayerDisconnectReason.Unknown)]
         public void RecordDisconnected_RemoteSocketClosure_DoesNotRecordConnectionLoss(
-            Epic.OnlineServices.P2P.ConnectionClosedReason reason
+            MultiplayerDisconnectReason reason
         )
         {
             _tracker.RecordLobbyJoined("lobby", "guest-account", Summary());
 
-            _tracker.RecordDisconnected(
-                null,
-                EpicMultiplayerDisconnect.FromConnectionReason(reason)
-            );
+            _tracker.RecordDisconnected(null, reason);
 
             Assert.That(
                 _sink.Events.Last().Parameters["connection_reason"],
@@ -171,12 +168,7 @@ namespace Rebellion.Tests.Multiplayer
         {
             _tracker.RecordLobbyJoined("lobby", "guest-account", Summary());
 
-            _tracker.RecordDisconnected(
-                null,
-                EpicMultiplayerDisconnect.FromLobbyStatus(
-                    Epic.OnlineServices.Lobby.LobbyMemberStatus.Left
-                )
-            );
+            _tracker.RecordDisconnected(null, MultiplayerDisconnectReason.PeerEndedSession);
             _tracker.RecordDisconnected(null, MultiplayerDisconnectReason.ConnectionLost);
 
             Assert.That(_sink.Events.Count, Is.EqualTo(2));

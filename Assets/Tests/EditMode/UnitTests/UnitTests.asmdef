@@ -5,7 +5,6 @@
     ],
     "references": [
         "GameAssembly",
-        "com.Epic.OnlineServices",
         "Unity.Rebellion.Build.CodeGen",
         "NativeAudit",
         "ContentPackEditorAssembly",

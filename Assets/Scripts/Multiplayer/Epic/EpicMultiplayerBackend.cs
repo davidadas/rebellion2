@@ -555,7 +555,15 @@ namespace Rebellion.Multiplayer
                 }
                 _peer.Disconnect(
                     "A player left the game lobby.",
-                    EpicMultiplayerDisconnect.FromLobbyStatus(data.CurrentStatus)
+                    data.CurrentStatus switch
+                    {
+                        LobbyMemberStatus.Left => MultiplayerDisconnectReason.PeerEndedSession,
+                        LobbyMemberStatus.Closed => MultiplayerDisconnectReason.LobbyClosed,
+                        LobbyMemberStatus.Kicked => MultiplayerDisconnectReason.RemovedFromLobby,
+                        LobbyMemberStatus.Disconnected =>
+                            MultiplayerDisconnectReason.ConnectionLost,
+                        _ => MultiplayerDisconnectReason.Unknown,
+                    }
                 );
             }
         }

@@ -11,6 +11,7 @@ using AddNotifyPeerConnectionInterruptedOptions = Epic.OnlineServices.P2P.AddNot
 using AddNotifyPeerConnectionRequestOptions = Epic.OnlineServices.P2P.AddNotifyPeerConnectionRequestOptions;
 using CloseConnectionOptions = Epic.OnlineServices.P2P.CloseConnectionOptions;
 using Common = Epic.OnlineServices.Common;
+using ConnectionClosedReason = Epic.OnlineServices.P2P.ConnectionClosedReason;
 using OnIncomingConnectionRequestInfo = Epic.OnlineServices.P2P.OnIncomingConnectionRequestInfo;
 using OnPeerConnectionEstablishedInfo = Epic.OnlineServices.P2P.OnPeerConnectionEstablishedInfo;
 using OnPeerConnectionInterruptedInfo = Epic.OnlineServices.P2P.OnPeerConnectionInterruptedInfo;
@@ -370,7 +371,7 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Propagates a terminal remote connection loss.
+        /// Propagates the observed cause when the remote connection closes.
         /// </summary>
         /// <param name="data">The closed connection notification.</param>
         private void OnConnectionClosed(ref OnRemoteConnectionClosedInfo data)
@@ -378,7 +379,26 @@ namespace Rebellion.Multiplayer
             if (!_disposed && data.RemoteUserId.Equals(_remoteUser))
                 Disconnect(
                     "Connection closed: " + data.Reason,
-                    EpicMultiplayerDisconnect.FromConnectionReason(data.Reason)
+                    data.Reason switch
+                    {
+                        ConnectionClosedReason.ClosedByLocalUser =>
+                            MultiplayerDisconnectReason.LocalSessionClosed,
+                        ConnectionClosedReason.ClosedByPeer =>
+                            MultiplayerDisconnectReason.PeerClosedConnection,
+                        ConnectionClosedReason.TimedOut
+                        or ConnectionClosedReason.ConnectionFailed
+                        or ConnectionClosedReason.ConnectionClosed
+                        or ConnectionClosedReason.NegotiationFailed =>
+                            MultiplayerDisconnectReason.ConnectionLost,
+                        ConnectionClosedReason.InvalidMessage
+                        or ConnectionClosedReason.InvalidData =>
+                            MultiplayerDisconnectReason.ProtocolError,
+                        ConnectionClosedReason.TooManyConnections
+                        or ConnectionClosedReason.UnexpectedError
+                        or ConnectionClosedReason.ConnectionIgnored =>
+                            MultiplayerDisconnectReason.TransportError,
+                        _ => MultiplayerDisconnectReason.Unknown,
+                    }
                 );
         }
 
