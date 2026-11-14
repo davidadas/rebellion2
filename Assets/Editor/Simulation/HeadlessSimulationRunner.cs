@@ -38,7 +38,7 @@ public static partial class HeadlessSimulationRunner
         {
             SimulationOptions options = SimulationOptions.Parse(Environment.GetCommandLineArgs());
             RunSimulation(options);
-            EditorApplication.Exit(0);
+            EditorApplication.delayCall += () => EditorApplication.Exit(0);
         }
         catch (Exception ex)
         {
