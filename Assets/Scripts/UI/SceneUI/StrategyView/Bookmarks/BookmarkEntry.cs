@@ -1,3 +1,4 @@
+using System;
 using Rebellion.Game.UIState;
 
 /// <summary>
@@ -60,7 +61,7 @@ public sealed class BookmarkEntry
             nameof(PlanetIcon.Defense) => PlanetIcon.Defense,
             nameof(PlanetIcon.Fleet) => PlanetIcon.Fleet,
             nameof(PlanetIcon.Mission) => PlanetIcon.Mission,
-            _ => throw new System.ArgumentOutOfRangeException(nameof(itemTypeID)),
+            _ => throw new ArgumentOutOfRangeException(nameof(itemTypeID)),
         };
 
     /// <summary>

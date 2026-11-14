@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -40,12 +41,12 @@ public sealed class StrategyContextMenuPresenter : MonoBehaviour, ICancelable
     /// <summary>
     /// Raised when the player selects a Strategy command.
     /// </summary>
-    internal event System.Action<StrategyMenuCommand> CommandSelected;
+    internal event Action<StrategyMenuCommand> CommandSelected;
 
     /// <summary>
     /// Raised when a pointer press outside the menu requests dismissal.
     /// </summary>
-    internal event System.Action<PointerEventData> DismissRequested;
+    internal event Action<PointerEventData> DismissRequested;
 
     internal StrategyContextMenuLayout Layout =>
         new StrategyContextMenuLayout(
@@ -216,7 +217,10 @@ public sealed class StrategyContextMenuPresenter : MonoBehaviour, ICancelable
                     command.UsesIconColumn,
                     command.IsSubmenu
                         || StrategyContextMenuIconKeys.TryGetSpeed(command.IconKey, out _),
-                    BuildCommandItems(command.SubmenuCommands)
+                    BuildCommandItems(command.SubmenuCommands),
+                    command.Selected,
+                    command.SelectionColors,
+                    command.SelectionState
                 )
             );
         }

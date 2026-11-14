@@ -40,7 +40,8 @@ internal static class TestContent
             themeLibrary,
             encyclopediaCatalog,
             Assets.GetTexture,
-            Assets.GetTextureContentBounds
+            Assets.GetTextureContentBounds,
+            Assets.GetSmoothTexture
         );
     }
 

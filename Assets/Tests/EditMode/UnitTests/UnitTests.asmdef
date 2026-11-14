@@ -5,6 +5,8 @@
     ],
     "references": [
         "GameAssembly",
+        "Unity.Rebellion.Build.CodeGen",
+        "NativeAudit",
         "ContentPackEditorAssembly",
         "Unity.InputSystem",
         "Unity.InputSystem.TestFramework",

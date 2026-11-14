@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
@@ -971,7 +972,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             ContentPackEditorCatalog catalog = project
                 .GetCatalogs()
                 .First(item => item.Name == "Officers");
-            System.Xml.Linq.XDocument xml = System.Xml.Linq.XDocument.Parse(catalog.Document.Text);
+            XDocument xml = XDocument.Parse(catalog.Document.Text);
             xml.Root.Elements().First().SetElementValue("CanBetray", "not-a-bool");
             project.SetDocumentText(catalog.Document, xml.ToString());
 
@@ -996,7 +997,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             ContentPackEditorCatalog catalog = project
                 .GetCatalogs()
                 .First(item => item.Name == "Officers");
-            System.Xml.Linq.XDocument xml = System.Xml.Linq.XDocument.Parse(catalog.Document.Text);
+            XDocument xml = XDocument.Parse(catalog.Document.Text);
             xml.Root.Elements()
                 .First()
                 .SetElementValue("EncyclopediaImagePath", "unscoped/image.png");
@@ -1242,6 +1243,62 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.IsFalse(project.IsDirty);
         }
 
+        [TestCase("Skills")]
+        [TestCase("Probability")]
+        [TestCase("Ranges")]
+        public void Render_InheritedCompactRows_KeepsSuccessiveFieldControlsSeparated(string area)
+        {
+            project = ContentEditorTestData.CreateLoadableProject(
+                Path.Combine(folder, "InheritedContent")
+            );
+            if (area == "Skills")
+                SelectRecord(
+                    project
+                        .GetCatalogs()
+                        .SelectMany(catalog => catalog.Records)
+                        .First(record => record.Kind == "Officer")
+                );
+            else if (area == "Probability")
+                SelectSharedMissionRules();
+            else
+            {
+                SelectRecord(
+                    project
+                        .GetCatalogs()
+                        .SelectMany(catalog => catalog.Records)
+                        .First(record => record.Kind == "GameGenerationConfig")
+                );
+                RenderSection("Support");
+            }
+            Canvas.ForceUpdateCanvases();
+            ContentEditorFieldView[] fields =
+                view.GetComponentsInChildren<ContentEditorFieldView>();
+            Assert.IsTrue(fields.Any(field => field.Field.CanInherit));
+            for (int first = 0; first < fields.Length; first++)
+            for (int second = first + 1; second < fields.Length; second++)
+                Assert.IsFalse(
+                    FieldRect(fields[first]).Overlaps(FieldRect(fields[second])),
+                    fields[first].name + " overlaps " + fields[second].name
+                );
+        }
+
+        /// <summary>
+        /// Gets the occupied field rectangle in the shared canvas coordinates.
+        /// </summary>
+        /// <param name="field">The rendered field.</param>
+        /// <returns>The occupied rectangle.</returns>
+        private static Rect FieldRect(ContentEditorFieldView field)
+        {
+            Vector3[] corners = new Vector3[4];
+            ((RectTransform)field.transform).GetWorldCorners(corners);
+            return Rect.MinMaxRect(
+                corners[0].x + .01f,
+                corners[0].y + .01f,
+                corners[2].x - .01f,
+                corners[2].y - .01f
+            );
+        }
+
         /// <summary>
         /// Presents one record directly through the form's public boundary.
         /// </summary>
@@ -1366,8 +1423,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .Element("Foil")
                 .Elements("Entry")
                 .SingleOrDefault(entry =>
-                    entry.Element("Key").Value
-                    == score.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    entry.Element("Key").Value == score.ToString(CultureInfo.InvariantCulture)
                 )
                 ?.Element("Value")
                 ?.Value

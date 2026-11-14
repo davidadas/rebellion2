@@ -15,12 +15,52 @@ using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
+using UnityEngine;
 
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
     public class MovementCommandsTests
     {
+        [Test]
+        public void RequestMove_DeterministicPeerGames_AssignsSameMovementGroupWithoutRandomDraws()
+        {
+            (
+                GameRoot first,
+                _,
+                Planet firstDestination,
+                Officer firstOfficer,
+                MovementCommands firstCommands
+            ) = BuildScene();
+            (
+                GameRoot second,
+                _,
+                Planet secondDestination,
+                Officer secondOfficer,
+                MovementCommands secondCommands
+            ) = BuildScene();
+            first.Summary.Seed = 314159;
+            second.Summary.Seed = 314159;
+            first.UseDeterministicRuntimeIdentifiers = true;
+            second.UseDeterministicRuntimeIdentifiers = true;
+            long firstRandomIndex = first.RandomIndex;
+            long secondRandomIndex = second.RandomIndex;
+
+            firstCommands.RequestMove(firstOfficer, firstDestination);
+            secondCommands.RequestMove(secondOfficer, secondDestination);
+
+            Assert.IsNotNull(firstOfficer.Movement);
+            Assert.IsNotNull(secondOfficer.Movement);
+            Assert.AreEqual(
+                firstOfficer.Movement.MovementGroupID,
+                secondOfficer.Movement.MovementGroupID
+            );
+            Assert.AreEqual(1, first.IDCounter);
+            Assert.AreEqual(first.IDCounter, second.IDCounter);
+            Assert.AreEqual(firstRandomIndex, first.RandomIndex);
+            Assert.AreEqual(secondRandomIndex, second.RandomIndex);
+        }
+
         [Test]
         public void TryRequestMove_OrphanedUnitWithMultipleDestinations_LogsOneFinalRejection()
         {
@@ -1702,10 +1742,7 @@ namespace Rebellion.Tests.Gameplay
             };
             game.AttachNode(captive, origin);
 
-            movement.RequestMove(
-                new System.Collections.Generic.List<IMovable> { escort, captive },
-                destination
-            );
+            movement.RequestMove(new List<IMovable> { escort, captive }, destination);
 
             Assert.AreEqual(destination, escort.GetParent(), "Escort should move to destination");
             Assert.AreEqual(destination, captive.GetParent(), "Captive should move with escort");
@@ -1741,10 +1778,7 @@ namespace Rebellion.Tests.Gameplay
             };
             game.AttachNode(captive, origin);
 
-            movement.RequestMove(
-                new System.Collections.Generic.List<IMovable> { escort, captive },
-                destination
-            );
+            movement.RequestMove(new List<IMovable> { escort, captive }, destination);
 
             Assert.AreEqual(destination, escort.GetParent(), "Escort should move to destination");
             Assert.AreEqual(destination, captive.GetParent(), "Captive should move with escort");
@@ -1809,10 +1843,7 @@ namespace Rebellion.Tests.Gameplay
             };
             game.AttachNode(captive, origin);
 
-            movement.RequestMove(
-                new System.Collections.Generic.List<IMovable> { captive },
-                destination
-            );
+            movement.RequestMove(new List<IMovable> { captive }, destination);
 
             Assert.AreEqual(
                 origin,
@@ -1842,10 +1873,7 @@ namespace Rebellion.Tests.Gameplay
             };
             game.AttachNode(captive, origin);
 
-            movement.RequestMove(
-                new System.Collections.Generic.List<IMovable> { escort, captive },
-                destination
-            );
+            movement.RequestMove(new List<IMovable> { escort, captive }, destination);
 
             Assert.AreEqual(
                 origin,
@@ -1880,10 +1908,7 @@ namespace Rebellion.Tests.Gameplay
             };
             game.AttachNode(captive, destination);
 
-            movement.RequestMove(
-                new System.Collections.Generic.List<IMovable> { escort, captive },
-                destination
-            );
+            movement.RequestMove(new List<IMovable> { escort, captive }, destination);
 
             Assert.AreEqual(origin, escort.GetParent());
             Assert.AreEqual(destination, captive.GetParent());
@@ -2447,7 +2472,7 @@ namespace Rebellion.Tests.Gameplay
             };
             game.AttachNode(ship, fleet);
 
-            Assert.Throws<System.InvalidOperationException>(() =>
+            Assert.Throws<InvalidOperationException>(() =>
                 movement.RequestMove(ship, fleet, origin)
             );
             Assert.IsNull(ship.Movement);
@@ -6434,10 +6459,7 @@ namespace Rebellion.Tests.Gameplay
             };
             game.AttachNode(captive, origin);
 
-            movement.RequestMove(
-                new System.Collections.Generic.List<IMovable> { escort, captive },
-                destination
-            );
+            movement.RequestMove(new List<IMovable> { escort, captive }, destination);
             TestMovement.AdvanceTo(escort.Movement, escort.Movement.TransitTicks);
             TestMovement.AdvanceTo(captive.Movement, captive.Movement.TransitTicks);
 
@@ -6589,19 +6611,19 @@ namespace Rebellion.Tests.Gameplay
             List<string> warnings = new();
             GameLogger.LogLevel originalLevel = GameLogger.MinimumLevel;
             GameLogger.SetMinimumLevel(GameLogger.LogLevel.Warning);
-            UnityEngine.Application.LogCallback handler = (message, _, type) =>
+            Application.LogCallback handler = (message, _, type) =>
             {
-                if (type == UnityEngine.LogType.Warning)
+                if (type == LogType.Warning)
                     warnings.Add(message);
             };
-            UnityEngine.Application.logMessageReceived += handler;
+            Application.logMessageReceived += handler;
             try
             {
                 action();
             }
             finally
             {
-                UnityEngine.Application.logMessageReceived -= handler;
+                Application.logMessageReceived -= handler;
                 GameLogger.SetMinimumLevel(originalLevel);
             }
             return warnings;

@@ -46,10 +46,7 @@ namespace Rebellion.Tests.Gameplay
             _planet = CreateOwnedPlanet("PLANET1");
             _game.AttachNode(_planet, _planetSector);
             SmugglingCommands smuggling = new SmugglingCommands(_game);
-            _system = new ResourceProductionTickProcessor(
-                new SmugglingTickProcessor(smuggling),
-                smuggling
-            );
+            _system = new ResourceProductionTickProcessor(smuggling);
         }
 
         [TestCase(BuildingType.Mine)]
@@ -81,7 +78,6 @@ namespace Rebellion.Tests.Gameplay
             using GameSession session = new GameSession(loaded, TestGameData.Create(loaded.Config));
             SmugglingCommands smuggling = new SmugglingCommands(loaded);
             ResourceProductionTickProcessor resumed = new ResourceProductionTickProcessor(
-                new SmugglingTickProcessor(smuggling),
                 smuggling
             );
 
@@ -118,7 +114,6 @@ namespace Rebellion.Tests.Gameplay
             using GameSession session = new GameSession(loaded, TestGameData.Create(loaded.Config));
             SmugglingCommands smuggling = new SmugglingCommands(loaded);
             ResourceProductionTickProcessor resumed = new ResourceProductionTickProcessor(
-                new SmugglingTickProcessor(smuggling),
                 smuggling
             );
 
@@ -304,10 +299,7 @@ namespace Rebellion.Tests.Gameplay
                 { "FACTION2", 85 },
             };
             SmugglingCommands smuggling = new SmugglingCommands(_game);
-            _system = new ResourceProductionTickProcessor(
-                new SmugglingTickProcessor(smuggling),
-                smuggling
-            );
+            _system = new ResourceProductionTickProcessor(smuggling);
             Building mine = AddCompleteBuilding(_planet, BuildingType.Mine, processRate: 1);
             mine.ProductionInputReserved = true;
             mine.ProductionCycleDuration = 1;
@@ -397,7 +389,6 @@ namespace Rebellion.Tests.Gameplay
             restored.RebuildSceneState();
             SmugglingCommands restoredSmuggling = new SmugglingCommands(restored);
             ResourceProductionTickProcessor restoredSystem = new ResourceProductionTickProcessor(
-                new SmugglingTickProcessor(restoredSmuggling),
                 restoredSmuggling
             );
 

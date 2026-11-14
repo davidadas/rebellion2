@@ -835,16 +835,20 @@ public static class UILayout
     )
     {
         sourceLine ??= string.Empty;
-        if (
-            sourceLine.IndexOf('\t') >= 0
-            || template.GetPreferredValues(sourceLine).x <= maximumWidth
-        )
+        if (sourceLine.IndexOf('\t') >= 0)
         {
             lines.Add(sourceLine);
             return;
         }
 
-        string[] words = sourceLine.Split(' ');
+        string[] words = sourceLine.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        string normalizedLine = string.Join(" ", words);
+        if (template.GetPreferredValues(normalizedLine).x <= maximumWidth)
+        {
+            lines.Add(normalizedLine);
+            return;
+        }
+
         string line = words[0];
         for (int index = 1; index < words.Length; index++)
         {

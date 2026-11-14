@@ -23,9 +23,6 @@ namespace Rebellion.Gameplay
         private readonly IRandomNumberProvider _provider;
         private readonly BlockadeTransitionResolver _blockadeTransitionResolver;
         private readonly FleetCommands _fleetSystem;
-        private readonly HashSet<string> _shortfallFactions = new HashSet<string>();
-        private readonly Dictionary<string, int> _nextAutoscrapTickByFaction =
-            new Dictionary<string, int>();
 
         /// <summary>
         /// Raised after an immediate scrap command produces results.
@@ -46,7 +43,7 @@ namespace Rebellion.Gameplay
             FleetCommands fleetSystem = null
         )
         {
-            _game = game ?? throw new System.ArgumentNullException(nameof(game));
+            _game = game ?? throw new ArgumentNullException(nameof(game));
             _provider = provider;
             _blockadeTransitionResolver =
                 blockadeTransitionResolver ?? new BlockadeTransitionResolver(game);
@@ -77,7 +74,7 @@ namespace Rebellion.Gameplay
                     || !string.Equals(
                         liveNode.GetOwnerInstanceID(),
                         ownerInstanceId,
-                        System.StringComparison.Ordinal
+                        StringComparison.Ordinal
                     )
                     || liveItem.GetManufacturingStatus() != ManufacturingStatus.Complete
                 )
@@ -145,8 +142,7 @@ namespace Rebellion.Gameplay
         /// <param name="faction">The faction no longer in shortfall.</param>
         private void ClearMaintenanceShortfall(Faction faction)
         {
-            _shortfallFactions.Remove(faction.InstanceID);
-            _nextAutoscrapTickByFaction.Remove(faction.InstanceID);
+            faction.NextMaintenanceAutoscrapTick = null;
         }
 
         /// <summary>
@@ -163,7 +159,7 @@ namespace Rebellion.Gameplay
             List<GameResult> results
         )
         {
-            if (!_shortfallFactions.Add(faction.InstanceID))
+            if (faction.NextMaintenanceAutoscrapTick.HasValue)
                 return;
 
             results.Add(
@@ -184,21 +180,21 @@ namespace Rebellion.Gameplay
         private bool TryConsumeAutoScrapPulse(Faction faction)
         {
             int interval = _game.Config.Production.MaintenanceShortfallAutoscrapInterval;
-            if (!_nextAutoscrapTickByFaction.TryGetValue(faction.InstanceID, out int nextTick))
+            if (faction.NextMaintenanceAutoscrapTick is not int nextTick)
             {
-                _nextAutoscrapTickByFaction[faction.InstanceID] = _game.CurrentTick + interval;
+                faction.NextMaintenanceAutoscrapTick = _game.CurrentTick + interval;
                 return false;
             }
 
             if (_game.CurrentTick < nextTick)
                 return false;
 
-            _nextAutoscrapTickByFaction[faction.InstanceID] = _game.CurrentTick + interval;
+            faction.NextMaintenanceAutoscrapTick = _game.CurrentTick + interval;
             return true;
         }
 
         /// <summary>
-        /// Scraps one random eligible unit from the faction.
+        /// Scraps one random eligible unit, using ordinal unit IDs to make draws independent of index history.
         /// </summary>
         /// <param name="faction">The faction whose unit is scrapped.</param>
         /// <param name="results">The result collection receiving the scrap effects.</param>
@@ -211,6 +207,7 @@ namespace Rebellion.Gameplay
                     && m.GetManufacturingStatus() == ManufacturingStatus.Complete
                     && m.GetMaintenanceCost() > 0
                 )
+                .OrderBy(m => m.InstanceID, StringComparer.Ordinal)
                 .ToList();
 
             if (candidates.Count == 0)

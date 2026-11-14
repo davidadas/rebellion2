@@ -16,6 +16,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.SceneGraph;
 using Rebellion.Tests.AI.Helpers;
 
 namespace Rebellion.Tests.AI.Phases
@@ -710,7 +711,7 @@ namespace Rebellion.Tests.AI.Phases
             context.AddProposal(transfer);
             context.AddProposal(defense);
 
-            var selected = new Rebellion.AI.Phases.AISelectionPhase().Select(context);
+            var selected = new AISelectionPhase().Select(context);
 
             CollectionAssert.AreEquivalent(new AIProposal[] { transfer, defense }, selected);
         }
@@ -726,7 +727,7 @@ namespace Rebellion.Tests.AI.Phases
             context.AddProposal(transfer);
             context.AddProposal(clear);
 
-            var selected = new Rebellion.AI.Phases.AISelectionPhase().Select(context);
+            var selected = new AISelectionPhase().Select(context);
 
             CollectionAssert.AreEqual(new AIProposal[] { clear }, selected);
         }
@@ -1427,7 +1428,7 @@ namespace Rebellion.Tests.AI.Phases
             faction.ResearchQueue[ManufacturingType.Troop] = new List<Technology> { new(template) };
             AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
             context.SetProductionDemands(
-                new Rebellion.AI.Demands.AIProductionDemandGenerator()
+                new AIProductionDemandGenerator()
                     .BuildDemands(context)
                     .Where(demand => demand.Kind == AIProductionDemandKind.SpecialForces)
             );
@@ -1500,7 +1501,7 @@ namespace Rebellion.Tests.AI.Phases
             filler.SetScore(100);
             context.AddProposals(new List<AIProposal> { filler, normal });
 
-            List<AIProposal> selected = new Rebellion.AI.Phases.AISelectionPhase().Select(context);
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
 
             Assert.AreEqual(1, selected.Count);
             Assert.AreEqual(
@@ -3006,7 +3007,7 @@ namespace Rebellion.Tests.AI.Phases
         {
             IManufacturable product;
             ManufacturingType manufacturingType;
-            Rebellion.SceneGraph.ContainerNode destination = buildingDestination ?? producer;
+            ContainerNode destination = buildingDestination ?? producer;
             switch (kind)
             {
                 case AIProductionDemandKind.FleetCapitalShip:
@@ -3397,7 +3398,7 @@ namespace Rebellion.Tests.AI.Phases
                 _ => AITestSceneBuilder.CreateCapitalShip(id + "-hull", owner),
             };
             product.ConstructionCost = 0;
-            Rebellion.SceneGraph.ContainerNode destination = producer;
+            ContainerNode destination = producer;
             if (kind != AIProductionDemandKind.FleetSeedCapitalShip)
             {
                 Fleet fleet = EntityFactory.CreateFleet(id + "-fleet", owner);

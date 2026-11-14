@@ -10,6 +10,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.SceneGraph;
 using UnityEngine;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
@@ -304,49 +305,49 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(new Vector2Int(3, 5), presentation.GalaxyOffset);
             Assert.AreSame(_uiContext.GetTexture(planetTexturePath), presentation.PlanetTexture);
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     playerTheme.PlanetOverlayTheme.PlanetOverlayIcons.Buildings.NormalImagePath
                 ),
                 presentation.FacilityTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     playerTheme.PlanetOverlayTheme.PlanetOverlayIcons.Buildings.HoverImagePath
                 ),
                 presentation.FacilityPressedTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     playerTheme.PlanetOverlayTheme.PlanetOverlayIcons.Defenses.NormalImagePath
                 ),
                 presentation.DefenseTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     playerTheme.PlanetOverlayTheme.PlanetOverlayIcons.Defenses.HoverImagePath
                 ),
                 presentation.DefensePressedTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     opposingTheme.PlanetOverlayTheme.PlanetOverlayIcons.Fleets.NormalImagePath
                 ),
                 presentation.FleetTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     opposingTheme.PlanetOverlayTheme.PlanetOverlayIcons.Fleets.HoverImagePath
                 ),
                 presentation.FleetPressedTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     opposingTheme.PlanetOverlayTheme.PlanetOverlayIcons.Missions.NormalImagePath
                 ),
                 presentation.MissionTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     opposingTheme.PlanetOverlayTheme.PlanetOverlayIcons.Missions.HoverImagePath
                 ),
                 presentation.MissionPressedTexture
@@ -643,13 +644,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
             FactionTheme playerTheme = _uiContext.GetPlayerFactionTheme();
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     playerTheme.PlanetOverlayTheme.PlanetOverlayIcons.Missions.NormalImagePath
                 ),
                 presentation.MissionTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     playerTheme.PlanetOverlayTheme.PlanetOverlayIcons.Missions.HoverImagePath
                 ),
                 presentation.MissionPressedTexture
@@ -668,7 +669,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         {
             Planet planet = CreatePlanet("planet", _playerFactionId, 10, 20);
             IMovable item = CreateDefenseWindowItem(itemKind);
-            planet.AddTestChild((Rebellion.SceneGraph.ISceneNode)item);
+            planet.AddTestChild((ISceneNode)item);
             GalaxyMapSector sector = CreateSector(
                 new GalaxyMapPlanet(_planetSector, planet, string.Empty)
             );
@@ -739,7 +740,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Planet planet = CreatePlanet("planet", _playerFactionId, 10, 20);
             IMovable item = CreateDefenseWindowItem(itemKind);
             item.IsEnabled = false;
-            planet.AddTestChild((Rebellion.SceneGraph.ISceneNode)item);
+            planet.AddTestChild((ISceneNode)item);
 
             PlanetSectorWindowRenderData data = _projector.CreateRenderData(
                 CreateSector(new GalaxyMapPlanet(_planetSector, planet, string.Empty)),
@@ -803,13 +804,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 data.Planets[0].UprisingTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     opposingTheme.PlanetOverlayTheme.PlanetOverlayIcons.Missions.NormalImagePath
                 ),
                 data.Planets[0].MissionTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     opposingTheme.PlanetOverlayTheme.PlanetOverlayIcons.Missions.HoverImagePath
                 ),
                 data.Planets[0].MissionPressedTexture
@@ -837,25 +838,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
             PlanetSectorPlanetRenderData presentation = data.Planets[0];
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     neutralTheme.PlanetOverlayTheme.PlanetOverlayIcons.Buildings.NormalImagePath
                 ),
                 presentation.FacilityTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     neutralTheme.PlanetOverlayTheme.PlanetOverlayIcons.Buildings.HoverImagePath
                 ),
                 presentation.FacilityPressedTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     neutralTheme.PlanetOverlayTheme.PlanetOverlayIcons.Defenses.NormalImagePath
                 ),
                 presentation.DefenseTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     neutralTheme.PlanetOverlayTheme.PlanetOverlayIcons.Defenses.HoverImagePath
                 ),
                 presentation.DefensePressedTexture
@@ -930,13 +931,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
             FactionTheme playerTheme = _uiContext.GetPlayerFactionTheme();
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     playerTheme.PlanetOverlayTheme.PlanetOverlayIcons.Missions.NormalImagePath
                 ),
                 presentation.MissionTexture
             );
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     playerTheme.PlanetOverlayTheme.PlanetOverlayIcons.Missions.HoverImagePath
                 ),
                 presentation.MissionPressedTexture
@@ -1152,7 +1153,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 return;
             }
 
-            _game.AttachNode((Rebellion.SceneGraph.ISceneNode)item, origin);
+            _game.AttachNode((ISceneNode)item, origin);
             commands.RequestMove(item, destination);
         }
 
@@ -1197,8 +1198,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             /// Creates an empty test mission copy.
             /// </summary>
             /// <returns>An empty test mission.</returns>
-            protected override Rebellion.SceneGraph.BaseSceneNode CreateNodeCopy() =>
-                new TestMission(null);
+            protected override BaseSceneNode CreateNodeCopy() => new TestMission(null);
 
             /// <summary>
             /// Initializes a new instance of the TestMission class.

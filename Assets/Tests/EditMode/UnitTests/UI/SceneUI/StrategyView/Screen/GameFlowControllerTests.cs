@@ -286,10 +286,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Task task;
             try
             {
-                task = (Task)InvokePrivate(
-                    "PlayFactionIntroAsync",
-                    new object[] { new Rebellion.Game.Factions.Faction() }
-                );
+                task = (Task)InvokePrivate("PlayFactionIntroAsync", new object[] { new Faction() });
             }
             finally
             {

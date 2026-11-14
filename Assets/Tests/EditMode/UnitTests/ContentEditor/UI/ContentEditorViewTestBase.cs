@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -196,8 +197,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .Element("Foil")
                 .Elements("Entry")
                 .SingleOrDefault(entry =>
-                    entry.Element("Key").Value
-                    == score.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    entry.Element("Key").Value == score.ToString(CultureInfo.InvariantCulture)
                 )
                 ?.Element("Value")
                 ?.Value

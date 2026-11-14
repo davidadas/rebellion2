@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
@@ -59,9 +60,26 @@ internal static class ContentEditorPackValidator
             data.Regiments.Select(item => item.TypeID),
             StringComparer.Ordinal
         );
-        foreach (var faction in data.Factions)
+        Dictionary<string, Officer> officersByInstanceID = data.Officers.ToDictionary(
+            officer => officer.InstanceID,
+            StringComparer.Ordinal
+        );
+        foreach (Faction faction in data.Factions)
+        {
             if (!string.IsNullOrEmpty(faction.GarrisonTroopTypeID))
                 RequireReference(regiments, faction.GarrisonTroopTypeID, "garrison troop");
+            foreach (string officerInstanceID in faction.Settings.ConquestOfficerInstanceIDs)
+            {
+                RequireReference(officers, officerInstanceID, "conquest officer");
+                if (
+                    officersByInstanceID[officerInstanceID].GetOwnerInstanceID()
+                    != faction.InstanceID
+                )
+                    throw new InvalidDataException(
+                        $"Conquest officer '{officerInstanceID}' is not owned by faction '{faction.InstanceID}'."
+                    );
+            }
+        }
 
         GameGenerationConfig config = data.GenerationConfig;
         foreach (StartingOfficerRule rule in config.Officers.StartingOfficers)
@@ -409,9 +427,8 @@ internal static class ContentEditorPackValidator
         string[] scenarios = project
             .Definition.ScenarioPaths.Select(path =>
                 ContentDefinitionSerializer
-                    .Deserialize<ContentScenarioDefinition>(
-                        resolver.ResolveFile("Pack/" + path)
-                            ?? throw new FileNotFoundException("Scenario not found: " + path)
+                    .DeserializeText<ContentScenarioDefinition>(
+                        ContentXmlOverrides.Load(resolver, "Pack/" + path)
                     )
                     .ID
             )

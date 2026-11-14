@@ -625,7 +625,7 @@ namespace Rebellion.AI.Selectors
                     && proposal.Demand.BuildingType == step.NextType;
                 double progress = nextStep ? step.Completion : 0;
                 double localGrowth = nextStep
-                    ? System.Math.Clamp(
+                    ? Math.Clamp(
                         AIUtility.Evaluate(
                             AIProductionProposalScorer.GetLocalConstructionGrowth(
                                 context,

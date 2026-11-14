@@ -16,6 +16,7 @@ using Rebellion.Generation;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
+using UnityEditor;
 
 public static partial class HeadlessSimulationRunner
 {
@@ -37,12 +38,12 @@ public static partial class HeadlessSimulationRunner
         {
             SimulationOptions options = SimulationOptions.Parse(Environment.GetCommandLineArgs());
             RunSimulation(options);
-            UnityEditor.EditorApplication.delayCall += () => UnityEditor.EditorApplication.Exit(0);
+            EditorApplication.delayCall += () => EditorApplication.Exit(0);
         }
         catch (Exception ex)
         {
             UnityEngine.Debug.LogException(ex);
-            UnityEditor.EditorApplication.Exit(1);
+            EditorApplication.Exit(1);
         }
     }
 

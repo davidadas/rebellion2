@@ -58,7 +58,7 @@ dotnet_diagnostic.REB0006.severity = error    # fields and enum members must not
 dotnet_diagnostic.REB0009.severity = error    # test methods must not have leading comments
 dotnet_diagnostic.REB0010.severity = error    # gameplay config numeric defaults belong in content
 
-[Assets/Scripts/Managers/AudioManager.cs]
+[Assets/Scripts/UI/Audio/AudioManager.cs]
 dotnet_diagnostic.RCS1163.severity = none
 dotnet_diagnostic.RCS1213.severity = none
 dotnet_naming_rule.private_fields_underscore.severity = none
@@ -69,11 +69,19 @@ dotnet_diagnostic.RCS1163.severity = none
 dotnet_diagnostic.RCS1213.severity = none
 dotnet_naming_rule.private_fields_underscore.severity = none
 
-[Assets/Scripts/Managers/InputManager.cs]
+[Assets/Scripts/UI/Input/InputManager.cs]
 dotnet_diagnostic.RCS1213.severity = none
 
 # CI stages Unity's managed assemblies without compiling package source. The Recorder namespace
 # is therefore incomplete during lint even though Unity requires this import to compile the file.
 [Assets/Editor/Capture/GameRecordingSession.cs]
 dotnet_diagnostic.IDE0005.severity = none
+dotnet_diagnostic.CS8019.severity = none
+
+# CI omits the compiled glTFast and Unity Services packages. Their required imports appear unused
+# to the partial compiler model; retain IDE0005 for analysis with the complete Unity references.
+[Assets/Scripts/Content/ContentModelLoader.cs]
+dotnet_diagnostic.CS8019.severity = none
+
+[Assets/Scripts/Analytics/AnalyticsManager.cs]
 dotnet_diagnostic.CS8019.severity = none

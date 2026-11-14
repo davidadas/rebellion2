@@ -2,6 +2,10 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using UnityEditor;
+using UnityEditor.Build.Reporting;
+using UnityEditor.EngineDiagnostics;
+using UnityEngine;
 
 /// <summary>
 /// Builds standalone player artifacts without packaging external content.
@@ -17,6 +21,8 @@ public static class StandalonePlayerBuild
     private const string _buildPlayerPathArgument = "-buildPlayerPath";
     private const string _gameCIBuildPathArgument = "-customBuildPath";
     private const string _buildVersionArgument = "-buildVersion";
+    private const string _nativeAuditArgument = "-nativeAuditBuild";
+
     private const string _enableDiagnosticsArgument = "-enableDiagnostics";
     private const string _enableAnalyticsArgument = "-enableAnalytics";
     private const string _analyticsScriptingDefine = "REBELLION_ANALYTICS_ENABLED";
@@ -24,18 +30,18 @@ public static class StandalonePlayerBuild
     /// <summary>
     /// Builds an external-content player for the active desktop target from the Unity editor.
     /// </summary>
-    [UnityEditor.MenuItem("Rebellion/Build/Build and Run Player", false, 100)]
+    [MenuItem("Rebellion/Build/Build and Run Player", false, 100)]
     public static void BuildFromEditor()
     {
-        UnityEditor.BuildTarget target = UnityEditor.EditorUserBuildSettings.activeBuildTarget;
+        BuildTarget target = EditorUserBuildSettings.activeBuildTarget;
         (string fileName, string extension) = GetDefaultArtifact(target);
         string projectRoot = GetProjectRoot();
-        string contentPath = Path.Combine(UnityEngine.Application.dataPath, "Content");
+        string contentPath = Path.Combine(Application.dataPath, "Content");
         string catalogPath = Path.Combine(contentPath, "catalog.xml");
         if (!File.Exists(catalogPath))
             throw new FileNotFoundException("Development content catalog not found.", catalogPath);
 
-        string outputPath = UnityEditor.EditorUtility.SaveFilePanel(
+        string outputPath = EditorUtility.SaveFilePanel(
             "Build Rebellion",
             Path.Combine(projectRoot, "build"),
             fileName,
@@ -67,14 +73,10 @@ public static class StandalonePlayerBuild
     /// <param name="target">The desktop platform that was built.</param>
     /// <param name="outputPath">The player artifact path.</param>
     /// <param name="contentPath">The external development content root.</param>
-    internal static void LaunchPlayer(
-        UnityEditor.BuildTarget target,
-        string outputPath,
-        string contentPath
-    )
+    internal static void LaunchPlayer(BuildTarget target, string outputPath, string contentPath)
     {
         ProcessStartInfo startInfo;
-        if (target == UnityEditor.BuildTarget.StandaloneOSX)
+        if (target == BuildTarget.StandaloneOSX)
         {
             startInfo = new ProcessStartInfo("/usr/bin/open") { UseShellExecute = false };
             startInfo.ArgumentList.Add(outputPath);
@@ -99,14 +101,14 @@ public static class StandalonePlayerBuild
     /// </summary>
     public static void Build()
     {
-        UnityEditor.BuildTarget target = GetBuildTarget();
+        BuildTarget target = GetBuildTarget();
         string outputPath = ResolveProjectPath(
             GetRequiredArgument(_buildPlayerPathArgument, _gameCIBuildPathArgument)
         );
-        string originalVersion = UnityEditor.PlayerSettings.bundleVersion;
+        string originalVersion = PlayerSettings.bundleVersion;
 #if UNITY_STANDALONE_OSX
         UnityEditor.Build.OSArchitecture originalMacArchitecture = default;
-        if (target == UnityEditor.BuildTarget.StandaloneOSX)
+        if (target == BuildTarget.StandaloneOSX)
         {
             originalMacArchitecture = UnityEditor.OSXStandalone.UserBuildSettings.architecture;
         }
@@ -131,9 +133,9 @@ public static class StandalonePlayerBuild
         }
         finally
         {
-            UnityEditor.PlayerSettings.bundleVersion = originalVersion;
+            PlayerSettings.bundleVersion = originalVersion;
 #if UNITY_STANDALONE_OSX
-            if (target == UnityEditor.BuildTarget.StandaloneOSX)
+            if (target == BuildTarget.StandaloneOSX)
             {
                 UnityEditor.OSXStandalone.UserBuildSettings.architecture = originalMacArchitecture;
             }
@@ -146,9 +148,9 @@ public static class StandalonePlayerBuild
     /// Builds macOS releases for both Intel and Apple Silicon.
     /// </summary>
     /// <param name="target">The desktop platform being built.</param>
-    private static void ApplyBuildArchitecture(UnityEditor.BuildTarget target)
+    private static void ApplyBuildArchitecture(BuildTarget target)
     {
-        if (target == UnityEditor.BuildTarget.StandaloneOSX)
+        if (target == BuildTarget.StandaloneOSX)
         {
             UnityEditor.OSXStandalone.UserBuildSettings.architecture = UnityEditor
                 .Build
@@ -167,7 +169,7 @@ public static class StandalonePlayerBuild
         if (string.IsNullOrWhiteSpace(buildVersion))
             return;
 
-        UnityEditor.PlayerSettings.bundleVersion = buildVersion.Trim();
+        PlayerSettings.bundleVersion = buildVersion.Trim();
     }
 
     /// <summary>
@@ -179,7 +181,7 @@ public static class StandalonePlayerBuild
     /// <param name="enableAnalytics">Whether the built player may send opted-in analytics.</param>
     /// <returns>The platform-correct player artifact path.</returns>
     private static string BuildPlayer(
-        UnityEditor.BuildTarget target,
+        BuildTarget target,
         string outputPath,
         bool enableDiagnostics,
         bool enableAnalytics
@@ -194,7 +196,13 @@ public static class StandalonePlayerBuild
             outputPath,
             enableDiagnostics,
             new[] { _bootScenePath, _mainMenuScenePath, _strategyScenePath },
-            enableAnalytics ? new[] { _analyticsScriptingDefine } : Array.Empty<string>()
+            (enableAnalytics ? new[] { _analyticsScriptingDefine } : Array.Empty<string>())
+                .Concat(
+                    Environment.GetCommandLineArgs().Contains(_nativeAuditArgument)
+                        ? new[] { "REBELLION_NATIVE_AUDIT" }
+                        : Array.Empty<string>()
+                )
+                .ToArray()
         );
     }
 
@@ -208,7 +216,7 @@ public static class StandalonePlayerBuild
     /// <param name="extraScriptingDefines">Build-only symbols that select companion assemblies.</param>
     /// <returns>The platform-correct player artifact path.</returns>
     internal static string BuildGeneratedPlayer(
-        UnityEditor.BuildTarget target,
+        BuildTarget target,
         string outputPath,
         bool enableDiagnostics,
         string[] scenes,
@@ -224,26 +232,21 @@ public static class StandalonePlayerBuild
         if (missingScene != null)
             throw new FileNotFoundException("Generated player scene not found.", missingScene);
 
-        UnityEditor.BuildPlayerOptions options = new UnityEditor.BuildPlayerOptions
+        BuildPlayerOptions options = new BuildPlayerOptions
         {
             scenes = scenes,
             locationPathName = outputPath,
             target = target,
-            options = UnityEditor.BuildOptions.None,
+            options = BuildOptions.None,
             extraScriptingDefines = extraScriptingDefines,
         };
 
-        bool originalDiagnosticsEnabled = UnityEditor
-            .EngineDiagnostics
-            .EngineDiagnosticsSettings
-            .enabled;
+        bool originalDiagnosticsEnabled = EngineDiagnosticsSettings.enabled;
         try
         {
-            UnityEditor.EngineDiagnostics.EngineDiagnosticsSettings.enabled = enableDiagnostics;
-            UnityEditor.Build.Reporting.BuildReport report = UnityEditor.BuildPipeline.BuildPlayer(
-                options
-            );
-            if (report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
+            EngineDiagnosticsSettings.enabled = enableDiagnostics;
+            BuildReport report = BuildPipeline.BuildPlayer(options);
+            if (report.summary.result != BuildResult.Succeeded)
             {
                 throw new InvalidOperationException(
                     $"Player build failed with result {report.summary.result}."
@@ -251,6 +254,7 @@ public static class StandalonePlayerBuild
             }
 
             VerifyDevelopmentContentWasNotPacked(report);
+            CopyLegalDocuments(target, outputPath);
 
             if (!File.Exists(outputPath) && !Directory.Exists(outputPath))
             {
@@ -263,9 +267,29 @@ public static class StandalonePlayerBuild
         }
         finally
         {
-            UnityEditor.EngineDiagnostics.EngineDiagnosticsSettings.enabled =
-                originalDiagnosticsEnabled;
+            EngineDiagnosticsSettings.enabled = originalDiagnosticsEnabled;
         }
+    }
+
+    /// <summary>
+    /// Includes readable copies of the bundled documents in every desktop installation payload.
+    /// </summary>
+    /// <param name="target">The platform being packaged.</param>
+    /// <param name="outputPath">The built player artifact path.</param>
+    internal static void CopyLegalDocuments(UnityEditor.BuildTarget target, string outputPath)
+    {
+        string root =
+            target == UnityEditor.BuildTarget.StandaloneOSX
+                ? Path.Combine(outputPath, "Contents", "Resources")
+                : Path.GetDirectoryName(outputPath);
+        string destination = Path.Combine(root, "Legal");
+        Directory.CreateDirectory(destination);
+        foreach (string name in new[] { "EULA.txt", "Privacy.txt" })
+            File.Copy(
+                Path.Combine(UnityEngine.Application.dataPath, "Legal", name),
+                Path.Combine(destination, name),
+                true
+            );
     }
 
     /// <summary>
@@ -274,7 +298,7 @@ public static class StandalonePlayerBuild
     /// <param name="target">The desktop platform being built.</param>
     /// <param name="outputPath">The requested player artifact path.</param>
     /// <returns>The output path Unity creates for the target platform.</returns>
-    private static string NormalizeOutputPath(UnityEditor.BuildTarget target, string outputPath)
+    private static string NormalizeOutputPath(BuildTarget target, string outputPath)
     {
         string extension = "." + GetDefaultArtifact(target).Extension;
         return !outputPath.EndsWith(extension, StringComparison.OrdinalIgnoreCase)
@@ -287,18 +311,16 @@ public static class StandalonePlayerBuild
     /// </summary>
     /// <param name="target">The active Unity build target.</param>
     /// <returns>The default file name and extension.</returns>
-    private static (string FileName, string Extension) GetDefaultArtifact(
-        UnityEditor.BuildTarget target
-    )
+    private static (string FileName, string Extension) GetDefaultArtifact(BuildTarget target)
     {
         switch (target)
         {
-            case UnityEditor.BuildTarget.StandaloneOSX:
+            case BuildTarget.StandaloneOSX:
                 return ("rebellion2", "app");
-            case UnityEditor.BuildTarget.StandaloneWindows:
-            case UnityEditor.BuildTarget.StandaloneWindows64:
+            case BuildTarget.StandaloneWindows:
+            case BuildTarget.StandaloneWindows64:
                 return ("rebellion2", "exe");
-            case UnityEditor.BuildTarget.StandaloneLinux64:
+            case BuildTarget.StandaloneLinux64:
                 return ("rebellion2", "x86_64");
             default:
                 throw new InvalidOperationException(
@@ -311,9 +333,7 @@ public static class StandalonePlayerBuild
     /// Fails the build if editor-only preview content leaked into Unity's player data.
     /// </summary>
     /// <param name="report">The report.</param>
-    private static void VerifyDevelopmentContentWasNotPacked(
-        UnityEditor.Build.Reporting.BuildReport report
-    )
+    private static void VerifyDevelopmentContentWasNotPacked(BuildReport report)
     {
         string[] packedDevelopmentAssets = report
             .packedAssets.SelectMany(packed => packed.contents)
@@ -351,15 +371,15 @@ public static class StandalonePlayerBuild
     /// Reads the requested Unity build target from the command line.
     /// </summary>
     /// <returns>The parsed build target.</returns>
-    private static UnityEditor.BuildTarget GetBuildTarget()
+    private static BuildTarget GetBuildTarget()
     {
         string value = GetRequiredArgument(_buildTargetArgument);
         if (string.Equals(value, "Win64", StringComparison.OrdinalIgnoreCase))
         {
-            value = nameof(UnityEditor.BuildTarget.StandaloneWindows64);
+            value = nameof(BuildTarget.StandaloneWindows64);
         }
 
-        if (Enum.TryParse(value, true, out UnityEditor.BuildTarget target))
+        if (Enum.TryParse(value, true, out BuildTarget target))
         {
             return target;
         }
@@ -440,7 +460,7 @@ public static class StandalonePlayerBuild
     /// <returns>The absolute project directory.</returns>
     private static string GetProjectRoot()
     {
-        DirectoryInfo projectDirectory = Directory.GetParent(UnityEngine.Application.dataPath);
+        DirectoryInfo projectDirectory = Directory.GetParent(Application.dataPath);
         return projectDirectory?.FullName
             ?? throw new InvalidOperationException("Could not resolve project directory.");
     }

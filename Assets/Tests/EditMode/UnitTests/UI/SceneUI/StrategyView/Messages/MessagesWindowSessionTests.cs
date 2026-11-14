@@ -103,7 +103,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             _session.SelectOnly(message);
             _session.ShowDetail();
 
-            _session.Reconcile(System.Array.Empty<Message>());
+            _session.Reconcile(Array.Empty<Message>());
 
             Assert.IsNull(_session.SelectedMessageId);
             Assert.IsFalse(_session.DetailVisible);
@@ -339,6 +339,47 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
 
             Assert.IsFalse(_session.DetailVisible);
             Assert.AreEqual(message.InstanceID, _session.SelectedMessageId);
+        }
+
+        /// <summary>
+        /// Verifies that presentation refreshes do not replace a player draft.
+        /// </summary>
+        [Test]
+        public void Reconcile_EmptyMessageBatch_PreservesOpenComposerAndDraft()
+        {
+            _session.OpenComposer();
+            _session.SetComposerDraft("  Draft\ntext  ");
+
+            _session.Reconcile(Array.Empty<Message>());
+
+            Assert.IsTrue(_session.ComposerVisible);
+            Assert.AreEqual("  Draft\ntext  ", _session.ComposerDraft);
+        }
+
+        [Test]
+        public void BeginPeerChatSubmission_WhitespaceDraft_AcceptsRawText()
+        {
+            _session.OpenComposer();
+            _session.SetComposerDraft(" \n ");
+
+            Assert.IsTrue(_session.BeginPeerChatSubmission());
+            Assert.AreEqual(" \n ", _session.ComposerDraft);
+        }
+
+        [Test]
+        public void CompletePeerChatSubmission_CanceledDraftGeneration_DoesNotCloseNewComposer()
+        {
+            _session.OpenComposer();
+            _session.SetComposerDraft("First");
+            int firstGeneration = _session.ComposerGeneration;
+            _session.BeginPeerChatSubmission();
+            _session.HideDetail();
+            _session.OpenComposer();
+            _session.SetComposerDraft("Second");
+
+            Assert.IsFalse(_session.CompletePeerChatSubmission(firstGeneration, true));
+            Assert.IsTrue(_session.ComposerVisible);
+            Assert.AreEqual("Second", _session.ComposerDraft);
         }
 
         /// <summary>

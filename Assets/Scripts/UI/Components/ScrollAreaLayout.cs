@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 /// <summary>
@@ -19,7 +20,7 @@ public sealed class ScrollAreaLayout : MonoBehaviour
     private float contentHeight;
     private float lastWidth;
 
-    public event System.Action WidthChanged;
+    public event Action WidthChanged;
 
     public ScrollAreaView ScrollArea => scrollArea;
 
@@ -29,7 +30,7 @@ public sealed class ScrollAreaLayout : MonoBehaviour
     /// <param name="view">The reusable scrolling control.</param>
     public void Configure(ScrollAreaView view)
     {
-        scrollArea = view ?? throw new System.ArgumentNullException(nameof(view));
+        scrollArea = view ?? throw new ArgumentNullException(nameof(view));
         OnRectTransformDimensionsChange();
     }
 

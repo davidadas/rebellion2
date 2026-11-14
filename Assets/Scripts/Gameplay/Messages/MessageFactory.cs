@@ -1853,10 +1853,14 @@ namespace Rebellion.Gameplay
             var unitDestinations =
                 new Dictionary<(string Owner, string Destination, string Group), Planet>();
 
+            HashSet<Fleet> reportedFleets = new HashSet<Fleet>();
             foreach (UnitArrivedResult arrival in arrivalResults)
             {
-                if (arrival.Unit is Fleet fleet)
+                Fleet fleet = arrival.ArrivedFleet ?? arrival.Unit as Fleet;
+                if (fleet != null)
                 {
+                    if (!reportedFleets.Add(fleet))
+                        continue;
                     Faction faction = GetArrivalFaction(game, fleet.GetOwnerInstanceID());
                     AddArrivalDelivery(
                         deliveries,
@@ -3244,6 +3248,9 @@ namespace Rebellion.Gameplay
         {
             foreach (SmugglingChangedResult result in results)
             {
+                if (result.NewPercent == 0 && result.EndedByOwnershipChange)
+                    continue;
+
                 AddSmugglingDelivery(deliveries, result.Controller, result, false);
                 AddSmugglingDelivery(deliveries, result.Beneficiary, result, true);
             }

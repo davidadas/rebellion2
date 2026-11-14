@@ -52,16 +52,32 @@ require_command() {
     fi
 }
 
-run_unity_editmode_tests() {
-    "$UNITY" \
-        -runTests \
-        -testPlatform EditMode \
-        -executeMethod UIBuilderMenu.BuildAll \
-        -projectPath "$PROJECT_PATH" \
-        -testResults "$TEST_RESULTS" \
-        -batchmode \
-        -nographics \
-        "$@"
+run_unity_tests() {
+    local platform results
+    for platform in EditMode PlayMode; do
+        results="$TEST_RESULTS"
+        local setup_args=()
+        if [ "$platform" = EditMode ]; then
+            setup_args=(-executeMethod UIBuilderMenu.BuildAll)
+        else
+            results="${TEST_RESULTS%.xml}-playmode.xml"
+        fi
+        rm -f -- "$results"
+        "$UNITY" \
+            -runTests \
+            -testPlatform "$platform" \
+            "${setup_args[@]}" \
+            -projectPath "$PROJECT_PATH" \
+            -testResults "$results" \
+            -batchmode \
+            -nographics \
+            "$@"
+
+        if [ ! -s "$results" ]; then
+            echo "FAIL: Unity exited without writing test results: $results"
+            return 1
+        fi
+    done
 }
 
 parse_coverage_percent() {
@@ -108,8 +124,8 @@ usage() {
     echo "Commands:"
     echo "  format    Check formatting with CSharpier"
     echo "  lint      Run Roslynator static analysis"
-    echo "  test      Run EditMode tests via Unity"
-    echo "  coverage  Run EditMode tests with code coverage report"
+    echo "  test      Run EditMode and PlayMode tests via Unity"
+    echo "  coverage  Run EditMode and PlayMode tests with code coverage report"
     echo "  build     Build standalone player"
     echo "  clean     Remove build artifacts"
     echo "  all       Run format + lint + test"
@@ -159,7 +175,7 @@ do_lint() {
             -verbosity:normal \
             "${extra_args[@]}"
         echo ""
-        for test_project in UnitTests.csproj; do
+        for test_project in UnitTests.csproj PlayModeTests.csproj NativeAudit.csproj; do
             if [ ! -f "$test_project" ]; then
                 continue
             fi
@@ -249,15 +265,15 @@ do_lint() {
 }
 
 do_test() {
-    run_unity_editmode_tests -releaseCodeOptimization
-    echo "Test results written to $TEST_RESULTS"
+    run_unity_tests -releaseCodeOptimization
+    echo "Test results written to $TEST_RESULTS and ${TEST_RESULTS%.xml}-playmode.xml"
 }
 
 do_coverage() {
     require_command awk
 
     local coverage_dir="${COVERAGE_DIR:-Coverage}"
-    run_unity_editmode_tests \
+    run_unity_tests \
         -debugCodeOptimization \
         -enableCodeCoverage \
         -coverageResultsPath "$coverage_dir" \

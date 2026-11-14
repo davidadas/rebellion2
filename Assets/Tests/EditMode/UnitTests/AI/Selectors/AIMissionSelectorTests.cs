@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -62,7 +63,7 @@ namespace Rebellion.Tests.AI.Selectors
             );
             new AIMissionProposalScorer().Score(context, proposal);
             context.Game.Config.AI.MissionPlanning.MaximumUnprotectedOfficerMissionFoilProbability =
-                (int)System.Math.Ceiling(proposal.FoilProbability);
+                (int)Math.Ceiling(proposal.FoilProbability);
             context.SetSelectedProposals(new[] { proposal });
 
             new AIMissionSelector(new AISelectionState()).FinalizeSelection(context);

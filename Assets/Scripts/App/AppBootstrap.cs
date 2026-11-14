@@ -1,9 +1,11 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
+using Rebellion.Multiplayer;
 using UnityEngine;
 
 /// <summary>
-/// Initializes the GameRuntime and wires up global systems and
+/// Initializes the GameSessionManager and wires up global systems and
 /// dependencies. Ensures a single source of truth for application state and
 /// global command handling.
 /// </summary>
@@ -19,6 +21,11 @@ public sealed class AppBootstrap : MonoBehaviour
     /// Gets the active application bootstrap instance.
     /// </summary>
     public static AppBootstrap Instance { get; private set; }
+
+    /// <summary>
+    /// Gets the storage failure awaiting acknowledgment in the active scene.
+    /// </summary>
+    public SaveGameFailureNotice PersistenceNotice { get; } = new();
 
     [SerializeField]
     private AppInputController inputController;
@@ -41,7 +48,8 @@ public sealed class AppBootstrap : MonoBehaviour
     private Exception _initializationFailure;
     private Task _mainMenuContentTask;
     private Task _strategyContentTask;
-    private GameRuntime _runtime;
+    private GameSessionManager _sessionManager;
+    private MultiplayerCoordinator _multiplayerCoordinator;
     private SceneLoader _sceneLoader;
     private ContentPreloadManifest _strategyApplicationPreload;
     private UserSettingsManager _userSettingsManager;
@@ -98,7 +106,7 @@ public sealed class AppBootstrap : MonoBehaviour
             return bootstrap;
 
         Destroy(obj);
-        throw new System.InvalidOperationException(
+        throw new InvalidOperationException(
             "AppBootstrap initialization failed.",
             bootstrap._initializationFailure
         );
@@ -168,7 +176,7 @@ public sealed class AppBootstrap : MonoBehaviour
         _contentAssets = new ContentAssets(_contentPack.FileResolver);
         Texture2D cursorTexture =
             _contentAssets.GetCursor(_defaultCursorAddress)
-            ?? throw new System.InvalidOperationException(
+            ?? throw new InvalidOperationException(
                 $"Application cursor is missing: {_defaultCursorAddress}"
             );
         Cursor.SetCursor(cursorTexture, Vector2.zero, CursorMode.Auto);
@@ -208,15 +216,16 @@ public sealed class AppBootstrap : MonoBehaviour
             transform,
             () => _userSettingsManager?.Settings?.UserInterface?.ShowFrameRate == true
         );
-        _runtime = new GameRuntime(
+        _sessionManager = new GameSessionManager(
             _contentPack,
             getGameplaySettings: () => _userSettingsManager.Settings.Gameplay,
             analyticsSink: _analyticsManager
         );
+        _sessionManager.PersistenceFailed += HandlePersistenceFailure;
         if (inputController == null)
             inputController = CreateInputController();
 
-        inputController?.Initialize(inputManager, _cancelStack, _runtime, LoadSave);
+        inputController?.Initialize(inputManager, _cancelStack, _sessionManager, LoadSaveAsync);
         LoadingScreenController.Prepare(this);
     }
 
@@ -262,17 +271,30 @@ public sealed class AppBootstrap : MonoBehaviour
     }
 
     /// <summary>
+    /// Ends an interrupted shared load before or after its local Continue presentation has completed.
+    /// Committed content stays active while the application returns to the main menu.
+    /// </summary>
+    /// <param name="interruption">The optional connection or synchronization failure to present.</param>
+    /// <returns>True when an available application or active loading owner accepted recovery.</returns>
+    internal static bool RecoverInterruptedMultiplayerLoad(Exception interruption = null)
+    {
+        return LoadingScreenController.RecoverInterruptedMultiplayerLoad(Instance, interruption);
+    }
+
+    /// <summary>
     /// Loads a save under the exact content identity recorded in its metadata.
     /// </summary>
     /// <param name="fileName">The save identifier to load.</param>
     /// <returns>True when loading or content reconstruction was started.</returns>
     internal bool LoadSave(string fileName)
     {
+        if (_sessionManager?.HasCoordinatedSession == true)
+            return false;
         if (string.IsNullOrWhiteSpace(fileName))
             return false;
 
         SaveGameManager saveGameManager = SaveGameManager.Instance;
-        if (!System.IO.File.Exists(saveGameManager.GetSaveFilePath(fileName)))
+        if (!File.Exists(saveGameManager.GetSaveFilePath(fileName)))
             return false;
 
         if (LoadingScreenController.IsLoadInProgress)
@@ -280,6 +302,18 @@ public sealed class AppBootstrap : MonoBehaviour
 
         LoadingScreenController.LoadSave(this, fileName);
         return true;
+    }
+
+    /// <summary>
+    /// Awaits shared loading when coordinated, otherwise starts the saved content's scene transition.
+    /// </summary>
+    /// <param name="fileName">The save identifier to load.</param>
+    /// <returns>True after coordinated loading completes or the local scene transition starts.</returns>
+    internal Task<bool> LoadSaveAsync(string fileName)
+    {
+        return _sessionManager?.HasCoordinatedSession == true
+            ? _sessionManager.LoadGameAsync(fileName)
+            : Task.FromResult(LoadSave(fileName));
     }
 
     /// <summary>
@@ -292,7 +326,7 @@ public sealed class AppBootstrap : MonoBehaviour
     {
         if (
             string.IsNullOrWhiteSpace(packID)
-            || _runtime.HasActiveGame
+            || _sessionManager.HasActiveGame
             || LoadingScreenController.IsLoadInProgress
             || IsSceneTransitionInProgress
         )
@@ -321,7 +355,7 @@ public sealed class AppBootstrap : MonoBehaviour
     internal void SuspendForLoad()
     {
         LoadStarting?.Invoke();
-        _runtime.EndGame();
+        _sessionManager.EndGame();
     }
 
     /// <summary>
@@ -403,8 +437,14 @@ public sealed class AppBootstrap : MonoBehaviour
             return;
 
         Cursor.SetCursor(null, Vector2.zero, CursorMode.Auto);
-        ReleaseRuntimeServices();
-        Instance = null;
+        try
+        {
+            ReleaseRuntimeServices();
+        }
+        finally
+        {
+            Instance = null;
+        }
     }
 
     /// <summary>
@@ -412,19 +452,28 @@ public sealed class AppBootstrap : MonoBehaviour
     /// </summary>
     private void ReleaseRuntimeServices()
     {
-        _graphicsManager?.Dispose();
-        _contentModelCache?.Dispose();
-        _contentAssets?.Dispose();
-        _contentModelCache = null;
-        _contentAssets = null;
-        _contentPack = null;
-        _graphicsManager = null;
-        _analyticsManager = null;
-        _mainMenuApplicationPreload = null;
-        _strategyApplicationPreload = null;
-        _runtime = null;
-        _mainMenuContentTask = null;
-        _strategyContentTask = null;
+        try
+        {
+            _sessionManager?.EndGame();
+        }
+        finally
+        {
+            _graphicsManager?.Dispose();
+            _contentModelCache?.Dispose();
+            _contentAssets?.Dispose();
+            _contentModelCache = null;
+            _contentAssets = null;
+            _contentPack = null;
+            _graphicsManager = null;
+            _analyticsManager = null;
+            _mainMenuApplicationPreload = null;
+            _strategyApplicationPreload = null;
+            if (_sessionManager != null)
+                _sessionManager.PersistenceFailed -= HandlePersistenceFailure;
+            _sessionManager = null;
+            _mainMenuContentTask = null;
+            _strategyContentTask = null;
+        }
     }
 
     /// <summary>
@@ -432,10 +481,26 @@ public sealed class AppBootstrap : MonoBehaviour
     /// </summary>
     private void OnApplicationQuit()
     {
-        _runtime?.EndGame();
+        _sessionManager?.EndGame();
         if (_analyticsManager is IAnalyticsEventSink analyticsSink)
             analyticsSink.Flush();
         _userSettingsManager?.Save();
+    }
+
+    /// <summary>
+    /// Publishes a storage notice only for the runtime still owned by this application.
+    /// </summary>
+    /// <param name="runtime">The runtime that requested persistence.</param>
+    /// <param name="operation">The operation that could not complete.</param>
+    /// <param name="exception">The exception already recorded in the application log.</param>
+    private void HandlePersistenceFailure(
+        GameSessionManager runtime,
+        SaveGameOperation operation,
+        Exception exception
+    )
+    {
+        if (ReferenceEquals(_sessionManager, runtime))
+            PersistenceNotice.Show(operation);
     }
 
     /// <summary>
@@ -463,12 +528,60 @@ public sealed class AppBootstrap : MonoBehaviour
     }
 
     /// <summary>
-    /// Returns the active <see cref="GameRuntime"/> held by this bootstrap.
+    /// Returns the active <see cref="GameSessionManager"/> held by this bootstrap.
     /// </summary>
     /// <returns>The runtime, or null if the bootstrap has not yet been initialized.</returns>
-    public GameRuntime GetRuntime()
+    public GameSessionManager GetGameSessionManager()
     {
-        return _runtime;
+        return _sessionManager;
+    }
+
+    /// <summary>
+    /// Gets the multiplayer service that survives replacement of content-scoped application services.
+    /// </summary>
+    /// <returns>The initialized application-lifetime multiplayer coordinator.</returns>
+    public MultiplayerCoordinator GetMultiplayerCoordinator()
+    {
+        if (_multiplayerCoordinator == null)
+        {
+            _multiplayerCoordinator = MultiplayerCoordinator.Instance;
+            if (_multiplayerCoordinator != null)
+                return _multiplayerCoordinator;
+
+            GameObject multiplayerObject = new GameObject("Multiplayer");
+            _multiplayerCoordinator = multiplayerObject.AddComponent<MultiplayerCoordinator>();
+            _multiplayerCoordinator.Initialize(
+                () => Instance.GetContentPack(),
+                SaveGameManager.Instance,
+                GetAnalyticsEventSink,
+                () => LoadingScreenController.IsLoadInProgress,
+                StartMultiplayerGame,
+                RecoverInterruptedMultiplayerLoad
+            );
+        }
+        return _multiplayerCoordinator;
+    }
+
+    /// <summary>
+    /// Hands a verified multiplayer launch to the application's content and scene loader.
+    /// </summary>
+    /// <param name="content">The verified incoming content.</param>
+    /// <param name="configuration">The negotiated campaign and participant state.</param>
+    private static void StartMultiplayerGame(
+        ContentPack content,
+        MultiplayerLaunchConfiguration configuration
+    )
+    {
+        LoadingScreenController.StartMultiplayer(Instance, content, configuration);
+    }
+
+    /// <summary>
+    /// Returns the shared consent-aware analytics destination for application lifecycle events.
+    /// </summary>
+    /// <returns>The active analytics sink, or null before runtime initialization.</returns>
+    private static IAnalyticsEventSink GetAnalyticsEventSink()
+    {
+        return Instance?._analyticsManager;
     }
 
     /// <summary>

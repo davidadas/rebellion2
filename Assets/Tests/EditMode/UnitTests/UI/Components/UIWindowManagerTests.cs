@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
@@ -185,7 +186,7 @@ namespace Rebellion.Tests.UI.Components
 
             Assert.IsNull(result);
             Assert.AreEqual(2, windowManager.Windows.Count);
-            Assert.Contains(exclusive, (System.Collections.ICollection)windowManager.Windows);
+            Assert.Contains(exclusive, (ICollection)windowManager.Windows);
             Assert.AreSame(overlay, windowManager.ActiveWindow);
         }
 

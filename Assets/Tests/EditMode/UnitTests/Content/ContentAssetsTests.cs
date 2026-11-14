@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -64,6 +65,31 @@ namespace Rebellion.Tests.Content
             Assert.AreSame(first, second);
             Assert.AreEqual(FilterMode.Point, first.filterMode);
             Assert.AreEqual(TextureWrapMode.Clamp, first.wrapMode);
+        }
+
+        [Test]
+        public void GetSmoothTexture_ExistingAddress_LoadsDistinctMipmappedTexture()
+        {
+            const string address = "Application/Textures/smooth";
+            string path = Path.Combine(_contentRoot, "Application", "Textures", "smooth.png");
+            Texture2D source = new Texture2D(8, 8, TextureFormat.RGBA32, false);
+            source.SetPixels(Enumerable.Repeat(Color.white, 64).ToArray());
+            source.Apply();
+            File.WriteAllBytes(path, source.EncodeToPNG());
+            UnityEngine.Object.DestroyImmediate(source);
+            using ContentAssets assets = CreateAssets();
+
+            Texture2D point = assets.GetTexture(address);
+            Texture2D first = assets.GetSmoothTexture(address);
+            Texture2D second = assets.GetSmoothTexture(address);
+
+            Assert.IsNotNull(first);
+            Assert.AreNotSame(point, first);
+            Assert.AreSame(first, second);
+            Assert.Greater(first.mipmapCount, 1);
+            Assert.AreEqual(FilterMode.Trilinear, first.filterMode);
+            Assert.AreEqual(TextureWrapMode.Clamp, first.wrapMode);
+            Assert.IsFalse(first.isReadable);
         }
 
         [Test]

@@ -1,0 +1,110 @@
+REBELLION II PRIVACY NOTICE
+
+This notice describes the game, launcher, and project-operated sign-in and download services.
+
+Operator responsible for this processing: AdasGames
+
+Privacy contact: adasgames0@gmail.com
+
+Effective date: 9 November 2026
+
+STORE SIGN-IN AND MULTIPLAYER IDENTITY
+
+The launcher opens Steam's or GOG's sign-in page. You enter your account credentials on the
+provider's page. The project handles the resulting verification response or authorization code
+and tokens, rather than asking you to enter your store password into a project-owned form.
+
+The sign-in service reads the store account identifier and display name and checks game
+ownership through the selected provider. The current verification code requests the account's
+owned-game list to check eligibility. The multiplayer identity credential contains the provider,
+account identifier, display name, and an expiry time; it does not contain the owned-game list.
+
+The launcher caches that signed credential locally so the game can reuse your sign-in. The game
+sends it to Epic Online Services. The project's identity endpoint supplies Epic with the verified
+account identifier, display name, provider, and expiry. Epic supplies the game with a product user
+identifier used for multiplayer connections and returning-player checks. This flow does not
+require a separate Epic Games account.
+
+MULTIPLAYER INFORMATION AND OTHER PLAYERS
+
+Account and product user identifiers: Authentication, lobby membership, peer connections, and reserving a returning player's place in a campaign. Processed by the project and Epic; product identifiers are also used by connected game clients.
+Game name, content pack and version, scenario, faction, room state, campaign identifier, and whether a password is required: Advertising and discovering games through Epic's lobby service. Treat advertised game details as visible to other players.
+Display names and chat: Showing who is playing and delivering messages. General chat goes to other participants in the browser chat channel; lobby chat goes to lobby participants.
+Orders, speed and battle responses, checksums, and shared game state: Running and checking the multiplayer simulation, loading saves, and reconnecting. Sent between the participating game clients through direct or relayed networking.
+IP addresses and connection information: Establishing connections and delivering network traffic. Direct connections can expose your network address to other participants; service and relay providers also process connection information.
+
+In-game chat is delivered into campaign messages and can remain in saves and reconnect
+checkpoints shared with the other participant. Other players can retain information they
+receive. Do not put passwords or other sensitive information into names or chat.
+
+Agreement acceptance is saved in your local settings as the version of the agreement you accepted.
+This record is separate from optional analytics consent.
+
+LOCAL STORAGE AND TECHNICAL INFORMATION
+
+The game and launcher store settings, cached sign-in credentials, saves, reconnect checkpoints,
+and diagnostic logs on your device. Campaign data can include player names, multiplayer user
+identifiers, faction assignments, and in-game messages. Checkpoints retain the information
+needed to associate a returning account with its campaign.
+
+Sign-in, update, download, and online-service requests also expose network and request information
+to the services handling them. Local logs can include errors, timestamps, installation paths,
+and technical details. Reports or logs you choose to send to the project may contain personal
+information; review them first. Information posted to a public issue tracker is public.
+
+OPTIONAL UNITY ANALYTICS
+
+In builds with project analytics enabled, collection requires your separate analytics choice.
+The project events describe lobby creation, campaign starts and progress, winning factions,
+and local connection, reconnection, synchronization-stop, and session-closure observations.
+Fields include campaign, lobby, and game-initialization identifiers; player role; selected and
+winning faction; content pack and version; game settings; current turn; fixed connection-reason
+categories; and territorial and military totals. Multiplayer campaign totals are reported by
+the host. Connection reports describe what a client observed, rather than proving which
+participant's device or network caused an interruption.
+
+Multiplayer connection events include a project-specific pseudonymous identifier derived from
+the reporting player's Epic product user identifier. This allows the project to group that
+player's reports across sessions. The custom events do not send raw account identifiers,
+another participant's account identifier, display names, or chat. These identifiers and
+provider-generated data can still make analytics records personal data; they are not anonymous.
+
+Unity's Analytics SDK also processes information such as IP addresses and installation-specific
+identifiers, as described in its Analytics privacy overview (https://docs.unity.com/en-us/analytics/privacy-and-consent/privacy-overview).
+
+You can change the choice using Share Analytics in the gameplay options and apply the
+settings. Declining or withdrawing the choice prevents further project analytics collection.
+Changing that setting does not itself request deletion of records already held by Unity.
+Accepting the player agreement or using multiplayer is not analytics consent.
+
+PROVIDERS
+
+Steam or GOG handles store authentication and ownership information. Epic Online Services handles
+multiplayer identity, lobbies, and peer networking, including relayed traffic when used.
+Cloudflare hosts the project's sign-in and download services. Unity processes analytics when
+the applicable build and your consent permit collection.
+
+These providers also describe their own processing in their notices:
+
+- Steam privacy policy (https://store.steampowered.com/privacy_agreement/)
+- GOG privacy policy (https://support.gog.com/hc/en-us/articles/212632109-Privacy-Policy)
+- Epic Games privacy policy (https://legal.epicgames.com/epicgames/privacy-policy)
+- Cloudflare privacy policy (https://www.cloudflare.com/privacypolicy/)
+- Unity game player and app user privacy policy (https://unity.com/legal/game-player-and-app-user-privacy-policy)
+
+RETENTION AND YOUR CHOICES
+
+Cached credentials have expiry times. Expiry prevents their further use for sign-in; it does
+not necessarily remove the local files. Local saves, checkpoints, and logs remain until removed
+or replaced. Removing local files does not remove another player's copies or records held by
+service providers, and uninstalling may leave local data behind.
+
+Service providers also process technical records under their own policies and service settings.
+Credential expiry does not establish a deletion date for provider records, analytics, or support
+correspondence. This notice does not promise automatic deletion when you uninstall.
+
+Depending on the law that applies, you may have rights to access, correct, delete, or obtain a
+copy of personal information, restrict or object to processing, withdraw consent, or complain
+to a supervisory authority. Contact the privacy address above for requests about
+project processing. Do not send your password or sign-in tokens. Requests about a store account
+or a provider's independent processing can also be made directly to that provider.

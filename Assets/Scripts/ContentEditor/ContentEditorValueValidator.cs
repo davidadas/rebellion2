@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using Rebellion.Game;
 using Rebellion.Game.Units;
 
 /// <summary>
@@ -48,6 +49,51 @@ internal static class ContentEditorValueValidator
                 RequireRange(field, number, 0, 100);
             if (member is "ForceValue" or "ForceTrainingAdjustment")
                 RequireRange(field, number, short.MinValue, short.MaxValue);
+        }
+        if (
+            (owner == typeof(GameConfig.ProductionConfig) && member == "ScrapRefundDivisor")
+            || (owner == typeof(GameConfig.AIConfig) && member == "TickInterval")
+            || (
+                owner == typeof(GameConfig.GarrisonConfig)
+                && member == "ResourceFacilitiesPerGarrison"
+            )
+            || (
+                owner == typeof(GameConfig.PlanetaryAssaultConfig)
+                && member
+                    is "PersonnelDivisor"
+                        or "GeneralLeadershipDivisor"
+                        or "DefenseFireDivisor"
+            )
+            || (
+                owner == typeof(GameConfig.BombardmentConfig)
+                && member is "AttackerLeadershipDivisor" or "DefenderLeadershipDivisor"
+            )
+            || (owner == typeof(GameConfig.UprisingConfig) && member == "MissionLeadershipDivisor")
+        )
+            RequireRange(field, number, 1, int.MaxValue);
+        if (owner == typeof(GameConfig.UprisingConfig) && member == "DiceRange")
+            RequireRange(field, number, 1, int.MaxValue - 1);
+        if (owner == typeof(GameConfig.ResearchConfig) && member == "RefreshIntervalSpread")
+            RequireRange(field, number, 0, int.MaxValue - 1);
+        if (
+            owner == typeof(GameConfig.BombardmentConfig)
+            && member is "StrikeRollMinimum" or "StrikeRollMaximum"
+        )
+        {
+            RequireRange(field, number, 0, int.MaxValue - 1);
+            string otherMember =
+                member == "StrikeRollMinimum" ? "StrikeRollMaximum" : "StrikeRollMinimum";
+            if (
+                int.TryParse(
+                    field.Container.Element(otherMember)?.Value,
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out int other
+                ) && (member == "StrikeRollMinimum" ? number > other : number < other)
+            )
+                throw new ArgumentException(
+                    $"{field.Document.Address}: {field.Record.ID} / {field.Name}: strike roll minimum must not exceed strike roll maximum."
+                );
         }
     }
 

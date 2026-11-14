@@ -155,6 +155,22 @@ jobs:
           rsync -a --exclude=.DS_Store .ci/rebellion2-media/UnityAssets/ Assets/
           rm -rf .ci
 
+      - name: Install multiplayer build configuration
+        env:
+          EOS_BUILD_CONFIG: ${{ secrets.EOS_BUILD_CONFIG }}
+        run: |
+          if [ -z "$EOS_BUILD_CONFIG" ]; then
+            echo "EOS_BUILD_CONFIG must contain the multiplayer deployment configuration."
+            exit 1
+          fi
+          mkdir -p Assets/StreamingAssets/EOS
+          for name in eos_product_config.json eos_windows_config.json eos_linux_config.json eos_macos_config.json player_auth_config.json; do
+            if ! printf '%s' "$EOS_BUILD_CONFIG" | jq -e --arg name "$name" '.[$name] | select(type == "object")' > "Assets/StreamingAssets/EOS/$name" 2>/dev/null; then
+              echo "EOS_BUILD_CONFIG is missing a valid $name object."
+              exit 1
+            fi
+          done
+
       - name: Build project
         id: unity-build
         uses: game-ci/unity-builder@v4
@@ -225,6 +241,10 @@ jobs:
           trap 'docker rm "$CONTAINER_ID" >/dev/null 2>&1 || true' EXIT
           mkdir -p .unity-lint-assemblies
 
+          for dll in Unity.CompilationPipeline.Common.dll Unity.Cecil.dll; do
+            docker cp "$CONTAINER_ID:/opt/unity/Editor/Data/Managed/$dll" ".unity-lint-assemblies/$dll"
+          done
+
           docker cp "$CONTAINER_ID:/opt/unity/Editor/Data/Managed/UnityEngine/." .unity-lint-assemblies/ 2>/dev/null || true
           if docker cp "$CONTAINER_ID:/opt/unity/Editor/Data/Managed/UnityEditor/." .unity-lint-assemblies/ 2>/dev/null; then
             echo "Copied UnityEditor assemblies from Managed/UnityEditor"
@@ -241,7 +261,7 @@ jobs:
           # precompiled in the editor image's project-template library cache. Resolving them keeps the
           # lint semantic model complete so IDE0005 does not falsely flag genuinely-used usings.
           docker cp "$CONTAINER_ID:/opt/unity/Editor/Data/Resources/PackageManager/ProjectTemplates/libcache/." /tmp/unity-libcache/ 2>/dev/null || true
-          for dll in UnityEngine.UI.dll Unity.TextMeshPro.dll Unity.TextMeshPro.Editor.dll Unity.InputSystem.dll Unity.Burst.dll Unity.Collections.dll Unity.InternalAPIEngineBridge.004.dll Unity.InternalAPIEngineBridge.RenderPipelines.Core.Runtime.Shared.dll Unity.Mathematics.dll Unity.RenderPipelines.Core.Runtime.dll Unity.RenderPipelines.Core.Runtime.Shared.dll Unity.RenderPipelines.GPUDriven.Runtime.dll Unity.RenderPipelines.HighDefinition.Config.Runtime.dll Unity.RenderPipelines.HighDefinition.Runtime.dll Unity.Timeline.dll Unity.VisualEffectGraph.Runtime.dll; do
+          for dll in Newtonsoft.Json.dll UnityEngine.UI.dll Unity.TextMeshPro.dll Unity.TextMeshPro.Editor.dll Unity.InputSystem.dll Unity.Burst.dll Unity.Collections.dll Unity.InternalAPIEngineBridge.004.dll Unity.InternalAPIEngineBridge.RenderPipelines.Core.Runtime.Shared.dll Unity.Mathematics.dll Unity.RenderPipelines.Core.Runtime.dll Unity.RenderPipelines.Core.Runtime.Shared.dll Unity.RenderPipelines.GPUDriven.Runtime.dll Unity.RenderPipelines.HighDefinition.Config.Runtime.dll Unity.RenderPipelines.HighDefinition.Runtime.dll Unity.Timeline.dll Unity.VisualEffectGraph.Runtime.dll; do
             src="$(find /tmp/unity-libcache -name "$dll" 2>/dev/null | head -n 1)"
             if [ -n "$src" ]; then
               cp "$src" .unity-lint-assemblies/
@@ -249,7 +269,7 @@ jobs:
           done
           rm -rf /tmp/unity-libcache
 
-          for assembly in UnityEngine.CoreModule.dll UnityEditor.dll UnityEngine.UI.dll Unity.TextMeshPro.dll Unity.InputSystem.dll Unity.Burst.dll Unity.Collections.dll Unity.InternalAPIEngineBridge.004.dll Unity.InternalAPIEngineBridge.RenderPipelines.Core.Runtime.Shared.dll Unity.Mathematics.dll Unity.RenderPipelines.Core.Runtime.dll Unity.RenderPipelines.Core.Runtime.Shared.dll Unity.RenderPipelines.GPUDriven.Runtime.dll Unity.RenderPipelines.HighDefinition.Config.Runtime.dll Unity.RenderPipelines.HighDefinition.Runtime.dll Unity.Timeline.dll Unity.VisualEffectGraph.Runtime.dll UnityEngine.ImageConversionModule.dll UnityEngine.UnityWebRequestModule.dll UnityEngine.UnityWebRequestAudioModule.dll; do
+          for assembly in Newtonsoft.Json.dll UnityEngine.CoreModule.dll UnityEditor.dll UnityEngine.UI.dll Unity.TextMeshPro.dll Unity.InputSystem.dll Unity.Burst.dll Unity.Collections.dll Unity.InternalAPIEngineBridge.004.dll Unity.InternalAPIEngineBridge.RenderPipelines.Core.Runtime.Shared.dll Unity.Mathematics.dll Unity.RenderPipelines.Core.Runtime.dll Unity.RenderPipelines.Core.Runtime.Shared.dll Unity.RenderPipelines.GPUDriven.Runtime.dll Unity.RenderPipelines.HighDefinition.Config.Runtime.dll Unity.RenderPipelines.HighDefinition.Runtime.dll Unity.Timeline.dll Unity.VisualEffectGraph.Runtime.dll UnityEngine.ImageConversionModule.dll UnityEngine.UnityWebRequestModule.dll UnityEngine.UnityWebRequestAudioModule.dll; do
             if [ ! -f ".unity-lint-assemblies/$assembly" ]; then
               echo "ERROR: Missing required Unity lint assembly: $assembly"
               exit 1
@@ -415,7 +435,7 @@ jobs:
         with:
           projectPath: .
           unityVersion: ${{ env.UNITY_VERSION }}
-          testMode: editmode
+          testMode: all
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           dockerMemoryLimit: 8g
           customImage: rebellion2-unity-test:vulkan
@@ -426,7 +446,7 @@ jobs:
           cliVersion: v0.1.65
 
       - name: Summarize test execution time
-        if: ${{ !cancelled() && hashFiles('artifacts/editmode-results.xml') != '' }}
+        if: ${{ !cancelled() && hashFiles('artifacts/*mode-results.xml') != '' }}
         env:
           TEST_RUN_NAME: Test
         run: |
@@ -436,30 +456,46 @@ jobs:
           from datetime import datetime
           from pathlib import Path
 
-          root = ET.parse("artifacts/editmode-results.xml").getroot()
-          cases = [case for case in root.iter("test-case")
-                   if "start-time" in case.attrib and "end-time" in case.attrib]
-          first = min(datetime.fromisoformat(case.attrib["start-time"]) for case in cases)
-          last = max(datetime.fromisoformat(case.attrib["end-time"]) for case in cases)
-          seconds = (last - first).total_seconds()
-          summary = (
-              f"### {os.environ['TEST_RUN_NAME']} execution\n\n"
-              f"{root.attrib['passed']}/{root.attrib['total']} passed; "
-              f"{root.attrib['failed']} failed; {root.attrib['skipped']} skipped.\n\n"
-              f"First test start to final test end: **{seconds:.1f}s**. "
-              "This includes transitions between tests and excludes initial Unity setup.\n"
-          )
+          summary = f"### {os.environ['TEST_RUN_NAME']} execution\n\n"
+          for mode in ("editmode", "playmode"):
+              path = Path(f"artifacts/{mode}-results.xml")
+              if not path.exists():
+                  summary += f"**{mode}:** no result file was produced.\n\n"
+                  continue
+              root = ET.parse(path).getroot()
+              cases = [case for case in root.iter("test-case")
+                       if "start-time" in case.attrib and "end-time" in case.attrib]
+              first = min(datetime.fromisoformat(case.attrib["start-time"]) for case in cases)
+              last = max(datetime.fromisoformat(case.attrib["end-time"]) for case in cases)
+              seconds = (last - first).total_seconds()
+              summary += (
+                  f"**{mode}:** {root.attrib['passed']}/{root.attrib['total']} passed; "
+                  f"{root.attrib['failed']} failed; {root.attrib['skipped']} skipped; "
+                  f"first test start to final test end: **{seconds:.1f}s**.\n\n"
+              )
+              fixtures = {}
+              for case in cases:
+                  name = case.attrib["classname"]
+                  count, duration = fixtures.get(name, (0, 0.0))
+                  fixtures[name] = (count + 1, duration + float(case.attrib["duration"]))
+              summary += "| Slowest fixtures | Cases | Test time |\n|---|---:|---:|\n"
+              for name, (count, duration) in sorted(fixtures.items(), key=lambda item: -item[1][1])[:5]:
+                  summary += f"| {name} | {count} | {duration:.1f}s |\n"
+              summary += "\n"
+          summary += "Durations include transitions between tests and exclude initial Unity setup.\n"
           print(summary)
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as output:
               output.write(summary)
           EOF
 
       - name: Upload Unity test results
-        if: ${{ !cancelled() && hashFiles('artifacts/editmode-results.xml') != '' }}
+        if: ${{ !cancelled() && hashFiles('artifacts/*mode-results.xml') != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: editmode-test-results
-          path: artifacts/editmode-results.xml
+          name: unity-test-results
+          path: |
+            artifacts/editmode-results.xml
+            artifacts/playmode-results.xml
           retention-days: 7
 
       - uses: actions/setup-dotnet@v4

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -29,12 +30,12 @@ public sealed class ContextMenuPanelView : MonoBehaviour
     /// <summary>
     /// Raised when one rendered row invokes its command.
     /// </summary>
-    internal event System.Action<IContextMenuCommand> CommandSelected;
+    internal event Action<IContextMenuCommand> CommandSelected;
 
     /// <summary>
     /// Raised when one rendered row changes its active state.
     /// </summary>
-    internal event System.Action<ContextMenuCommandItem> CommandStateChanged;
+    internal event Action<ContextMenuCommandItem> CommandStateChanged;
 
     /// <summary>
     /// Detaches listeners from command rows owned by this panel.
@@ -98,7 +99,14 @@ public sealed class ContextMenuPanelView : MonoBehaviour
         {
             ContextMenuCommandItem item = commands[index];
             GetCommandView(index)
-                .Render(item, GetCommandColor(item, visuals), hasIconColumn, width, index);
+                .Render(
+                    item,
+                    GetCommandColor(item, visuals),
+                    hasIconColumn,
+                    width,
+                    index,
+                    visuals.ActiveColor
+                );
         }
 
         for (int index = commandCount; index < commandViews.Count; index++)

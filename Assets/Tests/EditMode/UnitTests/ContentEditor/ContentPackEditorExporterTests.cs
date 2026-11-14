@@ -5,6 +5,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
 using System.Xml.Linq;
 using NUnit.Framework;
 
@@ -84,8 +85,12 @@ namespace Rebellion.Tests.ContentEditor
             Assert.IsFalse(copy.IsDirty);
             Assert.IsTrue(project.IsDirty);
             Assert.AreEqual(
-                units.Text,
-                copy.Documents.Single(document => document.Address == units.Address).Text
+                System.Xml.Linq.XElement.Parse(units.Text).ToString(),
+                System
+                    .Xml.Linq.XElement.Parse(
+                        copy.Documents.Single(document => document.Address == units.Address).Text
+                    )
+                    .ToString()
             );
             Assert.IsFalse(File.Exists(units.TargetPath));
             Assert.AreEqual(
@@ -134,7 +139,16 @@ namespace Rebellion.Tests.ContentEditor
                 archive.Entries.Select(entry => entry.FullName)
             );
             using StreamReader text = new StreamReader(archive.GetEntry(units.Address[5..]).Open());
-            Assert.AreEqual(units.Text, text.ReadToEnd());
+            string exported = text.ReadToEnd();
+            Assert.IsTrue(ContentXmlOverrides.IsOverlay(exported));
+            Assert.AreEqual(
+                System.Xml.Linq.XElement.Parse(units.Text).ToString(),
+                System
+                    .Xml.Linq.XElement.Parse(
+                        ContentXmlOverrides.Merge(File.ReadAllText(units.SourcePath), exported)
+                    )
+                    .ToString()
+            );
             using Stream asset = archive.GetEntry("Assets/sound.wav").Open();
             using MemoryStream buffer = new MemoryStream();
             asset.CopyTo(buffer);
@@ -152,7 +166,7 @@ namespace Rebellion.Tests.ContentEditor
                 .GetCatalogs()
                 .First(catalog => catalog.Name == "Starting setup")
                 .Document;
-            System.Xml.Linq.XDocument xml = System.Xml.Linq.XDocument.Parse(generation.Text);
+            XDocument xml = XDocument.Parse(generation.Text);
             xml.Descendants("OfficerInstanceID").First().Value = "missing-export-officer";
             project.SetDocumentText(generation, xml.ToString());
             string output = Path.Combine(contentRoot, "existing.zip");
@@ -241,7 +255,7 @@ namespace Rebellion.Tests.ContentEditor
             string output = Path.Combine(contentRoot, "export.zip");
             File.WriteAllText(output, "existing archive");
 
-            await ExpectFailureAsync<System.Xml.XmlException>(() =>
+            await ExpectFailureAsync<XmlException>(() =>
                 ContentPackEditorExporter.WriteArchiveAsync(project, output)
             );
 

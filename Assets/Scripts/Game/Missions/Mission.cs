@@ -261,13 +261,8 @@ namespace Rebellion.Game.Missions
         [PersistableMember(Name = "DecoyParticipants")]
         private protected List<IMissionParticipant> _decoyParticipants;
 
-        [PersistableIgnore]
-        private HashSet<string> _mainParticipantInstanceIds = new HashSet<string>(
-            StringComparer.Ordinal
-        );
-
-        [PersistableIgnore]
-        private bool _hasCapturedMainParticipantIds;
+        [PersistableMember(Name = "InitialMainParticipantIDs")]
+        private HashSet<string> _mainParticipantInstanceIds;
 
         // Mission configuration.
         public SkillRating ParticipantRating { get; set; }
@@ -353,11 +348,10 @@ namespace Rebellion.Game.Missions
             copy.ConfigKey = ConfigKey;
             copy.LocationInstanceID = LocationInstanceID;
             copy.SourceEventInstanceID = SourceEventInstanceID;
-            copy._mainParticipantInstanceIds = new HashSet<string>(
-                _mainParticipantInstanceIds,
-                StringComparer.Ordinal
-            );
-            copy._hasCapturedMainParticipantIds = _hasCapturedMainParticipantIds;
+            copy._mainParticipantInstanceIds =
+                _mainParticipantInstanceIds == null
+                    ? null
+                    : new HashSet<string>(_mainParticipantInstanceIds, StringComparer.Ordinal);
             copy.ParticipantRating = ParticipantRating;
             copy.HasInitiated = HasInitiated;
             copy.MaxProgress = MaxProgress;
@@ -580,7 +574,6 @@ namespace Rebellion.Game.Missions
         private void CaptureMainParticipantIDs()
         {
             _mainParticipantInstanceIds = GetMainParticipantIDs();
-            _hasCapturedMainParticipantIds = true;
         }
 
         /// <summary>
@@ -595,7 +588,7 @@ namespace Rebellion.Game.Missions
         /// <returns>True if a main participant was added or removed.</returns>
         private bool HaveMainParticipantsChanged()
         {
-            if (!_hasCapturedMainParticipantIds)
+            if (_mainParticipantInstanceIds == null)
             {
                 CaptureMainParticipantIDs();
                 return false;
