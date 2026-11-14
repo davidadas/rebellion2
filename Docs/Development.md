@@ -213,6 +213,12 @@ content, local mods, and debug output are excluded. The installer must supply th
 CI runs packaging tests during lint, then runs game tests and builds in parallel. Each build verifies
 and uploads a desktop bundle; its presence does not mean the game tests have passed. These artifacts
 are retained for seven days; creating them does not publish a release or update an installation.
+
+Windows player builds use a Windows 2022 runner, matching the installer release pipeline. The EOS
+plugin's Windows build hooks require Visual Studio discovery and a Windows bootstrapper executable.
+Linux and macOS targets continue to build on Linux runners. CI stages build media with
+`Tools/install_build_media.py`, preserving existing content metadata and overlaying Unity assets
+without requiring `rsync` on Windows.
 ## Code organization
 
 `Game` contains game objects, authored configuration and instructions, and campaign state. These types can own behavior, including their own calculations and invariants. They depend only on `Game`, `SceneGraph`, and `Util` within this codebase.
