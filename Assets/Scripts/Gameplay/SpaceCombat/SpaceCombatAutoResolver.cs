@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Gameplay
@@ -41,6 +42,10 @@ namespace Rebellion.Gameplay
     /// </summary>
     public sealed class SpaceCombatAutoResolver
     {
+        // The first part of the escape leg a withdrawing unit covers, in starting distances:
+        // as far as a starting line lies from its own edge of the battlefield.
+        private const double _startingEdgeDistanceFactor = 0.6;
+
         private readonly GameConfig.SpaceCombatConfig _config;
         private readonly IRandomNumberProvider _random;
 
@@ -69,6 +74,10 @@ namespace Rebellion.Gameplay
         /// <param name="defenderCanWithdraw">Whether the defending force can withdraw.</param>
         /// <param name="attackerCommand">The attacking side's tactical command bonuses.</param>
         /// <param name="defenderCommand">The defending side's tactical command bonuses.</param>
+        /// <param name="shieldedStations">
+        /// The planet destroyers among the ships that a shield generator on the planet protects
+        /// from fighter attack, or null when none is.
+        /// </param>
         /// <returns>The resolved tactical state for both forces.</returns>
         public SpaceCombatResult Resolve(
             IReadOnlyList<CapitalShip> attackerShips,
@@ -78,7 +87,8 @@ namespace Rebellion.Gameplay
             bool attackerCanWithdraw,
             bool defenderCanWithdraw,
             SpaceCombatCommandModifiers attackerCommand = default,
-            SpaceCombatCommandModifiers defenderCommand = default
+            SpaceCombatCommandModifiers defenderCommand = default,
+            IReadOnlyCollection<CapitalShip> shieldedStations = null
         )
         {
             CombatForce attacker = new CombatForce(
@@ -86,15 +96,21 @@ namespace Rebellion.Gameplay
                 attackerFighters,
                 attackerCanWithdraw,
                 _config,
-                attackerCommand
+                attackerCommand,
+                shieldedStations
             );
             CombatForce defender = new CombatForce(
                 defenderShips,
                 defenderFighters,
                 defenderCanWithdraw,
                 _config,
-                defenderCommand
+                defenderCommand,
+                shieldedStations
             );
+            double rechargeRounds = BattleStationRules.GetRechargeRounds(_config);
+            double trenchRunDistance =
+                Math.Max(_config.AutoResolveStartingDistance, 0)
+                * BattleStationRules.TrenchRunDistanceFactor;
             double previousAttackerDurability = GetTacticalDurability(attacker);
             double previousDefenderDurability = GetTacticalDurability(defender);
             double previousAttackerWithdrawalProgress = GetWithdrawalProgress(attacker);
@@ -109,25 +125,41 @@ namespace Rebellion.Gameplay
                 if (CompleteEliminatedForces(attacker, defender))
                     break;
 
+                // Trench runs are ordered first: a side with squadrons on a run does not turn
+                // for home until the run is decided.
+                OrderTrenchRuns(attacker, defender);
+                OrderTrenchRuns(defender, attacker);
                 WithdrawUnitsAtThreshold(attacker, defender);
                 WithdrawUnitsAtThreshold(defender, attacker);
+                WithdrawFromStation(attacker, defender);
+                WithdrawFromStation(defender, attacker);
+                FireSuperlasers(attacker, defender, iteration);
+                FireSuperlasers(defender, attacker, iteration);
 
                 ResolveAttackPhase(attacker, defender, pendingDamage);
                 if (defender.HasCombatants)
                     ResolveAttackPhase(defender, attacker, pendingDamage);
                 AdvanceTacticalState(attacker);
                 AdvanceTacticalState(defender);
+                AdvanceStations(attacker, rechargeRounds);
+                AdvanceStations(defender, rechargeRounds);
+                ResolveTrenchRuns(attacker, defender, trenchRunDistance);
+                ResolveTrenchRuns(defender, attacker, trenchRunDistance);
                 double attackerDurability = GetTacticalDurability(attacker);
                 double defenderDurability = GetTacticalDurability(defender);
                 double attackerWithdrawalProgress = GetWithdrawalProgress(attacker);
                 double defenderWithdrawalProgress = GetWithdrawalProgress(defender);
+                // Squadrons flying a trench are progress too: nothing else may change until
+                // they arrive, and every flight ends.
                 bool stateChanged =
                     Math.Abs(attackerDurability - previousAttackerDurability) > double.Epsilon
                     || Math.Abs(defenderDurability - previousDefenderDurability) > double.Epsilon
                     || Math.Abs(attackerWithdrawalProgress - previousAttackerWithdrawalProgress)
                         > double.Epsilon
                     || Math.Abs(defenderWithdrawalProgress - previousDefenderWithdrawalProgress)
-                        > double.Epsilon;
+                        > double.Epsilon
+                    || attacker.HasTrenchRunUnderWay
+                    || defender.HasTrenchRunUnderWay;
                 stagnantIterations = stateChanged ? 0 : stagnantIterations + 1;
                 previousAttackerDurability = attackerDurability;
                 previousDefenderDurability = defenderDurability;
@@ -222,14 +254,209 @@ namespace Rebellion.Gameplay
         /// <param name="opposingForce">The force providing the opposing tactical strength.</param>
         private void WithdrawUnitsAtThreshold(CombatForce force, CombatForce opposingForce)
         {
+            // A force with a battle station still in the fight holds its ground, and one with
+            // squadrons on a trench run waits for the outcome.
             if (
                 force.WithdrawalOrdered
                 || !force.CanWithdraw
+                || force.HasStationInBattle
+                || force.HasTrenchRunUnderWay
                 || !HasReachedWithdrawalThreshold(force, opposingForce)
             )
                 return;
 
             force.BeginWithdrawal();
+        }
+
+        /// <summary>
+        /// Withdraws a force that has nothing left to fight but a battle station it cannot
+        /// attack: staying would only feed its ships to the superlaser.
+        /// </summary>
+        /// <param name="force">The force whose withdrawal is evaluated.</param>
+        /// <param name="opposingForce">The force that may own a station.</param>
+        private static void WithdrawFromStation(CombatForce force, CombatForce opposingForce)
+        {
+            if (
+                force.WithdrawalOrdered
+                || !force.CanWithdraw
+                || !force.HasCombatants
+                || !opposingForce.HasStationInBattle
+                || opposingForce.HasCombatants
+                || opposingForce.WithdrawalOrdered
+            )
+                return;
+
+            bool canAttack =
+                opposingForce.Stations.Any(station => station.IsAttackable)
+                && force.Fighters.Any(fighter =>
+                    fighter.IsAlive && !fighter.HasWithdrawn && fighter.HasTorpedoes
+                );
+            if (!canAttack)
+                force.BeginWithdrawal();
+        }
+
+        /// <summary>
+        /// Sends a force's torpedo squadrons to fly the trench of an enemy battle station that
+        /// fighters can attack.
+        /// </summary>
+        /// <param name="force">The force whose squadrons are sent.</param>
+        /// <param name="opposingForce">The force that may own a station.</param>
+        private static void OrderTrenchRuns(CombatForce force, CombatForce opposingForce)
+        {
+            if (force.WithdrawalOrdered)
+                return;
+
+            BattleStationState<TacticalUnit> station = opposingForce.Stations.FirstOrDefault(
+                candidate => candidate.IsAttackable
+            );
+            if (station == null)
+                return;
+
+            foreach (StarfighterState fighter in force.Fighters)
+            {
+                if (fighter.IsTargetable && fighter.HasTorpedoes && fighter.TrenchRunTarget == null)
+                    fighter.BeginTrenchRun(station);
+            }
+        }
+
+        /// <summary>
+        /// Fires a force's charged superlasers at the toughest enemy capital ship, once the
+        /// battle's opening moments have passed.
+        /// </summary>
+        /// <param name="force">The force whose stations fire.</param>
+        /// <param name="opposingForce">The force providing targets.</param>
+        /// <param name="iteration">The zero-based resolver iteration.</param>
+        private static void FireSuperlasers(
+            CombatForce force,
+            CombatForce opposingForce,
+            int iteration
+        )
+        {
+            if (force.WithdrawalOrdered || iteration < BattleStationRules.AutomaticHoldRounds)
+                return;
+
+            foreach (BattleStationState<TacticalUnit> station in force.Stations)
+            {
+                if (!station.IsSuperlaserReady)
+                    continue;
+
+                CapitalShipState target = null;
+                foreach (CapitalShipState ship in opposingForce.Ships)
+                {
+                    if (
+                        !ship.IsTargetable
+                        || force.Stations.Any(other => other.StrikeTarget == ship)
+                        || (
+                            target != null && ship.RemainingDurability <= target.RemainingDurability
+                        )
+                    )
+                        continue;
+
+                    target = ship;
+                }
+
+                if (target != null)
+                    station.BeginStrike(target, BattleStationRules.StrikeRounds);
+            }
+        }
+
+        /// <summary>
+        /// Advances a force's stations by one iteration: superlaser recharge, beams in flight,
+        /// and jump countdowns. A beam that finishes burning destroys its target outright.
+        /// </summary>
+        /// <param name="force">The force whose stations advance.</param>
+        /// <param name="rechargeRounds">The iterations a full superlaser recharge takes.</param>
+        private static void AdvanceStations(CombatForce force, double rechargeRounds)
+        {
+            foreach (BattleStationState<TacticalUnit> station in force.Stations)
+            {
+                TacticalUnit struck = station.Advance(1, rechargeRounds);
+                if (struck?.IsAlive == true && !struck.HasWithdrawn)
+                    struck.Destroy();
+            }
+        }
+
+        /// <summary>
+        /// Flies and decides the trench runs against one force's stations. Squadrons stay in the
+        /// fight, under fire, until they have covered the distance to the station and gone into
+        /// its trench. A run is decided once every squadron sent has reached the trench or been
+        /// lost on the way; success destroys the station and returns the squadrons to the fight,
+        /// failure costs every squadron that flew it. Squadrons sent against a station that can
+        /// no longer be attacked return at once.
+        /// </summary>
+        /// <param name="stationForce">The force whose stations are attacked.</param>
+        /// <param name="attackingForce">The force flying the runs.</param>
+        /// <param name="runDistance">The distance squadrons fly to reach a station.</param>
+        private void ResolveTrenchRuns(
+            CombatForce stationForce,
+            CombatForce attackingForce,
+            double runDistance
+        )
+        {
+            foreach (BattleStationState<TacticalUnit> station in stationForce.Stations)
+            {
+                List<StarfighterState> run = null;
+                bool onTheWay = false;
+                foreach (StarfighterState fighter in attackingForce.Fighters)
+                {
+                    if (
+                        fighter.TrenchRunTarget != station
+                        || !fighter.IsAlive
+                        || fighter.HasWithdrawn
+                    )
+                        continue;
+
+                    if (!station.IsAttackable)
+                    {
+                        fighter.EndTrenchRun();
+                        continue;
+                    }
+
+                    fighter.AdvanceTrenchRun(runDistance);
+                    (run ??= new List<StarfighterState>()).Add(fighter);
+                    onTheWay |= !fighter.IsInTrench;
+                }
+
+                if (run == null || onTheWay)
+                    continue;
+
+                int attackers = 0;
+                bool armed = false;
+                foreach (StarfighterState fighter in run)
+                {
+                    attackers += fighter.CurrentSquadronSize;
+                    armed |= fighter.HasTorpedoes && fighter.CurrentSquadronSize > 0;
+                }
+
+                int defenders = 0;
+                foreach (StarfighterState fighter in stationForce.Fighters)
+                {
+                    if (fighter.IsTargetable)
+                        defenders += fighter.CurrentSquadronSize;
+                }
+
+                double chance = BattleStationRules.GetTrenchRunChance(
+                    attackers,
+                    armed,
+                    defenders,
+                    _config
+                );
+                bool succeeded = chance > 0 && _random.NextDouble() < chance;
+                GameLogger.Log(
+                    $"Trench run on {station.DisplayName} (auto-resolved): {attackers} fighters "
+                        + $"in {run.Count} squadrons, {chance:P0} chance, "
+                        + (succeeded ? "succeeded." : "failed.")
+                );
+                if (succeeded)
+                    station.Destroy();
+                foreach (StarfighterState fighter in run)
+                {
+                    if (succeeded)
+                        fighter.EndTrenchRun();
+                    else
+                        fighter.Destroy();
+                }
+            }
         }
 
         /// <summary>
@@ -385,7 +612,20 @@ namespace Rebellion.Gameplay
                 unit.AdvanceTacticalState(_config, _random);
             }
 
-            force.CompleteReadyWithdrawals(Math.Max(_config.AutoResolveWithdrawalDistance, 0));
+            force.CompleteReadyWithdrawals(GetWithdrawalDistance());
+        }
+
+        /// <summary>
+        /// Returns the escape leg a unit covers to leave the battle: as far as a starting line
+        /// lies from its own edge of the battlefield, and then the configured distance beyond it.
+        /// The leg is the same however far the unit has advanced, because the resolver tracks no
+        /// positions: a unit's approach keeps growing for as long as the battle lasts.
+        /// </summary>
+        /// <returns>The distance a withdrawing unit covers before it is gone.</returns>
+        private double GetWithdrawalDistance()
+        {
+            return Math.Max(_config.AutoResolveStartingDistance, 0) * _startingEdgeDistanceFactor
+                + Math.Max(_config.AutoResolveWithdrawalDistance, 0);
         }
 
         /// <summary>
@@ -427,6 +667,10 @@ namespace Rebellion.Gameplay
                     canTargetFighters ? unit.GetEffectiveness(targetsFighters: true) : 0
                 );
             }
+
+            // A station whose superlaser still has a capital ship to burn can always do harm.
+            if (canTargetCapitalShips && force.HasStationInBattle)
+                strength += 1;
             return strength;
         }
 
@@ -443,6 +687,13 @@ namespace Rebellion.Gameplay
                 if (unit.IsTargetable)
                     durability += unit.RemainingDurability;
             }
+
+            foreach (BattleStationState<TacticalUnit> station in force.Stations)
+            {
+                if (station.IsInBattle)
+                    durability += station.Durability;
+            }
+
             return durability;
         }
 
@@ -488,6 +739,15 @@ namespace Rebellion.Gameplay
                 return;
             }
 
+            // A battle station nobody can destroy holds the field: the other side gives way.
+            bool attackerHolds = attacker.HasStationInBattle;
+            bool defenderHolds = defender.HasStationInBattle;
+            if (attackerHolds != defenderHolds)
+            {
+                CompleteStalematedForce(attackerHolds ? defender : attacker);
+                return;
+            }
+
             int comparison = attackerStrength.CompareTo(defenderStrength);
             if (comparison < 0)
             {
@@ -518,6 +778,16 @@ namespace Rebellion.Gameplay
                 TacticalUnit unit in force.Units.Where(unit => unit.IsAlive && !unit.HasWithdrawn)
             )
                 unit.Destroy();
+            foreach (BattleStationState<TacticalUnit> station in force.Stations)
+            {
+                if (!station.IsInBattle)
+                    continue;
+
+                if (station.IsWithdrawing && station.CanWithdrawIndependently)
+                    station.FinishWithdrawal();
+                else
+                    station.Destroy();
+            }
 
             if (force.HasWithdrawnUnits)
                 force.Outcome = SpaceCombatSideOutcome.Withdrawn;
@@ -547,6 +817,8 @@ namespace Rebellion.Gameplay
 
             AddShipResults(result, attacker.Ships);
             AddShipResults(result, defender.Ships);
+            AddStationResults(result, attacker.Stations);
+            AddStationResults(result, defender.Stations);
             AddFighterResults(result, attacker.Fighters);
             AddFighterResults(result, defender.Fighters);
             result.AttackingUnits.AddRange(CaptureCombatUnits(attacker));
@@ -557,6 +829,12 @@ namespace Rebellion.Gameplay
                     .Units.Concat(defender.Units)
                     .Where(unit => unit.HasWithdrawn)
                     .Select(unit => unit.Node)
+            );
+            result.WithdrawnUnits.AddRange(
+                attacker
+                    .Stations.Concat(defender.Stations)
+                    .Where(station => station.HasWithdrawn)
+                    .Select(station => station.Ship)
             );
             return result;
         }
@@ -583,6 +861,33 @@ namespace Rebellion.Gameplay
                         Ship = ship.Ship,
                         HullBefore = ship.InitialHull,
                         HullAfter = hullAfter,
+                    }
+                );
+            }
+        }
+
+        /// <summary>
+        /// Records destroyed battle stations in a combat result. A station that survives was
+        /// never hit: nothing in the fight can reach it.
+        /// </summary>
+        /// <param name="result">The result receiving damage records.</param>
+        /// <param name="stations">The resolved battle stations.</param>
+        private static void AddStationResults(
+            SpaceCombatResult result,
+            IReadOnlyList<BattleStationState<TacticalUnit>> stations
+        )
+        {
+            foreach (BattleStationState<TacticalUnit> station in stations)
+            {
+                if (station.IsAlive)
+                    continue;
+
+                result.ShipDamage.Add(
+                    new ShipDamageResult
+                    {
+                        Ship = station.Ship,
+                        HullBefore = station.Ship.CurrentHullStrength,
+                        HullAfter = 0,
                     }
                 );
             }
@@ -635,10 +940,12 @@ namespace Rebellion.Gameplay
         private static List<CombatUnitSnapshot> CaptureCombatUnits(CombatForce force)
         {
             List<CombatUnitSnapshot> units = force
-                .Ships.SelectMany(ship =>
-                    new[] { ship.Ship }
+                .Ships.Select(ship => ship.Ship)
+                .Concat(force.Stations.Select(station => station.Ship))
+                .SelectMany(ship =>
+                    new[] { ship }
                         .Cast<ISceneNode>()
-                        .Concat(ship.Ship.GetChildren<ISceneNode>(recursive: true))
+                        .Concat(ship.GetChildren<ISceneNode>(recursive: true))
                 )
                 .Concat(force.Fighters.Select(fighter => fighter.Fighter))
                 .Where(unit => unit != null)
@@ -648,7 +955,14 @@ namespace Rebellion.Gameplay
             CombatUnitSnapshot.RecordOutcomes(
                 units,
                 force.Units.Where(unit => IsDamaged(unit)).Select(unit => unit.Node),
-                force.Units.Where(unit => !unit.IsAlive).Select(unit => unit.Node)
+                force
+                    .Units.Where(unit => !unit.IsAlive)
+                    .Select(unit => unit.Node)
+                    .Concat(
+                        force
+                            .Stations.Where(station => !station.IsAlive)
+                            .Select(station => (ISceneNode)station.Ship)
+                    )
             );
             return units;
         }
@@ -682,8 +996,12 @@ namespace Rebellion.Gameplay
             if (attackerActive != defenderActive)
                 return attackerActive ? CombatSide.Attacker : CombatSide.Defender;
 
-            bool attackerSurvived = attacker.Units.Any(unit => unit.IsAlive);
-            bool defenderSurvived = defender.Units.Any(unit => unit.IsAlive);
+            bool attackerSurvived =
+                attacker.Units.Any(unit => unit.IsAlive)
+                || attacker.Stations.Any(station => station.IsAlive);
+            bool defenderSurvived =
+                defender.Units.Any(unit => unit.IsAlive)
+                || defender.Stations.Any(station => station.IsAlive);
             if (attackerSurvived == defenderSurvived)
                 return CombatSide.Draw;
 
@@ -698,14 +1016,23 @@ namespace Rebellion.Gameplay
             internal readonly List<CapitalShipState> Ships;
             internal readonly List<StarfighterState> Fighters;
             internal readonly List<TacticalUnit> Units;
+
+            // Planet destroyers stand off from the fight and are not among the units.
+            internal readonly List<BattleStationState<TacticalUnit>> Stations;
             private readonly List<TacticalUnit> _targetableUnits = new List<TacticalUnit>();
 
             internal bool HasCombatants => HasTargetableUnits(Units);
-            internal bool HasUnresolvedUnits => HasUnresolvedUnit(Units);
-            internal bool HasPendingWithdrawal => HasWithdrawingUnit(Units);
+            internal bool HasUnresolvedUnits => HasUnresolvedUnit(Units) || HasStationInBattle;
+            internal bool HasPendingWithdrawal =>
+                HasWithdrawingUnit(Units)
+                || Stations.Any(station => station.IsAlive && station.IsWithdrawing);
             internal bool HasTargetableShips => HasTargetableUnits(Ships);
             internal bool HasTargetableFighters => HasTargetableUnits(Fighters);
-            internal bool HasWithdrawnUnits => HasWithdrawnUnit(Units);
+            internal bool HasWithdrawnUnits =>
+                HasWithdrawnUnit(Units) || Stations.Any(station => station.HasWithdrawn);
+            internal bool HasStationInBattle => Stations.Any(station => station.IsInBattle);
+            internal bool HasTrenchRunUnderWay =>
+                Fighters.Any(fighter => fighter.IsAlive && fighter.TrenchRunTarget != null);
             internal bool CanWithdraw { get; }
             internal SpaceCombatSideOutcome Outcome { get; set; }
             internal bool WithdrawalOrdered { get; private set; }
@@ -718,12 +1045,16 @@ namespace Rebellion.Gameplay
             /// <param name="canWithdraw">Whether the force can withdraw.</param>
             /// <param name="config">The automatic combat parameters.</param>
             /// <param name="command">The force's tactical command bonuses.</param>
+            /// <param name="shieldedStations">
+            /// The planet destroyers a planetary shield generator protects, or null.
+            /// </param>
             internal CombatForce(
                 IReadOnlyList<CapitalShip> ships,
                 IReadOnlyList<Starfighter> fighters,
                 bool canWithdraw,
                 GameConfig.SpaceCombatConfig config,
-                SpaceCombatCommandModifiers command
+                SpaceCombatCommandModifiers command,
+                IReadOnlyCollection<CapitalShip> shieldedStations
             )
             {
                 double capitalShipCommandBonus = GetCommandBonus(
@@ -734,8 +1065,15 @@ namespace Rebellion.Gameplay
                     command.CommanderCombat,
                     config.CommanderCombatDivisor
                 );
+                Stations = (ships ?? Array.Empty<CapitalShip>())
+                    .Where(ship => ship?.CanDestroyPlanets == true)
+                    .Select(ship => new BattleStationState<TacticalUnit>(
+                        ship,
+                        shieldedStations?.Contains(ship) == true
+                    ))
+                    .ToList();
                 Ships = (ships ?? Array.Empty<CapitalShip>())
-                    .Where(ship => ship != null)
+                    .Where(ship => ship?.CanDestroyPlanets == false)
                     .Select(ship => new CapitalShipState(ship, config, capitalShipCommandBonus))
                     .ToList();
                 Fighters = (fighters ?? Array.Empty<Starfighter>())
@@ -788,8 +1126,17 @@ namespace Rebellion.Gameplay
                     return;
 
                 WithdrawalOrdered = true;
+                // Squadrons out on a trench run break off and leave with the rest.
+                foreach (StarfighterState fighter in Fighters)
+                {
+                    if (fighter.IsAlive)
+                        fighter.EndTrenchRun();
+                }
+
                 foreach (TacticalUnit unit in Units.Where(unit => unit.IsTargetable))
                     unit.StartWithdrawal();
+                foreach (BattleStationState<TacticalUnit> station in Stations)
+                    station.StartWithdrawal(BattleStationRules.JumpRounds);
             }
 
             /// <summary>
@@ -812,7 +1159,25 @@ namespace Rebellion.Gameplay
                     unit.FinishWithdrawal();
                 }
 
-                if (HasWithdrawingIndependentUnit())
+                // A station jumps last, once its countdown has run and its fleet is clear.
+                bool fleetLeaving = HasWithdrawingIndependentUnit();
+                bool stationLeaving = false;
+                foreach (BattleStationState<TacticalUnit> station in Stations)
+                {
+                    if (
+                        !station.IsAlive
+                        || !station.IsWithdrawing
+                        || !station.CanWithdrawIndependently
+                    )
+                        continue;
+
+                    if (station.IsJumpReady && !fleetLeaving)
+                        station.FinishWithdrawal();
+                    else
+                        stationLeaving = true;
+                }
+
+                if (fleetLeaving || stationLeaving)
                     return;
 
                 CompleteDependentWithdrawal();
@@ -830,6 +1195,12 @@ namespace Rebellion.Gameplay
                 )
                 {
                     unit.FinishWithdrawal();
+                }
+
+                foreach (BattleStationState<TacticalUnit> station in Stations)
+                {
+                    if (station.IsInBattle && station.CanWithdrawIndependently)
+                        station.FinishWithdrawal();
                 }
 
                 CompleteDependentWithdrawal();
@@ -854,7 +1225,14 @@ namespace Rebellion.Gameplay
                             .Where(ship =>
                                 ship.IsAlive && ship.HasWithdrawn && ship.CanWithdrawIndependently
                             )
-                            .Select(ship => ship.Ship),
+                            .Select(ship => ship.Ship)
+                            .Concat(
+                                Stations
+                                    .Where(station =>
+                                        station.HasWithdrawn && station.CanWithdrawIndependently
+                                    )
+                                    .Select(station => station.Ship)
+                            ),
                         Fighters.ConvertAll(fighter => fighter.Fighter),
                         carrierDependentFighters
                     );
@@ -870,6 +1248,13 @@ namespace Rebellion.Gameplay
                         unit.FinishWithdrawal();
                     else
                         unit.Destroy();
+                }
+
+                // A station with no hyperdrive cannot follow its fleet out.
+                foreach (BattleStationState<TacticalUnit> station in Stations)
+                {
+                    if (station.IsInBattle)
+                        station.Destroy();
                 }
             }
 
@@ -970,10 +1355,21 @@ namespace Rebellion.Gameplay
             internal abstract double RemainingDurability { get; }
             internal abstract bool CanScanForTargets { get; }
             internal virtual bool IsAttackDelayed => false;
-            internal bool CanFire => IsTargetable && !IsWithdrawing && !IsAttackDelayed;
+            internal bool CanFire => IsTargetable && !IsAttackDelayed;
             internal bool HasWithdrawn { get; private set; }
             internal bool IsWithdrawing { get; private set; }
-            internal bool IsTargetable => IsAlive && !HasWithdrawn && !IsWithdrawing;
+
+            /// <summary>
+            /// Gets whether enemies can still engage this unit: one running for hyperspace stays
+            /// under fire, and returns it, until it is gone.
+            /// </summary>
+            internal bool IsTargetable => IsAlive && !HasWithdrawn && !IsOffField;
+
+            /// <summary>
+            /// Gets whether the unit has left the fight without leaving the battle, as a squadron
+            /// does inside a battle station's trench.
+            /// </summary>
+            internal virtual bool IsOffField => false;
             internal double WithdrawalDistance => _withdrawalDistance;
 
             /// <summary>
@@ -1796,6 +2192,7 @@ namespace Rebellion.Gameplay
             private double _currentHull;
             private double _currentShields;
             private double _currentWeaponCharge;
+            private double _trenchRunDistance;
             private double _followUpEngagementDistance;
             private bool _queuesTorpedoFollowUp;
             private bool _scansForTorpedoTarget;
@@ -1815,6 +2212,19 @@ namespace Rebellion.Gameplay
             internal override bool CanScanForTargets =>
                 _maximumWeaponCharge > 0 && _currentWeaponCharge >= _maximumWeaponCharge;
             internal override double ClosingSpeed => Math.Max(Fighter.SublightSpeed, 0);
+            internal override bool IsOffField => IsInTrench;
+            internal bool HasTorpedoes => Fighter.Torpedoes > 0;
+
+            /// <summary>
+            /// Gets the battle station whose trench the squadron has been sent to fly, or null.
+            /// </summary>
+            internal BattleStationState<TacticalUnit> TrenchRunTarget { get; private set; }
+
+            /// <summary>
+            /// Gets whether the squadron has reached the station and is inside its trench, waiting
+            /// for the run to be decided.
+            /// </summary>
+            internal bool IsInTrench { get; private set; }
             internal override double ManeuverRate =>
                 Math.Max(
                     Fighter.SublightSpeed + Fighter.Agility + _commandBonus,
@@ -1867,6 +2277,41 @@ namespace Rebellion.Gameplay
                     * Math.Max(fighter.MaxSquadronSize, 0)
                     * Math.Max(config.AutoResolveTorpedoDamagePerStrength, 0);
                 _currentWeaponCharge = _maximumWeaponCharge;
+            }
+
+            /// <summary>
+            /// Sends the squadron to fly a battle station's trench.
+            /// </summary>
+            /// <param name="station">The station to attack.</param>
+            internal void BeginTrenchRun(BattleStationState<TacticalUnit> station)
+            {
+                TrenchRunTarget = station;
+                _trenchRunDistance = 0;
+                IsInTrench = false;
+            }
+
+            /// <summary>
+            /// Flies the squadron one iteration closer to the station it was sent against and
+            /// takes it into the trench once it has covered the distance.
+            /// </summary>
+            /// <param name="runDistance">The distance squadrons fly to reach the station.</param>
+            internal void AdvanceTrenchRun(double runDistance)
+            {
+                if (IsInTrench)
+                    return;
+
+                _trenchRunDistance += Math.Max(ClosingSpeed, 1);
+                IsInTrench = _trenchRunDistance >= runDistance;
+            }
+
+            /// <summary>
+            /// Takes the squadron off its trench run and back into the fight.
+            /// </summary>
+            internal void EndTrenchRun()
+            {
+                TrenchRunTarget = null;
+                _trenchRunDistance = 0;
+                IsInTrench = false;
             }
 
             /// <summary>

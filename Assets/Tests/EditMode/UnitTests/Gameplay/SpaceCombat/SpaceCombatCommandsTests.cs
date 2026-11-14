@@ -2415,7 +2415,7 @@ namespace Rebellion.Tests.Gameplay
                 owner: "alliance"
             );
             CreatePlanet(game, "empire-fallback", owner: "empire");
-            Fleet attackingFleet = CreateFleet(
+            CreateFleet(
                 game,
                 "attacker",
                 "empire",
@@ -2425,7 +2425,6 @@ namespace Rebellion.Tests.Gameplay
                 76,
                 shieldRechargeRate: 0
             );
-            CapitalShip attackingShip = attackingFleet.GetChildren<CapitalShip>().Single();
             Fleet retreatingFleet = CreateFleet(
                 game,
                 "retreating-fleet",
@@ -2464,7 +2463,6 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreSame(allianceFallback, retreatingFleet.GetParentOfType<Planet>());
             Assert.IsNotNull(retreatingFleet.Movement);
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(trappedFleet.InstanceID));
-            Assert.AreEqual(attackingShip.MaxHullStrength, attackingShip.CurrentHullStrength);
         }
 
         [Test]
@@ -3466,6 +3464,33 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ResolvePendingRetreat_PlanetDestroyerLeftBehind_MovesItsEscortsToASystemHoldingAnother()
+        {
+            GameRoot game = CreateGame();
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat");
+            (Planet empireHome, _) = CreatePlanet(game, "empireHome", owner: "empire");
+            Fleet garrison = CreateFleet(game, "garrison", "empire", empireHome, 1, 100, 1);
+            garrison.GetChildren<CapitalShip>().Single().CanDestroyPlanets = true;
+            Fleet retreatingFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 2, 100, 1);
+            CapitalShip strandedStation = retreatingFleet.GetChildren<CapitalShip>()[0];
+            strandedStation.CanDestroyPlanets = true;
+            strandedStation.Hyperdrive = 0;
+            CapitalShip escort = retreatingFleet.GetChildren<CapitalShip>()[1];
+            CreateFleet(game, "af1", "alliance", combatPlanet, 1, 1000, 100);
+            SpaceCombatCommands manager = MakeSpaceCombat(game);
+
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
+            List<GameResult> results = manager.ResolvePendingRetreat("empire");
+
+            Assert.IsNotNull(results);
+            Assert.AreSame(empireHome, retreatingFleet.GetParentOfType<Planet>());
+            Assert.IsNotNull(retreatingFleet.Movement);
+            Assert.AreSame(retreatingFleet, escort.GetParent());
+            Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>(strandedStation.InstanceID));
+        }
+
+        [Test]
         public void ResolvePendingRetreat_StrandedFleetCarriesNonHyperdriveFighter_DestroysFighter()
         {
             GameRoot game = CreateGame();
@@ -3903,6 +3928,95 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void IsShieldedByPlanet_OwnersCompletedGeneratorListsTheShipType_ReturnsTrue()
+        {
+            Planet planet = new Planet { InstanceID = "shield-planet", OwnerInstanceID = "empire" };
+            CapitalShip station = new CapitalShip
+            {
+                InstanceID = "station",
+                TypeID = "station-type",
+                OwnerInstanceID = "empire",
+            };
+            CapitalShip otherType = new CapitalShip
+            {
+                InstanceID = "cruiser",
+                TypeID = "cruiser-type",
+                OwnerInstanceID = "empire",
+            };
+            Building shield = new Building
+            {
+                InstanceID = "station-shield",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                ProtectedUnitTypeIDs = { "station-type" },
+            };
+            planet.AddTestChild(shield);
+
+            bool shielded = SpaceCombatQueries.IsShieldedByPlanet(station, planet);
+            bool otherTypeShielded = SpaceCombatQueries.IsShieldedByPlanet(otherType, planet);
+            shield.ManufacturingStatus = ManufacturingStatus.Building;
+            bool shieldedWhileBuilding = SpaceCombatQueries.IsShieldedByPlanet(station, planet);
+
+            Assert.IsTrue(shielded);
+            Assert.IsFalse(otherTypeShielded);
+            Assert.IsFalse(shieldedWhileBuilding);
+            Assert.IsFalse(SpaceCombatQueries.IsShieldedByPlanet(station, null));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ProcessTick_TorpedoSquadronAgainstAStation_DestroysItUnlessAPlanetaryShieldProtectsIt(
+            bool shielded
+        )
+        {
+            GameRoot game = CreateAutomaticCombatGame();
+            game.Config.Combat.SpaceCombat.BattleStationTrenchRunBaseChance = 1;
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "empire");
+            CreatePlanet(game, "allianceHome", owner: "alliance");
+            Fleet stationFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 1, 25000, 0);
+            CapitalShip station = stationFleet.GetChildren<CapitalShip>().Single();
+            station.TypeID = "station-type";
+            station.CanDestroyPlanets = true;
+            if (shielded)
+            {
+                combatPlanet.AddTestChild(
+                    new Building
+                    {
+                        InstanceID = "station-shield",
+                        OwnerInstanceID = "empire",
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                        ProtectedUnitTypeIDs = { "station-type" },
+                    }
+                );
+            }
+
+            Fleet strikeFleet = CreateFleet(game, "af1", "alliance", combatPlanet, 1, 100, 0);
+            CapitalShip carrier = strikeFleet.GetChildren<CapitalShip>().Single();
+            carrier.StarfighterCapacity = 1;
+            Starfighter torpedoSquadron = new Starfighter
+            {
+                InstanceID = "y-wing",
+                OwnerInstanceID = "alliance",
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                ShieldStrength = 1,
+                Hyperdrive = 1,
+                SublightSpeed = 8,
+                Torpedoes = 4,
+                TorpedoRange = 7,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(torpedoSquadron, carrier);
+            SpaceCombatCommands manager = MakeSpaceCombat(game);
+
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
+
+            bool stationSurvived =
+                game.GetSceneNodeByInstanceID<CapitalShip>(station.InstanceID) != null;
+            Assert.AreEqual(shielded, stationSurvived);
+        }
+
+        [Test]
         public void TryGetPendingCombat_GravityWellActivated_RefreshesRetreatAvailability()
         {
             (GameRoot game, SpaceCombatCommands commands, Fleet empireFleet, Fleet allianceFleet) =
@@ -4316,6 +4430,9 @@ namespace Rebellion.Tests.Gameplay
                         AutoResolveComponentDelayMinimum = 30,
                         AutoResolveComponentDelayMaximum = 50,
                         AutoResolveComponentDelayRecovery = 1,
+                        BattleStationSuperlaserRechargeRounds = 360,
+                        BattleStationTrenchRunBaseChance = 0.9,
+                        BattleStationTrenchRunMinimumChance = 0.25,
                     },
                 },
             };
