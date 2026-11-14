@@ -154,12 +154,12 @@ namespace Rebellion.Gameplay
         /// Returns the hull restored by one repair pulse.
         /// </summary>
         /// <param name="ship">The capital ship being repaired.</param>
-        /// <returns>One tenth of the ship's maximum hull strength.</returns>
+        /// <returns>One tenth of the ship's maximum hull strength, with at least one point restored.</returns>
         internal static int GetRepairAmount(CapitalShip ship)
         {
             if (ship == null)
                 throw new ArgumentNullException(nameof(ship));
-            return ship.MaxHullStrength / _repairPulseDivisor;
+            return Math.Max(1, ship.MaxHullStrength / _repairPulseDivisor);
         }
     }
 

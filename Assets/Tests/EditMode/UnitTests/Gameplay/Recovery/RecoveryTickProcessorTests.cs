@@ -358,6 +358,31 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ProcessTick_DamagedLowStrengthShip_RestoresAtLeastOneHullPerPulse()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            game.CurrentTick = 40;
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "s1",
+                OwnerInstanceID = "empire",
+                MaxHullStrength = 2,
+                CurrentHullStrength = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                NextRepairTick = 40,
+                RepairIntervalTicks = 30,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+
+            new RecoveryTickProcessor().ProcessTick(game);
+
+            Assert.AreEqual(2, ship.CurrentHullStrength);
+            Assert.AreEqual(0, ship.NextRepairTick);
+        }
+
+        [Test]
         public void ProcessTick_DamagedShipAtIncompleteFriendlyShipyard_UsesNormalInterval()
         {
             (GameRoot game, Planet planet) = BuildScene();
