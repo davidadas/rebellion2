@@ -30,6 +30,9 @@ assets. Manage the media checkout and refresh these local copies outside Unity.
 
 CI installs clean media mirrors automatically with `rsync --delete` before Unity builds and tests.
 
+The standalone [Windows audio diagnostic](WindowsAudioDiagnostics.md) runs directly from a
+checkout with Windows PowerShell and does not require the Unity or media setup above.
+
 ## Commands
 
 ```bash
