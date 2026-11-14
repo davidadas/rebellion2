@@ -16,7 +16,6 @@ using Rebellion.Gameplay;
 using Rebellion.PlayerRequests;
 using Rebellion.SceneGraph;
 using TMPro;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.TestTools;
@@ -69,43 +68,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             DestroyFixture();
         }
 
-        /// <summary>
-        /// Restores Edit Mode after exercising Unity's window lifecycle.
-        /// </summary>
-        /// <returns>The mode-cleanup sequence.</returns>
-        [UnityTearDown]
-        public IEnumerator LeavePlayMode()
-        {
-            if (!Application.isPlaying)
-                yield break;
-            DestroyFixture();
-            yield return new ExitPlayMode();
-        }
-
         [UnityTest]
         public IEnumerator OnContextMenuCommandSelected_OlderRenameCompletes_PreservesNewRename()
         {
-            PreparePlayMode();
-            yield return new EnterPlayMode();
-            CreatePlayModeFixture();
             yield return VerifyDeferredRename(true);
         }
 
         [UnityTest]
         public IEnumerator RenderWindow_SubmittedRenamePendingOrRejected_KeepsInputClosed()
         {
-            PreparePlayMode();
-            yield return new EnterPlayMode();
-            CreatePlayModeFixture();
             yield return VerifyDeferredRename(false);
         }
 
         [UnityTest]
         public IEnumerator DestroyWindow_RenameActive_ReleasesWindowWithoutErrors()
         {
-            PreparePlayMode();
-            yield return new EnterPlayMode();
-            CreatePlayModeFixture();
             BeginFleetRename();
             FleetWindowView view = _windowManager.FindWindowView<FleetWindowView>(_ => true);
             UIWindow window = view.GetComponent<UIWindow>();
@@ -242,7 +219,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         public void WindowDrop_ActiveTargeting_SelectsCurrentFleet()
         {
             FleetWindowView view = OpenWindow(out UIWindow window);
-            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
             _controller.RenderWindow(view, window, true);
             RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
             _targetingController.Begin(new TargetingRequest("Target", null, receiver));
@@ -261,7 +238,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         public void TrySelectTarget_FleetRowPointer_SelectsExactFleet()
         {
             FleetWindowView view = OpenWindow(out UIWindow window);
-            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
             _controller.RenderWindow(view, window, true);
             FleetListRowView row = view.GetComponentsInChildren<FleetListRowView>(true)
                 .Single(item => item.Index == 0 && item.gameObject.activeInHierarchy);
@@ -290,7 +267,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         public void TrySelectTarget_CreateMissionCapitalShipPointer_SelectsExactShip()
         {
             FleetWindowView view = OpenWindow(out UIWindow window);
-            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
             _controller.RenderWindow(view, window, true);
             CapitalShip ship = _fleet.GetChildren<CapitalShip>().Single();
             StrategyUnitCardView card = view.GetComponentsInChildren<StrategyUnitCardView>(true)
@@ -332,7 +309,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             };
             _game.AttachNode(starfighter, ship);
             FleetWindowView view = OpenWindow(out UIWindow window);
-            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
             _controller.SelectTarget(view, starfighter);
             _controller.RenderWindow(view, window, true);
             StrategyUnitCardView card = view.GetComponentsInChildren<StrategyUnitCardView>(true)
@@ -367,7 +344,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _planet.Planet.AddChild(secondFleet);
             AttachFleetGraph(_planet.Planet, secondFleet);
             FleetWindowView view = OpenWindow(out UIWindow window);
-            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
             _controller.SelectTarget(view, secondFleet);
             _controller.RenderWindow(view, window, true);
             RectTransform detailPanel =
@@ -400,7 +377,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         public void TrySelectTarget_CreateMissionDetailPanelPointer_SelectsPlanet()
         {
             FleetWindowView view = OpenWindow(out UIWindow window);
-            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
             _controller.RenderWindow(view, window, true);
             RectTransform detailPanel =
                 view.transform.Find("DetailBackgroundImage") as RectTransform;
@@ -433,7 +410,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         {
             _planet.Planet.RemoveChildren<GameFleet>(_ => true);
             FleetWindowView view = OpenWindow(out UIWindow window);
-            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
             _controller.RenderWindow(view, window, true);
             RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
             _targetingController.Begin(new TargetingRequest("Target", null, receiver));
@@ -452,7 +429,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         public void RenderWindow_AfterAllFleetsRemoved_ClearsSelectedFleetDetails()
         {
             FleetWindowView view = OpenWindow(out UIWindow window);
-            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
             _controller.RenderWindow(view, window, true);
 
             foreach (GameFleet fleet in _planet.Planet.GetChildren<GameFleet>().ToList())
@@ -473,7 +450,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 AttachFleetGraph(_planet.Planet, fleet);
             }
             FleetWindowView view = OpenWindow(out UIWindow window);
-            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
 
             _controller.RenderWindow(view, window, true);
 
@@ -501,7 +477,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         public void FleetListDrop_ActiveTargeting_SelectsRepresentedPlanet()
         {
             FleetWindowView view = OpenWindow(out UIWindow window);
-            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
             _controller.RenderWindow(view, window, true);
             RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
             _targetingController.Begin(new TargetingRequest("Target", null, receiver));
@@ -523,13 +499,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         public void DetailItemDrop_ActiveTargeting_SelectsDroppedItem()
         {
             FleetWindowView view = OpenWindow(out UIWindow window);
-            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
             _controller.RenderWindow(view, window, true);
             RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
             _targetingController.Begin(new TargetingRequest("Target", null, receiver));
             StrategyUnitCardView item = view.GetComponentsInChildren<StrategyUnitCardView>(true)
                 .Single(candidate => candidate.gameObject.activeInHierarchy);
-            UIComponentTestHelper.InvokeLifecycle(item, "Awake");
 
             item.GetComponent<UIPointerGestureRelay>().OnDrop(new PointerEventData(null));
 
@@ -564,11 +539,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 _ => { }
             );
             FleetWindowView view = OpenWindow(out UIWindow window);
-            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
             _controller.RenderWindow(view, window, true);
             FleetListRowView row = view.GetComponentsInChildren<FleetListRowView>(true)
                 .Single(item => item.Index == 1 && item.gameObject.activeInHierarchy);
-            UIComponentTestHelper.InvokeLifecycle(row, "Awake");
+
             PointerEventData eventData = new PointerEventData(null)
             {
                 button = PointerEventData.InputButton.Left,
@@ -615,11 +590,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 _ => completedDragCount++
             );
             FleetWindowView view = OpenWindow(out UIWindow window);
-            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
             _controller.RenderWindow(view, window, true);
             FleetListRowView row = view.GetComponentsInChildren<FleetListRowView>(true)
                 .Single(item => item.Index == 1 && item.gameObject.activeInHierarchy);
-            UIComponentTestHelper.InvokeLifecycle(row, "Awake");
+
             PointerEventData eventData = new PointerEventData(null)
             {
                 button = PointerEventData.InputButton.Left,
@@ -657,11 +632,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         {
             FleetWindowView view = OpenWindow(out UIWindow window);
             _controller.SelectTarget(view, _officer);
-            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
             _controller.RenderWindow(view, window, true);
             FleetListRowView row = view.GetComponentsInChildren<FleetListRowView>(true)
                 .Single(item => item.Index == 0 && item.gameObject.activeInHierarchy);
-            UIComponentTestHelper.InvokeLifecycle(row, "Awake");
+
             PointerEventData eventData = new PointerEventData(null)
             {
                 button = PointerEventData.InputButton.Left,
@@ -687,7 +662,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsFalse(expandedRows[0].IsCapitalShip);
             Assert.IsTrue(expandedRows[1].IsCapitalShip);
             Assert.AreEqual("Capital Ship", expandedRows[1].NameTextField.text);
-            UIComponentTestHelper.InvokeLifecycle(expandedRows[1], "Awake");
 
             CapitalShip ship = _fleet.GetChildren<CapitalShip>().Single();
             RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
@@ -720,12 +694,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 _ => completedDragCount++
             );
             FleetWindowView view = OpenWindow(out UIWindow window);
-            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
             _controller.RenderWindow(view, window, true);
             CapitalShip ship = _fleet.GetChildren<CapitalShip>().Single();
             StrategyUnitCardView card = view.GetComponentsInChildren<StrategyUnitCardView>(true)
                 .Single(item => item.gameObject.activeInHierarchy);
-            UIComponentTestHelper.InvokeLifecycle(card, "Awake");
+
             RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
             _targetingController.Begin(new TargetingRequest("Target", null, receiver));
             PointerEventData eventData = new PointerEventData(null)
@@ -755,11 +729,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 _ => completedDragCount++
             );
             FleetWindowView view = OpenWindow(out UIWindow window);
-            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
             _controller.RenderWindow(view, window, true);
             FleetListRowView row = view.GetComponentsInChildren<FleetListRowView>(true)
                 .Single(item => item.gameObject.activeInHierarchy);
-            UIComponentTestHelper.InvokeLifecycle(row, "Awake");
+
             RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
             _targetingController.Begin(
                 new TargetingRequest("Target", null, receiver, remainsActiveAfterSelection: true)
@@ -1030,7 +1004,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         public void OnContextMenuCommandSelected_CapitalShipRename_MarksNameAsAssigned()
         {
             FleetWindowView view = OpenWindow(out UIWindow window);
-            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
             _controller.RenderWindow(view, window, true);
             CapitalShip ship = _fleet.GetChildren<CapitalShip>().Single();
             StrategyUnitCardView card = view.GetComponentsInChildren<StrategyUnitCardView>(true)
@@ -1102,7 +1076,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _controller.OnContextMenuCommandSelected(request, command);
             FleetWindowView view = _windowManager.FindWindowView<FleetWindowView>(_ => true);
             UIWindow window = view.GetComponent<UIWindow>();
-            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
             _controller.RenderWindow(view, window, true);
             TMP_InputField input = view.GetComponentInChildren<TMP_InputField>(true);
             input.SetTextWithoutNotify("Renamed fleet");
@@ -1126,7 +1100,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _officer.AllowedRanks = new[] { OfficerRank.Admiral };
             _actions.OfficerCommandResult = true;
             FleetWindowView view = OpenWindow(out UIWindow window);
-            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
             Assert.IsTrue(_controller.SelectTarget(view, _officer));
             _controller.RenderWindow(view, window, true);
             StrategyUnitCardView card = view.GetComponentsInChildren<StrategyUnitCardView>(true)
@@ -1172,7 +1146,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         {
             FleetWindowView view = OpenWindow(out UIWindow _);
 
-            UIComponentTestHelper.InvokeLifecycle(view, "OnDestroy");
+            UnityEngine.Object.DestroyImmediate(view.gameObject);
 
             Assert.IsNull(_controller.GetPlanet(view));
         }
@@ -1282,15 +1256,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _planet.Planet.AddChild(_fleet);
             AttachFleetGraph(_planet.Planet, _fleet);
             _session = TestContent.CreateGameSession(_game);
-            _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
-            GameFlowController flow = _rootObject.GetComponentInChildren<GameFlowController>(true);
-            if (flow != null)
-                flow.enabled = false;
-            StrategyController strategy = _rootObject.GetComponentInChildren<StrategyController>(
-                true
-            );
-            if (strategy != null)
-                strategy.enabled = false;
+            _rootObject = UIComponentTestHelper
+                .InstantiatePrefabComponent<StrategyWindowLayerView>(_strategyViewPrefabPath)
+                .gameObject;
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
             _targetingController = new TargetingController();
@@ -1317,27 +1285,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _rootObject = null;
             _session?.Dispose();
             _session = null;
-        }
-
-        /// <summary>
-        /// Releases Edit Mode objects before entering an empty Play Mode scene.
-        /// </summary>
-        private void PreparePlayMode()
-        {
-            DestroyFixture();
-            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-        }
-
-        /// <summary>
-        /// Creates authored controls with Unity's actual Awake and destruction callbacks.
-        /// </summary>
-        private void CreatePlayModeFixture()
-        {
-            Assert.IsTrue(Application.isPlaying);
-            DestroyFixture();
-            CreateFixture();
-            foreach (Camera camera in _rootObject.GetComponentsInChildren<Camera>(true))
-                camera.enabled = false;
         }
 
         /// <summary>

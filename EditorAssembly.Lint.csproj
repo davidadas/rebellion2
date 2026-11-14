@@ -13,6 +13,35 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="GameAssembly.Lint.csproj" />
+    <Reference Include="Unity.CompilationPipeline.Common">
+      <HintPath
+        Condition="Exists('$(UnityManagedAssembliesPath)/Unity.CompilationPipeline.Common.dll')"
+        >$(UnityManagedAssembliesPath)/Unity.CompilationPipeline.Common.dll</HintPath
+      >
+      <HintPath
+        Condition="!Exists('$(UnityManagedAssembliesPath)/Unity.CompilationPipeline.Common.dll') And Exists('$(UnityManagedAssembliesPath)/../Unity.CompilationPipeline.Common.dll')"
+        >$(UnityManagedAssembliesPath)/../Unity.CompilationPipeline.Common.dll</HintPath
+      >
+      <HintPath
+        Condition="!Exists('$(UnityManagedAssembliesPath)/Unity.CompilationPipeline.Common.dll') And !Exists('$(UnityManagedAssembliesPath)/../Unity.CompilationPipeline.Common.dll')"
+        >$(UnityMacAppPath)/Contents/Managed/Unity.CompilationPipeline.Common.dll</HintPath
+      >
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.Cecil">
+      <HintPath Condition="Exists('$(UnityManagedAssembliesPath)/Unity.Cecil.dll')"
+        >$(UnityManagedAssembliesPath)/Unity.Cecil.dll</HintPath
+      >
+      <HintPath
+        Condition="!Exists('$(UnityManagedAssembliesPath)/Unity.Cecil.dll') And Exists('$(UnityManagedAssembliesPath)/../Unity.Cecil.dll')"
+        >$(UnityManagedAssembliesPath)/../Unity.Cecil.dll</HintPath
+      >
+      <HintPath
+        Condition="!Exists('$(UnityManagedAssembliesPath)/Unity.Cecil.dll') And !Exists('$(UnityManagedAssembliesPath)/../Unity.Cecil.dll')"
+        >$(UnityMacAppPath)/Contents/Managed/Unity.Cecil.dll</HintPath
+      >
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
   <PropertyGroup>
     <!-- uGUI and TextMeshPro ship as package assemblies. Prefer the staged lint assemblies
@@ -33,7 +62,8 @@
       Condition="'$(TextMeshProHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.TextMeshPro.dll')"
       >Library/ScriptAssemblies/Unity.TextMeshPro.dll</TextMeshProHintPath
     >
-    <RecorderBaseHintPath Condition="Exists('$(UnityManagedAssembliesPath)/Unity.Recorder.Base.dll')"
+    <RecorderBaseHintPath
+      Condition="Exists('$(UnityManagedAssembliesPath)/Unity.Recorder.Base.dll')"
       >$(UnityManagedAssembliesPath)/Unity.Recorder.Base.dll</RecorderBaseHintPath
     >
     <RecorderBaseHintPath

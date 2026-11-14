@@ -241,6 +241,10 @@ jobs:
           trap 'docker rm "$CONTAINER_ID" >/dev/null 2>&1 || true' EXIT
           mkdir -p .unity-lint-assemblies
 
+          for dll in Unity.CompilationPipeline.Common.dll Unity.Cecil.dll; do
+            docker cp "$CONTAINER_ID:/opt/unity/Editor/Data/Managed/$dll" ".unity-lint-assemblies/$dll"
+          done
+
           docker cp "$CONTAINER_ID:/opt/unity/Editor/Data/Managed/UnityEngine/." .unity-lint-assemblies/ 2>/dev/null || true
           if docker cp "$CONTAINER_ID:/opt/unity/Editor/Data/Managed/UnityEditor/." .unity-lint-assemblies/ 2>/dev/null; then
             echo "Copied UnityEditor assemblies from Managed/UnityEditor"
@@ -431,7 +435,7 @@ jobs:
         with:
           projectPath: .
           unityVersion: ${{ env.UNITY_VERSION }}
-          testMode: editmode
+          testMode: all
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           dockerMemoryLimit: 8g
           customImage: rebellion2-unity-test:vulkan
@@ -442,7 +446,7 @@ jobs:
           cliVersion: v0.1.65
 
       - name: Summarize test execution time
-        if: ${{ !cancelled() && hashFiles('artifacts/editmode-results.xml') != '' }}
+        if: ${{ !cancelled() && hashFiles('artifacts/*mode-results.xml') != '' }}
         env:
           TEST_RUN_NAME: Test
         run: |
@@ -452,30 +456,46 @@ jobs:
           from datetime import datetime
           from pathlib import Path
 
-          root = ET.parse("artifacts/editmode-results.xml").getroot()
-          cases = [case for case in root.iter("test-case")
-                   if "start-time" in case.attrib and "end-time" in case.attrib]
-          first = min(datetime.fromisoformat(case.attrib["start-time"]) for case in cases)
-          last = max(datetime.fromisoformat(case.attrib["end-time"]) for case in cases)
-          seconds = (last - first).total_seconds()
-          summary = (
-              f"### {os.environ['TEST_RUN_NAME']} execution\n\n"
-              f"{root.attrib['passed']}/{root.attrib['total']} passed; "
-              f"{root.attrib['failed']} failed; {root.attrib['skipped']} skipped.\n\n"
-              f"First test start to final test end: **{seconds:.1f}s**. "
-              "This includes transitions between tests and excludes initial Unity setup.\n"
-          )
+          summary = f"### {os.environ['TEST_RUN_NAME']} execution\n\n"
+          for mode in ("editmode", "playmode"):
+              path = Path(f"artifacts/{mode}-results.xml")
+              if not path.exists():
+                  summary += f"**{mode}:** no result file was produced.\n\n"
+                  continue
+              root = ET.parse(path).getroot()
+              cases = [case for case in root.iter("test-case")
+                       if "start-time" in case.attrib and "end-time" in case.attrib]
+              first = min(datetime.fromisoformat(case.attrib["start-time"]) for case in cases)
+              last = max(datetime.fromisoformat(case.attrib["end-time"]) for case in cases)
+              seconds = (last - first).total_seconds()
+              summary += (
+                  f"**{mode}:** {root.attrib['passed']}/{root.attrib['total']} passed; "
+                  f"{root.attrib['failed']} failed; {root.attrib['skipped']} skipped; "
+                  f"first test start to final test end: **{seconds:.1f}s**.\n\n"
+              )
+              fixtures = {}
+              for case in cases:
+                  name = case.attrib["classname"]
+                  count, duration = fixtures.get(name, (0, 0.0))
+                  fixtures[name] = (count + 1, duration + float(case.attrib["duration"]))
+              summary += "| Slowest fixtures | Cases | Test time |\n|---|---:|---:|\n"
+              for name, (count, duration) in sorted(fixtures.items(), key=lambda item: -item[1][1])[:5]:
+                  summary += f"| {name} | {count} | {duration:.1f}s |\n"
+              summary += "\n"
+          summary += "Durations include transitions between tests and exclude initial Unity setup.\n"
           print(summary)
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as output:
               output.write(summary)
           EOF
 
       - name: Upload Unity test results
-        if: ${{ !cancelled() && hashFiles('artifacts/editmode-results.xml') != '' }}
+        if: ${{ !cancelled() && hashFiles('artifacts/*mode-results.xml') != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: editmode-test-results
-          path: artifacts/editmode-results.xml
+          name: unity-test-results
+          path: |
+            artifacts/editmode-results.xml
+            artifacts/playmode-results.xml
           retention-days: 7
 
       - uses: actions/setup-dotnet@v4

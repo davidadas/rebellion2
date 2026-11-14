@@ -3,7 +3,6 @@ using System.Linq;
 using NUnit.Framework;
 using TMPro;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.TestTools;
@@ -21,12 +20,9 @@ namespace Rebellion.Tests.UI.Components
         /// <summary>
         /// Instantiates the shared chat input on a canvas with normal input focus processing.
         /// </summary>
-        /// <returns>The play-mode setup sequence.</returns>
-        [UnitySetUp]
-        public IEnumerator SetUp()
+        [SetUp]
+        public void SetUp()
         {
-            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            yield return new EnterPlayMode();
             _events = new GameObject("InputEvents", typeof(EventSystem));
             _canvas = new GameObject("InputCanvas", typeof(Canvas));
             _canvas.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
@@ -41,7 +37,7 @@ namespace Rebellion.Tests.UI.Components
         }
 
         /// <summary>
-        /// Releases the focused input and restores edit mode.
+        /// Releases the focused input and its event system.
         /// </summary>
         /// <returns>The play-mode cleanup sequence.</returns>
         [UnityTearDown]
@@ -50,7 +46,6 @@ namespace Rebellion.Tests.UI.Components
             Object.Destroy(_canvas);
             Object.Destroy(_events);
             yield return null;
-            yield return new ExitPlayMode();
         }
 
         [UnityTest]
