@@ -1,6 +1,7 @@
 using System.IO;
 using NUnit.Framework;
 using Rebellion.Game.Units;
+using Rebellion.Generation;
 using Rebellion.Multiplayer;
 
 namespace Rebellion.Tests.Multiplayer
@@ -46,6 +47,19 @@ namespace Rebellion.Tests.Multiplayer
             GameplayContentIdentity.Compute(CreateData(prototype));
 
             Assert.IsNull(prototype.PeekInstanceID());
+        }
+
+        [Test]
+        public void Compute_AfterGameGeneration_PreservesInstalledContentIdentity()
+        {
+            ContentPack content = ContentPackLoader.OpenActive();
+            string expected = GameplayContentIdentity.Compute(content.GameData);
+            var summary = content.CreateDefaultGameSummary();
+            summary.Seed = 73;
+
+            new GameBuilder(summary, content.GameData).Build();
+
+            Assert.AreEqual(expected, GameplayContentIdentity.Compute(content.GameData));
         }
 
         /// <summary>

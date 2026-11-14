@@ -366,7 +366,6 @@ namespace Rebellion.SceneGraph
         protected virtual void CopyStateTo(BaseSceneNode copy)
         {
             base.CopyStateTo(copy);
-            copy.InstanceID = InstanceID;
             copy.OwnerInstanceID = OwnerInstanceID;
             copy.IsEnabled = IsEnabled;
         }
