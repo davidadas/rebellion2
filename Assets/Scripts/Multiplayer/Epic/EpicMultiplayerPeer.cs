@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -235,17 +236,30 @@ namespace Rebellion.Multiplayer
                     )
                 )
                     continue;
+                ArraySegment<byte> frame;
                 try
                 {
-                    _stream.Append(
-                        MultiplayerPacketFramer.ReadFrame(
-                            new ArraySegment<byte>(_receiveBuffer, 0, checked((int)length))
-                        )
+                    frame = MultiplayerPacketFramer.ReadFrame(
+                        new ArraySegment<byte>(_receiveBuffer, 0, checked((int)length))
                     );
                 }
                 catch (Exception exception)
                 {
-                    Disconnect(exception.Message, MultiplayerDisconnectReason.ProtocolError);
+                    Disconnect(
+                        exception.Message,
+                        exception is InvalidDataException
+                            ? MultiplayerDisconnectReason.ProtocolError
+                            : MultiplayerDisconnectReason.Unknown
+                    );
+                    return;
+                }
+                try
+                {
+                    _stream.Append(frame);
+                }
+                catch (Exception exception)
+                {
+                    Disconnect(exception.Message, MultiplayerDisconnectReason.Unknown);
                     return;
                 }
             }
@@ -427,10 +441,15 @@ namespace Rebellion.Multiplayer
                 }
             }
             catch (OperationCanceledException) when (_cancellation.IsCancellationRequested) { }
-            catch (Exception exception)
+            catch (InvalidDataException exception)
             {
                 if (!_disposed)
                     Disconnect(exception.Message, MultiplayerDisconnectReason.ProtocolError);
+            }
+            catch (Exception exception)
+            {
+                if (!_disposed)
+                    Disconnect(exception.Message, MultiplayerDisconnectReason.Unknown);
             }
         }
 

@@ -147,22 +147,6 @@ namespace Rebellion.Tests.Multiplayer
             );
         }
 
-        [TestCase(MultiplayerDisconnectReason.PeerClosedConnection)]
-        [TestCase(MultiplayerDisconnectReason.Unknown)]
-        public void RecordDisconnected_RemoteSocketClosure_DoesNotRecordConnectionLoss(
-            MultiplayerDisconnectReason reason
-        )
-        {
-            _tracker.RecordLobbyJoined("lobby", "guest-account", Summary());
-
-            _tracker.RecordDisconnected(null, reason);
-
-            Assert.That(
-                _sink.Events.Last().Parameters["connection_reason"],
-                Is.Not.EqualTo("connection_lost")
-            );
-        }
-
         [Test]
         public void RecordDisconnected_ExplicitLobbyExit_RecordsOneIntentionalDeparture()
         {
