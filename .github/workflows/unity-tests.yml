@@ -66,11 +66,14 @@ jobs:
   build:
     name: Build (${{ matrix.targetPlatform }})
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.targetPlatform == 'StandaloneWindows64' && 'windows-2022' || 'ubuntu-latest' }}
     needs: resolve-media
     environment: production
     permissions:
       contents: read
+    defaults:
+      run:
+        shell: bash
 
     strategy:
       fail-fast: false
@@ -80,6 +83,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
       - name: Checkout media (git only, no LFS)
         uses: actions/checkout@v4
@@ -98,22 +106,24 @@ jobs:
           R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
           R2_BUCKET: ${{ vars.R2_BUCKET }}
         run: |
-          case "${{ matrix.targetPlatform }}" in
-            StandaloneLinux64)   MODULE="linux-il2cpp" ;;
-            StandaloneWindows64) MODULE="windows-mono" ;;
-            StandaloneOSX)       MODULE="mac-mono" ;;
-          esac
-          IMAGE="unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-${MODULE}-${{ env.UNITY_IMAGE_VERSION }}"
-          (
-            for attempt in 1 2 3; do
-              docker pull "$IMAGE" && exit 0
-              echo "Attempt $attempt failed, retrying in 30s..."
-              sleep 30
-            done
-            exit 1
-          ) > "$RUNNER_TEMP/unity-image-pull.log" 2>&1 &
-          pull_pid=$!
-          trap 'kill "$pull_pid" >/dev/null 2>&1 || true' EXIT
+          pull_pid=""
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            case "${{ matrix.targetPlatform }}" in
+              StandaloneLinux64) MODULE="linux-il2cpp" ;;
+              StandaloneOSX)     MODULE="mac-mono" ;;
+            esac
+            IMAGE="unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-${MODULE}-${{ env.UNITY_IMAGE_VERSION }}"
+            (
+              for attempt in 1 2 3; do
+                docker pull "$IMAGE" && exit 0
+                echo "Attempt $attempt failed, retrying in 30s..."
+                sleep 30
+              done
+              exit 1
+            ) > "$RUNNER_TEMP/unity-image-pull.log" 2>&1 &
+            pull_pid=$!
+            trap 'kill "$pull_pid" >/dev/null 2>&1 || true' EXIT
+          fi
 
           HOST="${R2_ENDPOINT#https://}"
           git config lfs.url "https://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@rebellion2-lfs-proxy.pages.dev/${HOST}/${R2_BUCKET}"
@@ -139,20 +149,18 @@ jobs:
             exit 1
           fi
 
-          if ! wait "$pull_pid"; then
+          if [ -n "$pull_pid" ]; then
+            if ! wait "$pull_pid"; then
+              cat "$RUNNER_TEMP/unity-image-pull.log"
+              exit 1
+            fi
             cat "$RUNNER_TEMP/unity-image-pull.log"
-            exit 1
+            trap - EXIT
           fi
-          cat "$RUNNER_TEMP/unity-image-pull.log"
-          trap - EXIT
 
       - name: Install media
         run: |
-          mkdir -p Assets/Content Assets/Art/Models/MainMenu
-          test -f .ci/rebellion2-media/Content/Application/Schemas/game-config.xsd
-          rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Content/ Assets/Content/
-          rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Models/MainMenu/ Assets/Art/Models/MainMenu/
-          rsync -a --exclude=.DS_Store .ci/rebellion2-media/UnityAssets/ Assets/
+          python Tools/install_build_media.py .ci/rebellion2-media Assets
           rm -rf .ci
 
       - name: Install multiplayer build configuration
@@ -193,7 +201,7 @@ jobs:
           if [ "${{ matrix.targetPlatform }}" = "StandaloneWindows64" ]; then
             extension="zip"
           fi
-          python3 Tools/package_desktop.py \
+          python Tools/package_desktop.py \
             --platform "${{ matrix.targetPlatform }}" \
             --build-dir "build/${{ matrix.targetPlatform }}" \
             --output "dist/rebellion2-${{ matrix.targetPlatform }}.$extension"
@@ -201,7 +209,26 @@ jobs:
       - name: Reset package files
         run: |
           git checkout -- Packages/manifest.json Packages/packages-lock.json 2>/dev/null || true
-          sudo rm -rf artifacts || true
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo rm -rf artifacts || true
+          else
+            rm -rf artifacts || true
+          fi
+
+  windows-build-tools:
+    name: Test Windows media staging
+    runs-on: windows-2022
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test media staging
+        run: python -m unittest discover -s Tools/tests -p test_install_build_media.py
 
   lint:
     name: Lint
