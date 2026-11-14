@@ -267,6 +267,26 @@ namespace Rebellion.Tests.SceneGraph
         }
 
         [Test]
+        public void CreateCopy_UnassignedIdentity_DoesNotAssignSourceIdentity()
+        {
+            MockSceneNode source = new();
+
+            source.CreateCopy();
+
+            Assert.IsNull(source.PeekInstanceID());
+        }
+
+        [Test]
+        public void CreateCopy_UnassignedIdentity_LeavesCopyIdentityUnassigned()
+        {
+            MockSceneNode source = new();
+
+            MockSceneNode copy = (MockSceneNode)source.CreateCopy();
+
+            Assert.IsNull(copy.PeekInstanceID());
+        }
+
+        [Test]
         public void CreateCopy_Default_CopiesOnlyDetachedNode()
         {
             _rootNode.OwnerInstanceID = "Owner1";
