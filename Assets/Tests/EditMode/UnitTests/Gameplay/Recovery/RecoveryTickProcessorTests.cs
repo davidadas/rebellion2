@@ -303,6 +303,85 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ProcessTick_RepairAndReplacementIntervalsDiffer_UsesRepairIntervalForShip()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            game.CurrentTick = 10;
+            game.Config.Recovery.FastRepairIntervalTicks = 7;
+            game.Config.Recovery.FastReplacementIntervalTicks = 2;
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "s1",
+                OwnerInstanceID = "empire",
+                MaxHullStrength = 100,
+                CurrentHullStrength = 80,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "shipyard",
+                    OwnerInstanceID = "empire",
+                    BuildingType = BuildingType.Shipyard,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+
+            new RecoveryTickProcessor().ProcessTick(game);
+
+            Assert.AreEqual(7, ship.RepairIntervalTicks);
+            Assert.AreEqual(17, ship.NextRepairTick);
+        }
+
+        [TestCase(true, 7)]
+        [TestCase(false, 11)]
+        public void ProcessTick_RepairIntervalMissing_UsesMatchingReplacementInterval(
+            bool hasShipyard,
+            int expectedInterval
+        )
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            game.CurrentTick = 10;
+            game.Config.Recovery.FastRepairIntervalTicks = 0;
+            game.Config.Recovery.NormalRepairIntervalTicks = 0;
+            game.Config.Recovery.FastReplacementIntervalTicks = 7;
+            game.Config.Recovery.NormalReplacementIntervalTicks = 11;
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "s1",
+                OwnerInstanceID = "empire",
+                MaxHullStrength = 100,
+                CurrentHullStrength = 80,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            if (hasShipyard)
+            {
+                game.AttachNode(
+                    new Building
+                    {
+                        InstanceID = "shipyard",
+                        OwnerInstanceID = "empire",
+                        BuildingType = BuildingType.Shipyard,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    planet
+                );
+            }
+
+            new RecoveryTickProcessor().ProcessTick(game);
+
+            Assert.AreEqual(expectedInterval, ship.RepairIntervalTicks);
+            Assert.AreEqual(10 + expectedInterval, ship.NextRepairTick);
+        }
+
+        [Test]
         public void ProcessTick_DamagedShipWithoutShipyard_RepairsTenPercentAtNormalInterval()
         {
             (GameRoot game, Planet planet) = BuildScene();
@@ -1020,8 +1099,8 @@ namespace Rebellion.Tests.Gameplay
             {
                 NormalHealAmount = 1,
                 FastHealAmount = 3,
-                NormalRepairAmount = 1,
-                FastRepairAmount = 5,
+                NormalRepairIntervalTicks = 30,
+                FastRepairIntervalTicks = 2,
                 NormalReplacementIntervalTicks = 30,
                 FastReplacementIntervalTicks = 2,
             };

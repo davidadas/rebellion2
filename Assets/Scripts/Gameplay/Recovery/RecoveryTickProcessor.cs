@@ -140,13 +140,20 @@ namespace Rebellion.Gameplay
                 throw new ArgumentNullException(nameof(shipyardLocations));
 
             GameConfig.RecoveryConfig config = game.Config.Recovery;
-            int interval = RecoveryLocationRules.HasFriendlyOperationalShipyard(
+            bool repairsFast = RecoveryLocationRules.HasFriendlyOperationalShipyard(
                 ship,
                 ship,
                 shipyardLocations
-            )
-                ? config.FastReplacementIntervalTicks
-                : config.NormalReplacementIntervalTicks;
+            );
+            int interval = repairsFast
+                ? config.FastRepairIntervalTicks
+                : config.NormalRepairIntervalTicks;
+            if (interval <= 0)
+            {
+                interval = repairsFast
+                    ? config.FastReplacementIntervalTicks
+                    : config.NormalReplacementIntervalTicks;
+            }
             return Math.Max(1, interval);
         }
 
@@ -310,10 +317,11 @@ namespace Rebellion.Gameplay
         {
             List<GameResult> results = new List<GameResult>();
             GameConfig.RecoveryConfig config = game.Config.Recovery;
+            HashSet<(string PlanetInstanceId, string OwnerInstanceId)> shipyardLocations = null;
 
             HealOfficers(game, config, results);
-            RepairShips(game, results);
-            ReplaceSquadronLosses(game, results);
+            RepairShips(game, results, ref shipyardLocations);
+            ReplaceSquadronLosses(game, results, ref shipyardLocations);
 
             return results;
         }
@@ -361,7 +369,12 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="game">The game state being advanced.</param>
         /// <param name="results">Collection to append repair results to.</param>
-        private static void RepairShips(GameRoot game, List<GameResult> results)
+        /// <param name="shipyardLocations">The lazily built shipyard index shared by recovery phases.</param>
+        private static void RepairShips(
+            GameRoot game,
+            List<GameResult> results,
+            ref HashSet<(string PlanetInstanceId, string OwnerInstanceId)> shipyardLocations
+        )
         {
             List<CapitalShip> ships = game.GetSceneNodesByType<CapitalShip>();
             if (
@@ -377,8 +390,7 @@ namespace Rebellion.Gameplay
                 return;
             }
 
-            HashSet<(string PlanetInstanceId, string OwnerInstanceId)> shipyardLocations =
-                RecoveryLocationRules.BuildShipyardIndex(game);
+            shipyardLocations ??= RecoveryLocationRules.BuildShipyardIndex(game);
             foreach (CapitalShip ship in ships)
             {
                 if (
@@ -431,7 +443,12 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="game">The game state being advanced.</param>
         /// <param name="results">Collection to append replacement results to.</param>
-        private static void ReplaceSquadronLosses(GameRoot game, List<GameResult> results)
+        /// <param name="shipyardLocations">The lazily built shipyard index shared by recovery phases.</param>
+        private static void ReplaceSquadronLosses(
+            GameRoot game,
+            List<GameResult> results,
+            ref HashSet<(string PlanetInstanceId, string OwnerInstanceId)> shipyardLocations
+        )
         {
             List<Starfighter> squadrons = game.GetSceneNodesByType<Starfighter>();
             if (
@@ -446,8 +463,7 @@ namespace Rebellion.Gameplay
                 return;
             }
 
-            HashSet<(string PlanetInstanceId, string OwnerInstanceId)> shipyardLocations =
-                RecoveryLocationRules.BuildShipyardIndex(game);
+            shipyardLocations ??= RecoveryLocationRules.BuildShipyardIndex(game);
             foreach (Starfighter squadron in squadrons)
             {
                 if (

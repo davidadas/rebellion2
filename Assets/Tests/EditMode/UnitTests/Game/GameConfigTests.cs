@@ -55,6 +55,22 @@ namespace Rebellion.Tests.Game
             );
         }
 
+        [Test]
+        public void RecoveryConfig_LegacyRepairAmountElements_AcceptsWithoutWritingThem()
+        {
+            const string xml =
+                "<GameConfig><Recovery><FastRepairAmount>2</FastRepairAmount>"
+                + "<NormalRepairAmount>1</NormalRepairAmount></Recovery></GameConfig>";
+
+            GameConfig config = SerializationHelper.Deserialize<GameConfig>(xml);
+            string serialized = SerializationHelper.Serialize(config);
+
+            Assert.AreEqual(0, config.Recovery.FastRepairIntervalTicks);
+            Assert.AreEqual(0, config.Recovery.NormalRepairIntervalTicks);
+            StringAssert.DoesNotContain("FastRepairAmount", serialized);
+            StringAssert.DoesNotContain("NormalRepairAmount", serialized);
+        }
+
         [TestCase(0, ForceRankLabel.None)]
         [TestCase(9, ForceRankLabel.None)]
         [TestCase(10, ForceRankLabel.Novice)]
