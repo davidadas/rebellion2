@@ -1,0 +1,12 @@
+{
+    "name": "Unity.Rebellion.Build.CodeGen",
+    "references": [],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Mono.Cecil.dll"
+    ],
+    "autoReferenced": false
+}

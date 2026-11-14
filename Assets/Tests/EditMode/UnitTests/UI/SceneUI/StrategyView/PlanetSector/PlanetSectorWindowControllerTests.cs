@@ -302,7 +302,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             _controller.RenderWindow(view, window);
             RawImage missionImage = GetField<RawImage>(planetView, "missionImage");
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     _uiContext
                         .GetPlayerFactionTheme()
                         .PlanetOverlayTheme.PlanetOverlayIcons.Missions.HoverImagePath

@@ -17,6 +17,7 @@ public sealed class UIContext
     private GameRoot game;
     private readonly FactionThemeLibrary themeLibrary;
     private readonly Func<string, Texture2D> loadTexture;
+    private readonly Func<string, Texture2D> loadSmoothTexture;
     private readonly Func<Texture2D, RectInt> getTextureContentBounds;
     private IReadOnlyList<Faction> factionPresentations;
     private string playerFactionInstanceId;
@@ -33,12 +34,14 @@ public sealed class UIContext
     /// <param name="encyclopediaCatalog">The Encyclopedia catalog.</param>
     /// <param name="loadTexture">The active content texture resolver.</param>
     /// <param name="getTextureContentBounds">The optional visible-pixel bounds resolver.</param>
+    /// <param name="loadSmoothTexture">The optional resolver for substantially reduced artwork.</param>
     public UIContext(
         GameRoot game,
         FactionThemeLibrary themeLibrary,
         EncyclopediaCatalog encyclopediaCatalog,
         Func<string, Texture2D> loadTexture,
-        Func<Texture2D, RectInt> getTextureContentBounds = null
+        Func<Texture2D, RectInt> getTextureContentBounds = null,
+        Func<string, Texture2D> loadSmoothTexture = null
     )
     {
         if (game == null)
@@ -55,6 +58,7 @@ public sealed class UIContext
         SetGame(game);
         this.themeLibrary = themeLibrary;
         this.loadTexture = loadTexture;
+        this.loadSmoothTexture = loadSmoothTexture ?? loadTexture;
         this.getTextureContentBounds =
             getTextureContentBounds
             ?? (
@@ -156,6 +160,19 @@ public sealed class UIContext
             return null;
 
         return loadTexture(path);
+    }
+
+    /// <summary>
+    /// Resolves artwork through the loader intended for substantial on-screen reduction.
+    /// </summary>
+    /// <param name="path">The resource path.</param>
+    /// <returns>The smoothly filtered texture, or <see langword="null"/>.</returns>
+    public Texture2D GetSmoothTexture(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return null;
+
+        return loadSmoothTexture(path);
     }
 
     /// <summary>

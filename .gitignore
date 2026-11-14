@@ -68,6 +68,9 @@ Assets/TextMesh Pro/
 /Assets/Scenes.meta
 
 # C# Files
+# Legacy build identity files are replaced by the compilation processor.
+/Assets/Scripts/AssemblyBuildIdentity.g.cs
+/Assets/Scripts/AssemblyBuildIdentity.g.cs.meta
 **/*.sln
 **/*.slnx
 *.csproj
