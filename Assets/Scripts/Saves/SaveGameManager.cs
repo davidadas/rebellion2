@@ -577,6 +577,20 @@ public class SaveGameManager
     }
 
     /// <summary>
+    /// Checks whether a completed simulation tick reaches the enabled autosave cadence.
+    /// </summary>
+    /// <param name="game">The game whose completed tick is being checked.</param>
+    /// <param name="settings">The autosave cadence settings.</param>
+    /// <returns>True when the completed tick should be autosaved.</returns>
+    public static bool IsAutosaveDue(GameRoot game, UserGameplaySettings settings)
+    {
+        return settings?.AutosaveEnabled == true
+            && game?.CurrentTick > 0
+            && settings.AutosaveIntervalTicks > 0
+            && game.CurrentTick % settings.AutosaveIntervalTicks == 0;
+    }
+
+    /// <summary>
     /// Processes one completed simulation tick, creating an autosave when the configured
     /// cadence is reached.
     /// </summary>
@@ -585,27 +599,14 @@ public class SaveGameManager
     /// <returns>True when an autosave was written; otherwise false.</returns>
     public bool ProcessAutosaveTick(GameRoot game, UserGameplaySettings settings)
     {
-        if (
-            settings?.AutosaveEnabled != true
-            || game == null
-            || game.CurrentTick <= 0
-            || settings.AutosaveIntervalTicks <= 0
-            || game.CurrentTick % settings.AutosaveIntervalTicks != 0
-        )
+        if (!IsAutosaveDue(game, settings))
             return false;
 
         try
         {
             if (game.Metadata?.IsMultiplayer == true)
                 return ProcessMultiplayerAutosaveTick(game, settings);
-            EnsureCampaignIdentity(game);
-            string fileName =
-                AutosaveFilePrefix
-                + game.Metadata.CampaignID
-                + "_"
-                + game.CurrentTick.ToString("D10");
-            SaveGameData(game, fileName, $"Autosave - Tick {game.CurrentTick}");
-            PruneAutosaveHistory(game.Metadata.CampaignID, settings.AutosavesToKeep);
+            WriteLocalAutosaveAsync(game, settings).GetAwaiter().GetResult();
             GameLogger.Log($"Autosave completed at tick {game.CurrentTick}.");
             return true;
         }
@@ -614,6 +615,56 @@ public class SaveGameManager
             GameLogger.Warning($"Autosave failed at tick {game.CurrentTick}: {exception.Message}");
             return false;
         }
+    }
+
+    /// <summary>
+    /// Captures a due autosave on the caller, then awaits its durable publication and history
+    /// rotation without blocking the caller's frame.
+    /// </summary>
+    /// <param name="game">The settled game whose completed tick is being processed.</param>
+    /// <param name="settings">The autosave cadence and retention settings.</param>
+    /// <returns>True when an autosave was written; otherwise false.</returns>
+    public async Task<bool> ProcessAutosaveTickAsync(GameRoot game, UserGameplaySettings settings)
+    {
+        if (!IsAutosaveDue(game, settings))
+            return false;
+
+        int tick = game.CurrentTick;
+        try
+        {
+            if (game.Metadata?.IsMultiplayer == true)
+                return await ProcessMultiplayerAutosaveTickAsync(game, settings);
+            await WriteLocalAutosaveAsync(game, settings);
+            GameLogger.Log($"Autosave completed at tick {tick}.");
+            return true;
+        }
+        catch (Exception exception)
+        {
+            GameLogger.Warning($"Autosave failed at tick {tick}: {exception.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Captures a single-player autosave synchronously and returns its publication, which also
+    /// rotates the campaign's older autosaves.
+    /// </summary>
+    /// <param name="game">The settled game to capture on the calling thread.</param>
+    /// <param name="settings">The autosave retention settings.</param>
+    /// <returns>The durable publication and history rotation.</returns>
+    private Task WriteLocalAutosaveAsync(GameRoot game, UserGameplaySettings settings)
+    {
+        EnsureCampaignIdentity(game);
+        string fileName =
+            AutosaveFilePrefix + game.Metadata.CampaignID + "_" + game.CurrentTick.ToString("D10");
+        PrepareSaveGameData(game, fileName, $"Autosave - Tick {game.CurrentTick}");
+        Action rotate = CreateAutosaveRotation(
+            GetSaveDirectoryPath(),
+            game.Metadata.CampaignID,
+            settings.AutosavesToKeep,
+            false
+        );
+        return WriteCheckpointAsync(game, fileName, rotate);
     }
 
     /// <summary>
@@ -638,13 +689,7 @@ public class SaveGameManager
         UserGameplaySettings settings
     )
     {
-        if (
-            settings?.AutosaveEnabled != true
-            || game == null
-            || game.CurrentTick <= 0
-            || settings.AutosaveIntervalTicks <= 0
-            || game.CurrentTick % settings.AutosaveIntervalTicks != 0
-        )
+        if (!IsAutosaveDue(game, settings))
             return false;
         EnsureCampaignIdentity(game);
         if (!game.Metadata.IsMultiplayer)
@@ -658,22 +703,29 @@ public class SaveGameManager
         Action prune = CreateAutosaveRotation(
             GetSaveDirectoryPath(),
             game.Metadata.CampaignID,
-            settings.AutosavesToKeep
+            settings.AutosavesToKeep,
+            true
         );
         await WriteCheckpointAsync(game, fileName, prune).ConfigureAwait(false);
         return true;
     }
 
     /// <summary>
-    /// Captures only immutable filesystem policy for a host checkpoint's rotation.
+    /// Captures only immutable filesystem policy for an autosave's rotation.
     /// </summary>
     /// <param name="directory">The directory containing this campaign's restore points.</param>
     /// <param name="campaignID">The campaign namespace captured after save preparation.</param>
-    /// <param name="keep">The captured host retention setting.</param>
+    /// <param name="keep">The captured retention setting.</param>
+    /// <param name="multiplayer">Whether rotation is limited to host multiplayer copies.</param>
     /// <returns>The model-free filesystem continuation.</returns>
-    private static Action CreateAutosaveRotation(string directory, string campaignID, int keep)
+    private static Action CreateAutosaveRotation(
+        string directory,
+        string campaignID,
+        int keep,
+        bool multiplayer
+    )
     {
-        return () => PruneAutosaveHistory(directory, campaignID, keep, true);
+        return () => PruneAutosaveHistory(directory, campaignID, keep, multiplayer);
     }
 
     /// <summary>
@@ -709,33 +761,6 @@ public class SaveGameManager
             ? MaxDisplayNameLength - 1
             : MaxDisplayNameLength;
         return normalized.Substring(0, length).TrimEnd();
-    }
-
-    /// <summary>
-    /// Prunes only this campaign's tick-addressed restore points after a new autosave is written.
-    /// </summary>
-    /// <param name="campaignId">The identity of the campaign whose history may be pruned.</param>
-    /// <param name="autosavesToKeep">The maximum number of autosaves to retain.</param>
-    /// <param name="multiplayer">Whether only the host multiplayer namespace may rotate.</param>
-    private void PruneAutosaveHistory(
-        string campaignId,
-        int autosavesToKeep,
-        bool multiplayer = false
-    )
-    {
-        SerialFileOperations.Run(
-            GetSaveDirectoryPath(),
-            () =>
-            {
-                PruneAutosaveHistory(
-                    GetSaveDirectoryPath(),
-                    campaignId,
-                    autosavesToKeep,
-                    multiplayer
-                );
-                return true;
-            }
-        );
     }
 
     /// <summary>

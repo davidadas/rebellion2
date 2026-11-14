@@ -120,6 +120,7 @@ public sealed class StrategyController
     private SaveGameManager saveGameManager;
     private RectInt windowMovePreviewBounds;
     private bool windowMovePreviewVisible;
+    private readonly AutosaveIndicatorTiming _autosaveIndicator = new AutosaveIndicatorTiming();
 
     private StrategyHudController strategyHudController;
     private StrategyMusicController strategyMusicController;
@@ -211,6 +212,7 @@ public sealed class StrategyController
         gameManager.GameSpeedChanged += MarkDirty;
         runtime.GameReplaced += HandleGameReplaced;
         runtime.GameStateChanged += RefreshStrategyState;
+        runtime.AutosaveStateChanged += HandleAutosaveStateChanged;
         if (MultiplayerCoordinator.Instance != null)
             MultiplayerCoordinator.Instance.StateChanged += MarkDirty;
         session.Tick.CombatDecisionRequired += RefreshStrategyState;
@@ -1111,6 +1113,7 @@ public sealed class StrategyController
             gameManager.GameSpeedChanged -= MarkDirty;
             runtime.GameReplaced -= HandleGameReplaced;
             runtime.GameStateChanged -= RefreshStrategyState;
+            runtime.AutosaveStateChanged -= HandleAutosaveStateChanged;
             if (MultiplayerCoordinator.Instance != null)
                 MultiplayerCoordinator.Instance.StateChanged -= MarkDirty;
             session.Tick.CombatDecisionRequired -= RefreshStrategyState;
@@ -1132,6 +1135,8 @@ public sealed class StrategyController
             return;
 
         CaptureChangedWindows();
+        if (_autosaveIndicator.Refresh(runtime.IsAutosaving, Time.unscaledTime))
+            dirty = true;
 
         if (briefingActive)
         {
@@ -1692,9 +1697,23 @@ public sealed class StrategyController
                 MultiplayerCoordinator.Instance?.IsMultiplayerGame == true
                 && !MultiplayerCoordinator.Instance.IsSynchronized
                     ? MultiplayerCoordinator.Instance.Status
-                    : string.Empty
+                    : string.Empty,
+                _autosaveIndicator.IsVisible
             )
         );
+    }
+
+    /// <summary>
+    /// Updates the HUD's autosave label as soon as the session's autosave state changes. A local
+    /// autosave is captured on a later frame, so this frame presents the label before the capture.
+    /// </summary>
+    private void HandleAutosaveStateChanged()
+    {
+        if (gameManager == null || !contentReady || runtime?.GetActiveGameSession() != session)
+            return;
+
+        if (_autosaveIndicator.Refresh(runtime.IsAutosaving, Time.unscaledTime))
+            RenderHud();
     }
 
     /// <summary>

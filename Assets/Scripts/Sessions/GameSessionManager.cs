@@ -12,11 +12,13 @@ using UnityEngine;
 /// </summary>
 public sealed class GameSessionManager
 {
+    private static readonly Task<bool> _noAutosave = Task.FromResult(false);
     private readonly ContentPack _contentPack;
     private readonly GameContentBinding _contentBinding;
     private readonly SaveGameManager _saveGameManager;
     private readonly Func<UserGameplaySettings> _getGameplaySettings;
     private readonly IAnalyticsEventSink _analyticsSink;
+    private readonly Func<int> _getFrameCount;
     private GameSession _activeGameSession;
     private GameManager _gameManager;
     private CampaignAnalyticsTracker _campaignAnalyticsTracker;
@@ -24,10 +26,29 @@ public sealed class GameSessionManager
     private SessionPlayerRequestDispatcher _playerRequests;
     private IGameSessionOwner _sessionOwner;
 
+    // A due local autosave waits for a later frame, so its indicator is drawn before the capture.
+    private UserGameplaySettings _pendingAutosaveSettings;
+    private int _pendingAutosaveFrame;
+    private int _autosavePublications;
+    private int _autosaveGeneration;
+
     /// <summary>
     /// Gets whether the active session has an owner coordinating execution and saves.
     /// </summary>
     public bool HasCoordinatedSession => _sessionOwner != null;
+
+    /// <summary>
+    /// Gets whether the active session is waiting to capture, or still writing, a scheduled autosave.
+    /// </summary>
+    public bool IsAutosaving =>
+        _sessionOwner != null
+            ? _sessionOwner.IsAutosaving
+            : _pendingAutosaveSettings != null || _autosavePublications > 0;
+
+    /// <summary>
+    /// Raised when a scheduled autosave starts waiting for its capture or finishes writing.
+    /// </summary>
+    public event Action AutosaveStateChanged;
 
     /// <summary>
     /// Gets the active player's ordered application action boundary.
@@ -70,11 +91,13 @@ public sealed class GameSessionManager
     /// <param name="saveGameManager">The save manager, or null to use the application singleton.</param>
     /// <param name="getGameplaySettings">Returns the current gameplay settings.</param>
     /// <param name="analyticsSink">Receives consented campaign analytics.</param>
+    /// <param name="getFrameCount">Returns the presented frame number, or null to use Unity's frame count.</param>
     internal GameSessionManager(
         ContentPack contentPack,
         SaveGameManager saveGameManager = null,
         Func<UserGameplaySettings> getGameplaySettings = null,
-        IAnalyticsEventSink analyticsSink = null
+        IAnalyticsEventSink analyticsSink = null,
+        Func<int> getFrameCount = null
     )
     {
         _contentPack = contentPack ?? throw new ArgumentNullException(nameof(contentPack));
@@ -82,6 +105,7 @@ public sealed class GameSessionManager
         _saveGameManager = saveGameManager ?? SaveGameManager.Instance;
         _getGameplaySettings = getGameplaySettings;
         _analyticsSink = analyticsSink;
+        _getFrameCount = getFrameCount ?? (() => Time.frameCount);
     }
 
     /// <summary>
@@ -181,6 +205,7 @@ public sealed class GameSessionManager
         _gameManager = clock;
         _operationsBlocked = false;
         _sessionOwner = owner;
+        ResetAutosaveState();
         _playerRequests = new SessionPlayerRequestDispatcher(
             owner
                 ?? (IPlayerRequestDispatcher)
@@ -237,13 +262,15 @@ public sealed class GameSessionManager
     }
 
     /// <summary>
-    /// Admits the next tick through this session's existing execution owner.
+    /// Admits the next tick through this session's existing execution owner. The clock holds
+    /// while a scheduled local autosave waits for its capture.
     /// </summary>
     /// <param name="elapsedSeconds">The elapsed application frame interval.</param>
     /// <returns>True when the current session should begin its next tick.</returns>
     public bool TryBeginGameTick(float elapsedSeconds)
     {
         return HasActiveGame
+            && _pendingAutosaveSettings == null
             && (
                 _sessionOwner != null
                     ? _sessionOwner.TryBeginGameTick(elapsedSeconds)
@@ -284,6 +311,7 @@ public sealed class GameSessionManager
         {
             StopCampaignAnalytics();
             _sessionOwner = null;
+            ResetAutosaveState();
             outgoingSession.Tick.TickCompleted -= HandleTickCompleted;
             _activeGameSession = null;
             _gameManager = null;
@@ -469,7 +497,8 @@ public sealed class GameSessionManager
     }
 
     /// <summary>
-    /// Forwards completed simulation ticks to the save manager's autosave scheduler.
+    /// Forwards completed simulation ticks to the session owner's autosave policy, or schedules a
+    /// due local autosave.
     /// </summary>
     private void HandleTickCompleted()
     {
@@ -478,19 +507,92 @@ public sealed class GameSessionManager
 
         UserGameplaySettings settings = _getGameplaySettings?.Invoke();
         if (_sessionOwner != null)
+        {
+            bool wasAutosaving = _sessionOwner.IsAutosaving;
             _sessionOwner.ProcessAutosaveTick(settings);
+            if (_sessionOwner.IsAutosaving != wasAutosaving)
+                AutosaveStateChanged?.Invoke();
+        }
         else
-            ProcessAutosaveLocally(settings);
+            ScheduleLocalAutosave(settings);
     }
 
     /// <summary>
-    /// Runs the local autosave scheduler after the persistence owner has established the checkpoint.
+    /// Holds a due local autosave until a later frame, so presentation can show its indicator
+    /// before the capture blocks the main thread.
     /// </summary>
     /// <param name="settings">The automatic-save cadence and retention settings.</param>
-    /// <returns>True when the local automatic save was written.</returns>
-    internal bool ProcessAutosaveLocally(UserGameplaySettings settings)
+    private void ScheduleLocalAutosave(UserGameplaySettings settings)
     {
-        return CanSave && _saveGameManager.ProcessAutosaveTick(GetActiveGame(), settings);
+        if (!SaveGameManager.IsAutosaveDue(GetActiveGame(), settings))
+            return;
+
+        _pendingAutosaveSettings = new UserGameplaySettings
+        {
+            AutosaveEnabled = settings.AutosaveEnabled,
+            AutosaveIntervalTicks = settings.AutosaveIntervalTicks,
+            AutosavesToKeep = settings.AutosavesToKeep,
+        };
+        _pendingAutosaveFrame = _getFrameCount();
+        AutosaveStateChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Captures a scheduled local autosave once a frame has been presented since it was scheduled,
+    /// then tracks its background publication until the file is written.
+    /// </summary>
+    /// <returns>True after the autosave was written; false when none was ready or it failed.</returns>
+    public Task<bool> ProcessPendingAutosaveAsync()
+    {
+        UserGameplaySettings settings = _pendingAutosaveSettings;
+        if (settings == null || _getFrameCount() <= _pendingAutosaveFrame)
+            return _noAutosave;
+
+        _pendingAutosaveSettings = null;
+        if (!CanSave)
+        {
+            LogUnsettledSaveWarning();
+            AutosaveStateChanged?.Invoke();
+            return _noAutosave;
+        }
+
+        _autosavePublications++;
+        return CompleteAutosaveAsync(
+            _saveGameManager.ProcessAutosaveTickAsync(GetActiveGame(), settings),
+            _autosaveGeneration
+        );
+    }
+
+    /// <summary>
+    /// Clears the autosave state when a publication belonging to the current game finishes.
+    /// </summary>
+    /// <param name="publication">The captured autosave's durable publication.</param>
+    /// <param name="generation">The game generation that captured the autosave.</param>
+    /// <returns>The publication's outcome.</returns>
+    private async Task<bool> CompleteAutosaveAsync(Task<bool> publication, int generation)
+    {
+        try
+        {
+            return await publication;
+        }
+        finally
+        {
+            if (generation == _autosaveGeneration)
+            {
+                _autosavePublications--;
+                AutosaveStateChanged?.Invoke();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Forgets scheduled and in-flight autosave state that belongs to an outgoing game.
+    /// </summary>
+    private void ResetAutosaveState()
+    {
+        _pendingAutosaveSettings = null;
+        _autosavePublications = 0;
+        _autosaveGeneration++;
     }
 
     /// <summary>
@@ -541,6 +643,7 @@ public sealed class GameSessionManager
         StopCampaignAnalytics();
         _gameManager.Reset();
         _operationsBlocked = false;
+        ResetAutosaveState();
         GameReplaced?.Invoke(_activeGameSession.Game);
         ReconcileLoadedSession();
         StartCampaignAnalytics(_activeGameSession, pendingMultiplayerStart);
