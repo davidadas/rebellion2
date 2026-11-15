@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using Rebellion.Util.Logging;
 using UnityEditor;
 using UnityEngine;
 
@@ -25,7 +26,7 @@ public static class GameCaptureMenu
         string fileName = $"rebellion2-{DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}.png";
         string screenshotPath = Path.Combine(screenshotDirectory, fileName);
         ScreenCapture.CaptureScreenshot(screenshotPath);
-        Debug.Log($"Game screenshot queued: {screenshotPath}");
+        GameLogger.Log($"Game screenshot queued: {screenshotPath}");
     }
 
     /// <summary>

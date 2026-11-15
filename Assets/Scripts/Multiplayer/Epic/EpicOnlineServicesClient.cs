@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Rebellion.Util.Logging;
 using UnityEngine;
 using AddNotifyAuthExpirationOptions = Epic.OnlineServices.Connect.AddNotifyAuthExpirationOptions;
 using AuthExpirationCallbackInfo = Epic.OnlineServices.Connect.AuthExpirationCallbackInfo;
@@ -215,7 +216,7 @@ namespace Rebellion.Multiplayer
             catch (Exception exception)
             {
                 if (!_disposed)
-                    Debug.LogWarning(exception.Message);
+                    GameLogger.Warning(exception.Message);
             }
         }
     }

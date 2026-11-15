@@ -20,6 +20,7 @@ using Rebellion.Gameplay;
 using Rebellion.Generation;
 using Rebellion.Multiplayer;
 using Rebellion.Tests.NativeAudit;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
 using UnityEditor;
 using UnityEngine;
@@ -62,7 +63,7 @@ public static class MultiplayerNetworkSimulationRunner
             refreshSuppressed = true;
             EditorApplication.LockReloadAssemblies();
             reloadLocked = true;
-            UnityEngine.Debug.Log("[NetworkSim] loaded build verified and reload locked");
+            GameLogger.Log("[NetworkSim] loaded build verified and reload locked");
             string[] args = Environment.GetCommandLineArgs();
             outputPath = Path.GetFullPath(ReadStringArgument(args, _outputPathFlag, outputPath));
             report.ticksRequested = ReadIntArgument(args, _tickCountFlag, _defaultTickCount);
@@ -87,7 +88,7 @@ public static class MultiplayerNetworkSimulationRunner
                 report.scenario = "Configured faction controllers are preserved";
             else if (report.humanParticipants)
                 report.scenario = "Both ordered participants use human controllers";
-            UnityEngine.Debug.Log("[NetworkSim] controller mode: " + report.scenario);
+            GameLogger.Log("[NetworkSim] controller mode: " + report.scenario);
             report.outputPath = outputPath;
             await RunAsync(args, report);
             report.succeeded = true;
@@ -96,7 +97,7 @@ public static class MultiplayerNetworkSimulationRunner
         catch (Exception exception)
         {
             report.failure = exception.ToString();
-            UnityEngine.Debug.LogException(exception);
+            GameLogger.LogException(exception);
         }
         finally
         {
@@ -105,7 +106,7 @@ public static class MultiplayerNetworkSimulationRunner
             if (!string.IsNullOrEmpty(directory))
                 Directory.CreateDirectory(directory);
             File.WriteAllText(outputPath, JsonUtility.ToJson(report, true));
-            UnityEngine.Debug.Log(
+            GameLogger.Log(
                 $"[NetworkSim] success={report.succeeded} ticks={report.ticksCompleted}/{report.ticksRequested} start={report.startTick} end={report.endTick} bytes={report.bytesTransferred} output={outputPath}"
             );
             if (reloadLocked)

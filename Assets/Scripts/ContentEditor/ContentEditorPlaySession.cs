@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Rebellion.Game;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
 using UnityEngine;
 
@@ -244,7 +245,7 @@ public sealed class ContentEditorPlaySession : IDisposable
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            Trace.TraceWarning("Test game cleanup could not complete: " + exception.Message);
+            GameLogger.Warning("Test game cleanup could not complete: " + exception.Message);
         }
     }
 

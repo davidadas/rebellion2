@@ -8,6 +8,7 @@ using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.PlayerRequests;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Logging;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -647,7 +648,7 @@ public sealed class MessagesWindowController
         }
         catch (Exception exception)
         {
-            Debug.LogException(exception);
+            GameLogger.LogException(exception);
             accepted = false;
         }
 
@@ -930,7 +931,7 @@ public sealed class MessagesWindowController
         }
         catch (Exception exception)
         {
-            Debug.LogException(exception);
+            GameLogger.LogException(exception);
             accepted = false;
         }
         finally

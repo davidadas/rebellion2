@@ -2,8 +2,8 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
+using Rebellion.Util.Logging;
 using UnityEngine;
-using Debug = UnityEngine.Debug;
 
 /// <summary>
 /// Stores application preferences independently of content packs and editor build locations.
@@ -54,7 +54,7 @@ public sealed class ContentEditorSettingsManager
         catch (Exception exception)
             when (exception is IOException or UnauthorizedAccessException or ArgumentException)
         {
-            Debug.LogWarning("Editor settings could not be read: " + exception.Message);
+            GameLogger.Warning("Editor settings could not be read: " + exception.Message);
             settings = new ContentEditorSettings();
         }
         settings ??= new ContentEditorSettings();

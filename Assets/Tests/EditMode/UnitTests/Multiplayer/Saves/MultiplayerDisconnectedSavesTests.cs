@@ -214,10 +214,7 @@ namespace Rebellion.Tests.Multiplayer
             );
             Directory.CreateDirectory(_store.GetSaveFilePath(fileName));
 
-            LogAssert.Expect(
-                LogType.Exception,
-                new Regex("IOException|UnauthorizedAccessException")
-            );
+            LogAssert.Expect(LogType.Error, new Regex("IOException|UnauthorizedAccessException"));
 
             Assert.IsFalse(await _sessionManager.SaveGameAsync("blocked", "Blocked"));
             Assert.AreEqual(0, _publications);

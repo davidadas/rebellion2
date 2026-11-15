@@ -6,7 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using UnityEngine;
+using Rebellion.Util.Logging;
 
 /// <summary>
 /// Records campaign creation and coarse faction balance at fixed tick intervals.
@@ -258,7 +258,7 @@ internal sealed class CampaignAnalyticsTracker
     private void DisableAfterFailure(Exception exception)
     {
         _failed = true;
-        Debug.LogWarning($"Campaign analytics disabled for this session: {exception.Message}");
+        GameLogger.Warning($"Campaign analytics disabled for this session: {exception.Message}");
     }
 
     /// <summary>

@@ -8,6 +8,7 @@ using System.Xml;
 using System.Xml.Schema;
 using Rebellion.Game;
 using Rebellion.Multiplayer;
+using Rebellion.Util.Logging;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -1082,7 +1083,7 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
             _coordinator.ClearFailure();
             await _operation.RunAsync(page, operation);
             if (this != null && _operation.Error != null)
-                Debug.LogWarning(_operation.Error);
+                GameLogger.Warning(_operation.Error);
         }
 
         /// <summary>

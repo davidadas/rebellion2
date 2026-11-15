@@ -7,6 +7,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.PlayerRequests;
 using Rebellion.PlayerRequests;
+using Rebellion.Util.Logging;
 using UnityEngine;
 
 /// <summary>
@@ -141,7 +142,7 @@ internal sealed class MessagesPlayerActions
         }
         catch (Exception exception)
         {
-            Debug.LogException(exception);
+            GameLogger.LogException(exception);
             return false;
         }
     }

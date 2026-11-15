@@ -155,7 +155,7 @@ namespace Rebellion.Tests.Multiplayer
             InvalidOperationException failure = new("Simulation state mismatch.");
             string observedStatus = null;
             _coordinator.StateChanged += () => observedStatus = _coordinator.Status;
-            LogAssert.Expect(LogType.Exception, new Regex("Simulation state mismatch\\."));
+            LogAssert.Expect(LogType.Error, new Regex("Simulation state mismatch\\."));
 
             _coordinator.ReportGameplayFailure(failure);
 

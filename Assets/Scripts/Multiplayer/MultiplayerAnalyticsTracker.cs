@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
 using Rebellion.Game;
-using UnityEngine;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.Multiplayer
 {
@@ -280,7 +280,7 @@ namespace Rebellion.Multiplayer
             catch (Exception exception)
             {
                 _failed = true;
-                Debug.LogWarning(
+                GameLogger.Warning(
                     $"Multiplayer analytics disabled for this session: {exception.Message}"
                 );
             }

@@ -10,6 +10,7 @@ namespace Rebellion.Util.Logging
     public static class GameLogger
     {
         private const string _logLevelEnvironmentVariable = "LOG_LEVEL";
+        private static readonly object _fileGate = new object();
 
         private static LogLevel _minimumLevel = GetConfiguredMinimumLevel();
 
@@ -26,7 +27,7 @@ namespace Rebellion.Util.Logging
         }
 
         // Default log file path and configuration settings.
-        private static string _logFilePath = Path.Combine(UserDataPaths.Root, "log.txt");
+        private static string _logFilePath;
         private static bool _logToFile;
         private static bool _includeTimestamp = true;
 
@@ -55,6 +56,8 @@ namespace Rebellion.Util.Logging
         )
         {
             _logFilePath = filePath ?? _logFilePath;
+            if (enableFileLogging && _logFilePath == null)
+                _logFilePath = Path.Combine(UserDataPaths.Root, "log.txt");
             _logToFile = enableFileLogging;
             _includeTimestamp = addTimestamps;
 
@@ -70,7 +73,12 @@ namespace Rebellion.Util.Logging
         /// <typeparam name="T">The type of the message to log.</typeparam>
         /// <param name="message">The message to log.</param>
         /// <param name="level">The log level (e.g., Info, Warning, Error).</param>
-        public static void Log<T>(T message, LogLevel level = LogLevel.Info)
+        /// <param name="context">The optional Unity object associated with this message.</param>
+        public static void Log<T>(
+            T message,
+            LogLevel level = LogLevel.Info,
+            UnityEngine.Object context = null
+        )
         {
             if (level > _minimumLevel)
             {
@@ -78,7 +86,7 @@ namespace Rebellion.Util.Logging
             }
 
             string logMessage = FormatMessage(message, level);
-            LogToUnityConsole(logMessage, level);
+            LogToUnityConsole(logMessage, level, context);
 
             if (_logToFile)
             {
@@ -101,9 +109,10 @@ namespace Rebellion.Util.Logging
         /// </summary>
         /// <typeparam name="T">The type of the message to log.</typeparam>
         /// <param name="message">The message to log.</param>
-        public static void Warning<T>(T message)
+        /// <param name="context">The optional Unity object associated with this warning.</param>
+        public static void Warning<T>(T message, UnityEngine.Object context = null)
         {
-            Log(message, LogLevel.Warning);
+            Log(message, LogLevel.Warning, context);
         }
 
         /// <summary>
@@ -164,21 +173,26 @@ namespace Rebellion.Util.Logging
         /// </summary>
         /// <param name="message">The formatted message to log.</param>
         /// <param name="level">The severity level for routing to the appropriate Unity log method.</param>
-        private static void LogToUnityConsole(string message, LogLevel level)
+        /// <param name="context">The optional Unity object associated with this message.</param>
+        private static void LogToUnityConsole(
+            string message,
+            LogLevel level,
+            UnityEngine.Object context
+        )
         {
             switch (level)
             {
                 case LogLevel.Info:
-                    UnityEngine.Debug.Log(message);
+                    UnityEngine.Debug.Log(message, context);
                     break;
                 case LogLevel.Warning:
-                    UnityEngine.Debug.LogWarning(message);
+                    UnityEngine.Debug.LogWarning(message, context);
                     break;
                 case LogLevel.Error:
-                    UnityEngine.Debug.LogError(message);
+                    UnityEngine.Debug.LogError(message, context);
                     break;
                 case LogLevel.Debug:
-                    UnityEngine.Debug.Log($"DEBUG: {message}");
+                    UnityEngine.Debug.Log($"DEBUG: {message}", context);
                     break;
             }
         }
@@ -190,12 +204,15 @@ namespace Rebellion.Util.Logging
         {
             try
             {
-                if (!File.Exists(_logFilePath))
+                lock (_fileGate)
                 {
-                    // Create and immediately close the file.
-                    File.Create(_logFilePath).Dispose();
+                    if (!File.Exists(_logFilePath))
+                    {
+                        // Create and immediately close the file.
+                        File.Create(_logFilePath).Dispose();
+                    }
+                    WriteToFile($"Log initialized at {DateTime.Now}");
                 }
-                WriteToFile($"Log initialized at {DateTime.Now}");
             }
             catch (Exception ex)
             {
@@ -211,7 +228,8 @@ namespace Rebellion.Util.Logging
         {
             try
             {
-                File.AppendAllText(_logFilePath, message + Environment.NewLine);
+                lock (_fileGate)
+                    File.AppendAllText(_logFilePath, message + Environment.NewLine);
             }
             catch (Exception ex)
             {
