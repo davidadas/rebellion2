@@ -6,6 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
@@ -965,6 +966,45 @@ namespace Rebellion.Tests.Gameplay
                 mission.InstanceID,
                 viewPlanet.GetChildren<Mission>().Single().InstanceID
             );
+        }
+
+        [Test]
+        public void ObserveOwnershipChange_KnownEnemyResearchMissionBecomesInvalid_RemovesMissionIntelligence()
+        {
+            ResearchMission mission = new ResearchMission
+            {
+                InstanceID = "ENEMY_RESEARCH",
+                OwnerInstanceID = _empire.InstanceID,
+                LocationInstanceID = _coruscant.InstanceID,
+                Discipline = ResearchDiscipline.ShipDesign,
+            };
+            _game.AttachNode(mission, _coruscant);
+            Officer agent = CreateOfficer("RESEARCHER", _empire);
+            _game.AttachNode(agent, mission);
+            new FogOfWarRecorder().RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+            _coruscant.SetOwnerInstanceID(null);
+
+            _observer.ObserveOwnershipChange(
+                new PlanetOwnershipChangedResult
+                {
+                    Planet = _coruscant,
+                    PreviousOwner = _empire,
+                    NewOwner = null,
+                    Tick = 42,
+                }
+            );
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Assert.IsEmpty(snapshot.Missions);
+            Planet viewPlanet = new FogOfWarQueries(_game)
+                .BuildFactionView(_alliance)
+                .GetChildren<PlanetSector>()
+                .Single(sector => sector.InstanceID == _coreSector.InstanceID)
+                .GetChildren<Planet>()
+                .Single(planet => planet.InstanceID == _coruscant.InstanceID);
+            Assert.IsEmpty(viewPlanet.GetChildren<Mission>(includeDisabled: true));
         }
 
         [Test]

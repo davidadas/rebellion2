@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -11,6 +12,7 @@ using AddNotifyPeerConnectionInterruptedOptions = Epic.OnlineServices.P2P.AddNot
 using AddNotifyPeerConnectionRequestOptions = Epic.OnlineServices.P2P.AddNotifyPeerConnectionRequestOptions;
 using CloseConnectionOptions = Epic.OnlineServices.P2P.CloseConnectionOptions;
 using Common = Epic.OnlineServices.Common;
+using ConnectionClosedReason = Epic.OnlineServices.P2P.ConnectionClosedReason;
 using OnIncomingConnectionRequestInfo = Epic.OnlineServices.P2P.OnIncomingConnectionRequestInfo;
 using OnPeerConnectionEstablishedInfo = Epic.OnlineServices.P2P.OnPeerConnectionEstablishedInfo;
 using OnPeerConnectionInterruptedInfo = Epic.OnlineServices.P2P.OnPeerConnectionInterruptedInfo;
@@ -218,7 +220,10 @@ namespace Rebellion.Multiplayer
                     return;
                 if (result != Result.Success)
                 {
-                    Disconnect("Receive failed: " + result);
+                    Disconnect(
+                        "Receive failed: " + result,
+                        MultiplayerDisconnectReason.TransportError
+                    );
                     return;
                 }
                 if (
@@ -231,17 +236,30 @@ namespace Rebellion.Multiplayer
                     )
                 )
                     continue;
+                ArraySegment<byte> frame;
                 try
                 {
-                    _stream.Append(
-                        MultiplayerPacketFramer.ReadFrame(
-                            new ArraySegment<byte>(_receiveBuffer, 0, checked((int)length))
-                        )
+                    frame = MultiplayerPacketFramer.ReadFrame(
+                        new ArraySegment<byte>(_receiveBuffer, 0, checked((int)length))
                     );
                 }
                 catch (Exception exception)
                 {
-                    Disconnect(exception.Message);
+                    Disconnect(
+                        exception.Message,
+                        exception is InvalidDataException
+                            ? MultiplayerDisconnectReason.ProtocolError
+                            : MultiplayerDisconnectReason.Unknown
+                    );
+                    return;
+                }
+                try
+                {
+                    _stream.Append(frame);
+                }
+                catch (Exception exception)
+                {
+                    Disconnect(exception.Message, MultiplayerDisconnectReason.Unknown);
                     return;
                 }
             }
@@ -287,7 +305,8 @@ namespace Rebellion.Multiplayer
         /// Ends a connection after a transport or lobby membership failure.
         /// </summary>
         /// <param name="reason">The disconnect reason.</param>
-        public void Disconnect(string reason)
+        /// <param name="disconnectReason">The observed cause, independent of the display message.</param>
+        public void Disconnect(string reason, MultiplayerDisconnectReason disconnectReason)
         {
             if (_disconnected)
                 return;
@@ -295,7 +314,8 @@ namespace Rebellion.Multiplayer
             _events.Enqueue(
                 new MultiplayerTransportEvent(
                     MultiplayerTransportEventType.Disconnected,
-                    error: reason
+                    error: reason,
+                    disconnectReason: disconnectReason
                 )
             );
         }
@@ -332,7 +352,10 @@ namespace Rebellion.Multiplayer
             };
             Result result = _p2p.AcceptConnection(ref options);
             if (result != Result.Success)
-                Disconnect("Accept connection failed: " + result);
+                Disconnect(
+                    "Accept connection failed: " + result,
+                    MultiplayerDisconnectReason.TransportError
+                );
         }
 
         /// <summary>
@@ -355,17 +378,42 @@ namespace Rebellion.Multiplayer
         private void OnConnectionInterrupted(ref OnPeerConnectionInterruptedInfo data)
         {
             if (!_disposed && data.RemoteUserId.Equals(_remoteUser))
-                Disconnect("The connection to the other player was interrupted.");
+                Disconnect(
+                    "The connection to the other player was interrupted.",
+                    MultiplayerDisconnectReason.ConnectionLost
+                );
         }
 
         /// <summary>
-        /// Propagates a terminal remote connection loss.
+        /// Propagates the observed cause when the remote connection closes.
         /// </summary>
         /// <param name="data">The closed connection notification.</param>
         private void OnConnectionClosed(ref OnRemoteConnectionClosedInfo data)
         {
             if (!_disposed && data.RemoteUserId.Equals(_remoteUser))
-                Disconnect("Connection closed: " + data.Reason);
+                Disconnect(
+                    "Connection closed: " + data.Reason,
+                    data.Reason switch
+                    {
+                        ConnectionClosedReason.ClosedByLocalUser =>
+                            MultiplayerDisconnectReason.LocalSessionClosed,
+                        ConnectionClosedReason.ClosedByPeer =>
+                            MultiplayerDisconnectReason.PeerClosedConnection,
+                        ConnectionClosedReason.TimedOut
+                        or ConnectionClosedReason.ConnectionFailed
+                        or ConnectionClosedReason.ConnectionClosed
+                        or ConnectionClosedReason.NegotiationFailed =>
+                            MultiplayerDisconnectReason.ConnectionLost,
+                        ConnectionClosedReason.InvalidMessage
+                        or ConnectionClosedReason.InvalidData =>
+                            MultiplayerDisconnectReason.ProtocolError,
+                        ConnectionClosedReason.TooManyConnections
+                        or ConnectionClosedReason.UnexpectedError
+                        or ConnectionClosedReason.ConnectionIgnored =>
+                            MultiplayerDisconnectReason.TransportError,
+                        _ => MultiplayerDisconnectReason.Unknown,
+                    }
+                );
         }
 
         /// <summary>
@@ -393,10 +441,15 @@ namespace Rebellion.Multiplayer
                 }
             }
             catch (OperationCanceledException) when (_cancellation.IsCancellationRequested) { }
+            catch (InvalidDataException exception)
+            {
+                if (!_disposed)
+                    Disconnect(exception.Message, MultiplayerDisconnectReason.ProtocolError);
+            }
             catch (Exception exception)
             {
                 if (!_disposed)
-                    Disconnect(exception.Message);
+                    Disconnect(exception.Message, MultiplayerDisconnectReason.Unknown);
             }
         }
 

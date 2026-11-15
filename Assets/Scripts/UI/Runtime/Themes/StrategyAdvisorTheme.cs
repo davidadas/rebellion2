@@ -72,10 +72,15 @@ public enum StrategyBriefingMapMode
     PlayerLoyalty,
     OpponentLoyalty,
     MilitaryControl,
+
+    PlayerMilitaryControl = MilitaryControl,
+
     UnexploredSystems,
     IdleFleets,
     AllDefenses,
     Spotlight,
+
+    OpponentMilitaryControl,
 }
 
 /// <summary>

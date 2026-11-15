@@ -664,6 +664,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(BattleResultCategory.CapitalShips, data.Result.Category);
             Assert.AreEqual("Orbital bombardment of Corellia", data.Result.Title);
             Assert.IsEmpty(_playedTracks);
+            CollectionAssert.AreEqual(
+                new[] { StrategyUISoundPaths.OrbitalBombardment },
+                _playedSfx
+            );
         }
 
         [Test]
@@ -746,6 +750,29 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(0, _stopMusicCount);
             Assert.IsEmpty(_playedTracks);
             CollectionAssert.AreEqual(new[] { StrategyUISoundPaths.PlanetaryAssault }, _playedSfx);
+        }
+
+        [Test]
+        public void OpenReport_Bombardment_PlaysReportSoundWithoutChangingMusic()
+        {
+            CombatReport report = new CombatReport
+            {
+                CombatType = CombatReportType.Bombardment,
+                PerspectiveOwnerInstanceID = _playerFactionId,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
+                Title = "Orbital bombardment of Corellia",
+                Body = "The bombardment damaged planetary defenses.",
+            };
+
+            _controller.OpenReport(report);
+
+            Assert.AreEqual(0, _stopMusicCount);
+            Assert.IsEmpty(_playedTracks);
+            CollectionAssert.AreEqual(
+                new[] { StrategyUISoundPaths.OrbitalBombardment },
+                _playedSfx
+            );
         }
 
         [Test]
