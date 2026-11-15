@@ -439,6 +439,8 @@ internal abstract class BattleResultPresentation
 
         internal override string DefenderOwnerInstanceID => result.DefenderOwnerInstanceID;
 
+        internal override string SoundEffectPath => StrategyUISoundPaths.OrbitalBombardment;
+
         internal override string Title =>
             $"Orbital bombardment of {BattleAlertWindowProjector.GetPlanetName(result.Planet)}";
 
@@ -597,9 +599,12 @@ internal abstract class BattleResultPresentation
         internal override string DefenderOwnerInstanceID => report.DefenderOwnerInstanceID;
 
         internal override string SoundEffectPath =>
-            report.CombatType == CombatReportType.PlanetaryAssault
-                ? StrategyUISoundPaths.PlanetaryAssault
-                : null;
+            report.CombatType switch
+            {
+                CombatReportType.Bombardment => StrategyUISoundPaths.OrbitalBombardment,
+                CombatReportType.PlanetaryAssault => StrategyUISoundPaths.PlanetaryAssault,
+                _ => null,
+            };
 
         internal override string Title =>
             !string.IsNullOrEmpty(report.Title)
