@@ -159,6 +159,8 @@ jobs:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          MODIO_GAME_ID: ${{ github.event_name != 'pull_request' && vars.MODIO_GAME_ID || '' }}
+          MODIO_API_KEY: ${{ github.event_name != 'pull_request' && secrets.MODIO_API_KEY || '' }}
         with:
           projectPath: .
           unityVersion: ${{ env.UNITY_VERSION }}

@@ -3,6 +3,39 @@
 Rebellion 2 loads modded art, audio, video, configuration, and game data from loose files. Most
 content can therefore be changed without rebuilding the game.
 
+## Installing community mods
+
+Open **Options > Mods > Browse mod.io** in the game, or **Mods** in the launcher. Search for a
+mod and choose **Install**. Published updates appear with an **Update** action. Browsing and
+downloads use the public catalog and do not require a mod.io account.
+
+The game and launcher share installed files and update records. After installing from the game,
+return to the installed Mods page and choose **Apply** to load the changes. Installations made
+from the launcher are discovered when the game starts or its Mods page is reopened.
+
+Archives can contain a `mod.xml` overlay and its `Content` directory, or an editor-exported
+`pack.xml` content pack. A single enclosing directory is also accepted. Required base packs and
+versions must already be installed. Existing manually installed mods are preserved.
+
+Managed packages live in `Mods/modio-<mod ID>`. Their `.modio.json` file identifies the game,
+mod, published archive, and content definition; both applications use it to recognize updates.
+Downloads are verified against the published size and digest, then extracted and checked before
+replacing the previous installation.
+
+## Configuring catalog access for development and builds
+
+Set `MODIO_GAME_ID` and `MODIO_API_KEY` in the process environment. `MODIO_API_BASE_URL` is
+optional; its default is the game's `https://g-<game ID>.modapi.io/v1` endpoint. A personal
+`MODIO_ACCESS_TOKEN` is not used for browsing, installation, or updates.
+
+Start Unity from a shell containing these variables. Player builds embed the public catalog
+configuration in a generated resource, so players do not need environment variables. The resource
+is excluded from source control and removed after a successful build. Release automation supplies
+the game ID through the `MODIO_GAME_ID` repository variable and the API key through the
+`MODIO_API_KEY` repository secret.
+
+Catalog access is optional: an unconfigured build still supports installed packs and local mods.
+
 ## Creating a mod
 
 A Rebellion 2 mod is a folder containing a `mod.xml` definition and a `Content` folder. It can

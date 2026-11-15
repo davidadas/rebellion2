@@ -1,0 +1,11 @@
+<linker>
+  <assembly fullname="GameAssembly">
+    <type fullname="Rebellion.Content.Modio.ModioCatalogPage" preserve="all" />
+    <type fullname="Rebellion.Content.Modio.ModioMod" preserve="all" />
+    <type fullname="Rebellion.Content.Modio.ModioFile" preserve="all" />
+    <type fullname="Rebellion.Content.Modio.ModioFileHash" preserve="all" />
+    <type fullname="Rebellion.Content.Modio.ModioDownload" preserve="all" />
+    <type fullname="Rebellion.Content.Modio.ModioConfiguration" preserve="all" />
+    <type fullname="Rebellion.Content.Modio.ModioInstallation" preserve="all" />
+  </assembly>
+</linker>

@@ -220,6 +220,15 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
 
     [Header("Mods page")]
     [SerializeField]
+    private GameObject _installedModsPanel;
+
+    [SerializeField]
+    private ModioBrowserView _modioBrowser;
+
+    [SerializeField]
+    private Button _browseModsButton;
+
+    [SerializeField]
     private ScrollAreaView _modsScrollArea;
 
     [SerializeField]
@@ -268,6 +277,11 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     public event Action<IdleBarLocation> IdleBarLocationRequested;
     public event Action<GameLaunchSpeed> GameLaunchSpeedRequested;
     public event Action<int> ModToggleRequested;
+    public event Action ModioBrowseRequested;
+    public event Action ModioClosed;
+    public event Action<string> ModioSearchRequested;
+    public event Action<int> ModioPageRequested;
+    public event Action<int> ModioInstallRequested;
     public event Action<int> ContentPackStepRequested;
     public event Action<string> AutosaveIntervalChanged;
     public event Action<string> AutosavesToKeepChanged;
@@ -600,6 +614,11 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// <param name="resetScroll">Whether the page was just entered.</param>
     private void RenderModsPage(OptionsMenuRenderData data, bool resetScroll)
     {
+        bool browsing = data.ModioBrowser?.Visible == true;
+        _installedModsPanel.SetActive(!browsing);
+        _modioBrowser.Render(data.ModioBrowser);
+        if (browsing)
+            return;
         _contentPackChoice.Render(data.ContentPackLabel);
         int loadedCount = data.Mods.Count(mod => mod.Loaded);
         int errorCount = data.Mods.Count(mod => mod.HasError);
@@ -1030,7 +1049,15 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     {
         if (_bound)
             return;
-
+        if (_modioBrowser != null)
+        {
+            _browseModsButton.onClick.AddListener(HandleModioBrowseRequested);
+            _modioBrowser.Closed += HandleModioClosed;
+            _modioBrowser.SearchRequested += HandleModioSearchRequested;
+            _modioBrowser.PageRequested += HandleModioPageRequested;
+            _modioBrowser.InstallRequested += HandleModioInstallRequested;
+            _modioBrowser.TextEditingChanged += HandleTextEditingChanged;
+        }
         for (int i = 0; i < _tabButtons.Length; i++)
         {
             OptionsMenuTab tab = (OptionsMenuTab)i;
@@ -1140,6 +1167,15 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// </summary>
     private void UnbindControls()
     {
+        if (_modioBrowser != null)
+        {
+            _browseModsButton.onClick.RemoveListener(HandleModioBrowseRequested);
+            _modioBrowser.Closed -= HandleModioClosed;
+            _modioBrowser.SearchRequested -= HandleModioSearchRequested;
+            _modioBrowser.PageRequested -= HandleModioPageRequested;
+            _modioBrowser.InstallRequested -= HandleModioInstallRequested;
+            _modioBrowser.TextEditingChanged -= HandleTextEditingChanged;
+        }
         _legalDocumentsButton.onClick.RemoveListener(ShowLegalDocuments);
         _saveListView.SaveRequested -= HandleSaveRequested;
         _saveListView.LoadRequested -= HandleLoadRequested;
@@ -1178,6 +1214,34 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
                 row.ToggleRequested -= HandleModToggle;
         }
     }
+
+    /// <summary>
+    /// Opens the community catalog from the installed-mod controls.
+    /// </summary>
+    private void HandleModioBrowseRequested() => ModioBrowseRequested?.Invoke();
+
+    /// <summary>
+    /// Returns to the installed-mod controls.
+    /// </summary>
+    private void HandleModioClosed() => ModioClosed?.Invoke();
+
+    /// <summary>
+    /// Forwards a community catalog search.
+    /// </summary>
+    /// <param name="query">The requested search text.</param>
+    private void HandleModioSearchRequested(string query) => ModioSearchRequested?.Invoke(query);
+
+    /// <summary>
+    /// Forwards community catalog page navigation.
+    /// </summary>
+    /// <param name="direction">The requested page direction.</param>
+    private void HandleModioPageRequested(int direction) => ModioPageRequested?.Invoke(direction);
+
+    /// <summary>
+    /// Forwards a community mod's installation action.
+    /// </summary>
+    /// <param name="index">The selected catalog row.</param>
+    private void HandleModioInstallRequested(int index) => ModioInstallRequested?.Invoke(index);
 
     /// <summary>
     /// Clones the established content-pack selector into another Options-style page.

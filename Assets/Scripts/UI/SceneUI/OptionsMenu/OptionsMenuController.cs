@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Rebellion.Content.Modio;
 using Rebellion.Game;
 using UnityEngine;
 
@@ -23,11 +24,13 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private readonly Func<IReadOnlyList<SaveGameEntry>> _getSavedGames;
     private readonly IContentAssetSource _contentAssets;
     private readonly FactionThemeLibrary _factionThemeLibrary;
-    private readonly IReadOnlyList<InstalledContentPack> _availablePacks;
+    private IReadOnlyList<InstalledContentPack> _availablePacks;
     private readonly bool _showModsTab;
 
     private readonly OptionsSettingsSession _settingsSession;
     private readonly OptionsBindingSession _bindingSession;
+    private readonly ModioBrowserSession _modioBrowser;
+    private bool _contentInstallChanged;
 
     private readonly List<OptionsSaveSlot> _saveSlots = new List<OptionsSaveSlot>();
     private int _selectedSlot = -1;
@@ -131,6 +134,13 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         _bindingSession.Changed += _settingsSession.MarkInputChanged;
         _bindingSession.PresentationChanged += MarkDirty;
         _bindingSession.ConflictRequested += HandleBindingConflictRequested;
+        if (_showModsTab)
+            _modioBrowser = new ModioBrowserSession(
+                ModioConfiguration.Load(),
+                _bootstrap.GetContentPack().ContentRootPath,
+                MarkDirty,
+                HandleCommunityModInstalled
+            );
         _bootstrap.GetCancelStack()?.Register(this);
     }
 
@@ -156,6 +166,10 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         }
 
         _settingsSession.Begin();
+        if (_showModsTab)
+            _availablePacks = ContentPackLoader.DiscoverInstalledPacks(
+                _bootstrap.GetContentPack().ContentRootPath
+            );
         _statusMessage = string.Empty;
         _statusIsError = false;
         ResetContentSelection();
@@ -194,6 +208,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// </summary>
     public void Close()
     {
+        _modioBrowser?.Close();
         if (_window == null)
             return;
 
@@ -226,6 +241,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         _bindingSession.PresentationChanged -= MarkDirty;
         _bindingSession.ConflictRequested -= HandleBindingConflictRequested;
         _bindingSession.Dispose();
+        _modioBrowser?.Dispose();
         _bootstrap.GetCancelStack()?.Unregister(this);
         _disposed = true;
     }
@@ -266,7 +282,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 _settingsSession.GetGraphicsValues(),
                 _settingsSession.Analytics.IsEnabled,
                 _statusMessage,
-                _statusIsError
+                _statusIsError,
+                _modioBrowser?.CreateRenderData()
             )
         );
     }
@@ -325,6 +342,69 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         string id = resolver.AvailableMods[index].ID;
         if (!_selectedDisabledModIDs.Add(id))
             _selectedDisabledModIDs.Remove(id);
+        MarkDirty();
+    }
+
+    /// <summary>
+    /// Opens community browsing from the installed Mods page.
+    /// </summary>
+    private async void HandleModioBrowseRequested()
+    {
+        if (_modioBrowser != null)
+            await _modioBrowser.OpenAsync();
+    }
+
+    /// <summary>
+    /// Returns from community browsing to installed mods.
+    /// </summary>
+    private void HandleModioClosed() => _modioBrowser?.Close();
+
+    /// <summary>
+    /// Searches the public community catalog.
+    /// </summary>
+    /// <param name="query">The requested search text.</param>
+    private async void HandleModioSearchRequested(string query)
+    {
+        if (_modioBrowser != null)
+            await _modioBrowser.SearchAsync(query, 0);
+    }
+
+    /// <summary>
+    /// Changes the displayed community catalog page.
+    /// </summary>
+    /// <param name="direction">The requested page direction.</param>
+    private async void HandleModioPageRequested(int direction)
+    {
+        if (_modioBrowser != null)
+            await _modioBrowser.StepAsync(direction);
+    }
+
+    /// <summary>
+    /// Installs or updates the selected community mod.
+    /// </summary>
+    /// <param name="index">The selected catalog row.</param>
+    private async void HandleModioInstallRequested(int index)
+    {
+        if (_modioBrowser != null)
+            await _modioBrowser.InstallAsync(index);
+    }
+
+    /// <summary>
+    /// Rediscovers local content after installation without changing the pending pack selection.
+    /// </summary>
+    private void HandleCommunityModInstalled()
+    {
+        string selectedID = GetSelectedPack()?.ID;
+        _availablePacks = ContentPackLoader.DiscoverInstalledPacks(
+            _bootstrap.GetContentPack().ContentRootPath
+        );
+        _selectedPackIndex = _availablePacks.ToList().FindIndex(pack => pack.ID == selectedID);
+        if (_selectedPackIndex < 0)
+            _selectedPackIndex = ResolveSavedPackIndex(
+                _bootstrap.GetUserSettingsManager().Settings.Content
+            );
+        _contentInstallChanged = true;
+        RefreshSelectedModResolver();
         MarkDirty();
     }
 
@@ -443,7 +523,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private bool IsContentSelectionDirty()
     {
         UserContentSettings content = _bootstrap.GetUserSettingsManager().Settings.Content;
-        return _selectedPackIndex != ResolveSavedPackIndex(content)
+        return _contentInstallChanged
+            || _selectedPackIndex != ResolveSavedPackIndex(content)
             || !_selectedDisabledModIDs.SetEquals(content.DisabledModIDs ?? Array.Empty<string>());
     }
 
@@ -508,6 +589,12 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             return true;
         }
 
+        if (_modioBrowser?.IsVisible == true)
+        {
+            _modioBrowser.Close();
+            return true;
+        }
+
         HandleBackToGame();
         return true;
     }
@@ -541,6 +628,11 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         target.IdleBarLocationRequested += HandleIdleBarLocationRequested;
         target.GameLaunchSpeedRequested += HandleGameLaunchSpeedRequested;
         target.ModToggleRequested += HandleModToggle;
+        target.ModioBrowseRequested += HandleModioBrowseRequested;
+        target.ModioClosed += HandleModioClosed;
+        target.ModioSearchRequested += HandleModioSearchRequested;
+        target.ModioPageRequested += HandleModioPageRequested;
+        target.ModioInstallRequested += HandleModioInstallRequested;
         target.ContentPackStepRequested += HandleContentPackStep;
         target.AutosaveIntervalChanged += HandleAutosaveIntervalChanged;
         target.AutosavesToKeepChanged += HandleAutosavesToKeepChanged;
@@ -910,6 +1002,14 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     {
         if (_activeTab == OptionsMenuTab.Mods)
         {
+            if (_modioBrowser?.IsBusy == true)
+            {
+                SetStatus(
+                    "Wait for the mod installation to finish before applying content changes.",
+                    true
+                );
+                return;
+            }
             ApplyContentSelection();
             return;
         }
@@ -1291,6 +1391,11 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         destroyed.IdleBarLocationRequested -= HandleIdleBarLocationRequested;
         destroyed.GameLaunchSpeedRequested -= HandleGameLaunchSpeedRequested;
         destroyed.ModToggleRequested -= HandleModToggle;
+        destroyed.ModioBrowseRequested -= HandleModioBrowseRequested;
+        destroyed.ModioClosed -= HandleModioClosed;
+        destroyed.ModioSearchRequested -= HandleModioSearchRequested;
+        destroyed.ModioPageRequested -= HandleModioPageRequested;
+        destroyed.ModioInstallRequested -= HandleModioInstallRequested;
         destroyed.ContentPackStepRequested -= HandleContentPackStep;
         destroyed.AutosaveIntervalChanged -= HandleAutosaveIntervalChanged;
         destroyed.AutosavesToKeepChanged -= HandleAutosavesToKeepChanged;
@@ -1301,6 +1406,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         destroyed.Destroyed -= HandleViewDestroyed;
         if (ReferenceEquals(destroyed, _view))
         {
+            _modioBrowser?.Close();
             bool wasOpen = _window != null;
             _view = null;
             _window = null;
