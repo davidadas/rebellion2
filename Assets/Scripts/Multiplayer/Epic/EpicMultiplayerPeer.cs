@@ -21,10 +21,8 @@ using P2PInterface = Epic.OnlineServices.P2P.P2PInterface;
 using PacketReliability = Epic.OnlineServices.P2P.PacketReliability;
 using ProductUserId = Epic.OnlineServices.ProductUserId;
 using ReceivePacketOptions = Epic.OnlineServices.P2P.ReceivePacketOptions;
-using RelayControl = Epic.OnlineServices.P2P.RelayControl;
 using Result = Epic.OnlineServices.Result;
 using SendPacketOptions = Epic.OnlineServices.P2P.SendPacketOptions;
-using SetRelayControlOptions = Epic.OnlineServices.P2P.SetRelayControlOptions;
 using SocketId = Epic.OnlineServices.P2P.SocketId;
 
 namespace Rebellion.Multiplayer
@@ -92,11 +90,6 @@ namespace Rebellion.Multiplayer
                 MaxDataSizeBytes = P2PInterface.MAX_PACKET_SIZE,
                 RequestedChannel = 0,
             };
-            SetRelayControlOptions relayOptions = new SetRelayControlOptions
-            {
-                RelayControl = RelayControl.AllowRelays,
-            };
-            RequireSuccess(_p2p.SetRelayControl(ref relayOptions), "Enable relay fallback");
             AddNotifyPeerConnectionRequestOptions requestOptions =
                 new AddNotifyPeerConnectionRequestOptions
                 {

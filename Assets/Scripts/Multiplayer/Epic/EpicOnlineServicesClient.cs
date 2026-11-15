@@ -13,7 +13,9 @@ using ExternalCredentialType = Epic.OnlineServices.ExternalCredentialType;
 using LoginCallbackInfo = Epic.OnlineServices.Connect.LoginCallbackInfo;
 using LoginOptions = Epic.OnlineServices.Connect.LoginOptions;
 using ProductUserId = Epic.OnlineServices.ProductUserId;
+using RelayControl = Epic.OnlineServices.P2P.RelayControl;
 using Result = Epic.OnlineServices.Result;
+using SetRelayControlOptions = Epic.OnlineServices.P2P.SetRelayControlOptions;
 
 namespace Rebellion.Multiplayer
 {
@@ -95,6 +97,7 @@ namespace Rebellion.Multiplayer
 
         /// <summary>
         /// Initializes EOS and exchanges the verified store credential for a product user.
+        /// Configures platform relay fallback before its backend creates peer connections.
         /// </summary>
         /// <returns>The account's lobby backend.</returns>
         private async Task<EpicMultiplayerBackend> ConnectCoreAsync()
@@ -114,6 +117,12 @@ namespace Rebellion.Multiplayer
             _localUser = await LoginAsync();
             if (_disposed)
                 throw new ObjectDisposedException(nameof(EpicOnlineServicesClient));
+            SetRelayControlOptions relayOptions = new() { RelayControl = RelayControl.AllowRelays };
+            Result relayResult = sdk.GetEOSPlatformInterface()
+                .GetP2PInterface()
+                .SetRelayControl(ref relayOptions);
+            if (relayResult != Result.Success)
+                throw new InvalidOperationException("Enable relay fallback: " + relayResult);
             if (_expirationNotification == 0)
             {
                 AddNotifyAuthExpirationOptions options = new();

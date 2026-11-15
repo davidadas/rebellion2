@@ -74,3 +74,53 @@ two-account runtime validation.
 
 Tests mirror their subject's existing area under `Assets/Tests/EditMode/UnitTests`. Unity metadata moves
 with an existing asset; generated scenes, prefabs, and copied media remain outside the source change.
+
+## Headless EOS verification
+
+`Assets/Tests/Runtime/Multiplayer/Epic` owns the opt-in real-service integration runner. The runtime
+assembly is included in a player only when `REBELLION_EOS_TACTICAL_TEST` is explicitly supplied by the
+integration builder. Regular player builds exclude it. The runner uses the production coordinator,
+store authentication, EOS discovery and peer, ordered campaign, and tactical driver.
+
+Build one Windows x64 integration player from the current checkout with Unity's
+`-batchmode -nographics -quit -buildTarget StandaloneWindows64 -executeMethod EosTacticalIntegrationPlayerBuild.Build` arguments and
+`-eosTacticalBuildDirectory <absolute-directory-under-the-system-temp-directory>`. Supply the usual
+`-projectPath` and `-logFile` paths. The builder requires installed Windows native math and local EOS
+configuration under the existing ignored `Assets/StreamingAssets/EOS` path. Its build manifest records
+source and artifact fingerprints without player tokens or client configuration values.
+
+Start that same executable twice with `-batchmode -nographics`. Each process needs:
+
+- `-eosTacticalRole host` or `guest`.
+- The same `-eosTacticalRunID <32-character-GUID>` and
+  `-eosTacticalReportDirectory <absolute-report-root>`.
+- Separate absolute `-userDataPath`, `-saveDirectory`, `-playerSessionFile`, temporary directories,
+  and `-logFile` paths. The two session files must authenticate distinct real EOS product users.
+- `-contentPath <verified-external-content-root>`.
+
+Use `-eosTacticalCapitalsPerSide 1 -eosTacticalSquadronsPerSide 2` for the small carrier case, then
+`-eosTacticalCapitalsPerSide 24 -eosTacticalSquadronsPerSide 8` for the fleet case. Both participants
+must request the same roster and relay policy. Authored unit statistics and carrier capacities are
+retained. `-eosTacticalDeadlineSeconds` bounds wall-clock duration between 30 and 1800 seconds.
+
+With no withdrawal option, the battle must finish through normal combat. To exercise a deliberate
+human retreat in the large fleet case, pass `-eosTacticalGuestWithdrawalAtSystemTime 300` to both
+processes. Only the guest confirms withdrawal, once authoritative state has reached that system
+time and real capital/fighter firing and hull damage have occurred. The runner uses the regular
+withdrawal preparation and confirmation controls and fails if their eligibility check rejects it;
+it does not create a safe destination. Both reports must observe the guest's actual withdrawal,
+and the guest must submit exactly one authenticated withdrawal command. This case verifies retreat
+completion rather than an uninterrupted battle to destruction. Final result, effect, day-barrier,
+campaign fingerprint, and cleanup requirements remain the same. Omitting the option disables it.
+
+Run the relay case in fresh processes with a fresh run identity and
+`-eosTacticalForceRelay true` on both sides. Each authenticated platform applies and reads back the
+policy before negotiating its peer connection. A successful setting is insufficient: each report
+must contain an actual SDK route observation for the admitted counterpart and lobby socket, and
+every such observation must be `RelayedConnection`. A direct route fails the forced-relay run.
+
+Each role writes an incremental JSON report under `<report-root>/<run-id>`. Passing requires real
+authentication and launch, both participants' authenticated orders, capital and fighter discharges,
+impacts and hull damage, one agreed battle result and campaign-day resumption, matching terminal
+campaign fingerprints and effects, and completed connection cleanup. This verifies live service and
+transport behavior without opening game windows; it does not measure rendered frame rate.
