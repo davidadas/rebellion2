@@ -192,7 +192,9 @@ namespace Rebellion.Tests.Multiplayer
             );
         }
 
-        /// <summary>Builds a complete checked effects envelope containing deliberately malformed schema bytes.</summary>
+        /// <summary>
+        /// Builds a complete checked effects envelope containing deliberately malformed schema bytes.
+        /// </summary>
         /// <param name="raw">The malformed uncompressed schema.</param>
         /// <returns>The versioned independently compressed envelope.</returns>
         private static byte[] EffectsEnvelope(byte[] raw)
@@ -219,7 +221,9 @@ namespace Rebellion.Tests.Multiplayer
             return envelope.ToArray();
         }
 
-        /// <summary>Creates a fully populated frame wire fixture.</summary>
+        /// <summary>
+        /// Creates a fully populated frame wire fixture.
+        /// </summary>
         /// <returns>The detached fixture.</returns>
         private static TacticalCombatNetworkFrame CreateFrame() =>
             new()
@@ -248,7 +252,9 @@ namespace Rebellion.Tests.Multiplayer
                 Effects = new[] { CreateEffect() },
             };
 
-        /// <summary>Creates a fully populated unit wire fixture.</summary>
+        /// <summary>
+        /// Creates a fully populated unit wire fixture.
+        /// </summary>
         /// <returns>The detached fixture.</returns>
         private static TacticalCombatNetworkUnitState CreateUnit() =>
             new()
@@ -284,7 +290,9 @@ namespace Rebellion.Tests.Multiplayer
                 RequestedGroupID = 29,
             };
 
-        /// <summary>Creates a fully populated group wire fixture.</summary>
+        /// <summary>
+        /// Creates a fully populated group wire fixture.
+        /// </summary>
         /// <returns>The detached fixture.</returns>
         private static TacticalCombatNetworkGroupState CreateGroup() =>
             new()
@@ -343,7 +351,9 @@ namespace Rebellion.Tests.Multiplayer
                 AttackRunMilliseconds = 31.125f,
             };
 
-        /// <summary>Creates a fully populated side wire fixture.</summary>
+        /// <summary>
+        /// Creates a fully populated side wire fixture.
+        /// </summary>
         /// <returns>The detached fixture.</returns>
         private static TacticalCombatNetworkSideState CreateSide() =>
             new()
@@ -358,7 +368,9 @@ namespace Rebellion.Tests.Multiplayer
                 AttackBudget = 8.125f,
             };
 
-        /// <summary>Creates a fully populated selection wire fixture.</summary>
+        /// <summary>
+        /// Creates a fully populated selection wire fixture.
+        /// </summary>
         /// <returns>The detached fixture.</returns>
         private static TacticalCombatNetworkSelectionState CreateSelection() =>
             new()
@@ -386,7 +398,9 @@ namespace Rebellion.Tests.Multiplayer
                 Groups = new[] { 1, 2, 3 },
             };
 
-        /// <summary>Creates a fully populated effect wire fixture.</summary>
+        /// <summary>
+        /// Creates a fully populated effect wire fixture.
+        /// </summary>
         /// <returns>The detached fixture.</returns>
         private static TacticalCombatNetworkEffect CreateEffect() =>
             new()
@@ -404,7 +418,9 @@ namespace Rebellion.Tests.Multiplayer
                 Recipient = (CombatSide)11,
             };
 
-        /// <summary>Creates a fully populated vector wire fixture.</summary>
+        /// <summary>
+        /// Creates a fully populated vector wire fixture.
+        /// </summary>
         /// <returns>The detached fixture.</returns>
         private static TacticalCombatNetworkVector CreateVector() =>
             new()

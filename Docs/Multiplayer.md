@@ -10,8 +10,8 @@ this is a two-player listen-host design.
 Simulation advancement does not wait for snapshot receipts. The host publishes at most one current
 snapshot per local update, normally at 20 Hz. Initial state, movie transitions, and completion publish
 immediately. Rendering advances independently and samples a bounded, timestamped presentation history.
-Interpolation changes displayed poses and departure presentation only; it never changes authoritative
-positions, damage, targeting, command execution, or campaign outcomes.
+Presentation sampling covers poses, visibility, lifecycle transitions, and departure animation; it never
+changes authoritative positions, damage, targeting, command execution, or campaign outcomes.
 
 ## Delivery contracts
 
@@ -31,6 +31,9 @@ one newest completed state. Incomplete assemblies expire independently; completi
 retires older work. Receiving one fragment from a newer snapshot does not discard an older assembly
 that could still complete. Send backpressure discards replaceable work. Reliable commands do not wait
 for the replaceable send path, and reliable sends have separate packet and byte retention bounds.
+One XOR parity fragment per four data fragments can recover one missing data fragment in each group.
+Parity storage counts toward the same assembly budget. Loss beyond that capability discards incomplete
+state and relies on a newer complete snapshot or a reliable checkpoint.
 
 Effects have a separate contiguous batch sequence. Each batch identifies the state and presentation
 timestamp it needs. The guest releases it only after that state is available and its display cursor

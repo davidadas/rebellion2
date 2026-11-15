@@ -4,7 +4,9 @@ using System.Threading;
 
 namespace Rebellion.Multiplayer
 {
-    /// <summary>Accounts for reliable packet ownership before asynchronous transport work can retain it.</summary>
+    /// <summary>
+    /// Accounts for reliable packet ownership before asynchronous transport work can retain it.
+    /// </summary>
     internal sealed class MultiplayerSendBudget
     {
         internal const int MaximumPackets = 256;
@@ -37,7 +39,9 @@ namespace Rebellion.Multiplayer
             }
         }
 
-        /// <summary>Captures reliable retention limits while admitting a maximum legal bulk packet by default.</summary>
+        /// <summary>
+        /// Captures reliable retention limits while admitting a maximum legal bulk packet by default.
+        /// </summary>
         /// <param name="maximumPackets">The total reliable packet count limit.</param>
         /// <param name="maximumBytes">The total retained wire byte limit, or the bulk maximum plus tactical allowance.</param>
         /// <param name="maximumTacticalPackets">The reliable tactical packet count limit.</param>
@@ -64,7 +68,9 @@ namespace Rebellion.Multiplayer
                 throw new ArgumentOutOfRangeException(nameof(maximumPackets));
         }
 
-        /// <summary>Reserves both packet and byte ownership without awaiting or retaining overflow work.</summary>
+        /// <summary>
+        /// Reserves both packet and byte ownership without awaiting or retaining overflow work.
+        /// </summary>
         /// <param name="encodedBytes">The validated complete wire packet size.</param>
         /// <param name="tactical">Whether the packet also consumes the tighter tactical allowance.</param>
         /// <returns>The independently idempotent ownership token.</returns>
@@ -97,7 +103,9 @@ namespace Rebellion.Multiplayer
             }
         }
 
-        /// <summary>Releases the packet ownership belonging to one completed or cancelled reservation.</summary>
+        /// <summary>
+        /// Releases the packet ownership belonging to one completed or cancelled reservation.
+        /// </summary>
         /// <param name="encodedBytes">The reserved complete wire size.</param>
         /// <param name="tactical">Whether the reservation also consumed tactical allowance.</param>
         private void Release(int encodedBytes, bool tactical)
@@ -114,14 +122,18 @@ namespace Rebellion.Multiplayer
             }
         }
 
-        /// <summary>Owns one reliable packet's retention until its transport operation ends.</summary>
+        /// <summary>
+        /// Owns one reliable packet's retention until its transport operation ends.
+        /// </summary>
         internal sealed class Reservation : IDisposable
         {
             private MultiplayerSendBudget _owner;
             private readonly int _encodedBytes;
             private readonly bool _tactical;
 
-            /// <summary>Captures one already admitted reliable packet reservation.</summary>
+            /// <summary>
+            /// Captures one already admitted reliable packet reservation.
+            /// </summary>
             /// <param name="owner">The retention budget that admitted it.</param>
             /// <param name="encodedBytes">The complete reserved wire size.</param>
             /// <param name="tactical">Whether tactical allowance was reserved.</param>
@@ -132,7 +144,9 @@ namespace Rebellion.Multiplayer
                 _tactical = tactical;
             }
 
-            /// <summary>Releases this ownership once, including repeated cancellation or cleanup calls.</summary>
+            /// <summary>
+            /// Releases this ownership once, including repeated cancellation or cleanup calls.
+            /// </summary>
             public void Dispose() =>
                 Interlocked.Exchange(ref _owner, null)?.Release(_encodedBytes, _tactical);
         }

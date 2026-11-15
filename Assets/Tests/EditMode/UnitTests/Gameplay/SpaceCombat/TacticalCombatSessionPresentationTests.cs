@@ -17,6 +17,9 @@ namespace Rebellion.Tests.Gameplay
         private TacticalCombatSession replica;
         private SystemRandomProvider replicaRandom;
 
+        /// <summary>
+        /// Creates independent authority and replica encounters before each presentation assertion.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -27,6 +30,9 @@ namespace Rebellion.Tests.Gameplay
             replica.ConfigureNetworkReplica();
         }
 
+        /// <summary>
+        /// Releases encounter references after each isolated presentation assertion.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {

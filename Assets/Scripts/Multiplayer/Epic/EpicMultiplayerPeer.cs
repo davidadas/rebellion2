@@ -309,7 +309,9 @@ namespace Rebellion.Multiplayer
             return _sendScheduler.SendAsync(packet, _cancellation.Token);
         }
 
-        /// <summary>Writes one reliable packet after bounded transport ownership has acquired its ordered writer gate.</summary>
+        /// <summary>
+        /// Writes one reliable packet after bounded transport ownership has acquired its ordered writer gate.
+        /// </summary>
         /// <param name="packet">The admitted complete reliable packet.</param>
         /// <param name="cancellationToken">Cancels active provider I/O.</param>
         /// <returns>The reliable packet write.</returns>

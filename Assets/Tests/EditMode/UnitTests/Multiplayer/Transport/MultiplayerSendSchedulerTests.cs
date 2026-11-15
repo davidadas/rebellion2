@@ -192,7 +192,9 @@ namespace Rebellion.Tests.Multiplayer
             Assert.Zero(budget.RetainedBytes);
         }
 
-        /// <summary>Awaits cancellation without accepting ordinary completion as cleanup evidence.</summary>
+        /// <summary>
+        /// Awaits cancellation without accepting ordinary completion as cleanup evidence.
+        /// </summary>
         /// <param name="pending">The cancelled transport operation.</param>
         /// <returns>The observed cancellation boundary.</returns>
         private static async Task RequireCancellationAsync(Task pending)

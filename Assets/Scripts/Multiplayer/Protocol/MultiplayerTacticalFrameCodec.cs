@@ -8,7 +8,9 @@ using Rebellion.Gameplay;
 
 namespace Rebellion.Multiplayer
 {
-    /// <summary>Encodes complete tactical projections and effects without shared compression baselines.</summary>
+    /// <summary>
+    /// Encodes complete tactical projections and effects without shared compression baselines.
+    /// </summary>
     internal static class MultiplayerTacticalFrameCodec
     {
         internal const int MaxFramePayloadBytes = 4 * 1024 * 1024;
@@ -20,7 +22,9 @@ namespace Rebellion.Multiplayer
         private static readonly Encoding _utf8 = new UTF8Encoding(false, true);
         private static readonly uint[] _checksums = CreateChecksumTable();
 
-        /// <summary>Encodes one independently decodable complete projection.</summary>
+        /// <summary>
+        /// Encodes one independently decodable complete projection.
+        /// </summary>
         /// <param name="frame">The complete captured projection.</param>
         /// <returns>The versioned compressed binary payload.</returns>
         internal static byte[] Encode(TacticalCombatNetworkFrame frame)
@@ -30,7 +34,9 @@ namespace Rebellion.Multiplayer
             return Pack(1, writer => new Encoder(writer).Frame(frame));
         }
 
-        /// <summary>Decodes one bounded independently compressed projection.</summary>
+        /// <summary>
+        /// Decodes one bounded independently compressed projection.
+        /// </summary>
         /// <param name="payload">The complete versioned payload.</param>
         /// <returns>The detached tactical projection.</returns>
         internal static TacticalCombatNetworkFrame Decode(byte[] payload)
@@ -42,7 +48,9 @@ namespace Rebellion.Multiplayer
             return frame;
         }
 
-        /// <summary>Encodes an ordered effect batch independently of state projections.</summary>
+        /// <summary>
+        /// Encodes an ordered effect batch independently of state projections.
+        /// </summary>
         /// <param name="effects">The ordered captured effects.</param>
         /// <returns>The versioned compressed effect batch.</returns>
         internal static byte[] EncodeEffects(TacticalCombatNetworkEffect[] effects)
@@ -59,7 +67,9 @@ namespace Rebellion.Multiplayer
             );
         }
 
-        /// <summary>Decodes one bounded ordered effect batch.</summary>
+        /// <summary>
+        /// Decodes one bounded ordered effect batch.
+        /// </summary>
         /// <param name="payload">The versioned effect payload.</param>
         /// <returns>The detached ordered effects.</returns>
         internal static TacticalCombatNetworkEffect[] DecodeEffects(byte[] payload)
@@ -72,7 +82,9 @@ namespace Rebellion.Multiplayer
             return effects;
         }
 
-        /// <summary>Writes and compresses a closed payload with expansion and integrity bounds.</summary>
+        /// <summary>
+        /// Writes and compresses a closed payload with expansion and integrity bounds.
+        /// </summary>
         /// <param name="kind">The closed payload kind.</param>
         /// <param name="write">The explicit schema writer.</param>
         /// <returns>The independently compressed envelope.</returns>
@@ -102,7 +114,9 @@ namespace Rebellion.Multiplayer
             return destination.ToArray();
         }
 
-        /// <summary>Validates the envelope before bounded expansion and complete checksum verification.</summary>
+        /// <summary>
+        /// Validates the envelope before bounded expansion and complete checksum verification.
+        /// </summary>
         /// <param name="payload">The complete compressed envelope.</param>
         /// <param name="kind">The required payload kind.</param>
         /// <returns>The verified raw schema stream.</returns>
@@ -151,7 +165,9 @@ namespace Rebellion.Multiplayer
             return new MemoryStream(bytes, false);
         }
 
-        /// <summary>Rejects trailing unparsed schema bytes.</summary>
+        /// <summary>
+        /// Rejects trailing unparsed schema bytes.
+        /// </summary>
         /// <param name="stream">The decoded schema stream.</param>
         private static void RequireEnd(MemoryStream stream)
         {
@@ -159,7 +175,9 @@ namespace Rebellion.Multiplayer
                 throw new InvalidDataException("The tactical schema contains trailing bytes.");
         }
 
-        /// <summary>Builds the fixed byte-indexed checksum table.</summary>
+        /// <summary>
+        /// Builds the fixed byte-indexed checksum table.
+        /// </summary>
         /// <returns>The CRC table.</returns>
         private static uint[] CreateChecksumTable()
         {
@@ -174,7 +192,9 @@ namespace Rebellion.Multiplayer
             return values;
         }
 
-        /// <summary>Checksums all raw schema bytes.</summary>
+        /// <summary>
+        /// Checksums all raw schema bytes.
+        /// </summary>
         /// <param name="bytes">The raw payload.</param>
         /// <returns>The CRC checksum.</returns>
         private static uint Checksum(byte[] bytes)
@@ -185,17 +205,23 @@ namespace Rebellion.Multiplayer
             return ~value;
         }
 
-        /// <summary>Writes the closed schema with payload-local exact identity interning.</summary>
+        /// <summary>
+        /// Writes the closed schema with payload-local exact identity interning.
+        /// </summary>
         private sealed class Encoder
         {
             private readonly BinaryWriter _writer;
             private readonly Dictionary<string, int> _identities = new(StringComparer.Ordinal);
 
-            /// <summary>Attaches the explicit schema writer.</summary>
+            /// <summary>
+            /// Attaches the explicit schema writer.
+            /// </summary>
             /// <param name="writer">The raw destination.</param>
             internal Encoder(BinaryWriter writer) => _writer = writer;
 
-            /// <summary>Writes a bounded ordered collection.</summary>
+            /// <summary>
+            /// Writes a bounded ordered collection.
+            /// </summary>
             /// <typeparam name="T">The closed element type.</typeparam>
             /// <param name="values">The ordered elements.</param>
             /// <param name="write">The explicit element writer.</param>
@@ -215,7 +241,9 @@ namespace Rebellion.Multiplayer
                 }
             }
 
-            /// <summary>Writes a nullable identity or an earlier payload-local index.</summary>
+            /// <summary>
+            /// Writes a nullable identity or an earlier payload-local index.
+            /// </summary>
             /// <param name="value">The optional exact identity.</param>
             private void ID(string value)
             {
@@ -238,7 +266,9 @@ namespace Rebellion.Multiplayer
                 _writer.Write(bytes);
             }
 
-            /// <summary>Writes one frame through its explicit field schema.</summary>
+            /// <summary>
+            /// Writes one frame through its explicit field schema.
+            /// </summary>
             /// <param name="value">The captured frame.</param>
             internal void Frame(TacticalCombatNetworkFrame value)
             {
@@ -268,7 +298,9 @@ namespace Rebellion.Multiplayer
                 Array(value.Effects, item => Effect(item), 65536);
             }
 
-            /// <summary>Writes one unit through its explicit field schema.</summary>
+            /// <summary>
+            /// Writes one unit through its explicit field schema.
+            /// </summary>
             /// <param name="value">The captured unit.</param>
             internal void Unit(TacticalCombatNetworkUnitState value)
             {
@@ -305,7 +337,9 @@ namespace Rebellion.Multiplayer
                 _writer.Write(value.RequestedGroupID);
             }
 
-            /// <summary>Writes one group through its explicit field schema.</summary>
+            /// <summary>
+            /// Writes one group through its explicit field schema.
+            /// </summary>
             /// <param name="value">The captured group.</param>
             internal void Group(TacticalCombatNetworkGroupState value)
             {
@@ -344,7 +378,9 @@ namespace Rebellion.Multiplayer
                 _writer.Write(value.AttackRunMilliseconds);
             }
 
-            /// <summary>Writes one side through its explicit field schema.</summary>
+            /// <summary>
+            /// Writes one side through its explicit field schema.
+            /// </summary>
             /// <param name="value">The captured side.</param>
             internal void Side(TacticalCombatNetworkSideState value)
             {
@@ -360,7 +396,9 @@ namespace Rebellion.Multiplayer
                 _writer.Write(value.AttackBudget);
             }
 
-            /// <summary>Writes one selection through its explicit field schema.</summary>
+            /// <summary>
+            /// Writes one selection through its explicit field schema.
+            /// </summary>
             /// <param name="value">The captured selection.</param>
             internal void Selection(TacticalCombatNetworkSelectionState value)
             {
@@ -382,7 +420,9 @@ namespace Rebellion.Multiplayer
                 Array(value.Groups, item => _writer.Write(item), 65536);
             }
 
-            /// <summary>Writes one effect through its explicit field schema.</summary>
+            /// <summary>
+            /// Writes one effect through its explicit field schema.
+            /// </summary>
             /// <param name="value">The captured effect.</param>
             internal void Effect(TacticalCombatNetworkEffect value)
             {
@@ -401,7 +441,9 @@ namespace Rebellion.Multiplayer
                 _writer.Write((int)value.Recipient);
             }
 
-            /// <summary>Writes one vector through its explicit field schema.</summary>
+            /// <summary>
+            /// Writes one vector through its explicit field schema.
+            /// </summary>
             /// <param name="value">The captured vector.</param>
             internal void Vector(TacticalCombatNetworkVector value)
             {
@@ -411,17 +453,23 @@ namespace Rebellion.Multiplayer
             }
         }
 
-        /// <summary>Reads the closed schema while bounding collections and identity references.</summary>
+        /// <summary>
+        /// Reads the closed schema while bounding collections and identity references.
+        /// </summary>
         private sealed class Decoder
         {
             private readonly BinaryReader _reader;
             private readonly List<string> _identities = new();
 
-            /// <summary>Attaches the explicit schema reader.</summary>
+            /// <summary>
+            /// Attaches the explicit schema reader.
+            /// </summary>
             /// <param name="reader">The verified raw source.</param>
             internal Decoder(BinaryReader reader) => _reader = reader;
 
-            /// <summary>Reads a bounded ordered collection.</summary>
+            /// <summary>
+            /// Reads a bounded ordered collection.
+            /// </summary>
             /// <typeparam name="T">The closed element type.</typeparam>
             /// <param name="read">The explicit element reader.</param>
             /// <param name="maximum">The admitted count limit.</param>
@@ -441,7 +489,9 @@ namespace Rebellion.Multiplayer
                 return values;
             }
 
-            /// <summary>Reads an explicitly encoded Boolean.</summary>
+            /// <summary>
+            /// Reads an explicitly encoded Boolean.
+            /// </summary>
             /// <returns>The decoded Boolean.</returns>
             private bool Boolean()
             {
@@ -451,7 +501,9 @@ namespace Rebellion.Multiplayer
                 return value != 0;
             }
 
-            /// <summary>Reads a nullable identity or a validated earlier identity reference.</summary>
+            /// <summary>
+            /// Reads a nullable identity or a validated earlier identity reference.
+            /// </summary>
             /// <returns>The optional exact identity.</returns>
             private string ID()
             {
@@ -473,7 +525,9 @@ namespace Rebellion.Multiplayer
                 return value;
             }
 
-            /// <summary>Reads one frame through its explicit field schema.</summary>
+            /// <summary>
+            /// Reads one frame through its explicit field schema.
+            /// </summary>
             /// <returns>The detached frame.</returns>
             internal TacticalCombatNetworkFrame Frame() =>
                 new()
@@ -502,7 +556,9 @@ namespace Rebellion.Multiplayer
                     Effects = Array(() => Effect(), 65536),
                 };
 
-            /// <summary>Reads one unit through its explicit field schema.</summary>
+            /// <summary>
+            /// Reads one unit through its explicit field schema.
+            /// </summary>
             /// <returns>The detached unit.</returns>
             internal TacticalCombatNetworkUnitState Unit() =>
                 new()
@@ -538,7 +594,9 @@ namespace Rebellion.Multiplayer
                     RequestedGroupID = _reader.ReadInt32(),
                 };
 
-            /// <summary>Reads one group through its explicit field schema.</summary>
+            /// <summary>
+            /// Reads one group through its explicit field schema.
+            /// </summary>
             /// <returns>The detached group.</returns>
             internal TacticalCombatNetworkGroupState Group() =>
                 new()
@@ -576,7 +634,9 @@ namespace Rebellion.Multiplayer
                     AttackRunMilliseconds = _reader.ReadSingle(),
                 };
 
-            /// <summary>Reads one side through its explicit field schema.</summary>
+            /// <summary>
+            /// Reads one side through its explicit field schema.
+            /// </summary>
             /// <returns>The detached side.</returns>
             internal TacticalCombatNetworkSideState Side() =>
                 new()
@@ -591,7 +651,9 @@ namespace Rebellion.Multiplayer
                     AttackBudget = _reader.ReadSingle(),
                 };
 
-            /// <summary>Reads one selection through its explicit field schema.</summary>
+            /// <summary>
+            /// Reads one selection through its explicit field schema.
+            /// </summary>
             /// <returns>The detached selection.</returns>
             internal TacticalCombatNetworkSelectionState Selection() =>
                 new()
@@ -612,7 +674,9 @@ namespace Rebellion.Multiplayer
                     Groups = Array(() => _reader.ReadInt32(), 65536),
                 };
 
-            /// <summary>Reads one effect through its explicit field schema.</summary>
+            /// <summary>
+            /// Reads one effect through its explicit field schema.
+            /// </summary>
             /// <returns>The detached effect.</returns>
             internal TacticalCombatNetworkEffect Effect() =>
                 new()
@@ -630,7 +694,9 @@ namespace Rebellion.Multiplayer
                     Recipient = (CombatSide)_reader.ReadInt32(),
                 };
 
-            /// <summary>Reads one vector through its explicit field schema.</summary>
+            /// <summary>
+            /// Reads one vector through its explicit field schema.
+            /// </summary>
             /// <returns>The detached vector.</returns>
             internal TacticalCombatNetworkVector Vector() =>
                 new()

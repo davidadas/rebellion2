@@ -4,7 +4,9 @@ using System.Threading.Tasks;
 
 namespace Rebellion.Multiplayer
 {
-    /// <summary>Bounds reliable asynchronous sends while keeping replaceable snapshots outside their writer gate.</summary>
+    /// <summary>
+    /// Bounds reliable asynchronous sends while keeping replaceable snapshots outside their writer gate.
+    /// </summary>
     internal sealed class MultiplayerSendScheduler
     {
         private readonly SemaphoreSlim _sendGate = new(1, 1);
@@ -12,7 +14,9 @@ namespace Rebellion.Multiplayer
         private readonly Func<MultiplayerPacket, CancellationToken, Task> _writeReliable;
         private readonly Func<MultiplayerPacket, bool> _trySnapshot;
 
-        /// <summary>Captures reliable I/O, immediate snapshot attempts, and their retention owner.</summary>
+        /// <summary>
+        /// Captures reliable I/O, immediate snapshot attempts, and their retention owner.
+        /// </summary>
         /// <param name="writeReliable">Writes one reliable packet after the writer gate is acquired.</param>
         /// <param name="trySnapshot">Immediately accepts or drops one replaceable snapshot attempt.</param>
         /// <param name="budget">The optional provider-specific reliable retention budget.</param>
@@ -28,7 +32,9 @@ namespace Rebellion.Multiplayer
             _budget = budget ?? new MultiplayerSendBudget();
         }
 
-        /// <summary>Attempts snapshots immediately or reserves reliable ownership before any asynchronous wait.</summary>
+        /// <summary>
+        /// Attempts snapshots immediately or reserves reliable ownership before any asynchronous wait.
+        /// </summary>
         /// <param name="packet">The complete typed outgoing packet.</param>
         /// <param name="cancellationToken">Cancels queued or active reliable I/O.</param>
         /// <returns>The reliable send lifetime, or an already completed replaceable attempt.</returns>
@@ -51,7 +57,9 @@ namespace Rebellion.Multiplayer
             return SendReliableAsync(packet, reservation, cancellationToken);
         }
 
-        /// <summary>Releases retained ownership across queued cancellation, I/O failure, and ordinary completion.</summary>
+        /// <summary>
+        /// Releases retained ownership across queued cancellation, I/O failure, and ordinary completion.
+        /// </summary>
         /// <param name="packet">The admitted reliable packet.</param>
         /// <param name="reservation">The packet's already reserved retention ownership.</param>
         /// <param name="cancellationToken">Cancels its gate wait and provider write.</param>

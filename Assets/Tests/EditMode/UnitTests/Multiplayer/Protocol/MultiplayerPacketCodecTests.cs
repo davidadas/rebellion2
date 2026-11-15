@@ -238,7 +238,9 @@ namespace Rebellion.Tests.Multiplayer
             CollectionAssert.AreEqual(expected.Payload, actual.Payload);
         }
 
-        /// <summary>Creates a header without allocating or supplying its declared body.</summary>
+        /// <summary>
+        /// Creates a header without allocating or supplying its declared body.
+        /// </summary>
         /// <param name="type">The declared wire message type.</param>
         /// <param name="metadataLength">The declared metadata byte length.</param>
         /// <param name="payloadLength">The declared payload byte length.</param>

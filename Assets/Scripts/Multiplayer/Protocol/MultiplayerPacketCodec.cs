@@ -25,7 +25,9 @@ namespace Rebellion.Multiplayer
         public static int MaximumPacketLength =>
             _headerLength + _maximumMetadataLength + _maximumPayloadLength;
 
-        /// <summary>Validates a typed packet and measures its complete wire size before transport retention.</summary>
+        /// <summary>
+        /// Validates a typed packet and measures its complete wire size before transport retention.
+        /// </summary>
         /// <param name="packet">The complete outgoing packet.</param>
         /// <returns>The validated header, UTF-8 metadata, and payload byte count.</returns>
         internal static int GetEncodedLength(MultiplayerPacket packet)

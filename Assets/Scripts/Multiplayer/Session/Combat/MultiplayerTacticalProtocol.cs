@@ -23,9 +23,9 @@ namespace Rebellion.Multiplayer
         internal const double ReadinessTimeoutMilliseconds = 120000;
         internal const double InactivityTimeoutMilliseconds = 30000;
         internal const double TerminalTimeoutMilliseconds = 30000;
-        private const int MaximumQueuedBytes = 8 * 1024 * 1024;
-        private const double CheckpointIntervalMilliseconds = 1000;
-        private const double ResyncIntervalMilliseconds = 2000;
+        private const int _maximumQueuedBytes = 8 * 1024 * 1024;
+        private const double _checkpointIntervalMilliseconds = 1000;
+        private const double _resyncIntervalMilliseconds = 2000;
         private readonly MultiplayerRole _role;
         private readonly string _initializationID;
         private readonly string _battleID;
@@ -298,7 +298,7 @@ namespace Rebellion.Multiplayer
                         RequireRole(MultiplayerRole.Host);
                         if (
                             _latestFrame != null
-                            && Now() - _lastCheckpointAt >= CheckpointIntervalMilliseconds
+                            && Now() - _lastCheckpointAt >= _checkpointIntervalMilliseconds
                         )
                             SendCheckpoint();
                         break;
@@ -372,15 +372,15 @@ namespace Rebellion.Multiplayer
                 if (
                     CanAdvance
                     && _latestFrame != null
-                    && Now() - _lastCheckpointAt >= CheckpointIntervalMilliseconds
+                    && Now() - _lastCheckpointAt >= _checkpointIntervalMilliseconds
                 )
                     SendCheckpoint();
                 else if (
                     _role == MultiplayerRole.Guest
                     && _localReady
                     && _remoteReady
-                    && Now() - _lastStateAt >= ResyncIntervalMilliseconds
-                    && Now() - _lastResyncAt >= ResyncIntervalMilliseconds
+                    && Now() - _lastStateAt >= _resyncIntervalMilliseconds
+                    && Now() - _lastResyncAt >= _resyncIntervalMilliseconds
                 )
                 {
                     _lastResyncAt = Now();
@@ -417,14 +417,15 @@ namespace Rebellion.Multiplayer
                     frame.Effects
                     ?? throw new InvalidDataException("The captured battle effects are missing.");
                 frame.Effects = Array.Empty<TacticalCombatNetworkEffect>();
-                frame.TimestampMilliseconds = Now();
+                // Whole milliseconds give binary state and JSON effect metadata the same exact cursor boundary.
+                frame.TimestampMilliseconds = Math.Floor(Now());
                 long watermark =
                     effects.Length == 0 ? _lastPublishedEffect : checked(_lastPublishedEffect + 1);
                 bool checkpoint =
                     _latestFrame == null
                     || frame.MovieID != _latestFrame.MovieID
                     || frame.Complete
-                    || Now() - _lastCheckpointAt >= CheckpointIntervalMilliseconds;
+                    || Now() - _lastCheckpointAt >= _checkpointIntervalMilliseconds;
                 _latestFrame = frame;
                 _latestEffectWatermark = watermark;
                 _lastFrame = sequence;
@@ -676,7 +677,7 @@ namespace Rebellion.Multiplayer
                 );
             if (
                 _pendingEffects.Count >= MaximumPendingEffectBatches
-                || item.Payload.Length > MaximumQueuedBytes - _pendingEffectBytes
+                || item.Payload.Length > _maximumQueuedBytes - _pendingEffectBytes
             )
                 throw new InvalidDataException("Too many battle effects await applicable state.");
             _lastReceivedEffect = item.Envelope.effectSequence;
@@ -751,7 +752,7 @@ namespace Rebellion.Multiplayer
         {
             if (
                 _events.Count >= MaximumQueuedEvents
-                || item.Payload.Length > MaximumQueuedBytes - _queuedBytes
+                || item.Payload.Length > _maximumQueuedBytes - _queuedBytes
             )
                 throw new InvalidDataException("The battle event queue exceeded its limit.");
             _queuedBytes += item.Payload.Length;

@@ -468,6 +468,32 @@ namespace Rebellion.Tests.Multiplayer
             );
         }
 
+        [TestCase(0.1)]
+        [TestCase(0.10000000000000002)]
+        [TestCase(1234.5678901234567)]
+        [TestCase(16777216.100000001)]
+        [TestCase(1234567890.1234567)]
+        public void Receive_FractionalTerminalTimestamp_CompletesAtTheFinalBinaryStateCursor(
+            double timestamp
+        )
+        {
+            using PeerPair peers = new(delayEffects: true);
+            peers.Milliseconds = timestamp;
+            peers.Ready();
+            peers.Complete = true;
+            peers.NextEffects = Notices(21);
+            peers.Host.PublishFrame();
+            peers.Deliver();
+
+            peers.PresentationMilliseconds = peers.Applied.Single().TimestampMilliseconds;
+            peers.Deliver();
+
+            Assert.IsNull(peers.Host.Failure);
+            Assert.IsNull(peers.Guest.Failure);
+            Assert.AreEqual(1, peers.Effects.Count);
+            Assert.IsTrue(peers.Host.TerminalFrameAcknowledged);
+        }
+
         [Test]
         public void Receive_TerminalCheckpoint_WaitsForReliableEffectsAndPresentationCursor()
         {

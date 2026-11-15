@@ -263,7 +263,7 @@ namespace Rebellion.Tests.Multiplayer
                 }
             );
             Assert.IsTrue(sender.TrySend(Packet(10, 1)));
-            Assert.AreEqual(1, nestedAttempts);
+            Assert.AreEqual(2, nestedAttempts);
         }
 
         [Test]
@@ -275,6 +275,196 @@ namespace Rebellion.Tests.Multiplayer
             receiver.Receive(new(datagrams[0]));
             datagrams[0][datagrams[0].Length - 1] ^= 1;
             Assert.Throws<InvalidDataException>(() => receiver.Receive(new(datagrams[0])));
+        }
+
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(3)]
+        public void Receive_OneDataErasurePerParityGroup_RestoresExactSnapshot(int erasedOffset)
+        {
+            List<byte[]> datagrams = new();
+            MultiplayerSnapshotDatagrams sender = CreateSender(datagrams);
+            MultiplayerPacket original = Packet(850, 12);
+            sender.TrySend(original);
+            MultiplayerSnapshotDatagrams receiver = CreateSender(new());
+            MultiplayerPacket restored = null;
+
+            foreach (byte[] datagram in datagrams.AsEnumerable().Reverse())
+            {
+                if (datagram[5] == 0 && FragmentIndex(datagram) % 4 == erasedOffset)
+                    continue;
+                restored = receiver.Receive(new(datagram)) ?? restored;
+            }
+
+            Assert.IsNotNull(restored);
+            Assert.AreEqual(original.Metadata, restored.Metadata);
+            CollectionAssert.AreEqual(original.Payload, restored.Payload);
+            Assert.Zero(receiver.BufferedBytes);
+        }
+
+        [Test]
+        public void Receive_AllParityFragmentsLost_RestoresSnapshotFromDataAlone()
+        {
+            List<byte[]> datagrams = new();
+            MultiplayerPacket original = Packet(1000, 12);
+            CreateSender(datagrams).TrySend(original);
+            MultiplayerSnapshotDatagrams receiver = CreateSender(new());
+            MultiplayerPacket restored = null;
+
+            foreach (byte[] datagram in datagrams.Where(datagram => datagram[5] == 0).Reverse())
+                restored = receiver.Receive(new(datagram)) ?? restored;
+
+            Assert.IsNotNull(restored);
+            CollectionAssert.AreEqual(original.Payload, restored.Payload);
+            Assert.Zero(receiver.BufferedBytes);
+        }
+
+        [Test]
+        public void Receive_TwoDataErasuresInOneGroup_RetainsIncompleteSnapshotUntilExpiry()
+        {
+            double now = 0;
+            List<byte[]> datagrams = new();
+            CreateSender(datagrams).TrySend(Packet(1000, 12));
+            MultiplayerSnapshotDatagrams receiver = new(128, _ => true, () => now);
+
+            foreach (byte[] datagram in datagrams)
+            {
+                if (datagram[5] == 0 && FragmentIndex(datagram) < 2)
+                    continue;
+                Assert.IsNull(receiver.Receive(new(datagram)));
+            }
+
+            Assert.AreEqual(1, receiver.BufferedAssemblies);
+            Assert.Greater(receiver.BufferedBytes, 0);
+            now = MultiplayerSnapshotDatagrams.AssemblyLifetimeMilliseconds;
+            receiver.Expire();
+            Assert.Zero(receiver.BufferedBytes);
+            foreach (byte[] datagram in datagrams)
+                Assert.IsNull(receiver.Receive(new(datagram)));
+        }
+
+        [Test]
+        public void Receive_DuplicateParityChangesBytes_RejectsConflictWithoutAdditionalStorage()
+        {
+            List<byte[]> datagrams = new();
+            CreateSender(datagrams).TrySend(Packet(1000, 12));
+            byte[] parity = datagrams.First(datagram => datagram[5] == 1);
+            MultiplayerSnapshotDatagrams receiver = CreateSender(new());
+            Assert.IsNull(receiver.Receive(new(parity)));
+            int buffered = receiver.BufferedBytes;
+            Assert.IsNull(receiver.Receive(new(parity)));
+            Assert.AreEqual(buffered, receiver.BufferedBytes);
+            byte[] changed = (byte[])parity.Clone();
+            changed[changed.Length - 1] ^= 1;
+
+            Assert.Throws<InvalidDataException>(() => receiver.Receive(new(changed)));
+
+            Assert.AreEqual(buffered, receiver.BufferedBytes);
+        }
+
+        [Test]
+        public void Receive_ActualDataConflictsWithRecoveredFragment_RejectsChangedBytes()
+        {
+            List<byte[]> datagrams = new();
+            CreateSender(datagrams).TrySend(Packet(1000, 12));
+            MultiplayerSnapshotDatagrams receiver = CreateSender(new());
+            receiver.Receive(new(datagrams.First(datagram => datagram[5] == 1)));
+            foreach (
+                byte[] datagram in datagrams.Where(datagram =>
+                    datagram[5] == 0 && FragmentIndex(datagram) is > 0 and < 4
+                )
+            )
+                receiver.Receive(new(datagram));
+            byte[] recovered = (byte[])datagrams.First(datagram => datagram[5] == 0).Clone();
+            recovered[recovered.Length - 1] ^= 1;
+
+            Assert.Throws<InvalidDataException>(() => receiver.Receive(new(recovered)));
+        }
+
+        [Test]
+        public void Receive_ParityConflictsWithCompleteDataGroup_RejectsInconsistentGroup()
+        {
+            List<byte[]> datagrams = new();
+            CreateSender(datagrams).TrySend(Packet(1000, 12));
+            MultiplayerSnapshotDatagrams receiver = CreateSender(new());
+            foreach (
+                byte[] datagram in datagrams.Where(datagram =>
+                    datagram[5] == 0 && FragmentIndex(datagram) < 4
+                )
+            )
+                receiver.Receive(new(datagram));
+            byte[] parity = (byte[])datagrams.First(datagram => datagram[5] == 1).Clone();
+            parity[parity.Length - 1] ^= 1;
+
+            Assert.Throws<InvalidDataException>(() => receiver.Receive(new(parity)));
+        }
+
+        [Test]
+        public void TrySend_ParityBackpressure_StopsAtFirstRejectedDatagram()
+        {
+            int attempts = 0;
+            MultiplayerSnapshotDatagrams sender = new(128, _ => ++attempts < 5);
+
+            Assert.IsFalse(sender.TrySend(Packet(1000, 12)));
+
+            Assert.AreEqual(5, attempts);
+            Assert.Zero(sender.BufferedBytes);
+        }
+
+        [Test]
+        public void Receive_ParityIsFirstArrival_CountsEveryDataParityAndReceiptBuffer()
+        {
+            List<byte[]> datagrams = new();
+            MultiplayerPacket packet = Packet(1000, 12);
+            CreateSender(datagrams).TrySend(packet);
+            int dataCount = datagrams.Count(datagram => datagram[5] == 0);
+            int parityCount = datagrams.Count(datagram => datagram[5] == 1);
+            MultiplayerSnapshotDatagrams receiver = CreateSender(new());
+
+            receiver.Receive(new(datagrams.First(datagram => datagram[5] == 1)));
+
+            int expected =
+                4
+                + System.Text.Encoding.UTF8.GetByteCount(packet.Metadata)
+                + packet.Payload.Length
+                + dataCount
+                + parityCount * (128 - 22)
+                + parityCount;
+            Assert.AreEqual(expected, receiver.BufferedBytes);
+            receiver.ClearAssembly();
+            Assert.Zero(receiver.BufferedBytes);
+        }
+
+        [TestCase("version")]
+        [TestCase("flag")]
+        [TestCase("group")]
+        [TestCase("length")]
+        public void Receive_InvalidParityGeometry_RejectsBeforeBuffering(string mutation)
+        {
+            List<byte[]> datagrams = new();
+            CreateSender(datagrams).TrySend(Packet(1000, 12));
+            byte[] malformed = (byte[])datagrams.First(datagram => datagram[5] == 1).Clone();
+            switch (mutation)
+            {
+                case "version":
+                    malformed[4] = 1;
+                    break;
+                case "flag":
+                    malformed[5] = 2;
+                    break;
+                case "group":
+                    malformed[19] = 1;
+                    break;
+                case "length":
+                    malformed = malformed.Take(malformed.Length - 1).ToArray();
+                    break;
+            }
+            MultiplayerSnapshotDatagrams receiver = CreateSender(new());
+
+            Assert.Throws<InvalidDataException>(() => receiver.Receive(new(malformed)));
+
+            Assert.Zero(receiver.BufferedBytes);
         }
 
         [TestCase(0)]
@@ -455,7 +645,7 @@ namespace Rebellion.Tests.Multiplayer
                 .DefaultIfEmpty(0)
                 .Max();
             TestContext.WriteLine(
-                $"Full snapshot {payloadBytes} bytes; 1170-byte datagrams, {lossPercent}% fragment loss; sent={sentDatagrams}, dropped={droppedDatagrams}, delivered={deliveredSnapshots}/{updates}, cadence={deliveredSnapshots / 20d:F2} Hz, largest gap={largestGap:F0} ms, peak assemblies={peakAssemblies}, peak bytes={peakBytes}."
+                $"Full snapshot {payloadBytes} bytes; 1170-byte datagrams with one XOR parity per four data fragments, {lossPercent}% fragment loss; sent={sentDatagrams}, dropped={droppedDatagrams}, delivered={deliveredSnapshots}/{updates}, cadence={deliveredSnapshots / 20d:F2} Hz, largest gap={largestGap:F0} ms, peak assemblies={peakAssemblies}, peak bytes={peakBytes}."
             );
             Assert.Greater(payloadBytes, 8192);
             Assert.Less(payloadBytes, 20 * 1024);
@@ -464,17 +654,26 @@ namespace Rebellion.Tests.Multiplayer
                 MultiplayerSnapshotDatagrams.MaximumConcurrentAssemblies
             );
             Assert.LessOrEqual(peakBytes, MultiplayerSnapshotDatagrams.MaximumBufferedBytes);
-            Assert.Greater(
+            Assert.GreaterOrEqual(
                 deliveredSnapshots,
                 lossPercent == 0 ? 300
-                    : lossPercent == 5 ? 120
+                    : lossPercent == 5 ? 300
                     : 5
             );
             if (lossPercent == 0)
                 Assert.LessOrEqual(largestGap, 200);
         }
 
-        /// <summary>Creates a complete fleet projection with independently varying lossless fields.</summary>
+        /// <summary>
+        /// Reads the explicit data index or parity group start from one transport datagram.
+        /// </summary>
+        /// <param name="datagram">The complete recorded snapshot datagram.</param>
+        /// <returns>The unsigned network-order fragment index.</returns>
+        private static int FragmentIndex(byte[] datagram) => datagram[18] << 8 | datagram[19];
+
+        /// <summary>
+        /// Creates a complete fleet projection with independently varying lossless fields.
+        /// </summary>
         /// <returns>The detached synthetic full unit states.</returns>
         private static TacticalCombatNetworkUnitState[] CreateFullFrameUnits()
         {
@@ -513,7 +712,9 @@ namespace Rebellion.Tests.Multiplayer
             return units;
         }
 
-        /// <summary>Creates one finite independently varying projected vector.</summary>
+        /// <summary>
+        /// Creates one finite independently varying projected vector.
+        /// </summary>
         /// <param name="random">The deterministic fixture random source.</param>
         /// <returns>The detached vector value.</returns>
         private static TacticalCombatNetworkVector CreateVector(Random random) =>
@@ -524,7 +725,9 @@ namespace Rebellion.Tests.Multiplayer
                 Z = (float)random.NextDouble() * 10000,
             };
 
-        /// <summary>Creates a sender that copies accepted datagrams for controlled delivery.</summary>
+        /// <summary>
+        /// Creates a sender that copies accepted datagrams for controlled delivery.
+        /// </summary>
         /// <param name="datagrams">The recorded outgoing datagrams.</param>
         /// <returns>The bounded snapshot channel.</returns>
         private static MultiplayerSnapshotDatagrams CreateSender(List<byte[]> datagrams) =>
@@ -537,7 +740,9 @@ namespace Rebellion.Tests.Multiplayer
                 }
             );
 
-        /// <summary>Creates one independently identified snapshot payload.</summary>
+        /// <summary>
+        /// Creates one independently identified snapshot payload.
+        /// </summary>
         /// <param name="size">The payload byte count.</param>
         /// <param name="seed">The exact payload seed.</param>
         /// <returns>The replaceable snapshot packet.</returns>
