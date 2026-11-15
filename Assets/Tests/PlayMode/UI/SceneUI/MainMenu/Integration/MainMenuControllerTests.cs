@@ -9,7 +9,6 @@ using Rebellion.Multiplayer;
 using Rebellion.UI.SceneUI.MainMenu.Multiplayer;
 using TMPro;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
@@ -45,8 +44,8 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu.Integration
             global::UserSettings settings = new global::UserSettings();
             settings.Analytics.Consent = UserAnalyticsConsent.Denied;
             File.WriteAllText(path, JsonUtility.ToJson(settings));
-            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            yield return new EnterPlayMode();
+            _blockedSettingsPath = null;
+            AppBootstrap.EnsureExists(TestContent.Pack);
 
             _gameObject = Object.Instantiate(
                 AssetDatabase.LoadAssetAtPath<GameObject>(
@@ -73,7 +72,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu.Integration
         }
 
         /// <summary>
-        /// Releases the menu and runtime services, then restores the user's settings after play mode.
+        /// Releases the menu and runtime services, then restores the user's settings for the next test.
         /// </summary>
         /// <returns>The cleanup sequence.</returns>
         [UnityTearDown]
@@ -89,7 +88,6 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu.Integration
                 if (MultiplayerCoordinator.Instance != null)
                     Object.Destroy(MultiplayerCoordinator.Instance.gameObject);
                 yield return null;
-                yield return new ExitPlayMode();
             }
             else
                 Object.DestroyImmediate(_gameObject);

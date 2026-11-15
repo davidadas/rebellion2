@@ -1012,6 +1012,35 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void Connect_GarrisonRemovedFromUprising_EmitsUprisingEndedForNewController()
+        {
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _rebels.InstanceID, 60 },
+                { _empire.InstanceID, 40 },
+            };
+            _targetPlanet.IsInUprising = true;
+            Regiment regiment = EntityFactory.CreateRegiment("garrison", _empire.InstanceID);
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            _game.AttachNode(regiment, _targetPlanet);
+            _game.DetachNode(regiment);
+            GameResultBus bus = new GameResultBus();
+            _commands.OwnershipChanging += _observer.ObserveOwnershipChange;
+            _observer.Connect(bus);
+
+            List<GameResult> results = bus.Publish(
+                new PlanetGarrisonChangedResult { Planet = _targetPlanet, Tick = 10 }
+            );
+
+            PlanetUprisingEndedResult ended = results.OfType<PlanetUprisingEndedResult>().Single();
+            Assert.AreSame(_targetPlanet, ended.Planet);
+            Assert.AreSame(_rebels, ended.Faction);
+            Assert.AreEqual(_game.CurrentTick, ended.Tick);
+            Assert.IsFalse(_targetPlanet.IsInUprising);
+        }
+
+        [Test]
         public void Connect_CoreGarrisonRemoved_AppliesFullSectorShift()
         {
             _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;

@@ -2,7 +2,6 @@ using System.Collections;
 using NUnit.Framework;
 using TMPro;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.TestTools;
@@ -23,12 +22,9 @@ namespace Rebellion.Tests.UI.Components
         /// <summary>
         /// Instantiates the authored reader in a live canvas with keyboard selection available.
         /// </summary>
-        /// <returns>The play-mode setup sequence.</returns>
-        [UnitySetUp]
-        public IEnumerator SetUp()
+        [SetUp]
+        public void SetUp()
         {
-            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            yield return new EnterPlayMode();
             _eventSystemObject = new GameObject("TestEventSystem", typeof(EventSystem));
             _root = new GameObject("TestCanvas", typeof(Canvas), typeof(CanvasScaler));
             _root.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
@@ -52,7 +48,7 @@ namespace Rebellion.Tests.UI.Components
         }
 
         /// <summary>
-        /// Removes the reader and restores edit mode after each interaction test.
+        /// Removes the reader and keyboard selection state after each interaction test.
         /// </summary>
         /// <returns>The play-mode cleanup sequence.</returns>
         [UnityTearDown]
@@ -61,7 +57,6 @@ namespace Rebellion.Tests.UI.Components
             Object.Destroy(_root);
             Object.Destroy(_eventSystemObject);
             yield return null;
-            yield return new ExitPlayMode();
         }
 
         [Test]

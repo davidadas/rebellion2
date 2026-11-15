@@ -280,6 +280,8 @@ public sealed class GameManager
     {
         if (tick == null)
             return false;
+        if (GetGameSpeed() == TickSpeed.Paused)
+            return true;
         double budget = _getGame().Config.GameSpeed.TickWorkBudgetMilliseconds;
         long started = _getTimestamp();
         do

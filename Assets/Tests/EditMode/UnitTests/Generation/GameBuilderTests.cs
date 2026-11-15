@@ -372,6 +372,46 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(authored, template.Settings.GarrisonEfficiency);
         }
 
+        [TestCase("FNALL1")]
+        [TestCase("FNEMP1")]
+        public void Build_EmptyOverrideConquestObjectives_RetainsAuthoredOfficers(string factionID)
+        {
+            Faction template = TestContent.Data.Factions.Single(faction =>
+                faction.InstanceID == factionID
+            );
+            FactionSettings settings = template.Settings.CreateCopy();
+            settings.ConquestOfficerInstanceIDs.Clear();
+            settings.GarrisonEfficiency++;
+            GameGenerationConfig generation = TestContent.Data.GenerationConfig.CreateCopy();
+            generation.FactionModifiers = new List<FactionModifierConfig>
+            {
+                new FactionModifierConfig { FactionID = factionID, Settings = settings },
+            };
+            GameRoot game = new GameBuilder(
+                new GameSummary
+                {
+                    GalaxySize = _size,
+                    PlayerFactionID = "FNALL1",
+                    Seed = 12345,
+                    CustomSettings = new CustomGameSettings { GenerationConfig = generation },
+                },
+                TestContent.Data
+            ).Build();
+            Faction actual = game.GetFactions().Single(faction => faction.InstanceID == factionID);
+
+            Assert.IsNotEmpty(template.Settings.ConquestOfficerInstanceIDs);
+            CollectionAssert.AreEqual(
+                template.Settings.ConquestOfficerInstanceIDs,
+                actual.Settings.ConquestOfficerInstanceIDs
+            );
+            Assert.AreEqual(settings.GarrisonEfficiency, actual.Settings.GarrisonEfficiency);
+            Assert.AreNotSame(
+                template.Settings.ConquestOfficerInstanceIDs,
+                actual.Settings.ConquestOfficerInstanceIDs
+            );
+            Assert.IsEmpty(settings.ConquestOfficerInstanceIDs);
+        }
+
         [Test]
         public void Build_DuplicateFactionModifier_ThrowsInvalidOperationException()
         {

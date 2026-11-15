@@ -8,6 +8,15 @@ namespace Rebellion.Tests.Multiplayer
     public sealed class MultiplayerCompatibilityTests
     {
         [Test]
+        public void SimulationBuild_CurrentInputs_MatchesCompiledIdentity()
+        {
+            Assert.AreEqual(
+                SimulationBuildIdentityInputs.ComputeIdentity(),
+                MultiplayerCompatibility.SimulationBuild
+            );
+        }
+
+        [Test]
         public void ValidateBuild_CompiledIdentity_AdmitsSameBuild()
         {
             string identity = MultiplayerCompatibility.SimulationBuild;

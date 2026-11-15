@@ -68,6 +68,9 @@ Assets/TextMesh Pro/
 /Assets/Scenes.meta
 
 # C# Files
+# Legacy build identity files are replaced by the compilation processor.
+/Assets/Scripts/AssemblyBuildIdentity.g.cs
+/Assets/Scripts/AssemblyBuildIdentity.g.cs.meta
 **/*.sln
 **/*.slnx
 *.csproj
@@ -107,3 +110,6 @@ Assets/Art/Models/MainMenu/
 # App icon lives in private rebellion2-media, not here
 /Assets/GameIcon/
 /Assets/GameIcon.meta
+
+# Workflow validation dependencies
+.github/scripts/node_modules/

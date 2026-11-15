@@ -320,6 +320,31 @@ namespace Rebellion.Tests.Managers
             CollectionAssert.AreEqual(new[] { 0, 1 }, completed);
         }
 
+        [Test]
+        public void AdvanceTick_ActiveWorkPaused_HoldsPositionUntilResumed()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Config.GameSpeed.TickWorkBudgetMilliseconds = 0;
+            var tick = new GameTickProcessor(
+                (results, _) => new List<GameResult>(results),
+                _ => { }
+            );
+            var manager = new GameManager(() => game, tick);
+            manager.SetGameSpeed(TickSpeed.Fast);
+            List<int> completed = new();
+            using var work = EnumerateWork(completed, 2).GetEnumerator();
+            Assert.IsTrue(manager.AdvanceTick(work));
+            manager.SetGameSpeed(TickSpeed.Paused);
+
+            bool remainsPaused = manager.AdvanceTick(work);
+            manager.SetGameSpeed(TickSpeed.Fast);
+            bool remainsResumed = manager.AdvanceTick(work);
+
+            Assert.IsTrue(remainsPaused);
+            Assert.IsTrue(remainsResumed);
+            CollectionAssert.AreEqual(new[] { 0, 1 }, completed);
+        }
+
         [TestCase(TickSpeed.Fast, 2.5f)]
         [TestCase(TickSpeed.Medium, 12.5f)]
         [TestCase(TickSpeed.Slow, 90.5f)]

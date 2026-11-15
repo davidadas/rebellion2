@@ -2373,9 +2373,23 @@ namespace Rebellion.Game
 
             public int NormalHealAmount { get; set; }
 
-            public int FastRepairAmount { get; set; }
+            public int FastRepairIntervalTicks { get; set; }
 
-            public int NormalRepairAmount { get; set; }
+            public int NormalRepairIntervalTicks { get; set; }
+
+            /// <summary>
+            /// Accepts the former fast repair amount element during content migration.
+            /// </summary>
+            [PersistableMember(Name = nameof(FastRepairAmount))]
+            [PersistableIgnore]
+            private int FastRepairAmount { get; set; }
+
+            /// <summary>
+            /// Accepts the former normal repair amount element during content migration.
+            /// </summary>
+            [PersistableMember(Name = nameof(NormalRepairAmount))]
+            [PersistableIgnore]
+            private int NormalRepairAmount { get; set; }
 
             public int FastReplacementIntervalTicks { get; set; }
 
@@ -2391,8 +2405,8 @@ namespace Rebellion.Game
                     MaxInjuryPoints = MaxInjuryPoints,
                     FastHealAmount = FastHealAmount,
                     NormalHealAmount = NormalHealAmount,
-                    FastRepairAmount = FastRepairAmount,
-                    NormalRepairAmount = NormalRepairAmount,
+                    FastRepairIntervalTicks = FastRepairIntervalTicks,
+                    NormalRepairIntervalTicks = NormalRepairIntervalTicks,
                     FastReplacementIntervalTicks = FastReplacementIntervalTicks,
                     NormalReplacementIntervalTicks = NormalReplacementIntervalTicks,
                 };

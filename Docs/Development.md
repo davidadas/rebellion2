@@ -4,13 +4,13 @@
 
 - Unity 6000.4.12f1
 - .NET SDK
-- A Bash-compatible shell
+- A Bash-compatible shell and `rg` (ripgrep)
 - Python 3.11 or later for desktop packaging
 - Ownership of *Star Wars: Rebellion* or *Star Wars: Empire at War: Gold Pack* through GOG or Steam
 - Access to the separate `rebellion2-media` repository
 
-Access to development content does not grant redistribution rights. **NEVER share, upload, commit,
-or otherwise redistribute `rebellion2-media`, `Assets/Content`, or any copyrighted game asset.**
+Access to development content does not grant redistribution rights. Do not share, upload, commit,
+or otherwise redistribute `rebellion2-media`, `Assets/Content`, or copyrighted game assets.
 
 ## Setup
 
@@ -19,264 +19,32 @@ or otherwise redistribute `rebellion2-media`, `Assets/Content`, or any copyright
 3. Copy `rebellion2-media/Models/MainMenu/` into
    `rebellion2/Assets/Art/Models/MainMenu/`.
 4. Overlay `rebellion2-media/UnityAssets/` onto `rebellion2/Assets/`, preserving `.meta` files.
-   This installs native Unity packages, including the main-menu planet, at their logical art
-   paths.
 5. Open `rebellion2` in Unity.
 6. Run **Rebellion > Build > Build All UI**.
 
-The copied content, models, Unity assets, all generated prefabs, and all generated scenes are local
-development artifacts and are ignored by Git. This includes the boot scene and cutscene playback
-assets. Manage the media checkout and refresh these local copies outside Unity.
-
-CI installs clean media mirrors automatically with `rsync --delete` before Unity builds and tests.
+Copied media, generated prefabs, and generated scenes are local development artifacts ignored by
+Git. Refresh copied media with Unity closed.
 
 ## Commands
 
+Run these from the repository root:
+
 ```bash
 ./build.sh format     # Check C# formatting
-./build.sh xmlformat  # Format XML data
 ./build.sh lint       # Run static analysis
-./build.sh test       # Run Unity EditMode tests
+./build.sh test       # Run Unity EditMode and PlayMode tests
 ./build.sh coverage   # Run tests with coverage thresholds
 ./build.sh build      # Build and verify the game and content-pack editor
 ./build.sh clean      # Remove build artifacts
-./build.sh all        # Run the complete local verification suite
+./build.sh all        # Run formatting, lint, and tests with coverage
 ```
 
 Running `./build.sh` without a command is equivalent to `./build.sh all`.
 
-Set `UNITY` if Unity is installed somewhere other than the detected platform default. Standalone
-builds use the host platform unless `BUILD_TARGET` and `BUILD_PLAYER_PATH` are set:
+Set `UNITY` if Unity is installed somewhere other than the detected platform default. Set `PYTHON`
+to use a different Python executable. Standalone builds use the host platform unless `BUILD_TARGET`
+and `BUILD_PLAYER_PATH` are set:
 
 ```bash
 BUILD_TARGET=StandaloneWindows64 BUILD_PLAYER_PATH=build/rebellion2.exe ./build.sh build
 ```
-
-Player builds generate the UI through `StandalonePlayerBuild.Build` and verify that development
-content under `Assets/Content/` was not embedded in the player.
-
-For native UI audits, pass `-nativeAuditBuild` to `StandalonePlayerBuild.Build` and use a
-separate player output directory. This adds the `REBELLION_NATIVE_AUDIT` compilation symbol;
-`Assets/Tests/NativeAudit` requires that symbol in standalone players. Launch each audit player
-with its own absolute `-nativeAuditControl` directory. Without that launch argument, the observer
-does not start. Ordinary builds omit the symbol.
-
-Write one JSON command to a temporary file, then rename it to `request.json` in that directory.
-Commands have a unique numeric `id` and an `operation`: `state`, `point`, `capture`, or `wait`.
-For example, `{"id":1,"operation":"point","target":"MultiplayerButton"}` resolves the
-center of a unique active control, its event-system raycasts, and public UI state. Exact hierarchy
-paths disambiguate repeated names. Coordinates use Unity's viewport origin at the bottom left.
-The completed response is published once as `response-1.json`; captures also create `frame-1.png`.
-Use a fresh control directory for each process and never reuse command IDs within it.
-
-For native service audits, explicit `browse`, `host`, `join`, `ready`, `launch`, `resume`, `save`,
-`quicksave`, `load`, `speed`, and `fight` commands call the existing public service contracts.
-`key` queues a virtual Input System keyboard press and release. These commands do not invoke
-private callbacks. Poll `operationPending`, then check `operationSucceeded`, coordinator status,
-and the resulting scene and files: completion of a service call alone does not establish admission.
-`fight` submits one explicit local Fight response; it does not automate future battles.
-Simulation profiling stays in the editor/headless runners. The network simulation runner records
-per-day tick, step, barrier, and verification durations with `Stopwatch`. Ordinary gameplay has
-no phase-trace collector or native timing commands.
-
-Service audits do not establish physical input delivery. Drive input through the operating system
-when testing actual shortcuts and controls, and verify the resulting UI, checkpoint, or save
-independently. A resolved pointer target does not prove a click was delivered. State responses include active control paths,
-interactivity, enabled action names, shortcut suppression, and selected-control focus; they omit
-input-field contents and credentials. Scene queries run only for explicit commands, with request
-polling at five hertz. Keep both audit clients on the same compiled build and use isolated saves.
-
-## Multiplayer synchronization
-
-`GameSessionManager` selects the session owner before constructing simulation services. Multiplayer
-campaigns require an `IGameSessionOwner`; presentation reports readiness for that specific session
-and never replaces its execution owner. Local and network player requests use the session's writable
-command boundary. Commands wait while a tick executes, and network commands also wait for the
-completed day's verification barrier.
-
-Admission compares a source identity embedded in the compiled game assembly and a SHA-256 digest
-of the composed gameplay catalog. The source identity covers production scripts, assembly settings,
-package dependencies and Unity version; it is independent of checkout paths and line endings.
-Content checks apply to joining, content changes, shared loads and reconnects. Pack/version labels
-alone do not admit a peer. After changing source inputs, allow Unity's identity regeneration and
-script compilation to finish before testing or building.
-
-Each launch, shared load and reconnect receives an initialization identity. Readiness, recovery
-snapshots and gameplay packets from an outgoing initialization cannot enter its replacement.
-Each initialization transfers one world; its receipt must match the payload hash and restored-world
-fingerprint.
-Completed commands include their queued movement and manufacturing reactions before the caller
-receives success. Tick completion and the handoff to human combat input also settle these reactions.
-Persistence admission rejects pending reactions; requesting a save does not flush gameplay work.
-Ownership-changing operations also publish their returned facts before completion. A constant-time
-pending-fact counter rejects unfinished ownership reactions instead of persisting observer tables.
-Normal loading also settles derived-state rebuild work before exposing a savable session.
-Mission roster baselines are saved as IDs on the mission. Victory suppression belongs only to the
-live session, which ends through the campaign-ending flow.
-
-Campaign completion waits for settled final replay and both ending presentations before releasing
-the connection, then removes each participant's completed reconnect checkpoint. A departure before
-the first current-campaign checkpoint uses the session-end notice instead of attempting recovery.
-
-Planet notifications use the existing result bus plus model support/presence observables.
-Authored activation changes use the same mutation boundary, including sector reactivation. They
-reconcile affected locations after gameplay reactions; only suppression changes include other planets
-in the affected sectors. Planet subscriptions are enumerated once when a session connects. Normal
-batches with no relevant changes do not scan the world. Loading silently initializes the notification
-baseline. Resource diversion is computed once per producing planet per resource phase and does not
-depend on notification history. Uprising progression remains timed simulation work.
-
-Rejoining follows room ownership while simulation authority retains the campaign's authenticated
-host role. The shared persistence channel is created after the agreed state handshake. Initial
-synchronization, shared loading, and rejoining use the same persisted world contract and ordinary
-loading methods. Both peers load the selected world before comparing loaded-state fingerprints;
-there is no separate simulation recovery envelope, loader, or reference-aware recovery codec.
-
-Manual saves and reconnect checkpoints require completed turn processing, including battle
-decisions. Disconnect handling lets an executing tick finish. If it stops awaiting battle input,
-the survivor restores the last completed checkpoint; progress since that checkpoint is lost.
-Both players respond again when the encounter occurs. Requested launch/save/load checkpoints are
-captured before another day starts; no full-world checkpoint is added to the per-day loop.
-Coordinated loads detect encounters in an agreed turn after synchronization.
-
-A rejoin offer transfers one ordinary world payload. Its receiver acknowledges the existing
-initial-state barrier after normal loading and presentation startup, using the same receipt checks
-as initial synchronization. The supplier can be either authenticated participant. The supplied
-world remains blocked against persistence until acknowledgment, so a local save cannot change its
-shared-save token during admission. The accepted rejoin names update the reserved host/guest names
-and retained lobby presentation without changing its approved setup. Rejoining code is in
-`MultiplayerCoordinator.Rejoin`.
-
-The active RNG seed and ID-generation mode are normal world properties; their positions/counters
-were already persisted. A faction saves its last control-loss support-shift tick through normal
-persistence, preserving the existing once-per-faction-per-tick rule across ordinary saves as well.
-Research timers were already saved normally. Loading keeps the same initialization and derived
-state rebuilding for both participants. Completed-day verification checks persisted state and
-runtime rules while excluding participant UI state and runtime parent-object caches.
-A mismatch or execution failure stops replay without retrying a potentially applied action.
-
-Simulation verification performs one graph traversal per completed multiplayer day per peer, after
-the tick iterator releases its execution boundary. The headless network runner measures its cost;
-verification is not a frame-loop poll.
-
-Scene-node lookup uses a standard dictionary rebuilt from the decoded hierarchy. Save files and
-network snapshots do not preserve a second registry membership list, dictionary storage positions,
-or vacant slots. Faction ownership indexes are also rebuilt from the hierarchy. Random automatic
-scrapping orders eligible units by ordinal ID before drawing an index; acquisition history is not
-saved. Manufacturing queues are rebuilt from saved producer IDs and sequence values.
-
-Human participants select their own game speed. The effective clock uses the slowest human
-selection in the order Pause, Very Slow, Slow, Medium, Fast. Either player can pause; time advances
-only when neither remains paused. A faster preference takes effect as the slower participant raises
-their selection, without requiring identical choices. Keyboard stepping follows the local selection.
-The strategy HUD shows the effective clock, both acknowledged choices, and faster-speed requests.
-
-Each human side in a pending fleet encounter must respond before resolution. A single human facing
-an AI side resolves after that human's response. If either side selects withdrawal, its existing
-withdrawal eligibility and movement rules apply; when both select withdrawal, both plans are
-prepared before either is applied and the encounter is a draw. The battle window shows response
-receipt without exposing the other participant's choice. Pending responses belong to the runtime
-continuation and survive recovery.
-
-## Content-pack editor and packaging
-
-Windows and Linux builds include `rebellion2-editor` beside `rebellion2`. The macOS editor is a
-helper app inside the game app's `Contents/Helpers` folder, so game installers and updates carry it
-with the game. Both apps use the same external Content directory. Launch the editor to create or open
-a pack in the installation's `Mods` folder. A new pack inherits its selected base; saving writes
-only edited XML files and imported assets. Export creates a zip of those local files after
-checking every declared scenario through the content loader, reference checks, campaign generation,
-runtime initialization, and referenced media decoding. Progress shows the current check; Escape
-cancels validation or export without replacing an existing archive.
-
-Package a completed Windows build with:
-
-```bash
-python3 Tools/package_desktop.py --platform StandaloneWindows64 \
-  --build-dir build/content-editor --output dist/rebellion2-windows.zip
-```
-
-Use `StandaloneLinux64` or `StandaloneOSX` and an output ending in `.tar.gz` for Linux or macOS.
-Without `--output`, the command only verifies the build. The shared desktop layout requires Mono
-players. Use `--game-name Rebellion2` for release builds that use that executable base name.
-Set `PYTHON` when `build.sh` should use a
-different Python executable.
-
-`--stage-dir <new-folder>` creates the same clean runtime file tree for installer packaging without
-making an archive. Release installers use this stage to exclude Unity debug output and local files.
-
-Archives contain both players, their runtimes, native file dialogs, dependency notices, and a
-`bundle.json` inventory with file hashes. A `.sha256` file accompanies each archive. Installed
-content, local mods, and debug output are excluded. The installer must supply the existing external
-`Content` folder beside the players; this archive does not replace the content distribution.
-
-CI runs packaging tests during lint, then runs game tests and builds in parallel. Each build verifies
-and uploads a desktop bundle; its presence does not mean the game tests have passed. These artifacts
-are retained for seven days; creating them does not publish a release or update an installation.
-## Code organization
-
-`Game` contains game objects, authored configuration and instructions, and campaign state. These types can own behavior, including their own calculations and invariants. They depend only on `Game`, `SceneGraph`, and `Util` within this codebase.
-
-`Gameplay` contains the operations, queries, calculations, and reactions used to run a campaign. Both player-facing controllers and AI use these services. Supporting request and result types stay with the feature that owns them.
-
-| Area | Ownership |
-| --- | --- |
-| `App` | Application bootstrap, startup selection, and scene handoff. |
-| `Sessions` | Session lifetime, service construction, simulation command admission, and clock ownership. |
-| `Sessions/PlayerRequests` | Typed player requests, outcomes, execution, and local or coordinated dispatch. |
-| `Saves` | Campaign and preset files, save listings, and metadata publication. |
-| `Multiplayer` | Online authentication, lobbies, transport, ordered gameplay, shared saves, and reconnects. |
-| `Analytics` | Consented campaign and application metrics. |
-| `UserSettings` | User preferences and their application to runtime services. |
-| `UI/Audio`, `UI/Graphics`, `UI/Input` | Presentation and device owners used by startup, settings, and interactive UI. |
-| `Game/Scripting` | Authored action, conditional, selector, binding, and trigger instructions. |
-| `Game/GameEvents` | Event definitions, schedules, and saved activation history. |
-| `Gameplay/Scripting` | Interpretation, evaluation, temporary execution contexts, and gameplay action handling. |
-| `Gameplay/GameEvents` | Event validation, activation, and campaign tick/result integration. |
-| `Gameplay` (root) | Tick execution, result delivery, and gameplay reaction processing. |
-
-Gameplay feature folders retain commands for operations, queries for inspection and estimates, tick processors for time-driven work, and observers for result-driven reactions. A supporting class does not need its own tick to belong to a gameplay feature.
-
-`ContentEditor` is a separate assembly included in Unity and the standalone authoring player. Its
-workspace controller handles editing requests, its session owns selection and continuous edits, and
-its projector supplies presentation data. Projects and documents own editable state; storage owns
-file access, while validation and export have their own owners. General input, tooltip, dialog,
-preview, scrolling, and divider behavior lives in `UI/Components` and has no editor dependency.
-Shared menu builders support textured and flat control styles.
-
-The map's **Fit to view** command changes zoom and pan only. **Auto arrange** adjusts saved
-coordinates to clear overlaps and the window frame, moving planets in a sector or whole sector
-clusters on the galaxy map. Layout runs off the UI thread, supports Escape to cancel, and applies
-as one undoable edit after the complete placement is valid.
-
-## XML serialization
-
-`PersistableObject`, `PersistableMember`, and `PersistableAttribute` retain the names used when
-writing XML. Add stackable `PersistableReadAlias` declarations to accept additional input names
-for a persistable class, field, or property:
-
-```csharp
-[PersistableMember(Name = "CurrentName")]
-[PersistableReadAlias("AlternateName")]
-[PersistableReadAlias("OldName", Deprecated = true)]
-public string Value { get; set; }
-```
-
-Both aliases load into `Value`; serialization continues to write `CurrentName`. `Deprecated`
-defaults to `false` and records an alias's status without rejecting it. Aliases do not make an
-otherwise unpersisted member persistable. Conflicting member aliases and ambiguous polymorphic
-type aliases are rejected. A member declaring aliases may be supplied only once per object,
-including when a document mixes its canonical name with an alias.
-
-The serializer and `SerializationMetadata` share the same read-name lookups. Schema-validated
-content must also allow the accepted names in its XSD; read aliases do not bypass schema validation.
-
-## Game scripting
-
-`GameActionInterpreter` interprets branching and action sequences. It passes concrete actions through `IGameActionExecutor`, implemented by `GameActionCommands`, which owns movement, mission, ownership, message, and encounter dependencies.
-
-`GameEvaluationContext` holds bindings, source attribution, the triggering result, and results produced during an activation. `GameConditionContext` supplies condition-evaluation inputs. `GameActionContext` collects action results and deferred operations. These temporary contexts stay within the scripting subsystem.
-
-Actions retain their authored order. Capture cleanup remains immediate; queued command requests execute after the full action batch. Event scheduling, activation history, XML names, and save fields retain their existing contracts.
-
-See the [scripting reference](Modding/Scripting/Index.md) for authored XML.

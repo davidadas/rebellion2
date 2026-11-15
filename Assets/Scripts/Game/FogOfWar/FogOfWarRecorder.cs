@@ -1444,6 +1444,19 @@ namespace Rebellion.Game.FogOfWar
         {
             snapshot.OwnerInstanceID = planet.OwnerInstanceID;
             UpdateKnownBuildingOwnership(planet, snapshot);
+            RemoveInvalidatedResearchMissions(snapshot);
+        }
+
+        /// <summary>
+        /// Removes remembered research missions that cannot continue under the known owner.
+        /// </summary>
+        /// <param name="snapshot">The snapshot whose ownership and missions are known.</param>
+        private static void RemoveInvalidatedResearchMissions(PlanetSnapshot snapshot)
+        {
+            snapshot.Missions.RemoveAll(mission =>
+                mission is ResearchMission
+                && mission.GetOwnerInstanceID() != snapshot.OwnerInstanceID
+            );
         }
 
         /// <summary>

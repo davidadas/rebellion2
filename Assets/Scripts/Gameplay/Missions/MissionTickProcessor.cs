@@ -123,15 +123,14 @@ namespace Rebellion.Gameplay
                     mission.ResolveInterruption(game, _resolver.RandomProvider),
                     results
                 );
-                results.Add(
-                    mission.BuildTerminatingResult(
-                        MissionOutcome.Failed,
-                        abortReason.Value,
-                        game,
-                        mission.GetAllParticipants()
-                    )
+                MissionCompletedResult completed = mission.BuildTerminatingResult(
+                    MissionOutcome.Failed,
+                    abortReason.Value,
+                    game,
+                    mission.GetAllParticipants()
                 );
-                _resolver.FinishMission(mission, null, results);
+                results.Add(completed);
+                _resolver.FinishMission(mission, completed, results);
                 return CompleteStep(mission, results);
             }
 

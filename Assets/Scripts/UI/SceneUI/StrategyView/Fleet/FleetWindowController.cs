@@ -1393,6 +1393,7 @@ public sealed class FleetWindowController
             || !TryGetSession(view, out FleetWindowSession currentSession)
             || !ReferenceEquals(session, currentSession)
             || !ReferenceEquals(requestGame, getUIContext()?.Game)
+            || windowManager.GetWindowByID(session.Window.Id) != session.Window
         )
             return;
 
