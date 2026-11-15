@@ -246,6 +246,188 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             Assert.AreEqual(!lukeWins, luke.IsCaptured);
         }
 
+        [TestCase(false, false, true)]
+        [TestCase(true, false, true)]
+        [TestCase(true, true, true)]
+        [TestCase(true, true, false)]
+        public void ProcessScheduledEvents_OrdinaryHanCapture_DoesNotStartPalaceVisits(
+            bool previouslyCapturedByBountyHunters,
+            bool previouslyRescued,
+            bool hanIsActive
+        )
+        {
+            Dictionary<string, Officer> officers = CreatePalaceScenario();
+            _game.EventRuntime.Variables["jabba.bounty.capture.completed"] =
+                previouslyCapturedByBountyHunters ? 1 : 0;
+            _game.EventRuntime.Variables["jabba.rescue.completed"] = previouslyRescued ? 1 : 0;
+            officers["HAN_SOLO"].TryCapture("FNEMP1", _game, _game.Random);
+            _game.SetNodeEnabled(officers["HAN_SOLO"], hanIsActive);
+            foreach (string rescuer in new[] { "LUKE", "LEIA", "CHEWBACCA" })
+                CompletePalaceEvent($"{rescuer}_RESCUE_OF_HAN_RESOLVES", 355);
+            _game.CurrentTick = 515;
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            foreach (
+                string officerID in new[]
+                {
+                    "LUKE_SKYWALKER",
+                    "LEIA_ORGANA",
+                    "CHEWBACCA",
+                    "DARTH_VADER",
+                }
+            )
+                Assert.IsTrue(officers[officerID].IsActive(), officerID);
+            foreach (
+                string eventID in new[]
+                {
+                    "LUKE_RESCUES_HAN_FROM_JABBA",
+                    "LEIA_RESCUES_HAN_FROM_JABBA",
+                    "CHEWBACCA_RESCUES_HAN_FROM_JABBA",
+                    "VADER_COLLECTS_JABBAS_PRISONERS",
+                }
+            )
+                Assert.AreEqual(0, _game.EventRuntime.GetState(eventID).ActivationCount, eventID);
+            Assert.IsTrue(officers["HAN_SOLO"].IsCaptured);
+        }
+
+        [TestCase("LUKE", "LUKE_SKYWALKER")]
+        [TestCase("LEIA", "LEIA_ORGANA")]
+        [TestCase("CHEWBACCA", "CHEWBACCA")]
+        public void ProcessScheduledEvents_PalaceRescue_ReturnsSuccessfulRescuerAndHan(
+            string eventPrefix,
+            string officerID
+        )
+        {
+            Dictionary<string, Officer> officers = CreatePalaceScenario();
+            _game.EventRuntime.Variables["jabba.bounty.capture.completed"] = 1;
+            officers["HAN_SOLO"].TryCapture("FNEMP1", _game, _game.Random, canEscape: false);
+            _game.SetNodeEnabled(officers["HAN_SOLO"], false);
+            foreach (string other in new[] { "LUKE_SKYWALKER", "LEIA_ORGANA", "CHEWBACCA" })
+                if (other != officerID)
+                    _game.SetNodeEnabled(officers[other], false);
+            _game.CurrentTick = 345;
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.IsFalse(officers[officerID].IsActive());
+            _game.CurrentTick = 355;
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.IsTrue(officers[officerID].IsActive());
+            Assert.IsFalse(officers[officerID].IsCaptured);
+            Assert.IsTrue(officers["HAN_SOLO"].IsActive());
+            Assert.IsFalse(officers["HAN_SOLO"].IsCaptured);
+            Assert.AreEqual(1, _game.EventRuntime.GetVariable("jabba.rescue.completed"));
+            Assert.AreEqual(
+                1,
+                _game.EventRuntime.GetState($"{eventPrefix}_RESCUE_OF_HAN_RESOLVES").ActivationCount
+            );
+            Assert.IsTrue(officers["DARTH_VADER"].IsActive());
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_FailedPalaceRescues_ReturnsVaderWithEscapablePrisoners()
+        {
+            Dictionary<string, Officer> officers = CreatePalaceScenario(0.9999);
+            _game.EventRuntime.Variables["jabba.bounty.capture.completed"] = 1;
+            officers["HAN_SOLO"].TryCapture("FNEMP1", _game, _game.Random, canEscape: false);
+            _game.SetNodeEnabled(officers["HAN_SOLO"], false);
+            foreach (string officerID in new[] { "LUKE_SKYWALKER", "LEIA_ORGANA", "CHEWBACCA" })
+                officers[officerID].SetBaseRating(SkillRating.Combat, 0);
+            _game.CurrentTick = 345;
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+            _game.CurrentTick = 355;
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Officer vader = officers["DARTH_VADER"];
+            Assert.IsFalse(vader.IsActive());
+            foreach (string officerID in new[] { "LUKE_SKYWALKER", "LEIA_ORGANA", "CHEWBACCA" })
+            {
+                Assert.IsTrue(officers[officerID].IsCaptured, officerID);
+                Assert.IsFalse(officers[officerID].IsActive(), officerID);
+            }
+            _game.CurrentTick = 455;
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.IsTrue(vader.IsActive());
+            foreach (
+                string officerID in new[]
+                {
+                    "HAN_SOLO",
+                    "LUKE_SKYWALKER",
+                    "LEIA_ORGANA",
+                    "CHEWBACCA",
+                }
+            )
+            {
+                Officer officer = officers[officerID];
+                Assert.IsTrue(officer.IsActive(), officerID);
+                Assert.IsTrue(officer.IsCaptured, officerID);
+                Assert.IsTrue(officer.CanEscape, officerID);
+                Assert.AreSame(vader.GetParent(), officer.GetParent(), officerID);
+            }
+        }
+
+        [TestCase(false, false)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        public void InstallDefinitions_CompletedPalaceRescue_ReturnsStrandedOfficersWithoutReleasingOtherCaptives(
+            bool lukeIsTraining,
+            bool lukeIsKilled
+        )
+        {
+            Dictionary<string, Officer> officers = CreatePalaceScenario();
+            _game.EventRuntime.Variables["jabba.bounty.capture.completed"] = 1;
+            _game.EventRuntime.Variables["jabba.rescue.completed"] = 1;
+            foreach (string rescuer in new[] { "LUKE", "LEIA", "CHEWBACCA" })
+                CompletePalaceEvent($"{rescuer}_RESCUES_HAN_FROM_JABBA", 345);
+            CompletePalaceEvent("CHEWBACCA_RESCUE_OF_HAN_RESOLVES", 355);
+            CompletePalaceEvent("LUKE_RESCUE_OF_HAN_RESOLVES", 525);
+            CompletePalaceEvent("JABBA_RESCUE_CLEANUP", 355);
+            CompletePalaceEvent("VADER_COLLECTS_JABBAS_PRISONERS", 525);
+            if (lukeIsTraining)
+                CompletePalaceEvent("LUKE_VISITS_YODA", 550);
+            Officer luke = officers["LUKE_SKYWALKER"];
+            Officer vader = officers["DARTH_VADER"];
+            luke.IsKilled = lukeIsKilled;
+            _game.SetNodeEnabled(luke, false);
+            _game.SetNodeEnabled(vader, false);
+            luke.DisplayStatus = "On Mission";
+            vader.DisplayStatus = "On Mission (Jabba's Palace)";
+            Officer leia = officers["LEIA_ORGANA"];
+            Officer chewbacca = officers["CHEWBACCA"];
+            leia.TryCapture("FNEMP1", _game, _game.Random);
+            chewbacca.TryCapture("FNEMP1", _game, _game.Random);
+            ISceneNode leiaParent = leia.GetParent();
+            ISceneNode chewbaccaParent = chewbacca.GetParent();
+            _game.CurrentTick = 600;
+
+            _system.InstallDefinitions(_game.GetEventPool().ToArray());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(!lukeIsTraining && !lukeIsKilled, luke.IsActive());
+            if (!lukeIsTraining && !lukeIsKilled)
+                Assert.IsNull(luke.DisplayStatus);
+            Assert.IsFalse(vader.IsActive());
+            _game.CurrentTick = 624;
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+            Assert.IsFalse(vader.IsActive());
+            _game.CurrentTick = 625;
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.IsTrue(vader.IsActive());
+            Assert.IsNull(vader.DisplayStatus);
+            Assert.IsFalse(vader.IsCaptured);
+            Assert.IsTrue(leia.IsCaptured);
+            Assert.IsTrue(chewbacca.IsCaptured);
+            Assert.AreSame(leiaParent, leia.GetParent());
+            Assert.AreSame(chewbaccaParent, chewbacca.GetParent());
+            Assert.IsFalse(officers["HAN_SOLO"].IsCaptured);
+        }
+
         [Test]
         public void ProcessScheduledEvents_AbsoluteSchedule_StoresAbsoluteTick()
         {
@@ -3613,6 +3795,81 @@ namespace Rebellion.Tests.Gameplay.GameEvents
 
             Assert.Zero(game.EventRuntime.GetVariable("after"));
             Assert.Zero(game.EventRuntime.GetState(invalid.InstanceID).ActivationCount);
+        }
+
+        /// <summary>
+        /// Creates the palace event chain with independently located factions and officers.
+        /// </summary>
+        /// <param name="randomValue">The deterministic roll used by event actions.</param>
+        /// <returns>The officers indexed by their authored identifiers.</returns>
+        private Dictionary<string, Officer> CreatePalaceScenario(double randomValue = 0)
+        {
+            _game = TestGame.Create(TestContent.Data.GameConfig);
+            _game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
+            _game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
+            PlanetSector sector = new() { InstanceID = "sector" };
+            Planet planet = new() { InstanceID = "planet", OwnerInstanceID = "FNALL1" };
+            Planet imperialPlanet = new()
+            {
+                InstanceID = "imperial-planet",
+                OwnerInstanceID = "FNEMP1",
+            };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
+            _game.AttachNode(imperialPlanet, sector);
+            Dictionary<string, Officer> officers = new();
+            foreach (
+                string officerID in new[]
+                {
+                    "HAN_SOLO",
+                    "LUKE_SKYWALKER",
+                    "LEIA_ORGANA",
+                    "CHEWBACCA",
+                    "DARTH_VADER",
+                }
+            )
+            {
+                Officer officer = EntityFactory.CreateOfficer(
+                    officerID,
+                    officerID == "DARTH_VADER" ? "FNEMP1" : "FNALL1"
+                );
+                officer.Ratings[SkillRating.Combat] = 100;
+                _game.AttachNode(officer, officerID == "DARTH_VADER" ? imperialPlanet : planet);
+                officers.Add(officerID, officer);
+            }
+            _game
+                .GetEventPool()
+                .AddRange(
+                    TestContent.Data.GameEvents.Where(gameEvent =>
+                        gameEvent.InstanceID.Contains("JABBA")
+                        || gameEvent.InstanceID.Contains("RESCUE_OF_HAN")
+                    )
+                );
+            FixedRNG random = new(randomValue);
+            _system = new GameEventCommands(
+                _game,
+                random,
+                new GameActionCommands(
+                    _game,
+                    random,
+                    movementCommands: CreateMovementCommands(_game),
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
+            );
+            return officers;
+        }
+
+        /// <summary>
+        /// Restores a completed event's activation history without replaying its actions.
+        /// </summary>
+        /// <param name="eventID">The completed event identifier.</param>
+        /// <param name="tick">The saved activation tick.</param>
+        private void CompletePalaceEvent(string eventID, int tick)
+        {
+            GameEventState state = _game.EventRuntime.GetState(eventID);
+            state.ActivationCount = 1;
+            state.LastActivationTick = tick;
+            state.IsComplete = true;
         }
 
         /// <summary>

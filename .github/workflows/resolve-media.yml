@@ -1,0 +1,66 @@
+name: Resolve media revision
+
+on:
+  workflow_call:
+    inputs:
+      checkout_ref:
+        type: string
+        required: true
+      branch:
+        type: string
+        default: ''
+    outputs:
+      revision:
+        value: ${{ jobs.resolve.outputs.revision }}
+      sha:
+        value: ${{ jobs.resolve.outputs.sha }}
+
+jobs:
+  resolve:
+    name: Resolve media revision
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    outputs:
+      revision: ${{ steps.resolve.outputs.revision }}
+      sha: ${{ steps.resolve.outputs.sha }}
+
+    steps:
+      - name: Checkout trusted media resolver
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+          sparse-checkout: Tools/resolve_media_revision.py
+          sparse-checkout-cone-mode: false
+          path: .ci/workflow-tools
+
+      - name: Checkout tested media pin
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.checkout_ref }}
+          persist-credentials: false
+          sparse-checkout: .github/media-revision
+          sparse-checkout-cone-mode: false
+          path: .ci/source-metadata
+
+      - name: Checkout media metadata
+        uses: actions/checkout@v4
+        with:
+          repository: adasgames/rebellion2-media
+          ref: main
+          ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
+          lfs: false
+          path: .ci/rebellion2-media
+
+      - name: Resolve matching media branch
+        id: resolve
+        env:
+          PULL_REQUEST_BRANCH: ${{ inputs.branch }}
+        run: |
+          set -euo pipefail
+          python3 .ci/workflow-tools/Tools/resolve_media_revision.py \
+            --source-root .ci/source-metadata \
+            --media-checkout .ci/rebellion2-media \
+            --branch "$PULL_REQUEST_BRANCH" | tee -a "$GITHUB_OUTPUT"

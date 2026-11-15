@@ -116,3 +116,5 @@ Assets/Art/Models/MainMenu/
 /Assets/Plugins/TacticalMath.meta
 /.native-math-build/
 !/Native/TacticalMath/managed-tests/TacticalMath.ManagedTests.csproj
+# Workflow validation dependencies
+.github/scripts/node_modules/

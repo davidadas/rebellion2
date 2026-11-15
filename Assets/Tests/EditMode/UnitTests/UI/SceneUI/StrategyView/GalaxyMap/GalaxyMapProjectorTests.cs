@@ -550,9 +550,32 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             GalaxyPlanetSector planetSector = CreateSector("sector", "Corellia", 0, 0);
             Planet playerPlanet = CreatePlanet("player", _playerFactionId, 1, 2);
             Planet opposingPlanet = CreatePlanet("opposing", _opposingFactionId, 3, 4);
+            Planet opposingSupportWithoutControl = CreatePlanet(
+                "opposing-support",
+                _playerFactionId,
+                5,
+                6
+            );
+            Planet neutralOpposingControl = CreatePlanet(
+                "neutral-opposing-control",
+                _opposingFactionId,
+                7,
+                8
+            );
             playerPlanet.SetFullPopularSupport(_playerFactionId);
             opposingPlanet.SetFullPopularSupport(_opposingFactionId);
-            GalaxyMapSector sector = CreateSector(planetSector, playerPlanet, opposingPlanet);
+            opposingSupportWithoutControl.SetFullPopularSupport(_opposingFactionId);
+            neutralOpposingControl.SetPopularSupport(
+                _opposingFactionId,
+                _game.Config.SupportShift.OwnershipTransferThreshold - 1
+            );
+            GalaxyMapSector sector = CreateSector(
+                planetSector,
+                playerPlanet,
+                opposingPlanet,
+                opposingSupportWithoutControl,
+                neutralOpposingControl
+            );
             FactionTheme playerTheme = _uiContext.GetPlayerFactionTheme();
             FactionTheme opposingTheme = _uiContext.GetTheme(_opposingFactionId);
             StrategyBriefingMapPresentation briefing = new StrategyBriefingMapPresentation(
@@ -580,6 +603,82 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreSame(
                 _uiContext.GetTexture(opposingTheme.GalaxyBackground.PlanetIcons.XL),
                 data.Clusters[0].Stars[1].StarTexture
+            );
+            Assert.AreSame(
+                _uiContext.GetTexture(playerTheme.GalaxyBackground.PlanetIcons.Small),
+                data.Clusters[0].Stars[2].StarTexture
+            );
+            Assert.AreSame(
+                _uiContext.GetTexture(opposingTheme.GalaxyBackground.PlanetIcons.Small),
+                data.Clusters[0].Stars[3].StarTexture
+            );
+        }
+
+        [TestCase(StrategyBriefingMapMode.PlayerMilitaryControl, true)]
+        [TestCase(StrategyBriefingMapMode.OpponentMilitaryControl, false)]
+        public void Project_MilitaryControlBriefing_HighlightsControlledPlanetsBelowLoyaltyThreshold(
+            StrategyBriefingMapMode mode,
+            bool playerControls
+        )
+        {
+            string controllingFaction = playerControls ? _playerFactionId : _opposingFactionId;
+            string favoredFaction = playerControls ? _opposingFactionId : _playerFactionId;
+            Planet controlledByForce = CreatePlanet(
+                "controlled-by-force",
+                controllingFaction,
+                1,
+                2
+            );
+            Planet loyalToController = CreatePlanet("loyal", controllingFaction, 3, 4);
+            Planet favoredButNotControlled = CreatePlanet("not-controlled", favoredFaction, 5, 6);
+            int controlThreshold = _game.Config.SupportShift.OwnershipTransferThreshold;
+            controlledByForce.SetPopularSupport(controllingFaction, controlThreshold - 1);
+            controlledByForce.SetPopularSupport(favoredFaction, 101 - controlThreshold);
+            loyalToController.SetFullPopularSupport(controllingFaction);
+            favoredButNotControlled.SetPopularSupport(controllingFaction, controlThreshold - 1);
+            favoredButNotControlled.SetPopularSupport(favoredFaction, 101 - controlThreshold);
+            StrategyBriefingMapPresentation briefing = new StrategyBriefingMapPresentation(
+                mode,
+                "Systems Under Military Control",
+                null,
+                null,
+                _playerFactionId,
+                _opposingFactionId
+            );
+
+            GalaxyMapRenderData data = _projector.Project(
+                new[]
+                {
+                    CreateSector(
+                        CreateSector("sector", "Corellia", 0, 0),
+                        controlledByForce,
+                        loyalToController,
+                        favoredButNotControlled
+                    ),
+                },
+                _playerFactionId,
+                GalacticInformationFilterMode.DisplayOff,
+                null,
+                briefing
+            );
+
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    _uiContext.GetTheme(controllingFaction).GalaxyBackground.PlanetIcons.XL
+                ),
+                data.Clusters[0].Stars[0].StarTexture
+            );
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    _uiContext.GetTheme(controllingFaction).GalaxyBackground.PlanetIcons.Small
+                ),
+                data.Clusters[0].Stars[1].StarTexture
+            );
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    _uiContext.GetTheme(favoredFaction).GalaxyBackground.PlanetIcons.Small
+                ),
+                data.Clusters[0].Stars[2].StarTexture
             );
         }
 

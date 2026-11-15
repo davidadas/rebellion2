@@ -298,10 +298,10 @@ internal sealed class PlanetSectorWindowProjector
             planetIndex,
             CreatePlanetOffset(sector, planet),
             uiContext.GetPlanetTexture(planet, strategyPlanet?.PlanetIconPath),
-            showUprising
+            showUprising && !string.IsNullOrEmpty(ownerFactionId)
                 ? uiContext.GetTexture(
                     uiContext
-                        .GetPlayerFactionTheme()
+                        .GetTheme(ownerFactionId)
                         ?.PlanetOverlayTheme?.PlanetSectorUprisingImagePath
                 )
                 : null,

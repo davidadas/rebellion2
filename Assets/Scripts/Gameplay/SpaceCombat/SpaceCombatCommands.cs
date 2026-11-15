@@ -989,6 +989,8 @@ namespace Rebellion.Gameplay
                 defenderFleets,
                 decision.AttackerOwnerInstanceID,
                 decision.DefenderOwnerInstanceID,
+                !RequiresHumanResponse(decision.AttackerOwnerInstanceID),
+                !RequiresHumanResponse(decision.DefenderOwnerInstanceID),
                 planet,
                 _game.CurrentTick,
                 out SpaceCombatWithdrawalPlan attackerWithdrawalPlan,
@@ -1082,6 +1084,8 @@ namespace Rebellion.Gameplay
         /// <param name="defenderFleets">The defending fleets.</param>
         /// <param name="attackerOwnerInstanceId">The attacking owner identifier.</param>
         /// <param name="defenderOwnerInstanceId">The defending owner identifier.</param>
+        /// <param name="attackerMayAutomaticallyWithdraw">Whether the attacking side may withdraw without an explicit order.</param>
+        /// <param name="defenderMayAutomaticallyWithdraw">Whether the defending side may withdraw without an explicit order.</param>
         /// <param name="planet">Planet where combat occurs.</param>
         /// <param name="tick">Current game tick (recorded on the result).</param>
         /// <param name="attackerWithdrawalPlan">Receives the attacking side's reserved withdrawal.</param>
@@ -1092,6 +1096,8 @@ namespace Rebellion.Gameplay
             IReadOnlyList<Fleet> defenderFleets,
             string attackerOwnerInstanceId,
             string defenderOwnerInstanceId,
+            bool attackerMayAutomaticallyWithdraw,
+            bool defenderMayAutomaticallyWithdraw,
             Planet planet,
             int tick,
             out SpaceCombatWithdrawalPlan attackerWithdrawalPlan,
@@ -1124,18 +1130,22 @@ namespace Rebellion.Gameplay
                 .Where(SpaceCombatQueries.IsActiveStarfighter)
                 .Distinct()
                 .ToList();
-            bool attackerCanWithdraw = _withdrawalResolver.CanAutomaticallyWithdraw(
-                attackerFleets,
-                defenderFleets,
-                planet,
-                attackerOwnerInstanceId
-            );
-            bool defenderCanWithdraw = _withdrawalResolver.CanAutomaticallyWithdraw(
-                defenderFleets,
-                attackerFleets,
-                planet,
-                defenderOwnerInstanceId
-            );
+            bool attackerCanWithdraw =
+                attackerMayAutomaticallyWithdraw
+                && _withdrawalResolver.CanAutomaticallyWithdraw(
+                    attackerFleets,
+                    defenderFleets,
+                    planet,
+                    attackerOwnerInstanceId
+                );
+            bool defenderCanWithdraw =
+                defenderMayAutomaticallyWithdraw
+                && _withdrawalResolver.CanAutomaticallyWithdraw(
+                    defenderFleets,
+                    attackerFleets,
+                    planet,
+                    defenderOwnerInstanceId
+                );
             (Officer Admiral, Officer Commander) attackerCommandOfficers = GetCommandOfficers(
                 attackerFleets,
                 planet,

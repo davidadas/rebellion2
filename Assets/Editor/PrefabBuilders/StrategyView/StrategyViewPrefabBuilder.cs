@@ -768,7 +768,6 @@ public static class StrategyViewPrefabBuilder
         );
 
         GameObject hud = CreateLayer(_hudName, root.transform);
-        bookmarks.transform.SetSiblingIndex(hud.transform.GetSiblingIndex() + 1);
         RectTransform hudRect = hud.GetComponent<RectTransform>();
         SetStrategySurfaceRect(hudRect);
         StrategyHudView hudView = EnableRuntimeComponent(hud.AddComponent<StrategyHudView>());

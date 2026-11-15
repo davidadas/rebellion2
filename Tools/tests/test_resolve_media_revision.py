@@ -1,6 +1,7 @@
 import importlib.util
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -43,6 +44,34 @@ class ResolveMediaRevisionTests(unittest.TestCase):
                 )
                 with self.assertRaises(ValueError):
                     resolver.resolve(self.source, self.media)
+
+    def test_cli_reads_tested_pin_without_executing_tested_resolver(self):
+        (self.source / ".github" / "media-revision").write_text(
+            self.sha.upper() + "\n", encoding="utf-8"
+        )
+        (self.source / "Tools").mkdir()
+        (self.source / "Tools" / "resolve_media_revision.py").write_text(
+            'raise RuntimeError("The tested resolver must not execute")\n',
+            encoding="utf-8",
+        )
+        self.git("remote", "remove", "origin", repo=self.media)
+
+        result = subprocess.run(
+            [
+                sys.executable, str(SPEC.origin),
+                "--source-root", str(self.source),
+                "--media-checkout", str(self.media),
+                "--branch", "different-content-branch",
+            ],
+            cwd=self.source,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        self.assertEqual(
+            [f"revision={self.sha}", f"sha={self.sha}"], result.stdout.splitlines()
+        )
 
     def test_resolve_matching_branch_precedes_companion(self):
         self.git("branch", "combat", repo=self.media)

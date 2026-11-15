@@ -422,17 +422,15 @@ public sealed class GalaxyMapProjector
         };
         if (highlightedFaction != null)
         {
-            string otherFaction = string.Equals(
-                highlightedFaction,
-                briefing.PlayerFactionInstanceID,
-                StringComparison.Ordinal
-            )
-                ? briefing.OpponentFactionInstanceID
-                : briefing.PlayerFactionInstanceID;
             bool highlighted =
                 !planet.IsDestroyed
+                && string.Equals(
+                    planet.OwnerInstanceID,
+                    highlightedFaction,
+                    StringComparison.Ordinal
+                )
                 && planet.GetPopularSupport(highlightedFaction)
-                    > planet.GetPopularSupport(otherFaction);
+                    >= context.Game.Config.SupportShift.OwnershipTransferThreshold;
             return new GalacticInformationMarker(
                 highlighted ? 3 : 0,
                 highlighted ? highlightedFaction : planet.OwnerInstanceID,
@@ -449,12 +447,27 @@ public sealed class GalaxyMapProjector
             );
         }
 
-        if (briefing.Mode == StrategyBriefingMapMode.MilitaryControl)
+        if (
+            briefing.Mode == StrategyBriefingMapMode.PlayerMilitaryControl
+            || briefing.Mode == StrategyBriefingMapMode.OpponentMilitaryControl
+        )
         {
-            bool controlled = !string.IsNullOrEmpty(planet.OwnerInstanceID);
+            string controllingFaction =
+                briefing.Mode == StrategyBriefingMapMode.PlayerMilitaryControl
+                    ? briefing.PlayerFactionInstanceID
+                    : briefing.OpponentFactionInstanceID;
+            bool controlled =
+                !planet.IsDestroyed
+                && string.Equals(
+                    planet.OwnerInstanceID,
+                    controllingFaction,
+                    StringComparison.Ordinal
+                )
+                && planet.GetPopularSupport(controllingFaction)
+                    < context.Game.Config.SupportShift.OwnershipTransferThreshold;
             return new GalacticInformationMarker(
                 controlled ? 3 : 0,
-                controlled ? planet.OwnerInstanceID : null,
+                controlled ? controllingFaction : planet.OwnerInstanceID,
                 false
             );
         }

@@ -3904,6 +3904,34 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void TrySubmitResponse_HumanSelectsAutomatic_DoesNotWithdrawHumanForce()
+        {
+            (GameRoot game, SpaceCombatCommands commands, Fleet empireFleet, Fleet allianceFleet) =
+                CreatePendingEncounter();
+            game.Config.Combat.SpaceCombat.AutoResolveMaximumIterations = 0;
+            CapitalShip empireShip = empireFleet.GetChildren<CapitalShip>().Single();
+            CapitalShip allianceShip = allianceFleet.GetChildren<CapitalShip>().Single();
+            empireShip.PrimaryWeapons.Clear();
+            allianceShip.PrimaryWeapons.Clear();
+            allianceShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100, 0, 0, 0, 100 };
+
+            bool accepted = commands.TrySubmitResponse(
+                empireFleet.OwnerInstanceID,
+                retreat: false,
+                out List<GameResult> results
+            );
+
+            Assert.IsTrue(accepted);
+            SpaceCombatResult result = results.OfType<SpaceCombatResult>().Single();
+            SpaceCombatSideOutcome humanOutcome =
+                result.AttackerOwnerInstanceID == empireFleet.OwnerInstanceID
+                    ? result.AttackerOutcome
+                    : result.DefenderOutcome;
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, humanOutcome);
+            Assert.IsNull(empireFleet.Movement);
+        }
+
+        [Test]
         public void TryGetPendingCombat_GravityWellActivated_RefreshesRetreatAvailability()
         {
             (GameRoot game, SpaceCombatCommands commands, Fleet empireFleet, Fleet allianceFleet) =
