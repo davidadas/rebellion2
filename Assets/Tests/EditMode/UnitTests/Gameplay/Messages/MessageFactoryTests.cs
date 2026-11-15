@@ -4332,6 +4332,47 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual("empire-image", message.DisplayImagePath);
         }
 
+        [Test]
+        public void CreateMessages_UprisingEndedWithOwnershipChange_SuppressesJoinedCauseMessage()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            target.OwnerInstanceID = alliance.InstanceID;
+            IReadOnlyList<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.UprisingEnded,
+                        MessageType.PopularSupport,
+                        "uprising ended:{system}",
+                        "ended:{faction}:{system}",
+                        imagePaths: FactionImages()
+                    ),
+                    Definition(
+                        MessageResultType.PlanetJoinedBySupport,
+                        MessageType.PopularSupport,
+                        "joined:{system}",
+                        "joined:{faction}:{system}",
+                        imagePaths: FactionImages()
+                    ),
+                },
+                new PlanetOwnershipChangedResult
+                {
+                    Planet = target,
+                    PreviousOwner = empire,
+                    NewOwner = alliance,
+                    Reason = PlanetOwnershipChangeReason.GarrisonRemoved,
+                },
+                new PlanetUprisingEndedResult { Planet = target, Faction = alliance }
+            );
+
+            Message message = FirstMessageFor(deliveries, alliance);
+            Assert.AreEqual(1, deliveries.Count);
+            Assert.AreEqual("uprising ended:Yavin", message.Title);
+            Assert.AreEqual("ended:Alliance:Yavin", message.Body);
+        }
+
         [TestCase(PlanetOwnershipChangeReason.PopularSupport)]
         [TestCase(PlanetOwnershipChangeReason.GarrisonRemoved)]
         public void CreateMessages_PoliticalOwnershipChange_ReportsNewOwner(
