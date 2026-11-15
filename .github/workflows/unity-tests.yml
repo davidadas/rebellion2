@@ -339,7 +339,7 @@ jobs:
     needs: pr-plan
     runs-on: ubuntu-latest
     environment:
-      name: production
+      name: Fork PR tests
       url: ${{ needs.pr-plan.outputs.review_url }}
     permissions:
       actions: read

@@ -9,15 +9,22 @@ const root = path.resolve(__dirname, '..', '..');
 const workflow = name => YAML.parse(readFileSync(path.join(root, '.github/workflows', name), 'utf8'));
 const ci = workflow('unity-tests.yml');
 const runner = workflow('unity-test-runner.yml');
+const mediaResolver = workflow('resolve-media.yml');
 const dispatcher = workflow('pr-test-request.yml');
 const needs = job => typeof job.needs === 'string' ? [job.needs] : job.needs || [];
+const environmentName = job => typeof job.environment === 'string'
+  ? job.environment
+  : job.environment?.name;
 
 function dependsOn(jobName, required) {
   return needs(ci.jobs[jobName]).some(parent => parent === required || dependsOn(parent, required));
 }
 
 test('private PR media and Unity execution both depend on the required-reviewer gate', () => {
+  assert.notEqual(REVIEW_ENVIRONMENT.toLowerCase(), 'production');
   assert.equal(ci.jobs['approve-pr'].environment.name, REVIEW_ENVIRONMENT);
+  assert.equal(environmentName(mediaResolver.jobs.resolve), 'production');
+  assert.equal(environmentName(runner.jobs.test), 'production');
   assert.equal(dependsOn('resolve-pr-media', 'approve-pr'), true);
   assert.equal(dependsOn('test-pr', 'approve-pr'), true);
   assert.equal(dependsOn('test-pr', 'resolve-pr-media'), true);
@@ -33,7 +40,7 @@ test('metadata planning and result reporting never check out contributor code', 
     assert.equal(checkouts.length, 1);
     assert.equal(checkouts[0].with.ref, '${{ github.workflow_sha }}');
     assert.equal(checkouts[0].with['persist-credentials'], false);
-    assert.equal(job.environment === 'production', false);
+    assert.notEqual(environmentName(job), 'production');
   }
 });
 
