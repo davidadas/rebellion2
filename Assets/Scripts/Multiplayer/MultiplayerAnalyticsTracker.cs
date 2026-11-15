@@ -135,13 +135,18 @@ namespace Rebellion.Multiplayer
         /// Records one observed peer departure until another connection is admitted.
         /// </summary>
         /// <param name="currentTick">The observed campaign tick, or null before a game exists.</param>
-        /// <param name="reason">A fixed reason category without exception text or peer data.</param>
-        internal void RecordDisconnected(int? currentTick, string reason)
+        /// <param name="reason">The observed cause without exception text or peer data.</param>
+        internal void RecordDisconnected(int? currentTick, MultiplayerDisconnectReason reason)
         {
             if (!_connected)
                 return;
             _connected = false;
-            Emit("multiplayer_connection_changed", "disconnected", reason, currentTick);
+            Emit(
+                "multiplayer_connection_changed",
+                "disconnected",
+                GetDisconnectReason(reason),
+                currentTick
+            );
         }
 
         /// <summary>
@@ -181,6 +186,27 @@ namespace Rebellion.Multiplayer
             _context = null;
             _lobbyID = _campaignID = _initializationID = _localUserID = _playerID = _phase = null;
             _connected = _stopped = _failed = false;
+        }
+
+        /// <summary>
+        /// Converts observed causes into stable analytics categories without guessing user intent.
+        /// </summary>
+        /// <param name="reason">The observed connection-ending cause.</param>
+        /// <returns>The nonidentifying category; unknown closures are kept separate from connection loss.</returns>
+        private static string GetDisconnectReason(MultiplayerDisconnectReason reason)
+        {
+            return reason switch
+            {
+                MultiplayerDisconnectReason.LocalSessionClosed => "local_session_closed",
+                MultiplayerDisconnectReason.PeerEndedSession => "peer_ended_session",
+                MultiplayerDisconnectReason.PeerClosedConnection => "peer_closed_connection",
+                MultiplayerDisconnectReason.LobbyClosed => "lobby_closed",
+                MultiplayerDisconnectReason.RemovedFromLobby => "removed_from_lobby",
+                MultiplayerDisconnectReason.ConnectionLost => "connection_lost",
+                MultiplayerDisconnectReason.TransportError => "transport_error",
+                MultiplayerDisconnectReason.ProtocolError => "protocol_error",
+                _ => "connection_closed_unknown",
+            };
         }
 
         /// <summary>
