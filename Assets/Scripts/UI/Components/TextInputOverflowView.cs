@@ -59,7 +59,7 @@ public sealed class TextInputOverflowView : MonoBehaviour
         input ??= GetComponent<TMP_InputField>();
         if (input.isFocused)
             return;
-        if (input.verticalScrollbar != null)
+        if (input.lineType != TMP_InputField.LineType.SingleLine)
         {
             pending = false;
             return;

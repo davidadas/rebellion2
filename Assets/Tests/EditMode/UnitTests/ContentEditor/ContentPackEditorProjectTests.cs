@@ -82,6 +82,47 @@ namespace Rebellion.Tests.ContentEditor
             Assert.AreEqual("Ship", building.GetField("ProductionType").Value);
         }
 
+        [Test]
+        public void ResetFieldsToInherited_MultipleOverrides_RestoresAllInOneUndoableEdit()
+        {
+            WriteFixtureFile(
+                "Data/units.xml",
+                "<Officers><Officer><TypeID>OFFICER</TypeID><DisplayName>Inherited name</DisplayName><EncyclopediaDescription>Inherited description</EncyclopediaDescription></Officer></Officers>"
+            );
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorRecord officer = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Officers")
+                .Records.Single();
+            ContentPackEditorField name = officer.GetField("DisplayName");
+            ContentPackEditorField description = officer.GetField("EncyclopediaDescription");
+            project.SetField(name, "Authored name");
+            project.SetField(description, "Authored description");
+
+            project.ResetFieldsToInherited(new[] { name, description });
+
+            officer = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Officers")
+                .Records.Single();
+            Assert.AreEqual("Inherited name", officer.GetField("DisplayName").Value);
+            Assert.AreEqual(
+                "Inherited description",
+                officer.GetField("EncyclopediaDescription").Value
+            );
+            Assert.AreEqual("Reset section to defaults", project.UndoDescription);
+            Assert.IsTrue(project.Undo());
+            officer = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Officers")
+                .Records.Single();
+            Assert.AreEqual("Authored name", officer.GetField("DisplayName").Value);
+            Assert.AreEqual(
+                "Authored description",
+                officer.GetField("EncyclopediaDescription").Value
+            );
+        }
+
         [TestCase("Production", "ScrapRefundDivisor", 0)]
         [TestCase("Production", "ScrapRefundDivisor", -1)]
         [TestCase("AI", "TickInterval", 0)]

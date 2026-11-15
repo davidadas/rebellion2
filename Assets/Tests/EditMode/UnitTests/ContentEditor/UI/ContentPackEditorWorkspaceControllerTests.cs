@@ -16,7 +16,7 @@ namespace Rebellion.Tests.ContentEditor.UI
     public sealed class ContentPackEditorWorkspaceControllerTests : ContentEditorViewTestBase
     {
         [Test]
-        public void ResetFieldToInherited_VisibleButton_RestoresInheritedValueAndSupportsUndo()
+        public void ResetSection_VisibleButton_ResetsOnlyTheCurrentSectionAndSupportsUndo()
         {
             project = ContentEditorTestData.CreateLoadableProject(
                 Path.Combine(folder, "InheritedContent")
@@ -27,23 +27,26 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .Records.First();
             string inheritedName = officer.GetField("DisplayName").Value;
             project.SetField(officer.GetField("DisplayName"), "Overridden name");
+            project.SetField(officer.GetField("EncyclopediaDescription"), "Overridden description");
             workspace.RenderProject(project, assets);
             SelectRecord(officer);
-            ContentEditorFieldView field = view.GetComponentsInChildren<ContentEditorFieldView>()
-                .Single(control => control.Field.MemberName == "DisplayName");
+            Button resetSection = view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "ResetSection");
 
-            field
-                .GetComponentsInChildren<Button>()
-                .Single(button => button.name == "Inheritance")
-                .onClick.Invoke();
+            resetSection.onClick.Invoke();
 
-            ContentPackEditorField reset = project
+            ContentPackEditorRecord reset = project
                 .GetCatalogs()
                 .First(catalog => catalog.Name == "Officers")
-                .Records.First()
-                .GetField("DisplayName");
-            Assert.AreEqual(inheritedName, reset.Value);
-            Assert.IsTrue(reset.IsInherited);
+                .Records.First();
+            Assert.AreEqual(inheritedName, reset.GetField("DisplayName").Value);
+            Assert.IsTrue(reset.GetField("DisplayName").IsInherited);
+            Assert.AreEqual(
+                "Overridden description",
+                reset.GetField("EncyclopediaDescription").Value
+            );
+            Assert.AreEqual("Reset section to defaults", project.UndoDescription);
+            Assert.IsFalse(resetSection.gameObject.activeSelf);
             Assert.IsTrue(project.Undo());
             Assert.AreEqual(
                 "Overridden name",
@@ -52,6 +55,15 @@ namespace Rebellion.Tests.ContentEditor.UI
                     .First(catalog => catalog.Name == "Officers")
                     .Records.First()
                     .GetField("DisplayName")
+                    .Value
+            );
+            Assert.AreEqual(
+                "Overridden description",
+                project
+                    .GetCatalogs()
+                    .First(catalog => catalog.Name == "Officers")
+                    .Records.First()
+                    .GetField("EncyclopediaDescription")
                     .Value
             );
         }

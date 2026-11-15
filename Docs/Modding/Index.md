@@ -186,10 +186,10 @@ Documents whose root is itself an ordered or unidentified collection use a compl
 when edited, including when the last entry is removed.
 
 The content editor displays resolved inherited values while keeping their authored overrides
-separate. Editing an inherited document saves only the changed settings. Fields show **Inherited**
-when they have no local override. **Reset to inherited** removes the selected override; resetting
-the last override removes the unnecessary local file. Undo, redo, exports, and test snapshots retain
-the authored overrides rather than copying displayed defaults into the pack.
+separate. Editing an inherited document saves only the changed settings. Authored overrides use a
+distinct input color. **Reset section** removes every override in the active inspector section;
+resetting the last override removes the unnecessary local file. Undo, redo, exports, and test
+snapshots retain the authored overrides rather than copying displayed defaults into the pack.
 
 Existing files without `Inherit="true"` keep their full-replacement behavior. Resetting a setting
 in an existing replacement retains its other authored values. `pack.xml` and `mod.xml` remain

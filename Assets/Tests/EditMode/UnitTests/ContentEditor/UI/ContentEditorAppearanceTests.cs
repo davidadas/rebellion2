@@ -145,5 +145,44 @@ namespace Rebellion.Tests.ContentEditor.UI
                 }
             }
         }
+
+        [TestCase(ContentEditorColorMode.Dark)]
+        [TestCase(ContentEditorColorMode.Light)]
+        [TestCase(ContentEditorColorMode.Empire)]
+        [TestCase(ContentEditorColorMode.Rebels)]
+        [TestCase(ContentEditorColorMode.Dagobah)]
+        public void ColorFor_OverrideInput_DiffersFromTheInheritedInput(ContentEditorColorMode mode)
+        {
+            Assert.AreNotEqual(
+                ContentEditorAppearance.ColorFor(mode, ContentEditorColorRole.Input),
+                ContentEditorAppearance.ColorFor(mode, ContentEditorColorRole.OverrideInput)
+            );
+        }
+
+        [TestCase(ContentEditorColorMode.Dark)]
+        [TestCase(ContentEditorColorMode.Light)]
+        [TestCase(ContentEditorColorMode.Empire)]
+        [TestCase(ContentEditorColorMode.Rebels)]
+        [TestCase(ContentEditorColorMode.Dagobah)]
+        public void ColorFor_TextSelection_RemainsClearlyVisibleInEveryTheme(
+            ContentEditorColorMode mode
+        )
+        {
+            Color selection = ContentEditorAppearance.ColorFor(
+                mode,
+                ContentEditorColorRole.TextSelection
+            );
+
+            Assert.GreaterOrEqual(selection.a, 0.65f);
+        }
+
+        [Test]
+        public void AuthoredTextInputs_FirstPointerFocus_PlacesTheCaretWithoutSelectingAll()
+        {
+            TMP_InputField[] inputs = view.GetComponentsInChildren<TMP_InputField>(true);
+
+            Assert.IsNotEmpty(inputs);
+            Assert.IsTrue(inputs.All(input => !input.onFocusSelectAll));
+        }
     }
 }

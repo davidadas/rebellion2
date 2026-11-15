@@ -102,7 +102,7 @@ namespace Rebellion.Tests.ContentEditor.UI
 
         [TestCase(340)]
         [TestCase(700)]
-        public void SetLayout_LongDescription_GrowsToShowAllWrappedText(int width)
+        public void SetLayout_LongDescription_KeepsAStableEditorWithItsOwnScrollbar(int width)
         {
             ContentPackEditorField description = officer.GetField("EncyclopediaDescription");
             project.SetField(
@@ -126,8 +126,9 @@ namespace Rebellion.Tests.ContentEditor.UI
             Canvas.ForceUpdateCanvases();
 
             TMP_InputField input = control.GetComponentInChildren<TMP_InputField>();
-            Assert.Greater(height, 152);
-            Assert.LessOrEqual(
+            Assert.AreEqual(152, height);
+            Assert.IsTrue(input.verticalScrollbar.gameObject.activeSelf);
+            Assert.Greater(
                 input
                     .textComponent.GetPreferredValues(
                         input.text,
@@ -135,7 +136,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                         float.PositiveInfinity
                     )
                     .y,
-                input.textViewport.rect.height + 1
+                input.textViewport.rect.height
             );
         }
 
@@ -168,7 +169,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
-        public void Render_InheritedSetting_ShowsInheritedStateWithoutCreatingAnOverride()
+        public void Render_InheritedSetting_UsesTheStandardInputColorWithoutAFieldResetControl()
         {
             ContentPackEditorField description = officer.GetField("EncyclopediaDescription");
             control.Render(
@@ -178,17 +179,30 @@ namespace Rebellion.Tests.ContentEditor.UI
                 null
             );
             control.SetLayout(new Rect(0, 0, 700, control.Height), 220);
-            Button inherited = control
-                .GetComponentsInChildren<Button>()
-                .Single(button => button.name == "Inheritance");
+            TMP_InputField input = control.GetComponentInChildren<TMP_InputField>();
 
-            Assert.AreEqual("Inherited", inherited.GetComponentInChildren<TMP_Text>().text);
-            Assert.IsFalse(inherited.interactable);
+            Assert.IsFalse(
+                control
+                    .GetComponentsInChildren<Button>(true)
+                    .Any(button => button.name == "Inheritance")
+            );
+            Assert.IsFalse(
+                control
+                    .GetComponentsInChildren<TMP_Text>(true)
+                    .Any(text => text.text.Contains("Reset"))
+            );
+            Assert.AreEqual(
+                ContentEditorAppearance.ColorFor(
+                    ContentEditorColorMode.Dark,
+                    ContentEditorColorRole.Input
+                ),
+                input.GetComponent<Image>().color
+            );
             Assert.IsFalse(project.IsDirty);
         }
 
         [Test]
-        public void SetLayout_EditingAnInheritedField_EnablesResetImmediately()
+        public void SetLayout_EditingAnInheritedField_UsesOverrideColorWithoutChangingItsSize()
         {
             ContentPackEditorField description = officer.GetField("EncyclopediaDescription");
             control.Submitted += (field, values) => project.SetField(field, values.Single());
@@ -204,15 +218,18 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .GetComponentInChildren<TMP_InputField>()
                 .onEndEdit.Invoke("Changed description");
 
-            Button reset = control
-                .GetComponentsInChildren<Button>()
-                .Single(button => button.name == "Inheritance");
-            Assert.IsTrue(reset.interactable);
-            Assert.AreEqual("Reset to inherited", reset.GetComponentInChildren<TMP_Text>().text);
+            Assert.AreEqual(152, control.SetLayout(new Rect(0, 0, 700, control.Height), 220));
+            Assert.AreEqual(
+                ContentEditorAppearance.ColorFor(
+                    ContentEditorColorMode.Dark,
+                    ContentEditorColorRole.OverrideInput
+                ),
+                control.GetComponentInChildren<TMP_InputField>().GetComponent<Image>().color
+            );
         }
 
         [Test]
-        public void SetCellLayout_InheritedField_KeepsTheInputAboveTheInheritanceButton()
+        public void SetCellLayout_InheritedField_KeepsTheCompactRowHeight()
         {
             ContentPackEditorField description = officer.GetField("DisplayName");
             control.Render(
@@ -221,48 +238,10 @@ namespace Rebellion.Tests.ContentEditor.UI
                 null,
                 null
             );
-            control.SetLayout(new Rect(0, 0, 180, 44), 0);
+            int height = control.SetLayout(new Rect(0, 0, 180, 44), 0);
             control.SetCellLayout();
             Canvas.ForceUpdateCanvases();
-            RectTransform input = (RectTransform)
-                control.GetComponentInChildren<TMP_InputField>().transform;
-            RectTransform button = (RectTransform)
-                control
-                    .GetComponentsInChildren<Button>()
-                    .Single(item => item.name == "Inheritance")
-                    .transform;
-            Bounds inputBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
-                control.transform,
-                input
-            );
-            Bounds buttonBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
-                control.transform,
-                button
-            );
-            Assert.GreaterOrEqual(inputBounds.min.y, buttonBounds.max.y);
-        }
-
-        [Test]
-        public void ResetButton_OverriddenSetting_RequestsResetWithoutMutatingTheProject()
-        {
-            ContentPackEditorField description = officer.GetField("EncyclopediaDescription");
-            project.SetField(description, "Authored description");
-            control.Render(
-                ContentPackEditorProjector.BuildField(project, description),
-                null,
-                null,
-                null
-            );
-            ContentPackEditorField requested = null;
-            control.InheritanceResetRequested += field => requested = field;
-            Button inherited = control
-                .GetComponentsInChildren<Button>()
-                .Single(button => button.name == "Inheritance");
-
-            inherited.onClick.Invoke();
-
-            Assert.AreSame(description, requested);
-            Assert.AreEqual("Authored description", description.Value);
+            Assert.AreEqual(44, height);
         }
     }
 }
