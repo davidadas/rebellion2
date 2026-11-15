@@ -19,6 +19,7 @@ public sealed class GameSessionManager
     private readonly Func<UserGameplaySettings> _getGameplaySettings;
     private readonly IAnalyticsEventSink _analyticsSink;
     private readonly Func<int> _getFrameCount;
+    private readonly Func<Task> _presentSaveIndicator;
     private GameSession _activeGameSession;
     private GameManager _gameManager;
     private CampaignAnalyticsTracker _campaignAnalyticsTracker;
@@ -30,7 +31,10 @@ public sealed class GameSessionManager
     private UserGameplaySettings _pendingAutosaveSettings;
     private int _pendingAutosaveFrame;
     private int _autosavePublications;
-    private int _autosaveGeneration;
+    private int _saveGeneration;
+    private int _manualSaveRequests;
+    private int _quickSaveRequests;
+    private int _pendingSaveCaptures;
 
     /// <summary>
     /// Gets whether the active session has an owner coordinating execution and saves.
@@ -38,17 +42,19 @@ public sealed class GameSessionManager
     public bool HasCoordinatedSession => _sessionOwner != null;
 
     /// <summary>
-    /// Gets whether the active session is waiting to capture, or still writing, a scheduled autosave.
+    /// Gets the pending save kind, prioritizing explicit requests over scheduled autosaves.
     /// </summary>
-    public bool IsAutosaving =>
-        _sessionOwner != null
-            ? _sessionOwner.IsAutosaving
-            : _pendingAutosaveSettings != null || _autosavePublications > 0;
+    public SaveGameKind? ActiveSaveKind =>
+        _manualSaveRequests > 0 ? SaveGameKind.Manual
+        : _quickSaveRequests > 0 ? SaveGameKind.Quick
+        : _sessionOwner != null ? _sessionOwner.ActiveSaveKind
+        : _pendingAutosaveSettings != null || _autosavePublications > 0 ? SaveGameKind.Automatic
+        : null;
 
     /// <summary>
-    /// Raised when a scheduled autosave starts waiting for its capture or finishes writing.
+    /// Raised when an explicit save or scheduled autosave starts or finishes.
     /// </summary>
-    public event Action AutosaveStateChanged;
+    public event Action SaveStateChanged;
 
     /// <summary>
     /// Gets the active player's ordered application action boundary.
@@ -92,12 +98,14 @@ public sealed class GameSessionManager
     /// <param name="getGameplaySettings">Returns the current gameplay settings.</param>
     /// <param name="analyticsSink">Receives consented campaign analytics.</param>
     /// <param name="getFrameCount">Returns the presented frame number, or null to use Unity's frame count.</param>
+    /// <param name="presentSaveIndicator">Presents local-save feedback before capture, or null for immediate headless execution.</param>
     internal GameSessionManager(
         ContentPack contentPack,
         SaveGameManager saveGameManager = null,
         Func<UserGameplaySettings> getGameplaySettings = null,
         IAnalyticsEventSink analyticsSink = null,
-        Func<int> getFrameCount = null
+        Func<int> getFrameCount = null,
+        Func<Task> presentSaveIndicator = null
     )
     {
         _contentPack = contentPack ?? throw new ArgumentNullException(nameof(contentPack));
@@ -106,6 +114,7 @@ public sealed class GameSessionManager
         _getGameplaySettings = getGameplaySettings;
         _analyticsSink = analyticsSink;
         _getFrameCount = getFrameCount ?? (() => Time.frameCount);
+        _presentSaveIndicator = presentSaveIndicator ?? (() => Task.CompletedTask);
     }
 
     /// <summary>
@@ -188,7 +197,11 @@ public sealed class GameSessionManager
         game.Metadata ??= new GameMetadata();
         if (string.IsNullOrEmpty(game.Metadata.CampaignID))
             game.Metadata.CampaignID = Guid.NewGuid().ToString("N");
-        GameSession session = new GameSession(game, _contentPack.GameData);
+        GameSession session = new GameSession(
+            game,
+            _contentPack.GameData,
+            () => _pendingAutosaveSettings == null && _pendingSaveCaptures == 0
+        );
         return BindSession(session, owner);
     }
 
@@ -205,7 +218,7 @@ public sealed class GameSessionManager
         _gameManager = clock;
         _operationsBlocked = false;
         _sessionOwner = owner;
-        ResetAutosaveState();
+        ResetSaveState();
         _playerRequests = new SessionPlayerRequestDispatcher(
             owner
                 ?? (IPlayerRequestDispatcher)
@@ -271,6 +284,7 @@ public sealed class GameSessionManager
     {
         return HasActiveGame
             && _pendingAutosaveSettings == null
+            && _pendingSaveCaptures == 0
             && (
                 _sessionOwner != null
                     ? _sessionOwner.TryBeginGameTick(elapsedSeconds)
@@ -311,7 +325,7 @@ public sealed class GameSessionManager
         {
             StopCampaignAnalytics();
             _sessionOwner = null;
-            ResetAutosaveState();
+            ResetSaveState();
             outgoingSession.Tick.TickCompleted -= HandleTickCompleted;
             _activeGameSession = null;
             _gameManager = null;
@@ -360,8 +374,8 @@ public sealed class GameSessionManager
     public async Task<bool> QuickSaveAsync()
     {
         bool coordinated = HasCoordinatedSession;
-        bool saved = await ExecutePersistenceAsync(
-            SaveGameOperation.Save,
+        bool saved = await ExecuteSaveAsync(
+            SaveGameKind.Quick,
             () =>
                 coordinated
                     ? _sessionOwner.SaveGameAsync(SaveGameManager.QuickSaveFileName, null)
@@ -397,8 +411,8 @@ public sealed class GameSessionManager
     /// <returns>The persistence owner's completed save outcome.</returns>
     public Task<bool> SaveGameAsync(string fileName, string displayName)
     {
-        return ExecutePersistenceAsync(
-            SaveGameOperation.Save,
+        return ExecuteSaveAsync(
+            SaveGameKind.Manual,
             () =>
                 _sessionOwner != null
                     ? _sessionOwner.SaveGameAsync(fileName, displayName)
@@ -450,6 +464,40 @@ public sealed class GameSessionManager
     }
 
     /// <summary>
+    /// Reports an accepted explicit save until its persistence owner completes the request.
+    /// </summary>
+    /// <param name="kind">The manual or quicksave operation being requested.</param>
+    /// <param name="execute">Starts the existing local or coordinated save operation.</param>
+    /// <returns>The persistence owner's result, or false after a reported storage failure.</returns>
+    private async Task<bool> ExecuteSaveAsync(SaveGameKind kind, Func<Task<bool>> execute)
+    {
+        if (!CanRequestSave)
+            return await ExecutePersistenceAsync(SaveGameOperation.Save, execute);
+
+        int generation = _saveGeneration;
+        if (kind == SaveGameKind.Quick)
+            _quickSaveRequests++;
+        else
+            _manualSaveRequests++;
+        try
+        {
+            SaveStateChanged?.Invoke();
+            return await ExecutePersistenceAsync(SaveGameOperation.Save, execute);
+        }
+        finally
+        {
+            if (generation == _saveGeneration)
+            {
+                if (kind == SaveGameKind.Quick)
+                    _quickSaveRequests--;
+                else
+                    _manualSaveRequests--;
+                SaveStateChanged?.Invoke();
+            }
+        }
+    }
+
+    /// <summary>
     /// Captures a permitted settled checkpoint and awaits its durable publication.
     /// </summary>
     /// <param name="fileName">The save identifier without its extension.</param>
@@ -459,7 +507,27 @@ public sealed class GameSessionManager
     {
         if (!CanWriteLocalSave(fileName))
             return false;
-        await _saveGameManager.SaveGameDataAsync(GetActiveGame(), fileName, displayName);
+
+        int generation = _saveGeneration;
+        Task publication;
+        _pendingSaveCaptures++;
+        try
+        {
+            await _presentSaveIndicator();
+            if (generation != _saveGeneration || !CanWriteLocalSave(fileName))
+                return false;
+            publication = _saveGameManager.SaveGameDataAsync(
+                GetActiveGame(),
+                fileName,
+                displayName
+            );
+        }
+        finally
+        {
+            if (generation == _saveGeneration)
+                _pendingSaveCaptures--;
+        }
+        await publication;
         return true;
     }
 
@@ -508,10 +576,10 @@ public sealed class GameSessionManager
         UserGameplaySettings settings = _getGameplaySettings?.Invoke();
         if (_sessionOwner != null)
         {
-            bool wasAutosaving = _sessionOwner.IsAutosaving;
+            SaveGameKind? previousKind = _sessionOwner.ActiveSaveKind;
             _sessionOwner.ProcessAutosaveTick(settings);
-            if (_sessionOwner.IsAutosaving != wasAutosaving)
-                AutosaveStateChanged?.Invoke();
+            if (_sessionOwner.ActiveSaveKind != previousKind)
+                SaveStateChanged?.Invoke();
         }
         else
             ScheduleLocalAutosave(settings);
@@ -534,7 +602,7 @@ public sealed class GameSessionManager
             AutosavesToKeep = settings.AutosavesToKeep,
         };
         _pendingAutosaveFrame = _getFrameCount();
-        AutosaveStateChanged?.Invoke();
+        SaveStateChanged?.Invoke();
     }
 
     /// <summary>
@@ -552,15 +620,24 @@ public sealed class GameSessionManager
         if (!CanSave)
         {
             LogUnsettledSaveWarning();
-            AutosaveStateChanged?.Invoke();
+            SaveStateChanged?.Invoke();
             return _noAutosave;
         }
 
         _autosavePublications++;
-        return CompleteAutosaveAsync(
-            _saveGameManager.ProcessAutosaveTickAsync(GetActiveGame(), settings),
-            _autosaveGeneration
-        );
+        int generation = _saveGeneration;
+        Task<bool> publication;
+        _pendingSaveCaptures++;
+        try
+        {
+            publication = _saveGameManager.ProcessAutosaveTickAsync(GetActiveGame(), settings);
+        }
+        finally
+        {
+            if (generation == _saveGeneration)
+                _pendingSaveCaptures--;
+        }
+        return CompleteAutosaveAsync(publication, generation);
     }
 
     /// <summary>
@@ -577,22 +654,25 @@ public sealed class GameSessionManager
         }
         finally
         {
-            if (generation == _autosaveGeneration)
+            if (generation == _saveGeneration)
             {
                 _autosavePublications--;
-                AutosaveStateChanged?.Invoke();
+                SaveStateChanged?.Invoke();
             }
         }
     }
 
     /// <summary>
-    /// Forgets scheduled and in-flight autosave state that belongs to an outgoing game.
+    /// Forgets scheduled and in-flight save state that belongs to an outgoing game.
     /// </summary>
-    private void ResetAutosaveState()
+    private void ResetSaveState()
     {
         _pendingAutosaveSettings = null;
         _autosavePublications = 0;
-        _autosaveGeneration++;
+        _manualSaveRequests = 0;
+        _quickSaveRequests = 0;
+        _pendingSaveCaptures = 0;
+        _saveGeneration++;
     }
 
     /// <summary>
@@ -643,7 +723,7 @@ public sealed class GameSessionManager
         StopCampaignAnalytics();
         _gameManager.Reset();
         _operationsBlocked = false;
-        ResetAutosaveState();
+        ResetSaveState();
         GameReplaced?.Invoke(_activeGameSession.Game);
         ReconcileLoadedSession();
         StartCampaignAnalytics(_activeGameSession, pendingMultiplayerStart);

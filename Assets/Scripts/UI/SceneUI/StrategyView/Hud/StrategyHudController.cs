@@ -324,20 +324,45 @@ public sealed class StrategyHudController : IContextMenuReceiver
                 && GetSpeedRequest(data) != null,
             sessionNoticeBounds: CreateSessionNoticeBounds(
                 theme?.StrategyWindowPlacements?.WindowBounds
-            )
+            ),
+            saveIndicatorText: data.SaveKind switch
+            {
+                SaveGameKind.Automatic => "Autosaving...",
+                SaveGameKind.Quick => "Quicksaving...",
+                SaveGameKind.Manual => "Saving...",
+                _ => string.Empty,
+            },
+            saveIndicatorAnimation: CreateSaveIndicatorAnimation(theme?.SaveIndicatorAnimation)
         );
     }
 
     /// <summary>
-    /// Selects the tick counter text. An autosave in progress takes precedence over the paused
-    /// label because it is short-lived and explains a brief hitch.
+    /// Resolves the faction's sprite sheet through the existing texture cache.
+    /// </summary>
+    /// <param name="theme">The configured animation, or null for text-only presentation.</param>
+    /// <returns>The resolved playback data, or null when no texture is available.</returns>
+    private SpriteSheetAnimationViewData CreateSaveIndicatorAnimation(
+        SpriteSheetAnimationTheme theme
+    )
+    {
+        Texture2D texture = ResolveTexture(theme?.ImagePath);
+        return texture == null
+            ? null
+            : new SpriteSheetAnimationViewData(
+                texture,
+                theme.FrameCount,
+                theme.Columns,
+                theme.FramesPerSecond
+            );
+    }
+
+    /// <summary>
+    /// Selects the current tick or paused state independently of the save indicator.
     /// </summary>
     /// <param name="data">The immutable current HUD facts.</param>
-    /// <returns>SAVING, PAUSED, or the current tick.</returns>
+    /// <returns>PAUSED or the current tick.</returns>
     internal static string GetTickCounterText(StrategyHudRenderData data)
     {
-        if (data.IsAutosaving)
-            return "SAVING";
         return data.Speed == TickSpeed.Paused ? "PAUSED" : data.TickText;
     }
 

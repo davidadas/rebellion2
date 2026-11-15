@@ -131,16 +131,103 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual("PAUSED", data.TickCounter.Text);
         }
 
-        [TestCase(TickSpeed.Medium)]
-        [TestCase(TickSpeed.Paused)]
-        public void CreateViewData_Autosaving_ShowsSavingInsteadOfTickOrPaused(TickSpeed speed)
+        [TestCase(TickSpeed.Medium, "42")]
+        [TestCase(TickSpeed.Paused, "PAUSED")]
+        public void CreateViewData_Autosaving_ShowsIndicatorAndPreservesClock(
+            TickSpeed speed,
+            string expectedClock
+        )
         {
             StrategyHudViewData data = _controller.CreateViewData(
-                new StrategyHudRenderData("42", "100", "200", speed, null, isAutosaving: true),
-                new FactionTheme()
+                new StrategyHudRenderData(
+                    "42",
+                    "100",
+                    "200",
+                    speed,
+                    null,
+                    saveKind: SaveGameKind.Automatic
+                ),
+                new FactionTheme
+                {
+                    SaveIndicatorAnimation = new SpriteSheetAnimationTheme
+                    {
+                        ImagePath = "Pack/UI/saving",
+                        FrameCount = 4,
+                        Columns = 2,
+                        FramesPerSecond = 10f,
+                    },
+                }
             );
 
-            Assert.AreEqual("SAVING", data.TickCounter.Text);
+            Assert.AreEqual(expectedClock, data.TickCounter.Text);
+            Assert.AreEqual("Autosaving...", data.SaveIndicatorText);
+            Assert.IsNull(data.SaveIndicatorAnimation);
+        }
+
+        [TestCase(SaveGameKind.Automatic, "Autosaving...")]
+        [TestCase(SaveGameKind.Quick, "Quicksaving...")]
+        [TestCase(SaveGameKind.Manual, "Saving...")]
+        public void CreateViewData_SaveKind_SelectsMatchingLabel(SaveGameKind kind, string label)
+        {
+            StrategyHudViewData data = _controller.CreateViewData(
+                new StrategyHudRenderData("42", "", "", TickSpeed.Medium, null, saveKind: kind),
+                new FactionTheme()
+            );
+            Assert.AreEqual(label, data.SaveIndicatorText);
+        }
+
+        [Test]
+        public void CreateViewData_NoSave_HidesSaveIndicator()
+        {
+            StrategyHudViewData data = _controller.CreateViewData(
+                new StrategyHudRenderData("42", "", "", TickSpeed.Medium, null),
+                new FactionTheme()
+            );
+            Assert.IsEmpty(data.SaveIndicatorText);
+        }
+
+        [Test]
+        public void CreateViewData_SaveAnimation_ResolvesConfiguredFactionArtwork()
+        {
+            Texture2D texture = new Texture2D(8, 8);
+            try
+            {
+                string requestedPath = null;
+                StrategyHudController controller = new StrategyHudController(
+                    () => new Faction(),
+                    () => new FactionTheme(),
+                    path =>
+                    {
+                        requestedPath = path;
+                        return texture;
+                    },
+                    _ => { },
+                    TestPlayerRequests.RejectAll()
+                );
+                controller.Initialize(_actions);
+                StrategyHudViewData data = controller.CreateViewData(
+                    new StrategyHudRenderData("42", "", "", TickSpeed.Medium, null),
+                    new FactionTheme
+                    {
+                        SaveIndicatorAnimation = new SpriteSheetAnimationTheme
+                        {
+                            ImagePath = "Pack/UI/faction-saving",
+                            FrameCount = 4,
+                            Columns = 2,
+                            FramesPerSecond = 10f,
+                        },
+                    }
+                );
+                Assert.AreEqual("Pack/UI/faction-saving", requestedPath);
+                Assert.AreSame(texture, data.SaveIndicatorAnimation.Texture);
+                Assert.AreEqual(4, data.SaveIndicatorAnimation.FrameCount);
+                Assert.AreEqual(2, data.SaveIndicatorAnimation.Columns);
+                Assert.AreEqual(10f, data.SaveIndicatorAnimation.FramesPerSecond);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(texture);
+            }
         }
 
         [Test]

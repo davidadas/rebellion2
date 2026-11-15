@@ -35,10 +35,9 @@ namespace Rebellion.Multiplayer
                     && Failure == null;
 
         /// <summary>
-        /// Gets whether the host's scheduled autosave is queued or its shared checkpoint is still
-        /// being written. Guests never write autosaves, so this is always false for them.
+        /// Gets the participant's pending save kind from its shared checkpoint protocol.
         /// </summary>
-        public bool IsAutosaving => _saveProtocol?.IsAutosavePending == true;
+        public SaveGameKind? ActiveSaveKind => _saveProtocol?.ActiveSaveKind;
 
         /// <summary>
         /// Preserves this participant's live presentation before notifying the scene of a replacement.

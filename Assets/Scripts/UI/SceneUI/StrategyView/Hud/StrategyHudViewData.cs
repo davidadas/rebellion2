@@ -23,7 +23,7 @@ public sealed class StrategyHudRenderData
     public TickSpeed Speed { get; }
     public IReadOnlyList<StrategyHudPlayerSpeedSelection> PlayerSpeeds { get; }
     public string ConnectionNotice { get; }
-    public bool IsAutosaving { get; }
+    public SaveGameKind? SaveKind { get; }
 
     public StrategyHudResourceBreakdown ResourceBreakdown { get; }
 
@@ -38,7 +38,7 @@ public sealed class StrategyHudRenderData
     /// <param name="resourceBreakdown">The current resource-facility totals.</param>
     /// <param name="playerSpeeds">Each human participant's acknowledged speed selection.</param>
     /// <param name="connectionNotice">The current interrupted connection status, or empty.</param>
-    /// <param name="isAutosaving">Whether the HUD should show that an autosave is in progress.</param>
+    /// <param name="saveKind">The save kind presented by the HUD, or null when hidden.</param>
     public StrategyHudRenderData(
         string tickText,
         string rawMaterialsText,
@@ -48,7 +48,7 @@ public sealed class StrategyHudRenderData
         StrategyHudResourceBreakdown resourceBreakdown = null,
         IEnumerable<StrategyHudPlayerSpeedSelection> playerSpeeds = null,
         string connectionNotice = null,
-        bool isAutosaving = false
+        SaveGameKind? saveKind = null
     )
     {
         TickText = tickText ?? string.Empty;
@@ -56,7 +56,7 @@ public sealed class StrategyHudRenderData
         RefinedMaterialsText = refinedMaterialsText ?? string.Empty;
         Speed = speed;
         ConnectionNotice = connectionNotice ?? string.Empty;
-        IsAutosaving = isAutosaving;
+        SaveKind = saveKind;
         PlayerSpeeds = Array.AsReadOnly(
             playerSpeeds?.ToArray() ?? Array.Empty<StrategyHudPlayerSpeedSelection>()
         );
@@ -508,6 +508,10 @@ public sealed class StrategyHudViewData
     public bool CanRespondToSpeedRequest { get; }
     public RectInt? SessionNoticeBounds { get; }
 
+    public string SaveIndicatorText { get; }
+
+    public SpriteSheetAnimationViewData SaveIndicatorAnimation { get; }
+
     public IReadOnlyList<StrategyHudButtonViewData> Buttons => buttons;
 
     public IReadOnlyList<StrategyHudMessageNotificationViewData> MessageNotifications =>
@@ -530,6 +534,8 @@ public sealed class StrategyHudViewData
     /// <param name="speedAgreementText">The compact speed request or interrupted connection message.</param>
     /// <param name="canRespondToSpeedRequest">Whether the message offers speed response controls.</param>
     /// <param name="sessionNoticeBounds">The notice bounds inside the current faction's galaxy play area.</param>
+    /// <param name="saveIndicatorText">The save indicator label, or empty when hidden.</param>
+    /// <param name="saveIndicatorAnimation">The current faction's resolved save animation.</param>
     public StrategyHudViewData(
         Texture2D backgroundTexture,
         StrategyHudCounterViewData tickCounter,
@@ -544,7 +550,9 @@ public sealed class StrategyHudViewData
         IReadOnlyList<StrategyHudMessageNotificationViewData> messageNotifications,
         string speedAgreementText = null,
         bool canRespondToSpeedRequest = false,
-        RectInt? sessionNoticeBounds = null
+        RectInt? sessionNoticeBounds = null,
+        string saveIndicatorText = null,
+        SpriteSheetAnimationViewData saveIndicatorAnimation = null
     )
     {
         BackgroundTexture = backgroundTexture;
@@ -559,6 +567,8 @@ public sealed class StrategyHudViewData
         SpeedAgreementText = speedAgreementText ?? string.Empty;
         CanRespondToSpeedRequest = canRespondToSpeedRequest;
         SessionNoticeBounds = sessionNoticeBounds;
+        SaveIndicatorText = saveIndicatorText ?? string.Empty;
+        SaveIndicatorAnimation = saveIndicatorAnimation;
         this.buttons = Copy(buttons);
         this.messageNotifications = Copy(messageNotifications);
     }

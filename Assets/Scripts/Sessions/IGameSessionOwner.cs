@@ -14,9 +14,9 @@ public interface IGameSessionOwner : IPlayerRequestDispatcher
     bool CanRequestSave { get; }
 
     /// <summary>
-    /// Gets whether this participant has a scheduled autosave that has not finished writing.
+    /// Gets the save kind this participant is waiting to capture or finish writing, if any.
     /// </summary>
-    bool IsAutosaving { get; }
+    SaveGameKind? ActiveSaveKind { get; }
 
     /// <summary>
     /// Saves through the session's current connected or disconnected policy.
