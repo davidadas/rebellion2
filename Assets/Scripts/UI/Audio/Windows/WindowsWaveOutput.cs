@@ -18,8 +18,14 @@ internal sealed class WindowsWaveOutput : IDisposable
     private bool disposed;
     private int nextBuffer;
     private string failure;
+    private int receivedMix;
+    private int queuedMix;
+    private int queuedSignal;
 
     public string Failure => Volatile.Read(ref failure);
+    public bool HasReceivedMix => Volatile.Read(ref receivedMix) != 0;
+    public bool HasQueuedMix => Volatile.Read(ref queuedMix) != 0;
+    public bool HasQueuedSignal => Volatile.Read(ref queuedSignal) != 0;
 
     /// <summary>
     /// Opens an explicitly formatted stereo stream using the engine's existing sample rate and buffers.
@@ -86,6 +92,8 @@ internal sealed class WindowsWaveOutput : IDisposable
     /// <returns>True when this stream accepted the block.</returns>
     public bool TryWrite(float[] samples, int channels)
     {
+        if (Volatile.Read(ref receivedMix) == 0)
+            Volatile.Write(ref receivedMix, 1);
         while (true)
         {
             lock (sync)
@@ -94,13 +102,14 @@ internal sealed class WindowsWaveOutput : IDisposable
                     return false;
                 if (samples == null || channels != 2 || samples.Length != sampleCount)
                 {
-                    failure = "The Unity audio configuration changed.";
+                    failure =
+                        $"The Unity audio configuration changed: received channels={channels}, samples={samples?.Length}; expected channels=2, samples={sampleCount}.";
                     return false;
                 }
                 PcmBuffer buffer = buffers[nextBuffer];
                 if (!buffer.Queued || buffer.IsDone)
                 {
-                    buffer.Copy(samples);
+                    bool containsSignal = buffer.Copy(samples);
                     uint result = api.Write(device, buffer.Header);
                     if (result != 0)
                     {
@@ -109,6 +118,10 @@ internal sealed class WindowsWaveOutput : IDisposable
                     }
                     buffer.Queued = true;
                     nextBuffer = (nextBuffer + 1) % buffers.Length;
+                    if (Volatile.Read(ref queuedMix) == 0)
+                        Volatile.Write(ref queuedMix, 1);
+                    if (containsSignal && Volatile.Read(ref queuedSignal) == 0)
+                        Volatile.Write(ref queuedSignal, 1);
                     Array.Clear(samples, 0, samples.Length);
                     return true;
                 }
@@ -238,8 +251,10 @@ internal sealed class WindowsWaveOutput : IDisposable
         /// Converts the mixed stereo samples without changing their channel order or gain.
         /// </summary>
         /// <param name="source">The interleaved mixed samples.</param>
-        public void Copy(float[] source)
+        /// <returns>Whether the converted block contains a nonzero PCM sample.</returns>
+        public bool Copy(float[] source)
         {
+            bool containsSignal = false;
             for (int index = 0; index < source.Length; index++)
             {
                 float value = source[index];
@@ -248,8 +263,10 @@ internal sealed class WindowsWaveOutput : IDisposable
                     : value >= 1 ? short.MaxValue
                     : value <= -1 ? short.MinValue
                     : (short)(value * (value < 0 ? 32768f : 32767f));
+                containsSignal |= samples[index] != 0;
             }
             Marshal.Copy(samples, 0, data, samples.Length);
+            return containsSignal;
         }
 
         /// <summary>

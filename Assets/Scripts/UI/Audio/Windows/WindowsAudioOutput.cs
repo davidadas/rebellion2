@@ -1,5 +1,6 @@
 #if UNITY_STANDALONE_WIN && !UNITY_EDITOR
 using System;
+using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -16,6 +17,9 @@ internal sealed class WindowsAudioOutput : MonoBehaviour
     private int generation;
     private bool stopping;
     private bool forceStereo;
+    private bool reportedMix;
+    private bool reportedQueue;
+    private bool reportedSignal;
 
     /// <summary>
     /// Installs Windows-only recovery before the first scene, excluding explicit audio disablement.
@@ -30,7 +34,10 @@ internal sealed class WindowsAudioOutput : MonoBehaviour
             Array.IndexOf(arguments, "-nosound") >= 0
             || Array.IndexOf(arguments, "-system-audio") >= 0
         )
+        {
+            Debug.Log("Windows audio recovery: disabled by -nosound or -system-audio.");
             return;
+        }
         GameObject owner = new GameObject("Windows audio output");
         DontDestroyOnLoad(owner);
         WindowsAudioOutput recovery = owner.AddComponent<WindowsAudioOutput>();
@@ -62,17 +69,38 @@ internal sealed class WindowsAudioOutput : MonoBehaviour
         }
         if (completed != null)
         {
+            Debug.Log($"Windows audio recovery: {completed.Diagnostics}");
             if (completed.Failure != null)
                 Debug.LogWarning($"Windows audio recovery: {completed.Failure}");
             else if (completed.Output != null)
             {
+                reportedMix = false;
+                reportedQueue = false;
+                reportedSignal = false;
                 Debug.Log("Windows audio recovery: using 16-bit stereo output.");
                 for (int index = 0; index < SceneManager.sceneCount; index++)
                     AttachListeners(SceneManager.GetSceneAt(index));
             }
         }
         WindowsWaveOutput active = output;
-        if (active?.Failure == null)
+        if (active == null)
+            return;
+        if (!reportedMix && active.HasReceivedMix)
+        {
+            reportedMix = true;
+            Debug.Log("Windows audio recovery: received the first Unity listener mix.");
+        }
+        if (!reportedQueue && active.HasQueuedMix)
+        {
+            reportedQueue = true;
+            Debug.Log("Windows audio recovery: WinMM accepted the first listener PCM block.");
+        }
+        if (!reportedSignal && active.HasQueuedSignal)
+        {
+            reportedSignal = true;
+            Debug.Log("Windows audio recovery: WinMM accepted non-silent listener PCM.");
+        }
+        if (active.Failure == null)
             return;
         output = null;
         Debug.LogWarning($"Windows audio recovery stopped: {active.Failure}");
@@ -201,20 +229,27 @@ internal sealed class WindowsAudioOutput : MonoBehaviour
     /// <returns>The opened stream or a captured initialization failure.</returns>
     private OpenResult Open(int sampleRate, int frames, int buffers)
     {
+        StringBuilder diagnostics = new StringBuilder();
+        diagnostics.AppendLine(
+            $"Requested WinMM format: rate={sampleRate}, channels=2, bits=16, frames={frames}, buffers={buffers}."
+        );
+        Action<string> report = message => diagnostics.AppendLine(message);
         try
         {
             return new OpenResult(
                 WindowsAudioRecovery.Open(
                     forceStereo,
-                    WindowsAudioSessionProbe.HasOutputSession,
-                    () => new WindowsWaveOutput(new WindowsWaveApi(), sampleRate, frames, buffers)
+                    () => WindowsAudioSessionProbe.HasOutputSession(report),
+                    () => new WindowsWaveOutput(new WindowsWaveApi(), sampleRate, frames, buffers),
+                    report
                 ),
-                null
+                null,
+                diagnostics
             );
         }
         catch (Exception exception)
         {
-            return new OpenResult(null, exception.Message);
+            return new OpenResult(null, exception.Message, diagnostics);
         }
     }
 
@@ -225,16 +260,19 @@ internal sealed class WindowsAudioOutput : MonoBehaviour
     {
         public WindowsWaveOutput Output { get; }
         public string Failure { get; }
+        public string Diagnostics { get; }
 
         /// <summary>
         /// Records the outcome of one native initialization request.
         /// </summary>
         /// <param name="output">The successfully opened stream.</param>
         /// <param name="failure">The initialization failure, when present.</param>
-        public OpenResult(WindowsWaveOutput output, string failure)
+        /// <param name="diagnostics">The requested format, session inspection, and ownership decision.</param>
+        public OpenResult(WindowsWaveOutput output, string failure, StringBuilder diagnostics)
         {
             Output = output;
             Failure = failure;
+            Diagnostics = diagnostics.ToString().TrimEnd();
         }
     }
 }
