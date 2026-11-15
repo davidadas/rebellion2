@@ -672,8 +672,9 @@ namespace Rebellion.Game.Galaxy
                             (config.SupportThreshold - support) / (double)config.GarrisonDivisor
                         );
             int multiplier =
-                GetParentOfType<PlanetSector>()?.SectorType == PlanetSectorType.Core
-                && faction.Settings.UprisingResistance > 1
+                faction.Settings.UprisingResistance > 1
+                && GetParentOfType<PlanetSector>()?.GetSectorSuppressionDivisor(faction.InstanceID)
+                    > 1
                     ? faction.Settings.UprisingResistance
                     : 1;
             return (long)threshold - (long)multiplier * troops + missionAdjustment - suppression;

@@ -44,8 +44,7 @@ namespace Rebellion.Game.Galaxy
         private List<Planet> _planets = new List<Planet>();
 
         private readonly HashSet<CapitalShip> _suppressionSources = new HashSet<CapitalShip>();
-        private string _projectedSectorSuppressionOwnerInstanceID;
-        private int? _projectedSectorSuppressionDivisor;
+        private Dictionary<string, int> _projectedSectorSuppressionDivisors;
 
         /// <summary>
         /// Returns the strongest operational, stationary suppression divisor owned by a faction.
@@ -56,9 +55,12 @@ namespace Rebellion.Game.Galaxy
         {
             if (string.IsNullOrEmpty(ownerInstanceID))
                 return 1;
-            if (_projectedSectorSuppressionDivisor.HasValue)
-                return ownerInstanceID == _projectedSectorSuppressionOwnerInstanceID
-                    ? _projectedSectorSuppressionDivisor.Value
+            if (_projectedSectorSuppressionDivisors != null)
+                return _projectedSectorSuppressionDivisors.TryGetValue(
+                    ownerInstanceID,
+                    out int value
+                )
+                    ? value
                     : 1;
 
             int divisor = 1;
@@ -76,14 +78,15 @@ namespace Rebellion.Game.Galaxy
         public PlanetSector() { }
 
         /// <summary>
-        /// Captures owner-scoped sector suppression for a view with partial descendants.
+        /// Captures a faction's sector suppression for a view with partial descendants.
         /// </summary>
         /// <param name="ownerInstanceID">The faction whose suppression was observed.</param>
         /// <param name="divisor">The observed suppression divisor.</param>
         internal void SetProjectedSectorSuppression(string ownerInstanceID, int divisor)
         {
-            _projectedSectorSuppressionOwnerInstanceID = ownerInstanceID;
-            _projectedSectorSuppressionDivisor = divisor;
+            _projectedSectorSuppressionDivisors ??= new Dictionary<string, int>();
+            if (!string.IsNullOrEmpty(ownerInstanceID))
+                _projectedSectorSuppressionDivisors[ownerInstanceID] = divisor;
         }
 
         /// <summary>

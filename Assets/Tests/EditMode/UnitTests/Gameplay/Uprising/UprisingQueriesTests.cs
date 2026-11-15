@@ -3,6 +3,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
@@ -446,6 +447,28 @@ namespace Rebellion.Tests.Gameplay
                 .Single()
                 .GetChildren<Planet>()
                 .Single(p => p.InstanceID == planet.InstanceID);
+            Assert.AreEqual(3, Requirement(game, faction, observed));
+        }
+
+        /// <summary>
+        /// Verifies that observed enemy planets retain their controller's sector suppression.
+        /// </summary>
+        [Test]
+        public void CalculateGarrisonRequirement_FactionViewOpposingController_PreservesRequirement()
+        {
+            var (game, faction, planet, sector) = CreateSuppressionScene();
+            AddSuppressionSource(game, planet);
+            Faction observer = new Faction { InstanceID = "observer" };
+            game.GetFactions().Add(observer);
+            new FogOfWarRecorder().RecordPlanetSnapshot(observer, planet, sector, game.CurrentTick);
+
+            Planet observed = new FogOfWarQueries(game)
+                .BuildFactionView(observer)
+                .GetChildren<PlanetSector>()
+                .Single()
+                .GetChildren<Planet>()
+                .Single();
+
             Assert.AreEqual(3, Requirement(game, faction, observed));
         }
 

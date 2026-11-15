@@ -815,6 +815,67 @@ namespace Rebellion.Tests.Gameplay
             );
         }
 
+        [TestCase(false, false, 2, true)]
+        [TestCase(true, false, 2, true)]
+        [TestCase(false, true, 2, false)]
+        [TestCase(true, true, 2, false)]
+        [TestCase(false, true, 1, true)]
+        [TestCase(true, true, 1, true)]
+        public void ProcessTick_IncidentGarrisonBonus_RequiresSectorSuppression(
+            bool core,
+            bool suppressionPresent,
+            int resistance,
+            bool destroyed
+        )
+        {
+            var (game, planet, resolver) = BuildScene(
+                ownerSupport: 10,
+                troopCount: 1,
+                isCoreSector: core
+            );
+            game.GetFactionByOwnerInstanceID("empire").Settings.UprisingResistance = resistance;
+            game.Config.AI.Garrison.SupportThreshold = 60;
+            game.Config.AI.Garrison.GarrisonDivisor = 10;
+            game.Config.Uprising.DiceRange = 0;
+            game.Config.Uprising.DiceAddend = 0;
+            game.Config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int>
+            {
+                { int.MinValue, 0 },
+                { 4, 1 },
+            };
+            game.Config.Uprising.SecondaryConsequenceTable.Clear();
+            planet.EnergyCapacity = 1;
+            Building facility = EntityFactory.CreateBuilding("facility", "empire");
+            facility.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(facility, planet);
+            if (suppressionPresent)
+            {
+                Planet sourcePlanet = new Planet { InstanceID = "source-planet" };
+                game.AttachNode(sourcePlanet, planet.GetParent());
+                Fleet fleet = EntityFactory.CreateFleet("suppression-fleet", "empire");
+                game.AttachNode(fleet, sourcePlanet);
+                game.AttachNode(
+                    new CapitalShip
+                    {
+                        InstanceID = "suppression-ship",
+                        OwnerInstanceID = "empire",
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                        SectorSuppression = 2,
+                    },
+                    fleet
+                );
+            }
+            ScheduleIncident(planet, 1);
+            game.CurrentTick = 1;
+
+            new UprisingTickProcessor(resolver).ProcessTick(game);
+
+            Assert.AreEqual(
+                destroyed,
+                game.GetSceneNodeByInstanceID<Building>(facility.InstanceID) == null
+            );
+        }
+
         [Test]
         public void ProcessTick_ZeroPrimaryConsequence_StillResolvesSecondaryConsequence()
         {

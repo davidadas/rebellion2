@@ -700,7 +700,7 @@ internal sealed class CustomGameSettingsSession
             factions,
             "uprising-resistance",
             "Uprising Resistance",
-            "Garrison strength during core-world uprisings. Higher makes each troop stronger. Range: 1 or higher.",
+            "Troop strength during uprising incidents when a ship provides sector suppression. Range: 1 or higher.",
             1,
             int.MaxValue,
             settings => settings.UprisingResistance,
