@@ -1222,18 +1222,13 @@ namespace Rebellion.Gameplay
         /// Whether the origin planet itself may receive the unit without interplanetary travel.
         /// </param>
         /// <param name="leaveOriginPlanet">Whether every destination at the origin is excluded.</param>
-        /// <param name="shipsLeftBehind">
-        /// The ships of a relocating fleet that do not travel with it, or null when all of them
-        /// do. A planet destroyer among them does not count against the one a system may hold.
-        /// </param>
         /// <returns>The valid relocation destinations, nearest first.</returns>
         internal IReadOnlyList<ContainerNode> FindSafeRelocationDestinations(
             IMovable unit,
             Planet originPlanet,
             bool forceInterplanetaryTravel = false,
             bool allowOriginPlanet = false,
-            bool leaveOriginPlanet = false,
-            IReadOnlyCollection<CapitalShip> shipsLeftBehind = null
+            bool leaveOriginPlanet = false
         )
         {
             if (unit == null)
@@ -1267,9 +1262,7 @@ namespace Rebellion.Gameplay
                         destination,
                         originPlanet,
                         canTravelRemotely,
-                        allowOriginPlanet,
-                        null,
-                        shipsLeftBehind
+                        allowOriginPlanet
                     )
                 )
                 .Select(destination => new
@@ -1365,9 +1358,6 @@ namespace Rebellion.Gameplay
         /// <param name="canTravelRemotely">Whether the unit can cross between planets.</param>
         /// <param name="allowOriginPlanet">Whether the origin planet may receive the unit.</param>
         /// <param name="blockades">Optional blockade results shared within one synchronous query.</param>
-        /// <param name="shipsLeftBehind">
-        /// The ships of a relocating fleet that do not travel with it, or null when all of them do.
-        /// </param>
         /// <returns>True when the destination can safely receive the unit.</returns>
         private bool CanUseSafeRelocationDestination(
             IMovable unit,
@@ -1375,8 +1365,7 @@ namespace Rebellion.Gameplay
             Planet originPlanet,
             bool canTravelRemotely,
             bool allowOriginPlanet,
-            Dictionary<(Planet Planet, string FactionInstanceId), bool> blockades,
-            IReadOnlyCollection<CapitalShip> shipsLeftBehind = null
+            Dictionary<(Planet Planet, string FactionInstanceId), bool> blockades
         )
         {
             if (unit == null || destination == null)
@@ -1406,7 +1395,7 @@ namespace Rebellion.Gameplay
             )
                 return false;
 
-            return CanReceiveRelocatedUnit(unit, liveDestination, shipsLeftBehind);
+            return CanReceiveRelocatedUnit(unit, liveDestination);
         }
 
         /// <summary>
@@ -1414,15 +1403,8 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="unit">The unit requiring a destination.</param>
         /// <param name="destination">The proposed receiving container.</param>
-        /// <param name="shipsLeftBehind">
-        /// The ships of a relocating fleet that do not travel with it, or null when all of them do.
-        /// </param>
         /// <returns>True when the container can receive or retain this unit.</returns>
-        private bool CanReceiveRelocatedUnit(
-            IMovable unit,
-            ContainerNode destination,
-            IReadOnlyCollection<CapitalShip> shipsLeftBehind = null
-        )
+        private bool CanReceiveRelocatedUnit(IMovable unit, ContainerNode destination)
         {
             ContainerNode liveDestination = ResolveRegisteredContainer(destination);
             Planet planet = liveDestination as Planet ?? liveDestination?.GetParentOfType<Planet>();
@@ -1442,16 +1424,11 @@ namespace Rebellion.Gameplay
                 _ => false,
             };
 
-            if (!isFriendlyDestination)
-                return false;
-            if (ReferenceEquals(unit.GetParent(), liveDestination))
-                return true;
-
-            // A fleet that leaves ships behind is judged as it will arrive, without them.
-            return
-                shipsLeftBehind != null && liveDestination is Planet refuge && unit is Fleet fleet
-                ? refuge.CanAcceptFleet(fleet, shipsLeftBehind)
-                : liveDestination.CanAcceptChild(unit);
+            return isFriendlyDestination
+                && (
+                    ReferenceEquals(unit.GetParent(), liveDestination)
+                    || liveDestination.CanAcceptChild(unit)
+                );
         }
 
         /// <summary>
@@ -1560,22 +1537,6 @@ namespace Rebellion.Gameplay
             {
                 rejectionReason =
                     $"{unit.GetDisplayName()} cannot enter the enemy blockade at {destinationPlanet.GetDisplayName()}.";
-                return false;
-            }
-
-            CapitalShip presentDestroyer = unit switch
-            {
-                Fleet { HasPlanetDestroyer: true } fleet => destinationPlanet.FindPlanetDestroyer(
-                    excludedFleet: fleet
-                ),
-                CapitalShip { CanDestroyPlanets: true } ship =>
-                    destinationPlanet.FindPlanetDestroyer(excludedShip: ship),
-                _ => null,
-            };
-            if (presentDestroyer != null)
-            {
-                rejectionReason =
-                    $"{destinationPlanet.GetDisplayName()} already holds {presentDestroyer.GetDisplayName()}, and a system can hold only one planet destroyer.";
                 return false;
             }
 

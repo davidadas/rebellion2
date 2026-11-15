@@ -3881,6 +3881,9 @@ namespace Rebellion.Tests.Gameplay
                 AutoResolveComponentDelayMinimum = 30,
                 AutoResolveComponentDelayMaximum = 50,
                 AutoResolveComponentDelayRecovery = 1,
+                PlanetDestroyerSuperlaserRechargeIterations = 300,
+                PlanetDestroyerAttackRunIterations = 120,
+                PlanetDestroyerWithdrawalIterations = 150,
             };
             return config;
         }

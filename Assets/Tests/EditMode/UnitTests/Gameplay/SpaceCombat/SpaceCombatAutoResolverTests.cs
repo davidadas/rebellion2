@@ -1388,7 +1388,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Resolve_IntactForceBelowOpposingStrengthThreshold_WithdrawsAtOnce()
+        public void Resolve_IntactForceBelowOpposingStrengthThreshold_WithdrawsBeforeFiring()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 100);
             CapitalShip defender = CreateShip("defender", hull: 1000, weaponStrength: 32);
@@ -1411,6 +1411,7 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(1000, GetShipOutcome(result, attacker).HullAfter);
         }
 
         [Test]
@@ -1440,7 +1441,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Resolve_ZeroStrengthForce_WithdrawsAtOnce()
+        public void Resolve_ZeroStrengthForce_WithdrawsBeforeFiring()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 100);
             CapitalShip defender = CreatePassiveTarget("defender", hull: 1000);
@@ -1461,6 +1462,7 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(1000, GetShipOutcome(result, defender).HullAfter);
         }
 
         [Test]
@@ -1522,6 +1524,7 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(12, GetFighterOutcome(result, attackerFighter).SquadronSizeAfter);
         }
 
         [TestCase(true, true)]
@@ -1645,6 +1648,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsTrue(GetShipOutcome(result, secondWithdrawingShip).Withdrew);
             Assert.IsFalse(GetShipOutcome(result, strandedShip).Withdrew);
             Assert.AreEqual(0, GetShipOutcome(result, strandedShip).HullAfter);
+            Assert.AreEqual(1000, GetShipOutcome(result, attacker).HullAfter);
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
             Assert.AreEqual(2, result.IterationsCompleted);
         }
@@ -1692,7 +1696,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Resolve_WithdrawingForce_IsShotAtAndShootsBackUntilItIsGone()
+        public void Resolve_ForceBeginsWithdrawal_CannotBeTargeted()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 5);
             CapitalShip defender = CreateShip("defender", hull: 100, weaponStrength: 1);
@@ -1714,34 +1718,7 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
-            Assert.Less(GetShipOutcome(result, defender).HullAfter, 100);
-            Assert.Less(GetShipOutcome(result, attacker).HullAfter, 100);
-        }
-
-        [Test]
-        public void Resolve_WithdrawingShip_CoversTheEscapeLegBeforeItIsGone()
-        {
-            CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 5);
-            CapitalShip defender = CreateShip("defender", hull: 100000, weaponStrength: 1);
-            defender.SublightSpeed = 10;
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveRetreatStrengthRatio = 1.01;
-            config.AutoResolveStartingDistance = 100;
-            config.AutoResolveWithdrawalDistance = 15;
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new[] { attacker },
-                new List<Starfighter>(),
-                new[] { defender },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
-            );
-
-            // The escape leg is sixty (0.6 starting distances) plus fifteen: eight iterations
-            // at speed ten, and the battle ends on the next.
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
-            Assert.AreEqual(9, result.IterationsCompleted);
+            Assert.AreEqual(100, GetShipOutcome(result, defender).HullAfter);
         }
 
         [Test]
@@ -1926,7 +1903,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Resolve_TwoCarriersDestroyedWithNonHyperdriveFighters_DestroysFighters()
+        public void Resolve_TwoCarriersDestroyedWithNonHyperdriveFighters_DestroysFightersWithoutReturnFire()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 100);
             attacker.WeaponRecharge = 100;
@@ -1982,6 +1959,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsFalse(GetFighterOutcome(result, secondFighter).Withdrew);
             Assert.AreEqual(0, GetFighterOutcome(result, firstFighter).SquadronSizeAfter);
             Assert.AreEqual(0, GetFighterOutcome(result, secondFighter).SquadronSizeAfter);
+            Assert.AreEqual(1000, GetShipOutcome(result, attacker).HullAfter);
         }
 
         [Test]
@@ -2210,11 +2188,11 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Resolve_PlanetDestroyer_StaysOutOfTheLineAndBurnsOneShipPerRecharge()
+        public void Resolve_PlanetDestroyer_FiresImmediatelyAndUsesConfiguredRechargeTiming()
         {
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.BattleStationSuperlaserRechargeRounds = 20;
-            CapitalShip station = CreateStation("station");
+            config.PlanetDestroyerSuperlaserRechargeIterations = 3;
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
             CapitalShip[] targets =
             {
                 CreatePassiveTarget("first", 100000),
@@ -2224,7 +2202,7 @@ namespace Rebellion.Tests.Gameplay
 
             SpaceCombatResult result = Resolve(
                 config,
-                new[] { station },
+                new[] { planetDestroyer },
                 new List<Starfighter>(),
                 targets,
                 new List<Starfighter>()
@@ -2234,145 +2212,193 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(SpaceCombatSideOutcome.Active, result.AttackerOutcome);
             Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
             Assert.IsTrue(targets.All(target => GetShipOutcome(result, target).HullAfter == 0));
-            Assert.IsFalse(result.ShipDamage.Any(damage => damage.Ship == station));
-            Assert.Greater(result.IterationsCompleted, 50);
-            Assert.Less(result.IterationsCompleted, 100);
+            Assert.IsFalse(result.ShipDamage.Any(damage => damage.Ship == planetDestroyer));
+            Assert.AreEqual(10, result.IterationsCompleted);
         }
 
         [Test]
-        public void Resolve_TorpedoSquadronsAgainstStation_FlyItsTrenchAndDestroyIt()
+        public void Resolve_MultiplePlanetDestroyers_TargetDistinctShipsInStableOrder()
+        {
+            CapitalShip firstPlanetDestroyer = CreatePlanetDestroyer("first-planet-destroyer");
+            CapitalShip secondPlanetDestroyer = CreatePlanetDestroyer("second-planet-destroyer");
+            CapitalShip firstTarget = CreatePassiveTarget("first-target", 100000);
+            CapitalShip secondTarget = CreatePassiveTarget("second-target", 100000);
+
+            SpaceCombatResult result = Resolve(
+                new[] { firstPlanetDestroyer, secondPlanetDestroyer },
+                new[] { firstTarget, secondTarget }
+            );
+
+            Assert.AreEqual(0, GetShipOutcome(result, firstTarget).HullAfter);
+            Assert.AreEqual(0, GetShipOutcome(result, secondTarget).HullAfter);
+            Assert.AreEqual(2, result.IterationsCompleted);
+        }
+
+        [Test]
+        public void Resolve_SingleSquadronAttackRun_SucceedsAfterConfiguredDurationWithoutFinalLoss()
         {
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.BattleStationTrenchRunBaseChance = 1;
-            CapitalShip station = CreateStation("station");
+            config.PlanetDestroyerAttackRunIterations = 3;
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
             Starfighter torpedoFighter = CreateTorpedoFighter("y-wing", 12);
-            Starfighter escortFighter = CreateFighter("a-wing", 12, 0);
 
             SpaceCombatResult result = Resolve(
                 config,
-                new[] { CreatePassiveTarget("carrier", 100) },
-                new[] { torpedoFighter, escortFighter },
-                new[] { station },
-                new List<Starfighter>()
+                new List<CapitalShip>(),
+                new[] { torpedoFighter },
+                new[] { planetDestroyer },
+                new List<Starfighter>(),
+                random: new SequenceRNG(new[] { 1, 1 })
             );
 
             Assert.AreEqual(CombatSide.Attacker, result.Winner);
             Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
             Assert.AreEqual(
                 0,
-                result.ShipDamage.Single(damage => damage.Ship == station).HullAfter
+                result.ShipDamage.Single(damage => damage.Ship == planetDestroyer).HullAfter
             );
             Assert.IsFalse(result.FighterLosses.Any());
-            // The run takes as long as the flight to the station: six starting distances.
-            Assert.Greater(result.IterationsCompleted, 40);
-            Assert.Less(result.IterationsCompleted, 70);
+            Assert.AreEqual(4, result.IterationsCompleted);
         }
 
         [Test]
-        public void Resolve_FailedTrenchRun_CostsEverySquadronThatFlewIt()
+        public void Resolve_AttackRunSelectionDamageBeforeSuccess_DoesNotPersistIntoTheRun()
         {
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.BattleStationTrenchRunBaseChance = 0;
-            CapitalShip station = CreateStation("station");
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
             Starfighter torpedoFighter = CreateTorpedoFighter("y-wing", 12);
-            Starfighter escortFighter = CreateFighter("a-wing", 12, 0);
-            escortFighter.SublightSpeed = 8;
 
             SpaceCombatResult result = Resolve(
-                config,
+                CreateConfig(),
                 new List<CapitalShip>(),
-                new[] { torpedoFighter, escortFighter },
-                new[] { station },
+                new[] { torpedoFighter },
+                new[] { planetDestroyer },
                 new List<Starfighter>(),
-                attackerCanWithdraw: true
+                random: new SequenceRNG(new[] { 10, 1, 1 })
             );
 
-            FighterLossResult loss = result.FighterLosses.Single();
-            Assert.AreSame(torpedoFighter, loss.Fighter);
-            Assert.AreEqual(0, loss.SquadsAfter);
-            Assert.IsFalse(result.ShipDamage.Any(damage => damage.Ship == station));
-            Assert.AreEqual(CombatSide.Defender, result.Winner);
-            // With its torpedoes gone the survivor has no way to hurt the station and leaves.
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
-            CollectionAssert.Contains(result.WithdrawnUnits, escortFighter);
-        }
-
-        [TestCase(0, true)]
-        [TestCase(20, true)]
-        [TestCase(120, false)]
-        public void Resolve_TrenchRunAgainstDefendingFighters_SucceedsLessOftenTheMoreItIsOutnumbered(
-            int defendingFighters,
-            bool expectedDestroyed
-        )
-        {
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.BattleStationTrenchRunBaseChance = 1;
-            config.BattleStationTrenchRunMinimumChance = 0.2;
-            CapitalShip station = CreateStation("station");
-            Starfighter torpedoFighter = CreateTorpedoFighter("y-wing", 12);
-            List<Starfighter> defenders = new List<Starfighter>();
-            if (defendingFighters > 0)
-                defenders.Add(CreateFighter("tie", defendingFighters, 0));
-
-            // Twelve fighters fly the run and the roll is 0.5. The chance is 1 unopposed, 12/20
-            // against twenty defenders, and the floor of 0.2 against a hundred and twenty.
-            SpaceCombatResult result = Resolve(
-                config,
-                new[] { CreatePassiveTarget("carrier", 100) },
-                new[] { torpedoFighter },
-                new[] { station },
-                defenders,
-                random: new TrenchRunRNG()
-            );
-
-            bool destroyed = result.ShipDamage.Any(damage =>
-                damage.Ship == station && damage.HullAfter == 0
-            );
-            Assert.AreEqual(expectedDestroyed, destroyed);
+            Assert.AreEqual(12, GetFighterOutcome(result, torpedoFighter).SquadronSizeAfter);
+            Assert.AreEqual(0, GetShipOutcome(result, planetDestroyer).HullAfter);
         }
 
         [Test]
-        public void Resolve_TrenchFlightLongerThanTheStagnationWindow_IsStillFlownAndRolled()
+        public void Resolve_DamagedAttackRunSquadron_UsesConfiguredCapacityForSelection()
         {
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.BattleStationTrenchRunBaseChance = 1;
-            config.AutoResolveStagnationIterations = 20;
-            CapitalShip station = CreateStation("station");
+            config.PlanetDestroyerAttackRunIterations = 1;
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
             Starfighter torpedoFighter = CreateTorpedoFighter("y-wing", 12);
+            torpedoFighter.CurrentSquadronSize = 1;
+            int[] selectionRolls = Enumerable
+                .Range(0, 1001)
+                .SelectMany(_ => new[] { 1, 10 })
+                .ToArray();
 
-            // Six starting distances at speed eight is 57 rounds, and nothing else changes while
-            // the squadron is on its way.
             SpaceCombatResult result = Resolve(
                 config,
                 new List<CapitalShip>(),
                 new[] { torpedoFighter },
-                new[] { station },
-                new List<Starfighter>()
+                new[] { planetDestroyer },
+                new List<Starfighter>(),
+                random: new SequenceRNG(selectionRolls)
+            );
+
+            Assert.AreEqual(0, GetShipOutcome(result, planetDestroyer).HullAfter);
+            Assert.AreEqual(1, GetFighterOutcome(result, torpedoFighter).SquadronSizeAfter);
+        }
+
+        [Test]
+        public void Resolve_FailedAttackRun_DestroysEveryParticipatingSquadron()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
+            Starfighter first = CreateTorpedoFighter("first", 1);
+            Starfighter second = CreateTorpedoFighter("second", 1);
+            first.Torpedoes = 1;
+            second.Torpedoes = 1;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { first, second },
+                new[] { planetDestroyer },
+                new List<Starfighter>(),
+                random: new SequenceRNG(new[] { 10, 10 })
+            );
+
+            Assert.AreEqual(2, result.FighterLosses.Count);
+            Assert.IsTrue(result.FighterLosses.All(loss => loss.SquadsAfter == 0));
+            Assert.IsFalse(result.ShipDamage.Any(damage => damage.Ship == planetDestroyer));
+            Assert.AreEqual(CombatSide.Defender, result.Winner);
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.AttackerOutcome);
+            Assert.AreEqual(121, result.IterationsCompleted);
+        }
+
+        [Test]
+        public void Resolve_SuccessfulAttackRunWithMultipleSquadrons_DestroysStableFirstHalf()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
+            Starfighter first = CreateTorpedoFighter("first", 12);
+            Starfighter second = CreateTorpedoFighter("second", 12);
+            Starfighter third = CreateTorpedoFighter("third", 12);
+            Starfighter fourth = CreateTorpedoFighter("fourth", 12);
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { first, second, third, fourth },
+                new[] { planetDestroyer },
+                new List<Starfighter>(),
+                random: new SequenceRNG(new[] { 1, 1 })
+            );
+
+            Assert.AreEqual(0, GetFighterOutcome(result, first).SquadronSizeAfter);
+            Assert.AreEqual(0, GetFighterOutcome(result, second).SquadronSizeAfter);
+            Assert.AreEqual(12, GetFighterOutcome(result, third).SquadronSizeAfter);
+            Assert.AreEqual(12, GetFighterOutcome(result, fourth).SquadronSizeAfter);
+            Assert.AreEqual(0, GetShipOutcome(result, planetDestroyer).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_AttackRunLongerThanStagnationWindow_CompletesBeforeStalemateResolution()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveStagnationIterations = 20;
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
+            Starfighter torpedoFighter = CreateTorpedoFighter("y-wing", 12);
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { torpedoFighter },
+                new[] { planetDestroyer },
+                new List<Starfighter>(),
+                random: new SequenceRNG(new[] { 1, 1 })
             );
 
             Assert.AreEqual(
                 0,
-                result.ShipDamage.Single(damage => damage.Ship == station).HullAfter
+                result.ShipDamage.Single(damage => damage.Ship == planetDestroyer).HullAfter
             );
             Assert.AreEqual(CombatSide.Attacker, result.Winner);
-            Assert.Greater(result.IterationsCompleted, 20);
+            Assert.AreEqual(121, result.IterationsCompleted);
         }
 
         [Test]
-        public void Resolve_ShieldedStation_IsNotAttackedAndItsEnemyLeaves()
+        public void Resolve_ShieldedPlanetDestroyer_IsNotAttackedAndItsEnemyLeaves()
         {
-            CapitalShip station = CreateStation("station");
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
             Starfighter torpedoFighter = CreateTorpedoFighter("y-wing", 12);
 
             SpaceCombatResult result = CreateResolver()
                 .Resolve(
                     new List<CapitalShip>(),
                     new[] { torpedoFighter },
-                    new[] { station },
+                    new[] { planetDestroyer },
                     new List<Starfighter>(),
                     attackerCanWithdraw: true,
                     defenderCanWithdraw: false,
-                    shieldedStations: new[] { station }
+                    shieldedPlanetDestroyers: new[] { planetDestroyer }
                 );
 
             Assert.IsFalse(result.FighterLosses.Any());
@@ -2383,46 +2409,64 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Resolve_OutgunnedSideWithStation_HoldsInsteadOfRetreating()
+        public void Resolve_PlanetDestroyerAndFightersUnableToDamageEachOther_RemainInAnIndecisiveBattle()
         {
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveRetreatStrengthRatio = 0.33;
-            CapitalShip station = CreateStation("station");
-            CapitalShip escort = CreateShip("escort", hull: 100000, weaponStrength: 1);
-            CapitalShip raider = CreateShip("raider", hull: 100000, weaponStrength: 500);
-            CapitalShip loneEscort = CreateShip("escort", hull: 100000, weaponStrength: 1);
-            loneEscort.SublightSpeed = 4;
+            config.AutoResolveStagnationIterations = 2;
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
+            Starfighter fighter = CreateFighter("fighter", squadronSize: 12, weaponStrength: 10);
 
-            SpaceCombatResult withStation = Resolve(
+            SpaceCombatResult result = Resolve(
                 config,
-                new[] { raider },
-                new List<Starfighter>(),
-                new[] { station, escort },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
-            );
-            SpaceCombatResult withoutStation = Resolve(
-                config,
-                new[] { CreateShip("raider", hull: 100000, weaponStrength: 500) },
-                new List<Starfighter>(),
-                new[] { loneEscort },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
+                new List<CapitalShip>(),
+                new[] { fighter },
+                new[] { planetDestroyer },
+                new List<Starfighter>()
             );
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, withoutStation.DefenderOutcome);
-            Assert.AreEqual(SpaceCombatSideOutcome.Active, withStation.DefenderOutcome);
-            Assert.AreEqual(CombatSide.Defender, withStation.Winner);
-            Assert.AreEqual(0, GetShipOutcome(withStation, raider).HullAfter);
+            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.DefenderOutcome);
+            Assert.AreEqual(CombatSide.Draw, result.Winner);
+            Assert.IsFalse(result.FighterLosses.Any());
+            Assert.IsFalse(result.ShipDamage.Any());
         }
 
         [Test]
-        public void Resolve_SquadronsOnATrenchRun_AreShotAtOnTheWayIn()
+        public void Resolve_OutgunnedSideWithMobilePlanetDestroyer_UsesPlanetDestroyerWithdrawalCountdown()
         {
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.BattleStationTrenchRunBaseChance = 1;
+            config.AutoResolveRetreatStrengthRatio = 0.33;
+            config.AutoResolveStagnationIterations = 2;
+            config.PlanetDestroyerWithdrawalIterations = 3;
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
+            CapitalShip escort = CreateShip("escort", hull: 10, weaponStrength: 1);
+            escort.SublightSpeed = 10;
+            CapitalShip raider = CreateShip("raider", hull: 100000, weaponStrength: 500);
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new[] { raider },
+                new List<Starfighter>(),
+                new[] { planetDestroyer, escort },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.IsTrue(GetShipOutcome(result, planetDestroyer).Withdrew);
+            Assert.AreEqual(
+                5,
+                result.IterationsCompleted,
+                "The planet destroyer withdrawal countdown must remain tactical progress."
+            );
+        }
+
+        [Test]
+        public void Resolve_SquadronsOnAttackRun_AreNotTargetedUntilRunCompletes()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
             config.AutoResolveTargetScanDivisor = 1;
-            CapitalShip station = CreateStation("station");
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
             CapitalShip picket = CreateShip("picket", hull: 1000, weaponStrength: 0);
             picket.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 500;
             picket.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 100;
@@ -2433,22 +2477,21 @@ namespace Rebellion.Tests.Gameplay
                 config,
                 new List<CapitalShip>(),
                 new[] { torpedoFighter },
-                new[] { station, picket },
+                new[] { planetDestroyer, picket },
                 new List<Starfighter>(),
-                random: new ArcDamageRNG()
+                random: new SequenceRNG(new[] { 1, 1 })
             );
 
-            // The picket's guns reach the squadron while it is still flying to the station, so
-            // a run that could not fail is never rolled.
             Assert.AreEqual(0, GetFighterOutcome(result, torpedoFighter).SquadronSizeAfter);
-            Assert.IsFalse(result.ShipDamage.Any(damage => damage.Ship == station));
+            Assert.AreEqual(0, GetShipOutcome(result, planetDestroyer).HullAfter);
             Assert.AreEqual(CombatSide.Defender, result.Winner);
+            Assert.Greater(result.IterationsCompleted, 121);
         }
 
         [Test]
-        public void Resolve_FleetFleeingALoneStation_LosesAShipToTheSuperlaser()
+        public void Resolve_FleetFleeingAlonePlanetDestroyer_LeavesBeforeSuperlaserTargetsIt()
         {
-            CapitalShip station = CreateStation("station");
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
             CapitalShip first = CreatePassiveTarget("first", 100000);
             first.SublightSpeed = 4;
             CapitalShip second = CreatePassiveTarget("second", 100000);
@@ -2459,32 +2502,27 @@ namespace Rebellion.Tests.Gameplay
                 CreateConfig(),
                 fleet,
                 new List<Starfighter>(),
-                new[] { station },
+                new[] { planetDestroyer },
                 new List<Starfighter>(),
                 attackerCanWithdraw: true
             );
 
-            // The fleet cannot hurt the station and turns for home at once, but a ship running
-            // for hyperspace is still a target: the superlaser's first shot catches one of them.
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
-            Assert.AreEqual(1, fleet.Count(ship => GetShipOutcome(result, ship).HullAfter == 0));
-            Assert.AreEqual(1, fleet.Count(ship => GetShipOutcome(result, ship).Withdrew));
-            Assert.IsFalse(result.ShipDamage.Any(damage => damage.Ship == station));
+            Assert.AreEqual(0, fleet.Count(ship => GetShipOutcome(result, ship).HullAfter == 0));
+            Assert.AreEqual(2, fleet.Count(ship => GetShipOutcome(result, ship).Withdrew));
+            Assert.IsFalse(result.ShipDamage.Any(damage => damage.Ship == planetDestroyer));
         }
 
         [Test]
-        public void Resolve_StalemateAgainstAStation_IsNeverLostByTheStationSide()
+        public void Resolve_PlanetDestroyerWithOnlyCapitalTargets_DestroysTargetsBeforeStalemate()
         {
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.BattleStationSuperlaserRechargeRounds = 200000;
-            CapitalShip station = CreateStation("station");
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
             CapitalShip target = CreatePassiveTarget("target", 100000);
 
-            // Nothing can change once the one shot is spent, so the stalemate rule settles it:
-            // the station holds the field although it could have left and its enemy could not.
             SpaceCombatResult result = Resolve(
                 config,
-                new[] { station },
+                new[] { planetDestroyer },
                 new List<Starfighter>(),
                 new[] { target, CreatePassiveTarget("other", 100000) },
                 new List<Starfighter>(),
@@ -2495,20 +2533,21 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(SpaceCombatSideOutcome.Active, result.AttackerOutcome);
             Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
             Assert.AreEqual(CombatSide.Attacker, result.Winner);
-            Assert.IsFalse(result.WithdrawnUnits.Contains(station));
+            Assert.IsFalse(result.WithdrawnUnits.Contains(planetDestroyer));
+            Assert.AreEqual(303, result.IterationsCompleted);
         }
 
         /// <summary>
-        /// Creates a planet-destroying capital ship, which fights as a battle station.
+        /// Creates a planet-destroying capital ship, which fights as a planet destroyer.
         /// </summary>
         /// <param name="instanceId">The instance identifier.</param>
         /// <returns>The created ship.</returns>
-        private static CapitalShip CreateStation(string instanceId)
+        private static CapitalShip CreatePlanetDestroyer(string instanceId)
         {
-            CapitalShip station = CreateShip(instanceId, hull: 25000, weaponStrength: 1400);
-            station.TypeID = "station";
-            station.CanDestroyPlanets = true;
-            return station;
+            CapitalShip planetDestroyer = CreateShip(instanceId, hull: 25000, weaponStrength: 1400);
+            planetDestroyer.TypeID = "planet-destroyer";
+            planetDestroyer.CanDestroyPlanets = true;
+            return planetDestroyer;
         }
 
         /// <summary>
@@ -2662,9 +2701,9 @@ namespace Rebellion.Tests.Gameplay
                 AutoResolveComponentDelayMinimum = 30,
                 AutoResolveComponentDelayMaximum = 50,
                 AutoResolveComponentDelayRecovery = 1,
-                BattleStationSuperlaserRechargeRounds = 360,
-                BattleStationTrenchRunBaseChance = 0.9,
-                BattleStationTrenchRunMinimumChance = 0.25,
+                PlanetDestroyerSuperlaserRechargeIterations = 300,
+                PlanetDestroyerAttackRunIterations = 120,
+                PlanetDestroyerWithdrawalIterations = 150,
             };
         }
 
@@ -2859,29 +2898,6 @@ namespace Rebellion.Tests.Gameplay
             public int NextInt(int min, int max)
             {
                 return min == 1 && max == 11 ? 3 : min;
-            }
-        }
-
-        private sealed class TrenchRunRNG : IRandomNumberProvider
-        {
-            /// <summary>
-            /// Executes next double.
-            /// </summary>
-            /// <returns>The result of next double.</returns>
-            public double NextDouble()
-            {
-                return 0.5;
-            }
-
-            /// <summary>
-            /// Executes next int.
-            /// </summary>
-            /// <param name="min">The min.</param>
-            /// <param name="max">The max.</param>
-            /// <returns>The result of next int.</returns>
-            public int NextInt(int min, int max)
-            {
-                return min;
             }
         }
 

@@ -5,7 +5,6 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
-using Rebellion.SceneGraph;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -250,49 +249,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void GetWithdrawalPlan_PlanetDestroyerLostInTheBattle_SendsItsEscortsToASystemHoldingAnother()
-        {
-            (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
-                CreateScenario();
-            CapitalShip escort = fleet.GetChildren<CapitalShip>().Single();
-            CapitalShip station = AddPlanetDestroyer(game, fleet, "station");
-            (Planet refuge, _) = CreatePlanet(game, "home", owner: "alliance");
-            AddPlanetDestroyer(game, AddFleet(game, refuge, "garrison", "alliance"), "other");
-
-            SpaceCombatWithdrawalPlan plan = queries.GetWithdrawalPlan(
-                new[] { fleet },
-                planet,
-                "alliance",
-                new HashSet<ISceneNode> { escort }
-            );
-
-            Assert.AreSame(refuge, plan.FleetDestinations[fleet]);
-            Assert.IsTrue(plan.Contains(escort));
-            Assert.IsFalse(plan.Contains(station));
-        }
-
-        [Test]
-        public void GetWithdrawalPlan_PlanetDestroyerLeavesWithItsFleet_RefusesASystemHoldingAnother()
-        {
-            (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
-                CreateScenario();
-            CapitalShip escort = fleet.GetChildren<CapitalShip>().Single();
-            CapitalShip station = AddPlanetDestroyer(game, fleet, "station");
-            (Planet refuge, _) = CreatePlanet(game, "home", owner: "alliance");
-            AddPlanetDestroyer(game, AddFleet(game, refuge, "garrison", "alliance"), "other");
-
-            SpaceCombatWithdrawalPlan plan = queries.GetWithdrawalPlan(
-                new[] { fleet },
-                planet,
-                "alliance",
-                new HashSet<ISceneNode> { escort, station }
-            );
-
-            Assert.IsFalse(plan.CanWithdraw);
-            Assert.IsEmpty(plan.FleetDestinations);
-        }
-
-        [Test]
         public void TryFindContestedForces_PlanetOwner_DefendsAgainstOpposingFleet()
         {
             GameRoot game = CreateGame();
@@ -316,6 +272,111 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual("alliance", defenderOwnerInstanceId);
             CollectionAssert.AreEqual(new[] { empireFleet }, attackerFleets);
             CollectionAssert.AreEqual(new[] { allianceFleet }, defenderFleets);
+        }
+
+        [Test]
+        public void IsPlanetDestroyerShielded_OwnersCompletedGeneratorListsTheShipType_ReturnsTrue()
+        {
+            (Planet planet, CapitalShip planetDestroyer, _) = CreateShieldScenario();
+
+            bool shielded = SpaceCombatQueries.IsPlanetDestroyerShielded(planetDestroyer, planet);
+
+            Assert.IsTrue(shielded);
+        }
+
+        [Test]
+        public void IsPlanetDestroyerShielded_OrdinaryCapitalShipHasProtectedType_ReturnsFalse()
+        {
+            (Planet planet, CapitalShip planetDestroyer, _) = CreateShieldScenario();
+            planetDestroyer.CanDestroyPlanets = false;
+
+            bool shielded = SpaceCombatQueries.IsPlanetDestroyerShielded(planetDestroyer, planet);
+
+            Assert.IsFalse(shielded);
+        }
+
+        [Test]
+        public void IsPlanetDestroyerShielded_GeneratorIsUnderConstruction_ReturnsFalse()
+        {
+            (Planet planet, CapitalShip planetDestroyer, Building shield) = CreateShieldScenario();
+            shield.ManufacturingStatus = ManufacturingStatus.Building;
+
+            bool shielded = SpaceCombatQueries.IsPlanetDestroyerShielded(planetDestroyer, planet);
+
+            Assert.IsFalse(shielded);
+        }
+
+        [Test]
+        public void IsPlanetDestroyerShielded_GeneratorIsMoving_ReturnsFalse()
+        {
+            (Planet planet, CapitalShip planetDestroyer, Building shield) = CreateShieldScenario();
+            shield.Movement = new MovementState();
+
+            bool shielded = SpaceCombatQueries.IsPlanetDestroyerShielded(planetDestroyer, planet);
+
+            Assert.IsFalse(shielded);
+        }
+
+        [Test]
+        public void IsPlanetDestroyerShielded_GeneratorHasDifferentOwner_ReturnsFalse()
+        {
+            (Planet planet, CapitalShip planetDestroyer, Building shield) = CreateShieldScenario();
+            shield.OwnerInstanceID = "alliance";
+
+            bool shielded = SpaceCombatQueries.IsPlanetDestroyerShielded(planetDestroyer, planet);
+
+            Assert.IsFalse(shielded);
+        }
+
+        [Test]
+        public void IsPlanetDestroyerShielded_GeneratorListsDifferentType_ReturnsFalse()
+        {
+            (Planet planet, CapitalShip planetDestroyer, Building shield) = CreateShieldScenario();
+            shield.ProtectedUnitTypeIDs.Clear();
+            shield.ProtectedUnitTypeIDs.Add("other-type");
+
+            bool shielded = SpaceCombatQueries.IsPlanetDestroyerShielded(planetDestroyer, planet);
+
+            Assert.IsFalse(shielded);
+        }
+
+        [Test]
+        public void IsPlanetDestroyerShielded_PlanetIsMissing_ReturnsFalse()
+        {
+            (_, CapitalShip planetDestroyer, _) = CreateShieldScenario();
+
+            bool shielded = SpaceCombatQueries.IsPlanetDestroyerShielded(planetDestroyer, null);
+
+            Assert.IsFalse(shielded);
+        }
+
+        /// <summary>
+        /// Creates a planet destroyer and a completed matching shield generator at its planet.
+        /// </summary>
+        /// <returns>The planet, planet destroyer, and shield generator.</returns>
+        private static (
+            Planet planet,
+            CapitalShip planetDestroyer,
+            Building shield
+        ) CreateShieldScenario()
+        {
+            Planet planet = new Planet { InstanceID = "shield-planet", OwnerInstanceID = "empire" };
+            CapitalShip planetDestroyer = new CapitalShip
+            {
+                InstanceID = "planet-destroyer",
+                TypeID = "planet-destroyer-type",
+                OwnerInstanceID = "empire",
+                CanDestroyPlanets = true,
+            };
+            Building shield = new Building
+            {
+                InstanceID = "planet-destroyer-shield",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                ProtectedUnitTypeIDs = { "planet-destroyer-type" },
+            };
+            planet.AddTestChild(shield);
+            return (planet, planetDestroyer, shield);
         }
 
         /// <summary>
@@ -366,29 +427,6 @@ namespace Rebellion.Tests.Gameplay
                 fleet
             );
             return fleet;
-        }
-
-        /// <summary>
-        /// Adds an active hyperspace-capable planet destroyer to a fleet.
-        /// </summary>
-        /// <param name="game">The game containing the fleet.</param>
-        /// <param name="fleet">The fleet receiving the ship.</param>
-        /// <param name="instanceID">The ship identifier.</param>
-        /// <returns>The attached planet destroyer.</returns>
-        private static CapitalShip AddPlanetDestroyer(GameRoot game, Fleet fleet, string instanceID)
-        {
-            CapitalShip station = new CapitalShip
-            {
-                InstanceID = instanceID,
-                OwnerInstanceID = fleet.OwnerInstanceID,
-                CanDestroyPlanets = true,
-                Hyperdrive = 1,
-                MaxHullStrength = 100,
-                CurrentHullStrength = 100,
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-            game.AttachNode(station, fleet);
-            return station;
         }
     }
 }

@@ -399,26 +399,32 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Determines whether a completed shield generator on a planet protects a capital ship
-        /// there, as a Death Star Shield protects a Death Star: fighters cannot attack a ship
-        /// under such a shield.
+        /// Determines whether a completed shield generator on a planet protects a planet
+        /// destroyer there from fighter attack.
         /// </summary>
-        /// <param name="ship">The capital ship to inspect.</param>
-        /// <param name="planet">The planet the ship is at.</param>
-        /// <returns>True when one of the ship owner's generators on the planet lists its type.</returns>
-        internal static bool IsShieldedByPlanet(CapitalShip ship, Planet planet)
+        /// <param name="planetDestroyer">The planet destroyer to inspect.</param>
+        /// <param name="planet">The planet the planet destroyer is at.</param>
+        /// <returns>
+        /// True when one of the planet destroyer's owner's generators on the planet lists its
+        /// type.
+        /// </returns>
+        internal static bool IsPlanetDestroyerShielded(CapitalShip planetDestroyer, Planet planet)
         {
-            if (ship == null || planet == null || string.IsNullOrEmpty(ship.TypeID))
+            if (
+                planetDestroyer?.CanDestroyPlanets != true
+                || planet == null
+                || string.IsNullOrEmpty(planetDestroyer.TypeID)
+            )
                 return false;
 
-            string ownerInstanceId = ship.GetOwnerInstanceID();
+            string ownerInstanceId = planetDestroyer.GetOwnerInstanceID();
             return planet
                 .GetChildren<Building>()
                 .Any(building =>
                     building.ManufacturingStatus == ManufacturingStatus.Complete
                     && building.Movement == null
                     && building.GetOwnerInstanceID() == ownerInstanceId
-                    && building.ProtectedUnitTypeIDs?.Contains(ship.TypeID) == true
+                    && building.ProtectedUnitTypeIDs?.Contains(planetDestroyer.TypeID) == true
                 );
         }
 

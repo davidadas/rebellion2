@@ -749,7 +749,7 @@ namespace Rebellion.Gameplay
                 defenderCommand,
                 attackerShips
                     .Concat(defenderShips)
-                    .Where(ship => SpaceCombatQueries.IsShieldedByPlanet(ship, planet))
+                    .Where(ship => SpaceCombatQueries.IsPlanetDestroyerShielded(ship, planet))
                     .ToList()
             );
             IncludeCommandOfficers(result.AttackingUnits, attackerCommandOfficers);
