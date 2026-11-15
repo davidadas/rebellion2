@@ -65,13 +65,28 @@ async function approve({ github, context, core, number, headSha, sleep = ms => n
   for (let attempt = 0; attempt < 5; attempt++) {
     const pull = await readRequest(github, context.repo, request);
     if (pull.mergeable === false) throw new Error('Resolve the merge conflicts before running tests.');
-    if (/^[a-f0-9]{40}$/.test(pull.merge_commit_sha || '')) {
+    const { data: base } = await github.rest.git.getRef({
+      ...context.repo, ref: `heads/${pull.base.ref}`,
+    });
+    let mergeRef;
+    try {
+      ({ data: mergeRef } = await github.rest.git.getRef({
+        ...context.repo, ref: `pull/${request.number}/merge`,
+      }));
+    } catch (error) {
+      if (error.status !== 404) throw error;
+    }
+    if (/^[a-f0-9]{40}$/.test(mergeRef?.object?.sha || '')) {
       const { data: merge } = await github.rest.git.getCommit({
-        ...context.repo, commit_sha: pull.merge_commit_sha,
+        ...context.repo, commit_sha: mergeRef.object.sha,
+      });
+      const { data: currentBase } = await github.rest.git.getRef({
+        ...context.repo, ref: `heads/${pull.base.ref}`,
       });
       const parents = merge.parents.map(parent => parent.sha);
-      if (parents.includes(request.headSha) && parents.includes(pull.base.sha)) {
-        core.setOutput('merge_sha', pull.merge_commit_sha);
+      if (parents.length === 2 && parents.includes(request.headSha) &&
+          parents.includes(base.object.sha) && currentBase.object.sha === base.object.sha) {
+        core.setOutput('merge_sha', mergeRef.object.sha);
         core.setOutput('media_branch', pull.head.ref);
         return;
       }

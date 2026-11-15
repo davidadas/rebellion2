@@ -11,15 +11,28 @@ function fixture() {
   const outputs = {};
   const pull = {
     state: 'open', mergeable: true, merge_commit_sha: MERGE,
-    base: { sha: BASE, repo: { full_name: 'owner/game' } },
+    base: { ref: 'master', sha: BASE, repo: { full_name: 'owner/game' } },
     head: { sha: HEAD, ref: 'contributor-feature' },
   };
   const environment = { protection_rules: [{ type: 'required_reviewers', reviewers: [{ type: 'User', reviewer: { id: 1 } }] }] };
   const merge = { parents: [{ sha: BASE }, { sha: HEAD }] };
+  const refs = {
+    'heads/master': { object: { sha: BASE } },
+    'pull/7/merge': { object: { sha: MERGE } },
+  };
   const github = { rest: {
     repos: { getEnvironment: async () => ({ data: environment }) },
     pulls: { get: async () => ({ data: pull }) },
-    git: { getCommit: async () => ({ data: merge }) },
+    git: {
+      getRef: async ({ ref }) => {
+        if (!refs[ref]) throw Object.assign(new Error('Not Found'), { status: 404 });
+        return { data: structuredClone(refs[ref]) };
+      },
+      getCommit: async ({ commit_sha }) => {
+        assert.equal(commit_sha, refs['pull/7/merge'].object.sha);
+        return { data: merge };
+      },
+    },
     checks: {
       create: async data => { calls.push(data); return { data: { id: 23 } }; },
       update: async data => { calls.push(data); },
@@ -27,7 +40,7 @@ function fixture() {
   } };
   return { github, context: { repo: { owner: 'owner', repo: 'game' }, serverUrl: 'https://github.com', runId: 45 },
     core: { setOutput: (key, value) => { outputs[key] = value; } },
-    number: '7', headSha: HEAD, sleep: async () => {}, calls, outputs, pull, environment, merge };
+    number: '7', headSha: HEAD, sleep: async () => {}, calls, outputs, pull, environment, merge, refs };
 }
 
 test('dispatch inputs reject malformed numbers and mutable refs', () => {
@@ -86,6 +99,39 @@ test('approval resolves an immutable merge containing the reviewed head', async 
   assert.equal(f.outputs.media_branch, 'contributor-feature');
 });
 
+test('approval uses live refs when PR base and merge metadata are stale', async () => {
+  const f = fixture();
+  f.pull.base.sha = '4'.repeat(40);
+  f.pull.merge_commit_sha = '5'.repeat(40);
+  await approve(f);
+  assert.equal(f.outputs.merge_sha, MERGE);
+});
+
+test('a base branch moving during verification cannot approve the older merge', async () => {
+  const f = fixture();
+  f.github.rest.git.getCommit = async () => {
+    f.refs['heads/master'].object.sha = '4'.repeat(40);
+    return { data: f.merge };
+  };
+  await assert.rejects(approve(f), /current merge/);
+  assert.equal(f.outputs.merge_sha, undefined);
+});
+
+test('approval resumes when a merge ref catches up with a newer base', async () => {
+  const f = fixture();
+  f.refs['heads/master'].object.sha = '4'.repeat(40);
+  f.sleep = async () => { f.merge.parents[0].sha = '4'.repeat(40); };
+  await approve(f);
+  assert.equal(f.outputs.merge_sha, MERGE);
+});
+
+test('an API failure cannot unlock private test access', async () => {
+  const f = fixture();
+  f.github.rest.git.getRef = async () => { throw Object.assign(new Error('Unavailable'), { status: 500 }); };
+  await assert.rejects(approve(f), /Unavailable/);
+  assert.equal(f.outputs.merge_sha, undefined);
+});
+
 test('approval rejects a stale merge with a different head', async () => {
   const f = fixture();
   f.merge.parents[1].sha = '4'.repeat(40);
@@ -101,9 +147,9 @@ test('approval rejects a stale merge based on another base revision', async () =
 
 test('a transient merge calculation retries metadata without changing the approved head', async () => {
   const f = fixture();
-  f.pull.merge_commit_sha = null;
+  delete f.refs['pull/7/merge'];
   let retries = 0;
-  f.sleep = async () => { retries++; f.pull.merge_commit_sha = MERGE; };
+  f.sleep = async () => { retries++; f.refs['pull/7/merge'] = { object: { sha: MERGE } }; };
   await approve(f);
   assert.equal(retries, 1);
   assert.equal(f.outputs.merge_sha, MERGE);
@@ -111,7 +157,7 @@ test('a transient merge calculation retries metadata without changing the approv
 
 test('a push while GitHub computes a merge invalidates the approval', async () => {
   const f = fixture();
-  f.pull.merge_commit_sha = null;
+  delete f.refs['pull/7/merge'];
   f.sleep = async () => { f.pull.head.sha = '4'.repeat(40); };
   await assert.rejects(approve(f), /changed/);
 });
