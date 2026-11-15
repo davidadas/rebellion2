@@ -12,6 +12,16 @@ Do not commit generated UI prefabs, generated scenes, or copyrighted game assets
 must own a licensed copy of a supported source title and **must never share, upload, or redistribute
 copyrighted game assets**.
 
+## Pull request checks
+
+Public checks start automatically for pull requests. Full Unity tests on fork contributions wait
+for a maintainer to approve **Review private test access** in the **Fork PR tests** environment.
+Review the displayed commit before approving it; a new push requires a new approval.
+
+Maintainers can also start the **CI** workflow manually with the PR number and its full head SHA.
+The test result is reported on that PR commit. Stale requests are rejected before loading private
+test content.
+
 ## AI assistance
 
 Using AI as a development tool is fine. Vibe coding is not.

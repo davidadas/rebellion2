@@ -1,0 +1,59 @@
+name: Resolve media revision
+
+on:
+  workflow_call:
+    inputs:
+      branch:
+        type: string
+        default: ''
+    outputs:
+      revision:
+        value: ${{ jobs.resolve.outputs.revision }}
+      sha:
+        value: ${{ jobs.resolve.outputs.sha }}
+
+jobs:
+  resolve:
+    name: Resolve media revision
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    outputs:
+      revision: ${{ steps.resolve.outputs.revision }}
+      sha: ${{ steps.resolve.outputs.sha }}
+
+    steps:
+      - name: Checkout media metadata
+        uses: actions/checkout@v4
+        with:
+          repository: adasgames/rebellion2-media
+          ref: main
+          ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
+          lfs: false
+          path: .ci/rebellion2-media
+
+      - name: Resolve matching media branch
+        id: resolve
+        env:
+          PULL_REQUEST_BRANCH: ${{ inputs.branch }}
+        run: |
+          revision="main"
+          if [ -n "$PULL_REQUEST_BRANCH" ]; then
+            for candidate in "$PULL_REQUEST_BRANCH" "$PULL_REQUEST_BRANCH-media"; do
+              if git -C .ci/rebellion2-media ls-remote --exit-code --heads origin \
+                "refs/heads/$candidate" >/dev/null; then
+                revision="$candidate"
+                break
+              fi
+            done
+          fi
+          sha="$(git -C .ci/rebellion2-media ls-remote origin "refs/heads/$revision" | awk 'NR == 1 { print $1 }')"
+          if [ -z "$sha" ]; then
+            echo "Could not resolve rebellion2-media revision: $revision"
+            exit 1
+          fi
+          echo "Using rebellion2-media revision: $revision"
+          echo "Using rebellion2-media commit: $sha"
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
