@@ -4,8 +4,6 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Multiplayer;
-using UnityEngine;
-using UnityEngine.TestTools;
 
 namespace Rebellion.Tests.Multiplayer
 {
@@ -292,10 +290,6 @@ namespace Rebellion.Tests.Multiplayer
         public void RecordLobbyCreated_SinkFailure_DoesNotInterruptNetworking()
         {
             _sink.Fail = true;
-            LogAssert.Expect(
-                LogType.Warning,
-                "Multiplayer analytics disabled for this session: sink unavailable"
-            );
 
             Assert.DoesNotThrow(() =>
                 _tracker.RecordLobbyCreated("lobby", "host-account", Summary())

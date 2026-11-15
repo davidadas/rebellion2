@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Rebellion.Game;
+using Rebellion.Util.Logging;
 using UnityEngine;
 
 namespace Rebellion.Multiplayer
@@ -923,7 +924,7 @@ namespace Rebellion.Multiplayer
             }
             catch (Exception exception)
             {
-                Debug.LogWarning($"Multiplayer lobby cleanup failed: {exception.Message}");
+                GameLogger.Warning($"Multiplayer lobby cleanup failed: {exception.Message}");
             }
         }
 
@@ -950,7 +951,7 @@ namespace Rebellion.Multiplayer
             catch (Exception exception)
             {
                 if (!cancellationToken.IsCancellationRequested)
-                    Debug.LogWarning($"Multiplayer listing update failed: {exception.Message}");
+                    GameLogger.Warning($"Multiplayer listing update failed: {exception.Message}");
             }
         }
 
@@ -1128,7 +1129,7 @@ namespace Rebellion.Multiplayer
             }
             catch (Exception exception)
             {
-                Debug.LogWarning("General chat cleanup failed: " + exception.Message);
+                GameLogger.Warning("General chat cleanup failed: " + exception.Message);
             }
             finally
             {

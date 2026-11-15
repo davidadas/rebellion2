@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using Object = UnityEngine.Object;
 
 namespace Rebellion.Util.Logging
 {
@@ -70,7 +71,8 @@ namespace Rebellion.Util.Logging
         /// <typeparam name="T">The type of the message to log.</typeparam>
         /// <param name="message">The message to log.</param>
         /// <param name="level">The log level (e.g., Info, Warning, Error).</param>
-        public static void Log<T>(T message, LogLevel level = LogLevel.Info)
+        /// <param name="context">The Unity object associated with the message, if any.</param>
+        public static void Log<T>(T message, LogLevel level = LogLevel.Info, Object context = null)
         {
             if (level > _minimumLevel)
             {
@@ -78,7 +80,12 @@ namespace Rebellion.Util.Logging
             }
 
             string logMessage = FormatMessage(message, level);
-            LogToUnityConsole(logMessage, level);
+            LogToUnityConsole(
+                logMessage,
+                level,
+                context,
+                message is Exception exception ? exception : null
+            );
 
             if (_logToFile)
             {
@@ -101,9 +108,10 @@ namespace Rebellion.Util.Logging
         /// </summary>
         /// <typeparam name="T">The type of the message to log.</typeparam>
         /// <param name="message">The message to log.</param>
-        public static void Warning<T>(T message)
+        /// <param name="context">The Unity object associated with the message, if any.</param>
+        public static void Warning<T>(T message, Object context = null)
         {
-            Log(message, LogLevel.Warning);
+            Log(message, LogLevel.Warning, context);
         }
 
         /// <summary>
@@ -123,11 +131,14 @@ namespace Rebellion.Util.Logging
         /// </summary>
         /// <param name="exception">The exception to log.</param>
         /// <param name="level">The log level (defaults to Error).</param>
-        public static void LogException(Exception exception, LogLevel level = LogLevel.Error)
+        /// <param name="context">The Unity object associated with the exception, if any.</param>
+        public static void LogException(
+            Exception exception,
+            LogLevel level = LogLevel.Error,
+            Object context = null
+        )
         {
-            string message =
-                $"Exception: {exception.GetType().Name}\nMessage: {exception.Message}\nStackTrace: {exception.StackTrace}";
-            Log(message, level);
+            Log(exception, level, context);
         }
 
         /// <summary>
@@ -164,21 +175,34 @@ namespace Rebellion.Util.Logging
         /// </summary>
         /// <param name="message">The formatted message to log.</param>
         /// <param name="level">The severity level for routing to the appropriate Unity log method.</param>
-        private static void LogToUnityConsole(string message, LogLevel level)
+        /// <param name="context">The Unity object associated with the message, if any.</param>
+        /// <param name="exception">The original exception, preserving Unity's exception reporting.</param>
+        private static void LogToUnityConsole(
+            string message,
+            LogLevel level,
+            Object context,
+            Exception exception
+        )
         {
+            if (level == LogLevel.Error && exception != null)
+            {
+                UnityEngine.Debug.LogException(exception, context);
+                return;
+            }
+
             switch (level)
             {
                 case LogLevel.Info:
-                    UnityEngine.Debug.Log(message);
+                    UnityEngine.Debug.Log(message, context);
                     break;
                 case LogLevel.Warning:
-                    UnityEngine.Debug.LogWarning(message);
+                    UnityEngine.Debug.LogWarning(message, context);
                     break;
                 case LogLevel.Error:
-                    UnityEngine.Debug.LogError(message);
+                    UnityEngine.Debug.LogError(message, context);
                     break;
                 case LogLevel.Debug:
-                    UnityEngine.Debug.Log($"DEBUG: {message}");
+                    UnityEngine.Debug.Log($"DEBUG: {message}", context);
                     break;
             }
         }

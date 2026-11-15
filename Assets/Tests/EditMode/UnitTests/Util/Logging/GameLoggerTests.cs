@@ -178,6 +178,24 @@ namespace Rebellion.Tests.Util.Logging
         }
 
         [Test]
+        public void LogException_InnerException_WritesCompleteExceptionToFile()
+        {
+            GameLogger.Configure(
+                filePath: _tempFile,
+                enableFileLogging: true,
+                addTimestamps: false
+            );
+            InvalidOperationException exception = new InvalidOperationException(
+                "Operation failed",
+                new IOException("File could not be read")
+            );
+
+            GameLogger.LogException(exception, GameLogger.LogLevel.Info);
+
+            StringAssert.Contains(exception.ToString(), File.ReadAllText(_tempFile));
+        }
+
+        [Test]
         public void SetMinimumLevel_ToError_SuppressesInfoMessages()
         {
             GameLogger.Configure(

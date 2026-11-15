@@ -5,6 +5,7 @@ using System.Xml;
 using System.Xml.Schema;
 using Rebellion.Game;
 using Rebellion.Game.Messages;
+using Rebellion.Util.Logging;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -788,7 +789,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     public void RenderStatus(string message, bool isError)
     {
         if (isError && noticeText.text != message)
-            Debug.LogWarning("Content editor: " + message);
+            GameLogger.Warning("Content editor: " + message);
         if (isError && packDialog.IsOpen)
         {
             packDialog.ShowError(message);

@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Rebellion.Util.Logging;
 using UnityEngine;
 
 /// <summary>
@@ -132,7 +133,7 @@ public sealed class ContentModelBinding : MonoBehaviour
             // must not abort the menu scene — skip it and let the rest of the UI load.
             modelInstance?.Dispose();
             modelInstance = null;
-            Debug.LogWarning(
+            GameLogger.Warning(
                 $"{name}: content model '{address}' unavailable; skipping.\n{exception}"
             );
         }

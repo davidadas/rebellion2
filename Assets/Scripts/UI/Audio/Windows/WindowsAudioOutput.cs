@@ -1,6 +1,7 @@
 #if UNITY_STANDALONE_WIN && !UNITY_EDITOR
 using System;
 using System.Threading.Tasks;
+using Rebellion.Util.Logging;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -63,10 +64,10 @@ internal sealed class WindowsAudioOutput : MonoBehaviour
         if (completed != null)
         {
             if (completed.Failure != null)
-                Debug.LogWarning($"Windows audio recovery: {completed.Failure}");
+                GameLogger.Warning($"Windows audio recovery: {completed.Failure}");
             else if (completed.Output != null)
             {
-                Debug.Log("Windows audio recovery: using 16-bit stereo output.");
+                GameLogger.Log("Windows audio recovery: using 16-bit stereo output.");
                 for (int index = 0; index < SceneManager.sceneCount; index++)
                     AttachListeners(SceneManager.GetSceneAt(index));
             }
@@ -75,7 +76,7 @@ internal sealed class WindowsAudioOutput : MonoBehaviour
         if (active?.Failure == null)
             return;
         output = null;
-        Debug.LogWarning($"Windows audio recovery stopped: {active.Failure}");
+        GameLogger.Warning($"Windows audio recovery stopped: {active.Failure}");
         lock (gate)
             opening = opening.ContinueWith(_ => active.Dispose(), TaskScheduler.Default);
     }

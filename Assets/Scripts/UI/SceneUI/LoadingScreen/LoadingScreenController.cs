@@ -3,6 +3,7 @@ using System.Collections;
 using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Multiplayer;
+using Rebellion.Util.Logging;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -335,7 +336,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
 
         LoadingScreenController controller = _activeController;
         if (exception != null)
-            Debug.LogException(exception);
+            GameLogger.LogException(exception);
         if (!controller._operation.BeginRecovery())
         {
             controller.EnterTerminalFailure(exception);
@@ -352,7 +353,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
         }
         catch (Exception cleanupFailure)
         {
-            Debug.LogException(cleanupFailure);
+            GameLogger.LogException(cleanupFailure);
             controller.EnterTerminalFailure(cleanupFailure);
             return true;
         }
@@ -423,7 +424,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
         _view.SetVisible(true);
         _view.ShowLoadFailure(interruption?.Message);
         if (interruption != null)
-            Debug.LogException(interruption);
+            GameLogger.LogException(interruption);
         PrepareDestinationLaunch();
         try
         {
@@ -526,7 +527,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
     /// <param name="exception">The recovery-scene failure.</param>
     private void HandleRecoverySceneFailure(Exception exception)
     {
-        Debug.LogException(exception);
+        GameLogger.LogException(exception);
         EnterTerminalFailure(exception);
     }
 

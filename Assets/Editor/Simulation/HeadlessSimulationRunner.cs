@@ -42,7 +42,7 @@ public static partial class HeadlessSimulationRunner
         }
         catch (Exception ex)
         {
-            UnityEngine.Debug.LogException(ex);
+            GameLogger.LogException(ex);
             EditorApplication.Exit(1);
         }
     }
@@ -93,8 +93,8 @@ public static partial class HeadlessSimulationRunner
     private static SimulationRunResult RunSimulation(SimulationOptions options)
     {
         string logPath = GetLogPath(options.OutputPath);
+        GameLogger.LogLevel previousLevel = GameLogger.MinimumLevel;
         GameLogger.Configure(logPath, enableFileLogging: true);
-        GameLogger.SetMinimumLevel(GameLogger.LogLevel.Warning);
         BaseGameEntity.SetInstanceIdSeed(
             string.IsNullOrWhiteSpace(options.InputSaveFileName) ? options.Seed : null
         );
@@ -119,8 +119,9 @@ public static partial class HeadlessSimulationRunner
 
             string startMessage =
                 $"[HeadlessSim] starting ticks={options.TickCount} seed={options.Seed?.ToString() ?? "random"} galaxySize={summary.GalaxySize}";
-            UnityEngine.Debug.Log(startMessage);
-            LogToFile(logPath, startMessage);
+            GameLogger.SetMinimumLevel(GameLogger.LogLevel.Info);
+            GameLogger.Log(startMessage);
+            GameLogger.SetMinimumLevel(GameLogger.LogLevel.Warning);
 
             GameRoot game = string.IsNullOrWhiteSpace(options.InputSaveFileName)
                 ? CreateGameBuilder(summary, contentPack.GameData, options.Seed).BuildGame()
@@ -341,8 +342,8 @@ public static partial class HeadlessSimulationRunner
             string resolvedPath = WriteSimulationSummary(options.OutputPath, report);
             string completeMessage =
                 $"[HeadlessSim] complete ticks={report.TicksCompleted} output={resolvedPath}";
-            UnityEngine.Debug.Log(completeMessage);
-            LogToFile(logPath, completeMessage);
+            GameLogger.SetMinimumLevel(GameLogger.LogLevel.Info);
+            GameLogger.Log(completeMessage);
 
             return new SimulationRunResult
             {
@@ -355,7 +356,7 @@ public static partial class HeadlessSimulationRunner
         finally
         {
             BaseGameEntity.SetInstanceIdSeed(null);
-            GameLogger.SetMinimumLevel(GameLogger.LogLevel.Debug);
+            GameLogger.SetMinimumLevel(previousLevel);
             GameLogger.Configure(enableFileLogging: false);
         }
     }
