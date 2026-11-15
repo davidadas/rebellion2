@@ -123,6 +123,21 @@ public sealed class ScrollAreaView : MonoBehaviour
     }
 
     /// <summary>
+    /// Gets whether the content is at the bottom without queued movement away from it.
+    /// </summary>
+    public bool IsAtBottom
+    {
+        get
+        {
+            VerifyRequiredReferences();
+            float maximumOffset = GetMaxScrollOffset();
+            return !hasContentLayout
+                || maximumOffset - contentRoot.anchoredPosition.y <= _scrollSnapDistance
+                    && maximumOffset - targetScrollOffset <= _scrollSnapDistance;
+        }
+    }
+
+    /// <summary>
     /// Reports whether one event target belongs to the authored scrollbar controls.
     /// </summary>
     /// <param name="target">The candidate event target.</param>
@@ -203,7 +218,13 @@ public sealed class ScrollAreaView : MonoBehaviour
     /// <param name="contentHeight">The required content height.</param>
     /// <param name="scrollStep">The source-unit distance moved by one scroll action.</param>
     /// <param name="resetScroll">Whether to return to the top of the content.</param>
-    public void SetContentHeight(float contentHeight, float scrollStep, bool resetScroll)
+    /// <param name="preserveScrollOffset">Whether non-resetting layouts keep their top-relative offset.</param>
+    public void SetContentHeight(
+        float contentHeight,
+        float scrollStep,
+        bool resetScroll,
+        bool preserveScrollOffset = false
+    )
     {
         VerifyRequiredReferences();
         ConfigureScrollRectForScrollbarOnly();
@@ -217,6 +238,7 @@ public sealed class ScrollAreaView : MonoBehaviour
                 ? 1f
                 : Mathf.Clamp01(scrollRect.verticalNormalizedPosition);
         float pendingTargetOffset = targetScrollOffset;
+        float previousOffset = contentRoot.anchoredPosition.y;
         hasContentLayout = true;
 
         contentRoot.sizeDelta = new Vector2(
@@ -244,8 +266,13 @@ public sealed class ScrollAreaView : MonoBehaviour
             }
             else
             {
-                ApplyNormalizedScrollPosition(normalizedPosition);
-                SetScrollbarValue(normalizedPosition);
+                if (preserveScrollOffset)
+                    ApplyScrollOffset(previousOffset);
+                else
+                {
+                    ApplyNormalizedScrollPosition(normalizedPosition);
+                    SetScrollbarValue(normalizedPosition);
+                }
                 targetScrollOffset = Mathf.Clamp(pendingTargetOffset, 0f, GetMaxScrollOffset());
             }
         }

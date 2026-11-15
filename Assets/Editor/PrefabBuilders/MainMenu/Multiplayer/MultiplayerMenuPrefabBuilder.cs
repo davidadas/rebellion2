@@ -73,24 +73,6 @@ public static class MultiplayerMenuPrefabBuilder
         BuildCreateDialog(console, view);
         BuildSaveDialog(console, view);
         BuildPasswordDialog(console, view);
-        RectTransform confirmation = Group(
-            console,
-            "LeaveConfirmation",
-            new RectInt(0, 0, 1000, 700)
-        );
-        Surface(
-            confirmation,
-            "Scrim",
-            new RectInt(20, 20, 960, 660),
-            new Color(0, 0, 0, 0.8f)
-        ).raycastTarget = true;
-        ConfirmationDialogView confirm = CommonUIPrefabBuilder.InstantiateConfirmationDialog(
-            confirmation
-        );
-        SetSourceRect((RectTransform)confirm.transform, 180, 110, 640, 480);
-        Bind(view, "leaveConfirmation", confirm);
-        Bind(view, "leaveConfirmationRoot", confirmation.gameObject);
-        confirmation.gameObject.SetActive(false);
         PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
         Object.DestroyImmediate(root);
     }
@@ -170,11 +152,6 @@ public static class MultiplayerMenuPrefabBuilder
             Action(page, "Refresh", "REFRESH", new RectInt(50, 394, 144, 30))
         );
         Bind(view, "hostButton", Action(page, "Host", "HOST GAME", new RectInt(586, 394, 170, 30)));
-        Bind(
-            view,
-            "resumeButton",
-            Action(page, "Resume", "RESUME GAME", new RectInt(212, 394, 180, 30))
-        );
         Bind(view, "joinButton", Action(page, "Join", "JOIN GAME", new RectInt(774, 394, 180, 30)));
         Chat(page, view, false, new RectInt(50, 444, 904, 174));
     }

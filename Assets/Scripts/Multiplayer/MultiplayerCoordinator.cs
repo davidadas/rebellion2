@@ -137,6 +137,8 @@ namespace Rebellion.Multiplayer
             try
             {
                 StorePlayerSession session = await _onlineClient.SignInAsync();
+                _backend = await _onlineClient.ConnectAsync();
+                RefreshRecoveryRecord();
                 SetStatus("Signed in as " + session.DisplayName);
             }
             catch (Exception exception)
@@ -671,7 +673,10 @@ namespace Rebellion.Multiplayer
             }
             catch (Exception exception)
             {
-                SetStatus($"Network state rejected: {exception.Message}");
+                if (_returningToRecovery && _launchConfiguration == null)
+                    FailRecovery(exception);
+                else
+                    SetStatus($"Network state rejected: {exception.Message}");
             }
         }
 
@@ -777,7 +782,7 @@ namespace Rebellion.Multiplayer
         /// <param name="packet">The welcome packet.</param>
         private void HandleWelcome(MultiplayerPacket packet)
         {
-            if (_role != MultiplayerRole.Guest)
+            if (_role != MultiplayerRole.Guest && !_returningToRecovery)
                 throw new InvalidOperationException("Only a guest can receive a welcome packet.");
             MultiplayerWelcomeMessage welcome = JsonUtility.FromJson<MultiplayerWelcomeMessage>(
                 packet.Metadata
@@ -787,6 +792,8 @@ namespace Rebellion.Multiplayer
                 FinishRejectedJoin(welcome?.error ?? "The host rejected the join.");
                 return;
             }
+            if (_returningToRecovery)
+                throw new InvalidOperationException("A saved-game offer is required to reconnect.");
 
             MultiplayerCompatibility.ValidateBuild(welcome.simulationBuild);
             GameSummary summary = MultiplayerSnapshotCodec.DeserializeSummary(packet.Payload);

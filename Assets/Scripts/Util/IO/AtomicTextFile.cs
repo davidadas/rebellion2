@@ -66,7 +66,16 @@ namespace Rebellion.Util.IO
                     }
                     stream.Flush(true);
                 }
-                Publish(temporaryPath, destination);
+                WithPublicationLock(
+                    destination,
+                    () =>
+                    {
+                        if (File.Exists(destination))
+                            File.Replace(temporaryPath, destination, null);
+                        else
+                            File.Move(temporaryPath, destination);
+                    }
+                );
                 ownsTemporaryFile = false;
             }
             finally
@@ -77,11 +86,24 @@ namespace Rebellion.Util.IO
         }
 
         /// <summary>
-        /// Serializes publication across processes while permitting independent temporary-file writes.
+        /// Produces and publishes a document while preventing another publisher from replacing its inputs.
         /// </summary>
-        /// <param name="temporaryPath">The complete file owned by this publisher.</param>
+        /// <param name="path">The destination document path.</param>
+        /// <param name="getContents">Produces the complete replacement while holding the destination lease.</param>
+        internal static void UpdateAllText(string path, Func<string> getContents)
+        {
+            if (getContents == null)
+                throw new ArgumentNullException(nameof(getContents));
+            string destination = Path.GetFullPath(path);
+            WithPublicationLock(destination, () => WriteAllText(destination, getContents()));
+        }
+
+        /// <summary>
+        /// Serializes operations sharing a destination across threads and processes.
+        /// </summary>
         /// <param name="destination">The canonical destination path.</param>
-        private static void Publish(string temporaryPath, string destination)
+        /// <param name="operation">The synchronous operation protected by the destination lease.</param>
+        private static void WithPublicationLock(string destination, Action operation)
         {
             using Mutex publication = new Mutex(false, GetPublicationMutexName(destination));
             bool ownsPublication = false;
@@ -96,10 +118,7 @@ namespace Rebellion.Util.IO
                     // An abandoned lease is acquired by the waiter after its former process exits.
                 }
                 ownsPublication = true;
-                if (File.Exists(destination))
-                    File.Replace(temporaryPath, destination, null);
-                else
-                    File.Move(temporaryPath, destination);
+                operation();
             }
             finally
             {

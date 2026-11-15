@@ -8,6 +8,13 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class ConfirmationDialogView : MonoBehaviour, IContentInitializable, ICancelable
 {
+    private enum DialogMode
+    {
+        Confirmation,
+        Acknowledgment,
+        Progress,
+    }
+
     private const string _backgroundAddress = "Application/Common/UI/ui_common_confirmation_dialog";
     private const string _acknowledgmentBackgroundAddress =
         "Application/Common/UI/ui_common_acknowledgment_dialog";
@@ -72,7 +79,7 @@ public sealed class ConfirmationDialogView : MonoBehaviour, IContentInitializabl
     private TextMeshProUGUI messageTextField;
 
     private bool bound;
-    private bool acknowledgmentMode;
+    private DialogMode _mode;
 
     /// <summary>
     /// Occurs when the dialog is confirmed.
@@ -117,7 +124,7 @@ public sealed class ConfirmationDialogView : MonoBehaviour, IContentInitializabl
     /// <param name="message">The confirmation prompt.</param>
     public void Show(string message)
     {
-        ShowDialog(message, false);
+        ShowDialog(message, DialogMode.Confirmation);
     }
 
     /// <summary>
@@ -126,24 +133,37 @@ public sealed class ConfirmationDialogView : MonoBehaviour, IContentInitializabl
     /// <param name="message">The notice to acknowledge.</param>
     public void ShowAcknowledgment(string message)
     {
-        ShowDialog(message, true);
+        ShowDialog(message, DialogMode.Acknowledgment);
+    }
+
+    /// <summary>
+    /// Shows a pending operation with one cancel action using the shared single-action artwork.
+    /// </summary>
+    /// <param name="message">The operation's current progress.</param>
+    public void ShowProgress(string message)
+    {
+        ShowDialog(message, DialogMode.Progress);
     }
 
     /// <summary>
     /// Applies the authored dialog presentation and the available response controls.
     /// </summary>
     /// <param name="message">The prompt or notice text.</param>
-    /// <param name="acknowledgment">Whether cancellation is unavailable and acceptance keeps the notice visible.</param>
-    private void ShowDialog(string message, bool acknowledgment)
+    /// <param name="mode">The response controls available for this dialog.</param>
+    private void ShowDialog(string message, DialogMode mode)
     {
         VerifyReferences();
         BindControls();
-        bool selectConfirm = !acknowledgment || !acknowledgmentMode || !gameObject.activeSelf;
-        acknowledgmentMode = acknowledgment;
+        bool selectConfirm =
+            mode == DialogMode.Confirmation || _mode != mode || !gameObject.activeSelf;
+        _mode = mode;
         ApplyDialogArtwork();
-        confirmButtonPressVisual.SetTextures(confirmButtonUpTexture, confirmButtonDownTexture);
+        confirmButtonPressVisual.SetTextures(
+            mode == DialogMode.Progress ? cancelButtonUpTexture : confirmButtonUpTexture,
+            mode == DialogMode.Progress ? cancelButtonDownTexture : confirmButtonDownTexture
+        );
         cancelButtonPressVisual.SetTextures(cancelButtonUpTexture, cancelButtonDownTexture);
-        cancelButton.gameObject.SetActive(!acknowledgment);
+        cancelButton.gameObject.SetActive(mode == DialogMode.Confirmation);
         UILayout.SetTextContent(messageTextField, message ?? string.Empty, messageTextColor);
         gameObject.SetActive(true);
         if (selectConfirm)
@@ -155,14 +175,16 @@ public sealed class ConfirmationDialogView : MonoBehaviour, IContentInitializabl
     /// </summary>
     private void ApplyDialogArtwork()
     {
-        backgroundImage.texture = acknowledgmentMode
-            ? acknowledgmentBackgroundTexture
-            : confirmationBackgroundTexture;
+        backgroundImage.texture =
+            _mode == DialogMode.Confirmation
+                ? confirmationBackgroundTexture
+                : acknowledgmentBackgroundTexture;
         backgroundImage.enabled = backgroundImage.texture != null;
         backgroundImage.raycastTarget = false;
-        confirmButtonImage.rectTransform.anchoredPosition = acknowledgmentMode
-            ? acknowledgmentButtonPosition
-            : confirmationButtonPosition;
+        confirmButtonImage.rectTransform.anchoredPosition =
+            _mode == DialogMode.Confirmation
+                ? confirmationButtonPosition
+                : acknowledgmentButtonPosition;
     }
 
     /// <summary>
@@ -245,7 +267,12 @@ public sealed class ConfirmationDialogView : MonoBehaviour, IContentInitializabl
     /// </summary>
     private void Confirm()
     {
-        if (!acknowledgmentMode)
+        if (_mode == DialogMode.Progress)
+        {
+            Cancel();
+            return;
+        }
+        if (_mode == DialogMode.Confirmation)
             Hide();
         Confirmed?.Invoke();
     }
@@ -255,7 +282,7 @@ public sealed class ConfirmationDialogView : MonoBehaviour, IContentInitializabl
     /// </summary>
     private void Cancel()
     {
-        if (acknowledgmentMode)
+        if (_mode == DialogMode.Acknowledgment)
             return;
         Hide();
         Canceled?.Invoke();

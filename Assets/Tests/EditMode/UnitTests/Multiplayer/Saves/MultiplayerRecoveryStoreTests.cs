@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -81,6 +82,46 @@ namespace Rebellion.Tests.Multiplayer
         }
 
         [Test]
+        public void HasCheckpoints_NoDirectory_ReturnsFalseWithoutCreatingStorage()
+        {
+            Assert.IsFalse(_store.HasCheckpoints);
+            Assert.IsFalse(Directory.Exists(_directory));
+        }
+
+        [Test]
+        public void HasCheckpoints_ManualSaveOnly_ReturnsFalse()
+        {
+            Directory.CreateDirectory(_directory);
+            File.WriteAllText(Path.Combine(_directory, "save_slot_1.sav"), "manual save");
+
+            Assert.IsFalse(_store.HasCheckpoints);
+        }
+
+        [Test]
+        public async Task HasCheckpoints_PublishedRecovery_ReturnsTrueAsync()
+        {
+            await WriteCheckpointAsync("host");
+
+            Assert.IsTrue(_store.HasCheckpoints);
+        }
+
+        [Test]
+        public async Task Delete_DeclinedRecovery_PreservesManualSaveAndMetadataAsync()
+        {
+            await WriteCheckpointAsync("host");
+            string manualPath = Path.Combine(_directory, "save_slot_1.sav");
+            string metadataPath = Path.Combine(_directory, "save_slot_1.metadata.xml");
+            File.WriteAllText(manualPath, "manual save");
+            File.WriteAllText(metadataPath, "manual metadata");
+
+            _store.Delete("host", _record.campaignID);
+
+            Assert.IsFalse(_store.HasCheckpoints);
+            Assert.AreEqual("manual save", File.ReadAllText(manualPath));
+            Assert.AreEqual("manual metadata", File.ReadAllText(metadataPath));
+        }
+
+        [Test]
         public async Task Delete_CompletedCampaign_RemovesReconnectCheckpointAsync()
         {
             await WriteCheckpointAsync("host");
@@ -149,8 +190,13 @@ namespace Rebellion.Tests.Multiplayer
             Assert.AreEqual(_record.campaignID, restarted.ReadState("guest").Metadata.CampaignID);
         }
 
-        [Test]
-        public async Task ReadRecord_LegacyLobbyField_RestoresCampaignReservationAsync()
+        [TestCase("lobbyID", "obsolete-room")]
+        [TestCase("simulationBuild", "previous-build")]
+        [TestCase("gameplayContent", "previous-gameplay-data")]
+        public async Task ReadRecord_ObsoleteMetadata_RestoresCampaignReservationAsync(
+            string field,
+            string value
+        )
         {
             await WriteCheckpointAsync("guest");
             string path = Directory.GetFiles(_directory).Single();
@@ -160,7 +206,7 @@ namespace Rebellion.Tests.Multiplayer
             byte[] payload = reader.ReadBytes(
                 checked((int)(reader.BaseStream.Length - reader.BaseStream.Position))
             );
-            header = header.Insert(header.LastIndexOf('}'), ",\"lobbyID\":\"obsolete-room\"");
+            header = header.Insert(header.LastIndexOf('}'), $",\"{field}\":\"{value}\"");
             using (BinaryWriter writer = new(File.Create(path), Encoding.UTF8))
             {
                 writer.Write(signature);
@@ -171,6 +217,25 @@ namespace Rebellion.Tests.Multiplayer
             MultiplayerRecoveryRecord record = _store.ReadRecord("guest");
             Assert.That(record.campaignID, Is.EqualTo(_record.campaignID));
             Assert.That(record.GetRole("guest"), Is.EqualTo(MultiplayerRole.Guest));
+            Assert.That(
+                _store.ReadState("guest").Metadata.CampaignID,
+                Is.EqualTo(_record.campaignID)
+            );
+        }
+
+        [Test]
+        public async Task WriteAsync_RecoveryMetadata_StoresIntegrityWithoutConnectionFingerprintsAsync()
+        {
+            await WriteCheckpointAsync("guest");
+            using BinaryReader reader = new BinaryReader(
+                File.OpenRead(Directory.GetFiles(_directory).Single())
+            );
+            reader.ReadString();
+            string header = reader.ReadString();
+
+            Assert.That(header, Does.Not.Contain("\"simulationBuild\""));
+            Assert.That(header, Does.Not.Contain("\"gameplayContent\""));
+            Assert.That(header, Does.Contain("\"snapshotHash\":\"" + _record.snapshotHash + "\""));
         }
 
         [Test]
@@ -189,6 +254,34 @@ namespace Rebellion.Tests.Multiplayer
             bytes[^1] ^= 127;
             File.WriteAllBytes(path, bytes);
             Assert.Catch<IOException>(() => _store.ReadState("host"));
+        }
+
+        [Test]
+        public async Task ReadState_RemovedFactionMember_RestoresEarlierSaveAsync()
+        {
+            XmlDocument document = new XmlDocument();
+            using MemoryStream source = new MemoryStream(
+                MultiplayerSnapshotCodec.Serialize(typeof(GameRoot), _session.Game)
+            );
+            document.Load(source);
+            XmlNode faction = document.SelectSingleNode("//Faction");
+            Assert.IsNotNull(faction, "The fixture must serialize a faction.");
+            XmlElement removed = document.CreateElement("MaintenanceShortfallNotified");
+            removed.InnerText = "true";
+            faction.AppendChild(removed);
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.CapturePayload(
+                Encoding.UTF8.GetBytes(document.OuterXml)
+            );
+            _record.snapshotHash = snapshot.Hash;
+            await _store.WriteAsync("host", _record, snapshot);
+
+            GameRoot restored = _store.ReadState("host");
+
+            Assert.AreEqual(_record.campaignID, restored.Metadata.CampaignID);
+            Assert.AreEqual(
+                MultiplayerSnapshotCodec.ComputeStateFingerprint(_session.Game),
+                MultiplayerSnapshotCodec.ComputeStateFingerprint(restored)
+            );
         }
 
         [Test]

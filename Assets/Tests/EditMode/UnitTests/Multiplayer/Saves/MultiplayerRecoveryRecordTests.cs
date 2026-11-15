@@ -152,8 +152,6 @@ namespace Rebellion.Tests.Multiplayer
         [TestCase("hostFactionID")]
         [TestCase("guestFactionID")]
         [TestCase("contentFingerprint")]
-        [TestCase("simulationBuild")]
-        [TestCase("gameplayContent")]
         public void ValidateOffer_DifferentCampaignBinding_RejectsCheckpoint(string field)
         {
             MultiplayerRecoveryRecord record = CreateRecord();
@@ -178,12 +176,8 @@ namespace Rebellion.Tests.Multiplayer
                 case "contentFingerprint":
                     offered.contentFingerprint = "other";
                     break;
-                case "simulationBuild":
-                    offered.simulationBuild = "other";
-                    break;
                 default:
-                    offered.gameplayContent = "other";
-                    break;
+                    throw new ArgumentOutOfRangeException(nameof(field));
             }
             Assert.Throws<InvalidDataException>(() => record.ValidateOffer(offered));
         }
@@ -220,8 +214,6 @@ namespace Rebellion.Tests.Multiplayer
                 hostFactionID = "FNALL1",
                 guestFactionID = "FNEMP1",
                 contentFingerprint = "content",
-                simulationBuild = "build",
-                gameplayContent = "gameplay",
                 snapshotHash = "hash",
             };
 

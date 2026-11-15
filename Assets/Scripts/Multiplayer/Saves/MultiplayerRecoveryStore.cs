@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Rebellion.Game;
@@ -9,7 +10,7 @@ using UnityEngine;
 namespace Rebellion.Multiplayer
 {
     /// <summary>
-    /// Binds a recoverable campaign to its authenticated participants and exact simulation content.
+    /// Binds a saved campaign and its content selection to the authenticated participants.
     /// </summary>
     [Serializable]
     internal sealed class MultiplayerRecoveryRecord
@@ -24,8 +25,6 @@ namespace Rebellion.Multiplayer
         public string hostFactionID;
         public string guestFactionID;
         public string contentFingerprint;
-        public string simulationBuild;
-        public string gameplayContent;
         public string snapshotHash;
 
         /// <summary>
@@ -99,7 +98,7 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Rejects a recovery offer from another campaign, participant binding, or installed build.
+        /// Rejects a recovery offer from another campaign, participant binding, or content selection.
         /// </summary>
         /// <param name="other">The record offered by the authenticated survivor.</param>
         public void ValidateOffer(MultiplayerRecoveryRecord other)
@@ -114,8 +113,6 @@ namespace Rebellion.Multiplayer
                 || hostFactionID != other.hostFactionID
                 || guestFactionID != other.guestFactionID
                 || contentFingerprint != other.contentFingerprint
-                || simulationBuild != other.simulationBuild
-                || gameplayContent != other.gameplayContent
             )
                 throw new InvalidDataException("The recovery offer does not match this campaign.");
         }
@@ -159,8 +156,6 @@ namespace Rebellion.Multiplayer
                 || string.IsNullOrWhiteSpace(guestFactionID)
                 || hostFactionID == guestFactionID
                 || string.IsNullOrWhiteSpace(contentFingerprint)
-                || string.IsNullOrWhiteSpace(simulationBuild)
-                || string.IsNullOrWhiteSpace(gameplayContent)
                 || string.IsNullOrWhiteSpace(snapshotHash)
             )
                 throw new InvalidDataException(
@@ -176,6 +171,13 @@ namespace Rebellion.Multiplayer
     {
         private const string _signature = "Rebellion multiplayer recovery 1";
         private readonly string _directory;
+
+        /// <summary>
+        /// Gets whether local recovery files exist before an authenticated account lookup is needed.
+        /// </summary>
+        public bool HasCheckpoints =>
+            Directory.Exists(_directory)
+            && Directory.EnumerateFiles(_directory, "multiplayer-recovery-*.checkpoint").Any();
 
         /// <summary>
         /// Uses the application's selected save directory without changing ordinary save formats.
@@ -295,10 +297,12 @@ namespace Rebellion.Multiplayer
                         || reader.BaseStream.Length - reader.BaseStream.Position != length
                     )
                         throw new InvalidDataException("The recovery checkpoint is incomplete.");
-                    GameRoot state = MultiplayerSnapshotCodec.Restore(
+                    byte[] payload = MultiplayerSnapshotCodec.RestorePayload(
                         reader.ReadBytes(length),
                         record.snapshotHash
                     );
+                    using MemoryStream savedState = new MemoryStream(payload, writable: false);
+                    GameRoot state = SaveGameManager.DeserializeGame(savedState);
                     record.ValidateState(state);
                     return state;
                 }

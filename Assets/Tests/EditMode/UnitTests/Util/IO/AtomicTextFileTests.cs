@@ -74,6 +74,48 @@ namespace Rebellion.Tests.Util.IO
         }
 
         [Test]
+        public async Task UpdateAllText_ConcurrentUpdates_PreservesBothChangesAsync()
+        {
+            AtomicTextFile.WriteAllText(_path, "0");
+            using CountdownEvent ready = new CountdownEvent(2);
+            using ManualResetEventSlim start = new ManualResetEventSlim(false);
+            Task[] writers = Enumerable
+                .Range(0, 2)
+                .Select(_ =>
+                    Task.Run(() =>
+                    {
+                        ready.Signal();
+                        start.Wait();
+                        AtomicTextFile.UpdateAllText(
+                            _path,
+                            () => (int.Parse(AtomicTextFile.ReadAllText(_path)) + 1).ToString()
+                        );
+                    })
+                )
+                .ToArray();
+            ready.Wait();
+            start.Set();
+
+            await Task.WhenAll(writers);
+
+            Assert.That(AtomicTextFile.ReadAllText(_path), Is.EqualTo("2"));
+        }
+
+        [Test]
+        public void UpdateAllText_ContentsFactoryThrows_PreservesDocumentAndReleasesLease()
+        {
+            AtomicTextFile.WriteAllText(_path, "previous");
+
+            Assert.Throws<InvalidOperationException>(() =>
+                AtomicTextFile.UpdateAllText(_path, () => throw new InvalidOperationException())
+            );
+            AtomicTextFile.UpdateAllText(_path, () => AtomicTextFile.ReadAllText(_path) + " next");
+
+            Assert.That(AtomicTextFile.ReadAllText(_path), Is.EqualTo("previous next"));
+            Assert.That(Directory.GetFiles(_directory, "*.tmp"), Is.Empty);
+        }
+
+        [Test]
         public void WriteAllText_ExistingReaderAllowsReplacement_RetainsOldDocumentForReaderAndPublishesNewDocument()
         {
             const string first = "{\"value\":\"first complete document\"}";

@@ -853,7 +853,7 @@ public static class StrategyViewPrefabBuilder
         UIWindowManager windowManager = EnableRuntimeComponent(
             windows.AddComponent<UIWindowManager>()
         );
-        CommonUIPrefabBuilder.CreateMultiplayerSessionEndNotice(ui.transform, windowManager, false);
+        CommonUIPrefabBuilder.CreateSceneConfirmationLayer(ui.transform, windowManager, false);
         StrategyWindowLayerView windowsView = EnableRuntimeComponent(
             windows.AddComponent<StrategyWindowLayerView>()
         );

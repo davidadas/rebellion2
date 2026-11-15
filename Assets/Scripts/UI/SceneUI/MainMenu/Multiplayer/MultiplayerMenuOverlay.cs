@@ -137,9 +137,6 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
         private Button joinButton;
 
         [SerializeField]
-        private Button resumeButton;
-
-        [SerializeField]
         private Button loadButton;
 
         [SerializeField]
@@ -184,12 +181,6 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
         [SerializeField]
         private OptionsSaveListView saveList;
 
-        [SerializeField]
-        private ConfirmationDialogView leaveConfirmation;
-
-        [SerializeField]
-        private GameObject leaveConfirmationRoot;
-
         private readonly List<GameObject> _gameRows = new();
         private readonly List<OptionsSaveSlot> _saveSlots = new();
         private IReadOnlyList<SaveGameEntry> _saves;
@@ -213,6 +204,16 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
         /// Occurs when the player closes the multiplayer console.
         /// </summary>
         public event Action CloseRequested;
+
+        /// <summary>
+        /// Requests confirmation from the main menu's full-screen modal host.
+        /// </summary>
+        public event Action<string, Action> ConfirmationRequested;
+
+        /// <summary>
+        /// Requests reconnection through the main menu instead of using the discovery form.
+        /// </summary>
+        public event Action<MultiplayerGameListing> ReconnectRequested;
 
         /// <summary>
         /// Connects authored controls to the persistent session and opens discovery with the cached account.
@@ -250,7 +251,6 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
             BindControls();
             _coordinator.StateChanged += Render;
             saveList.SetLoadOnly(true);
-            leaveConfirmation.InitializeContent(AppBootstrap.EnsureExists().GetContentAssets());
             Render();
             if (_coordinator.PlayerSession != null)
                 Run(RefreshBrowserAsync);
@@ -276,11 +276,6 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
         /// <returns>True because the console consumes cancellation.</returns>
         public bool TryCancel()
         {
-            if (leaveConfirmationRoot.activeSelf)
-            {
-                CancelLeave();
-                return true;
-            }
             if (_busy || _coordinator.IsConnecting)
             {
                 bool dialog =
@@ -322,7 +317,6 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
             createButton.onClick.AddListener(CreateGame);
             refreshButton.onClick.AddListener(RefreshBrowser);
             joinButton.onClick.AddListener(JoinSelected);
-            resumeButton.onClick.AddListener(ResumeGame);
             cancelPasswordButton.onClick.AddListener(HidePassword);
             confirmJoinButton.onClick.AddListener(JoinProtected);
             leaveButton.onClick.AddListener(LeaveLobby);
@@ -338,8 +332,6 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
                 sortButtons[index].onClick.AddListener(() => SortGames(column));
             }
             saveList.SlotSelected += SelectSaveIndex;
-            leaveConfirmation.Confirmed += ConfirmLeave;
-            leaveConfirmation.Canceled += CancelLeave;
             signInButton.onClick.AddListener(SignIn);
             lobbySendButton.onClick.AddListener(SendLobbyChat);
             generalSendButton.onClick.AddListener(SendGeneralChat);
@@ -408,8 +400,6 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
             lobbyPage.SetActive(inLobby);
             pageTitle.text = inLobby ? _coordinator.Lobby.gameName : "SERVER BROWSER";
             hostButton.interactable = refreshButton.interactable = signedIn && idle;
-            resumeButton.gameObject.SetActive(_coordinator.HasRecovery);
-            resumeButton.interactable = signedIn && idle;
             createButton.interactable = signedIn && idle && _packs.Count > 0;
             contentPackDropdown.interactable =
                 gameNameInput.interactable =
@@ -725,8 +715,7 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
                 return;
             if (_selectedGame.state == "rejoining" && _coordinator.HasRecovery)
             {
-                MultiplayerGameListing selected = _selectedGame;
-                Run(_ => _coordinator.ResumeAsync(selected));
+                ReconnectRequested?.Invoke(_selectedGame);
                 return;
             }
             if (_selectedGame.passwordProtected)
@@ -739,14 +728,6 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
                 Run(_ =>
                     _coordinator.JoinAsync(_coordinator.PlayerSession.DisplayName, _selectedGame)
                 );
-        }
-
-        /// <summary>
-        /// Reopens this account's interrupted campaign using the existing native loading flow.
-        /// </summary>
-        private void ResumeGame()
-        {
-            Run(_ => _coordinator.ResumeAsync());
         }
 
         /// <summary>
@@ -780,8 +761,7 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
         private void LeaveLobby()
         {
             _closeAfterLeaving = false;
-            leaveConfirmationRoot.SetActive(true);
-            leaveConfirmation.Show("Are you sure you want to leave this lobby?");
+            RequestConfirmation("Are you sure you want to leave this lobby?", ConfirmLeave);
         }
 
         /// <summary>
@@ -936,6 +916,7 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
                 return;
             _coordinator.SendLobbyChat(lobbyChatInput.text);
             lobbyChatInput.text = string.Empty;
+            lobbyChatText.GetComponentInParent<MenuChatPanelView>().ScrollToBottom();
             lobbyChatInput.ActivateInputField();
         }
 
@@ -954,7 +935,10 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
         private void SendGeneralChat()
         {
             if (_coordinator.SendGeneralChat(generalChatInput.text))
+            {
                 generalChatInput.text = string.Empty;
+                generalChatText.GetComponentInParent<MenuChatPanelView>().ScrollToBottom();
+            }
             generalChatInput.ActivateInputField();
         }
 
@@ -1036,8 +1020,7 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
             else
             {
                 _closeAfterLeaving = true;
-                leaveConfirmationRoot.SetActive(true);
-                leaveConfirmation.Show("Are you sure you want to leave this lobby?");
+                RequestConfirmation("Are you sure you want to leave this lobby?", ConfirmLeave);
             }
         }
 
@@ -1046,7 +1029,6 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
         /// </summary>
         private void ConfirmLeave()
         {
-            CancelLeave();
             if (_closeAfterLeaving)
                 CloseRequested?.Invoke();
             else
@@ -1059,12 +1041,13 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
         }
 
         /// <summary>
-        /// Dismisses leave confirmation without changing the online session.
+        /// Presents a confirmed action using the shared modal and its native response controls.
         /// </summary>
-        private void CancelLeave()
+        /// <param name="message">The confirmation message.</param>
+        /// <param name="onConfirmed">The action to run only when accepted.</param>
+        private void RequestConfirmation(string message, Action onConfirmed)
         {
-            leaveConfirmation.Hide();
-            leaveConfirmationRoot.SetActive(false);
+            ConfirmationRequested?.Invoke(message, onConfirmed);
         }
 
         /// <summary>

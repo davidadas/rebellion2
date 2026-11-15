@@ -37,6 +37,9 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     [SerializeField]
     private LegalDocumentsView _legalDocumentsView;
 
+    [SerializeField]
+    private ConfirmationDialogView _confirmationTemplate;
+
     private UIWindow _newGameSettingsWindow;
     private NewGameSettingsView _newGameSettingsView;
     private IReadOnlyList<ContentPackDefinition> _customGamePacks;
@@ -55,9 +58,19 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     private MultiplayerCoordinator _multiplayerCoordinator;
     private UIWindow _multiplayerWindow;
     private MultiplayerMenuOverlay _multiplayerMenuView;
+    private UIWindow _confirmationWindow;
+    private ConfirmationDialogView _confirmationDialog;
+    private Action _pendingConfirmAction;
+    private Action _pendingCancelAction;
+    private Action _pendingMultiplayerEntry;
+    private bool _menuReady;
+    private bool _reconnectOffered;
+    private bool _reconnecting;
 
     private bool IsStartupConsentBlocking =>
-        _legalDocumentsView?.IsVisible == true || _analyticsConsentView?.IsVisible == true;
+        _legalDocumentsView?.IsVisible == true
+        || _analyticsConsentView?.IsVisible == true
+        || _confirmationWindow != null;
 
     /// <summary>
     /// Resets launch state and renders the authored initial selections.
@@ -114,6 +127,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
         view.MultiplayerRequested += OpenMultiplayerMenu;
         view.AudioCueRequested += PlayAudioCue;
         _multiplayerCoordinator.LaunchRequested += HandleMultiplayerLaunchRequested;
+        _multiplayerCoordinator.StateChanged += HandleMultiplayerStateChanged;
         _analyticsConsentView.Allowed += HandleAnalyticsAllowed;
         _analyticsConsentView.Declined += HandleAnalyticsDeclined;
         _legalDocumentsView.MultiplayerAccepted += HandleMultiplayerAgreementAccepted;
@@ -160,6 +174,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
                 audioManager.PlayTrack(GetMenuMusicPath(contentPack.Definition), true);
             RenderAnalyticsConsentGate(bootstrap);
             mainMenuCanvas.enabled = true;
+            _menuReady = true;
+            await _multiplayerCoordinator.CheckForRecoveryAsync();
         }
         catch (Exception exception)
         {
@@ -180,6 +196,13 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// </summary>
     private void OnDisable()
     {
+        _menuReady = false;
+        if (_multiplayerCoordinator != null)
+            _multiplayerCoordinator.StateChanged -= HandleMultiplayerStateChanged;
+        if (_reconnecting)
+            CancelReconnect();
+        CloseConfirmation();
+        _pendingMultiplayerEntry = null;
         _appBootstrap?.GetCancelStack()?.Unregister(this);
         CloseMultiplayerMenu(true);
         CloseNewGameSettings();
@@ -322,6 +345,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// <param name="configuration">The synchronized launch configuration.</param>
     private void HandleMultiplayerLaunchRequested(MultiplayerLaunchConfiguration configuration)
     {
+        _reconnecting = false;
+        CloseConfirmation();
         CloseMultiplayerMenu(false);
     }
 
@@ -380,6 +405,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             || _newGameSettingsWindow != null
             || _multiplayerWindow != null;
         view?.RenderOptionsOverlay(open);
+        TryOfferReconnect();
         if (optionsMenuController?.IsOpen != true || !optionsDirty)
             return;
 
@@ -608,18 +634,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             return;
         }
 
-        if (
-            _legalDocumentsView.Agreement.IsAccepted(
-                _appBootstrap.GetUserSettingsManager().Settings
-            )
-        )
-        {
-            ContinueToMultiplayer();
-            return;
-        }
-
-        _legalDocumentsView.ShowMultiplayerAgreement();
-        _appBootstrap.GetCancelStack()?.Register(this);
+        RequestMultiplayerEntry(ContinueToMultiplayer);
     }
 
     /// <summary>
@@ -639,7 +654,9 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
         }
 
         _legalDocumentsView.Hide();
-        ContinueToMultiplayer();
+        Action continueEntry = _pendingMultiplayerEntry;
+        _pendingMultiplayerEntry = null;
+        continueEntry?.Invoke();
     }
 
     /// <summary>
@@ -670,6 +687,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
                 out _multiplayerMenuView
             );
             _multiplayerMenuView.CloseRequested += HandleMultiplayerCloseRequested;
+            _multiplayerMenuView.ConfirmationRequested += RequestConfirmation;
+            _multiplayerMenuView.ReconnectRequested += ReconnectPreviousGame;
             _multiplayerMenuView.Initialize(_multiplayerCoordinator, GameLaunchContext.Summary);
             bootstrap.GetCancelStack()?.Register(this);
         }
@@ -685,6 +704,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// </summary>
     private void HandleLegalDocumentsClosed()
     {
+        _pendingMultiplayerEntry = null;
         _appBootstrap.GetCancelStack()?.Unregister(this);
     }
 
@@ -706,7 +726,11 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             return;
 
         if (_multiplayerMenuView != null)
+        {
             _multiplayerMenuView.CloseRequested -= HandleMultiplayerCloseRequested;
+            _multiplayerMenuView.ConfirmationRequested -= RequestConfirmation;
+            _multiplayerMenuView.ReconnectRequested -= ReconnectPreviousGame;
+        }
         AppBootstrap.Instance?.GetCancelStack()?.Unregister(this);
         if (disconnect)
             _multiplayerCoordinator?.Disconnect();
@@ -725,6 +749,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// <returns>Whether the preview consumed cancellation.</returns>
     public bool TryCancel()
     {
+        if (_confirmationDialog?.TryCancel() == true)
+            return true;
         if (_legalDocumentsView?.TryCancel() == true)
             return true;
         if (_analyticsConsentView.IsVisible)
@@ -735,6 +761,257 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             return false;
         CloseNewGameSettings();
         return true;
+    }
+
+    /// <summary>
+    /// Presents a saved continuation once the main menu and authenticated account are ready.
+    /// </summary>
+    private void TryOfferReconnect()
+    {
+        if (
+            !_menuReady
+            || mainMenuCanvas?.enabled != true
+            || _reconnectOffered
+            || !_multiplayerCoordinator.HasRecovery
+            || _multiplayerCoordinator.IsSigningIn
+            || _multiplayerCoordinator.IsConnecting
+            || IsStartupConsentBlocking
+            || optionsMenuController?.IsOpen == true
+            || _newGameSettingsWindow != null
+            || view.OptionsWindowManager.Windows.Any(window =>
+                window?.Modal == true && window != _multiplayerWindow
+            )
+        )
+            return;
+        _reconnectOffered = true;
+        string message =
+            _multiplayerCoordinator.RecoveryRole == MultiplayerRole.Host
+                ? "Resume your previous game as host?"
+                : "Reconnect to your previous game?";
+        RequestConfirmation(message, ResumePreviousGame);
+        _pendingCancelAction = DiscardPreviousGame;
+    }
+
+    /// <summary>
+    /// Uses the existing multiplayer connection presentation after explicit reconnection approval.
+    /// </summary>
+    private void ResumePreviousGame()
+    {
+        RequestMultiplayerEntry(() => ReconnectPreviousGame(null));
+    }
+
+    /// <summary>
+    /// Restores an interrupted campaign directly from the menu with cancellable progress.
+    /// </summary>
+    /// <param name="selected">The explicitly selected recovery room, when reconnecting from discovery.</param>
+    private async void ReconnectPreviousGame(MultiplayerGameListing selected)
+    {
+        if (_reconnecting)
+            return;
+        CloseMultiplayerMenu(true);
+        _multiplayerCoordinator.ClearFailure();
+        _reconnectOffered = true;
+        _reconnecting = true;
+        RenderReconnect();
+        try
+        {
+            await _multiplayerCoordinator.ResumeAsync(selected);
+            if (this != null)
+                RenderReconnect();
+        }
+        catch (Exception exception)
+        {
+            if (this != null && _reconnecting)
+            {
+                Debug.LogException(exception);
+                ShowReconnectFailure(exception);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Routes connection changes to their active presentation owner.
+    /// </summary>
+    private void HandleMultiplayerStateChanged()
+    {
+        if (_reconnecting)
+            RenderReconnect();
+        else
+            TryOfferReconnect();
+    }
+
+    /// <summary>
+    /// Updates cancellable reconnection progress or presents its failure in the shared dialog.
+    /// </summary>
+    private void RenderReconnect()
+    {
+        if (!_reconnecting)
+            return;
+        if (_multiplayerCoordinator.Failure is Exception failure)
+        {
+            ShowReconnectFailure(failure);
+            return;
+        }
+        string message = _multiplayerCoordinator.IsRejoining
+            ? _multiplayerCoordinator.Status
+            : "Reconnecting to your previous game...";
+        EnsureConfirmationWindow();
+        _pendingConfirmAction = null;
+        _pendingCancelAction = CancelReconnect;
+        _confirmationDialog.ShowProgress(message);
+    }
+
+    /// <summary>
+    /// Leaves a failed campaign available for retry and shows its reason outside discovery.
+    /// </summary>
+    /// <param name="failure">The failure returned by loading or connecting the saved campaign.</param>
+    private void ShowReconnectFailure(Exception failure)
+    {
+        _reconnecting = false;
+        _multiplayerCoordinator.ClearFailure();
+        RequestConfirmation("Unable to reconnect.\n\n" + failure.Message, null);
+    }
+
+    /// <summary>
+    /// Cancels this connection attempt while retaining the saved campaign for a later retry.
+    /// </summary>
+    private void CancelReconnect()
+    {
+        _reconnecting = false;
+        CloseConfirmation();
+        _multiplayerCoordinator.Disconnect();
+    }
+
+    /// <summary>
+    /// Clears a declined reconnection offer while leaving ordinary saved games intact.
+    /// </summary>
+    private void DiscardPreviousGame()
+    {
+        try
+        {
+            _multiplayerCoordinator.DiscardRecovery();
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+            RequestConfirmation(
+                "The reconnect offer could not be cleared. Please try again.",
+                null
+            );
+        }
+    }
+
+    /// <summary>
+    /// Continues an approved multiplayer entry after any required document acceptance.
+    /// </summary>
+    /// <param name="continueEntry">The selected multiplayer entry action.</param>
+    private void RequestMultiplayerEntry(Action continueEntry)
+    {
+        if (
+            _legalDocumentsView.Agreement.IsAccepted(
+                _appBootstrap.GetUserSettingsManager().Settings
+            )
+        )
+        {
+            continueEntry();
+            return;
+        }
+        _pendingMultiplayerEntry = continueEntry;
+        _legalDocumentsView.ShowMultiplayerAgreement();
+        _appBootstrap.GetCancelStack()?.Register(this);
+    }
+
+    /// <summary>
+    /// Hosts the shared confirmation artwork in the menu's full-screen modal canvas.
+    /// </summary>
+    /// <param name="message">The displayed message.</param>
+    /// <param name="onConfirmed">The action to approve, or null for an acknowledgment.</param>
+    private void RequestConfirmation(string message, Action onConfirmed)
+    {
+        _pendingConfirmAction = onConfirmed;
+        _pendingCancelAction = null;
+        EnsureConfirmationWindow();
+        if (onConfirmed == null)
+            _confirmationDialog.ShowAcknowledgment(message);
+        else
+            _confirmationDialog.Show(message);
+    }
+
+    /// <summary>
+    /// Creates the shared full-screen modal host once for this menu's current notice.
+    /// </summary>
+    private void EnsureConfirmationWindow()
+    {
+        UIWindowManager manager = view.OptionsWindowManager;
+        if (_confirmationWindow == null)
+        {
+            manager.SetContentSource(_appBootstrap.GetContentAssets());
+            _confirmationWindow = manager.CreateWindow(
+                _confirmationTemplate,
+                _confirmationTemplate.transform.parent,
+                "MainMenuConfirmationDialog",
+                0,
+                0,
+                Vector2Int.RoundToInt(((RectTransform)_confirmationTemplate.transform).sizeDelta),
+                true,
+                true,
+                false,
+                false,
+                out _confirmationDialog
+            );
+            RectTransform rectangle = (RectTransform)_confirmationDialog.transform;
+            rectangle.anchorMin = Vector2.zero;
+            rectangle.anchorMax = Vector2.one;
+            rectangle.offsetMin = rectangle.offsetMax = Vector2.zero;
+            _confirmationDialog.InitializeContent(_appBootstrap.GetContentAssets());
+            _confirmationDialog.Confirmed += HandleConfirmationAccepted;
+            _confirmationDialog.Canceled += HandleConfirmationDeclined;
+        }
+        _appBootstrap.GetCancelStack()?.Register(this);
+    }
+
+    /// <summary>
+    /// Runs the approved action after releasing the modal window.
+    /// </summary>
+    private void HandleConfirmationAccepted()
+    {
+        Action confirmed = _pendingConfirmAction;
+        CloseConfirmation();
+        confirmed?.Invoke();
+    }
+
+    /// <summary>
+    /// Runs any decline action after releasing the modal window.
+    /// </summary>
+    private void HandleConfirmationDeclined()
+    {
+        Action declined = _pendingCancelAction;
+        CloseConfirmation();
+        declined?.Invoke();
+    }
+
+    /// <summary>
+    /// Releases the full-screen modal without interpreting scene teardown as a player decision.
+    /// </summary>
+    private void CloseConfirmation()
+    {
+        _pendingConfirmAction = _pendingCancelAction = null;
+        if (_confirmationDialog != null)
+        {
+            _confirmationDialog.Confirmed -= HandleConfirmationAccepted;
+            _confirmationDialog.Canceled -= HandleConfirmationDeclined;
+        }
+        UIWindow window = _confirmationWindow;
+        _confirmationWindow = null;
+        _confirmationDialog = null;
+        if (window != null && view?.OptionsWindowManager != null)
+            view.OptionsWindowManager.DestroyWindow(window);
+        if (
+            _multiplayerWindow == null
+            && _newGameSettingsWindow == null
+            && _legalDocumentsView?.IsVisible != true
+        )
+            _appBootstrap?.GetCancelStack()?.Unregister(this);
     }
 
     /// <summary>
