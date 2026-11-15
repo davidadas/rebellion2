@@ -378,6 +378,47 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(marker.Mixed);
         }
 
+        [TestCase(OfficerRank.Commander)]
+        [TestCase(OfficerRank.Admiral)]
+        [TestCase(OfficerRank.General)]
+        public void Evaluate_IdlePersonnel_CommandingOfficer_ExcludesOfficer(OfficerRank rank)
+        {
+            Planet planet = CreatePlanet(_playerFactionId);
+            planet.AddTestChild(
+                new Officer { OwnerInstanceID = _playerFactionId, CurrentRank = rank }
+            );
+
+            GalacticInformationMarker marker = GalacticInformationFilterEvaluator.Evaluate(
+                _game,
+                planet,
+                _playerFactionId,
+                CreateFilter(GalacticInformationFilterMode.IdlePersonnel)
+            );
+
+            Assert.AreEqual(0, marker.Index);
+        }
+
+        [TestCase(OfficerRank.Commander)]
+        [TestCase(OfficerRank.Admiral)]
+        [TestCase(OfficerRank.General)]
+        public void Evaluate_ActivePersonnel_CommandingOfficer_CountsOfficer(OfficerRank rank)
+        {
+            Planet planet = CreatePlanet(_playerFactionId);
+            planet.AddTestChild(
+                new Officer { OwnerInstanceID = _playerFactionId, CurrentRank = rank }
+            );
+
+            GalacticInformationMarker marker = GalacticInformationFilterEvaluator.Evaluate(
+                _game,
+                planet,
+                _playerFactionId,
+                CreateFilter(GalacticInformationFilterMode.ActivePersonnel)
+            );
+
+            Assert.AreEqual(1, marker.Index);
+            Assert.AreEqual(_playerFactionId, marker.FactionInstanceId);
+        }
+
         [Test]
         public void Evaluate_PersonnelCarriedByMovingFleet_CountsAsActive()
         {
