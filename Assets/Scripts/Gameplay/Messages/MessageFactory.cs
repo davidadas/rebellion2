@@ -157,7 +157,12 @@ namespace Rebellion.Gameplay
                 game,
                 deliveries
             );
-            AddOwnershipMessages(batch.OfType<PlanetOwnershipChangedResult>(), game, deliveries);
+            AddOwnershipMessages(
+                batch.OfType<PlanetOwnershipChangedResult>(),
+                batch.OfType<PlanetUprisingEndedResult>(),
+                game,
+                deliveries
+            );
             AddObjectiveMessages(
                 batch.OfType<PlanetOwnershipChangedResult>(),
                 batch.OfType<HeadquartersDestroyedResult>(),
@@ -3541,17 +3546,28 @@ namespace Rebellion.Gameplay
         /// Adds political ownership messages for colonized planets.
         /// </summary>
         /// <param name="results">The results.</param>
+        /// <param name="endedUprisings">Uprisings that ended during the same operation.</param>
         /// <param name="game">The game.</param>
         /// <param name="deliveries">The deliveries.</param>
         private void AddOwnershipMessages(
             IEnumerable<PlanetOwnershipChangedResult> results,
+            IEnumerable<PlanetUprisingEndedResult> endedUprisings,
             GameRoot game,
             ICollection<MessageDelivery> deliveries
         )
         {
+            HashSet<Planet> endedUprisingPlanets = (
+                endedUprisings ?? Array.Empty<PlanetUprisingEndedResult>()
+            )
+                .Where(result => result?.Planet != null)
+                .Select(result => result.Planet)
+                .ToHashSet();
             foreach (PlanetOwnershipChangedResult result in results)
             {
-                if (result.Planet?.IsColonized != true)
+                if (
+                    result.Planet?.IsColonized != true
+                    || endedUprisingPlanets.Contains(result.Planet)
+                )
                     continue;
 
                 if (
