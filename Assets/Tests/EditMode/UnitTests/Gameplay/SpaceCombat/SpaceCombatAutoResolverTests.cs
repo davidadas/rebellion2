@@ -2546,6 +2546,31 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void Resolve_PlanetDestroyerAndFightersUnableToDamageEachOther_WithdrawsEligiblePlanetDestroyer()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveStagnationIterations = 2;
+            config.PlanetDestroyerWithdrawalIterations = 3;
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
+            Starfighter fighter = CreateFighter("fighter", squadronSize: 12, weaponStrength: 10);
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { fighter },
+                new[] { planetDestroyer },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(CombatSide.Attacker, result.Winner);
+            Assert.IsTrue(result.WithdrawnUnits.Contains(planetDestroyer));
+            Assert.AreEqual(5, result.IterationsCompleted);
+        }
+
+        [Test]
         public void Resolve_OutgunnedSideWithMobilePlanetDestroyer_UsesPlanetDestroyerWithdrawalCountdown()
         {
             GameConfig.SpaceCombatConfig config = CreateConfig();
@@ -2631,6 +2656,7 @@ namespace Rebellion.Tests.Gameplay
         public void Resolve_PlanetDestroyerWithOnlyCapitalTargets_DestroysTargetsBeforeStalemate()
         {
             GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveStagnationIterations = 20;
             CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
             CapitalShip target = CreatePassiveTarget("target", 100000);
 
@@ -2639,9 +2665,7 @@ namespace Rebellion.Tests.Gameplay
                 new[] { planetDestroyer },
                 new List<Starfighter>(),
                 new[] { target, CreatePassiveTarget("other", 100000) },
-                new List<Starfighter>(),
-                attackerCanWithdraw: true,
-                defenderCanWithdraw: false
+                new List<Starfighter>()
             );
 
             Assert.AreEqual(SpaceCombatSideOutcome.Active, result.AttackerOutcome);

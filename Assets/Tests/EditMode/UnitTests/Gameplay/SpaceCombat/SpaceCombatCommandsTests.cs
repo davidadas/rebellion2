@@ -3913,7 +3913,7 @@ namespace Rebellion.Tests.Gameplay
             GameRoot game = CreateAutomaticCombatGame();
             game.Random = new SequenceRNG();
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "empire");
-            CreatePlanet(game, "allianceHome", owner: "alliance");
+            (Planet allianceHome, _) = CreatePlanet(game, "allianceHome", owner: "alliance");
             Fleet planetDestroyerFleet = CreateFleet(
                 game,
                 "ef1",
@@ -3958,11 +3958,31 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(torpedoSquadron, carrier);
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            new SpaceCombatTickProcessor(manager).ProcessTick(game);
+            IReadOnlyList<GameResult> results = new SpaceCombatTickProcessor(manager).ProcessTick(
+                game
+            );
+            SpaceCombatResult result = results.OfType<SpaceCombatResult>().Single();
 
             bool planetDestroyerSurvived =
                 game.GetSceneNodeByInstanceID<CapitalShip>(planetDestroyer.InstanceID) != null;
             Assert.AreEqual(shielded, planetDestroyerSurvived);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>(carrier.InstanceID));
+            Assert.AreSame(
+                torpedoSquadron,
+                game.GetSceneNodeByInstanceID<Starfighter>(torpedoSquadron.InstanceID)
+            );
+            Assert.AreSame(allianceHome, torpedoSquadron.GetParentOfType<Planet>());
+            Assert.IsNotNull(torpedoSquadron.Movement);
+            SpaceCombatSideOutcome allianceOutcome =
+                result.AttackerOwnerInstanceID == "alliance"
+                    ? result.AttackerOutcome
+                    : result.DefenderOutcome;
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, allianceOutcome);
+            CombatSide expectedWinner =
+                result.AttackerOwnerInstanceID == (shielded ? "empire" : "alliance")
+                    ? CombatSide.Attacker
+                    : CombatSide.Defender;
+            Assert.AreEqual(expectedWinner, result.Winner);
         }
 
         [Test]

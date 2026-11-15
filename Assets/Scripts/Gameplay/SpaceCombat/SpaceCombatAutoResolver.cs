@@ -106,6 +106,14 @@ namespace Rebellion.Gameplay
             double previousDefenderDurability = GetTacticalDurability(defender);
             double previousAttackerWithdrawalProgress = GetWithdrawalProgress(attacker);
             double previousDefenderWithdrawalProgress = GetWithdrawalProgress(defender);
+            long previousAttackerSuperlaserRecharge = GetSuperlaserRechargeProgress(
+                attacker,
+                defender
+            );
+            long previousDefenderSuperlaserRecharge = GetSuperlaserRechargeProgress(
+                defender,
+                attacker
+            );
             int stagnantIterations = 0;
             int iterationsCompleted = 0;
             Dictionary<TacticalUnit, PendingDamage> pendingDamage =
@@ -124,6 +132,8 @@ namespace Rebellion.Gameplay
                 WithdrawUnitsAtThreshold(defender, attacker);
                 WithdrawFromPlanetDestroyer(attacker, defender);
                 WithdrawFromPlanetDestroyer(defender, attacker);
+                WithdrawPlanetDestroyerFromFighterStalemate(attacker, defender);
+                WithdrawPlanetDestroyerFromFighterStalemate(defender, attacker);
                 FireSuperlasers(attacker, defender);
                 FireSuperlasers(defender, attacker);
 
@@ -140,6 +150,8 @@ namespace Rebellion.Gameplay
                 double defenderDurability = GetTacticalDurability(defender);
                 double attackerWithdrawalProgress = GetWithdrawalProgress(attacker);
                 double defenderWithdrawalProgress = GetWithdrawalProgress(defender);
+                long attackerSuperlaserRecharge = GetSuperlaserRechargeProgress(attacker, defender);
+                long defenderSuperlaserRecharge = GetSuperlaserRechargeProgress(defender, attacker);
                 // Squadrons flying an attack run are progress too: every run ends.
                 bool stateChanged =
                     Math.Abs(attackerDurability - previousAttackerDurability) > double.Epsilon
@@ -148,6 +160,8 @@ namespace Rebellion.Gameplay
                         > double.Epsilon
                     || Math.Abs(defenderWithdrawalProgress - previousDefenderWithdrawalProgress)
                         > double.Epsilon
+                    || attackerSuperlaserRecharge != previousAttackerSuperlaserRecharge
+                    || defenderSuperlaserRecharge != previousDefenderSuperlaserRecharge
                     || attacker.HasAttackRunUnderWay
                     || defender.HasAttackRunUnderWay;
                 stagnantIterations = stateChanged ? 0 : stagnantIterations + 1;
@@ -155,6 +169,8 @@ namespace Rebellion.Gameplay
                 previousDefenderDurability = defenderDurability;
                 previousAttackerWithdrawalProgress = attackerWithdrawalProgress;
                 previousDefenderWithdrawalProgress = defenderWithdrawalProgress;
+                previousAttackerSuperlaserRecharge = attackerSuperlaserRecharge;
+                previousDefenderSuperlaserRecharge = defenderSuperlaserRecharge;
 
                 if (stagnantIterations >= _config.AutoResolveStagnationIterations)
                 {
@@ -283,6 +299,37 @@ namespace Rebellion.Gameplay
                     fighter.IsAlive && !fighter.HasWithdrawn && fighter.HasTorpedoes
                 );
             if (!canAttack)
+                force.BeginWithdrawal();
+        }
+
+        /// <summary>
+        /// Withdraws an independently mobile planet destroyer when the opposing force contains
+        /// only fighters that cannot attack it and the planet destroyer has no valid target.
+        /// </summary>
+        /// <param name="force">The force containing the planet destroyer.</param>
+        /// <param name="opposingForce">The opposing fighter force.</param>
+        private static void WithdrawPlanetDestroyerFromFighterStalemate(
+            CombatForce force,
+            CombatForce opposingForce
+        )
+        {
+            if (
+                force.WithdrawalOrdered
+                || !force.CanWithdraw
+                || force.HasCombatants
+                || !force.HasPlanetDestroyerInBattle
+                || !opposingForce.HasCombatants
+                || opposingForce.HasTargetableShips
+                || opposingForce.WithdrawalOrdered
+            )
+                return;
+
+            bool opposingForceCanAttack =
+                force.PlanetDestroyers.Any(planetDestroyer => planetDestroyer.IsAttackable)
+                && opposingForce.Fighters.Any(fighter =>
+                    fighter.IsAlive && !fighter.HasWithdrawn && fighter.HasTorpedoes
+                );
+            if (!opposingForceCanAttack)
                 force.BeginWithdrawal();
         }
 
@@ -680,6 +727,30 @@ namespace Rebellion.Gameplay
             foreach (PlanetDestroyerState planetDestroyer in force.PlanetDestroyers)
                 progress += planetDestroyer.WithdrawalProgress;
             return progress;
+        }
+
+        /// <summary>
+        /// Measures recharge movement for planet destroyers that still have a valid capital-ship
+        /// target. Recharge is tactical progress because it always ends in another strike.
+        /// </summary>
+        /// <param name="force">The force whose planet destroyers are charging.</param>
+        /// <param name="opposingForce">The force providing superlaser targets.</param>
+        /// <returns>The combined remaining recharge iterations for viable superlaser strikes.</returns>
+        private static long GetSuperlaserRechargeProgress(
+            CombatForce force,
+            CombatForce opposingForce
+        )
+        {
+            if (force.WithdrawalOrdered || !opposingForce.HasTargetableShips)
+                return 0;
+
+            return force
+                .PlanetDestroyers.Where(planetDestroyer =>
+                    planetDestroyer.IsInBattle && !planetDestroyer.IsWithdrawing
+                )
+                .Sum(planetDestroyer =>
+                    (long)planetDestroyer.SuperlaserRechargeIterationsRemaining
+                );
         }
 
         /// <summary>
@@ -1555,6 +1626,8 @@ namespace Rebellion.Gameplay
                 && _superlaserRechargeIterationsRemaining <= 0;
             internal bool CanWithdrawIndependently => Ship.Hyperdrive > 0;
             internal bool IsJumpReady => _jumpIterationsRemaining <= 0;
+            internal int SuperlaserRechargeIterationsRemaining =>
+                _superlaserRechargeIterationsRemaining;
             internal bool HasAttackRun => _attackRunActive;
             internal IReadOnlyList<StarfighterState> AttackRunParticipants =>
                 _attackRunParticipants;
