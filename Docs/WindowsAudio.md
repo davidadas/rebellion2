@@ -23,8 +23,8 @@ The Windows player accepts these troubleshooting overrides:
 - `-nosound` is respected without opening a recovery stream.
 
 These switches are game arguments. Native Linux and macOS players do not use this path.
-Initialization and output failures are recorded once in `Player.log`; recovery does not repeatedly
-reopen a failing device each frame.
+Recovery messages use `GameLogger`, respecting its configured level and file output. Emitted
+messages also reach `Player.log`. Recovery does not repeatedly reopen a failing device each frame.
 
 Each recovery decision records the requested WinMM format, the session check's result, and why
 Unity output was retained or stereo output was attempted. Inspection failures include their error

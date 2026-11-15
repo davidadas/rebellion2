@@ -2,6 +2,7 @@
 using System;
 using System.Text;
 using System.Threading.Tasks;
+using Rebellion.Util.Logging;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -35,7 +36,7 @@ internal sealed class WindowsAudioOutput : MonoBehaviour
             || Array.IndexOf(arguments, "-system-audio") >= 0
         )
         {
-            Debug.Log("Windows audio recovery: disabled by -nosound or -system-audio.");
+            GameLogger.Log("Windows audio recovery: disabled by -nosound or -system-audio.");
             return;
         }
         GameObject owner = new GameObject("Windows audio output");
@@ -69,15 +70,15 @@ internal sealed class WindowsAudioOutput : MonoBehaviour
         }
         if (completed != null)
         {
-            Debug.Log($"Windows audio recovery: {completed.Diagnostics}");
+            GameLogger.Log($"Windows audio recovery: {completed.Diagnostics}");
             if (completed.Failure != null)
-                Debug.LogWarning($"Windows audio recovery: {completed.Failure}");
+                GameLogger.Warning($"Windows audio recovery: {completed.Failure}");
             else if (completed.Output != null)
             {
                 reportedMix = false;
                 reportedQueue = false;
                 reportedSignal = false;
-                Debug.Log("Windows audio recovery: using 16-bit stereo output.");
+                GameLogger.Log("Windows audio recovery: using 16-bit stereo output.");
                 for (int index = 0; index < SceneManager.sceneCount; index++)
                     AttachListeners(SceneManager.GetSceneAt(index));
             }
@@ -88,22 +89,22 @@ internal sealed class WindowsAudioOutput : MonoBehaviour
         if (!reportedMix && active.HasReceivedMix)
         {
             reportedMix = true;
-            Debug.Log("Windows audio recovery: received the first Unity listener mix.");
+            GameLogger.Log("Windows audio recovery: received the first Unity listener mix.");
         }
         if (!reportedQueue && active.HasQueuedMix)
         {
             reportedQueue = true;
-            Debug.Log("Windows audio recovery: WinMM accepted the first listener PCM block.");
+            GameLogger.Log("Windows audio recovery: WinMM accepted the first listener PCM block.");
         }
         if (!reportedSignal && active.HasQueuedSignal)
         {
             reportedSignal = true;
-            Debug.Log("Windows audio recovery: WinMM accepted non-silent listener PCM.");
+            GameLogger.Log("Windows audio recovery: WinMM accepted non-silent listener PCM.");
         }
         if (active.Failure == null)
             return;
         output = null;
-        Debug.LogWarning($"Windows audio recovery stopped: {active.Failure}");
+        GameLogger.Warning($"Windows audio recovery stopped: {active.Failure}");
         lock (gate)
             opening = opening.ContinueWith(_ => active.Dispose(), TaskScheduler.Default);
     }
