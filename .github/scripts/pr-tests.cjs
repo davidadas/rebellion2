@@ -1,4 +1,4 @@
-const REVIEW_ENVIRONMENT = 'Fork PR tests';
+const REVIEW_ENVIRONMENT = 'production';
 const CHECK_NAME = 'Unity tests (reviewed PR)';
 
 /** Validate dispatch inputs before using them in API requests or checkout refs. */

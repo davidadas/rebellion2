@@ -1,11 +1,11 @@
-name: Request fork PR tests
+name: Request PR tests
 
 on:
   pull_request_target:
     types: [opened, reopened, synchronize, ready_for_review]
 
 concurrency:
-  group: fork-test-request-${{ github.event.pull_request.number }}
+  group: pr-test-request-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 permissions:
@@ -15,7 +15,6 @@ permissions:
 jobs:
   request:
     name: Request reviewed test run
-    if: github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/github-script@v7
