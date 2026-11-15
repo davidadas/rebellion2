@@ -28,7 +28,7 @@ env:
 jobs:
   resolve-media:
     name: Resolve media revision
-    if: github.event_name == 'push' || github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'push'
     uses: ./.github/workflows/resolve-media.yml
     with:
       branch: ${{ github.head_ref }}
@@ -294,6 +294,7 @@ jobs:
 
   test:
     name: Test
+    if: github.event_name == 'push'
     needs: resolve-media
     uses: ./.github/workflows/unity-test-runner.yml
     with:
@@ -305,7 +306,7 @@ jobs:
       contents: read
       pull-requests: write
 
-  fork-plan:
+  pr-plan:
     name: Prepare PR test review
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -333,13 +334,13 @@ jobs:
             await plan({ github, context, core,
               number: process.env.PR_NUMBER, headSha: process.env.PR_HEAD_SHA });
 
-  approve-fork:
+  approve-pr:
     name: Review private test access
-    needs: fork-plan
+    needs: pr-plan
     runs-on: ubuntu-latest
     environment:
       name: Fork PR tests
-      url: ${{ needs.fork-plan.outputs.review_url }}
+      url: ${{ needs.pr-plan.outputs.review_url }}
     permissions:
       actions: read
       contents: read
@@ -363,34 +364,34 @@ jobs:
             await approve({ github, context, core,
               number: process.env.PR_NUMBER, headSha: process.env.PR_HEAD_SHA });
 
-  resolve-fork-media:
+  resolve-pr-media:
     name: Resolve approved PR media
-    needs: approve-fork
+    needs: approve-pr
     uses: ./.github/workflows/resolve-media.yml
     with:
-      branch: ${{ needs.approve-fork.outputs.media_branch }}
+      branch: ${{ needs.approve-pr.outputs.media_branch }}
     secrets: inherit
     permissions:
       contents: read
 
-  test-fork:
+  test-pr:
     name: Test reviewed PR
-    needs: [approve-fork, resolve-fork-media]
+    needs: [approve-pr, resolve-pr-media]
     uses: ./.github/workflows/unity-test-runner.yml
     with:
-      checkout_ref: ${{ needs.approve-fork.outputs.merge_sha }}
+      checkout_ref: ${{ needs.approve-pr.outputs.merge_sha }}
       reviewed_head_sha: ${{ inputs.head_sha }}
-      media_sha: ${{ needs.resolve-fork-media.outputs.sha }}
+      media_sha: ${{ needs.resolve-pr-media.outputs.sha }}
       publish_checks: false
       save_cache: false
     secrets: inherit
     permissions:
       contents: read
 
-  fork-result:
+  pr-result:
     name: Report reviewed PR tests
-    if: always() && github.event_name == 'workflow_dispatch' && needs.fork-plan.outputs.check_id != ''
-    needs: [fork-plan, approve-fork, resolve-fork-media, test-fork]
+    if: always() && github.event_name == 'workflow_dispatch' && needs.pr-plan.outputs.check_id != ''
+    needs: [pr-plan, approve-pr, resolve-pr-media, test-pr]
     runs-on: ubuntu-latest
     permissions:
       checks: write
@@ -402,10 +403,10 @@ jobs:
           persist-credentials: false
       - uses: actions/github-script@v7
         env:
-          CHECK_ID: ${{ needs.fork-plan.outputs.check_id }}
-          TEST_RESULT: ${{ needs.test-fork.result }}
-          MEDIA_RESULT: ${{ needs.resolve-fork-media.result }}
-          APPROVAL_RESULT: ${{ needs.approve-fork.result }}
+          CHECK_ID: ${{ needs.pr-plan.outputs.check_id }}
+          TEST_RESULT: ${{ needs.test-pr.result }}
+          MEDIA_RESULT: ${{ needs.resolve-pr-media.result }}
+          APPROVAL_RESULT: ${{ needs.approve-pr.result }}
         with:
           script: |
             const { report } = require('./.github/scripts/pr-tests.cjs');
