@@ -81,6 +81,82 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
         }
 
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Render_UnselectedSave_RowClickRefreshesLoadPermissionBeforeRerender(
+            bool canLoad
+        )
+        {
+            _view.Render(
+                new[] { new OptionsSaveSlot("Campaign", "Today", null, false, "campaign") },
+                -1,
+                false,
+                true,
+                canLoad
+            );
+            Button load = _root.transform.Find("LoadIcon").GetComponent<Button>();
+            int requests = 0;
+            _view.LoadRequested += () => requests++;
+            Assert.IsFalse(load.interactable);
+
+            _root
+                .GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "SlotRow0")
+                .onClick.Invoke();
+            load.onClick.Invoke();
+
+            Assert.AreEqual(canLoad, load.interactable);
+            Assert.AreEqual(canLoad ? 1 : 0, requests);
+        }
+
+        [Test]
+        public void Render_SelectedSave_CreateNewRowImmediatelyBlocksLoad()
+        {
+            _view.Render(
+                new[]
+                {
+                    new OptionsSaveSlot("Create New Save", string.Empty, null, true, null),
+                    new OptionsSaveSlot("Campaign", "Today", null, false, "campaign"),
+                },
+                1,
+                true,
+                true
+            );
+            Button load = _root.transform.Find("LoadIcon").GetComponent<Button>();
+            int requests = 0;
+            _view.LoadRequested += () => requests++;
+            Assert.IsTrue(load.interactable);
+
+            _root
+                .GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "SlotRow0")
+                .onClick.Invoke();
+            load.onClick.Invoke();
+
+            Assert.IsFalse(load.interactable);
+            Assert.AreEqual(0, requests);
+        }
+
+        [Test]
+        public void SetLoadOnlyLayout_RowSelected_KeepsCommandArtworkHidden()
+        {
+            _view.SetLoadOnlyLayout(320, 180);
+            _view.Render(
+                new[] { new OptionsSaveSlot("Campaign", "Today", null, false, "campaign") },
+                -1,
+                false,
+                true
+            );
+
+            _root
+                .GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "SlotRow0")
+                .onClick.Invoke();
+
+            Assert.IsFalse(_root.transform.Find("SaveIconDisabled").gameObject.activeSelf);
+            Assert.IsFalse(_root.transform.Find("LoadIconDisabled").gameObject.activeSelf);
+        }
+
         /// <summary>
         /// Renders one real-shaped saved-game row using the public presenter API.
         /// </summary>

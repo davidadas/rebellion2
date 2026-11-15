@@ -565,7 +565,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
-    /// Selects a clicked slot and starts renaming on a qualifying double-click.
+    /// Selects a clicked slot, refreshes its commands, and starts renaming on a qualifying double-click.
     /// </summary>
     /// <param name="button">The button.</param>
     /// <param name="index">The index.</param>
@@ -575,6 +575,12 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
             return;
 
         bool existing = !_slots[index].IsCreateNew;
+        _existingSaveSelected = existing;
+        _loadButton.interactable = _canLoadGame && existing;
+        if (_showToolbar)
+            SetButtonDisabledVisual(_loadButton, _loadDisabledImage, _loadButton.interactable);
+        if (_showToolbar && !_loadOnly)
+            RenderSaveButton();
         float now = Time.unscaledTime;
         if (
             !_loadOnly
