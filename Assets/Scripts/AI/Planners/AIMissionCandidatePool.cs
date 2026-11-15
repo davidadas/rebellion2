@@ -22,9 +22,11 @@ namespace Rebellion.AI.Planners
         /// <summary>
         /// Clears candidates retained from the previous planning turn.
         /// </summary>
-        internal void Reset()
+        /// <param name="context">The read-only planning scope for this faction turn.</param>
+        internal void Reset(AITurnContext context)
         {
             _alternatives.Clear();
+            _scorer.BeginPlanning(context);
         }
 
         /// <summary>

@@ -110,9 +110,9 @@ namespace Rebellion.AI.Planners
                 yield break;
 
             AssignSpecialForcesIntent(context);
-            _candidateSelector.Reset();
-            _waitingCandidateSelector.Reset();
-            _stagingCandidateSelector.Reset();
+            _candidateSelector.Reset(context);
+            _waitingCandidateSelector.Reset(context);
+            _stagingCandidateSelector.Reset(context);
             _sabotageTargets.Clear();
             _sabotageTargetValues.Clear();
             _sabotageMissionCounts.Clear();
@@ -1144,20 +1144,12 @@ namespace Rebellion.AI.Planners
             if (!pool.CanRetain(context, team, departure))
                 return;
             Mission mission;
-            bool valid =
-                departure == null
-                    ? context.MissionQueries.TryCreateMission(team.CreateContext(), out mission)
-                : projectedStaging
-                    ? context.MissionQueries.TryCreateMissionFromDeparture(
-                        team.CreateContext(),
-                        departure,
-                        out mission
-                    )
-                : context.MissionQueries.TryCreateMissionAfterArrival(
-                    team.CreateContext(),
-                    departure,
-                    out mission
-                );
+            bool valid = context.MissionQueries.TryCreateForecastMission(
+                team.CreateContext(),
+                departure,
+                requireArrival: !projectedStaging,
+                out mission
+            );
             if (!valid)
                 return;
 

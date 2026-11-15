@@ -722,12 +722,19 @@ namespace Rebellion.Game.Missions
             MissionEvaluationContext context
         )
         {
-            IEnumerable<double> probabilities = (
-                participants ?? Enumerable.Empty<IMissionParticipant>()
+            double failureProbability = 1d;
+            foreach (
+                IMissionParticipant participant in participants
+                    ?? Enumerable.Empty<IMissionParticipant>()
             )
-                .Where(participant => participant != null)
-                .Select(participant => GetAgentProbability(participant, context));
-            return CombineSuccessProbabilities(probabilities);
+            {
+                if (participant == null)
+                    continue;
+                double probability =
+                    Math.Clamp(GetAgentProbability(participant, context), 0, 100) / 100d;
+                failureProbability *= 1d - probability;
+            }
+            return (1d - failureProbability) * 100d;
         }
 
         /// <summary>
@@ -737,9 +744,9 @@ namespace Rebellion.Game.Missions
         /// <returns>The combined percentage probability.</returns>
         protected static double CombineSuccessProbabilities(IEnumerable<double> probabilities)
         {
-            double failureProbability = (probabilities ?? Enumerable.Empty<double>())
-                .Select(probability => Math.Clamp(probability, 0, 100) / 100d)
-                .Aggregate(1d, (combined, probability) => combined * (1d - probability));
+            double failureProbability = 1d;
+            foreach (double probability in probabilities ?? Enumerable.Empty<double>())
+                failureProbability *= 1d - Math.Clamp(probability, 0, 100) / 100d;
             return (1d - failureProbability) * 100d;
         }
 

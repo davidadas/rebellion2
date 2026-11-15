@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI;
 using Rebellion.AI.Demands;
@@ -11,6 +12,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.Tests.AI.Helpers;
 
 namespace Rebellion.Tests.AI.Planners
@@ -104,6 +106,145 @@ namespace Rebellion.Tests.AI.Planners
 
             Assert.IsTrue(proposal.CanExecute(context));
             Assert.IsEmpty(proposals);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TryAdd_EquivalentAgents_RetainsTheirExactScoresAndIdentities(
+            bool differentOrigin
+        )
+        {
+            var (context, first, second, target) = CreateAgentContext(differentOrigin);
+            AIMissionProposalScorer scorer = new();
+            AIMissionCandidatePool pool = new();
+            pool.Reset(context);
+            List<AIProposal> proposals = new();
+            foreach (SpecialForces agent in new[] { first, second })
+            {
+                AIMissionProposal expected = new(new[] { agent }, MissionTypeIDs.Espionage, target);
+                AIMissionProposal actual = new(new[] { agent }, MissionTypeIDs.Espionage, target);
+                double expectedScore = scorer.Score(context, expected);
+
+                pool.TryAdd(context, proposals, actual);
+
+                Assert.That(expectedScore, Is.GreaterThan(0));
+                Assert.That(actual.Score, Is.EqualTo(expectedScore));
+                Assert.That(actual.FoilProbability, Is.EqualTo(expected.FoilProbability));
+                Assert.That(actual.Participant, Is.SameAs(agent));
+            }
+            Assert.That(proposals.Count, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void TryAdd_IdenticalScoreAndIdentity_RetainsLatestAlternative()
+        {
+            var (context, first, _, target) = CreateAgentContext(false);
+            context.Game.Config.AI.MissionPlanning.RetainedAlternativesPerMission = 1;
+            AIMissionCandidatePool pool = new();
+            pool.Reset(context);
+            List<AIProposal> proposals = new();
+            AIMissionProposal earlier = new(new[] { first }, MissionTypeIDs.Espionage, target);
+            AIMissionProposal later = new(new[] { first }, MissionTypeIDs.Espionage, target);
+
+            pool.TryAdd(context, proposals, earlier);
+            pool.TryAdd(context, proposals, later);
+
+            Assert.That(later.Score, Is.EqualTo(earlier.Score).And.GreaterThan(0));
+            Assert.That(proposals, Has.Count.EqualTo(1));
+            Assert.That(proposals[0], Is.SameAs(later));
+        }
+
+        [Test]
+        public void TryAdd_CallerSuppliedOdds_PreservesIndividualForecast()
+        {
+            var (context, first, second, target) = CreateAgentContext(false);
+            AIMissionCandidatePool pool = new();
+            pool.Reset(context);
+            List<AIProposal> proposals = new();
+            pool.TryAdd(context, proposals, new(new[] { first }, MissionTypeIDs.Espionage, target));
+            AIMissionProposal actual = new(new[] { second }, MissionTypeIDs.Espionage, target);
+            actual.SetOperationalOdds(new MissionOdds(100, 75, 0));
+            AIMissionProposal expected = new(new[] { second }, MissionTypeIDs.Espionage, target);
+            expected.SetOperationalOdds(new MissionOdds(100, 75, 0));
+            double expectedScore = new AIMissionProposalScorer().Score(context, expected);
+
+            pool.TryAdd(context, proposals, actual);
+
+            Assert.That(actual.Score, Is.EqualTo(expectedScore));
+            Assert.That(actual.FoilProbability, Is.EqualTo(75));
+            Assert.That(proposals.Count, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void TryAdd_NewPlanningContext_UsesCurrentInputs()
+        {
+            var (context, first, second, target) = CreateAgentContext(false);
+            AIMissionCandidatePool pool = new();
+            pool.Reset(context);
+            List<AIProposal> proposals = new();
+            pool.TryAdd(context, proposals, new(new[] { first }, MissionTypeIDs.Espionage, target));
+            double earlierScore = proposals.Single().Score;
+            context.Game.Config.AI.MissionPlanning.Utility.Priority.Espionage.Weight = 0;
+            context.Game.Config.AI.MissionPlanning.Utility.Objective.Success.Weight = 1;
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            AIMissionProposal expected = new(new[] { second }, MissionTypeIDs.Espionage, target);
+            AIMissionProposal actual = new(new[] { second }, MissionTypeIDs.Espionage, target);
+            double expectedScore = new AIMissionProposalScorer().Score(context, expected);
+
+            pool.TryAdd(context, proposals, actual);
+
+            Assert.That(expectedScore, Is.GreaterThan(0).And.Not.EqualTo(earlierScore));
+            Assert.That(actual.Score, Is.EqualTo(expectedScore));
+        }
+
+        /// <summary>
+        /// Creates equivalent agents and an observed espionage objective.
+        /// </summary>
+        /// <param name="differentOrigin">Whether the agents depart from different planets.</param>
+        /// <returns>The planning scope, agents, and observed target.</returns>
+        private static (
+            AITurnContext Context,
+            SpecialForces First,
+            SpecialForces Second,
+            Planet Target
+        ) CreateAgentContext(bool differentOrigin)
+        {
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            GameRoot game = context.Game;
+            Planet origin = game.GetSceneNodeByInstanceID<Planet>("origin");
+            Planet secondOrigin = differentOrigin
+                ? AITestSceneBuilder.AddPlanet(
+                    game,
+                    origin.GetParentOfType<PlanetSector>(),
+                    "other-origin",
+                    context.Faction.InstanceID
+                )
+                : origin;
+            secondOrigin.PositionX = origin.PositionX + (differentOrigin ? 100 : 0);
+            SpecialForces first = AITestSceneBuilder.CreateSpecialForces(
+                "first",
+                context.Faction.InstanceID
+            );
+            SpecialForces second = AITestSceneBuilder.CreateSpecialForces(
+                "second",
+                context.Faction.InstanceID
+            );
+            foreach (SpecialForces agent in new[] { first, second })
+            {
+                agent.TypeID = "agent";
+                agent.Ratings[SkillRating.Espionage] = 50;
+                agent.AllowedMissionTypeIDs.Add(MissionTypeIDs.Espionage);
+            }
+            game.AttachNode(first, origin);
+            game.AttachNode(second, secondOrigin);
+            game.Config.AI.MissionPlanning.Utility.Priority.Espionage.Weight = 1;
+            game.Config.AI.MissionPlanning.MinimumMissionScore = 0;
+            game.Config.ProbabilityTables.Mission.Espionage = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            context = AITestSceneBuilder.CreateContext(game, context.Faction);
+            return (context, first, second, context.Assessment.GetKnownPlanet("target"));
         }
     }
 }

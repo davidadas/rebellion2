@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
@@ -20,6 +21,21 @@ namespace Rebellion.AI
     /// </summary>
     public sealed class AIAssessment
     {
+        /// <summary>
+        /// Identifies fleet measurements shared while planning leaves unit state unchanged.
+        /// </summary>
+        private enum FleetCapability
+        {
+            ReadyCapitalStrength,
+            ProjectedCapitalStrength,
+            ReadyRegiments,
+            ReadyRegimentCapacity,
+            ReadyRegimentStrength,
+            ProjectedRegimentStrength,
+        }
+
+        private Dictionary<(Fleet Fleet, FleetCapability Capability), int> _fleetCapabilities;
+
         private const PlanetIntelligenceCategory _missionDefenseIntelligence =
             PlanetIntelligenceCategory.CapitalShips
             | PlanetIntelligenceCategory.Starfighters
@@ -101,6 +117,10 @@ namespace Rebellion.AI
             IReadOnlyList<ISceneNode>
         > _missionDefenseBaselines = new();
         private readonly Dictionary<
+            (Planet Target, string Owner),
+            Func<Mission, Planet, MissionEncounterPhase, ISceneNode, IReadOnlyList<ISceneNode>>
+        > _missionDefenseSources = new();
+        private readonly Dictionary<
             (ISceneNode Container, string Owner, Type DetectorType),
             Officer
         > _missionCommanders = new();
@@ -112,27 +132,37 @@ namespace Rebellion.AI
         );
         private readonly Dictionary<
             (
-                string MissionType,
-                string Owner,
-                ISceneNode Location,
-                ISceneNode Target,
-                ResearchDiscipline? Discipline,
-                string MainParticipants,
-                string Decoys,
+                (
+                    string MissionType,
+                    string Owner,
+                    ISceneNode Location,
+                    ISceneNode Target,
+                    ResearchDiscipline? Discipline,
+                    bool IsRepeating
+                ) Mission,
+                (bool Shared, string MainParticipants, string DecoyParticipants) Participants,
                 bool OperationalOnly,
                 Planet Departure,
-                bool RequireArrival
+                bool RequireArrival,
+                double Minimum
             ),
             MissionOdds
         > _missionOdds = new();
         private readonly Dictionary<
+            (SpecialForces Unit, string MissionType, bool Projected),
+            string
+        > _missionAgentKeys = new();
+        private readonly HashSet<string> _missionRosterIds = new(StringComparer.Ordinal);
+        private readonly StringBuilder _missionRosterKey = new();
+        private readonly Dictionary<
             (
-                string Owner,
-                ISceneNode Location,
-                string TargetOwner,
-                bool PlanetaryObjective,
-                string MainParticipants,
-                string DecoyParticipants,
+                (
+                    string Owner,
+                    ISceneNode Location,
+                    string TargetOwner,
+                    bool PlanetaryObjective
+                ) Encounter,
+                (bool Shared, string MainParticipants, string DecoyParticipants) Participants,
                 bool OperationalOnly,
                 Planet Departure,
                 bool RequireArrival
@@ -331,6 +361,11 @@ namespace Rebellion.AI
 
         // Missions.
         public IReadOnlyList<IMissionParticipant> AvailableMissionParticipants { get; }
+
+        /// <summary>
+        /// Captures owned mission personnel's departure planets for this unchanged faction turn.
+        /// </summary>
+        internal IReadOnlyDictionary<IMissionParticipant, Planet> MissionParticipantOrigins { get; }
 
         public IReadOnlyList<SpecialForces> OwnedSpecialForces { get; }
 
@@ -941,6 +976,16 @@ namespace Rebellion.AI
             EnemyPlanets = BuildEnemyPlanets();
             NeutralPlanets = BuildNeutralPlanets();
             AvailableMissionParticipants = BuildAvailableMissionParticipants();
+            MissionParticipantOrigins = (
+                _faction?.GetOwnedUnitsByType<Officer>() ?? new List<Officer>()
+            )
+                .Cast<IMissionParticipant>()
+                .Concat(OwnedSpecialForces)
+                .ToDictionary(
+                    participant => participant,
+                    participant => participant.GetParentOfType<Planet>()
+                );
+            BuildMissionAgentIndex();
             TargetableEnemyOfficerMissionTargets = BuildTargetableEnemyOfficerMissionTargets();
             OwnedFleets = BuildOwnedFleets();
             BuildFleetCompositionIndex();
@@ -1228,6 +1273,22 @@ namespace Rebellion.AI
         public bool IsNeutralPlanet(Planet planet)
         {
             return string.IsNullOrEmpty(planet?.GetOwnerInstanceID());
+        }
+
+        /// <summary>
+        /// Starts reusing fleet capabilities while planning leaves unit state unchanged.
+        /// </summary>
+        internal void BeginPlanning()
+        {
+            _fleetCapabilities = new();
+        }
+
+        /// <summary>
+        /// Restores live fleet measurements before command validation and execution.
+        /// </summary>
+        internal void BeginExecution()
+        {
+            _fleetCapabilities = null;
         }
 
         /// <summary>
@@ -2029,11 +2090,12 @@ namespace Rebellion.AI
         )
         {
             Mission mission;
-            bool valid =
-                departure == null ? queries.TryCreateMission(context, out mission)
-                : requireArrival
-                    ? queries.TryCreateMissionAfterArrival(context, departure, out mission)
-                : queries.TryCreateMissionFromDeparture(context, departure, out mission);
+            bool valid = queries.TryCreateForecastMission(
+                context,
+                departure,
+                requireArrival,
+                out mission
+            );
             if (!valid)
                 return false;
 
@@ -2096,37 +2158,40 @@ namespace Rebellion.AI
             if (context == null)
                 return null;
             var key = (
-                MissionType: context.MissionTypeID,
-                Owner: context.OwnerInstanceId,
-                Location: context.Location,
-                Target: context.SelectedTarget,
-                Discipline: context.Discipline,
-                MainParticipants: string.Join(
-                    ",",
-                    context.MainParticipants?.Select(participant => participant?.InstanceID)
-                        ?? Enumerable.Empty<string>()
+                Mission: (
+                    MissionType: context.MissionTypeID,
+                    Owner: context.OwnerInstanceId,
+                    Location: context.Location,
+                    Target: context.SelectedTarget,
+                    Discipline: context.Discipline,
+                    IsRepeating: context.IsRepeating
                 ),
-                DecoyParticipants: string.Join(
-                    ",",
-                    context.DecoyParticipants?.Select(participant => participant?.InstanceID)
-                        ?? Enumerable.Empty<string>()
-                ),
+                Participants: GetMissionParticipantKey(context, departure, requireArrival),
                 OperationalOnly: operationalOnly,
                 Departure: departure,
-                RequireArrival: requireArrival
+                RequireArrival: requireArrival,
+                Minimum: 0d
             );
-            if (!_missionOdds.TryGetValue(key, out MissionOdds odds))
+            bool hasCachedOdds = _missionOdds.TryGetValue(key, out MissionOdds odds);
+            if (!hasCachedOdds && minimumOverallProbability > 0)
+            {
+                var boundedKey = key;
+                boundedKey.Minimum = minimumOverallProbability;
+                hasCachedOdds = _missionOdds.TryGetValue(boundedKey, out odds);
+            }
+            if (!hasCachedOdds)
             {
                 var riskKey = (
-                    key.Owner,
-                    key.Location,
-                    TargetOwner: context.SelectedTarget?.GetOwnerInstanceID(),
-                    PlanetaryObjective: MissionQueries.UsesPlanetaryDetectors(
-                        MissionEncounterPhase.PreObjective,
-                        context.SelectedTarget
+                    Encounter: (
+                        key.Mission.Owner,
+                        key.Mission.Location,
+                        TargetOwner: context.SelectedTarget?.GetOwnerInstanceID(),
+                        PlanetaryObjective: MissionQueries.UsesPlanetaryDetectors(
+                            MissionEncounterPhase.PreObjective,
+                            context.SelectedTarget
+                        )
                     ),
-                    key.MainParticipants,
-                    key.DecoyParticipants,
+                    key.Participants,
                     key.OperationalOnly,
                     key.Departure,
                     key.RequireArrival
@@ -2140,11 +2205,12 @@ namespace Rebellion.AI
                 )
                 {
                     Mission mission;
-                    bool valid =
-                        departure == null ? queries.TryCreateMission(context, out mission)
-                        : requireArrival
-                            ? queries.TryCreateMissionAfterArrival(context, departure, out mission)
-                        : queries.TryCreateMissionFromDeparture(context, departure, out mission);
+                    bool valid = queries.TryCreateForecastMission(
+                        context,
+                        departure,
+                        requireArrival,
+                        out mission
+                    );
                     if (!valid)
                         return null;
                     double objectiveProbability = mission.GetObjectiveSuccessProbability(
@@ -2173,6 +2239,11 @@ namespace Rebellion.AI
                 }
                 if (odds != null || minimumOverallProbability <= 0)
                     _missionOdds.Add(key, odds);
+                else if (minimumOverallProbability > 0)
+                {
+                    key.Minimum = minimumOverallProbability;
+                    _missionOdds.Add(key, null);
+                }
             }
             return odds?.OverallSuccessProbability >= minimumOverallProbability ? odds : null;
         }
@@ -2197,11 +2268,12 @@ namespace Rebellion.AI
         )
         {
             Mission mission;
-            bool valid =
-                departure == null ? queries.TryCreateMission(context, out mission)
-                : requireArrival
-                    ? queries.TryCreateMissionAfterArrival(context, departure, out mission)
-                : queries.TryCreateMissionFromDeparture(context, departure, out mission);
+            bool valid = queries.TryCreateForecastMission(
+                context,
+                departure,
+                requireArrival,
+                out mission
+            );
             if (!valid)
                 return null;
 
@@ -2348,6 +2420,9 @@ namespace Rebellion.AI
         {
             string enemyId =
                 context.SelectedTarget?.GetOwnerInstanceID() ?? target.GetOwnerInstanceID();
+            var key = (target, enemyId);
+            if (_missionDefenseSources.TryGetValue(key, out var cached))
+                return cached;
             Func<
                 Mission,
                 Planet,
@@ -2367,6 +2442,7 @@ namespace Rebellion.AI
                     return Array.Empty<ISceneNode>();
                 return GetMissionDefenseBaseline(enemyId, orbital);
             };
+            _missionDefenseSources.Add(key, baselineSource);
             return baselineSource;
         }
 
@@ -3822,9 +3898,14 @@ namespace Rebellion.AI
         /// <returns>The ready capital-target combat value.</returns>
         public int GetReadyFleetCombatValueAgainstCapitalShips(Fleet fleet)
         {
-            return SpaceCombatStrengthCalculator.GetFleetCombatValueAgainstCapitalShips(
-                fleet,
-                _game.Config.Combat.SpaceCombat
+            return GetOrAdd(
+                _fleetCapabilities,
+                (fleet, FleetCapability.ReadyCapitalStrength),
+                () =>
+                    SpaceCombatStrengthCalculator.GetFleetCombatValueAgainstCapitalShips(
+                        fleet,
+                        _game.Config.Combat.SpaceCombat
+                    )
             );
         }
 
@@ -3868,9 +3949,14 @@ namespace Rebellion.AI
         /// <returns>The projected capital-target combat value.</returns>
         public int GetProjectedFleetCombatValueAgainstCapitalShips(Fleet fleet)
         {
-            return SpaceCombatStrengthCalculator.GetProjectedFleetCombatValueAgainstCapitalShips(
-                fleet,
-                _game.Config.Combat.SpaceCombat
+            return GetOrAdd(
+                _fleetCapabilities,
+                (fleet, FleetCapability.ProjectedCapitalStrength),
+                () =>
+                    SpaceCombatStrengthCalculator.GetProjectedFleetCombatValueAgainstCapitalShips(
+                        fleet,
+                        _game.Config.Combat.SpaceCombat
+                    )
             );
         }
 
@@ -3924,11 +4010,16 @@ namespace Rebellion.AI
             if (fleet == null)
                 return 0;
 
-            return fleet
-                .GetChildren<CapitalShip>()
-                .Where(IsReadyCapitalShip)
-                .SelectMany(ship => ship.GetChildren<Regiment>())
-                .Count(IsReadyRegiment);
+            return GetOrAdd(
+                _fleetCapabilities,
+                (fleet, FleetCapability.ReadyRegiments),
+                () =>
+                    fleet
+                        .GetChildren<CapitalShip>()
+                        .Where(IsReadyCapitalShip)
+                        .SelectMany(ship => ship.GetChildren<Regiment>())
+                        .Count(IsReadyRegiment)
+            );
         }
 
         /// <summary>
@@ -3941,10 +4032,15 @@ namespace Rebellion.AI
             if (fleet == null)
                 return 0;
 
-            return fleet
-                .GetChildren<CapitalShip>()
-                .Where(IsReadyCapitalShip)
-                .Sum(ship => ship.GetRegimentCapacity());
+            return GetOrAdd(
+                _fleetCapabilities,
+                (fleet, FleetCapability.ReadyRegimentCapacity),
+                () =>
+                    fleet
+                        .GetChildren<CapitalShip>()
+                        .Where(IsReadyCapitalShip)
+                        .Sum(ship => ship.GetRegimentCapacity())
+            );
         }
 
         /// <summary>
@@ -3957,18 +4053,25 @@ namespace Rebellion.AI
             if (fleet == null || _game?.Config == null)
                 return 0;
 
-            int leadershipBonus = PlanetaryAssaultResolver.GetLeadershipBonus(
-                fleet.GetOfficers(),
-                OfficerRank.General,
-                fleet.GetOwnerInstanceID(),
-                _game.Config.Combat.PlanetaryAssault
+            return GetOrAdd(
+                _fleetCapabilities,
+                (fleet, FleetCapability.ReadyRegimentStrength),
+                () =>
+                {
+                    int leadershipBonus = PlanetaryAssaultResolver.GetLeadershipBonus(
+                        fleet.GetOfficers(),
+                        OfficerRank.General,
+                        fleet.GetOwnerInstanceID(),
+                        _game.Config.Combat.PlanetaryAssault
+                    );
+                    return fleet
+                        .GetChildren<CapitalShip>()
+                        .Where(IsReadyCapitalShip)
+                        .SelectMany(ship => ship.GetChildren<Regiment>())
+                        .Where(IsReadyRegiment)
+                        .Sum(regiment => regiment.AttackRating + leadershipBonus);
+                }
             );
-            return fleet
-                .GetChildren<CapitalShip>()
-                .Where(IsReadyCapitalShip)
-                .SelectMany(ship => ship.GetChildren<Regiment>())
-                .Where(IsReadyRegiment)
-                .Sum(regiment => regiment.AttackRating + leadershipBonus);
         }
 
         /// <summary>
@@ -3981,16 +4084,23 @@ namespace Rebellion.AI
             if (fleet == null || _game?.Config == null)
                 return 0;
 
-            int leadershipBonus = PlanetaryAssaultResolver.GetLeadershipBonus(
-                fleet.GetOfficers(),
-                OfficerRank.General,
-                fleet.GetOwnerInstanceID(),
-                _game.Config.Combat.PlanetaryAssault
+            return GetOrAdd(
+                _fleetCapabilities,
+                (fleet, FleetCapability.ProjectedRegimentStrength),
+                () =>
+                {
+                    int leadershipBonus = PlanetaryAssaultResolver.GetLeadershipBonus(
+                        fleet.GetOfficers(),
+                        OfficerRank.General,
+                        fleet.GetOwnerInstanceID(),
+                        _game.Config.Combat.PlanetaryAssault
+                    );
+                    return fleet
+                        .GetRegiments()
+                        .Where(regiment => regiment != null)
+                        .Sum(regiment => regiment.AttackRating + leadershipBonus);
+                }
             );
-            return fleet
-                .GetRegiments()
-                .Where(regiment => regiment != null)
-                .Sum(regiment => regiment.AttackRating + leadershipBonus);
         }
 
         /// <summary>
@@ -4428,6 +4538,242 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Indexes agents with identical qualifications, ratings, and current or projected departure risks.
+        /// Current forecasts share departure planets only when both are owned and have no hostile orbital detectors.
+        /// </summary>
+        private void BuildMissionAgentIndex()
+        {
+            if (_game == null || _faction == null)
+                return;
+
+            Dictionary<string, ISceneNode> registered = _game.NodesByInstanceID;
+            foreach (bool projected in new[] { false, true })
+            {
+                IEnumerable<SpecialForces> agents = projected
+                    ? OwnedSpecialForces
+                    : AvailableMissionParticipants.OfType<SpecialForces>();
+                foreach (
+                    var group in agents
+                        .Where(unit =>
+                            unit.GetType() == typeof(SpecialForces)
+                            && unit.Ratings != null
+                            && unit.IsActive()
+                            && (!projected || !unit.IsOnMission())
+                            && registered.TryGetValue(unit.InstanceID, out ISceneNode node)
+                            && ReferenceEquals(node, unit)
+                        )
+                        .Select(unit => new
+                        {
+                            Unit = unit,
+                            Origin = MissionParticipantOrigins[unit],
+                        })
+                        .Where(agent => agent.Origin != null)
+                        .GroupBy(agent => new
+                        {
+                            agent.Unit.TypeID,
+                            agent.Unit.OwnerInstanceID,
+                            agent.Unit.ManufacturingStatus,
+                            agent.Unit.IsRetired,
+                            Departure = projected
+                            || _knownPlanets.TryGetValue(agent.Origin.InstanceID, out Planet known)
+                                && IsOwnedPlanet(known)
+                                && IsOwnedPlanet(agent.Origin)
+                                && !_missionHostileFleetPlanetIds.Contains(known.InstanceID)
+                                ? null
+                                : agent.Unit.GetParent(),
+                            Diplomacy = agent.Unit.GetEffectiveRating(SkillRating.Diplomacy),
+                            Espionage = agent.Unit.GetEffectiveRating(SkillRating.Espionage),
+                            Combat = agent.Unit.GetEffectiveRating(SkillRating.Combat),
+                            Leadership = agent.Unit.GetEffectiveRating(SkillRating.Leadership),
+                        })
+                )
+                {
+                    Dictionary<string, string> keys = new(StringComparer.Ordinal);
+                    foreach (var agent in group)
+                    foreach (string missionType in agent.Unit.AllowedMissionTypeIDs)
+                    {
+                        if (string.IsNullOrEmpty(missionType))
+                            continue;
+                        if (!keys.TryGetValue(missionType, out string key))
+                        {
+                            key = $"{agent.Unit.InstanceID.Length}:{agent.Unit.InstanceID}";
+                            keys.Add(missionType, key);
+                        }
+                        _missionAgentKeys[(agent.Unit, missionType, projected)] = key;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Identifies an exact team or equivalent agents for a current or projected forecast.
+        /// Proposal participants and their deterministic selection order remain independent of this key.
+        /// </summary>
+        /// <param name="context">The mission and complete participant roles being evaluated.</param>
+        /// <param name="departure">A projected departure, or null for the current departure.</param>
+        /// <param name="requireArrival">Whether projected personnel must already be traveling to the departure.</param>
+        /// <returns>The assessment-local participant key.</returns>
+        private (
+            bool Shared,
+            string MainParticipants,
+            string DecoyParticipants
+        ) GetMissionParticipantKey(MissionContext context, Planet departure, bool requireArrival)
+        {
+            if (context.MainParticipants?.Count > 0)
+            {
+                if (
+                    context.MainParticipants.Count == 1
+                    && (context.DecoyParticipants == null || context.DecoyParticipants.Count == 0)
+                )
+                {
+                    if (
+                        context.MainParticipants[0] is SpecialForces unit
+                        && _missionAgentKeys.TryGetValue(
+                            (unit, context.MissionTypeID, departure != null),
+                            out string key
+                        )
+                        && (
+                            departure == null
+                            || !requireArrival
+                            || unit.ParentNode?.InstanceID == departure.InstanceID
+                        )
+                    )
+                        return (true, key, string.Empty);
+                }
+                else
+                {
+                    var team = GetEquivalentMissionTeamKey(context, departure, requireArrival);
+                    if (team.HasValue)
+                        return (true, team.Value.MainParticipants, team.Value.DecoyParticipants);
+                }
+            }
+
+            return (
+                false,
+                string.Join(
+                    ",",
+                    context.MainParticipants?.Select(participant => participant?.InstanceID)
+                        ?? Enumerable.Empty<string>()
+                ),
+                string.Join(
+                    ",",
+                    context.DecoyParticipants?.Select(participant => participant?.InstanceID)
+                        ?? Enumerable.Empty<string>()
+                )
+            );
+        }
+
+        /// <summary>
+        /// Shares special-forces substitutions only when every live participant is distinct and has a valid departure.
+        /// Officer identities and ordered participant roles remain exact.
+        /// </summary>
+        /// <param name="context">The proposed primary and decoy roles.</param>
+        /// <param name="departure">A projected departure, or null for the current departure.</param>
+        /// <param name="requireArrival">Whether projected personnel must already be traveling to the departure.</param>
+        /// <returns>The ordered agent keys, or null when the roster requires exact identities.</returns>
+        private (string MainParticipants, string DecoyParticipants)? GetEquivalentMissionTeamKey(
+            MissionContext context,
+            Planet departure,
+            bool requireArrival
+        )
+        {
+            IMissionParticipant first = context.MainParticipants[0];
+            if (
+                first == null
+                || !MissionParticipantOrigins.TryGetValue(first, out Planet firstOrigin)
+            )
+                return null;
+            string originId = firstOrigin?.InstanceID;
+            if (string.IsNullOrEmpty(originId))
+                return null;
+            _missionRosterIds.Clear();
+            _missionRosterKey.Clear();
+            bool sharesAgent = false;
+            if (
+                !AppendMissionParticipantKeys(
+                    context.MainParticipants,
+                    context,
+                    departure,
+                    requireArrival,
+                    originId,
+                    ref sharesAgent
+                )
+            )
+                return null;
+            string mains = _missionRosterKey.ToString();
+            _missionRosterKey.Clear();
+            if (
+                !AppendMissionParticipantKeys(
+                    context.DecoyParticipants,
+                    context,
+                    departure,
+                    requireArrival,
+                    originId,
+                    ref sharesAgent
+                ) || !sharesAgent
+            )
+                return null;
+            return (mains, _missionRosterKey.ToString());
+        }
+
+        /// <summary>
+        /// Validates and encodes one ordered role without merging distinct officers or duplicate personnel.
+        /// </summary>
+        /// <param name="participants">The optional primary or decoy roster in encounter order.</param>
+        /// <param name="context">The requested mission qualifications.</param>
+        /// <param name="departure">An optional projected common departure planet.</param>
+        /// <param name="requireArrival">Whether projected personnel must already be heading to the departure.</param>
+        /// <param name="originId">The first primary participant's current planet identifier.</param>
+        /// <param name="sharesAgent">Records whether either role contains an interchangeable agent.</param>
+        /// <returns>True when the role can share a forecast with equivalent personnel.</returns>
+        private bool AppendMissionParticipantKeys(
+            IReadOnlyList<IMissionParticipant> participants,
+            MissionContext context,
+            Planet departure,
+            bool requireArrival,
+            string originId,
+            ref bool sharesAgent
+        )
+        {
+            for (int index = 0; index < (participants?.Count ?? 0); index++)
+            {
+                IMissionParticipant participant = participants[index];
+                if (
+                    participant == null
+                    || !MissionParticipantOrigins.TryGetValue(participant, out Planet origin)
+                    || origin == null
+                    || (
+                        departure == null
+                            ? origin.InstanceID != originId
+                            : requireArrival
+                                && participant.ParentNode?.InstanceID != departure.InstanceID
+                    )
+                    || !_missionRosterIds.Add(participant.InstanceID)
+                )
+                    return false;
+                if (
+                    participant is SpecialForces unit
+                    && _missionAgentKeys.TryGetValue(
+                        (unit, context.MissionTypeID, departure != null),
+                        out string key
+                    )
+                )
+                {
+                    _missionRosterKey.Append(key);
+                    sharesAgent = true;
+                }
+                else if (participant is Officer)
+                    _missionRosterKey
+                        .Append(participant.InstanceID.Length)
+                        .Append(':')
+                        .Append(participant.InstanceID);
+                else
+                    return false;
+            }
+            return true;
+        }
+
+        /// <summary>
         /// Builds the active mission list visible to the faction.
         /// </summary>
         /// <returns>The active missions.</returns>
@@ -4826,7 +5172,7 @@ namespace Rebellion.AI
         /// <summary>
         /// Returns a cached value by composite key.
         /// </summary>
-        /// <param name="cache">Cache to use.</param>
+        /// <param name="cache">The cache to use, or null for a live calculation.</param>
         /// <param name="key">Cache key.</param>
         /// <param name="createValue">Value factory used on cache miss.</param>
         /// <returns>The cached or created value.</returns>
@@ -4838,6 +5184,8 @@ namespace Rebellion.AI
             Func<TValue> createValue
         )
         {
+            if (cache == null)
+                return createValue();
             if (!cache.TryGetValue(key, out TValue value))
             {
                 value = createValue();

@@ -148,6 +148,245 @@ namespace Rebellion.Tests.Gameplay
             }
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void GetMissionOddsAfterArrival_ProjectedPersonnelChangesRoles_PreservesIndependentOdds(
+            bool includePersonnelLoss
+        )
+        {
+            (_, MissionContext context) = CreateMixedFleetMission(4, 2, false, 2);
+            IMissionParticipant first = context.MainParticipants[0];
+            IMissionParticipant second = context.MainParticipants[1];
+            Planet departure = first.GetParentOfType<Planet>();
+            MovementState firstMovement = TestMovement.Create(transitTicks: 13);
+            MovementState secondMovement = TestMovement.Create(transitTicks: 8);
+            first.Movement = firstMovement;
+            second.Movement = secondMovement;
+            MissionQueries shared = new(
+                context.Game,
+                Mission.GetDetectorCommander,
+                null,
+                reuseObservedState: true
+            );
+            for (int iteration = 0; iteration < 2; iteration++)
+            {
+                MissionOdds expected = new MissionQueries(context.Game).GetMissionOddsAfterArrival(
+                    context,
+                    departure,
+                    null,
+                    includePersonnelLoss
+                );
+                MissionOdds actual = shared.GetMissionOddsAfterArrival(
+                    context,
+                    departure,
+                    null,
+                    includePersonnelLoss
+                );
+
+                Assert.That(actual, Is.Not.Null);
+                Assert.That(
+                    actual.ObjectiveSuccessProbability,
+                    Is.EqualTo(expected.ObjectiveSuccessProbability)
+                );
+                Assert.That(actual.FoilProbability, Is.EqualTo(expected.FoilProbability));
+                Assert.That(
+                    actual.PersonnelLossProbability,
+                    Is.EqualTo(expected.PersonnelLossProbability)
+                );
+                if (iteration == 0)
+                {
+                    context.MainParticipants = new List<IMissionParticipant> { second };
+                    context.DecoyParticipants.Add(first);
+                }
+            }
+            Assert.That(first.Movement, Is.SameAs(firstMovement));
+            Assert.That(second.Movement, Is.SameAs(secondMovement));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void GetOperationalMissionOdds_SameDefendersAtDifferentTargets_PreservesEncounterContext(
+            bool detached
+        )
+        {
+            (_, MissionContext context) = CreateMixedFleetMission(1, 0, false, 1);
+            GameRoot game = context.Game;
+            Planet first = (Planet)context.Location;
+            Planet second = new()
+            {
+                InstanceID = "other-target",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+            };
+            game.AttachNode(second, first.GetParentOfType<PlanetSector>());
+            second.AddVisitor("empire");
+            Regiment detector = new()
+            {
+                InstanceID = "shared-detector",
+                OwnerInstanceID = "rebels",
+                DetectionRating = 50,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            if (!detached)
+                detector.SetParent(first);
+            Officer commander = CreateMissionOfficer("commander", "rebels", 1000, 0);
+            game.Config.ProbabilityTables.Mission.FoilDefenderScalingPercent = 100;
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
+            {
+                { -1000, 0 },
+                { 0, 50 },
+                { 100, 100 },
+            };
+            List<ISceneNode> defenders = new() { detector };
+            Func<ISceneNode, Planet, Officer> resolveCommander = (_, planet) =>
+                planet == first ? commander : null;
+            Func<
+                Mission,
+                Planet,
+                MissionEncounterPhase,
+                ISceneNode,
+                IReadOnlyList<ISceneNode>
+            > getDefenders = (_, planet, _, _) =>
+                planet == first || planet == second ? defenders : Array.Empty<ISceneNode>();
+            MissionQueries shared = new(game, resolveCommander, null, reuseObservedState: true);
+            double? firstFoil = null;
+            foreach (Planet target in new[] { first, second })
+            {
+                context.Location = target;
+                MissionOdds expected = new MissionQueries(
+                    game,
+                    resolveCommander
+                ).GetOperationalMissionOdds(context, getDefenders);
+
+                MissionOdds actual = shared.GetOperationalMissionOdds(context, getDefenders);
+
+                Assert.That(actual, Is.Not.Null);
+                Assert.That(
+                    actual.ObjectiveSuccessProbability,
+                    Is.EqualTo(expected.ObjectiveSuccessProbability)
+                );
+                Assert.That(actual.FoilProbability, Is.EqualTo(expected.FoilProbability));
+                if (firstFoil.HasValue)
+                    Assert.That(actual.FoilProbability == firstFoil.Value, Is.EqualTo(!detached));
+                firstFoil = actual.FoilProbability;
+            }
+        }
+
+        [Test]
+        public void TryCreateForecastMission_DifferentDepartures_PreservesEachProjectionOrigin()
+        {
+            (_, MissionContext context) = CreateMixedFleetMission(4, 2, false, 1);
+            Planet first = context.MainParticipants[0].GetParentOfType<Planet>();
+            Planet second = new()
+            {
+                InstanceID = "other-departure",
+                OwnerInstanceID = first.OwnerInstanceID,
+                IsColonized = true,
+            };
+            context.Game.AttachNode(second, first.GetParent());
+            MissionQueries queries = new(
+                context.Game,
+                Mission.GetDetectorCommander,
+                null,
+                reuseObservedState: true
+            );
+
+            foreach (Planet departure in new[] { first, second, first })
+            {
+                Assert.That(
+                    queries.TryCreateForecastMission(
+                        context,
+                        departure,
+                        false,
+                        out Mission mission
+                    ),
+                    Is.True
+                );
+                Assert.That(
+                    mission
+                        .GetAllParticipants()
+                        .All(participant => participant.GetParent() == departure),
+                    Is.True
+                );
+            }
+            Assert.That(context.MainParticipants[0].GetParentOfType<Planet>(), Is.SameAs(first));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TryCreateForecastMission_ChangedRoles_PreservesUncachedOdds(
+            bool includePersonnelLoss
+        )
+        {
+            (_, MissionContext context) = CreateMixedFleetMission(4, 2, false, 2);
+            IMissionParticipant first = context.MainParticipants[0];
+            IMissionParticipant second = context.MainParticipants[1];
+            Planet departure = first.GetParentOfType<Planet>();
+            IReadOnlyList<ISceneNode> defenders = context.Location.GetChildren<CapitalShip>(
+                recursive: true
+            );
+            MissionQueries queries = new(
+                context.Game,
+                Mission.GetDetectorCommander,
+                null,
+                reuseObservedState: true
+            );
+            for (int iteration = 0; iteration < 2; iteration++)
+            {
+                Assert.That(
+                    queries.TryCreateForecastMission(context, departure, true, out Mission mission),
+                    Is.True
+                );
+                MissionOdds actual = queries.GetMissionOddsForValidatedMission(
+                    context,
+                    mission,
+                    (_, _, _, _) => defenders,
+                    includePersonnelLoss
+                );
+                MissionOdds expected = new MissionQueries(context.Game).GetMissionOddsAfterArrival(
+                    context,
+                    departure,
+                    (_, _, _, _) => defenders,
+                    includePersonnelLoss
+                );
+
+                Assert.That(
+                    actual.ObjectiveSuccessProbability,
+                    Is.EqualTo(expected.ObjectiveSuccessProbability)
+                );
+                Assert.That(actual.FoilProbability, Is.EqualTo(expected.FoilProbability));
+                Assert.That(
+                    actual.PersonnelLossProbability,
+                    Is.EqualTo(expected.PersonnelLossProbability)
+                );
+                context.MainParticipants = new List<IMissionParticipant> { second };
+                context.DecoyParticipants.Add(first);
+            }
+        }
+
+        [Test]
+        public void CanCreateMissionFromDeparture_ParticipantBecomesInjured_RejectsCurrentTeam()
+        {
+            (_, MissionContext context) = CreateMixedFleetMission(4, 0, false, 1);
+            IMissionParticipant participant = context.MainParticipants[0];
+            Planet departure = participant.GetParentOfType<Planet>();
+            MissionQueries queries = new(
+                context.Game,
+                Mission.GetDetectorCommander,
+                null,
+                reuseObservedState: true
+            );
+            Assert.That(
+                queries.TryCreateForecastMission(context, departure, false, out _),
+                Is.True
+            );
+            Assert.That(queries.CanCreateMissionFromDeparture(context, departure), Is.True);
+
+            ((Officer)participant).InjuryPoints = 10;
+
+            Assert.That(queries.CanCreateMissionFromDeparture(context, departure), Is.False);
+        }
+
         [Test]
         public void TryCreateMissionAfterArrival_TeammateHeadingElsewhere_ReturnsFalse()
         {
@@ -1894,6 +2133,66 @@ namespace Rebellion.Tests.Gameplay
             Assert.Greater(before.FoilProbability, after.FoilProbability);
             Assert.AreEqual(fresh.FoilProbability, after.FoilProbability);
             Assert.AreEqual(fresh.PersonnelLossProbability, after.PersonnelLossProbability);
+        }
+
+        [TestCase(MissionTypeIDs.Espionage)]
+        [TestCase(MissionTypeIDs.InciteUprising)]
+        [TestCase(MissionTypeIDs.SubdueUprising)]
+        public void GetMissionOdds_UnchangedObservedPlanetWithDifferentTeams_MatchesFreshEvaluations(
+            string missionType
+        )
+        {
+            (GameRoot game, Planet planet, Officer spy, _) = BuildDetectionScene();
+            planet.AddVisitor("empire");
+            if (missionType == MissionTypeIDs.SubdueUprising)
+            {
+                planet.OwnerInstanceID = "empire";
+                planet.IsInUprising = true;
+            }
+            spy.SetBaseRating(SkillRating.Leadership, 100);
+            Officer second = CreateMissionOfficer("second", "empire", 80, 75);
+            second.SetBaseRating(SkillRating.Leadership, 80);
+            game.AttachNode(second, spy.GetParent());
+            MissionQueries shared = new(
+                game,
+                Mission.GetDetectorCommander,
+                null,
+                reuseObservedState: true
+            );
+            ISceneNode[] defenders = planet.GetChildren<Regiment>().Cast<ISceneNode>().ToArray();
+            foreach (
+                IMissionParticipant[] team in new[]
+                {
+                    new IMissionParticipant[] { spy },
+                    new IMissionParticipant[] { spy, second },
+                    new IMissionParticipant[] { second },
+                }
+            )
+            {
+                MissionContext request = CreateContext(
+                    missionType,
+                    team.ToList(),
+                    new List<IMissionParticipant>(),
+                    planet
+                );
+                MissionOdds actual = shared.GetMissionOdds(
+                    request,
+                    (_, _, _, _) => defenders,
+                    includePersonnelLoss: false
+                );
+                MissionOdds expected = new MissionQueries(game).GetMissionOdds(
+                    request,
+                    (_, _, _, _) => defenders,
+                    includePersonnelLoss: false
+                );
+
+                Assert.That(actual, Is.Not.Null);
+                Assert.That(
+                    actual.ObjectiveSuccessProbability,
+                    Is.EqualTo(expected.ObjectiveSuccessProbability)
+                );
+                Assert.That(actual.FoilProbability, Is.EqualTo(expected.FoilProbability));
+            }
         }
 
         /// <summary>

@@ -2679,7 +2679,7 @@ namespace Rebellion.Game
                 if (table == null || table.Count == 0)
                     return DefaultSuccessProbability;
 
-                return new ProbabilityTable(table).Lookup(score);
+                return ProbabilityTable.Lookup(table, score);
             }
 
             /// <summary>

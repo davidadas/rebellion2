@@ -13,6 +13,7 @@ public static partial class HeadlessSimulationRunner
         public string InputSaveFileName { get; set; }
         public string SaveDisplayName { get; set; }
         public string PlayerFactionId { get; set; }
+        public bool DeterministicIdentifiers { get; set; }
 
         /// <summary>
         /// Parses simulation options from command-line arguments.
@@ -31,6 +32,10 @@ public static partial class HeadlessSimulationRunner
                 ),
                 Seed = ParseNullableInt(args, _seedFlag),
                 Difficulty = ParseDifficulty(args),
+                DeterministicIdentifiers = Array.Exists(
+                    args,
+                    value => value == _deterministicIdentifiersFlag
+                ),
             };
         }
 
