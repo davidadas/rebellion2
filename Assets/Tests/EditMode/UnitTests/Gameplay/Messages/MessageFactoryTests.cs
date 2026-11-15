@@ -2732,6 +2732,61 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void CreateMessages_AbductionReportWithKilledTarget_ReportsTargetDeath()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            Officer targetOfficer = new Officer
+            {
+                DisplayName = "Target Officer",
+                InstanceID = "target-officer",
+                OwnerInstanceID = empire.InstanceID,
+                IsKilled = true,
+            };
+            Mission mission = new AbductionMission
+            {
+                ConfigKey = AbductionMission.MissionTypeID,
+                DisplayName = "Abduction",
+                OwnerInstanceID = alliance.InstanceID,
+                TargetOfficerInstanceID = targetOfficer.InstanceID,
+            };
+            game.AttachNode(targetOfficer, target);
+            game.AttachNode(mission, target);
+            game.DetachNode(targetOfficer);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.MissionReport,
+                            MessageType.Mission,
+                            "title:{officer}",
+                            "body:{officer}:{abduction_result}",
+                            DefaultImage("mission-image"),
+                            outcome: MessageResultOutcome.Success,
+                            missionTypeId: AbductionMission.MissionTypeID
+                        ),
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionName = "Abduction",
+                        Outcome = MissionOutcome.Success,
+                    },
+                    new OfficerKilledResult { TargetOfficer = targetOfficer, Context = target }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual(
+                "body:Target Officer:Target Officer was killed during the attempt.",
+                message.Body
+            );
+        }
+
+        [Test]
         public void CreateMessages_AssassinationReportWithInjuredTarget_UsesLiveOfficerName()
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
