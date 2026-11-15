@@ -3931,6 +3931,7 @@ namespace Rebellion.Tests.Gameplay
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
             Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
+            Assert.AreSame(origin, completed.ReturnDestination);
             Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
