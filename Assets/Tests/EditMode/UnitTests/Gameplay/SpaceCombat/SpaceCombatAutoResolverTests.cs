@@ -2289,7 +2289,7 @@ namespace Rebellion.Tests.Gameplay
             Starfighter torpedoFighter = CreateTorpedoFighter("y-wing", 12);
             torpedoFighter.CurrentSquadronSize = 1;
             int[] selectionRolls = Enumerable
-                .Range(0, 1001)
+                .Range(0, config.AttackRunSelectionMaximumEvaluations)
                 .SelectMany(_ => new[] { 1, 10 })
                 .ToArray();
 
@@ -2304,6 +2304,120 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(0, GetShipOutcome(result, planetDestroyer).HullAfter);
             Assert.AreEqual(1, GetFighterOutcome(result, torpedoFighter).SquadronSizeAfter);
+        }
+
+        [Test]
+        public void Resolve_AttackRunSelectionMaximumEvaluations_ConfiguresRetryLimit()
+        {
+            GameConfig.SpaceCombatConfig singleEvaluationConfig = CreateConfig();
+            singleEvaluationConfig.PlanetDestroyerAttackRunIterations = 1;
+            singleEvaluationConfig.AttackRunSelectionMaximumEvaluations = 1;
+            GameConfig.SpaceCombatConfig retryConfig = singleEvaluationConfig.CreateCopy();
+            retryConfig.AttackRunSelectionMaximumEvaluations = 2;
+            CapitalShip firstPlanetDestroyer = CreatePlanetDestroyer("first-planet-destroyer");
+            CapitalShip secondPlanetDestroyer = CreatePlanetDestroyer("second-planet-destroyer");
+            Starfighter firstFighter = CreateTorpedoFighter("first-fighter", 12);
+            Starfighter secondFighter = CreateTorpedoFighter("second-fighter", 12);
+
+            SpaceCombatResult singleEvaluationResult = Resolve(
+                singleEvaluationConfig,
+                new List<CapitalShip>(),
+                new[] { firstFighter },
+                new[] { firstPlanetDestroyer },
+                new List<Starfighter>(),
+                random: new SequenceRNG(new[] { 1, 100, 1, 1 })
+            );
+            SpaceCombatResult retryResult = Resolve(
+                retryConfig,
+                new List<CapitalShip>(),
+                new[] { secondFighter },
+                new[] { secondPlanetDestroyer },
+                new List<Starfighter>(),
+                random: new SequenceRNG(new[] { 1, 100, 1, 1 })
+            );
+
+            Assert.AreEqual(
+                0,
+                GetFighterOutcome(singleEvaluationResult, firstFighter).SquadronSizeAfter
+            );
+            Assert.AreEqual(0, GetShipOutcome(retryResult, secondPlanetDestroyer).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_AttackRunSelectionThresholdMultiplier_ConfiguresSelectionChance()
+        {
+            GameConfig.SpaceCombatConfig lowThresholdConfig = CreateConfig();
+            lowThresholdConfig.PlanetDestroyerAttackRunIterations = 1;
+            lowThresholdConfig.AttackRunSelectionMaximumEvaluations = 1;
+            lowThresholdConfig.AttackRunSelectionThresholdMultiplier = 0.01;
+            GameConfig.SpaceCombatConfig highThresholdConfig = lowThresholdConfig.CreateCopy();
+            highThresholdConfig.AttackRunSelectionThresholdMultiplier = 1;
+            CapitalShip firstPlanetDestroyer = CreatePlanetDestroyer("first-planet-destroyer");
+            CapitalShip secondPlanetDestroyer = CreatePlanetDestroyer("second-planet-destroyer");
+            Starfighter firstFighter = CreateTorpedoFighter("first-fighter", 12);
+            Starfighter secondFighter = CreateTorpedoFighter("second-fighter", 12);
+
+            SpaceCombatResult lowThresholdResult = Resolve(
+                lowThresholdConfig,
+                new List<CapitalShip>(),
+                new[] { firstFighter },
+                new[] { firstPlanetDestroyer },
+                new List<Starfighter>(),
+                random: new SequenceRNG(new[] { 1, 2 })
+            );
+            SpaceCombatResult highThresholdResult = Resolve(
+                highThresholdConfig,
+                new List<CapitalShip>(),
+                new[] { secondFighter },
+                new[] { secondPlanetDestroyer },
+                new List<Starfighter>(),
+                random: new SequenceRNG(new[] { 1, 2 })
+            );
+
+            Assert.AreEqual(
+                0,
+                GetFighterOutcome(lowThresholdResult, firstFighter).SquadronSizeAfter
+            );
+            Assert.AreEqual(
+                0,
+                GetShipOutcome(highThresholdResult, secondPlanetDestroyer).HullAfter
+            );
+        }
+
+        [Test]
+        public void Resolve_AttackRunTorpedoBudgetMultiplier_ConfiguresSelectionChance()
+        {
+            GameConfig.SpaceCombatConfig lowBudgetConfig = CreateConfig();
+            lowBudgetConfig.PlanetDestroyerAttackRunIterations = 1;
+            lowBudgetConfig.AttackRunSelectionMaximumEvaluations = 1;
+            lowBudgetConfig.AttackRunSelectionThresholdMultiplier = 1;
+            lowBudgetConfig.AttackRunTorpedoBudgetMultiplier = 0.01;
+            GameConfig.SpaceCombatConfig highBudgetConfig = lowBudgetConfig.CreateCopy();
+            highBudgetConfig.AttackRunTorpedoBudgetMultiplier = 1;
+            CapitalShip firstPlanetDestroyer = CreatePlanetDestroyer("first-planet-destroyer");
+            CapitalShip secondPlanetDestroyer = CreatePlanetDestroyer("second-planet-destroyer");
+            Starfighter firstFighter = CreateTorpedoFighter("first-fighter", 12);
+            Starfighter secondFighter = CreateTorpedoFighter("second-fighter", 12);
+
+            SpaceCombatResult lowBudgetResult = Resolve(
+                lowBudgetConfig,
+                new List<CapitalShip>(),
+                new[] { firstFighter },
+                new[] { firstPlanetDestroyer },
+                new List<Starfighter>(),
+                random: new SequenceRNG(new[] { 1, 2 })
+            );
+            SpaceCombatResult highBudgetResult = Resolve(
+                highBudgetConfig,
+                new List<CapitalShip>(),
+                new[] { secondFighter },
+                new[] { secondPlanetDestroyer },
+                new List<Starfighter>(),
+                random: new SequenceRNG(new[] { 1, 2 })
+            );
+
+            Assert.AreEqual(0, GetFighterOutcome(lowBudgetResult, firstFighter).SquadronSizeAfter);
+            Assert.AreEqual(0, GetShipOutcome(highBudgetResult, secondPlanetDestroyer).HullAfter);
         }
 
         [Test]
@@ -2701,6 +2815,9 @@ namespace Rebellion.Tests.Gameplay
                 AutoResolveComponentDelayMinimum = 30,
                 AutoResolveComponentDelayMaximum = 50,
                 AutoResolveComponentDelayRecovery = 1,
+                AttackRunSelectionMaximumEvaluations = 1001,
+                AttackRunSelectionThresholdMultiplier = 0.5,
+                AttackRunTorpedoBudgetMultiplier = 0.53333336,
                 PlanetDestroyerSuperlaserRechargeIterations = 300,
                 PlanetDestroyerAttackRunIterations = 120,
                 PlanetDestroyerWithdrawalIterations = 150,

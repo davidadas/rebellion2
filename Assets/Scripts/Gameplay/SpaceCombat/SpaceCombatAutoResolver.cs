@@ -41,10 +41,6 @@ namespace Rebellion.Gameplay
     /// </summary>
     public sealed class SpaceCombatAutoResolver
     {
-        private const int _attackRunSelectionPassLimit = 1001;
-        private const double _attackRunSelectionThresholdScale = 0.5d;
-        private const double _attackRunTorpedoSelectionScale = 0.53333336d;
-        private const int _planetDestroyerSuperlaserStrikeIterations = 1;
         private readonly GameConfig.SpaceCombatConfig _config;
         private readonly IRandomNumberProvider _random;
 
@@ -331,7 +327,8 @@ namespace Rebellion.Gameplay
                     fighter.CurrentSquadronSize
                 ))
             );
-            for (int pass = 0; pass < _attackRunSelectionPassLimit && candidates.Count > 0; pass++)
+            int maximumEvaluations = Math.Max(_config.AttackRunSelectionMaximumEvaluations, 0);
+            for (int pass = 0; pass < maximumEvaluations && candidates.Count > 0; pass++)
             {
                 AttackRunCandidate candidate = candidates.Dequeue();
                 int craft = candidate.RemainingCraft;
@@ -373,18 +370,18 @@ namespace Rebellion.Gameplay
                 CapitalShipState target = opposingForce.Ships.FirstOrDefault(ship =>
                     ship.IsTargetable
                     && !force.PlanetDestroyers.Any(other =>
-                        ReferenceEquals(other.StrikeTarget, ship)
+                        ReferenceEquals(other.PendingSuperlaserTarget, ship)
                     )
                 );
 
                 if (target != null)
-                    planetDestroyer.BeginStrike(target);
+                    planetDestroyer.QueueSuperlaserStrike(target);
             }
         }
 
         /// <summary>
-        /// Advances a force's planet destroyers by one iteration: superlaser recharge, beams in
-        /// flight, and jump countdowns. A beam that finishes burning destroys its target outright.
+        /// Resolves pending superlaser strikes and advances each planet destroyer's recharge and
+        /// withdrawal state by one iteration.
         /// </summary>
         /// <param name="force">The force whose planet destroyers advance.</param>
         private static void AdvancePlanetDestroyers(CombatForce force)
@@ -1539,7 +1536,6 @@ namespace Rebellion.Gameplay
             private bool _attackRunActive;
             private int _attackRunIterationsRemaining;
             private int _jumpIterationsRemaining;
-            private int _strikeIterationsRemaining;
             private readonly int _superlaserRechargeIterations;
             private int _superlaserRechargeIterationsRemaining;
             private readonly int _withdrawalIterations;
@@ -1549,13 +1545,13 @@ namespace Rebellion.Gameplay
             internal bool IsAlive { get; private set; } = true;
             internal bool HasWithdrawn { get; private set; }
             internal bool IsWithdrawing { get; private set; }
-            internal TacticalUnit StrikeTarget { get; private set; }
+            internal TacticalUnit PendingSuperlaserTarget { get; private set; }
             internal bool IsInBattle => IsAlive && !HasWithdrawn;
             internal bool IsAttackable => IsInBattle && !IsShielded;
             internal bool IsSuperlaserReady =>
                 IsInBattle
                 && !IsWithdrawing
-                && StrikeTarget == null
+                && PendingSuperlaserTarget == null
                 && _superlaserRechargeIterationsRemaining <= 0;
             internal bool CanWithdrawIndependently => Ship.Hyperdrive > 0;
             internal bool IsJumpReady => _jumpIterationsRemaining <= 0;
@@ -1592,17 +1588,17 @@ namespace Rebellion.Gameplay
             }
 
             /// <summary>
-            /// Starts a superlaser strike against a tactical target.
+            /// Queues a superlaser target for resolution at the end of the current iteration.
             /// </summary>
             /// <param name="target">The target destroyed when the strike completes.</param>
-            internal void BeginStrike(TacticalUnit target)
+            internal void QueueSuperlaserStrike(TacticalUnit target)
             {
-                StrikeTarget = target ?? throw new ArgumentNullException(nameof(target));
-                _strikeIterationsRemaining = _planetDestroyerSuperlaserStrikeIterations;
+                PendingSuperlaserTarget = target ?? throw new ArgumentNullException(nameof(target));
             }
 
             /// <summary>
-            /// Advances the superlaser and withdrawal countdowns by one resolver iteration.
+            /// Resolves a pending superlaser strike and advances the recharge and withdrawal
+            /// countdowns by one resolver iteration.
             /// </summary>
             /// <returns>The target whose superlaser strike completed, or null.</returns>
             internal TacticalUnit Advance()
@@ -1613,14 +1609,10 @@ namespace Rebellion.Gameplay
                 if (IsWithdrawing && _jumpIterationsRemaining > 0)
                     _jumpIterationsRemaining--;
 
-                if (StrikeTarget != null)
+                if (PendingSuperlaserTarget != null)
                 {
-                    _strikeIterationsRemaining--;
-                    if (_strikeIterationsRemaining > 0)
-                        return null;
-
-                    TacticalUnit struck = StrikeTarget;
-                    StrikeTarget = null;
+                    TacticalUnit struck = PendingSuperlaserTarget;
+                    PendingSuperlaserTarget = null;
                     _superlaserRechargeIterationsRemaining = _superlaserRechargeIterations;
                     return struck;
                 }
@@ -1717,7 +1709,7 @@ namespace Rebellion.Gameplay
 
                 HasWithdrawn = true;
                 IsWithdrawing = false;
-                StrikeTarget = null;
+                PendingSuperlaserTarget = null;
                 CancelAttackRun();
             }
 
@@ -1728,7 +1720,7 @@ namespace Rebellion.Gameplay
             {
                 IsAlive = false;
                 IsWithdrawing = false;
-                StrikeTarget = null;
+                PendingSuperlaserTarget = null;
                 CancelAttackRun();
             }
         }
@@ -2383,6 +2375,8 @@ namespace Rebellion.Gameplay
             private readonly double _ionCannonFighterDamageMultiplier;
             private readonly double _laserCannonCapitalDamageMultiplier;
             private readonly double _commandBonus;
+            private readonly double _attackRunSelectionThresholdMultiplier;
+            private readonly double _attackRunTorpedoBudgetMultiplier;
             private readonly double _maximumShields;
             private readonly double _maximumTorpedoDamage;
             private readonly double _maximumWeaponCharge;
@@ -2443,6 +2437,14 @@ namespace Rebellion.Gameplay
                 Fighter = fighter;
                 InitialSquadronSize = Math.Max(fighter.CurrentSquadronSize, 0);
                 _commandBonus = Math.Max(commandBonus, 0);
+                _attackRunSelectionThresholdMultiplier = Math.Max(
+                    config.AttackRunSelectionThresholdMultiplier,
+                    0
+                );
+                _attackRunTorpedoBudgetMultiplier = Math.Max(
+                    config.AttackRunTorpedoBudgetMultiplier,
+                    0
+                );
                 _hullStrengthPerFighter = Math.Max(
                     config.AutoResolveFighterHullPerCraft,
                     double.Epsilon
@@ -2485,8 +2487,8 @@ namespace Rebellion.Gameplay
                 double torpedoBudget =
                     Math.Max(Fighter.Torpedoes, 0)
                     * Math.Max(Fighter.MaxSquadronSize, 0)
-                    * _attackRunTorpedoSelectionScale;
-                return (int)((torpedoBudget + sideBudget) * _attackRunSelectionThresholdScale);
+                    * _attackRunTorpedoBudgetMultiplier;
+                return (int)((torpedoBudget + sideBudget) * _attackRunSelectionThresholdMultiplier);
             }
 
             /// <summary>
