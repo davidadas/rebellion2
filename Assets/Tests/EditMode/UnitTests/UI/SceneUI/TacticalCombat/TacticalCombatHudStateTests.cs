@@ -125,7 +125,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         }
 
         [Test]
-        public void OpenOrders_NewMissionState_UpdatesDiagramWithoutInventingSelectedButton()
+        public void OpenOrders_CurrentMission_SelectsMatchingButtonWithoutPendingChanges()
         {
             TacticalCombatHudState state = new();
             state.ReplaceContext(TacticalCombatSelectionKind.SingleObject);
@@ -134,11 +134,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
 
             Assert.AreEqual(TacticalCombatOrder.AttackCapitalShips, state.PendingOrder);
             Assert.AreEqual("orders-attack-ships", state.DiagramKey);
-            Assert.IsFalse(state.IsSelected(TacticalCombatControl.AttackCapitalShips));
+            Assert.IsTrue(state.IsSelected(TacticalCombatControl.AttackCapitalShips));
+            Assert.IsFalse(state.HasOrderChanges);
         }
 
         [Test]
-        public void OpenOrders_CommandCategory_RetainsMissionEditorState()
+        public void OpenOrders_DifferentCommandCategory_UsesAddressedMission()
         {
             TacticalCombatHudState state = new();
             state.ReplaceContext(TacticalCombatSelectionKind.SingleObject);
@@ -149,7 +150,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
 
             state.OpenOrders(TacticalCombatOrder.AttackCapitalShips);
 
-            Assert.AreEqual(TacticalCombatOrder.AttackFighters, state.PendingOrder);
+            Assert.AreEqual(TacticalCombatOrder.AttackCapitalShips, state.PendingOrder);
+            Assert.IsTrue(state.IsSelected(TacticalCombatControl.AttackCapitalShips));
+            Assert.IsFalse(state.HasOrderChanges);
         }
 
         [Test]
@@ -167,19 +170,21 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         }
 
         [Test]
-        public void OpenTactics_HoldFireOrder_UsesWidgetOffsetWithoutNormalizingIt()
+        public void OpenTactics_MissionWithoutManeuver_LeavesManeuverUnselected()
         {
             TacticalCombatHudState state = new();
             state.ReplaceContext(TacticalCombatSelectionKind.SingleObject);
 
             state.OpenTactics(TacticalCombatOrder.HoldFire, false);
 
-            Assert.AreEqual(TacticalCombatOrder.RightHook, state.GetPendingManeuver());
-            Assert.AreEqual("tactics-right-hook", state.DiagramKey);
+            Assert.AreEqual(TacticalCombatOrder.None, state.GetPendingManeuver());
+            Assert.IsNull(state.DiagramKey);
+            Assert.IsFalse(state.HasManeuverChanges);
+            Assert.IsFalse(state.HasAttackModeChanges);
         }
 
         [Test]
-        public void OpenTactics_ExistingManeuver_RetainsPriorWidgetChoice()
+        public void OpenTactics_DifferentGroupManeuver_ReplacesPriorWidgetChoice()
         {
             TacticalCombatHudState state = new();
             state.ReplaceContext(TacticalCombatSelectionKind.SingleObject);
@@ -189,11 +194,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
 
             state.OpenTactics(TacticalCombatOrder.Hammer, false);
 
-            Assert.AreEqual(TacticalCombatOrder.Anvil, state.GetPendingManeuver());
+            Assert.AreEqual(TacticalCombatOrder.Hammer, state.GetPendingManeuver());
+            Assert.IsFalse(state.HasManeuverChanges);
         }
 
         [Test]
-        public void SelectControl_AttackMode_ClearsManeuverSelectionAndRetainsIllustration()
+        public void SelectControl_AttackMode_PreservesManeuverSelectionAndIllustration()
         {
             TacticalCombatHudState state = new();
             state.ReplaceContext(TacticalCombatSelectionKind.SingleObject);
@@ -202,9 +208,43 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
 
             state.SelectControl(TacticalCombatControl.CloseAttack);
 
-            Assert.AreEqual(TacticalCombatOrder.None, state.GetPendingManeuver());
+            Assert.AreEqual(TacticalCombatOrder.Hammer, state.GetPendingManeuver());
             Assert.AreEqual("tactics-hammer", state.DiagramKey);
             Assert.IsTrue(state.PendingCloseAttack);
+            Assert.IsTrue(state.HasAttackModeChanges);
+        }
+
+        [TestCase(TacticalCombatOrder.LeftHook, TacticalCombatControl.LeftHook)]
+        [TestCase(TacticalCombatOrder.RightHook, TacticalCombatControl.RightHook)]
+        [TestCase(TacticalCombatOrder.Hammer, TacticalCombatControl.Hammer)]
+        [TestCase(TacticalCombatOrder.Anvil, TacticalCombatControl.Anvil)]
+        [TestCase(TacticalCombatOrder.Stop, TacticalCombatControl.Stop)]
+        public void OpenTactics_CurrentManeuver_SelectsCorrespondingControl(
+            TacticalCombatOrder order,
+            TacticalCombatControl control
+        )
+        {
+            TacticalCombatHudState state = new();
+            state.OpenTactics(order, true);
+
+            Assert.AreEqual(order, state.GetPendingManeuver());
+            Assert.IsTrue(state.IsSelected(control));
+            Assert.IsTrue(state.PendingCloseAttack);
+            Assert.IsFalse(state.HasManeuverChanges);
+            Assert.IsFalse(state.HasAttackModeChanges);
+        }
+
+        [Test]
+        public void SelectControl_AttackModeOnly_LeavesManeuverUnchanged()
+        {
+            TacticalCombatHudState state = new();
+            state.OpenTactics(TacticalCombatOrder.AttackFighters, false);
+
+            state.SelectControl(TacticalCombatControl.CloseAttack);
+
+            Assert.IsTrue(state.PendingCloseAttack);
+            Assert.IsTrue(state.HasAttackModeChanges);
+            Assert.IsFalse(state.HasManeuverChanges);
         }
 
         [Test]

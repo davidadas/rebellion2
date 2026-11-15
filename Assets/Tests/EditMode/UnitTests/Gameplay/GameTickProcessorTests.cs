@@ -485,6 +485,125 @@ namespace Rebellion.Tests.Gameplay
 
         [TestCase("FNEMP1")]
         [TestCase("FNALL1")]
+        public void CompleteTacticalCombat_AuthoredCarrierBattle_CommitsOneResultAndResumesOneTick(
+            string playerFactionId
+        )
+        {
+            UnitFactory units = new(
+                TestContent.Data.Buildings,
+                TestContent.Data.CapitalShips,
+                TestContent.Data.Starfighters,
+                TestContent.Data.Regiments,
+                TestContent.Data.SpecialForces,
+                TestContent.Data.TacticalCombat
+            );
+            SpaceCombatCommands commands = CreateTacticalCombatScenario(
+                playerFactionId,
+                1,
+                fleet => AttachAuthoredCarrierFleet(fleet, units)
+            );
+            int completedTicks = 0;
+            int resumptions = 0;
+            int combatResults = 0;
+            _tick.TickCompleted += () => completedTicks++;
+            _tick.CombatResumed += () => resumptions++;
+            using IDisposable observation = _session.Results.Observe<SpaceCombatResult>(results =>
+                combatResults += results.Count
+            );
+            _tick.ReconcileLoadedState();
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+            CapitalShip[] ships = battle
+                .Units.Select(unit => unit.Source)
+                .OfType<CapitalShip>()
+                .ToArray();
+            Starfighter[] fighters = battle
+                .Units.Select(unit => unit.Source)
+                .OfType<Starfighter>()
+                .ToArray();
+            Dictionary<ISceneNode, ISceneNode> parents = battle.Units.ToDictionary(
+                unit => unit.Source,
+                unit => unit.Source.GetParent()
+            );
+            Dictionary<TacticalCombatUnit, int> shots = battle.Units.ToDictionary(
+                unit => unit,
+                _ => 0
+            );
+            battle.ShotFired += shot => shots[shot.Source]++;
+            Assert.AreEqual(2, ships.Length);
+            Assert.AreEqual(4, fighters.Length);
+            Assert.AreEqual(
+                2,
+                battle.Units.Count(unit => unit.Status == TacticalCombatUnitStatus.Docked)
+            );
+
+            for (int frame = 0; frame < 120000 && !battle.IsComplete; frame++)
+            {
+                if (frame % 20 == 0)
+                    TargetActiveOpponents(battle);
+                battle.Advance(50);
+            }
+
+            Assert.IsTrue(battle.IsComplete, DescribeCarrierBattle(battle, shots));
+            foreach (CombatSide side in new[] { CombatSide.Attacker, CombatSide.Defender })
+            {
+                Assert.Greater(
+                    shots
+                        .Where(entry => entry.Key.Side == side && !entry.Key.IsFighter)
+                        .Sum(entry => entry.Value),
+                    0,
+                    $"No capital-ship discharge for {side}."
+                );
+                Assert.Greater(
+                    shots
+                        .Where(entry => entry.Key.Side == side && entry.Key.IsFighter)
+                        .Sum(entry => entry.Value),
+                    0,
+                    $"No fighter discharge for {side}."
+                );
+            }
+            foreach (CapitalShip ship in ships)
+            {
+                Assert.AreEqual(ship.MaxHullStrength, ship.CurrentHullStrength);
+                Assert.AreEqual(0, ship.SystemDamage.Total);
+                Assert.AreSame(parents[ship], ship.GetParent());
+                Assert.AreSame(ship, _game.GetSceneNodeByInstanceID<CapitalShip>(ship.InstanceID));
+            }
+            foreach (Starfighter fighter in fighters)
+            {
+                Assert.AreEqual(fighter.MaxSquadronSize, fighter.CurrentSquadronSize);
+                Assert.AreSame(parents[fighter], fighter.GetParent());
+                Assert.AreSame(
+                    fighter,
+                    _game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID)
+                );
+            }
+            _tick.ProcessTick();
+            Assert.AreEqual(40, _game.CurrentTick);
+            Assert.IsTrue(commands.HasPendingDecision);
+            Assert.IsFalse(_tick.IsSettled);
+            Assert.AreEqual(0, completedTicks);
+            Assert.AreEqual(0, resumptions);
+            Assert.AreEqual(0, combatResults);
+
+            SpaceCombatResult result = _tick.CompleteTacticalCombat(battle);
+
+            Assert.AreEqual(battle.Winner, result.Winner);
+            Assert.AreNotEqual(CombatSide.Draw, result.Winner);
+            Assert.AreEqual(40, result.Tick);
+            Assert.AreEqual(40, _game.CurrentTick);
+            Assert.IsFalse(commands.HasPendingDecision);
+            Assert.IsTrue(_tick.IsSettled);
+            Assert.AreEqual(1, completedTicks);
+            Assert.AreEqual(1, resumptions);
+            Assert.AreEqual(1, combatResults);
+            Assert.Throws<InvalidOperationException>(() => _tick.CompleteTacticalCombat(battle));
+            Assert.AreEqual(1, completedTicks);
+            Assert.AreEqual(1, resumptions);
+            Assert.AreEqual(1, combatResults);
+        }
+
+        [TestCase("FNEMP1")]
+        [TestCase("FNALL1")]
         public void CompleteTacticalCombat_UnfinishedManualEncounter_RetainsSuspendedTick(
             string playerFactionId
         )
@@ -509,19 +628,30 @@ namespace Rebellion.Tests.Gameplay
         /// </summary>
         /// <param name="playerFactionId">The faction taking manual command.</param>
         /// <param name="encounterCount">The number of contested planets.</param>
+        /// <param name="populateFleet">Optional roster creation for each empty participating fleet.</param>
         /// <returns>The pending encounter commands shared by the tick processor.</returns>
         private SpaceCombatCommands CreateTacticalCombatScenario(
             string playerFactionId,
-            int encounterCount
+            int encounterCount,
+            Action<Fleet> populateFleet = null
         )
         {
             _session.Dispose();
             _game.CurrentTick = 40;
             _game.Summary.PlayerFactionID = playerFactionId;
-            _game.GetFactions().Add(new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" });
-            _game
-                .GetFactions()
-                .Add(new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" });
+            foreach (string factionId in new[] { "FNEMP1", "FNALL1" })
+            {
+                Faction faction = new()
+                {
+                    InstanceID = factionId,
+                    DisplayName = factionId == "FNEMP1" ? "Empire" : "Alliance",
+                };
+                if (populateFleet != null)
+                    TestContent
+                        .Data.Factions.Single(definition => definition.InstanceID == factionId)
+                        .CopyDefinitionTo(faction);
+                _game.GetFactions().Add(faction);
+            }
             _game.SetFactionController(playerFactionId, "PLAYER", PlayerControllerType.Human);
             PlanetSector sector = new PlanetSector { InstanceID = "TACTICAL_SECTOR" };
             _game.AttachNode(sector, _game.Galaxy);
@@ -536,6 +666,16 @@ namespace Rebellion.Tests.Gameplay
                 _game.AttachNode(planet, sector);
                 foreach (string factionId in new[] { "FNEMP1", "FNALL1" })
                 {
+                    if (populateFleet != null)
+                    {
+                        Fleet authoredFleet = EntityFactory.CreateFleet(
+                            $"TACTICAL_{encounter}_{factionId}",
+                            factionId
+                        );
+                        _game.AttachNode(authoredFleet, planet);
+                        populateFleet(authoredFleet);
+                        continue;
+                    }
                     Fleet fleet = AttachOperationalFleet(
                         planet,
                         factionId,
@@ -565,6 +705,82 @@ namespace Rebellion.Tests.Gameplay
         }
 
         /// <summary>
+        /// Attaches one authored carrier and two complete authored fighter squadrons to its fleet.
+        /// </summary>
+        /// <param name="fleet">The already attached participating fleet.</param>
+        /// <param name="units">The factory cloning the selected content templates.</param>
+        private void AttachAuthoredCarrierFleet(Fleet fleet, UnitFactory units)
+        {
+            bool empire = fleet.OwnerInstanceID == "FNEMP1";
+            CapitalShip carrier = units.Create<CapitalShip>(
+                empire ? "CSEM006" : "ALCS008",
+                fleet.OwnerInstanceID
+            );
+            carrier.InstanceID = $"{fleet.InstanceID}_SHIP";
+            _game.AttachNode(carrier, fleet);
+            for (int squadron = 0; squadron < 2; squadron++)
+            {
+                Starfighter fighter = units.Create<Starfighter>(
+                    empire ? "SFEM01" : "SFAL02",
+                    fleet.OwnerInstanceID
+                );
+                fighter.InstanceID = $"{fleet.InstanceID}_FIGHTER_{squadron}";
+                _game.AttachNode(fighter, carrier);
+            }
+        }
+
+        /// <summary>
+        /// Assigns an available opposing target when a player's group has no retained live target.
+        /// </summary>
+        /// <param name="battle">The manually commanded encounter.</param>
+        private static void TargetActiveOpponents(TacticalCombatSession battle)
+        {
+            foreach (TacticalCombatGroup group in battle.Groups.ToArray())
+            {
+                if (
+                    group.Side != battle.PlayerSide
+                    || group.PrimaryTarget?.IsTargetable == true
+                    || group.RequestedTargets.Any(target => target.IsTargetable)
+                )
+                    continue;
+                TacticalCombatUnit target =
+                    battle.Units.FirstOrDefault(unit =>
+                        unit.Side != group.Side
+                        && unit.IsTargetable
+                        && unit.IsFighter == group.IsFighterGroup
+                    )
+                    ?? battle.Units.FirstOrDefault(unit =>
+                        unit.Side != group.Side && unit.IsTargetable
+                    );
+                if (target != null)
+                    battle.SetTarget(group, target);
+            }
+        }
+
+        /// <summary>
+        /// Describes live combat pools, movement, orders, charge, and actual firing when a battle fails to finish.
+        /// </summary>
+        /// <param name="battle">The bounded encounter whose terminal state is being checked.</param>
+        /// <param name="shots">The observed discharge counts for each participant.</param>
+        /// <returns>The state needed to investigate a stalled encounter.</returns>
+        private static string DescribeCarrierBattle(
+            TacticalCombatSession battle,
+            IReadOnlyDictionary<TacticalCombatUnit, int> shots
+        ) =>
+            $"System time: {battle.SystemTime}; "
+            + string.Join(
+                "; ",
+                battle.Units.Select(unit =>
+                    $"{unit.InstanceID} ({unit.TypeID}): state={unit.Status}, hull={unit.Systems.Hull}, "
+                    + $"shields={unit.Systems.Shields}, position={unit.Position}, heading={unit.Heading}, "
+                    + $"order={battle.GetGroup(unit)?.ActiveOrder}, target={battle.GetGroup(unit)?.PrimaryTarget?.InstanceID}, "
+                    + $"shots={shots[unit]}, forwardCharge={unit.Weapons.GetCharge(TacticalWeaponArc.Forward)}/"
+                    + $"{unit.Weapons.GetMaximumCharge(TacticalWeaponArc.Forward)}, "
+                    + $"weaponsDamage={unit.Systems.GetDamage(TacticalShipSystem.Weapons)}"
+                )
+            );
+
+        /// <summary>
         /// Advances a manually targeted battle through its terminal lifecycle.
         /// </summary>
         /// <param name="battle">The manually commanded encounter.</param>
@@ -574,12 +790,14 @@ namespace Rebellion.Tests.Gameplay
             TacticalCombatUnit opponent = battle.Units.Single(unit =>
                 unit.Side != battle.PlayerSide
             );
-            foreach (TacticalCombatUnit unit in battle.Units)
+            int playerShots = 0;
+            battle.ShotFired += shot =>
             {
-                foreach (TacticalWeaponArc arc in Enum.GetValues(typeof(TacticalWeaponArc)))
-                    unit.Weapons.ClearBattery(arc);
-                unit.Weapons.Advance(1, 1);
-            }
+                if (shot.Source == player)
+                    playerShots++;
+            };
+            Assert.IsTrue(player.Weapons.IsReady(TacticalWeaponArc.Forward));
+            Assert.Greater(player.Weapons.GetMaximumCharge(TacticalWeaponArc.Forward), 0);
             battle.SetTarget(
                 battle.Groups.Single(group => group.Side == battle.PlayerSide),
                 opponent
@@ -591,6 +809,7 @@ namespace Rebellion.Tests.Gameplay
                 $"Player: {player.Status}, hull={player.Systems.Hull}, position={player.Position}; "
                     + $"opponent: {opponent.Status}, hull={opponent.Systems.Hull}, position={opponent.Position}"
             );
+            Assert.Greater(playerShots, 0);
         }
 
         /// <summary>

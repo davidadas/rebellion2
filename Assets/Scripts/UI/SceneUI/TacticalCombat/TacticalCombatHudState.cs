@@ -13,6 +13,9 @@ public sealed class TacticalCombatHudState
     public bool IsLocked { get; private set; }
     public TacticalCombatOrder PendingOrder { get; private set; }
     public bool PendingCloseAttack { get; private set; }
+    public bool HasOrderChanges { get; private set; }
+    public bool HasManeuverChanges { get; private set; }
+    public bool HasAttackModeChanges { get; private set; }
     private string _ordersDiagram;
     private string _tacticsDiagram;
     public string DiagramKey =>
@@ -95,7 +98,7 @@ public sealed class TacticalCombatHudState
     }
 
     /// <summary>
-    /// Opens the mission editor with its context-dependent persisted widget state.
+    /// Opens the mission editor from the addressed selection's current requested order.
     /// </summary>
     /// <param name="currentOrder">The addressed requested order.</param>
     public void OpenOrders(TacticalCombatOrder currentOrder)
@@ -104,18 +107,14 @@ public sealed class TacticalCombatHudState
             return;
         Select(TacticalCombatHudPanel.Orders);
         IsLocked = true;
-        if (
-            _context
-            is TacticalCombatSelectionKind.SingleObject
-                or TacticalCombatSelectionKind.FighterGroup
-        )
-            PendingOrder = currentOrder;
-        _selectedOrder = _selectedOrder == OrderControl(PendingOrder) ? _selectedOrder : null;
+        PendingOrder = currentOrder;
+        HasOrderChanges = false;
+        _selectedOrder = OrderControl(PendingOrder);
         _ordersDiagram = OrderDiagram(PendingOrder);
     }
 
     /// <summary>
-    /// Opens the tactics editor without normalizing its retained maneuver-button selection.
+    /// Opens the tactics editor from the addressed selection's current maneuver and engagement mode.
     /// </summary>
     /// <param name="currentOrder">The addressed requested order.</param>
     /// <param name="closeAttack">Whether the addressed group requests close engagement.</param>
@@ -125,13 +124,13 @@ public sealed class TacticalCombatHudState
             return;
         Select(TacticalCombatHudPanel.Tactics);
         IsLocked = true;
-        int index = (int)currentOrder;
-        if (index > 0 && index < 5)
-        {
-            _selectedManeuver = ManeuverControl(index);
-            _tacticsDiagram = ManeuverDiagram(_selectedManeuver.Value);
-        }
+        _selectedManeuver = ManeuverControl(currentOrder);
+        _tacticsDiagram = _selectedManeuver.HasValue
+            ? ManeuverDiagram(_selectedManeuver.Value)
+            : null;
         PendingCloseAttack = closeAttack;
+        HasManeuverChanges = false;
+        HasAttackModeChanges = false;
     }
 
     /// <summary>
@@ -147,6 +146,7 @@ public sealed class TacticalCombatHudState
         {
             _selectedOrder = _selectedOrder == control ? null : control;
             PendingOrder = order;
+            HasOrderChanges = true;
             _ordersDiagram = OrderDiagram(order);
         }
         else if (Panel == TacticalCombatHudPanel.Tactics)
@@ -154,7 +154,7 @@ public sealed class TacticalCombatHudState
             if (control == TacticalCombatControl.CloseAttack)
             {
                 PendingCloseAttack = !PendingCloseAttack;
-                _selectedManeuver = null;
+                HasAttackModeChanges = true;
             }
             else if (
                 control
@@ -166,6 +166,7 @@ public sealed class TacticalCombatHudState
             )
             {
                 _selectedManeuver = _selectedManeuver == control ? null : control;
+                HasManeuverChanges = true;
                 _tacticsDiagram = ManeuverDiagram(control);
             }
         }
@@ -270,18 +271,19 @@ public sealed class TacticalCombatHudState
         };
 
     /// <summary>
-    /// Resolves a retained maneuver-button index from the editor's widget ordering.
+    /// Resolves a requested maneuver to its authored editor control.
     /// </summary>
-    /// <param name="index">The zero-based maneuver index.</param>
-    /// <returns>The corresponding image control.</returns>
-    private static TacticalCombatControl ManeuverControl(int index) =>
-        index switch
+    /// <param name="order">The current requested behavior.</param>
+    /// <returns>The matching maneuver control, or null for a mission without a maneuver.</returns>
+    private static TacticalCombatControl? ManeuverControl(TacticalCombatOrder order) =>
+        order switch
         {
-            0 => TacticalCombatControl.LeftHook,
-            1 => TacticalCombatControl.RightHook,
-            2 => TacticalCombatControl.Hammer,
-            3 => TacticalCombatControl.Anvil,
-            _ => TacticalCombatControl.Stop,
+            TacticalCombatOrder.LeftHook => TacticalCombatControl.LeftHook,
+            TacticalCombatOrder.RightHook => TacticalCombatControl.RightHook,
+            TacticalCombatOrder.Hammer => TacticalCombatControl.Hammer,
+            TacticalCombatOrder.Anvil => TacticalCombatControl.Anvil,
+            TacticalCombatOrder.Stop => TacticalCombatControl.Stop,
+            _ => null,
         };
 
     /// <summary>

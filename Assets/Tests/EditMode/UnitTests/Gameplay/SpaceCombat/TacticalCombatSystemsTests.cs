@@ -143,19 +143,21 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(100, systems.Hull);
         }
 
-        [TestCase(1, 0)]
-        [TestCase(2, 0)]
-        [TestCase(3, 4)]
-        [TestCase(4, 4)]
-        [TestCase(5, 8)]
-        [TestCase(6, 8)]
-        [TestCase(7, 0)]
-        [TestCase(8, 0)]
-        [TestCase(9, 0)]
-        [TestCase(10, 0)]
-        public void ApplyHit_IonComponentSelection_RequestsKnownBatteriesWithoutTimerValues(
+        [TestCase(1, 0, 35, 0)]
+        [TestCase(2, 0, 0, 35)]
+        [TestCase(3, 1, 0, 0)]
+        [TestCase(4, 1, 0, 0)]
+        [TestCase(5, 2, 0, 0)]
+        [TestCase(6, 2, 0, 0)]
+        [TestCase(7, 4, 0, 0)]
+        [TestCase(8, 4, 0, 0)]
+        [TestCase(9, 8, 0, 0)]
+        [TestCase(10, 8, 0, 0)]
+        public void ApplyHit_IonComponentSelection_RequestsSelectedTimersAndBatteries(
             int selector,
-            int expectedMask
+            int expectedMask,
+            float expectedAttackDelay,
+            float expectedMovementDelay
         )
         {
             TacticalCombatSystems systems = CreateSystems();
@@ -169,8 +171,8 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(1, events.Count);
             Assert.AreEqual(TacticalSystemEventKind.Disruption, events[0].Kind);
             Assert.AreEqual(expectedMask, events[0].DischargedArcMask);
-            Assert.IsNull(events[0].AttackDelay);
-            Assert.IsNull(events[0].MovementDelay);
+            Assert.AreEqual(expectedAttackDelay, events[0].AttackDelay);
+            Assert.AreEqual(expectedMovementDelay, events[0].MovementDelay);
             CollectionAssert.AreEqual(
                 selector <= 2 ? new[] { (1, 11), (30, 51) } : new[] { (1, 11) },
                 random.Requests
@@ -178,7 +180,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ApplyHit_MixedIonComponentSelections_PreservesDrawOrderAndKnownBatteryMask()
+        public void ApplyHit_MixedIonComponentSelections_PreservesDrawOrderAndEverySelectedBattery()
         {
             TacticalCombatSystems systems = CreateSystems();
             List<TacticalSystemEvent> events = new();
@@ -188,9 +190,9 @@ namespace Rebellion.Tests.Gameplay
             systems.ApplyHit(TacticalWeaponType.IonCannon, 106, 1, 1, random, null);
 
             Assert.AreEqual(1, events.Count);
-            Assert.AreEqual(12, events[0].DischargedArcMask);
-            Assert.IsNull(events[0].AttackDelay);
-            Assert.IsNull(events[0].MovementDelay);
+            Assert.AreEqual(15, events[0].DischargedArcMask);
+            Assert.AreEqual(30, events[0].AttackDelay);
+            Assert.AreEqual(50, events[0].MovementDelay);
             CollectionAssert.AreEqual(
                 new[] { (1, 11), (30, 51), (1, 11), (30, 51), (1, 11), (1, 11), (1, 11), (1, 11) },
                 random.Requests
@@ -198,7 +200,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ApplyHit_UnorderedIonExcess_RequestsUnresolvedDisruptionWithoutComponentDraws()
+        public void ApplyHit_UnorderedIonExcess_RequestsEmptyDisruptionWithoutComponentDraws()
         {
             TacticalCombatSystems systems = CreateSystems();
             List<TacticalSystemEvent> events = new();
@@ -209,9 +211,31 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(1, events.Count);
             Assert.AreEqual(0, events[0].DischargedArcMask);
-            Assert.IsNull(events[0].AttackDelay);
-            Assert.IsNull(events[0].MovementDelay);
+            Assert.AreEqual(0, events[0].AttackDelay);
+            Assert.AreEqual(0, events[0].MovementDelay);
             Assert.IsEmpty(random.Requests);
+        }
+
+        [Test]
+        public void ApplyHit_RepeatedIonTimerSelections_AccumulatesEverySelectedDuration()
+        {
+            TacticalCombatSystems systems = CreateSystems();
+            List<TacticalSystemEvent> events = new();
+            systems.SystemEventRequested += events.Add;
+
+            systems.ApplyHit(
+                TacticalWeaponType.IonCannon,
+                104,
+                1,
+                1,
+                new SequenceRandom(1, 30, 1, 50, 2, 31, 2, 49),
+                null
+            );
+
+            Assert.AreEqual(1, events.Count);
+            Assert.AreEqual(80, events[0].AttackDelay);
+            Assert.AreEqual(80, events[0].MovementDelay);
+            Assert.AreEqual(0, events[0].DischargedArcMask);
         }
 
         [Test]
@@ -704,6 +728,48 @@ namespace Rebellion.Tests.Gameplay
             systems.ApplyHit(TacticalWeaponType.LaserCannon, 8, 8, 4, new SequenceRandom(), null);
 
             Assert.AreEqual(92, systems.Hull);
+        }
+
+        [Test]
+        public void Advance_InitialWeaponOnlyDamage_RepairsDisabledWeaponsWithoutAnotherHit()
+        {
+            TacticalCombatSystems systems = new(
+                false,
+                100,
+                100,
+                0,
+                10,
+                0,
+                0,
+                0,
+                0,
+                1,
+                100,
+                new Rebellion.Game.Units.CapitalShipSystemDamage { Weapons = 4 }
+            );
+            List<TacticalSystemEvent> events = new();
+            systems.SystemEventRequested += change =>
+            {
+                events.Add(change);
+                systems.ApplyComponentEvent(change.System, change.IsRepair);
+            };
+            Assert.AreEqual(0, systems.GetWeaponRecharge());
+
+            systems.Advance(50, new SequenceRandom(1, 1));
+
+            Assert.AreEqual(3, systems.GetDamage(TacticalShipSystem.Weapons));
+            Assert.Greater(systems.GetWeaponRecharge(), 0);
+            for (int remaining = 2; remaining >= 0; remaining--)
+            {
+                systems.Advance(50000, new SequenceRandom(1, 1));
+                Assert.AreEqual(remaining, systems.GetDamage(TacticalShipSystem.Weapons));
+            }
+            Assert.AreEqual(4, events.Count);
+            Assert.IsTrue(
+                events.TrueForAll(change =>
+                    change.IsRepair && change.System == TacticalShipSystem.Weapons
+                )
+            );
         }
 
         [Test]

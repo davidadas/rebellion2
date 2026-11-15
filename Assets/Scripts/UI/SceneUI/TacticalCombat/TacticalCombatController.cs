@@ -397,9 +397,9 @@ public sealed class TacticalCombatController : IDisposable
             control is TacticalCombatControl.PreviousObject or TacticalCombatControl.NextObject
         )
             _session.Selection.QueueDisplayMode(control == TacticalCombatControl.NextObject);
-        else if (
-            control is TacticalCombatControl.ResolveImmediately or TacticalCombatControl.OpenOptions
-        )
+        else if (control == TacticalCombatControl.ResolveImmediately)
+            _session.RequestImmediateResult();
+        else if (control == TacticalCombatControl.OpenOptions)
         {
             MenuControlRequested?.Invoke(control);
         }
@@ -451,27 +451,32 @@ public sealed class TacticalCombatController : IDisposable
     /// </summary>
     /// <returns>The context's requested owner, or null for a temporary multi-selection.</returns>
     private TacticalCombatGroup SelectedRequestedGroup() =>
-        _session.Selection.Group
-        ?? (
-            _session.Selection.PrimaryUnit is TacticalCombatUnit unit
-                ? _session.GetRequestedGroup(unit)
-                : null
-        );
+        _session.Selection.Kind == TacticalCombatSelectionKind.MultipleObjects
+            ? null
+            : _session.Selection.Group
+                ?? (
+                    _session.Selection.PrimaryUnit is TacticalCombatUnit unit
+                        ? _session.GetRequestedGroup(unit)
+                        : null
+                );
 
     /// <summary>
     /// Commits only the editor's confirmed mission, maneuver, and engagement choices.
     /// </summary>
     private void ConfirmPanel()
     {
-        if (_hud.Panel == TacticalCombatHudPanel.Orders)
+        if (_hud.Panel == TacticalCombatHudPanel.Orders && _hud.HasOrderChanges)
             _session.Selection.RequestOrder(_hud.PendingOrder);
         else if (_hud.Panel == TacticalCombatHudPanel.Tactics)
         {
             TacticalCombatGroup group = SelectedRequestedGroup();
             TacticalCombatOrder order = _hud.GetPendingManeuver();
-            if ((group?.Order ?? TacticalCombatOrder.None) != order)
+            if (_hud.HasManeuverChanges && (group?.Order ?? TacticalCombatOrder.None) != order)
                 _session.Selection.RequestOrder(order);
-            if (group == null || group.CloseAttack != _hud.PendingCloseAttack)
+            if (
+                _hud.HasAttackModeChanges
+                && (group == null || group.CloseAttack != _hud.PendingCloseAttack)
+            )
                 _session.Selection.RequestAttackMode(_hud.PendingCloseAttack);
         }
         _hud.CloseEditor();
@@ -641,6 +646,10 @@ public sealed class TacticalCombatController : IDisposable
         _view.SetControlEnabled(
             TacticalCombatControl.ToggleAutomation,
             active && !_session.GetSide(_session.PlayerSide).IsWithdrawing
+        );
+        _view.SetControlEnabled(
+            TacticalCombatControl.ResolveImmediately,
+            active && _session.CanRequestImmediateResult
         );
     }
 

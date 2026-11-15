@@ -108,7 +108,12 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
             _distance,
             session.GetSide(session.PlayerSide).FactionIndex
         );
-        _effects = new TacticalCombatEffects(_modelRoot, _fighterShader, session.BattleDepth);
+        _effects = new TacticalCombatEffects(
+            _modelRoot,
+            _fighterShader,
+            session.BattleDepth,
+            GetPresentationPosition
+        );
         _impacts = new TacticalCombatImpactEffects(
             _modelRoot,
             _battleCamera,
@@ -116,7 +121,9 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
             _showPyro
                 ? session.Definition.Effects
                 : Array.Empty<Rebellion.Game.SpaceCombat.TacticalCombatEffectDefinition>(),
-            assets
+            assets,
+            GetPresentationPosition,
+            GetCloseUpPrimary
         );
         _navigation = new TacticalCombatNavigationRenderer(
             _modelRoot,
@@ -658,6 +665,18 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
     }
 
     /// <summary>
+    /// Resolves logical actor positions while retaining temporary arrival and departure movement.
+    /// </summary>
+    /// <param name="unit">The registered encounter participant.</param>
+    /// <returns>Its current position in the encounter's rendering frame.</returns>
+    private Vector3 GetPresentationPosition(TacticalCombatUnit unit)
+    {
+        Visual visual = _visualsByIndex[unit.Index];
+        ApplyTransform(visual);
+        return unit.IsBattleStation ? Vector3.zero : visual.Root.transform.localPosition;
+    }
+
+    /// <summary>
     /// Changes one faction's capital bounding-box visibility independently of the command selection.
     /// </summary>
     /// <param name="factionIndex">The authored faction index.</param>
@@ -862,6 +881,31 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
             : _session.GetFighterGroup(_session.PlayerSide, category - 8);
 
     /// <summary>
+    /// Resolves the live category participant independently of the last camera refresh.
+    /// </summary>
+    /// <param name="category">The current object or fighter category.</param>
+    /// <param name="group">The category's current owner, or null for an empty slot.</param>
+    /// <returns>The inspected object or applied group leader.</returns>
+    private TacticalCombatUnit GetCameraPrimary(int category, TacticalCombatGroup group) =>
+        group == null ? null
+        : category < 8 && _session.Selection.Kind == TacticalCombatSelectionKind.ObjectGroup
+            ? _session.Selection.PrimaryUnit ?? group.PrimaryMember
+        : group.PrimaryMember;
+
+    /// <summary>
+    /// Identifies only a category close-up's primary participant for effect attachment decisions.
+    /// </summary>
+    /// <returns>The current registered primary identifier, or null for the ordinary camera.</returns>
+    private int? GetCloseUpPrimary()
+    {
+        if (!_cameraState.IsCategoryView || !_cameraState.Category.HasValue)
+            return null;
+        int category = _cameraState.Category.Value;
+        TacticalCombatUnit primary = GetCameraPrimary(category, GetCameraGroup(category));
+        return primary != null && _visualsByIndex.ContainsKey(primary.Index) ? primary.Index : null;
+    }
+
+    /// <summary>
     /// Resolves applied members, route points, and targets against the screen's cached presentations.
     /// </summary>
     /// <param name="category">The live category slot.</param>
@@ -871,9 +915,7 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
         TacticalCombatGroup group = GetCameraGroup(category);
         if (group == null)
             return null;
-        TacticalCombatUnit primary = group.PrimaryMember;
-        if (category < 8 && _session.Selection.Kind == TacticalCombatSelectionKind.ObjectGroup)
-            primary = _session.Selection.PrimaryUnit ?? primary;
+        TacticalCombatUnit primary = GetCameraPrimary(category, group);
         if (primary == null || !_visualsByIndex.TryGetValue(primary.Index, out Visual visual))
             return null;
         Vector3? secondaryPosition = null;

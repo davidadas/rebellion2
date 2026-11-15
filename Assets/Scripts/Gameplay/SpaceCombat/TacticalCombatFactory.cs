@@ -429,6 +429,10 @@ namespace Rebellion.Gameplay
             {
                 if (unit.Side != side || unit.IsBattleStation)
                     continue;
+                unit.Heading = forward;
+                unit.DesiredHeading = forward;
+                if (unit.Status == TacticalCombatUnitStatus.Docked)
+                    continue;
                 int index = unit.IsFighter ? fighterIndex++ : capitalIndex++;
                 float x = index == 0 ? 0 : ((index + 1) / 2) * 5 * (index % 2 == 1 ? 1 : -1);
                 unit.Position = new Vector3(
@@ -436,8 +440,6 @@ namespace Rebellion.Gameplay
                     0,
                     forward.Z * (-depth * 0.5f + (unit.IsFighter ? 20 : 0))
                 );
-                unit.Heading = forward;
-                unit.DesiredHeading = forward;
             }
         }
 

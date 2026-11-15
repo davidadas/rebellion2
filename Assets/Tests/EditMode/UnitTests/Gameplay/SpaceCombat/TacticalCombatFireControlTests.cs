@@ -138,8 +138,6 @@ namespace Rebellion.Tests.Gameplay
             };
             ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 137, 0, 0, 0, 100 };
             TacticalCombatUnit source = new(ship, CombatSide.Attacker, 1);
-            source.Weapons.ClearBattery(TacticalWeaponArc.Forward);
-            source.Weapons.Advance(1, 1);
             TacticalCombatUnit target = new(
                 new Starfighter
                 {
@@ -210,7 +208,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void AcquireTargets_FreshArmedCapitalBatteries_DoNotConsumeFiringOpportunity()
+        public void AcquireTargets_FreshArmedCapitalBatteries_FiresWithoutRechargeSetup()
         {
             CapitalShip ship = new()
             {
@@ -220,6 +218,59 @@ namespace Rebellion.Tests.Gameplay
             };
             ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 3, 3, 3, 3, 100 };
             TacticalCombatUnit source = new(ship, CombatSide.Attacker, 1);
+            TacticalCombatUnit target = CreateFighter(1000001, new Vector3(0, 0, 10));
+            TacticalCombatGroup group = new(10, new[] { source }, Vector3.UnitZ);
+            group.SetTarget(target);
+            TacticalCombatSpatialIndex index = new(new[] { source, target });
+            TacticalCombatFireControl fireControl = new();
+            List<TacticalCombatShot> shots = new();
+            fireControl.ShotRequested += shots.Add;
+            FixedRandomProvider random = new(new[] { 0d });
+
+            fireControl.AcquireTargets(source, group, index, random);
+
+            Assert.AreSame(target, shots.Single().Target);
+            Assert.AreEqual(TacticalWeaponType.LaserCannon, shots[0].Weapon);
+            Assert.AreEqual(0, source.Weapons.GetCharge(TacticalWeaponArc.Forward));
+            Assert.IsFalse(source.Weapons.IsReady(TacticalWeaponArc.Forward));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void AcquireTargets_DischargedBattery_FiresAgainOnlyAfterFullRecharge(bool isFighter)
+        {
+            TacticalCombatUnit source = isFighter
+                ? CreateFiringFighter()
+                : CreateCapitalUnit(3, 0, 0);
+            TacticalCombatUnit target = CreateFighter(1000001, new Vector3(0, 0, 10));
+            TacticalCombatGroup group = new(10, new[] { source }, Vector3.UnitZ);
+            group.SetTarget(target);
+            TacticalCombatSpatialIndex index = new(new[] { source, target });
+            TacticalCombatFireControl fireControl = new();
+            List<TacticalCombatShot> shots = new();
+            fireControl.ShotRequested += shots.Add;
+            FixedRandomProvider random = new(new[] { 0d });
+            float capacity = source.Weapons.GetMaximumCharge(TacticalWeaponArc.Forward);
+            fireControl.AcquireTargets(source, group, index, random);
+            Assert.AreEqual(1, shots.Count);
+
+            source.Weapons.Advance(1, capacity / 2);
+            fireControl.AcquireTargets(source, group, index, random);
+
+            Assert.AreEqual(1, shots.Count);
+            Assert.AreEqual(capacity / 2, source.Weapons.GetCharge(TacticalWeaponArc.Forward));
+
+            source.Weapons.Advance(1, capacity / 2);
+            fireControl.AcquireTargets(source, group, index, random);
+
+            Assert.AreEqual(2, shots.Count);
+            Assert.AreEqual(0, source.Weapons.GetCharge(TacticalWeaponArc.Forward));
+        }
+
+        [Test]
+        public void AcquireTargets_DisabledCapitalBatteries_DoesNotConsumeFiringOpportunity()
+        {
+            TacticalCombatUnit source = CreateCapitalUnit(3, 0, 0, weaponDamage: 4);
             TacticalCombatUnit target = CreateFighter(1000001, new Vector3(0, 0, 10));
             TacticalCombatGroup group = new(10, new[] { source }, Vector3.UnitZ);
             group.SetTarget(target);
@@ -299,12 +350,14 @@ namespace Rebellion.Tests.Gameplay
         /// <param name="ions">The ion count per battery.</param>
         /// <param name="turbolasers">The turbolaser count per battery.</param>
         /// <param name="shieldLimit">The complete shield pool.</param>
+        /// <param name="weaponDamage">The weapon-system damage carried into the encounter.</param>
         /// <returns>The campaign-backed tactical capital ship.</returns>
         private static TacticalCombatUnit CreateCapitalUnit(
             int lasers,
             int ions,
             int turbolasers,
-            int shieldLimit = 0
+            int shieldLimit = 0,
+            int weaponDamage = 0
         )
         {
             CapitalShip ship = new()
@@ -314,6 +367,7 @@ namespace Rebellion.Tests.Gameplay
                 CurrentHullStrength = 1000,
                 MaxShieldStrength = shieldLimit,
             };
+            ship.SystemDamage.Weapons = weaponDamage;
             ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[]
             {
                 lasers,
@@ -338,11 +392,7 @@ namespace Rebellion.Tests.Gameplay
                 turbolasers,
                 100,
             };
-            TacticalCombatUnit unit = new(ship, CombatSide.Attacker, 1);
-            for (int arc = 0; arc < 4; arc++)
-                unit.Weapons.ClearBattery((TacticalWeaponArc)arc);
-            unit.Weapons.Advance(1, 1);
-            return unit;
+            return new(ship, CombatSide.Attacker, 1);
         }
 
         /// <summary>

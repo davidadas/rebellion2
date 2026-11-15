@@ -150,6 +150,11 @@ namespace Rebellion.Gameplay
         public void QueueNearestTarget() => _commands.Enqueue(SelectNearestTarget);
 
         /// <summary>
+        /// Queues continuation after prior display commands and before the simulation pause guard.
+        /// </summary>
+        public void QueueImmediateResult() => _commands.Enqueue(_session.ApplyImmediateResult);
+
+        /// <summary>
         /// Queues a change between direct and automatic control without replacing selection.
         /// </summary>
         public void QueueToggleAutomation() =>

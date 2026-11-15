@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Gameplay;
 using UnityEngine;
-using Vector3N = System.Numerics.Vector3;
 
 /// <summary>
 /// Owns pooled weapon effects and their independent presentation lifetimes.
@@ -10,6 +9,7 @@ using Vector3N = System.Numerics.Vector3;
 internal sealed class TacticalCombatEffects : IDisposable
 {
     private readonly Transform _parent;
+    private readonly Func<TacticalCombatUnit, Vector3> _getPosition;
     private readonly Mesh[] _meshes;
     private readonly Material[] _materials;
     private readonly List<Beam> _active = new();
@@ -21,9 +21,16 @@ internal sealed class TacticalCombatEffects : IDisposable
     /// <param name="parent">The encounter's isolated rendering hierarchy.</param>
     /// <param name="shader">The unlit tactical effect shader.</param>
     /// <param name="battleDepth">The deployment span used by the station emitter geometry.</param>
-    public TacticalCombatEffects(Transform parent, Shader shader, float battleDepth)
+    /// <param name="getPosition">Resolves a participant's current encounter-local rendering position.</param>
+    public TacticalCombatEffects(
+        Transform parent,
+        Shader shader,
+        float battleDepth,
+        Func<TacticalCombatUnit, Vector3> getPosition
+    )
     {
         _parent = parent;
+        _getPosition = getPosition ?? throw new ArgumentNullException(nameof(getPosition));
         _meshes = new[]
         {
             CreateMesh(new[] { 0, 1, 2, 2, 1, 0 }),
@@ -84,7 +91,7 @@ internal sealed class TacticalCombatEffects : IDisposable
         };
         Beam beam = Acquire();
         beam.Configure(
-            ToUnity(shot.Source.Position),
+            _getPosition(shot.Source),
             shot.Target,
             _meshes[variant],
             _materials[color],
@@ -129,7 +136,7 @@ internal sealed class TacticalCombatEffects : IDisposable
     /// <returns>The newly active beam.</returns>
     private Beam Acquire()
     {
-        Beam beam = _available.Count > 0 ? _available.Pop() : new Beam(_parent);
+        Beam beam = _available.Count > 0 ? _available.Pop() : new Beam(_parent, _getPosition);
         beam.Root.SetActive(true);
         _active.Add(beam);
         return beam;
@@ -332,13 +339,6 @@ internal sealed class TacticalCombatEffects : IDisposable
     }
 
     /// <summary>
-    /// Converts a simulation position into an encounter-local render position.
-    /// </summary>
-    /// <param name="value">The simulation position.</param>
-    /// <returns>The render position.</returns>
-    private static Vector3 ToUnity(Vector3N value) => new(value.X, value.Y, value.Z);
-
-    /// <summary>
     /// Releases the owned objects, shared meshes, and materials.
     /// </summary>
     public void Dispose()
@@ -362,11 +362,13 @@ internal sealed class TacticalCombatEffects : IDisposable
     {
         private readonly MeshFilter _mesh;
         private readonly MeshRenderer _renderer;
+        private readonly Func<TacticalCombatUnit, Vector3> _getPosition;
         private GameObject _emitter;
         private Vector3 _origin;
         private TacticalCombatUnit _target;
         private float _duration;
         private float _elapsed;
+        private float _superlaserExtent;
         private bool _superlaser;
         public GameObject Root { get; }
 
@@ -374,8 +376,10 @@ internal sealed class TacticalCombatEffects : IDisposable
         /// Creates the reusable render object beneath the battle's isolated hierarchy.
         /// </summary>
         /// <param name="parent">The encounter's rendering root.</param>
-        public Beam(Transform parent)
+        /// <param name="getPosition">Resolves a participant's live encounter-local rendering position.</param>
+        public Beam(Transform parent, Func<TacticalCombatUnit, Vector3> getPosition)
         {
+            _getPosition = getPosition;
             Root = new GameObject("Weapon beam");
             Root.layer = PresentationLayers.TacticalCombat;
             Root.transform.SetParent(parent, false);
@@ -418,6 +422,7 @@ internal sealed class TacticalCombatEffects : IDisposable
             _target = target;
             _duration = duration;
             _elapsed = 0;
+            _superlaserExtent = 0;
             _superlaser = superlaser;
             _mesh.sharedMesh = mesh;
             _renderer.sharedMaterial = material;
@@ -439,7 +444,7 @@ internal sealed class TacticalCombatEffects : IDisposable
                 _emitter.GetComponent<MeshRenderer>().sharedMaterial = material;
             }
             _emitter?.SetActive(emitter != null);
-            Vector3 delta = ToUnity(target.Position) - origin;
+            Vector3 delta = _getPosition(target) - origin;
             Root.transform.localRotation =
                 delta.sqrMagnitude > 0 ? Quaternion.LookRotation(delta) : Quaternion.identity;
         }
@@ -454,13 +459,15 @@ internal sealed class TacticalCombatEffects : IDisposable
             _elapsed += seconds;
             if (_elapsed > _duration)
                 return false;
-            Vector3 target = ToUnity(_target.Position);
+            Vector3 target = _getPosition(_target);
             if (_superlaser)
             {
                 Vector3 delta = target - _origin;
                 if (delta.sqrMagnitude > 0)
                     Root.transform.localRotation = Quaternion.LookRotation(delta);
-                _mesh.transform.localScale = new Vector3(1, 1, delta.magnitude * _elapsed);
+                if (_superlaserExtent == 0 && _elapsed > 0)
+                    _superlaserExtent = delta.magnitude;
+                _mesh.transform.localScale = new Vector3(1, 1, _superlaserExtent * _elapsed);
             }
             else
                 Root.transform.localPosition = Vector3.LerpUnclamped(

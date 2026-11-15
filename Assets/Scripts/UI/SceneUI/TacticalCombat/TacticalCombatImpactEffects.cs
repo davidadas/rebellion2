@@ -11,6 +11,8 @@ internal sealed class TacticalCombatImpactEffects : IDisposable
 {
     private readonly Transform _parent;
     private readonly Camera _camera;
+    private readonly Func<TacticalCombatUnit, Vector3> _getPosition;
+    private readonly Func<int?> _getCloseUpPrimary;
     private readonly Dictionary<TacticalCombatEffectKind, Animation> _animations = new();
     private readonly Dictionary<TacticalCombatUnit, Visual> _visuals = new();
 
@@ -22,16 +24,23 @@ internal sealed class TacticalCombatImpactEffects : IDisposable
     /// <param name="shader">The tactical unlit shader.</param>
     /// <param name="definitions">The authored frame sequences and image anchors.</param>
     /// <param name="assets">The selected pack's media source.</param>
+    /// <param name="getPosition">Resolves a participant's current encounter-local rendering position.</param>
+    /// <param name="getCloseUpPrimary">Resolves the current category close-up's primary participant, or null.</param>
     public TacticalCombatImpactEffects(
         Transform parent,
         Camera camera,
         Shader shader,
         IReadOnlyList<TacticalCombatEffectDefinition> definitions,
-        ContentAssets assets
+        ContentAssets assets,
+        Func<TacticalCombatUnit, Vector3> getPosition,
+        Func<int?> getCloseUpPrimary
     )
     {
         _parent = parent;
         _camera = camera;
+        _getPosition = getPosition ?? throw new ArgumentNullException(nameof(getPosition));
+        _getCloseUpPrimary =
+            getCloseUpPrimary ?? throw new ArgumentNullException(nameof(getCloseUpPrimary));
         try
         {
             foreach (TacticalCombatEffectDefinition definition in definitions)
@@ -162,7 +171,14 @@ internal sealed class TacticalCombatImpactEffects : IDisposable
     public void Advance(float seconds)
     {
         foreach (KeyValuePair<TacticalCombatUnit, Visual> pair in _visuals)
-            pair.Value.Advance(seconds, pair.Key, _parent, _camera, _animations);
+            pair.Value.Advance(
+                seconds,
+                _getPosition(pair.Key),
+                _getCloseUpPrimary() == pair.Key.Index,
+                _parent,
+                _camera,
+                _animations
+            );
     }
 
     /// <summary>
@@ -174,7 +190,11 @@ internal sealed class TacticalCombatImpactEffects : IDisposable
     private void Show(TacticalCombatUnit unit, TacticalCombatEffectKind kind, int priority)
     {
         if (_animations.TryGetValue(kind, out Animation animation))
-            GetVisual(unit).Show(animation, priority);
+        {
+            Visual visual = GetVisual(unit);
+            if (visual.Show(animation, priority) && _getCloseUpPrimary() == unit.Index)
+                visual.SuppressInitialImpact(_animations);
+        }
     }
 
     /// <summary>
@@ -283,6 +303,7 @@ internal sealed class TacticalCombatImpactEffects : IDisposable
         private int _frame;
         private float _elapsed;
         private int _lockFlags;
+        private bool _lockRegistered;
         private int _lockFrame;
         private float _lockElapsed;
         public bool KeepsModelVisible => _priority == 128 && _frame < 12;
@@ -319,6 +340,11 @@ internal sealed class TacticalCombatImpactEffects : IDisposable
                 _lockFlags &= ~selector;
                 _lock = null;
                 _lockRenderer.enabled = false;
+                if (
+                    selector == 1 && (_lockFlags & 2) == 0
+                    || selector == 2 && (_lockFlags & 1) == 0
+                )
+                    _lockRegistered = false;
             }
             else
             {
@@ -326,6 +352,8 @@ internal sealed class TacticalCombatImpactEffects : IDisposable
                     return;
                 if (!animations.TryGetValue(kind, out Animation animation))
                     return;
+                if ((_lockFlags & 3) == 0)
+                    _lockRegistered = true;
                 _lockFlags |= selector;
                 _lockFrame = 0;
                 _lockElapsed = 0;
@@ -397,14 +425,15 @@ internal sealed class TacticalCombatImpactEffects : IDisposable
         /// </summary>
         /// <param name="animation">The shared authored sequence.</param>
         /// <param name="priority">The effect's precedence and family bits.</param>
-        public void Show(Animation animation, int priority)
+        /// <returns>Whether the requested effect replaced the current sequence.</returns>
+        public bool Show(Animation animation, int priority)
         {
             if (
                 priority <= _priority
                 || (priority & 0x70) != 0 && (_priority & 0x70) != 0
                 || (priority & 12) != 0 && (_priority & 12) != 0
             )
-                return;
+                return false;
             _impact = animation;
             _priority = priority;
             _frame = 0;
@@ -412,25 +441,40 @@ internal sealed class TacticalCombatImpactEffects : IDisposable
             _impactMesh.sharedMesh = animation.Mesh;
             _impactRenderer.sharedMaterial = animation.Frames[0];
             _impactRenderer.enabled = true;
+            return true;
+        }
+
+        /// <summary>
+        /// Leaves a newly admitted close-up impact unattached while clearing both lock selectors.
+        /// </summary>
+        /// <param name="animations">The encounter's authored impact and lock animations.</param>
+        public void SuppressInitialImpact(
+            IReadOnlyDictionary<TacticalCombatEffectKind, Animation> animations
+        )
+        {
+            _impactRenderer.enabled = false;
+            SetLock(TacticalCombatEffectKind.TractorRestraint, false, animations);
+            SetLock(TacticalCombatEffectKind.GravityLock, false, animations);
         }
 
         /// <summary>
         /// Advances the frame-driven impact sequence with its independent presentation timer.
         /// </summary>
         /// <param name="seconds">The unscaled frame interval.</param>
-        /// <param name="unit">The moving effect owner.</param>
+        /// <param name="position">The moving effect owner's live encounter-local rendering position.</param>
+        /// <param name="isCloseUpPrimary">Whether the category close-up currently owns this participant.</param>
         /// <param name="parent">The encounter's coordinate frame.</param>
         /// <param name="camera">The battle camera.</param>
         /// <param name="animations">The encounter's authored impact and lock animations.</param>
         public void Advance(
             float seconds,
-            TacticalCombatUnit unit,
+            Vector3 position,
+            bool isCloseUpPrimary,
             Transform parent,
             Camera camera,
             IReadOnlyDictionary<TacticalCombatEffectKind, Animation> animations
         )
         {
-            Vector3 position = new(unit.Position.X, unit.Position.Y, unit.Position.Z);
             _root.transform.localPosition = position;
             _root.transform.rotation = camera.transform.rotation;
             Vector3 towardCamera = (
@@ -438,7 +482,7 @@ internal sealed class TacticalCombatImpactEffects : IDisposable
             ).normalized;
             _impactMesh.transform.position = parent.TransformPoint(position + towardCamera);
             _lockMesh.transform.position = parent.TransformPoint(position - towardCamera);
-            if (_lockFlags != 0)
+            if (_lockRegistered)
             {
                 _lockElapsed += seconds;
                 if (_lockElapsed > .1f)
@@ -458,6 +502,15 @@ internal sealed class TacticalCombatImpactEffects : IDisposable
             }
             if (_impact != null)
             {
+                if (_impactRenderer.enabled && isCloseUpPrimary)
+                {
+                    _priority = 0;
+                    _impact = null;
+                    _impactRenderer.enabled = false;
+                    _frame = 0;
+                    _lockFlags = 0;
+                    return;
+                }
                 _elapsed += seconds;
                 if (_frame >= _impact.Frames.Length)
                 {

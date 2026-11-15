@@ -53,18 +53,13 @@ namespace Rebellion.Gameplay
                     (double)_strengths[arc, 0] + _strengths[arc, 1] + _strengths[arc, 2]
                 );
                 _charge[arc] = total;
+                _maximumCharge[arc] = total;
                 _ready[arc] = 1;
                 _rechargeOrder[arc] = -1;
                 if (isFighter || total <= 0)
                     continue;
-                if (weaponDamage < 4)
-                {
-                    _ready[arc] = unchecked((uint)BitConverter.SingleToInt32Bits(total));
-                }
-                else
-                {
+                if (weaponDamage >= 4)
                     ClearBattery((TacticalWeaponArc)arc);
-                }
             }
         }
 
@@ -220,7 +215,10 @@ namespace Rebellion.Gameplay
                 int arc = _rechargeOrder[order];
                 double remaining = (double)_maximumCharge[arc] - _charge[arc];
                 if (double.IsNaN(remaining) || available < remaining)
+                {
                     _charge[arc] = (float)(available + _charge[arc]);
+                    available = 0;
+                }
                 else
                 {
                     _charge[arc] = _maximumCharge[arc];
@@ -229,16 +227,15 @@ namespace Rebellion.Gameplay
                 }
             }
 
+            int pending = 0;
             for (int order = 0; order < _rechargeCount; order++)
             {
                 if (_ready[_rechargeOrder[order]] != 1)
-                    continue;
-                for (int shift = order; shift < 3; shift++)
-                    _rechargeOrder[shift] = _rechargeOrder[shift + 1];
-                if (_rechargeCount == 4)
-                    _rechargeOrder[3] = 0;
-                _rechargeCount--;
+                    _rechargeOrder[pending++] = _rechargeOrder[order];
             }
+            for (int order = pending; order < _rechargeCount; order++)
+                _rechargeOrder[order] = -1;
+            _rechargeCount = pending;
         }
 
         /// <summary>

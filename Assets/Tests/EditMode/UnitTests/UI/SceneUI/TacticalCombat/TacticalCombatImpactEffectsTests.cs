@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Results;
@@ -18,6 +19,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         private TacticalCombatImpactEffects _effects;
         private ContentAssets _assets;
         private TacticalCombatDefinition _definition;
+        private readonly Dictionary<TacticalCombatUnit, Vector3> _positions = new();
+        private int? _closeUpPrimary;
 
         /// <summary>
         /// Enters an isolated scene and loads the pack-authored animation resources.
@@ -32,6 +35,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             _assets = new ContentAssets(pack.FileResolver);
             _definition = pack.GameData.TacticalCombat;
             _root = new GameObject("Impact test");
+            _positions.Clear();
+            _closeUpPrimary = null;
             GameObject camera = new GameObject("Camera", typeof(Camera));
             camera.transform.SetParent(_root.transform, false);
             _effects = new TacticalCombatImpactEffects(
@@ -39,7 +44,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 camera.GetComponent<Camera>(),
                 Shader.Find("Rebellion/Tactical fighter"),
                 _definition.Effects,
-                _assets
+                _assets,
+                GetPresentationPosition,
+                () => _closeUpPrimary
             );
         }
 
@@ -142,6 +149,81 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             for (int frame = 0; frame <= count; frame++)
                 _effects.Advance(1f / 60);
             Assert.IsFalse(_root.GetComponentInChildren<MeshRenderer>().enabled);
+        }
+
+        [Test]
+        public void ShowDestruction_CloseUpPrimary_ClearsLocksAndRetainsHiddenSequence()
+        {
+            TacticalCombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
+            _closeUpPrimary = unit.Index;
+            _effects.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, true);
+
+            _effects.ShowDestruction(unit);
+
+            Assert.IsFalse(GetImpactRenderer().enabled);
+            Assert.IsFalse(GetLockRenderer().enabled);
+            Assert.IsTrue(_effects.KeepsModelVisible(unit));
+            _closeUpPrimary = null;
+            for (int frame = 0; frame < 11; frame++)
+                _effects.Advance(1f / 60);
+            Assert.IsFalse(GetImpactRenderer().enabled);
+            Assert.IsTrue(_effects.KeepsModelVisible(unit));
+            _effects.Advance(1f / 60);
+            Assert.IsFalse(_effects.KeepsModelVisible(unit));
+        }
+
+        [Test]
+        public void ShowImpact_RejectedCloseUpRequest_PreservesActiveImpactAndLock()
+        {
+            TacticalCombatShot shot = CreateShot(TacticalWeaponType.LaserCannon);
+            _effects.SetLock(shot.Target, TacticalCombatEffectKind.GravityLock, true);
+            _effects.ShowDestruction(shot.Target);
+            _closeUpPrimary = shot.Target.Index;
+
+            _effects.ShowImpact(shot.Target, shot.Weapon, TacticalCombatImpactKind.Shield);
+
+            Assert.IsTrue(GetImpactRenderer().enabled);
+            Assert.IsTrue(GetLockRenderer().enabled);
+        }
+
+        [Test]
+        public void Advance_NewCloseUpPrimary_ReleasesImpactPriorityAndRetainsRegisteredLoop()
+        {
+            TacticalCombatShot shot = CreateShot(TacticalWeaponType.LaserCannon);
+            _effects.SetLock(shot.Target, TacticalCombatEffectKind.TractorRestraint, true);
+            _effects.ShowDestruction(shot.Target);
+            _effects.Advance(.101f);
+            _effects.Advance(.101f);
+            _closeUpPrimary = shot.Target.Index;
+
+            _effects.Advance(.101f);
+
+            Assert.IsFalse(GetImpactRenderer().enabled);
+            Assert.IsFalse(_effects.KeepsModelVisible(shot.Target));
+            Assert.IsTrue(GetLockRenderer().enabled);
+            _closeUpPrimary = null;
+            _effects.RestartLocks(shot.Target);
+            _effects.ShowImpact(shot.Target, shot.Weapon, TacticalCombatImpactKind.Shield);
+            _effects.Advance(.101f);
+            Assert.IsTrue(GetImpactRenderer().enabled);
+            Assert.AreSame(
+                GetLockFrame(TacticalCombatEffectKind.TractorRestraint, 3),
+                GetLockRenderer().sharedMaterial.mainTexture
+            );
+        }
+
+        [Test]
+        public void ShowImpact_DifferentCloseUpPrimary_PreservesImpactAndLock()
+        {
+            TacticalCombatShot shot = CreateShot(TacticalWeaponType.LaserCannon);
+            _closeUpPrimary = shot.Source.Index;
+            _effects.SetLock(shot.Target, TacticalCombatEffectKind.GravityLock, true);
+
+            _effects.ShowImpact(shot.Target, shot.Weapon, TacticalCombatImpactKind.Shield);
+            _effects.Advance(0);
+
+            Assert.IsTrue(GetImpactRenderer().enabled);
+            Assert.IsTrue(GetLockRenderer().enabled);
         }
 
         [Test]
@@ -303,6 +385,28 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             );
         }
 
+        [Test]
+        public void Advance_TemporaryPresentationPose_KeepsImpactsAndLocksWithPresentedCapital()
+        {
+            TacticalCombatShot shot = CreateShot(TacticalWeaponType.LaserCannon);
+            shot.Target.Position = new System.Numerics.Vector3(0, 0, 10);
+            _positions[shot.Target] = new Vector3(0, 0, 20);
+            _effects.SetLock(shot.Target, TacticalCombatEffectKind.TractorRestraint, true);
+            _effects.ShowImpact(shot.Target, shot.Weapon, TacticalCombatImpactKind.Shield);
+
+            _effects.Advance(0);
+
+            Assert.AreEqual(new Vector3(0, 0, 21), GetLockRenderer().transform.position);
+            Assert.AreEqual(
+                new Vector3(0, 0, 19),
+                _root
+                    .GetComponentsInChildren<MeshRenderer>(true)
+                    .Single(renderer => renderer.name == "Impact")
+                    .transform.position
+            );
+            Assert.AreEqual(new System.Numerics.Vector3(0, 0, 10), shot.Target.Position);
+        }
+
         /// <summary>
         /// Finds the independently controlled loop billboard.
         /// </summary>
@@ -311,6 +415,15 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             _root
                 .GetComponentsInChildren<MeshRenderer>(true)
                 .Single(renderer => renderer.name == "Lock");
+
+        /// <summary>
+        /// Gets the attached one-shot impact image for presentation assertions.
+        /// </summary>
+        /// <returns>The impact image's renderer.</returns>
+        private MeshRenderer GetImpactRenderer() =>
+            _root
+                .GetComponentsInChildren<MeshRenderer>(true)
+                .Single(renderer => renderer.name == "Impact");
 
         /// <summary>
         /// Resolves one authored loop frame through the active content cache.
@@ -322,6 +435,16 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             _assets.GetTexture(
                 _definition.Effects.Single(definition => definition.Kind == kind).FramePaths[frame]
             );
+
+        /// <summary>
+        /// Resolves explicit temporary poses while retaining ordinary fixture positions elsewhere.
+        /// </summary>
+        /// <param name="unit">The test participant.</param>
+        /// <returns>The encounter-local rendering position.</returns>
+        private Vector3 GetPresentationPosition(TacticalCombatUnit unit) =>
+            _positions.TryGetValue(unit, out Vector3 position)
+                ? position
+                : new Vector3(unit.Position.X, unit.Position.Y, unit.Position.Z);
 
         /// <summary>
         /// Creates a capital discharge without mutating either campaign unit.

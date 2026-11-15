@@ -66,6 +66,8 @@ Ctrl to extend or toggle it. Right-click addresses an object or visible navigati
 the current command context. Use the category buttons or number keys 1-8 for object groups and
 Space for the nearest opposing object. The Pause button pauses and resumes the battle.
 Tab advances inspection once per press; Shift+Tab inspects the previous object.
+Orders and Tactics open with the addressed group's current settings. Confirming an unchanged
+panel preserves its order and engagement mode.
 
 The camera buttons and arrow keys rotate or tilt the view. Page Up and Page Down zoom; Home saves
 the primary camera and End restores it. Return focuses the current selection. F1-F12 open category
@@ -77,6 +79,18 @@ camera views. Opening Options isolates battle input and returns to a paused enco
 models, effects, and render targets. Required media finishes loading before the session advances.
 The shared content caches retain source assets; disposing the encounter releases its presentation
 instances and audio handles.
+
+Operational weapon batteries enter combat charged. A unit shares its recharge budget across
+depleted batteries in queue order. Ion hits beyond shields accumulate the selected attack and
+movement delays and discharge the selected batteries. Damage control includes weapon damage
+already present when the encounter starts.
+
+Get immediate result ends interactive combat and imports its losses before the existing automatic
+encounter resolver settles the surviving forces. The campaign receives one combined result and
+resumes after all pending encounters have been resolved.
+
+Battle-station fighter attacks announce approach and attack entry. Alliance calls also reflect
+fighter category, outcome, and timed progress; Empire views use the approach and start cues.
 
 A pack selects its definition XML with `TacticalCombatDefinitionsPath` in `pack.xml`. It contains
 faction deployment, unit geometry and model detail paths, fighter images, environments, sound

@@ -476,6 +476,41 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         }
 
         [UnityTest]
+        public IEnumerator ShowShot_StationTarget_UsesLogicalFrameWithoutMovingBackgroundBillboard()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
+            yield return PrepareRenderer(encounter, pack);
+            TacticalCombatUnit station = encounter.Units.Single(item => item.IsBattleStation);
+            TacticalCombatUnit source = encounter.Units.First(item =>
+                !item.IsBattleStation && !item.IsFighter
+            );
+            Transform stationRoot = view
+                .Renderer.GetComponentsInChildren<Transform>(true)
+                .Single(item => item.name == station.InstanceID);
+            Transform sourceRoot = view
+                .Renderer.GetComponentsInChildren<Transform>(true)
+                .Single(item => item.name == source.InstanceID);
+            Vector3 billboardPosition = stationRoot.localPosition;
+            Assert.That(billboardPosition.sqrMagnitude, Is.GreaterThan(1));
+
+            view.Renderer.ShowShot(
+                new TacticalCombatShot(source, station, TacticalWeaponType.LaserCannon, 1),
+                0
+            );
+            view.Renderer.AdvanceEffects(.5f);
+
+            Transform beam = view
+                .Renderer.GetComponentsInChildren<Transform>(true)
+                .Single(item => item.name == "Weapon beam");
+            Assert.That(
+                Vector3.Distance(sourceRoot.localPosition * .5f, beam.localPosition),
+                Is.LessThan(.0001f)
+            );
+            Assert.AreEqual(billboardPosition, stationRoot.localPosition);
+        }
+
+        [UnityTest]
         public IEnumerator Focus_ArrivalTransform_AimsAtLiveRenderPoseWithoutMovingSimulation()
         {
             ContentPack pack = ContentPackLoader.OpenActive();
@@ -552,6 +587,92 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 ),
                 Is.LessThan(0.003f)
             );
+        }
+
+        [UnityTest]
+        public IEnumerator ShowImpact_CategoryCloseUp_SuppressesPrimaryWithoutSuppressingOrdinaryFocus()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
+            yield return PrepareRenderer(encounter, pack);
+            TacticalCombatUnit unit = encounter
+                .GetObjectGroup(encounter.PlayerSide, 0)
+                .PrimaryMember;
+            view.Renderer.Focus(unit);
+            view.Renderer.ShowImpact(
+                unit,
+                TacticalWeaponType.LaserCannon,
+                TacticalCombatImpactKind.Shield
+            );
+            view.Renderer.AdvanceEffects(0);
+            MeshRenderer impact = view
+                .Renderer.GetComponentsInChildren<MeshRenderer>(true)
+                .Single(item => item.name == "Impact");
+            Assert.IsTrue(impact.enabled);
+
+            Assert.IsTrue(view.Renderer.ShowCategory(0));
+            view.Renderer.AdvanceEffects(0);
+
+            Assert.IsFalse(impact.enabled);
+            view.Renderer.ShowImpact(
+                unit,
+                TacticalWeaponType.LaserCannon,
+                TacticalCombatImpactKind.Shield
+            );
+            Assert.IsFalse(impact.enabled);
+            view.Renderer.Focus(unit);
+            view.Renderer.ShowImpact(
+                unit,
+                TacticalWeaponType.LaserCannon,
+                TacticalCombatImpactKind.Hull
+            );
+            view.Renderer.AdvanceEffects(0);
+            Assert.IsTrue(impact.enabled);
+        }
+
+        [UnityTest]
+        public IEnumerator ShowImpact_InspectedPrimaryChangesBeforeCameraRefresh_ResolvesLiveCategoryOwner()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            TacticalCombatSession encounter = CreateEncounter(
+                pack.GameData,
+                allCapitalsPlayer: true
+            );
+            yield return PrepareRenderer(encounter, pack);
+            TacticalCombatUnit previous = encounter
+                .GetObjectGroup(encounter.PlayerSide, 0)
+                .PrimaryMember;
+            TacticalCombatUnit current = encounter
+                .GetObjectGroup(encounter.PlayerSide, 1)
+                .PrimaryMember;
+            Assert.IsTrue(view.Renderer.ShowCategory(0));
+            Vector3 cameraPosition = view.Renderer.Camera.transform.position;
+            view.Renderer.ShowImpact(
+                previous,
+                TacticalWeaponType.LaserCannon,
+                TacticalCombatImpactKind.Shield
+            );
+            encounter.Selection.QueueObjectCategory(1);
+            encounter.Selection.ProcessPendingCommands();
+            Assert.AreSame(current, encounter.Selection.PrimaryUnit);
+
+            view.Renderer.ShowImpact(
+                current,
+                TacticalWeaponType.LaserCannon,
+                TacticalCombatImpactKind.Shield
+            );
+
+            Assert.IsFalse(
+                view.Renderer.GetComponentsInChildren<MeshRenderer>(true)
+                    .Any(item => item.name == "Impact" && item.enabled)
+            );
+            view.Renderer.ShowDestruction(previous);
+            Assert.AreEqual(
+                1,
+                view.Renderer.GetComponentsInChildren<MeshRenderer>(true)
+                    .Count(item => item.name == "Impact" && item.enabled)
+            );
+            Assert.AreEqual(cameraPosition, view.Renderer.Camera.transform.position);
         }
 
         [UnityTest]
@@ -758,6 +879,58 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             );
             Assert.AreEqual(position, unit.Position);
             Assert.AreNotEqual(new Vector3(position.X, position.Y, position.Z), root.localPosition);
+        }
+
+        [UnityTest]
+        public IEnumerator ShowShotAndImpact_DepartingTarget_FollowsPresentationWithoutMovingSimulation()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
+            yield return PrepareRenderer(encounter, pack);
+            TacticalCombatUnit source = encounter.GetUnit("CSEM006");
+            TacticalCombatUnit target = encounter.GetUnit("ALCS008");
+            Vector3N canonical = target.Position;
+            target.Status = TacticalCombatUnitStatus.EnteringHyperspace;
+            target.HyperspaceMilliseconds = 1500;
+
+            view.Renderer.ShowShot(
+                new TacticalCombatShot(source, target, TacticalWeaponType.LaserCannon, 50),
+                1
+            );
+            view.Renderer.ShowImpact(
+                target,
+                TacticalWeaponType.LaserCannon,
+                TacticalCombatImpactKind.Shield
+            );
+            view.Renderer.AdvanceEffects(.5f);
+
+            Transform[] objects = view.Renderer.GetComponentsInChildren<Transform>(true);
+            Transform sourceRoot = objects.Single(item => item.name == source.InstanceID);
+            Transform targetRoot = objects.Single(item => item.name == target.InstanceID);
+            Transform beam = objects.Single(item => item.name == "Weapon beam");
+            Assert.AreNotEqual(
+                new Vector3(canonical.X, canonical.Y, canonical.Z),
+                targetRoot.localPosition
+            );
+            Assert.AreEqual(
+                (sourceRoot.localPosition + targetRoot.localPosition) * .5f,
+                beam.localPosition
+            );
+            Vector3 cameraPosition = targetRoot.parent.InverseTransformPoint(
+                view.Renderer.Camera.transform.position
+            );
+            Vector3 towardCamera = (cameraPosition - targetRoot.localPosition).normalized;
+            Vector3 expectedImpact = targetRoot.parent.TransformPoint(
+                targetRoot.localPosition + towardCamera
+            );
+            Assert.Less(
+                Vector3.Distance(
+                    expectedImpact,
+                    objects.Single(item => item.name == "Impact").position
+                ),
+                .0001f
+            );
+            Assert.AreEqual(canonical, target.Position);
         }
 
         [UnityTest]
@@ -1234,6 +1407,107 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 view.Renderer.GetComponentsInChildren<Transform>(true)
                     .Any(item => item.name == "Lock")
             );
+        }
+
+        [UnityTest]
+        public IEnumerator ConfirmPanel_UnchangedGroupEditors_PreservesMissionAndTarget()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
+            yield return PrepareEmpireGroupSelection(encounter, pack);
+            TacticalCombatGroup group = encounter.Groups.First(item =>
+                item.Side == encounter.PlayerSide && !item.IsFighterGroup
+            );
+            TacticalCombatUnit target = encounter.Units.First(item =>
+                item.Side != encounter.PlayerSide && !item.IsFighter && !item.IsBattleStation
+            );
+            encounter.SetObjectGroup(encounter.PlayerSide, 0, group);
+            encounter.SetOrder(group, TacticalCombatOrder.AttackFighters);
+            encounter.SetTarget(group, target);
+            encounter.Selection.QueueObjectCategory(0);
+            controller.Advance(0);
+            Assert.AreSame(group, encounter.Selection.Group);
+
+            foreach (
+                TacticalCombatControl editor in new[]
+                {
+                    TacticalCombatControl.OpenOrders,
+                    TacticalCombatControl.OpenTactics,
+                }
+            )
+            {
+                PressControl(editor);
+                PressControl(TacticalCombatControl.ConfirmPanel);
+                controller.Advance(0);
+
+                Assert.AreEqual(TacticalCombatOrder.AttackFighters, group.Order);
+                Assert.AreSame(target, group.RequestedTargets.Single());
+                Assert.AreSame(group, encounter.Selection.Group);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator ConfirmPanel_AttackModeOnly_PreservesMissionAndTarget()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
+            yield return PrepareEmpireGroupSelection(encounter, pack);
+            TacticalCombatGroup group = encounter.Groups.First(item =>
+                item.Side == encounter.PlayerSide && !item.IsFighterGroup
+            );
+            TacticalCombatUnit target = encounter.Units.First(item =>
+                item.Side != encounter.PlayerSide && !item.IsFighter && !item.IsBattleStation
+            );
+            encounter.SetObjectGroup(encounter.PlayerSide, 0, group);
+            encounter.SetOrder(group, TacticalCombatOrder.AttackFighters);
+            encounter.SetTarget(group, target);
+            encounter.Selection.QueueObjectCategory(0);
+            controller.Advance(0);
+            bool closeAttack = group.CloseAttack;
+
+            PressControl(TacticalCombatControl.OpenTactics);
+            PressControl(TacticalCombatControl.CloseAttack);
+            PressControl(TacticalCombatControl.ConfirmPanel);
+            controller.Advance(0);
+
+            Assert.AreEqual(!closeAttack, group.CloseAttack);
+            Assert.AreEqual(TacticalCombatOrder.AttackFighters, group.Order);
+            Assert.AreSame(target, group.RequestedTargets.Single());
+        }
+
+        [UnityTest]
+        public IEnumerator HandleControl_ImmediateResultWhilePaused_QueuesOneCompletion()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
+            yield return PrepareEmpireGroupSelection(encounter, pack);
+            int completed = 0;
+            encounter.Completed += () => completed++;
+
+            PressControl(TacticalCombatControl.OpenMenu);
+            PressControl(TacticalCombatControl.ResolveImmediately);
+            Assert.IsFalse(encounter.IsComplete);
+            controller.Advance(0);
+
+            Assert.IsTrue(encounter.IsComplete);
+            Assert.IsTrue(encounter.ImmediateResultRequested);
+            Assert.AreEqual(1, completed);
+        }
+
+        /// <summary>
+        /// Activates one currently presented HUD control through its click event.
+        /// </summary>
+        /// <param name="control">The visible semantic control to press.</param>
+        private void PressControl(TacticalCombatControl control)
+        {
+            TacticalCombatHudButton button = view.GetComponentsInChildren<TacticalCombatHudButton>(
+                    true
+                )
+                .Single(item =>
+                    item.name == control.ToString() && item.gameObject.activeInHierarchy
+                );
+            Assert.IsTrue(button.interactable);
+            button.onClick.Invoke();
         }
 
         /// <summary>

@@ -59,12 +59,12 @@ namespace Rebellion.Gameplay
         public bool IsRepair => Kind == TacticalSystemEventKind.Repair;
 
         /// <summary>
-        /// Gets the attack timer increment, or null when its value is unresolved.
+        /// Gets the attack timer increment for disruption, or null for a component change.
         /// </summary>
         public float? AttackDelay { get; }
 
         /// <summary>
-        /// Gets the movement timer increment, or null when its value is unresolved.
+        /// Gets the movement timer increment for disruption, or null for a component change.
         /// </summary>
         public float? MovementDelay { get; }
         public int DischargedArcMask { get; }
@@ -95,19 +95,6 @@ namespace Rebellion.Gameplay
             Kind = TacticalSystemEventKind.Disruption;
             AttackDelay = attackDelay;
             MovementDelay = movementDelay;
-            DischargedArcMask = dischargedArcMask;
-        }
-
-        /// <summary>
-        /// Creates a disruption event with known battery changes and unresolved timer increments.
-        /// </summary>
-        /// <param name="dischargedArcMask">The batteries whose charge must be cleared.</param>
-        public TacticalSystemEvent(int dischargedArcMask)
-        {
-            System = TacticalShipSystem.Weapons;
-            Kind = TacticalSystemEventKind.Disruption;
-            AttackDelay = null;
-            MovementDelay = null;
             DischargedArcMask = dischargedArcMask;
         }
     }
@@ -216,6 +203,7 @@ namespace Rebellion.Gameplay
                 _damageEventCount =
                     _componentDamage[(int)TacticalShipSystem.Engines]
                     + _componentDamage[(int)TacticalShipSystem.Shields]
+                    + _componentDamage[(int)TacticalShipSystem.Weapons]
                     + _componentDamage[(int)TacticalShipSystem.Hyperdrive]
                     + _componentDamage[(int)TacticalShipSystem.TractorBeam];
             }
@@ -692,31 +680,27 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Requests known battery changes after ion damage while retaining unresolved timer increments.
+        /// Requests accumulated attack and movement delays and the selected batteries after ion damage.
         /// </summary>
         /// <param name="excessDamage">The ion strength past the shields.</param>
         /// <param name="random">The battle's random-number stream.</param>
         private void RequestIonDisruption(float excessDamage, IRandomNumberProvider random)
         {
-            float firstAccumulator = 0;
-            float secondAccumulator = 0;
+            float attackDelay = 0;
+            float movementDelay = 0;
             int arcs = 0;
             while (excessDamage > 0)
             {
                 int component = random.NextInt(1, 11);
                 if (component == 1)
-                    firstAccumulator = (float)((double)random.NextInt(30, 51) + firstAccumulator);
+                    attackDelay = (float)((double)random.NextInt(30, 51) + attackDelay);
                 else if (component == 2)
-                    secondAccumulator = (float)((double)random.NextInt(30, 51) + secondAccumulator);
+                    movementDelay = (float)((double)random.NextInt(30, 51) + movementDelay);
                 else
                     arcs |= 1 << ((component - 3) >> 1);
                 excessDamage = (float)((double)excessDamage - 1);
             }
-            int dischargedArcMask =
-                (unchecked((uint)BitConverter.SingleToInt32Bits(firstAccumulator)) == 1 ? 1 : 0)
-                | (unchecked((uint)BitConverter.SingleToInt32Bits(secondAccumulator)) == 1 ? 2 : 0)
-                | ((arcs & 3) << 2);
-            SystemEventRequested?.Invoke(new TacticalSystemEvent(dischargedArcMask));
+            SystemEventRequested?.Invoke(new TacticalSystemEvent(attackDelay, movementDelay, arcs));
         }
 
         /// <summary>

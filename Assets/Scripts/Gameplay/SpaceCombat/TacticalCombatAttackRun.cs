@@ -26,9 +26,12 @@ namespace Rebellion.Gameplay
     {
         private readonly IRandomNumberProvider _random;
         private readonly Func<float> _commandBudget;
+        private readonly int _playerFactionIndex;
         private readonly List<TacticalCombatUnit> _candidates = new();
         private readonly Dictionary<TacticalCombatUnit, Pools> _entryPools = new();
         private bool _transitionPending;
+        private bool _approachAnnounced;
+        private bool _candidateDecayed;
         private int _progressNotice;
         public TacticalCombatGroup Group { get; }
         public TacticalCombatAttackRunState State { get; private set; } =
@@ -47,6 +50,7 @@ namespace Rebellion.Gameplay
         public event Action<TacticalCombatUnit> UnitDestroyed;
         public event Action<TacticalCombatUnit> UnitParticipationChanged;
         public event Action<TacticalCombatAttackRun, int> ProgressChanged;
+        public event Action<int> NotificationRequested;
         public event Action<TacticalCombatAttackRun> MovieRequested;
         public event Action<TacticalCombatGroup, TacticalCombatOrder> OrderRequested;
 
@@ -56,16 +60,21 @@ namespace Rebellion.Gameplay
         /// <param name="group">The attacking fighter group.</param>
         /// <param name="random">The battle's attack-selection stream.</param>
         /// <param name="commandBudget">The live fighter command budget.</param>
+        /// <param name="playerFactionIndex">The faction whose command notifications are selected.</param>
         public TacticalCombatAttackRun(
             TacticalCombatGroup group,
             IRandomNumberProvider random,
-            Func<float> commandBudget
+            Func<float> commandBudget,
+            int playerFactionIndex
         )
         {
             Group = group ?? throw new ArgumentNullException(nameof(group));
             this._random = random ?? throw new ArgumentNullException(nameof(random));
             this._commandBudget =
                 commandBudget ?? throw new ArgumentNullException(nameof(commandBudget));
+            if (playerFactionIndex is not 0 and not 1)
+                throw new ArgumentOutOfRangeException(nameof(playerFactionIndex));
+            _playerFactionIndex = playerFactionIndex;
             if (!group.IsFighterGroup)
                 throw new ArgumentException(
                     "An attack run requires a fighter group.",
@@ -94,6 +103,7 @@ namespace Rebellion.Gameplay
         /// <param name="elapsedMilliseconds">The elapsed system interval.</param>
         public void Advance(float elapsedMilliseconds)
         {
+            AnnounceApproach();
             if (
                 _transitionPending
                 || State
@@ -102,7 +112,16 @@ namespace Rebellion.Gameplay
             )
                 return;
             if (_progressNotice < 9 && RemainingMilliseconds <= 120000 - _progressNotice * 12000)
-                ProgressChanged?.Invoke(this, _progressNotice++);
+            {
+                int notice = _progressNotice++;
+                if (_playerFactionIndex == 0)
+                {
+                    int? message = GetProgressMessage(notice);
+                    if (message.HasValue)
+                        NotificationRequested?.Invoke(message.Value);
+                }
+                ProgressChanged?.Invoke(this, notice);
+            }
             RemainingMilliseconds -= elapsedMilliseconds;
             if (RemainingMilliseconds <= 0)
             {
@@ -126,6 +145,7 @@ namespace Rebellion.Gameplay
             _transitionPending = false;
             if (state == TacticalCombatAttackRunState.Starting)
             {
+                AnnounceApproach();
                 _entryPools.Clear();
                 foreach (TacticalCombatUnit unit in Group.Members)
                 {
@@ -134,6 +154,10 @@ namespace Rebellion.Gameplay
                     UnitParticipationChanged?.Invoke(unit);
                 }
                 RemainingMilliseconds = 120000;
+                _progressNotice = 0;
+                NotificationRequested?.Invoke(
+                    _playerFactionIndex == 0 ? GetCategoryMessage(314, 302, 306, 310) : 285
+                );
                 SelectSurvivor();
             }
             else if (state == TacticalCombatAttackRunState.Succeeded)
@@ -158,6 +182,8 @@ namespace Rebellion.Gameplay
             }
             else if (state == TacticalCombatAttackRunState.Failed)
             {
+                if (_playerFactionIndex == 0)
+                    NotificationRequested?.Invoke(GetCategoryMessage(315, 303, 307, 311));
                 MovieRequested?.Invoke(this);
                 foreach (TacticalCombatUnit member in new List<TacticalCombatUnit>(Group.Members))
                     UnitDestroyed?.Invoke(member);
@@ -176,6 +202,7 @@ namespace Rebellion.Gameplay
         /// </summary>
         private void SelectSurvivor()
         {
+            _candidateDecayed = false;
             _candidates.Clear();
             for (int index = 0; index < Group.Members.Count; index++)
                 _candidates.Add(Group.Members[index]);
@@ -187,6 +214,7 @@ namespace Rebellion.Gameplay
                 int maneuver = (int)unit.GetManeuverability();
                 if (maneuver < _random.NextInt(1, 11))
                 {
+                    _candidateDecayed = true;
                     int fighters = (int)(unit.Systems.Hull / 8);
                     unit.Systems.ApplyHullLoss(
                         fighters <= 1 ? 100000 : _random.NextInt(1, fighters + 1) * 8
@@ -216,6 +244,60 @@ namespace Rebellion.Gameplay
             State = TacticalCombatAttackRunState.Failing;
             RemainingMilliseconds = 120000;
             _candidates.Clear();
+        }
+
+        /// <summary>
+        /// Requests the approach cue once before this helper's first update or attack entry.
+        /// </summary>
+        private void AnnounceApproach()
+        {
+            if (_approachAnnounced)
+                return;
+            _approachAnnounced = true;
+            NotificationRequested?.Invoke(
+                _playerFactionIndex == 0 ? GetCategoryMessage(313, 301, 305, 309) : 277
+            );
+        }
+
+        /// <summary>
+        /// Resolves the fighter category's command message while retaining its registration label.
+        /// </summary>
+        /// <param name="first">The first category's message.</param>
+        /// <param name="second">The second category's message.</param>
+        /// <param name="third">The third category's message.</param>
+        /// <param name="fourth">The fourth category's message.</param>
+        /// <returns>The addressed category's message.</returns>
+        private int GetCategoryMessage(int first, int second, int third, int fourth) =>
+            Group.FighterCategory switch
+            {
+                0 => first,
+                1 => second,
+                2 => third,
+                _ => fourth,
+            };
+
+        /// <summary>
+        /// Selects a timed Alliance progress cue from the chosen outcome and candidate-loss sequence.
+        /// Empire command notifications have no timed progress schedule.
+        /// </summary>
+        /// <param name="index">The due progress threshold, from zero through eight.</param>
+        /// <returns>The progress message, or null for a silent threshold.</returns>
+        private int? GetProgressMessage(int index)
+        {
+            bool losses = _candidateDecayed || State == TacticalCombatAttackRunState.Failing;
+            return index switch
+            {
+                0 => 286,
+                1 => losses ? 291 : 287,
+                2 => losses ? 292 : 288,
+                3 => losses ? 293 : 296,
+                4 => losses ? 298 : 289,
+                5 => losses ? 299 : 290,
+                6 => losses ? 294 : 297,
+                7 => State == TacticalCombatAttackRunState.Failing ? 300 : null,
+                8 => State == TacticalCombatAttackRunState.Failing ? 295 : null,
+                _ => null,
+            };
         }
 
         /// <summary>

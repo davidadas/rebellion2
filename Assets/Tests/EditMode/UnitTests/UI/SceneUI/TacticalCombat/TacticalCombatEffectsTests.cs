@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -15,6 +16,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
     {
         private GameObject _root;
         private TacticalCombatEffects _effects;
+        private readonly Dictionary<TacticalCombatUnit, Vector3> _positions = new();
 
         /// <summary>
         /// Creates an isolated effects owner using the authored tactical shader.
@@ -26,10 +28,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             yield return new EnterPlayMode();
             _root = new GameObject("Effects test");
+            _positions.Clear();
             _effects = new TacticalCombatEffects(
                 _root.transform,
                 Shader.Find("Rebellion/Tactical fighter"),
-                100
+                100,
+                GetPresentationPosition
             );
         }
 
@@ -103,6 +107,84 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             );
         }
 
+        [Test]
+        public void ShowShot_TemporaryPresentationPose_UsesPresentedSourceAndMovingTarget()
+        {
+            TacticalCombatShot shot = CreateShot(TacticalWeaponType.LaserCannon);
+            Vector3 origin = new(0, 4, 0);
+            _positions[shot.Source] = origin;
+            _positions[shot.Target] = new Vector3(10, 6, 20);
+
+            _effects.ShowShot(shot, 0);
+            Transform beam = _root.transform.GetChild(0);
+            Assert.AreEqual(origin, beam.localPosition);
+            _effects.Advance(.5f);
+            Assert.AreEqual(new Vector3(5, 5, 10), beam.localPosition);
+            _positions[shot.Target] = new Vector3(20, 9, 0);
+            _effects.Advance(.1f);
+
+            Assert.AreEqual(
+                Vector3.LerpUnclamped(origin, _positions[shot.Target], .6f),
+                beam.localPosition
+            );
+            Assert.AreEqual(Vector3N.Zero, shot.Source.Position);
+            Assert.AreEqual(new Vector3N(10, 0, 0), shot.Target.Position);
+        }
+
+        [Test]
+        public void Advance_SuperlaserPresentationPose_TracksRenderedTargetFromFixedEmitter()
+        {
+            TacticalCombatShot shot = CreateShot(TacticalWeaponType.Turbolaser);
+            Vector3 origin = new(-3, 0, 2);
+            _positions[shot.Target] = new Vector3(10, 8, 12);
+            _effects.ShowSuperlaser(origin, shot.Target);
+
+            _effects.Advance(.5f);
+
+            Transform beam = _root.transform.GetChild(0);
+            Assert.AreEqual(origin, beam.localPosition);
+            Assert.AreEqual(
+                Vector3.Distance(origin, _positions[shot.Target]) * .5f,
+                beam.GetChild(0).localScale.z
+            );
+            Assert.AreEqual(new Vector3N(10, 0, 0), shot.Target.Position);
+        }
+
+        [Test]
+        public void Advance_MovingSuperlaserTarget_RetainsMeasuredGrowthExtentAndTracksDirection()
+        {
+            TacticalCombatShot shot = CreateShot(TacticalWeaponType.Turbolaser);
+            Vector3 origin = new(5, 0, 0);
+            _positions[shot.Target] = new Vector3(5, 0, 10);
+            _effects.ShowSuperlaser(origin, shot.Target);
+            _effects.Advance(.25f);
+            Transform beam = _root.transform.GetChild(0);
+            Assert.That(beam.GetChild(0).localScale.z, Is.EqualTo(2.5f).Within(.0001f));
+            _positions[shot.Target] = new Vector3(25, 0, 0);
+
+            _effects.Advance(.25f);
+
+            Assert.That(beam.GetChild(0).localScale.z, Is.EqualTo(5).Within(.0001f));
+            Assert.That(Vector3.Dot(beam.forward, Vector3.right), Is.EqualTo(1).Within(.0001f));
+            Assert.AreEqual(origin, beam.localPosition);
+            Assert.AreEqual(new Vector3N(10, 0, 0), shot.Target.Position);
+        }
+
+        [Test]
+        public void Advance_ZeroTimeSuperlaserFrame_MeasuresExtentOnFirstGrowthFrame()
+        {
+            TacticalCombatShot shot = CreateShot(TacticalWeaponType.Turbolaser);
+            _positions[shot.Target] = new Vector3(0, 0, 10);
+            _effects.ShowSuperlaser(Vector3.zero, shot.Target);
+            _effects.Advance(0);
+            _positions[shot.Target] = new Vector3(0, 0, 20);
+
+            _effects.Advance(.25f);
+
+            Transform beam = _root.transform.GetChild(0);
+            Assert.That(beam.GetChild(0).localScale.z, Is.EqualTo(5).Within(.0001f));
+        }
+
         [UnityTest]
         public IEnumerator Dispose_ActiveEffect_ReleasesOwnedMeshMaterialAndObjects()
         {
@@ -149,5 +231,15 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             };
             return new TacticalCombatShot(source, target, weapon, 50);
         }
+
+        /// <summary>
+        /// Resolves explicit temporary poses while retaining ordinary fixture positions elsewhere.
+        /// </summary>
+        /// <param name="unit">The test participant.</param>
+        /// <returns>The encounter-local rendering position.</returns>
+        private Vector3 GetPresentationPosition(TacticalCombatUnit unit) =>
+            _positions.TryGetValue(unit, out Vector3 position)
+                ? position
+                : new Vector3(unit.Position.X, unit.Position.Y, unit.Position.Z);
     }
 }

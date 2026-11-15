@@ -129,6 +129,23 @@ namespace Rebellion.Gameplay
         public bool IsDirectControlEnabled =>
             !_directCommandsSuspended && !IsArriving && !GetSide(PlayerSide).IsAutomated;
 
+        /// <summary>
+        /// Gets whether the player can hand the surviving encounter to automatic resolution.
+        /// </summary>
+        public bool CanRequestImmediateResult =>
+            !IsComplete
+            && !IsArriving
+            && !_completionStarted
+            && PendingAttackRunMovie == null
+            && (IsDirectControlEnabled || GetSide(PlayerSide).IsAutomated)
+            && !_sides[0].IsWithdrawing
+            && !_sides[1].IsWithdrawing;
+
+        /// <summary>
+        /// Gets whether completion requests automatic resolution of the surviving forces.
+        /// </summary>
+        public bool ImmediateResultRequested => _ending.Flags[6];
+
         public event Action<TacticalCombatUnit, TacticalCombatUnit> SuperlaserFired;
         public event Action<TacticalCombatAttackRun> AttackRunChanged;
         public event Action<TacticalCombatMovieRequest> AttackRunMovieRequested;
@@ -628,6 +645,29 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Queues automatic continuation through the same ordered input boundary as withdrawal.
+        /// </summary>
+        /// <returns>Whether the current encounter admits the request.</returns>
+        public bool RequestImmediateResult()
+        {
+            if (!CanRequestImmediateResult)
+                return false;
+            Selection.QueueImmediateResult();
+            return true;
+        }
+
+        /// <summary>
+        /// Rechecks queued continuation before releasing the tactical encounter and its command authority.
+        /// </summary>
+        internal void ApplyImmediateResult()
+        {
+            if (!CanRequestImmediateResult)
+                return;
+            SuspendDirectCommands();
+            _ending.FinishWithoutAssessment();
+        }
+
+        /// <summary>
         /// Checks station protection, attack availability, and current squadron superiority.
         /// </summary>
         /// <param name="side">The side requesting a fighter attack.</param>
@@ -871,16 +911,19 @@ namespace Rebellion.Gameplay
                 _pendingManeuvers.Add(group);
             if (order == TacticalCombatOrder.AttackBattleStation)
             {
+                DetachAttackRun(group);
                 TacticalCombatAttackRun run = new(
                     group,
                     _random,
-                    () => GetSide(group.Side).GetCommandBudget(true)
+                    () => GetSide(group.Side).GetCommandBudget(true),
+                    GetSide(PlayerSide).FactionIndex
                 );
                 run.StateChangeRequested += RequestAttackRunState;
                 run.MovieRequested += RequestAttackRunMovie;
                 run.OrderRequested += SetOrder;
                 run.UnitDestroyed += Destroy;
                 run.UnitParticipationChanged += _spatial.Update;
+                run.NotificationRequested += RequestAttackRunNotification;
                 group.AttackRun = run;
                 ActiveAttackRun = run;
                 AttackRunChanged?.Invoke(run);
@@ -896,6 +939,30 @@ namespace Rebellion.Gameplay
             TacticalCombatAttackRun run,
             TacticalCombatAttackRunState state
         ) => QueueCommand(new Command(CommandKind.AttackRun, null, run: run, runState: state));
+
+        /// <summary>
+        /// Routes one owned attack-run cue through the selected faction's shared notification queue.
+        /// </summary>
+        /// <param name="messageID">The authored command message.</param>
+        private void RequestAttackRunNotification(int messageID) =>
+            Audio.EnqueueNotification(messageID);
+
+        /// <summary>
+        /// Releases every callback owned by a removed or replaced attack helper.
+        /// </summary>
+        /// <param name="group">The group whose previous helper is being detached.</param>
+        private void DetachAttackRun(TacticalCombatGroup group)
+        {
+            TacticalCombatAttackRun run = group.AttackRun;
+            if (run == null)
+                return;
+            run.StateChangeRequested -= RequestAttackRunState;
+            run.MovieRequested -= RequestAttackRunMovie;
+            run.OrderRequested -= SetOrder;
+            run.UnitDestroyed -= Destroy;
+            run.UnitParticipationChanged -= _spatial.Update;
+            run.NotificationRequested -= RequestAttackRunNotification;
+        }
 
         /// <summary>
         /// Applies the station outcome before beginning its modal movie pause.
@@ -1134,14 +1201,7 @@ namespace Rebellion.Gameplay
             group.HyperspaceRequested -= RequestHyperspace;
             group.OrderRequested -= RequestOrder;
             group.AttackModeRequested -= QueueAttackMode;
-            if (group.AttackRun != null)
-            {
-                group.AttackRun.StateChangeRequested -= RequestAttackRunState;
-                group.AttackRun.MovieRequested -= RequestAttackRunMovie;
-                group.AttackRun.OrderRequested -= SetOrder;
-                group.AttackRun.UnitDestroyed -= Destroy;
-                group.AttackRun.UnitParticipationChanged -= _spatial.Update;
-            }
+            DetachAttackRun(group);
             _pendingManeuvers.Remove(group);
             _pendingAttackOrders.Remove(group);
             _completedAttackOrders.Remove(group);
@@ -1670,11 +1730,9 @@ namespace Rebellion.Gameplay
                         foreach (TacticalCombatUnit candidate in _units)
                             if (
                                 !candidate.IsFighter
+                                && !candidate.IsBattleStation
                                 && candidate.Side == fighter.Side
-                                && (
-                                    candidate.IsTargetable
-                                    || candidate.IsBattleStation && BattleStation.IsOperational
-                                )
+                                && candidate.IsTargetable
                             )
                             {
                                 TacticalCombatCarrier candidateCarrier = _carriers[
@@ -1687,6 +1745,18 @@ namespace Rebellion.Gameplay
                                 }
                                 full &= candidateCarrier.IsFullAndLaunched;
                             }
+                    if (
+                        carrier == null
+                        && GetSide(fighter.Side).FactionIndex == 1
+                        && BattleStation?.IsOperational == true
+                        && BattleStation.Unit.Side == fighter.Side
+                    )
+                    {
+                        TacticalCombatCarrier station = _carriers[BattleStation.Unit.InstanceID];
+                        if (station.Reserve(fighter))
+                            carrier = station;
+                        full &= station.IsFullAndLaunched;
+                    }
                     if (carrier == null)
                     {
                         if (!warned)
@@ -2594,6 +2664,8 @@ namespace Rebellion.Gameplay
         /// </summary>
         private void Complete()
         {
+            if (IsComplete)
+                return;
             IsComplete = true;
             Completed?.Invoke();
         }
