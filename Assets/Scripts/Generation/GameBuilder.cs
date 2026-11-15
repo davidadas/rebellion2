@@ -143,7 +143,7 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Applies launch-specific settings to the detached faction templates.
+        /// Applies launch-specific settings while retaining authored conquest objectives.
         /// </summary>
         /// <param name="factions">The detached factions used by generation.</param>
         /// <param name="modifiers">The configured faction overrides.</param>
@@ -179,7 +179,10 @@ namespace Rebellion.Generation
                         $"Faction modifier '{modifier.FactionID}' requires settings."
                     );
 
-                faction.Settings = modifier.Settings.CreateCopy();
+                FactionSettings settings = modifier.Settings.CreateCopy();
+                settings.ConquestOfficerInstanceIDs =
+                    faction.Settings.ConquestOfficerInstanceIDs.ToList();
+                faction.Settings = settings;
             }
         }
 
