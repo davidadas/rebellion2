@@ -12,7 +12,7 @@ using Rebellion.Util.Random;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
-    public sealed class TacticalCombatNetworkSessionTests
+    public sealed partial class TacticalCombatNetworkSessionTests
     {
         [Test]
         public void ApplyNetworkCommand_OpposingHuman_SelectsAndTargetsOnlyItsOwnForce()

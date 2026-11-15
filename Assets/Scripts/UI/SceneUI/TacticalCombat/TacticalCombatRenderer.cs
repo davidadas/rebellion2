@@ -597,11 +597,24 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
     private void RefreshVisual(Visual visual)
     {
         TacticalCombatUnit unit = visual.Unit;
+        TacticalCombatUnitStatus status = unit.Status;
+        bool isAlive = unit.Systems.IsAlive;
+        if (
+            _session.TryGetNetworkPresentationLifecycle(
+                unit.InstanceID,
+                out TacticalCombatUnitStatus presentationStatus,
+                out bool presentationAlive
+            )
+        )
+        {
+            status = presentationStatus;
+            isAlive = presentationAlive;
+        }
         bool visible =
             visual.ArrivalVisible
             || _cameraState.IsCategoryView && _cameraState.TrackedObjectIndex == unit.Index
-            || unit.Systems.IsAlive
-                && unit.Status
+            || isAlive
+                && status
                     is TacticalCombatUnitStatus.Active
                         or TacticalCombatUnitStatus.PreparingHyperspace
                         or TacticalCombatUnitStatus.EnteringHyperspace
@@ -610,8 +623,15 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
         visual.Root.SetActive(visible);
         if (visual.SelectionBox != null)
         {
+            bool engaged =
+                status
+                is TacticalCombatUnitStatus.Active
+                    or TacticalCombatUnitStatus.PreparingHyperspace
+                    or TacticalCombatUnitStatus.EnteringHyperspace
+                    or TacticalCombatUnitStatus.AwaitingWithdrawal
+                    or TacticalCombatUnitStatus.AttackingBattleStation;
             int state =
-                !unit.IsEngaged ? 1
+                !engaged ? 1
                 : _yellowBoxes.Contains(unit) ? 2
                 : _whiteBoxes.Contains(unit) ? 4
                 : _factionBoxes.Contains(unit)
@@ -645,14 +665,32 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
     {
         Vector3N position = visual.Unit.Position;
         Vector3N direction = visual.Unit.Heading;
-        if (visual.Unit.Status == TacticalCombatUnitStatus.EnteringHyperspace)
+        float hyperspaceMilliseconds = visual.Unit.HyperspaceMilliseconds;
+        TacticalCombatUnitStatus status = visual.Unit.Status;
+        if (
+            _session.TryGetNetworkPresentationPose(
+                visual.Unit.InstanceID,
+                out Vector3N presentationPosition,
+                out Vector3N presentationHeading,
+                out float presentationHyperspaceMilliseconds,
+                out TacticalCombatUnitStatus presentationStatus,
+                out _
+            )
+        )
+        {
+            position = presentationPosition;
+            direction = presentationHeading;
+            hyperspaceMilliseconds = presentationHyperspaceMilliseconds;
+            status = presentationStatus;
+        }
+        if (status == TacticalCombatUnitStatus.EnteringHyperspace)
         {
             TacticalCombatDeparturePose departure = TacticalCombatDeparturePose.Evaluate(
                 visual.Unit.Index,
                 visual.Unit.Definition.PresentationIndex,
                 position,
                 _session.GetSide(visual.Unit.Side).Forward,
-                visual.Unit.HyperspaceMilliseconds
+                hyperspaceMilliseconds
             );
             position = departure.Position;
             direction = departure.Heading;

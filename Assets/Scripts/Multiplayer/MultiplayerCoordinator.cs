@@ -647,6 +647,9 @@ namespace Rebellion.Multiplayer
                     case MultiplayerMessageType.TacticalCommand:
                     case MultiplayerMessageType.TacticalCommandResult:
                     case MultiplayerMessageType.TacticalFrame:
+                    case MultiplayerMessageType.TacticalCheckpoint:
+                    case MultiplayerMessageType.TacticalEffects:
+                    case MultiplayerMessageType.TacticalResync:
                     case MultiplayerMessageType.TacticalFrameReceipt:
                     case MultiplayerMessageType.TacticalMovieReceipt:
                         MultiplayerSessionIdentity tacticalIdentity =

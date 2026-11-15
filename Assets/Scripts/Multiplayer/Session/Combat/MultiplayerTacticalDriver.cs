@@ -12,12 +12,14 @@ namespace Rebellion.Multiplayer
     /// </summary>
     internal sealed class MultiplayerTacticalDriver : ITacticalCombatPresentationDriver
     {
+        private const float _snapshotIntervalMilliseconds = 50;
         private readonly MultiplayerRole _role;
         private readonly string _battleID;
         private readonly SpaceCombatCommands _commands;
         private readonly MultiplayerTurnProtocol _turns;
         private readonly MultiplayerTacticalProtocol _protocol;
         private readonly Func<uint> _clockProvider;
+        private readonly Stopwatch _clock = Stopwatch.StartNew();
         private Task<PlayerRequestOutcome> _completion;
         private bool _prepared;
         private bool _ready;
@@ -25,7 +27,12 @@ namespace Rebellion.Multiplayer
         private bool _disposed;
         private bool _completionAgreed;
         private bool _terminalFramePublished;
-        private float _pendingPresentationMilliseconds;
+        private float _snapshotMilliseconds;
+        private bool _publishedFrame;
+        private int _publishedMovieID;
+        private bool _providerObserved;
+        private uint _previousProviderTime;
+        private double _providerMilliseconds;
         public TacticalCombatSession Session { get; }
         public bool IsAuthoritative => _role == MultiplayerRole.Host;
         public SpaceCombatResult CommittedResult { get; private set; }
@@ -85,10 +92,13 @@ namespace Rebellion.Multiplayer
                 hostSide,
                 Session.ApplyNetworkCommand,
                 Session.CaptureNetworkFrame,
-                Session.ApplyNetworkFrame,
+                Session.ApplyNetworkState,
+                Session.ApplyNetworkEffects,
                 () => Session.PendingNetworkMovieID,
                 Session.CompleteNetworkMovie,
-                send
+                send,
+                ReadNetworkMilliseconds,
+                () => Session.NetworkPresentationTimestampMilliseconds
             );
             _protocol.Faulted += _turns.ReportFailure;
             Session.NetworkCommandRequested += HandleCommand;
@@ -122,18 +132,24 @@ namespace Rebellion.Multiplayer
         public void Receive(MultiplayerPacket packet) => _protocol.Receive(packet);
 
         /// <summary>
-        /// Advances local entry and selection, then admits one host frame after peer acknowledgement.
+        /// Advances the host independently of transport receipts and publishes state at a bounded cadence.
         /// </summary>
         /// <param name="elapsedSeconds">The local unscaled frame interval.</param>
         public void Advance(float elapsedSeconds)
         {
             if (_disposed || _turns.Failure != null)
                 return;
-            if (IsAuthoritative && _clockConfigured)
-                _pendingPresentationMilliseconds += elapsedSeconds * 1000;
+            if (
+                elapsedSeconds < 0
+                || float.IsNaN(elapsedSeconds)
+                || float.IsInfinity(elapsedSeconds)
+            )
+                throw new ArgumentOutOfRangeException(nameof(elapsedSeconds));
             _protocol.Pump();
             if (!_prepared)
                 return;
+            if (!IsAuthoritative)
+                Session.AdvanceNetworkPresentation(elapsedSeconds * 1000);
             if (!_ready)
             {
                 if (!Session.AdvanceNetworkArrival(elapsedSeconds * 1000))
@@ -153,23 +169,50 @@ namespace Rebellion.Multiplayer
                     _terminalFramePublished = true;
                     return;
                 }
-                SubmitCompletion();
+                if (_protocol.TerminalFrameAcknowledged)
+                    SubmitCompletion();
                 return;
             }
             if (!_clockConfigured)
             {
-                Stopwatch clock = Stopwatch.StartNew();
-                Session.ConfigureClockedAdvance(
-                    _clockProvider ?? (() => unchecked((uint)clock.ElapsedMilliseconds))
-                );
+                Session.ConfigureClockedAdvance(() => unchecked((uint)ReadNetworkMilliseconds()));
                 _clockConfigured = true;
-                _pendingPresentationMilliseconds = elapsedSeconds * 1000;
             }
-            float presentationMilliseconds = _pendingPresentationMilliseconds;
-            _pendingPresentationMilliseconds = 0;
-            Session.AdvanceClocked(presentationMilliseconds);
-            _protocol.PublishFrame();
-            _terminalFramePublished = Session.IsComplete;
+            Session.AdvanceClocked(elapsedSeconds * 1000);
+            _snapshotMilliseconds += elapsedSeconds * 1000;
+            if (
+                !_publishedFrame
+                || Session.IsComplete
+                || Session.PendingNetworkMovieID != _publishedMovieID
+                || _snapshotMilliseconds >= _snapshotIntervalMilliseconds
+            )
+            {
+                _protocol.PublishFrame();
+                _publishedFrame = true;
+                _publishedMovieID = Session.PendingNetworkMovieID;
+                _snapshotMilliseconds %= _snapshotIntervalMilliseconds;
+                _terminalFramePublished = Session.IsComplete;
+            }
+        }
+
+        /// <summary>
+        /// Reads a continuous connection clock while retaining wrapping millisecond providers for battle scheduling.
+        /// </summary>
+        /// <returns>The monotonic milliseconds used by publication, interpolation stamps, and connection deadlines.</returns>
+        private double ReadNetworkMilliseconds()
+        {
+            if (_clockProvider == null)
+                return _clock.Elapsed.TotalMilliseconds;
+            uint current = _clockProvider();
+            if (_providerObserved)
+                _providerMilliseconds += unchecked(current - _previousProviderTime);
+            else
+            {
+                _providerObserved = true;
+                _providerMilliseconds = current;
+            }
+            _previousProviderTime = current;
+            return _providerMilliseconds;
         }
 
         /// <summary>

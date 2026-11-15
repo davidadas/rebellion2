@@ -16,7 +16,7 @@ using Rebellion.Util.Random;
 namespace Rebellion.Tests.Multiplayer
 {
     [TestFixture]
-    public sealed class MultiplayerTacticalDriverTests
+    public sealed partial class MultiplayerTacticalDriverTests
     {
         [TestCase("FNALL1", MultiplayerRole.Host, false)]
         [TestCase("FNALL1", MultiplayerRole.Guest, false)]
@@ -123,7 +123,8 @@ namespace Rebellion.Tests.Multiplayer
             Assert.Zero(peers.HostResults);
             Assert.Zero(peers.GuestResults);
             MultiplayerPacket terminalFrame = peers.ToGuest.Single(packet =>
-                packet.Type == MultiplayerMessageType.TacticalFrame
+                packet.Type == MultiplayerMessageType.TacticalCheckpoint
+                && MultiplayerTacticalFrameCodec.Decode(packet.Payload).Complete
             );
 
             peers.AdvanceViews(1);
@@ -134,6 +135,7 @@ namespace Rebellion.Tests.Multiplayer
             Assert.IsTrue(guest.IsComplete);
             Assert.IsFalse(peers.GuestDriver.CompletionReady);
             Assert.Zero(peers.CompletionActions);
+            peers.GuestDriver.Advance(0.2f);
             peers.DeliverToHost();
             peers.HostDriver.Advance(0);
             peers.Host.Pump();
@@ -233,7 +235,7 @@ namespace Rebellion.Tests.Multiplayer
         }
 
         [Test]
-        public void Advance_DelayedProjectionReceipt_PreservesBriefingElapsedTime()
+        public void Advance_DelayedProjectionReceipt_ContinuesBriefingWithoutWaitingForGuest()
         {
             using PeerPair peers = new("FNALL1", station: true);
             peers.StartDay();
@@ -250,7 +252,7 @@ namespace Rebellion.Tests.Multiplayer
             );
             for (int frame = 0; frame < 70; frame++)
                 peers.AdvanceViews(0.1f);
-            Assert.IsFalse(messages.Contains(144));
+            Assert.Contains(144, messages);
 
             peers.Flush();
             peers.HostDriver.Advance(0);
@@ -492,7 +494,7 @@ namespace Rebellion.Tests.Multiplayer
                     MultiplayerPacket packet = ToGuest.Dequeue();
                     if (
                         packet.Type >= MultiplayerMessageType.TacticalReady
-                        && packet.Type <= MultiplayerMessageType.TacticalMovieReceipt
+                        && packet.Type <= MultiplayerMessageType.TacticalResync
                     )
                         GuestDriver.Receive(packet);
                     else
@@ -522,7 +524,7 @@ namespace Rebellion.Tests.Multiplayer
                     MultiplayerPacket packet = ToHost.Dequeue();
                     if (
                         packet.Type >= MultiplayerMessageType.TacticalReady
-                        && packet.Type <= MultiplayerMessageType.TacticalMovieReceipt
+                        && packet.Type <= MultiplayerMessageType.TacticalResync
                     )
                         HostDriver.Receive(packet);
                     else

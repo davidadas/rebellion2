@@ -87,10 +87,12 @@ instances and audio handles.
 
 `MultiplayerTacticalDriver` gives the host sole ownership of live combat progression. Each player
 loads their own faction HUD, camera, models, and audio before the ready barrier admits battle time.
-Authenticated orders address that player's side, while ordered state and presentation events update
-the other player's passive view. Frame acknowledgements bound pending traffic; shared movie
-acknowledgements hold the battle until both presentations finish. An acknowledged terminal frame
-precedes the host's ordered campaign-result commit, preserving one result and one tick resumption.
+Authenticated orders address that player's side. Replaceable compressed snapshots update the passive
+view independently of reliable commands and presentation events. The host clock continues without
+waiting for snapshot receipts; the guest displays timestamped poses and effects on one delayed timeline.
+Shared movie acknowledgements hold the battle until both presentations finish. A terminal checkpoint
+and effect watermark precede the host's ordered campaign-result commit, preserving one result and one
+tick resumption. See [Multiplayer combat replication](Multiplayer.md) for delivery and recovery contracts.
 Disconnects release the battle view and retain the existing shared recovery boundary rather than
 importing an unfinished encounter. Campaign orders and persistence remain blocked during combat;
 peer chat continues through its existing ordered request path.

@@ -280,6 +280,259 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         }
 
         [UnityTest]
+        public IEnumerator RenderUnits_ReplicaMotion_AlignsModelPickingAndWeaponEndpointsToDelayedPose()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            TacticalCombatSession host = CreateEncounter(pack.GameData);
+            TacticalCombatSession guest = CreateEncounter(pack.GameData);
+            host.ConfigureNetworkAuthority();
+            guest.ConfigureNetworkReplica();
+            try
+            {
+                TacticalCombatUnit target = host.GetUnit("ALCS008");
+                Vector3N start = target.Position;
+                TacticalCombatNetworkFrame first = host.CaptureNetworkFrame(1);
+                first.TimestampMilliseconds = 0;
+                target.Position += Vector3N.UnitX * 4;
+                target.Heading = Vector3N.Normalize(Vector3N.UnitZ + Vector3N.UnitX);
+                TacticalCombatNetworkFrame second = host.CaptureNetworkFrame(2);
+                second.TimestampMilliseconds = 100;
+                guest.ApplyNetworkFrame(first);
+                guest.ApplyNetworkFrame(second);
+                yield return PrepareRenderer(guest, pack);
+                guest.AdvanceNetworkPresentation(50);
+
+                view.Renderer.RenderUnits();
+
+                TacticalCombatUnit rendered = guest.GetUnit(target.InstanceID);
+                Transform root = view
+                    .Renderer.GetComponentsInChildren<Transform>(true)
+                    .Single(item => item.name == target.InstanceID);
+                Vector3N expected = start + Vector3N.UnitX * 2;
+                Assert.AreEqual(
+                    new Vector3(expected.X, expected.Y, expected.Z),
+                    root.localPosition
+                );
+                Assert.AreEqual(target.Position, rendered.Position);
+                Assert.AreNotEqual(
+                    new Vector3(rendered.Position.X, rendered.Position.Y, rendered.Position.Z),
+                    root.localPosition
+                );
+                Assert.IsTrue(
+                    guest.TryGetNetworkPresentationPose(
+                        target.InstanceID,
+                        out _,
+                        out Vector3N heading
+                    )
+                );
+                Assert.That(
+                    Vector3.Dot(root.forward, new Vector3(-heading.X, -heading.Y, -heading.Z)),
+                    Is.EqualTo(1).Within(.0001f)
+                );
+
+                MeshFilter mesh = root.GetComponentsInChildren<MeshFilter>().Single();
+                Vector3[] vertices = mesh.sharedMesh.vertices;
+                int[] triangles = mesh.sharedMesh.triangles;
+                Vector3 face =
+                    (vertices[triangles[0]] + vertices[triangles[1]] + vertices[triangles[2]]) / 3;
+                Vector3 point = view.Renderer.Camera.WorldToViewportPoint(
+                    mesh.transform.TransformPoint(face)
+                );
+                Assert.IsTrue(view.Renderer.TryPick(point, out TacticalCombatUnit picked, out _));
+                Assert.AreSame(rendered, picked);
+
+                TacticalCombatUnit source = guest.GetUnit("CSEM006");
+                view.Renderer.ShowShot(
+                    new TacticalCombatShot(source, rendered, TacticalWeaponType.LaserCannon, 50),
+                    1
+                );
+                view.Renderer.AdvanceEffects(.5f);
+                Transform[] objects = view.Renderer.GetComponentsInChildren<Transform>(true);
+                Transform sourceRoot = objects.Single(item => item.name == source.InstanceID);
+                Transform beam = objects.Single(item => item.name == "Weapon beam");
+                Assert.That(
+                    Vector3.Distance(
+                        (sourceRoot.localPosition + root.localPosition) * .5f,
+                        beam.localPosition
+                    ),
+                    Is.LessThan(.0001f)
+                );
+            }
+            finally
+            {
+                host.Selection.Dispose();
+                host.Audio.Dispose();
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator RenderUnits_ReplicaDeparture_UsesInterpolatedTimerWithoutChangingRawDeparture()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            TacticalCombatSession host = CreateEncounter(pack.GameData);
+            TacticalCombatSession guest = CreateEncounter(pack.GameData);
+            host.ConfigureNetworkAuthority();
+            guest.ConfigureNetworkReplica();
+            try
+            {
+                TacticalCombatUnit departing = host.GetUnit("ALCS008");
+                departing.Status = TacticalCombatUnitStatus.EnteringHyperspace;
+                departing.HyperspaceMilliseconds = 1000;
+                TacticalCombatNetworkFrame first = host.CaptureNetworkFrame(1);
+                first.TimestampMilliseconds = 0;
+                departing.HyperspaceMilliseconds = 1200;
+                TacticalCombatNetworkFrame second = host.CaptureNetworkFrame(2);
+                second.TimestampMilliseconds = 100;
+                guest.ApplyNetworkFrame(first);
+                guest.ApplyNetworkFrame(second);
+                yield return PrepareRenderer(guest, pack);
+                guest.AdvanceNetworkPresentation(50);
+
+                view.Renderer.RenderUnits();
+
+                TacticalCombatUnit unit = guest.GetUnit(departing.InstanceID);
+                TacticalCombatDeparturePose expected = TacticalCombatDeparturePose.Evaluate(
+                    unit.Index,
+                    unit.Definition.PresentationIndex,
+                    unit.Position,
+                    guest.GetSide(unit.Side).Forward,
+                    1100
+                );
+                Transform root = view
+                    .Renderer.GetComponentsInChildren<Transform>(true)
+                    .Single(item => item.name == unit.InstanceID);
+                Assert.AreEqual(
+                    new Vector3(expected.Position.X, expected.Position.Y, expected.Position.Z),
+                    root.localPosition
+                );
+                Assert.AreEqual(1200, unit.HyperspaceMilliseconds);
+                Assert.AreEqual(departing.Position, unit.Position);
+            }
+            finally
+            {
+                host.Selection.Dispose();
+                host.Audio.Dispose();
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator RenderUnits_ReplicaDestruction_RetainsModelsUntilDelayedDeathThenExplosionOwnsVisibility()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            TacticalCombatSession host = CreateEncounter(pack.GameData);
+            TacticalCombatSession guest = CreateEncounter(pack.GameData);
+            host.ConfigureNetworkAuthority();
+            guest.ConfigureNetworkReplica();
+            System.Action<TacticalCombatUnit> destruction = null;
+            try
+            {
+                TacticalCombatNetworkFrame first = host.CaptureNetworkFrame(1);
+                first.TimestampMilliseconds = 0;
+                TacticalCombatNetworkFrame death = host.CaptureNetworkFrame(2);
+                death.TimestampMilliseconds = 100;
+                foreach (
+                    TacticalCombatNetworkUnitState state in death.Units.Where(unit =>
+                        unit.UnitID is "ALCS008" or "fighter"
+                    )
+                )
+                {
+                    state.Status = TacticalCombatUnitStatus.Destroyed;
+                    state.Hull = 0;
+                }
+                TacticalCombatNetworkUnitState departure = death.Units.Single(unit =>
+                    unit.UnitID == "CSEM006"
+                );
+                departure.Status = TacticalCombatUnitStatus.EnteringHyperspace;
+                departure.HyperspaceMilliseconds = 1200;
+                guest.ApplyNetworkState(first);
+                guest.ApplyNetworkState(death);
+                yield return PrepareRenderer(guest, pack);
+                destruction = view.Renderer.ShowDestruction;
+                guest.DestructionEffectRequested += destruction;
+                Transform[] objects = view.Renderer.GetComponentsInChildren<Transform>(true);
+                Transform capital = objects.Single(item => item.name == "ALCS008");
+                Transform fighter = objects.Single(item => item.name == "fighter");
+                Transform departing = objects.Single(item => item.name == "CSEM006");
+                Assert.IsFalse(guest.GetUnit("ALCS008").Systems.IsAlive);
+                Assert.IsFalse(guest.GetUnit("fighter").Systems.IsAlive);
+
+                guest.AdvanceNetworkPresentation(99);
+                view.Renderer.RenderUnits();
+
+                Assert.IsTrue(capital.gameObject.activeSelf);
+                Assert.IsTrue(fighter.gameObject.activeSelf);
+                Vector3N canonical = guest.GetUnit("CSEM006").Position;
+                Assert.AreEqual(
+                    new Vector3(canonical.X, canonical.Y, canonical.Z),
+                    departing.localPosition
+                );
+                Assert.IsFalse(
+                    view.Renderer.GetComponentsInChildren<MeshRenderer>(true)
+                        .Any(item => item.name == "Impact" && item.enabled)
+                );
+
+                guest.AdvanceNetworkPresentation(1);
+                guest.ApplyNetworkEffects(
+                    new[]
+                    {
+                        new TacticalCombatNetworkEffect
+                        {
+                            Kind = TacticalCombatNetworkEffectKind.Destruction,
+                            TargetID = "ALCS008",
+                        },
+                    }
+                );
+                view.Renderer.RenderUnits();
+
+                Assert.IsTrue(
+                    capital.gameObject.activeSelf,
+                    "The destruction sequence retains its capital model after the death edge."
+                );
+                Assert.IsFalse(fighter.gameObject.activeSelf);
+                TacticalCombatUnit leaving = guest.GetUnit("CSEM006");
+                TacticalCombatDeparturePose expectedDeparture =
+                    TacticalCombatDeparturePose.Evaluate(
+                        leaving.Index,
+                        leaving.Definition.PresentationIndex,
+                        leaving.Position,
+                        guest.GetSide(leaving.Side).Forward,
+                        1200
+                    );
+                Assert.AreEqual(
+                    new Vector3(
+                        expectedDeparture.Position.X,
+                        expectedDeparture.Position.Y,
+                        expectedDeparture.Position.Z
+                    ),
+                    departing.localPosition
+                );
+                Assert.IsTrue(
+                    view.Renderer.GetComponentsInChildren<MeshRenderer>(true)
+                        .Any(item => item.name == "Impact" && item.enabled)
+                );
+                for (int frame = 0; frame < 12; frame++)
+                    view.Renderer.AdvanceEffects(0);
+                view.Renderer.RenderUnits();
+                Assert.IsFalse(capital.gameObject.activeSelf);
+                guest.AdvanceNetworkPresentation(100);
+                view.Renderer.RenderUnits();
+                Assert.IsFalse(
+                    capital.gameObject.activeSelf,
+                    "An older alive snapshot cannot revive the detached model."
+                );
+            }
+            finally
+            {
+                if (destruction != null)
+                    guest.DestructionEffectRequested -= destruction;
+                host.Selection.Dispose();
+                host.Audio.Dispose();
+                guest.Selection.Dispose();
+                guest.Audio.Dispose();
+            }
+        }
+
+        [UnityTest]
         public IEnumerator SetTransform_ArrivalFrame_RetainsPoseWithoutChangingSimulation()
         {
             ContentPack pack = ContentPackLoader.OpenActive();
