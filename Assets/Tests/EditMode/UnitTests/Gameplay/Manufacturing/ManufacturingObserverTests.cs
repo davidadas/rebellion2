@@ -350,6 +350,47 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void HandleResults_RetargetedRemoteOrder_PreservesOrderAfterFormerDestinationChangesOwner()
+        {
+            Planet formerDestination = CreatePlanet("FORMER", _empire.InstanceID);
+            Planet currentDestination = CreatePlanet("CURRENT", _empire.InstanceID);
+            Building remoteMine = CreateOrderTestBuildingTemplate("retargeted-mine");
+            remoteMine.OwnerInstanceID = _empire.InstanceID;
+            Assert.IsTrue(_manager.Enqueue(_coruscant, remoteMine, formerDestination));
+            Assert.IsTrue(
+                _manager.RetargetManufacturingDestination(
+                    _coruscant,
+                    ManufacturingType.Building,
+                    currentDestination,
+                    _empire.InstanceID
+                )
+            );
+            Assert.AreSame(formerDestination, remoteMine.GetLastParent());
+
+            _observer.HandleResults(
+                new[]
+                {
+                    new PlanetOwnershipChangedResult
+                    {
+                        Planet = formerDestination,
+                        PreviousOwner = _empire,
+                        NewOwner = CreateFaction("ALLIANCE"),
+                    },
+                }
+            );
+
+            CollectionAssert.Contains(
+                _coruscant.GetManufacturingQueue()[ManufacturingType.Building],
+                remoteMine
+            );
+            Assert.AreSame(currentDestination, remoteMine.GetParent());
+            Assert.AreSame(
+                remoteMine,
+                _game.GetSceneNodeByInstanceID<Building>(remoteMine.InstanceID)
+            );
+        }
+
+        [Test]
         public void HandleResults_CompatibleRemoteOrder_PreservesOrder()
         {
             Planet destination = CreatePlanet("CLAIMED", _empire.InstanceID);
