@@ -53,6 +53,7 @@ public sealed class AudioManager : MonoBehaviour
     private readonly HashSet<AudioPlaybackHandle> _activeSfxPlaybacks =
         new HashSet<AudioPlaybackHandle>();
     private readonly Stack<AudioSource> _availableSfxSources = new Stack<AudioSource>();
+    private readonly MusicPlaybackInterruption _musicInterruption = new MusicPlaybackInterruption();
     private string _activeTrackPath;
     private Func<string> _nextTrackPathProvider;
     private Coroutine _playlistCoroutine;
@@ -61,6 +62,10 @@ public sealed class AudioManager : MonoBehaviour
     private ContentAssets _contentAssets;
     private Task<AudioClip> _musicClipLoad;
     private bool _activeTrackLoop;
+    private bool _applicationHasFocus = true;
+    private int _lastKnownMusicTimeSamples;
+    private bool _musicPlaybackActive;
+    private bool _resumeMusicOnNextUpdate;
 
     /// <summary>
     /// Gets the active global audio manager instance.
@@ -156,10 +161,52 @@ public sealed class AudioManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Subscribes the active manager to audio-device configuration changes.
+    /// </summary>
+    private void OnEnable()
+    {
+        if (Instance == this)
+            AudioSettings.OnAudioConfigurationChanged += HandleAudioConfigurationChanged;
+    }
+
+    /// <summary>
+    /// Unsubscribes the manager from audio-device configuration changes.
+    /// </summary>
+    private void OnDisable()
+    {
+        AudioSettings.OnAudioConfigurationChanged -= HandleAudioConfigurationChanged;
+    }
+
+    /// <summary>
+    /// Suspends active music when the application loses focus and schedules its restoration after
+    /// focus returns.
+    /// </summary>
+    /// <param name="hasFocus">Whether the application currently has focus.</param>
+    private void OnApplicationFocus(bool hasFocus)
+    {
+        _applicationHasFocus = hasFocus;
+        if (!hasFocus)
+        {
+            _resumeMusicOnNextUpdate = false;
+            SuspendMusicForInterruption(false);
+            return;
+        }
+
+        if (_musicInterruption.IsSuspended)
+            _resumeMusicOnNextUpdate = true;
+    }
+
+    /// <summary>
     /// Releases independently controlled sound effects after playback finishes.
     /// </summary>
     private void Update()
     {
+        if (_resumeMusicOnNextUpdate)
+        {
+            _resumeMusicOnNextUpdate = false;
+            ResumeMusicAfterInterruption();
+        }
+
         foreach (AudioPlaybackHandle playback in _activeSfxPlaybacks.ToArray())
         {
             if (
@@ -170,6 +217,27 @@ public sealed class AudioManager : MonoBehaviour
                 continue;
 
             StopPlayback(playback);
+        }
+
+        if (
+            _musicPlaybackActive
+            && !_musicInterruption.IsSuspended
+            && musicSource?.isPlaying == true
+        )
+        {
+            _lastKnownMusicTimeSamples = musicSource.timeSamples;
+        }
+
+        if (
+            _musicPlaybackActive
+            && !_musicInterruption.IsSuspended
+            && _playlistCoroutine == null
+            && _musicLoadCoroutine == null
+            && _fadeOutCoroutine == null
+            && musicSource?.isPlaying != true
+        )
+        {
+            _musicPlaybackActive = false;
         }
     }
 
@@ -185,6 +253,18 @@ public sealed class AudioManager : MonoBehaviour
 
         if (Instance == this)
             Instance = null;
+    }
+
+    /// <summary>
+    /// Suspends active music until Unity has applied an audio-device configuration change.
+    /// </summary>
+    /// <param name="deviceWasChanged">Whether the output device itself changed.</param>
+    private void HandleAudioConfigurationChanged(bool deviceWasChanged)
+    {
+        _ = deviceWasChanged;
+        SuspendMusicForInterruption(true);
+        if (_applicationHasFocus && _musicInterruption.IsSuspended)
+            _resumeMusicOnNextUpdate = true;
     }
 
     /// <summary>
@@ -640,9 +720,59 @@ public sealed class AudioManager : MonoBehaviour
     /// <returns>True when the requested track is already active.</returns>
     private bool IsPlayingResourceTrack(string resourcePath, bool loop)
     {
-        return musicSource?.isPlaying == true
+        return _musicPlaybackActive
+            && _musicInterruption.IsPlaybackPending(musicSource?.isPlaying == true)
             && _activeTrackPath == resourcePath
             && musicSource.loop == loop;
+    }
+
+    /// <summary>
+    /// Retains and pauses the current music position for an application or output interruption.
+    /// </summary>
+    /// <param name="allowStoppedSource">
+    /// Whether expected playback may be retained after Unity has already stopped the source.
+    /// </param>
+    private void SuspendMusicForInterruption(bool allowStoppedSource)
+    {
+        if (
+            _musicInterruption.IsSuspended
+            || !_musicPlaybackActive
+            || musicSource?.clip == null
+            || (!allowStoppedSource && !musicSource.isPlaying)
+        )
+        {
+            return;
+        }
+
+        int resumeTimeSamples = musicSource.isPlaying
+            ? musicSource.timeSamples
+            : _lastKnownMusicTimeSamples;
+        _musicInterruption.Capture(musicSource.clip, resumeTimeSamples);
+        if (musicSource.isPlaying)
+            musicSource.Pause();
+    }
+
+    /// <summary>
+    /// Restores interrupted music at its retained sample without advancing the playlist.
+    /// </summary>
+    private void ResumeMusicAfterInterruption()
+    {
+        if (
+            !_applicationHasFocus
+            || musicSource == null
+            || !_musicInterruption.TryConsume(musicSource.clip, out int resumeTimeSamples)
+        )
+        {
+            return;
+        }
+
+        musicSource.timeSamples = resumeTimeSamples;
+        musicSource.UnPause();
+        if (!musicSource.isPlaying)
+        {
+            musicSource.Play();
+            musicSource.timeSamples = resumeTimeSamples;
+        }
     }
 
     /// <summary>
@@ -662,11 +792,21 @@ public sealed class AudioManager : MonoBehaviour
     /// </summary>
     private void StopFadeOut()
     {
+        ClearMusicInterruption();
         if (_fadeOutCoroutine == null)
             return;
 
         StopCoroutine(_fadeOutCoroutine);
         _fadeOutCoroutine = null;
+    }
+
+    /// <summary>
+    /// Discards any pending lifecycle resume so an explicit playback transition remains final.
+    /// </summary>
+    private void ClearMusicInterruption()
+    {
+        _resumeMusicOnNextUpdate = false;
+        _musicInterruption.Clear();
     }
 
     /// <summary>
@@ -696,14 +836,20 @@ public sealed class AudioManager : MonoBehaviour
             musicSource.loop = false;
             ApplyVolumes();
             musicSource.Play();
+            _lastKnownMusicTimeSamples = 0;
+            _musicPlaybackActive = true;
 
             yield return null;
-            while (musicSource.isPlaying && _nextTrackPathProvider != null)
+            while (
+                _musicInterruption.IsPlaybackPending(musicSource.isPlaying)
+                && _nextTrackPathProvider != null
+            )
                 yield return null;
 
-            if (musicSource.isPlaying)
+            if (_musicInterruption.IsPlaybackPending(musicSource.isPlaying))
                 yield break;
 
+            _musicPlaybackActive = false;
             StopCurrentMusicClip();
         }
 
@@ -728,6 +874,8 @@ public sealed class AudioManager : MonoBehaviour
             musicSource.loop = loop;
             ApplyVolumes();
             musicSource.Play();
+            _lastKnownMusicTimeSamples = 0;
+            _musicPlaybackActive = true;
         }
         else
         {
@@ -890,6 +1038,9 @@ public sealed class AudioManager : MonoBehaviour
             musicSource.clip = null;
         }
 
+        _musicPlaybackActive = false;
+        _lastKnownMusicTimeSamples = 0;
+        ClearMusicInterruption();
         _musicClipLoad = null;
     }
 
@@ -916,6 +1067,8 @@ public sealed class AudioManager : MonoBehaviour
         if (duration <= 0f)
         {
             source.Stop();
+            _musicPlaybackActive = false;
+            ClearMusicInterruption();
             ApplyVolumes();
             _fadeOutCoroutine = null;
             yield break;
@@ -932,6 +1085,8 @@ public sealed class AudioManager : MonoBehaviour
         }
 
         source.Stop();
+        _musicPlaybackActive = false;
+        ClearMusicInterruption();
         ApplyVolumes();
         _fadeOutCoroutine = null;
     }
