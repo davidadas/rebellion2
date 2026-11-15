@@ -1855,9 +1855,9 @@ namespace Rebellion.Gameplay
                 );
                 _weaponDamagePerStrength = Math.Max(config.AutoResolveWeaponDamagePerStrength, 0);
                 _currentHull = InitialSquadronSize * _hullStrengthPerFighter;
-                _maximumShields = Math.Max(fighter.ShieldStrength, 0);
-                _currentShields = _maximumShields * GetRemainingSquadronStrength();
                 int maximumSquadronSize = Math.Max(fighter.MaxSquadronSize, 0);
+                _maximumShields = (double)Math.Max(fighter.ShieldStrength, 0) * maximumSquadronSize;
+                _currentShields = _maximumShields * GetRemainingSquadronStrength();
                 _maximumWeaponCharge =
                     (double)ScaleWeaponStrength(fighter.LaserCannon, maximumSquadronSize)
                     + ScaleWeaponStrength(fighter.IonCannon, maximumSquadronSize)

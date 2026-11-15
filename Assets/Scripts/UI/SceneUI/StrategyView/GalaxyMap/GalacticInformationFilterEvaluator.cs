@@ -268,7 +268,12 @@ public static class GalacticInformationFilterEvaluator
 
         if (
             participant is Officer officer
-            && (officer.IsCaptured || officer.IsKilled || officer.InjuryPoints > 0)
+            && (
+                officer.IsCaptured
+                || officer.IsKilled
+                || officer.InjuryPoints > 0
+                || officer.CurrentRank != OfficerRank.None
+            )
         )
             return false;
 

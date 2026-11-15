@@ -54,6 +54,8 @@ namespace Rebellion.Tests.Gameplay
                     .Where(result => result.GameObject == damage.Ship)
                     .Sum(result => result.DamageValue);
                 Assert.AreEqual(damage.HullBefore - damage.HullAfter, totalDamage);
+                if (damage.HullAfter > 0)
+                    Assert.Greater(damage.Ship.NextRepairTick, game.CurrentTick);
             }
             CombatUnitSnapshot empireShipSnapshot = combatResult.AttackingUnits.Single(unit =>
                 unit.Unit.GetInstanceID() == empireShip.GetInstanceID()
@@ -3900,6 +3902,34 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsFalse(allianceFleet.IsInCombat);
             Assert.AreEqual(100, empireFleet.GetChildren<CapitalShip>()[0].CurrentHullStrength);
             Assert.AreEqual(100, allianceFleet.GetChildren<CapitalShip>()[0].CurrentHullStrength);
+        }
+
+        [Test]
+        public void TrySubmitResponse_HumanSelectsAutomatic_DoesNotWithdrawHumanForce()
+        {
+            (GameRoot game, SpaceCombatCommands commands, Fleet empireFleet, Fleet allianceFleet) =
+                CreatePendingEncounter();
+            game.Config.Combat.SpaceCombat.AutoResolveMaximumIterations = 0;
+            CapitalShip empireShip = empireFleet.GetChildren<CapitalShip>().Single();
+            CapitalShip allianceShip = allianceFleet.GetChildren<CapitalShip>().Single();
+            empireShip.PrimaryWeapons.Clear();
+            allianceShip.PrimaryWeapons.Clear();
+            allianceShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100, 0, 0, 0, 100 };
+
+            bool accepted = commands.TrySubmitResponse(
+                empireFleet.OwnerInstanceID,
+                retreat: false,
+                out List<GameResult> results
+            );
+
+            Assert.IsTrue(accepted);
+            SpaceCombatResult result = results.OfType<SpaceCombatResult>().Single();
+            SpaceCombatSideOutcome humanOutcome =
+                result.AttackerOwnerInstanceID == empireFleet.OwnerInstanceID
+                    ? result.AttackerOutcome
+                    : result.DefenderOutcome;
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, humanOutcome);
+            Assert.IsNull(empireFleet.Movement);
         }
 
         [Test]

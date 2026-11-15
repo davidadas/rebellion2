@@ -5,11 +5,19 @@ on:
     branches:
       - master
   pull_request:
-    branches:
-      - master
+  workflow_dispatch:
+    inputs:
+      pull_request_number:
+        description: Pull request number to test
+        required: true
+        type: string
+      head_sha:
+        description: Exact PR head commit to review and test
+        required: true
+        type: string
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ inputs.pull_request_number || github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -20,57 +28,25 @@ env:
 jobs:
   resolve-media:
     name: Resolve media revision
-    runs-on: ubuntu-latest
-    environment: production
+    if: github.event_name == 'push'
+    uses: ./.github/workflows/resolve-media.yml
+    with:
+      branch: ${{ github.head_ref }}
+    secrets: inherit
     permissions:
       contents: read
-    outputs:
-      revision: ${{ steps.resolve.outputs.revision }}
-      sha: ${{ steps.resolve.outputs.sha }}
-
-    steps:
-      - name: Checkout media metadata
-        uses: actions/checkout@v4
-        with:
-          repository: adasgames/rebellion2-media
-          ref: main
-          ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
-          lfs: false
-          path: .ci/rebellion2-media
-
-      - name: Resolve matching media branch
-        id: resolve
-        env:
-          PULL_REQUEST_BRANCH: ${{ github.head_ref }}
-        run: |
-          revision="main"
-          if [ -n "$PULL_REQUEST_BRANCH" ]; then
-            for candidate in "$PULL_REQUEST_BRANCH" "$PULL_REQUEST_BRANCH-media"; do
-              if git -C .ci/rebellion2-media ls-remote --exit-code --heads origin \
-                "refs/heads/$candidate" >/dev/null; then
-                revision="$candidate"
-                break
-              fi
-            done
-          fi
-          sha="$(git -C .ci/rebellion2-media ls-remote origin "refs/heads/$revision" | awk 'NR == 1 { print $1 }')"
-          if [ -z "$sha" ]; then
-            echo "Could not resolve rebellion2-media revision: $revision"
-            exit 1
-          fi
-          echo "Using rebellion2-media revision: $revision"
-          echo "Using rebellion2-media commit: $sha"
-          echo "revision=$revision" >> "$GITHUB_OUTPUT"
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
   build:
     name: Build (${{ matrix.targetPlatform }})
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.targetPlatform == 'StandaloneWindows64' && 'windows-2022' || 'ubuntu-latest' }}
     needs: resolve-media
     environment: production
     permissions:
       contents: read
+    defaults:
+      run:
+        shell: bash
 
     strategy:
       fail-fast: false
@@ -80,6 +56,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
       - name: Checkout media (git only, no LFS)
         uses: actions/checkout@v4
@@ -98,22 +79,24 @@ jobs:
           R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
           R2_BUCKET: ${{ vars.R2_BUCKET }}
         run: |
-          case "${{ matrix.targetPlatform }}" in
-            StandaloneLinux64)   MODULE="linux-il2cpp" ;;
-            StandaloneWindows64) MODULE="windows-mono" ;;
-            StandaloneOSX)       MODULE="mac-mono" ;;
-          esac
-          IMAGE="unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-${MODULE}-${{ env.UNITY_IMAGE_VERSION }}"
-          (
-            for attempt in 1 2 3; do
-              docker pull "$IMAGE" && exit 0
-              echo "Attempt $attempt failed, retrying in 30s..."
-              sleep 30
-            done
-            exit 1
-          ) > "$RUNNER_TEMP/unity-image-pull.log" 2>&1 &
-          pull_pid=$!
-          trap 'kill "$pull_pid" >/dev/null 2>&1 || true' EXIT
+          pull_pid=""
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            case "${{ matrix.targetPlatform }}" in
+              StandaloneLinux64) MODULE="linux-il2cpp" ;;
+              StandaloneOSX)     MODULE="mac-mono" ;;
+            esac
+            IMAGE="unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-${MODULE}-${{ env.UNITY_IMAGE_VERSION }}"
+            (
+              for attempt in 1 2 3; do
+                docker pull "$IMAGE" && exit 0
+                echo "Attempt $attempt failed, retrying in 30s..."
+                sleep 30
+              done
+              exit 1
+            ) > "$RUNNER_TEMP/unity-image-pull.log" 2>&1 &
+            pull_pid=$!
+            trap 'kill "$pull_pid" >/dev/null 2>&1 || true' EXIT
+          fi
 
           HOST="${R2_ENDPOINT#https://}"
           git config lfs.url "https://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@rebellion2-lfs-proxy.pages.dev/${HOST}/${R2_BUCKET}"
@@ -139,20 +122,18 @@ jobs:
             exit 1
           fi
 
-          if ! wait "$pull_pid"; then
+          if [ -n "$pull_pid" ]; then
+            if ! wait "$pull_pid"; then
+              cat "$RUNNER_TEMP/unity-image-pull.log"
+              exit 1
+            fi
             cat "$RUNNER_TEMP/unity-image-pull.log"
-            exit 1
+            trap - EXIT
           fi
-          cat "$RUNNER_TEMP/unity-image-pull.log"
-          trap - EXIT
 
       - name: Install media
         run: |
-          mkdir -p Assets/Content Assets/Art/Models/MainMenu
-          test -f .ci/rebellion2-media/Content/Application/Schemas/game-config.xsd
-          rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Content/ Assets/Content/
-          rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Models/MainMenu/ Assets/Art/Models/MainMenu/
-          rsync -a --exclude=.DS_Store .ci/rebellion2-media/UnityAssets/ Assets/
+          python Tools/install_build_media.py .ci/rebellion2-media Assets
           rm -rf .ci
 
       - name: Install multiplayer build configuration
@@ -193,7 +174,7 @@ jobs:
           if [ "${{ matrix.targetPlatform }}" = "StandaloneWindows64" ]; then
             extension="zip"
           fi
-          python3 Tools/package_desktop.py \
+          python Tools/package_desktop.py \
             --platform "${{ matrix.targetPlatform }}" \
             --build-dir "build/${{ matrix.targetPlatform }}" \
             --output "dist/rebellion2-${{ matrix.targetPlatform }}.$extension"
@@ -201,10 +182,31 @@ jobs:
       - name: Reset package files
         run: |
           git checkout -- Packages/manifest.json Packages/packages-lock.json 2>/dev/null || true
-          sudo rm -rf artifacts || true
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo rm -rf artifacts || true
+          else
+            rm -rf artifacts || true
+          fi
+
+  windows-build-tools:
+    if: github.event_name != 'workflow_dispatch'
+    name: Test Windows media staging
+    runs-on: windows-2022
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test media staging
+        run: python -m unittest discover -s Tools/tests -p test_install_build_media.py
 
   lint:
     name: Lint
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -212,6 +214,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Validate workflow definitions
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color -shellcheck=
+
+      - name: Test PR workflow helpers
+        run: |
+          npm ci --prefix .github/scripts --ignore-scripts
+          npm test --prefix .github/scripts
 
       - name: Install tools
         run: |
@@ -284,285 +294,122 @@ jobs:
 
   test:
     name: Test
-    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
     needs: resolve-media
-    environment: production
+    uses: ./.github/workflows/unity-test-runner.yml
+    with:
+      checkout_ref: ${{ github.sha }}
+      media_sha: ${{ needs.resolve-media.outputs.sha }}
+    secrets: inherit
     permissions:
       checks: write
       contents: read
       pull-requests: write
 
+  pr-plan:
+    name: Prepare PR test review
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      checks: write
+      contents: read
+      pull-requests: read
+    outputs:
+      check_id: ${{ steps.plan.outputs.check_id }}
+      review_url: ${{ steps.plan.outputs.review_url }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Checkout media (git only, no LFS)
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          repository: adasgames/rebellion2-media
-          ref: ${{ needs.resolve-media.outputs.sha }}
-          ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
-          lfs: false
-          path: .ci/rebellion2-media
-
-      - name: Select public Unity package cache paths
-        id: unity-package-paths
-        run: |
-          python3 - <<'EOF'
-          import json
-          import os
-          import re
-          from pathlib import Path
-
-          packages = json.loads(Path("Packages/packages-lock.json").read_text())["dependencies"]
-          paths = [
-              "Library/PackageCache/" + name + "@*"
-              for name, package in packages.items()
-              if re.fullmatch(r"com\.unity\.[a-z0-9_.-]+", name)
-              and package.get("source") == "registry"
-              and package.get("url") == "https://packages.unity.com"
-          ]
-          if not paths:
-              raise SystemExit("No public Unity registry packages were selected.")
-          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
-              output.write("paths<<PUBLIC_UNITY_PACKAGES\n" + "\n".join(sorted(paths)) + "\nPUBLIC_UNITY_PACKAGES\n")
-          EOF
-
-      - name: Cache public Unity packages
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.unity-package-paths.outputs.paths }}
-          key: unity-packages-${{ runner.os }}-${{ env.UNITY_VERSION }}-${{ hashFiles('Packages/manifest.json', 'Packages/packages-lock.json') }}
-
-      - name: Restore Unity tooling image
-        id: unity-image-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: ${{ runner.temp }}/unity-tooling-image.tar.zst
-          key: unity-tooling-${{ runner.os }}-${{ runner.arch }}-${{ env.UNITY_VERSION }}-${{ env.UNITY_IMAGE_VERSION }}-${{ hashFiles('.github/docker/unity-tests.Dockerfile') }}
-
-      - name: Pull media LFS and Unity image
-        working-directory: .ci/rebellion2-media
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: actions/github-script@v7
+        id: plan
         env:
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
-          R2_BUCKET: ${{ vars.R2_BUCKET }}
-        shell: bash
-        run: |
-          BASE_IMAGE="unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-linux-il2cpp-${{ env.UNITY_IMAGE_VERSION }}"
-          (
-            if [ "${{ steps.unity-image-cache.outputs.cache-hit }}" = "true" ]; then
-              zstd --decompress --stdout "$RUNNER_TEMP/unity-tooling-image.tar.zst" | docker load
-              exit 0
-            fi
-            for attempt in 1 2 3; do
-              docker pull "$BASE_IMAGE" && exit 0
-              echo "Attempt $attempt failed, retrying in 30s..."
-              sleep 30
-            done
-            exit 1
-          ) > "$RUNNER_TEMP/unity-image-pull.log" 2>&1 &
-          pull_pid=$!
-          trap 'kill "$pull_pid" >/dev/null 2>&1 || true' EXIT
-
-          HOST="${R2_ENDPOINT#https://}"
-          git config lfs.url "https://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@rebellion2-lfs-proxy.pages.dev/${HOST}/${R2_BUCKET}"
-          git config lfs.concurrenttransfers 3
-          git config lfs.transfer.batchSize 20
-          for attempt in 1 2 3 4; do
-            if git lfs pull \
-              --include="Content/**,Models/MainMenu/**,UnityAssets/**" \
-              --exclude="Content/**/*.mp4"; then
-              break
-            fi
-            if [ "$attempt" = "4" ]; then
-              echo "Media LFS download failed after $attempt attempts."
-              exit 1
-            fi
-            delay=$((attempt * 20))
-            echo "Media LFS download attempt $attempt failed; retrying in ${delay}s..."
-            sleep "$delay"
-          done
-          find Content -type f -name '*.mp4' -exec sh -c ': > "$1"' _ {} \;
-          if grep -RIl '^version https://git-lfs.github.com/spec/v1$' Content Models/MainMenu UnityAssets; then
-            echo "Media checkout still contains Git LFS pointers."
-            exit 1
-          fi
-
-          if ! wait "$pull_pid"; then
-            cat "$RUNNER_TEMP/unity-image-pull.log"
-            exit 1
-          fi
-          cat "$RUNNER_TEMP/unity-image-pull.log"
-          trap - EXIT
-
-      - name: Install media
-        run: |
-          mkdir -p Assets/Content Assets/Art/Models/MainMenu
-          test -f .ci/rebellion2-media/Content/Application/Schemas/game-config.xsd
-          rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Content/ Assets/Content/
-          rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Models/MainMenu/ Assets/Art/Models/MainMenu/
-          rsync -a --exclude=.DS_Store .ci/rebellion2-media/UnityAssets/ Assets/
-          rm -rf .ci
-
-      - name: Prepare Vulkan-enabled Unity test image
-        if: steps.unity-image-cache.outputs.cache-hit != 'true'
-        shell: bash
-        run: |
-          BASE_IMAGE="unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-linux-il2cpp-${{ env.UNITY_IMAGE_VERSION }}"
-          docker build \
-            --build-arg BASE_IMAGE="$BASE_IMAGE" \
-            --tag rebellion2-unity-test:vulkan \
-            --file .github/docker/unity-tests.Dockerfile \
-            .github/docker
-          docker save rebellion2-unity-test:vulkan \
-            | zstd --threads=0 -3 -o "$RUNNER_TEMP/unity-tooling-image.tar.zst"
-
-      - name: Cache Unity tooling image
-        if: steps.unity-image-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+          PR_NUMBER: ${{ inputs.pull_request_number }}
+          PR_HEAD_SHA: ${{ inputs.head_sha }}
         with:
-          path: ${{ runner.temp }}/unity-tooling-image.tar.zst
-          key: ${{ steps.unity-image-cache.outputs.cache-primary-key }}
+          script: |
+            const { plan } = require('./.github/scripts/pr-tests.cjs');
+            await plan({ github, context, core,
+              number: process.env.PR_NUMBER, headSha: process.env.PR_HEAD_SHA });
 
-      - name: Run Unity Tests
-        id: unity-tests
-        uses: game-ci/unity-test-runner@v4
+  approve-pr:
+    name: Review private test access
+    needs: pr-plan
+    runs-on: ubuntu-latest
+    environment:
+      name: Fork PR tests
+      url: ${{ needs.pr-plan.outputs.review_url }}
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+    outputs:
+      merge_sha: ${{ steps.approve.outputs.merge_sha }}
+      media_branch: ${{ steps.approve.outputs.media_branch }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: actions/github-script@v7
+        id: approve
         env:
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          PR_NUMBER: ${{ inputs.pull_request_number }}
+          PR_HEAD_SHA: ${{ inputs.head_sha }}
         with:
-          projectPath: .
-          unityVersion: ${{ env.UNITY_VERSION }}
-          testMode: all
-          githubToken: ${{ secrets.GITHUB_TOKEN }}
-          dockerMemoryLimit: 8g
-          customImage: rebellion2-unity-test:vulkan
-          customParameters: -force-vulkan -debugCodeOptimization -executeMethod UIBuilderMenu.BuildAll
-          coverageEnabled: true
-          coverageOptions: "generateHtmlReport;assemblyFilters:+GameAssembly"
-          checkName: Test results
-          cliVersion: v0.1.65
+          script: |
+            const { approve } = require('./.github/scripts/pr-tests.cjs');
+            await approve({ github, context, core,
+              number: process.env.PR_NUMBER, headSha: process.env.PR_HEAD_SHA });
 
-      - name: Summarize test execution time
-        if: ${{ !cancelled() && hashFiles('artifacts/*mode-results.xml') != '' }}
+  resolve-pr-media:
+    name: Resolve approved PR media
+    needs: approve-pr
+    uses: ./.github/workflows/resolve-media.yml
+    with:
+      branch: ${{ needs.approve-pr.outputs.media_branch }}
+    secrets: inherit
+    permissions:
+      contents: read
+
+  test-pr:
+    name: Test reviewed PR
+    needs: [approve-pr, resolve-pr-media]
+    uses: ./.github/workflows/unity-test-runner.yml
+    with:
+      checkout_ref: ${{ needs.approve-pr.outputs.merge_sha }}
+      reviewed_head_sha: ${{ inputs.head_sha }}
+      media_sha: ${{ needs.resolve-pr-media.outputs.sha }}
+      publish_checks: false
+      save_cache: false
+    secrets: inherit
+    permissions:
+      contents: read
+
+  pr-result:
+    name: Report reviewed PR tests
+    if: always() && github.event_name == 'workflow_dispatch' && needs.pr-plan.outputs.check_id != ''
+    needs: [pr-plan, approve-pr, resolve-pr-media, test-pr]
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: actions/github-script@v7
         env:
-          TEST_RUN_NAME: Test
-        run: |
-          python3 - <<'EOF'
-          import os
-          import xml.etree.ElementTree as ET
-          from datetime import datetime
-          from pathlib import Path
-
-          summary = f"### {os.environ['TEST_RUN_NAME']} execution\n\n"
-          for mode in ("editmode", "playmode"):
-              path = Path(f"artifacts/{mode}-results.xml")
-              if not path.exists():
-                  summary += f"**{mode}:** no result file was produced.\n\n"
-                  continue
-              root = ET.parse(path).getroot()
-              cases = [case for case in root.iter("test-case")
-                       if "start-time" in case.attrib and "end-time" in case.attrib]
-              first = min(datetime.fromisoformat(case.attrib["start-time"]) for case in cases)
-              last = max(datetime.fromisoformat(case.attrib["end-time"]) for case in cases)
-              seconds = (last - first).total_seconds()
-              summary += (
-                  f"**{mode}:** {root.attrib['passed']}/{root.attrib['total']} passed; "
-                  f"{root.attrib['failed']} failed; {root.attrib['skipped']} skipped; "
-                  f"first test start to final test end: **{seconds:.1f}s**.\n\n"
-              )
-              fixtures = {}
-              for case in cases:
-                  name = case.attrib["classname"]
-                  count, duration = fixtures.get(name, (0, 0.0))
-                  fixtures[name] = (count + 1, duration + float(case.attrib["duration"]))
-              summary += "| Slowest fixtures | Cases | Test time |\n|---|---:|---:|\n"
-              for name, (count, duration) in sorted(fixtures.items(), key=lambda item: -item[1][1])[:5]:
-                  summary += f"| {name} | {count} | {duration:.1f}s |\n"
-              summary += "\n"
-          summary += "Durations include transitions between tests and exclude initial Unity setup.\n"
-          print(summary)
-          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as output:
-              output.write(summary)
-          EOF
-
-      - name: Upload Unity test results
-        if: ${{ !cancelled() && hashFiles('artifacts/*mode-results.xml') != '' }}
-        uses: actions/upload-artifact@v4
+          CHECK_ID: ${{ needs.pr-plan.outputs.check_id }}
+          TEST_RESULT: ${{ needs.test-pr.result }}
+          MEDIA_RESULT: ${{ needs.resolve-pr-media.result }}
+          APPROVAL_RESULT: ${{ needs.approve-pr.result }}
         with:
-          name: unity-test-results
-          path: |
-            artifacts/editmode-results.xml
-            artifacts/playmode-results.xml
-          retention-days: 7
-
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
-
-      - name: Check compiled architecture
-        run: |
-          set -euo pipefail
-          test -f Library/ScriptAssemblies/GameAssembly.dll
-          test -f Library/ScriptAssemblies/ContentPackEditorAssembly.dll
-          architecture_runtime="$RUNNER_TEMP/architecture-unity-runtime"
-          mkdir -p "$architecture_runtime"
-          architecture_container="$(docker create rebellion2-unity-test:vulkan)"
-          trap 'docker rm "$architecture_container" >/dev/null' EXIT
-          docker cp "$architecture_container:/opt/unity/Editor/Data/Managed/UnityEngine/." "$architecture_runtime/"
-          dotnet build Tools/Rebellion.Architecture.Tests/Rebellion.Architecture.Tests.csproj \
-            -p:UnityCompiledAssembliesPath="$PWD/Library/ScriptAssemblies"
-          architecture_output="Tools/Rebellion.Architecture.Tests/bin/Debug/net8.0"
-          cp "$architecture_runtime"/*.dll "$architecture_output/"
-          for package in Library/ScriptAssemblies/Unity*.dll Library/ScriptAssemblies/glTFast*.dll; do
-            if [ -f "$package" ]; then
-              cp "$package" "$architecture_output/"
-            fi
-          done
-          dotnet test Tools/Rebellion.Architecture.Tests/Rebellion.Architecture.Tests.csproj \
-            --no-build --logger "console;verbosity=normal"
-
-      - name: Check coverage threshold
-        run: |
-          python3 - <<'EOF'
-          import sys
-          import xml.etree.ElementTree as ET
-          from pathlib import Path
-
-          LINE_THRESHOLD   = 79.0
-          METHOD_THRESHOLD = 87.8
-
-          summary_path = Path("CodeCoverage/Report/Summary.xml")
-          if not summary_path.is_file():
-              print("FAIL: CodeCoverage/Report/Summary.xml was not generated")
-              sys.exit(1)
-
-          root = ET.parse(summary_path).getroot()
-          summary = root.find("Summary")
-
-          covered_lines = int(summary.findtext("Coveredlines", 0))
-          total_lines   = int(summary.findtext("Totallines", 0))
-          line_pct      = float(summary.findtext("Linecoverage", 0))
-
-          covered_methods = int(summary.findtext("Coveredmethods", 0))
-          total_methods   = int(summary.findtext("Totalmethods", 0))
-          method_pct      = float(summary.findtext("Methodcoverage", 0))
-
-          print(f"Line coverage:   {line_pct:.1f}% ({covered_lines}/{total_lines})")
-          print(f"Method coverage: {method_pct:.1f}% ({covered_methods}/{total_methods})")
-
-          failed = False
-          if line_pct < LINE_THRESHOLD:
-              print(f"FAIL: line coverage {line_pct:.1f}% is below threshold {LINE_THRESHOLD}%")
-              failed = True
-          if method_pct < METHOD_THRESHOLD:
-              print(f"FAIL: method coverage {method_pct:.1f}% is below threshold {METHOD_THRESHOLD}%")
-              failed = True
-
-          if failed:
-              sys.exit(1)
-
-          print("OK: all coverage thresholds met")
-          EOF
+          script: |
+            const { report } = require('./.github/scripts/pr-tests.cjs');
+            await report({ github, context, checkId: process.env.CHECK_ID,
+              testResult: process.env.TEST_RESULT, mediaResult: process.env.MEDIA_RESULT,
+              approvalResult: process.env.APPROVAL_RESULT });

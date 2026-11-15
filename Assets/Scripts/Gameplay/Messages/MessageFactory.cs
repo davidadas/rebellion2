@@ -157,7 +157,12 @@ namespace Rebellion.Gameplay
                 game,
                 deliveries
             );
-            AddOwnershipMessages(batch.OfType<PlanetOwnershipChangedResult>(), game, deliveries);
+            AddOwnershipMessages(
+                batch.OfType<PlanetOwnershipChangedResult>(),
+                batch.OfType<PlanetUprisingEndedResult>(),
+                game,
+                deliveries
+            );
             AddObjectiveMessages(
                 batch.OfType<PlanetOwnershipChangedResult>(),
                 batch.OfType<HeadquartersDestroyedResult>(),
@@ -284,6 +289,7 @@ namespace Rebellion.Gameplay
                 reporter?.GetDisplayName() ?? GetMissionParticipantName(result);
             string officerName = GetMissionOfficerName(result, game, killedResults);
             string targetName = GetMissionObjectTargetName(result, game, sabotageResults);
+            string abductionResult = GetAbductionResultText(result, killedOfficerIDs, officerName);
             string assassinationResult = GetAssassinationResultText(result, killedOfficerIDs);
             MessageDefinition definition = GetMissionDefinition(
                 MessageResultType.MissionReport,
@@ -318,6 +324,7 @@ namespace Rebellion.Gameplay
                         },
                         { "officer", string.IsNullOrEmpty(officerName) ? "target" : officerName },
                         { "target", string.IsNullOrEmpty(targetName) ? "target" : targetName },
+                        { "abduction_result", abductionResult },
                         { "assassination_result", assassinationResult },
                         { "details", missionDetails },
                         { "personnel_status", personnelStatus },
@@ -1582,6 +1589,32 @@ namespace Rebellion.Gameplay
                         sabotagedObject?.GetInstanceID() == targetInstanceID
                     )
             );
+        }
+
+        /// <summary>
+        /// Gets the target status for a successful abduction that killed its target.
+        /// </summary>
+        /// <param name="result">The completed mission result.</param>
+        /// <param name="killedOfficerIDs">Officer ids killed by results in the current batch.</param>
+        /// <param name="officerName">The resolved target officer display name.</param>
+        /// <returns>The target-death status, or an empty string when the target survived.</returns>
+        private static string GetAbductionResultText(
+            MissionCompletedResult result,
+            HashSet<string> killedOfficerIDs,
+            string officerName
+        )
+        {
+            if (
+                result?.Outcome != MissionOutcome.Success
+                || result.Mission?.ConfigKey != AbductionMission.MissionTypeID
+                || !killedOfficerIDs.Contains(GetMissionTargetOfficerInstanceID(result.Mission))
+            )
+            {
+                return string.Empty;
+            }
+
+            string targetName = string.IsNullOrEmpty(officerName) ? "The target" : officerName;
+            return $"{targetName} was killed during the attempt.";
         }
 
         /// <summary>
@@ -3541,17 +3574,28 @@ namespace Rebellion.Gameplay
         /// Adds political ownership messages for colonized planets.
         /// </summary>
         /// <param name="results">The results.</param>
+        /// <param name="endedUprisings">Uprisings that ended during the same operation.</param>
         /// <param name="game">The game.</param>
         /// <param name="deliveries">The deliveries.</param>
         private void AddOwnershipMessages(
             IEnumerable<PlanetOwnershipChangedResult> results,
+            IEnumerable<PlanetUprisingEndedResult> endedUprisings,
             GameRoot game,
             ICollection<MessageDelivery> deliveries
         )
         {
+            HashSet<Planet> endedUprisingPlanets = (
+                endedUprisings ?? Array.Empty<PlanetUprisingEndedResult>()
+            )
+                .Where(result => result?.Planet != null)
+                .Select(result => result.Planet)
+                .ToHashSet();
             foreach (PlanetOwnershipChangedResult result in results)
             {
-                if (result.Planet?.IsColonized != true)
+                if (
+                    result.Planet?.IsColonized != true
+                    || endedUprisingPlanets.Contains(result.Planet)
+                )
                     continue;
 
                 if (

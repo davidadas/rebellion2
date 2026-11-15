@@ -98,6 +98,17 @@ namespace Rebellion.Gameplay
                 return;
 
             List<GameResult> results = new List<GameResult>();
+            if (change.Planet.IsInUprising && change.NewOwner != null)
+            {
+                results.Add(
+                    new PlanetUprisingEndedResult
+                    {
+                        Planet = change.Planet,
+                        Faction = change.NewOwner,
+                        Tick = change.Tick,
+                    }
+                );
+            }
             EvictDisplacedUnits(change, results);
             _transitionResults.Add(change, results);
             _pendingOwnershipChanges++;

@@ -532,7 +532,7 @@ namespace Rebellion.Multiplayer
                 }
                 catch (Exception exception)
                 {
-                    _peer.Disconnect(exception.Message);
+                    _peer.Disconnect(exception.Message, MultiplayerDisconnectReason.TransportError);
                 }
             }
             else if (
@@ -553,7 +553,18 @@ namespace Rebellion.Multiplayer
                     _lobbyId = null;
                     _ownsLobby = false;
                 }
-                _peer.Disconnect("A player left the game lobby.");
+                _peer.Disconnect(
+                    "A player left the game lobby.",
+                    data.CurrentStatus switch
+                    {
+                        LobbyMemberStatus.Left => MultiplayerDisconnectReason.PeerEndedSession,
+                        LobbyMemberStatus.Closed => MultiplayerDisconnectReason.LobbyClosed,
+                        LobbyMemberStatus.Kicked => MultiplayerDisconnectReason.RemovedFromLobby,
+                        LobbyMemberStatus.Disconnected =>
+                            MultiplayerDisconnectReason.ConnectionLost,
+                        _ => MultiplayerDisconnectReason.Unknown,
+                    }
+                );
             }
         }
 

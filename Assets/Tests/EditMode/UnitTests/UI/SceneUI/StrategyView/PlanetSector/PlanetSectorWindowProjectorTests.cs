@@ -788,7 +788,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             GalaxyMapSector sector = CreateSector(
                 new GalaxyMapPlanet(_planetSector, planet, string.Empty)
             );
-            FactionTheme playerTheme = _uiContext.GetPlayerFactionTheme();
             FactionTheme opposingTheme = _uiContext.GetTheme(_opposingFactionId);
 
             PlanetSectorWindowRenderData data = _projector.CreateRenderData(
@@ -800,7 +799,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
 
             Assert.AreSame(
-                _uiContext.GetTexture(playerTheme.PlanetOverlayTheme.PlanetSectorUprisingImagePath),
+                _uiContext.GetTexture(
+                    opposingTheme.PlanetOverlayTheme.PlanetSectorUprisingImagePath
+                ),
                 data.Planets[0].UprisingTexture
             );
             Assert.AreSame(
@@ -815,6 +816,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 ),
                 data.Planets[0].MissionPressedTexture
             );
+        }
+
+        [Test]
+        public void CreateRenderData_NeutralUprisingPlanet_ReturnsNoUprisingOverlay()
+        {
+            Planet planet = CreatePlanet("planet", null, 10, 20);
+            planet.IsInUprising = true;
+
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                CreateSector(new GalaxyMapPlanet(_planetSector, planet, string.Empty)),
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            Assert.IsNull(data.Planets[0].UprisingTexture);
         }
 
         [Test]

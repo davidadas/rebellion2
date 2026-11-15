@@ -2732,6 +2732,61 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void CreateMessages_AbductionReportWithKilledTarget_ReportsTargetDeath()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            Officer targetOfficer = new Officer
+            {
+                DisplayName = "Target Officer",
+                InstanceID = "target-officer",
+                OwnerInstanceID = empire.InstanceID,
+                IsKilled = true,
+            };
+            Mission mission = new AbductionMission
+            {
+                ConfigKey = AbductionMission.MissionTypeID,
+                DisplayName = "Abduction",
+                OwnerInstanceID = alliance.InstanceID,
+                TargetOfficerInstanceID = targetOfficer.InstanceID,
+            };
+            game.AttachNode(targetOfficer, target);
+            game.AttachNode(mission, target);
+            game.DetachNode(targetOfficer);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.MissionReport,
+                            MessageType.Mission,
+                            "title:{officer}",
+                            "body:{officer}:{abduction_result}",
+                            DefaultImage("mission-image"),
+                            outcome: MessageResultOutcome.Success,
+                            missionTypeId: AbductionMission.MissionTypeID
+                        ),
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionName = "Abduction",
+                        Outcome = MissionOutcome.Success,
+                    },
+                    new OfficerKilledResult { TargetOfficer = targetOfficer, Context = target }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual(
+                "body:Target Officer:Target Officer was killed during the attempt.",
+                message.Body
+            );
+        }
+
+        [Test]
         public void CreateMessages_AssassinationReportWithInjuredTarget_UsesLiveOfficerName()
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
@@ -4330,6 +4385,47 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual("ended:Empire:Yavin", message.Title);
             Assert.AreEqual("body:Empire:Yavin", message.Body);
             Assert.AreEqual("empire-image", message.DisplayImagePath);
+        }
+
+        [Test]
+        public void CreateMessages_UprisingEndedWithOwnershipChange_SuppressesJoinedCauseMessage()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            target.OwnerInstanceID = alliance.InstanceID;
+            IReadOnlyList<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.UprisingEnded,
+                        MessageType.PopularSupport,
+                        "uprising ended:{system}",
+                        "ended:{faction}:{system}",
+                        imagePaths: FactionImages()
+                    ),
+                    Definition(
+                        MessageResultType.PlanetJoinedBySupport,
+                        MessageType.PopularSupport,
+                        "joined:{system}",
+                        "joined:{faction}:{system}",
+                        imagePaths: FactionImages()
+                    ),
+                },
+                new PlanetOwnershipChangedResult
+                {
+                    Planet = target,
+                    PreviousOwner = empire,
+                    NewOwner = alliance,
+                    Reason = PlanetOwnershipChangeReason.GarrisonRemoved,
+                },
+                new PlanetUprisingEndedResult { Planet = target, Faction = alliance }
+            );
+
+            Message message = FirstMessageFor(deliveries, alliance);
+            Assert.AreEqual(1, deliveries.Count);
+            Assert.AreEqual("uprising ended:Yavin", message.Title);
+            Assert.AreEqual("ended:Alliance:Yavin", message.Body);
         }
 
         [TestCase(PlanetOwnershipChangeReason.PopularSupport)]

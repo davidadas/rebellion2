@@ -277,10 +277,7 @@ namespace Rebellion.Gameplay
                         item is ISceneNode sceneNode
                         && item is not CapitalShip
                         && item is not Starfighter
-                        && (
-                            ReferenceEquals(sceneNode.GetParent(), destination)
-                            || ReferenceEquals(sceneNode.GetLastParent(), destination)
-                        )
+                        && ReferenceEquals(sceneNode.GetParent(), destination)
                     )
                     .ToList();
                 _commands.CancelManufacturing(invalidOrders, producerOwnerInstanceId);

@@ -46,6 +46,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
         }
 
         [Test]
+        public void PrefabProperties_BookmarkLayer_PlacesBelowStrategyHud()
+        {
+            StrategyHudView strategyHud = _rootObject.GetComponentInChildren<StrategyHudView>(true);
+
+            Assert.AreSame(_view.transform.parent, strategyHud.transform.parent);
+            Assert.Less(_view.transform.GetSiblingIndex(), strategyHud.transform.GetSiblingIndex());
+        }
+
+        [Test]
         public void Render_ActiveAndInactiveSlots_CreatesOnlyRequiredVisibleViews()
         {
             BookmarkRenderData[] data =
