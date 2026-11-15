@@ -123,14 +123,14 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Compares stable battle identifiers for query-result ordering.
+        /// Compares unsigned battle identifiers for query-result ordering.
         /// </summary>
         /// <param name="left">The first unit.</param>
         /// <param name="right">The second unit.</param>
         /// <returns>The identifier comparison.</returns>
         private static int CompareIndices(TacticalCombatUnit left, TacticalCombatUnit right)
         {
-            return left.Index.CompareTo(right.Index);
+            return unchecked((uint)left.Index).CompareTo(unchecked((uint)right.Index));
         }
 
         /// <summary>
@@ -224,7 +224,11 @@ namespace Rebellion.Gameplay
                 int middle = lower + (upper - lower) / 2;
                 TacticalCombatUnit candidate = index[middle];
                 float candidateX = _indexedPositions[candidate];
-                if (candidateX < x || candidateX == x && candidate.Index < unitIndex)
+                if (
+                    candidateX < x
+                    || candidateX == x
+                        && unchecked((uint)candidate.Index) < unchecked((uint)unitIndex)
+                )
                     lower = middle + 1;
                 else
                     upper = middle;

@@ -343,7 +343,7 @@ namespace Rebellion.Gameplay
             for (int index = 0; index < _equalHeight.Count; index++)
             {
                 TacticalCombatUnit candidate = _equalHeight[index];
-                if (unit.Index < candidate.Index)
+                if (unchecked((uint)unit.Index) < unchecked((uint)candidate.Index))
                 {
                     if (!_hasLower)
                         UpdateUpper(unit, candidate);

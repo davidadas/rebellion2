@@ -399,6 +399,171 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsTrue(_tick.IsSettled);
         }
 
+        [TestCase("FNEMP1", 1)]
+        [TestCase("FNEMP1", 2)]
+        [TestCase("FNALL1", 1)]
+        [TestCase("FNALL1", 2)]
+        public void CompleteTacticalCombat_ManualEncounters_ResumesOnlyAfterFinalDecision(
+            string playerFactionId,
+            int encounterCount
+        )
+        {
+            SpaceCombatCommands commands = CreateTacticalCombatScenario(
+                playerFactionId,
+                encounterCount
+            );
+            int decisionsRequired = 0;
+            int completedTicks = 0;
+            int resumptions = 0;
+            _tick.CombatDecisionRequired += () => decisionsRequired++;
+            _tick.TickCompleted += () => completedTicks++;
+            _tick.CombatResumed += () => resumptions++;
+
+            _tick.ReconcileLoadedState();
+
+            for (int encounter = 0; encounter < encounterCount; encounter++)
+            {
+                Assert.AreEqual(encounter + 1, decisionsRequired);
+                Assert.IsFalse(_tick.IsSettled);
+                Assert.IsTrue(commands.CanTakeCommand);
+                TacticalCombatSession battle = commands.BeginTacticalCombat();
+
+                _tick.ProcessTick();
+
+                Assert.AreEqual(40, _game.CurrentTick);
+                Assert.AreEqual(0, completedTicks);
+                Assert.AreEqual(0, resumptions);
+                CompleteTacticalEncounter(battle);
+
+                SpaceCombatResult result = _tick.CompleteTacticalCombat(battle);
+
+                Assert.AreEqual(battle.PlayerSide, result.Winner);
+                Assert.AreEqual(40, _game.CurrentTick);
+                if (encounter + 1 < encounterCount)
+                {
+                    Assert.IsTrue(commands.HasPendingDecision);
+                    Assert.IsFalse(_tick.IsSettled);
+                    Assert.AreEqual(0, completedTicks);
+                    Assert.AreEqual(0, resumptions);
+                }
+            }
+
+            Assert.IsFalse(commands.HasPendingDecision);
+            Assert.IsTrue(_tick.IsSettled);
+            Assert.AreEqual(1, completedTicks);
+            Assert.AreEqual(1, resumptions);
+        }
+
+        [TestCase("FNEMP1")]
+        [TestCase("FNALL1")]
+        public void CompleteTacticalCombat_UnfinishedManualEncounter_RetainsSuspendedTick(
+            string playerFactionId
+        )
+        {
+            SpaceCombatCommands commands = CreateTacticalCombatScenario(playerFactionId, 1);
+            _tick.ReconcileLoadedState();
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+            int completedTicks = 0;
+            _tick.TickCompleted += () => completedTicks++;
+
+            Assert.Throws<InvalidOperationException>(() => _tick.CompleteTacticalCombat(battle));
+            _tick.ProcessTick();
+
+            Assert.AreEqual(40, _game.CurrentTick);
+            Assert.IsTrue(commands.HasPendingDecision);
+            Assert.IsFalse(_tick.IsSettled);
+            Assert.AreEqual(0, completedTicks);
+        }
+
+        /// <summary>
+        /// Creates pending manual encounters for one human faction without advancing campaign time.
+        /// </summary>
+        /// <param name="playerFactionId">The faction taking manual command.</param>
+        /// <param name="encounterCount">The number of contested planets.</param>
+        /// <returns>The pending encounter commands shared by the tick processor.</returns>
+        private SpaceCombatCommands CreateTacticalCombatScenario(
+            string playerFactionId,
+            int encounterCount
+        )
+        {
+            _session.Dispose();
+            _game.CurrentTick = 40;
+            _game.Summary.PlayerFactionID = playerFactionId;
+            _game.GetFactions().Add(new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" });
+            _game
+                .GetFactions()
+                .Add(new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" });
+            _game.SetFactionController(playerFactionId, "PLAYER", PlayerControllerType.Human);
+            PlanetSector sector = new PlanetSector { InstanceID = "TACTICAL_SECTOR" };
+            _game.AttachNode(sector, _game.Galaxy);
+            for (int encounter = 0; encounter < encounterCount; encounter++)
+            {
+                Planet planet = new Planet
+                {
+                    InstanceID = $"TACTICAL_PLANET_{encounter}",
+                    OwnerInstanceID = "FNALL1",
+                    IsColonized = true,
+                };
+                _game.AttachNode(planet, sector);
+                foreach (string factionId in new[] { "FNEMP1", "FNALL1" })
+                {
+                    Fleet fleet = AttachOperationalFleet(
+                        planet,
+                        factionId,
+                        $"TACTICAL_{encounter}_{factionId}"
+                    );
+                    CapitalShip ship = fleet.GetChildren<CapitalShip>().Single();
+                    ship.TypeID = factionId == "FNEMP1" ? "CSEM006" : "ALCS008";
+                    ship.MaxHullStrength = 1000;
+                    ship.CurrentHullStrength = 1000;
+                    ship.SublightSpeed = 100;
+                    ship.WeaponRecharge = 1;
+                    if (factionId == playerFactionId)
+                        ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[]
+                        {
+                            100000,
+                            100000,
+                            100000,
+                            100000,
+                            100,
+                        };
+                }
+            }
+
+            _session = TestContent.CreateGameSession(_game);
+            _tick = CreateTickProcessor();
+            return _session.GetService<SpaceCombatCommands>();
+        }
+
+        /// <summary>
+        /// Advances a manually targeted battle through its terminal lifecycle.
+        /// </summary>
+        /// <param name="battle">The manually commanded encounter.</param>
+        private static void CompleteTacticalEncounter(TacticalCombatSession battle)
+        {
+            TacticalCombatUnit player = battle.Units.Single(unit => unit.Side == battle.PlayerSide);
+            TacticalCombatUnit opponent = battle.Units.Single(unit =>
+                unit.Side != battle.PlayerSide
+            );
+            foreach (TacticalCombatUnit unit in battle.Units)
+            {
+                foreach (TacticalWeaponArc arc in Enum.GetValues(typeof(TacticalWeaponArc)))
+                    unit.Weapons.ClearBattery(arc);
+                unit.Weapons.Advance(1, 1);
+            }
+            battle.SetTarget(
+                battle.Groups.Single(group => group.Side == battle.PlayerSide),
+                opponent
+            );
+            for (int frame = 0; frame < 12000 && !battle.IsComplete; frame++)
+                battle.Advance(50);
+            Assert.IsTrue(
+                battle.IsComplete,
+                $"Player: {player.Status}, hull={player.Systems.Hull}, position={player.Position}; "
+                    + $"opponent: {opponent.Status}, hull={opponent.Systems.Hull}, position={opponent.Position}"
+            );
+        }
+
         /// <summary>
         /// Connects tick scheduling to the current session's services.
         /// </summary>

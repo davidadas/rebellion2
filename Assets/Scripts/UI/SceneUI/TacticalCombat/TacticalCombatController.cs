@@ -34,6 +34,7 @@ public sealed class TacticalCombatController : IDisposable
     private bool _completing;
     private bool _stationControlsVisible;
     private bool _applicationMenuOpen;
+    private bool _inspectionKeyHeld;
     private float _hudRefresh;
     private readonly TacticalCombatInspection _inspection;
     private readonly TacticalCombatRenderSettings _videoSettings;
@@ -138,6 +139,7 @@ public sealed class TacticalCombatController : IDisposable
         System.Diagnostics.Stopwatch clock = System.Diagnostics.Stopwatch.StartNew();
         _session.ConfigureClockedAdvance(() => unchecked((uint)clock.ElapsedMilliseconds));
         _session.BeginArrival(_view.Renderer);
+        CaptureInspectionKeyState();
         _ready = true;
         RefreshHud();
         RefreshControls();
@@ -186,8 +188,16 @@ public sealed class TacticalCombatController : IDisposable
             foreach (TacticalCombatHudControl definition in TacticalCombatHudLayout.Controls)
                 if (TryCameraControl(definition.Control, out _))
                     _view.ApplyFrameKeyboardActivation(definition.Control, false);
+        if (!open)
+            CaptureInspectionKeyState();
         RefreshControls();
     }
+
+    /// <summary>
+    /// Captures an already-held inspection key when battle input resumes after loading or a modal surface.
+    /// </summary>
+    private void CaptureInspectionKeyState() =>
+        _inspectionKeyHeld = Keyboard.current?.tabKey.isPressed == true;
 
     /// <summary>
     /// Routes native camera and direct-command transitions while preserving their distinct release semantics.
@@ -197,6 +207,8 @@ public sealed class TacticalCombatController : IDisposable
     /// <returns>Whether the battle currently owns the addressed transition.</returns>
     private bool HandleKeyboardEvent(KeyCode key, bool pressed)
     {
+        if (key == KeyCode.Tab && !pressed)
+            _inspectionKeyHeld = false;
         if (
             !_ready
             || _disposed
@@ -213,6 +225,9 @@ public sealed class TacticalCombatController : IDisposable
         }
         if (key == KeyCode.Tab)
         {
+            if (pressed && _inspectionKeyHeld)
+                return true;
+            _inspectionKeyHeld = pressed;
             Keyboard keyboard = Keyboard.current;
             bool shift =
                 keyboard != null
@@ -756,7 +771,10 @@ public sealed class TacticalCombatController : IDisposable
             _session.Audio.SetPlaybackAvailable(false);
         _view.gameObject.SetActive(active);
         if (active)
+        {
+            CaptureInspectionKeyState();
             _session.Audio.SetPlaybackAvailable(true);
+        }
     }
 
     /// <summary>

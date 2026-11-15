@@ -494,6 +494,89 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void Advance_FirstTractorSource_AnnouncesRetainedMembershipOnce()
+        {
+            CapitalShip source = CreateShip("a", 1000, 1);
+            source.TractorBeamPower = 10;
+            source.TractorBeamnRange = 1000;
+            TacticalCombatSession session = CreateSession(source, CreateShip("b", 1000000, 0));
+            TacticalCombatUnit target = session.GetUnit("b");
+            List<bool> transitions = new();
+            target.TractorSourcesChanged += transitions.Add;
+
+            AdvanceSeconds(session, 20);
+
+            Assert.IsTrue(target.HasTractorSources);
+            Assert.Greater(target.TractorRestraint, 0);
+            CollectionAssert.AreEqual(new[] { true }, transitions);
+        }
+
+        [Test]
+        public void Advance_ZeroHullTractorContributor_RetainsMembershipWithZeroRestraint()
+        {
+            CapitalShip source = CreateShip("a", 1000, 1);
+            source.TractorBeamPower = 10;
+            source.TractorBeamnRange = 1000;
+            TacticalCombatSession session = CreateSession(source, CreateShip("b", 1000000, 0));
+            TacticalCombatUnit target = session.GetUnit("b");
+            List<bool> transitions = new();
+            target.TractorSourcesChanged += transitions.Add;
+            AdvanceSeconds(session, 20);
+            Assert.IsTrue(target.HasTractorSources);
+            session.GetUnit("a").Systems.Destroy();
+
+            AdvanceSeconds(session, 1);
+
+            Assert.AreEqual(0, target.TractorRestraint);
+            Assert.IsTrue(target.HasTractorSources);
+            CollectionAssert.AreEqual(new[] { true }, transitions);
+        }
+
+        [Test]
+        public void Advance_LastTractorSourceUnlocks_AnnouncesEmptyMembership()
+        {
+            CapitalShip source = CreateShip("a", 1000, 1);
+            source.TractorBeamPower = 10;
+            source.TractorBeamnRange = 1000;
+            TacticalCombatSession session = CreateSession(source, CreateShip("b", 1000000, 0));
+            TacticalCombatUnit contributor = session.GetUnit("a");
+            TacticalCombatUnit target = session.GetUnit("b");
+            List<bool> transitions = new();
+            target.TractorSourcesChanged += transitions.Add;
+            AdvanceSeconds(session, 20);
+            Assert.IsTrue(target.HasTractorSources);
+            for (int damage = 0; damage < 4; damage++)
+                contributor.Systems.ApplyComponentEvent(TacticalShipSystem.TractorBeam, false);
+
+            AdvanceSeconds(session, 12);
+
+            Assert.IsFalse(target.HasTractorSources);
+            Assert.IsNull(contributor.TractorTargetID);
+            CollectionAssert.AreEqual(new[] { true, false }, transitions);
+        }
+
+        [TestCase(true, false, true)]
+        [TestCase(true, true, false)]
+        [TestCase(false, false, false)]
+        public void Advance_GravityGeneratorPresentation_RequiresAdmittedActiveMovement(
+            bool hasGravityWell,
+            bool paused,
+            bool expected
+        )
+        {
+            CapitalShip source = CreateShip("a", 1000, 0);
+            source.HasGravityWell = hasGravityWell;
+            TacticalCombatSession session = CreateSession(source, CreateShip("b", 1000000, 0));
+            int requests = 0;
+            session.GetUnit("a").GravityWellPresentationRequested += () => requests++;
+            session.IsPaused = paused;
+
+            AdvanceSeconds(session, 6);
+
+            Assert.AreEqual(expected, requests > 0);
+        }
+
+        [Test]
         public void Advance_LethalQueuedWeaponImpact_ReportsRegisteredShooterBeforeExplosion()
         {
             TacticalCombatSession session = CreateSession(

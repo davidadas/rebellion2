@@ -12,6 +12,8 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 using Vector3N = System.Numerics.Vector3;
@@ -836,7 +838,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         }
 
         [UnityTest]
-        public IEnumerator HandleKeyboardEvent_RepeatedTab_ReleasesSingleInspectionArtworkAfterEachPress()
+        public IEnumerator HandleKeyboardEvent_HeldTab_TraversesOnceUntilReleased()
         {
             ContentPack pack = ContentPackLoader.OpenActive();
             TacticalCombatSession encounter = CreateEncounter(pack.GameData);
@@ -868,13 +870,105 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 );
                 Assert.AreSame(before, ((Image)button.targetGraphic).overrideSprite);
             }
+            Assert.AreEqual(1, presses);
             Assert.IsTrue(
                 view.HandleKeyboardEvent(
                     new Event { type = EventType.KeyUp, keyCode = KeyCode.Tab }
                 )
             );
 
-            Assert.AreEqual(3, presses);
+            Assert.IsTrue(
+                view.HandleKeyboardEvent(
+                    new Event { type = EventType.KeyDown, keyCode = KeyCode.Tab }
+                )
+            );
+            Assert.AreEqual(2, presses);
+        }
+
+        [UnityTest]
+        public IEnumerator HandleKeyboardEvent_TabHeldAcrossApplicationMenu_WaitsForRelease()
+        {
+            InputTestFixture input = new();
+            input.Setup();
+            try
+            {
+                Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+                ContentPack pack = ContentPackLoader.OpenActive();
+                TacticalCombatSession encounter = CreateEncounter(pack.GameData);
+                yield return PrepareController(encounter, pack);
+                TacticalCombatHudButton button = SelectInspectionButton(encounter);
+                int presses = 0;
+                button.onClick.AddListener(() => presses++);
+                controller.SetApplicationMenuOpen(true);
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Tab));
+                InputSystem.Update();
+                controller.SetApplicationMenuOpen(false);
+
+                Assert.IsTrue(
+                    view.HandleKeyboardEvent(
+                        new Event { type = EventType.KeyDown, keyCode = KeyCode.Tab }
+                    )
+                );
+                Assert.AreEqual(0, presses);
+
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                InputSystem.Update();
+                Assert.IsTrue(
+                    view.HandleKeyboardEvent(
+                        new Event { type = EventType.KeyUp, keyCode = KeyCode.Tab }
+                    )
+                );
+                Assert.IsTrue(
+                    view.HandleKeyboardEvent(
+                        new Event { type = EventType.KeyDown, keyCode = KeyCode.Tab }
+                    )
+                );
+                Assert.AreEqual(1, presses);
+            }
+            finally
+            {
+                input.TearDown();
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator HandleKeyboardEvent_TabReleasedDuringApplicationMenu_AdmitsNextPress()
+        {
+            InputTestFixture input = new();
+            input.Setup();
+            try
+            {
+                Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+                ContentPack pack = ContentPackLoader.OpenActive();
+                TacticalCombatSession encounter = CreateEncounter(pack.GameData);
+                yield return PrepareController(encounter, pack);
+                TacticalCombatHudButton button = SelectInspectionButton(encounter);
+                int presses = 0;
+                button.onClick.AddListener(() => presses++);
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Tab));
+                InputSystem.Update();
+                Assert.IsTrue(
+                    view.HandleKeyboardEvent(
+                        new Event { type = EventType.KeyDown, keyCode = KeyCode.Tab }
+                    )
+                );
+                Assert.AreEqual(1, presses);
+                controller.SetApplicationMenuOpen(true);
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                InputSystem.Update();
+                controller.SetApplicationMenuOpen(false);
+
+                Assert.IsTrue(
+                    view.HandleKeyboardEvent(
+                        new Event { type = EventType.KeyDown, keyCode = KeyCode.Tab }
+                    )
+                );
+                Assert.AreEqual(2, presses);
+            }
+            finally
+            {
+                input.TearDown();
+            }
         }
 
         [UnityTest]
@@ -1051,6 +1145,109 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             {
                 Object.Destroy(events);
             }
+        }
+
+        [UnityTest]
+        public IEnumerator PrepareAsync_TractorMembership_ShowsLockWithZeroRestraint()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            TacticalCombatSession encounter = CreateEncounter(pack.GameData, gravityWell: false);
+            yield return PrepareRenderer(encounter, pack);
+            TacticalCombatUnit unit = encounter.GetUnit("ALCS008");
+            Assert.AreEqual(0, unit.TractorRestraint);
+
+            unit.SetTractorSources(true);
+
+            MeshRenderer loop = view
+                .Renderer.GetComponentsInChildren<MeshRenderer>(true)
+                .Single(renderer => renderer.name == "Lock");
+            Assert.IsTrue(loop.enabled);
+            TacticalCombatEffectDefinition definition = pack.GameData.TacticalCombat.Effects.Single(
+                effect => effect.Kind == TacticalCombatEffectKind.TractorRestraint
+            );
+            Assert.AreSame(
+                assets.GetTexture(definition.FramePaths[0]),
+                loop.sharedMaterial.mainTexture
+            );
+            unit.SetTractorSources(false);
+            Assert.IsFalse(loop.enabled);
+        }
+
+        [UnityTest]
+        public IEnumerator PrepareAsync_GravityGenerator_IgnoresTractorAndShowsMovementLoop()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            TacticalCombatSession encounter = CreateEncounter(pack.GameData, gravityWell: true);
+            yield return PrepareRenderer(encounter, pack);
+            TacticalCombatUnit unit = encounter.GetUnit("ALCS008");
+
+            unit.SetTractorSources(true);
+            Assert.IsFalse(
+                view.Renderer.GetComponentsInChildren<Transform>(true)
+                    .Any(item => item.name == "Lock")
+            );
+            for (int second = 0; second < 6; second++)
+                encounter.Advance(1000);
+
+            MeshRenderer[] loops = view
+                .Renderer.GetComponentsInChildren<MeshRenderer>(true)
+                .Where(renderer => renderer.name == "Lock")
+                .ToArray();
+            Assert.IsNotEmpty(loops);
+            TacticalCombatEffectDefinition definition = pack.GameData.TacticalCombat.Effects.Single(
+                effect => effect.Kind == TacticalCombatEffectKind.GravityLock
+            );
+            Assert.IsTrue(
+                loops.All(renderer =>
+                    renderer.enabled
+                    && ReferenceEquals(
+                        assets.GetTexture(definition.FramePaths[0]),
+                        renderer.sharedMaterial.mainTexture
+                    )
+                )
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator PrepareAsync_PyrotechnicsDisabled_DoesNotCreateLockBillboards()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            TacticalCombatSession encounter = CreateEncounter(pack.GameData, gravityWell: true);
+            yield return PrepareRenderer(
+                encounter,
+                pack,
+                new UserVideoSettings { ShowPyro = false }
+            );
+            encounter.GetUnit("ALCS008").SetTractorSources(true);
+
+            for (int second = 0; second < 6; second++)
+                encounter.Advance(1000);
+
+            Assert.IsFalse(
+                view.Renderer.GetComponentsInChildren<Transform>(true)
+                    .Any(item => item.name == "Lock")
+            );
+        }
+
+        /// <summary>
+        /// Selects a controllable capital and returns its active forward inspection control.
+        /// </summary>
+        /// <param name="encounter">The prepared encounter to inspect.</param>
+        /// <returns>The active forward inspection control.</returns>
+        private TacticalCombatHudButton SelectInspectionButton(TacticalCombatSession encounter)
+        {
+            for (int frame = 0; frame < 9; frame++)
+                controller.Advance(0.5f);
+            TacticalCombatUnit unit = encounter.Units.First(item =>
+                item.Side == encounter.PlayerSide && !item.IsFighter
+            );
+            encounter.Selection.QueueObject(unit, false);
+            controller.Advance(0);
+            return view.GetComponentsInChildren<TacticalCombatHudButton>(true)
+                .Single(item =>
+                    item.name == nameof(TacticalCombatControl.NextObject)
+                    && item.gameObject.activeInHierarchy
+                );
         }
 
         /// <summary>
@@ -1304,7 +1501,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             GameDataCatalog catalog,
             int fighterCategory = 4,
             bool allCapitalsPlayer = false,
-            CombatSide playerSide = CombatSide.Attacker
+            CombatSide playerSide = CombatSide.Attacker,
+            bool? gravityWell = null
         )
         {
             Dictionary<string, TacticalCombatUnitDefinition> definitions =
@@ -1317,6 +1515,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 ship.InstanceID = type;
                 ship.CurrentHullStrength = ship.MaxHullStrength;
                 ship.ManufacturingStatus = ManufacturingStatus.Complete;
+                if (gravityWell.HasValue)
+                    ship.HasGravityWell = gravityWell.Value;
                 CombatSide side =
                     type == "ALCS008" || allCapitalsPlayer
                         ? CombatSide.Attacker

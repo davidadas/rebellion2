@@ -144,6 +144,185 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             Assert.IsFalse(_root.GetComponentInChildren<MeshRenderer>().enabled);
         }
 
+        [Test]
+        public void Advance_TractorLock_WaitsForStrictIntervalAndWrapsAllFrames()
+        {
+            TacticalCombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
+            _effects.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, true);
+            MeshRenderer renderer = GetLockRenderer();
+            Assert.IsTrue(renderer.enabled);
+            Assert.AreSame(
+                GetLockFrame(TacticalCombatEffectKind.TractorRestraint, 0),
+                renderer.sharedMaterial.mainTexture
+            );
+
+            _effects.Advance(.1f);
+            _effects.Advance(.1f);
+            Assert.AreSame(
+                GetLockFrame(TacticalCombatEffectKind.TractorRestraint, 0),
+                renderer.sharedMaterial.mainTexture
+            );
+            for (int frame = 1; frame < 8; frame++)
+            {
+                _effects.Advance(.101f);
+                Assert.AreSame(
+                    GetLockFrame(TacticalCombatEffectKind.TractorRestraint, frame),
+                    renderer.sharedMaterial.mainTexture
+                );
+            }
+            _effects.Advance(.101f);
+            Assert.AreSame(
+                GetLockFrame(TacticalCombatEffectKind.TractorRestraint, 0),
+                renderer.sharedMaterial.mainTexture
+            );
+        }
+
+        [Test]
+        public void SetLock_RepeatedActivation_PreservesFrameAndElapsedInterval()
+        {
+            TacticalCombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
+            _effects.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, true);
+            _effects.Advance(.101f);
+            _effects.Advance(.06f);
+            _effects.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, true);
+            _effects.Advance(.05f);
+
+            Assert.AreSame(
+                GetLockFrame(TacticalCombatEffectKind.TractorRestraint, 1),
+                GetLockRenderer().sharedMaterial.mainTexture
+            );
+        }
+
+        [Test]
+        public void SetLock_GravityReplacesTractor_DoesNotRestoreClearedOwnership()
+        {
+            TacticalCombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
+            _effects.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, true);
+            _effects.SetLock(unit, TacticalCombatEffectKind.GravityLock, true);
+            Assert.AreSame(
+                GetLockFrame(TacticalCombatEffectKind.GravityLock, 0),
+                GetLockRenderer().sharedMaterial.mainTexture
+            );
+
+            _effects.SetLock(unit, TacticalCombatEffectKind.GravityLock, false);
+
+            Assert.IsFalse(GetLockRenderer().enabled);
+        }
+
+        [Test]
+        public void SetLock_OverlappingSelectors_PreservesDetachBeforeRepeatedGravity()
+        {
+            TacticalCombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
+            _effects.SetLock(unit, TacticalCombatEffectKind.GravityLock, true);
+            _effects.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, true);
+            Assert.AreSame(
+                GetLockFrame(TacticalCombatEffectKind.TractorRestraint, 0),
+                GetLockRenderer().sharedMaterial.mainTexture
+            );
+
+            _effects.SetLock(unit, TacticalCombatEffectKind.GravityLock, true);
+
+            Assert.IsFalse(GetLockRenderer().enabled);
+            _effects.Advance(.101f);
+            Assert.IsFalse(GetLockRenderer().enabled);
+            _effects.SetLock(unit, TacticalCombatEffectKind.GravityLock, true);
+            Assert.IsTrue(GetLockRenderer().enabled);
+        }
+
+        [Test]
+        public void RestartLocks_ChangedModelDetail_ReattachesFirstFrame()
+        {
+            TacticalCombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
+            _effects.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, true);
+            _effects.Advance(.101f);
+            _effects.Advance(.101f);
+            Assert.AreSame(
+                GetLockFrame(TacticalCombatEffectKind.TractorRestraint, 1),
+                GetLockRenderer().sharedMaterial.mainTexture
+            );
+
+            _effects.RestartLocks(unit);
+
+            Assert.IsTrue(GetLockRenderer().enabled);
+            Assert.AreSame(
+                GetLockFrame(TacticalCombatEffectKind.TractorRestraint, 0),
+                GetLockRenderer().sharedMaterial.mainTexture
+            );
+        }
+
+        [Test]
+        public void ClearLocks_ImpactPlaying_PreservesImpactAnimation()
+        {
+            TacticalCombatShot shot = CreateShot(TacticalWeaponType.LaserCannon);
+            _effects.SetLock(shot.Target, TacticalCombatEffectKind.TractorRestraint, true);
+            _effects.ShowImpact(shot.Target, shot.Weapon, TacticalCombatImpactKind.Shield);
+
+            _effects.ClearLocks(shot.Target);
+
+            Assert.IsFalse(GetLockRenderer().enabled);
+            Assert.IsTrue(
+                _root
+                    .GetComponentsInChildren<MeshRenderer>(true)
+                    .Single(renderer => renderer.name == "Impact")
+                    .enabled
+            );
+        }
+
+        [Test]
+        public void Advance_Destruction_ReleasesLockOnTwelfthPresentationFrame()
+        {
+            TacticalCombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
+            _effects.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, true);
+            _effects.ShowDestruction(unit);
+            for (int frame = 0; frame < 11; frame++)
+                _effects.Advance(1f / 60);
+            Assert.IsTrue(GetLockRenderer().enabled);
+
+            _effects.Advance(1f / 60);
+
+            Assert.IsFalse(GetLockRenderer().enabled);
+        }
+
+        [Test]
+        public void Advance_LockAndImpact_PlacesThemOnOppositeSidesOfCapital()
+        {
+            TacticalCombatShot shot = CreateShot(TacticalWeaponType.LaserCannon);
+            shot.Target.Position = new System.Numerics.Vector3(0, 0, 10);
+            _effects.SetLock(shot.Target, TacticalCombatEffectKind.TractorRestraint, true);
+            _effects.ShowImpact(shot.Target, shot.Weapon, TacticalCombatImpactKind.Shield);
+
+            _effects.Advance(0);
+
+            Assert.AreEqual(new Vector3(0, 0, 11), GetLockRenderer().transform.position);
+            Assert.AreEqual(
+                new Vector3(0, 0, 9),
+                _root
+                    .GetComponentsInChildren<MeshRenderer>(true)
+                    .Single(renderer => renderer.name == "Impact")
+                    .transform.position
+            );
+        }
+
+        /// <summary>
+        /// Finds the independently controlled loop billboard.
+        /// </summary>
+        /// <returns>The loop renderer.</returns>
+        private MeshRenderer GetLockRenderer() =>
+            _root
+                .GetComponentsInChildren<MeshRenderer>(true)
+                .Single(renderer => renderer.name == "Lock");
+
+        /// <summary>
+        /// Resolves one authored loop frame through the active content cache.
+        /// </summary>
+        /// <param name="kind">The selected loop animation.</param>
+        /// <param name="frame">The zero-based frame index.</param>
+        /// <returns>The cached frame texture.</returns>
+        private Texture2D GetLockFrame(TacticalCombatEffectKind kind, int frame) =>
+            _assets.GetTexture(
+                _definition.Effects.Single(definition => definition.Kind == kind).FramePaths[frame]
+            );
+
         /// <summary>
         /// Creates a capital discharge without mutating either campaign unit.
         /// </summary>

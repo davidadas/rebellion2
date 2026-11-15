@@ -181,10 +181,44 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
                     _fighterShader,
                     session.GetSide(unit.Side).FactionIndex
                 );
+                BindLockEffects(visual);
             }
         }
         UpdateCamera();
         RenderUnits();
+    }
+
+    /// <summary>
+    /// Connects admitted tractor-source and gravity-generator transitions to their looping visuals.
+    /// </summary>
+    /// <param name="visual">The capital ship's owned presentation.</param>
+    private void BindLockEffects(Visual visual)
+    {
+        if (!_showPyro)
+            return;
+        TacticalCombatUnit unit = visual.Unit;
+        if (unit.HasGravityWell)
+        {
+            visual.GravityWellPresentationRequested = () =>
+                _impacts.SetLock(
+                    unit,
+                    Rebellion.Game.SpaceCombat.TacticalCombatEffectKind.GravityLock,
+                    true
+                );
+            unit.GravityWellPresentationRequested += visual.GravityWellPresentationRequested;
+        }
+        else
+        {
+            visual.TractorSourcesChanged = enabled =>
+                _impacts.SetLock(
+                    unit,
+                    Rebellion.Game.SpaceCombat.TacticalCombatEffectKind.TractorRestraint,
+                    enabled
+                );
+            unit.TractorSourcesChanged += visual.TractorSourcesChanged;
+            if (unit.HasTractorSources)
+                visual.TractorSourcesChanged(true);
+        }
     }
 
     /// <summary>
@@ -517,6 +551,7 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
         visual.ArrivalVisible = true;
         visual.Root.SetActive(true);
         visual.SelectionBox?.SetState(1, false);
+        _impacts.ClearLocks(visual.Unit);
     }
 
     /// <summary>
@@ -579,8 +614,12 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
             visual.SelectionBox.SetState(state, _cameraState.TrackedObjectIndex == unit.Index);
         }
         if (!visible)
+        {
+            _impacts.ClearLocks(unit);
             return;
+        }
         ApplyTransform(visual);
+        _impacts.SetLockPosition(unit, visual.Root.transform.localPosition);
         if (visual.Billboard != null)
         {
             visual.Billboard.rotation = _battleCamera.transform.rotation;
@@ -678,7 +717,10 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
             _highDetail,
             visual.DetailLevel
         );
+        int previous = visual.DetailLevel;
         visual.DetailLevel = Mathf.Min(selected, visual.ModelDetails.Length - 1);
+        if (previous != visual.DetailLevel)
+            _impacts.RestartLocks(visual.Unit);
         for (int index = 0; index < visual.ModelDetails.Length; index++)
             visual.ModelDetails[index].gameObject.SetActive(index == visual.DetailLevel);
     }
@@ -942,7 +984,11 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
         _navigation?.Dispose();
         _holocube?.Dispose();
         foreach (Visual visual in _visuals)
+        {
+            visual.Unit.TractorSourcesChanged -= visual.TractorSourcesChanged;
+            visual.Unit.GravityWellPresentationRequested -= visual.GravityWellPresentationRequested;
             visual.SelectionBox?.Dispose();
+        }
         foreach (ContentModelInstance instance in _instances)
             instance.Dispose();
         _instances.Clear();
@@ -1005,6 +1051,8 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
         public Vector3? ArrivalPosition { get; set; }
         public Vector3? ArrivalDirection { get; set; }
         public bool ArrivalVisible { get; set; }
+        public Action<bool> TractorSourcesChanged { get; set; }
+        public Action GravityWellPresentationRequested { get; set; }
 
         /// <summary>
         /// Owns one unit's instantiated presentation.

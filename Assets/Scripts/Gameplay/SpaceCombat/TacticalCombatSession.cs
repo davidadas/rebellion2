@@ -1534,6 +1534,8 @@ namespace Rebellion.Gameplay
                         _spatial,
                         elapsedMilliseconds
                     );
+                if (unit.Status == TacticalCombatUnitStatus.Active && unit.HasGravityWell)
+                    unit.RequestGravityWellPresentation();
             }
             CheckCompletion();
             UpdateCenters();
@@ -2200,7 +2202,10 @@ namespace Rebellion.Gameplay
                 _tractorSources.Add(target, sources);
             }
             if (sources.Count == 0)
+            {
                 Audio.Enqueue(TacticalCombatSound.TractorEngaged);
+                target.SetTractorSources(true);
+            }
             source.TractorTargetID = target.InstanceID;
             sources.TryAdd(unchecked((uint)source.Index), source);
             target.TractorRestraint = GetTractorRestraint(target);
@@ -2220,7 +2225,10 @@ namespace Rebellion.Gameplay
             if (populated)
                 sources.Remove(unchecked((uint)source.Index));
             if (!populated || sources.Count == 0)
+            {
                 Audio.Enqueue(TacticalCombatSound.TractorReleased);
+                target.SetTractorSources(false);
+            }
             target.TractorRestraint = GetTractorRestraint(target);
         }
 

@@ -59,6 +59,12 @@ namespace Rebellion.Gameplay
         public string TargetID { get; internal set; }
         public float HyperspaceMilliseconds { get; internal set; }
         public float TractorRestraint { get; internal set; }
+
+        /// <summary>
+        /// Gets whether the retained tractor-source chain contains any contributor, even with no current restraint.
+        /// </summary>
+        public bool HasTractorSources { get; private set; }
+
         public float CommandBudget { get; internal set; }
         public float MaximumTurnRate { get; internal set; }
         public int? GroupID { get; internal set; }
@@ -96,6 +102,16 @@ namespace Rebellion.Gameplay
         public int SquadronSize => Systems.IsAlive ? Math.Max((int)(Systems.Hull / 8), 1) : 0;
 
         private readonly int _torpedoStrength;
+
+        /// <summary>
+        /// Announces the first retained source and every removal that leaves the source chain empty.
+        /// </summary>
+        public event Action<bool> TractorSourcesChanged;
+
+        /// <summary>
+        /// Requests the generator's presentation during an admitted active movement interval.
+        /// </summary>
+        public event Action GravityWellPresentationRequested;
 
         /// <summary>
         /// Captures one capital ship at the start of an encounter.
@@ -285,6 +301,23 @@ namespace Rebellion.Gameplay
         {
             return Systems.GetTurnBudget(CommandBudget, TractorRestraint);
         }
+
+        /// <summary>
+        /// Stores retained tractor membership and announces its admitted transition.
+        /// Empty removals are announced even when the previous membership was already empty.
+        /// </summary>
+        /// <param name="populated">Whether the source chain contains a retained contributor.</param>
+        internal void SetTractorSources(bool populated)
+        {
+            HasTractorSources = populated;
+            TractorSourcesChanged?.Invoke(populated);
+        }
+
+        /// <summary>
+        /// Announces the gravity generator after its active movement has been applied.
+        /// </summary>
+        internal void RequestGravityWellPresentation() =>
+            GravityWellPresentationRequested?.Invoke();
 
         /// <summary>
         /// Gets the angular speed selected when the unit entered tactical combat.

@@ -92,6 +92,62 @@ internal sealed class TacticalCombatImpactEffects : IDisposable
     }
 
     /// <summary>
+    /// Applies a tractor or gravity lock transition without restarting an unchanged selector.
+    /// </summary>
+    /// <param name="unit">The capital ship receiving the visual transition.</param>
+    /// <param name="kind">The tractor-restraint or gravity-lock animation.</param>
+    /// <param name="enabled">Whether the addressed lock selector is enabled.</param>
+    public void SetLock(TacticalCombatUnit unit, TacticalCombatEffectKind kind, bool enabled)
+    {
+        if (
+            kind
+            is not TacticalCombatEffectKind.TractorRestraint
+                and not TacticalCombatEffectKind.GravityLock
+        )
+            throw new ArgumentOutOfRangeException(nameof(kind));
+        if (unit.IsFighter || unit.IsBattleStation || !_animations.ContainsKey(kind))
+            return;
+        if (enabled)
+            GetVisual(unit).SetLock(kind, true, _animations);
+        else if (_visuals.TryGetValue(unit, out Visual visual))
+            visual.SetLock(kind, false, _animations);
+    }
+
+    /// <summary>
+    /// Detaches both lock selectors when a capital ship's presentation is reset.
+    /// </summary>
+    /// <param name="unit">The capital ship whose lock visuals are released.</param>
+    public void ClearLocks(TacticalCombatUnit unit)
+    {
+        if (_visuals.TryGetValue(unit, out Visual visual))
+        {
+            visual.SetLock(TacticalCombatEffectKind.TractorRestraint, false, _animations);
+            visual.SetLock(TacticalCombatEffectKind.GravityLock, false, _animations);
+        }
+    }
+
+    /// <summary>
+    /// Reattaches enabled lock selectors after a capital model changes detail level.
+    /// </summary>
+    /// <param name="unit">The capital ship whose model detail changed.</param>
+    public void RestartLocks(TacticalCombatUnit unit)
+    {
+        if (_visuals.TryGetValue(unit, out Visual visual))
+            visual.RestartLocks(_animations);
+    }
+
+    /// <summary>
+    /// Keeps a lock billboard behind the ship's live presentation pose during temporary movement.
+    /// </summary>
+    /// <param name="unit">The capital ship owning the lock billboard.</param>
+    /// <param name="position">Its current position in the encounter's rendering frame.</param>
+    public void SetLockPosition(TacticalCombatUnit unit, Vector3 position)
+    {
+        if (_visuals.TryGetValue(unit, out Visual visual))
+            visual.SetLockPosition(position, _parent, _camera);
+    }
+
+    /// <summary>
     /// Checks whether a destruction sequence is still showing its underlying capital model.
     /// </summary>
     /// <param name="unit">The participant whose model visibility is being projected.</param>
@@ -106,7 +162,7 @@ internal sealed class TacticalCombatImpactEffects : IDisposable
     public void Advance(float seconds)
     {
         foreach (KeyValuePair<TacticalCombatUnit, Visual> pair in _visuals)
-            pair.Value.Advance(seconds, pair.Key, _parent, _camera);
+            pair.Value.Advance(seconds, pair.Key, _parent, _camera, _animations);
     }
 
     /// <summary>
@@ -219,10 +275,16 @@ internal sealed class TacticalCombatImpactEffects : IDisposable
         private readonly GameObject _root;
         private readonly MeshFilter _impactMesh;
         private readonly MeshRenderer _impactRenderer;
+        private readonly MeshFilter _lockMesh;
+        private readonly MeshRenderer _lockRenderer;
         private Animation _impact;
+        private Animation _lock;
         private int _priority;
         private int _frame;
         private float _elapsed;
+        private int _lockFlags;
+        private int _lockFrame;
+        private float _lockElapsed;
         public bool KeepsModelVisible => _priority == 128 && _frame < 12;
 
         /// <summary>
@@ -234,6 +296,82 @@ internal sealed class TacticalCombatImpactEffects : IDisposable
             _root = new GameObject("Impact effects");
             _root.transform.SetParent(parent, false);
             (_impactMesh, _impactRenderer) = CreateBillboard("Impact", _root.transform);
+            (_lockMesh, _lockRenderer) = CreateBillboard("Lock", _root.transform);
+        }
+
+        /// <summary>
+        /// Retains selector ownership while attaching or releasing its shared animation.
+        /// </summary>
+        /// <param name="kind">The addressed lock animation.</param>
+        /// <param name="enabled">Whether that selector is enabled.</param>
+        /// <param name="animations">The encounter's authored animation resources.</param>
+        public void SetLock(
+            TacticalCombatEffectKind kind,
+            bool enabled,
+            IReadOnlyDictionary<TacticalCombatEffectKind, Animation> animations
+        )
+        {
+            int selector = kind == TacticalCombatEffectKind.TractorRestraint ? 1 : 2;
+            if (enabled && selector == 2 && (_lockFlags & 1) != 0)
+                SetLock(TacticalCombatEffectKind.TractorRestraint, false, animations);
+            if (!enabled)
+            {
+                _lockFlags &= ~selector;
+                _lock = null;
+                _lockRenderer.enabled = false;
+            }
+            else
+            {
+                if (selector == (_lockFlags & 3))
+                    return;
+                if (!animations.TryGetValue(kind, out Animation animation))
+                    return;
+                _lockFlags |= selector;
+                _lockFrame = 0;
+                _lockElapsed = 0;
+                _lock = animation;
+                _lockMesh.sharedMesh = animation.Mesh;
+                _lockRenderer.sharedMaterial = animation.Frames[0];
+                _lockRenderer.enabled = true;
+            }
+            if (!enabled && selector == 2 && (_lockFlags & 1) != 0)
+                SetLock(TacticalCombatEffectKind.TractorRestraint, true, animations);
+        }
+
+        /// <summary>
+        /// Preserves selector reattachment order across a model detail transition.
+        /// </summary>
+        /// <param name="animations">The encounter's authored animation resources.</param>
+        public void RestartLocks(
+            IReadOnlyDictionary<TacticalCombatEffectKind, Animation> animations
+        )
+        {
+            bool gravity = (_lockFlags & 2) != 0;
+            if (gravity)
+                SetLock(TacticalCombatEffectKind.GravityLock, false, animations);
+            bool tractor = (_lockFlags & 1) != 0;
+            if (tractor)
+                SetLock(TacticalCombatEffectKind.TractorRestraint, false, animations);
+            if (gravity)
+                SetLock(TacticalCombatEffectKind.GravityLock, true, animations);
+            if (tractor)
+                SetLock(TacticalCombatEffectKind.TractorRestraint, true, animations);
+        }
+
+        /// <summary>
+        /// Positions the active loop behind the presented capital relative to the camera.
+        /// </summary>
+        /// <param name="position">The capital's live encounter-local rendering position.</param>
+        /// <param name="parent">The encounter's world-coordinate frame.</param>
+        /// <param name="camera">The active battle camera.</param>
+        public void SetLockPosition(Vector3 position, Transform parent, Camera camera)
+        {
+            if (!_lockRenderer.enabled)
+                return;
+            Vector3 towardCamera = (
+                parent.InverseTransformPoint(camera.transform.position) - position
+            ).normalized;
+            _lockMesh.transform.position = parent.TransformPoint(position - towardCamera);
         }
 
         /// <summary>
@@ -283,7 +421,13 @@ internal sealed class TacticalCombatImpactEffects : IDisposable
         /// <param name="unit">The moving effect owner.</param>
         /// <param name="parent">The encounter's coordinate frame.</param>
         /// <param name="camera">The battle camera.</param>
-        public void Advance(float seconds, TacticalCombatUnit unit, Transform parent, Camera camera)
+        public void Advance(
+            float seconds,
+            TacticalCombatUnit unit,
+            Transform parent,
+            Camera camera,
+            IReadOnlyDictionary<TacticalCombatEffectKind, Animation> animations
+        )
         {
             Vector3 position = new(unit.Position.X, unit.Position.Y, unit.Position.Z);
             _root.transform.localPosition = position;
@@ -292,6 +436,25 @@ internal sealed class TacticalCombatImpactEffects : IDisposable
                 parent.InverseTransformPoint(camera.transform.position) - position
             ).normalized;
             _impactMesh.transform.position = parent.TransformPoint(position + towardCamera);
+            _lockMesh.transform.position = parent.TransformPoint(position - towardCamera);
+            if (_lockFlags != 0)
+            {
+                _lockElapsed += seconds;
+                if (_lockElapsed > .1f)
+                {
+                    if (_lock == null)
+                    {
+                        SetLock(TacticalCombatEffectKind.TractorRestraint, false, animations);
+                        SetLock(TacticalCombatEffectKind.GravityLock, false, animations);
+                    }
+                    else
+                    {
+                        _lockRenderer.sharedMaterial = _lock.Frames[_lockFrame];
+                        _lockFrame = (_lockFrame + 1) & 7;
+                    }
+                    _lockElapsed = 0;
+                }
+            }
             if (_impact != null)
             {
                 _elapsed += seconds;
@@ -307,6 +470,11 @@ internal sealed class TacticalCombatImpactEffects : IDisposable
                     {
                         _impactRenderer.sharedMaterial = _impact.Frames[_frame];
                         _elapsed = 0;
+                    }
+                    if (_priority == 128 && _frame == 11)
+                    {
+                        SetLock(TacticalCombatEffectKind.TractorRestraint, false, animations);
+                        SetLock(TacticalCombatEffectKind.GravityLock, false, animations);
                     }
                     _frame++;
                 }

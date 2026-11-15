@@ -71,6 +71,7 @@ The tactical frame uses a fixed 640x480 layout. Left-click to replace the curren
 Ctrl to extend or toggle it. Right-click addresses an object or visible navigation marker within
 the current command context. Use the category buttons or number keys 1-8 for object groups and
 Space for the nearest opposing object. The Pause button pauses and resumes the battle.
+Tab advances inspection once per press; Shift+Tab inspects the previous object.
 
 The camera buttons and arrow keys rotate or tilt the view. Page Up and Page Down zoom; Home saves
 the primary camera and End restores it. Return focuses the current selection. F1-F12 open category

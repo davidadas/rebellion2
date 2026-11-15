@@ -82,6 +82,8 @@ namespace Rebellion.Game.SpaceCombat
         IonHullHit,
         TorpedoHullHit,
         Destruction,
+        TractorRestraint,
+        GravityLock,
     }
 
     /// <summary>
