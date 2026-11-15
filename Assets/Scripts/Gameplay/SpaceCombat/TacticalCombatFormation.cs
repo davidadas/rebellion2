@@ -44,6 +44,28 @@ namespace Rebellion.Gameplay
         public IReadOnlyList<TacticalCombatUnit> Members { get; }
 
         /// <summary>
+        /// Restores the visible marker without integrating local movement or collision recovery.
+        /// </summary>
+        /// <param name="state">The validated group projection.</param>
+        /// <param name="members">The authoritative applied members in their captured order.</param>
+        internal void ApplyNetworkState(
+            TacticalCombatNetworkGroupState state,
+            IReadOnlyList<TacticalCombatUnit> members
+        )
+        {
+            Kind = state.Formation;
+            Position = state.Position.ToVector();
+            Heading = state.Heading.ToVector();
+            Velocity = state.Velocity.ToVector();
+            _minimumMovementSpeed = state.MovementSpeed;
+            _currentCount = state.Members.Length;
+            TurnRate = state.TurnRate;
+            StableUpdates = state.StableUpdates;
+            _memberOrder.Clear();
+            _memberOrder.AddRange(members);
+        }
+
+        /// <summary>
         /// Creates a formation at its first member's position.
         /// </summary>
         /// <param name="kind">The formation's member layout.</param>

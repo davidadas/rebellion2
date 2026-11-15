@@ -38,6 +38,7 @@ public sealed class TacticalCombatController : IDisposable
     private float _hudRefresh;
     private readonly TacticalCombatInspection _inspection;
     private readonly TacticalCombatRenderSettings _videoSettings;
+    private readonly ITacticalCombatPresentationDriver _driver;
 
     /// <summary>
     /// Owns the authored view and its input subscriptions for one isolated battle.
@@ -47,15 +48,23 @@ public sealed class TacticalCombatController : IDisposable
     /// <param name="complete">Commits the completed encounter.</param>
     /// <param name="cancellationToken">The campaign screen lifetime.</param>
     /// <param name="videoSettings">The active video settings, or null to use their authored defaults for an isolated encounter.</param>
+    /// <param name="driver">The shared battle's presentation driver, or null for a local encounter.</param>
     public TacticalCombatController(
         TacticalCombatSession session,
         TacticalCombatView view,
         Action<TacticalCombatSession> complete,
         CancellationToken cancellationToken,
-        UserVideoSettings videoSettings = null
+        UserVideoSettings videoSettings = null,
+        ITacticalCombatPresentationDriver driver = null
     )
     {
         this._session = session ?? throw new ArgumentNullException(nameof(session));
+        if (driver != null && !ReferenceEquals(driver.Session, session))
+            throw new ArgumentException(
+                "The presentation driver belongs to another encounter.",
+                nameof(driver)
+            );
+        _driver = driver;
         _inspection = new TacticalCombatInspection(session);
         _videoSettings = new TacticalCombatRenderSettings(videoSettings ?? new UserVideoSettings());
         this._view = view != null ? view : throw new ArgumentNullException(nameof(view));
@@ -110,7 +119,8 @@ public sealed class TacticalCombatController : IDisposable
                 PlayAttackRunMovie,
                 SetMoviePresentation,
                 ReportMovieError,
-                PostMovieCompletion
+                PostMovieCompletion,
+                _driver == null ? null : _driver.AcknowledgeMovie
             );
         }
         await Task.WhenAll(
@@ -136,9 +146,14 @@ public sealed class TacticalCombatController : IDisposable
             && !string.IsNullOrWhiteSpace(_session.Definition?.BackgroundImagePath)
         )
             _view.SetBackgroundTexture(assets.GetTexture(_session.Definition.BackgroundImagePath));
-        System.Diagnostics.Stopwatch clock = System.Diagnostics.Stopwatch.StartNew();
-        _session.ConfigureClockedAdvance(() => unchecked((uint)clock.ElapsedMilliseconds));
-        _session.BeginArrival(_view.Renderer);
+        if (_driver != null)
+            _driver.Prepare(_view.Renderer);
+        else
+        {
+            System.Diagnostics.Stopwatch clock = System.Diagnostics.Stopwatch.StartNew();
+            _session.ConfigureClockedAdvance(() => unchecked((uint)clock.ElapsedMilliseconds));
+            _session.BeginArrival(_view.Renderer);
+        }
         CaptureInspectionKeyState();
         _ready = true;
         RefreshHud();
@@ -153,8 +168,13 @@ public sealed class TacticalCombatController : IDisposable
     {
         if (_disposed || !_ready)
             return;
-        _session.AdvanceClocked(elapsedSeconds * 1000);
-        if (_session.IsComplete && !_completing)
+        if (_driver != null)
+            _driver.Advance(elapsedSeconds);
+        else
+            _session.AdvanceClocked(elapsedSeconds * 1000);
+        if (_disposed)
+            return;
+        if (_session.IsComplete && !_completing && _driver?.CompletionReady != false)
         {
             _completing = true;
             _complete(_session);
@@ -843,6 +863,7 @@ public sealed class TacticalCombatController : IDisposable
         _cutscenes = null;
         _moviePresentation?.Dispose();
         _moviePresentation = null;
+        _driver?.Dispose();
         _cancellation.Cancel();
         _cancellation.Dispose();
         _view.ControlRequested -= HandleControl;

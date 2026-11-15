@@ -12,6 +12,7 @@ public sealed class TacticalCombatCutsceneController : IDisposable
     private readonly Action<bool> setPresentationActive;
     private readonly Action<Exception> reportPlaybackError;
     private readonly Action<Action> postCompletion;
+    private readonly Action<TacticalCombatMovieRequest> completeMovie;
     private TacticalCombatMovieRequest activeRequest;
     private IDisposable activePlayback;
     private bool disposed;
@@ -25,12 +26,14 @@ public sealed class TacticalCombatCutsceneController : IDisposable
     /// <param name="setPresentationActive">Hides or restores the battle while video owns focus.</param>
     /// <param name="reportPlaybackError">Reports a playback failure before its deferred acknowledgement.</param>
     /// <param name="postCompletion">Posts failure acknowledgement after the current command finishes.</param>
+    /// <param name="completeMovie">Acknowledges shared playback, or null to release a local movie directly.</param>
     public TacticalCombatCutsceneController(
         TacticalCombatSession session,
         Func<string, Action, IDisposable> play,
         Action<bool> setPresentationActive,
         Action<Exception> reportPlaybackError,
-        Action<Action> postCompletion
+        Action<Action> postCompletion,
+        Action<TacticalCombatMovieRequest> completeMovie = null
     )
     {
         this.session = session ?? throw new ArgumentNullException(nameof(session));
@@ -41,6 +44,7 @@ public sealed class TacticalCombatCutsceneController : IDisposable
             reportPlaybackError ?? throw new ArgumentNullException(nameof(reportPlaybackError));
         this.postCompletion =
             postCompletion ?? throw new ArgumentNullException(nameof(postCompletion));
+        this.completeMovie = completeMovie ?? CompleteLocalMovie;
         if (
             session.BattleStation != null
             && (
@@ -108,7 +112,14 @@ public sealed class TacticalCombatCutsceneController : IDisposable
         IDisposable playback = activePlayback;
         activePlayback = null;
         playback?.Dispose();
-        request.Complete();
+        completeMovie(request);
         setPresentationActive(false);
     }
+
+    /// <summary>
+    /// Releases the pause belonging to a locally owned movie.
+    /// </summary>
+    /// <param name="request">The completed movie's ownership token.</param>
+    private static void CompleteLocalMovie(TacticalCombatMovieRequest request) =>
+        request.Complete();
 }

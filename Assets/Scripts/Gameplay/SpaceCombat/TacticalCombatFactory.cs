@@ -122,7 +122,55 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="decision">The pending campaign encounter.</param>
         /// <returns>The isolated deployed tactical session.</returns>
-        internal TacticalCombatSession Create(SpaceCombatDecision decision)
+        internal TacticalCombatSession Create(SpaceCombatDecision decision) =>
+            CreateCore(decision, null, null, null);
+
+        /// <summary>
+        /// Captures a shared battle with explicit random inputs and the peer's independent local faction view.
+        /// </summary>
+        /// <param name="decision">The mutually admitted campaign encounter.</param>
+        /// <param name="seed">The authoritative battle random seed.</param>
+        /// <param name="scenerySeed">The captured scenery calendar seed.</param>
+        /// <param name="isReplica">Whether this peer receives passive authoritative frames.</param>
+        /// <returns>The configured authoritative encounter or passive local view.</returns>
+        internal TacticalCombatSession Create(
+            SpaceCombatDecision decision,
+            uint seed,
+            uint scenerySeed,
+            bool isReplica
+        )
+        {
+            if (string.IsNullOrWhiteSpace(_game.LocalPlayerFactionID))
+                throw new InvalidOperationException(
+                    "Network combat requires an admitted local faction."
+                );
+            TacticalCombatSession session = CreateCore(
+                decision,
+                seed,
+                scenerySeed,
+                _game.LocalPlayerFactionID
+            );
+            if (isReplica)
+                session.ConfigureNetworkReplica();
+            else
+                session.ConfigureNetworkAuthority();
+            return session;
+        }
+
+        /// <summary>
+        /// Builds the isolated roster while retaining the caller's explicit playback ownership.
+        /// </summary>
+        /// <param name="decision">The pending campaign encounter.</param>
+        /// <param name="seed">The optional captured battle seed.</param>
+        /// <param name="scenerySeed">The optional captured scenery seed.</param>
+        /// <param name="localFactionID">The local faction view, or the campaign's selected faction.</param>
+        /// <returns>The unadvanced encounter.</returns>
+        private TacticalCombatSession CreateCore(
+            SpaceCombatDecision decision,
+            uint? seed,
+            uint? scenerySeed,
+            string localFactionID
+        )
         {
             Planet planet =
                 _queries.ResolveCombatPlanet(decision)
@@ -264,7 +312,7 @@ namespace Rebellion.Gameplay
             List<TacticalCombatGroup> groups = new();
             TacticalCombatSide[] sides = new TacticalCombatSide[2];
             CombatSide playerSide =
-                owners[0] == _game.Summary.PlayerFactionID
+                owners[0] == (localFactionID ?? _game.Summary.PlayerFactionID)
                     ? CombatSide.Attacker
                     : CombatSide.Defender;
             for (int side = 0; side < 2; side++)
@@ -317,7 +365,9 @@ namespace Rebellion.Gameplay
                 CreateGroups(units, groups, (CombatSide)side, forward, ref counters[side]);
             }
             groups.Sort(CompareGroupRegistration);
-            TacticalCombatRandom random = _createRandom();
+            TacticalCombatRandom random = seed.HasValue
+                ? new TacticalCombatRandom(seed.Value)
+                : _createRandom();
             return new TacticalCombatSession(
                 units,
                 groups,
@@ -332,7 +382,10 @@ namespace Rebellion.Gameplay
                 ),
                 new TacticalCombatSceneryRandom(
                     random,
-                    () => TacticalCombatRandom.GetCalendarSeed(_localClock())
+                    () =>
+                        scenerySeed.HasValue
+                            ? unchecked((int)scenerySeed.Value)
+                            : TacticalCombatRandom.GetCalendarSeed(_localClock())
                 ),
                 personnelHostInstanceIDs: personnelHostInstanceIDs,
                 enteringSide: factionDefinitions[0].FactionIndex

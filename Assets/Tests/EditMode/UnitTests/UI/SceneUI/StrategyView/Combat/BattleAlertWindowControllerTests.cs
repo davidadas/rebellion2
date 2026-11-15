@@ -421,6 +421,29 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(_controller.SyncPendingCombatWindow());
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ShowTacticalResult_RemoteEntryWithoutOrigin_UsesLocalResultWindowOnce(
+            bool existingWindow
+        )
+        {
+            BattleAlertWindowView existing = existingWindow ? OpenWindow(out UIWindow _) : null;
+            _pending = null;
+
+            _controller.ShowTacticalResult(null, _resolveResult);
+            BattleAlertWindowView presented = _controller.FindWindow();
+            _pipeline.ProcessResults(new[] { _resolveResult }, processMessages: false);
+
+            Assert.IsNotNull(presented);
+            if (existingWindow)
+                Assert.AreSame(existing, presented);
+            Assert.IsTrue(_controller.HasCombatResult(presented));
+            Assert.AreEqual(existingWindow ? 2 : 1, _playedTracks.Count);
+            Assert.AreEqual(1, _actions.RebuildCount);
+            Assert.AreSame(presented, _controller.FindWindow());
+            Assert.IsFalse(_controller.SyncPendingCombatWindow());
+        }
+
         [Test]
         public void PresentResolvedResults_DismissedDuplicate_DoesNotReopenOrReplayAudio()
         {

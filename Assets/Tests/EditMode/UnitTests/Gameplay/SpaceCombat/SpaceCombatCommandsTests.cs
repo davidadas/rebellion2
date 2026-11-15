@@ -17,7 +17,7 @@ namespace Rebellion.Tests.Gameplay
     /// Tests strategy-level space combat detection, application, and reporting.
     /// </summary>
     [TestFixture]
-    public class SpaceCombatCommandsTests : CombatTestBase
+    public partial class SpaceCombatCommandsTests : CombatTestBase
     {
         [Test]
         public void Resolve_TwoFactionFleets_RunsSpaceCombat()

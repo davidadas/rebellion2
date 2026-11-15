@@ -169,6 +169,117 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         }
 
         [UnityTest]
+        public IEnumerator PrepareAsync_SharedDriver_DelegatesEntryAndLeavesClockOwnershipWithDriver()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
+            PresentationDriver driver = new(encounter);
+
+            yield return PrepareController(encounter, pack, driver);
+
+            Assert.AreEqual(1, driver.PreparationCount);
+            Assert.AreSame(view.Renderer, driver.Presentation);
+            Assert.IsFalse(encounter.IsArriving);
+            Assert.DoesNotThrow(() => encounter.ConfigureClockedAdvance(() => 0));
+            int before = encounter.SystemTime;
+            controller.Advance(.25f);
+            CollectionAssert.AreEqual(new[] { .25f }, driver.Intervals);
+            Assert.AreEqual(before, encounter.SystemTime);
+            controller.Dispose();
+            controller.Dispose();
+            Assert.AreEqual(1, driver.DisposeCount);
+        }
+
+        [UnityTest]
+        public IEnumerator Advance_SharedCompletion_WaitsForAgreementAndCompletesOnce()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
+            PresentationDriver driver = new(encounter);
+            int completions = 0;
+            yield return PrepareController(encounter, pack, driver, _ => completions++);
+            Assert.IsTrue(encounter.RequestImmediateResult());
+            encounter.Advance(0);
+            Assert.IsTrue(encounter.IsComplete);
+
+            controller.Advance(0);
+
+            Assert.AreEqual(0, completions);
+            driver.CompletionReady = true;
+            controller.Advance(0);
+            controller.Advance(0);
+            Assert.AreEqual(1, completions);
+        }
+
+        [UnityTest]
+        public IEnumerator HandleKeyboardEvent_ReplicaView_KeepsCameraLocalAndSelectsAuthenticatedFaction()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            TacticalCombatSession host = CreateEncounter(pack.GameData);
+            TacticalCombatSession guest = CreateEncounter(
+                pack.GameData,
+                playerSide: CombatSide.Defender
+            );
+            host.ConfigureNetworkAuthority();
+            guest.ConfigureNetworkReplica();
+            List<TacticalCombatNetworkCommand> commands = new();
+            guest.NetworkCommandRequested += commands.Add;
+            PresentationDriver driver = new(guest);
+            yield return PrepareController(guest, pack, driver);
+            string framePath = guest
+                .Definition.HudImages.Concat(
+                    guest.Definition.Factions.Single(faction => faction.FactionIndex == 1).HudImages
+                )
+                .Last(image => image.Key == "frame")
+                .Path;
+            RawImage frame = view.GetComponentsInChildren<RawImage>(true)
+                .Single(image => image.name == "Frame");
+            Assert.AreSame(assets.GetTexture(framePath), frame.texture);
+            float field = view.Renderer.Camera.fieldOfView;
+            float unzoomedHorizontalScale = view.Renderer.Camera.projectionMatrix.m00;
+
+            Assert.IsTrue(
+                view.HandleKeyboardEvent(
+                    new Event { type = EventType.KeyDown, keyCode = KeyCode.PageUp }
+                )
+            );
+            Assert.IsTrue(
+                view.HandleKeyboardEvent(
+                    new Event { type = EventType.KeyUp, keyCode = KeyCode.PageUp }
+                )
+            );
+
+            Assert.Less(view.Renderer.Camera.fieldOfView, field);
+            float zoomedHorizontalScale = view.Renderer.Camera.projectionMatrix.m00;
+            Assert.Greater(zoomedHorizontalScale, unzoomedHorizontalScale);
+            Assert.IsEmpty(commands);
+            Assert.IsTrue(
+                view.HandleKeyboardEvent(
+                    new Event { type = EventType.KeyDown, keyCode = KeyCode.Alpha1 }
+                )
+            );
+            Assert.AreEqual(1, commands.Count);
+            Assert.AreEqual(TacticalCombatNetworkCommandKind.ObjectCategory, commands[0].Kind);
+            Assert.AreEqual(TacticalCombatSelectionKind.Empty, guest.Selection.Kind);
+            Assert.IsTrue(host.ApplyNetworkCommand(CombatSide.Defender, commands[0]));
+
+            guest.ApplyNetworkFrame(host.CaptureNetworkFrame(1));
+            controller.Advance(0);
+
+            Assert.AreEqual(TacticalCombatSelectionKind.ObjectGroup, guest.Selection.Kind);
+            Assert.AreEqual(CombatSide.Defender, guest.Selection.Group.Side);
+            Assert.AreEqual(CombatSide.Defender, guest.Selection.PrimaryUnit.Side);
+            Assert.AreEqual(3, guest.SystemTime);
+            Assert.That(
+                view.Renderer.Camera.projectionMatrix.m00,
+                Is.EqualTo(zoomedHorizontalScale).Within(.0001f)
+            );
+            Assert.AreEqual(1, commands.Count);
+            host.Selection.Dispose();
+            host.Audio.Dispose();
+        }
+
+        [UnityTest]
         public IEnumerator SetTransform_ArrivalFrame_RetainsPoseWithoutChangingSimulation()
         {
             ContentPack pack = ContentPackLoader.OpenActive();
@@ -1663,8 +1774,15 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         /// </summary>
         /// <param name="encounter">The encounter to present.</param>
         /// <param name="pack">The active content pack.</param>
+        /// <param name="driver">The shared playback owner, or null for a local encounter.</param>
+        /// <param name="complete">Observes completion, or null when no completion observation is needed.</param>
         /// <returns>The asynchronous preparation sequence.</returns>
-        private IEnumerator PrepareController(TacticalCombatSession encounter, ContentPack pack)
+        private IEnumerator PrepareController(
+            TacticalCombatSession encounter,
+            ContentPack pack,
+            ITacticalCombatPresentationDriver driver = null,
+            System.Action<TacticalCombatSession> complete = null
+        )
         {
             assets = new ContentAssets(pack.FileResolver);
             models = new ContentModelCache(assets);
@@ -1675,13 +1793,62 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             controller = new TacticalCombatController(
                 encounter,
                 view,
-                _ => { },
-                CancellationToken.None
+                complete ?? (_ => { }),
+                CancellationToken.None,
+                driver: driver
             );
             Task preparation = controller.PrepareAsync(models, assets);
             while (!preparation.IsCompleted)
                 yield return null;
             preparation.GetAwaiter().GetResult();
+        }
+
+        /// <summary>
+        /// Records presentation ownership without advancing the encounter's simulation.
+        /// </summary>
+        private sealed class PresentationDriver : ITacticalCombatPresentationDriver
+        {
+            public TacticalCombatSession Session { get; }
+            public bool IsAuthoritative => false;
+            public bool CompletionReady { get; set; }
+            public SpaceCombatResult CommittedResult => null;
+            public int PreparationCount { get; private set; }
+            public int DisposeCount { get; private set; }
+            public ITacticalCombatArrivalPresentation Presentation { get; private set; }
+            public List<float> Intervals { get; } = new();
+
+            /// <summary>
+            /// Binds the encounter whose presentation calls are recorded.
+            /// </summary>
+            /// <param name="session">The controller's encounter.</param>
+            public PresentationDriver(TacticalCombatSession session) => Session = session;
+
+            /// <summary>
+            /// Records the loaded arrival presentation supplied by the controller.
+            /// </summary>
+            /// <param name="presentation">The local owner of arrival transforms.</param>
+            public void Prepare(ITacticalCombatArrivalPresentation presentation)
+            {
+                Presentation = presentation;
+                PreparationCount++;
+            }
+
+            /// <summary>
+            /// Records an unscaled presentation interval without ticking combat.
+            /// </summary>
+            /// <param name="elapsedSeconds">The interval delegated by the controller.</param>
+            public void Advance(float elapsedSeconds) => Intervals.Add(elapsedSeconds);
+
+            /// <summary>
+            /// Accepts a movie acknowledgement without releasing simulation state.
+            /// </summary>
+            /// <param name="request">The movie ownership token supplied by the view.</param>
+            public void AcknowledgeMovie(TacticalCombatMovieRequest request) { }
+
+            /// <summary>
+            /// Counts releases of the controller-owned driver.
+            /// </summary>
+            public void Dispose() => DisposeCount++;
         }
 
         /// <summary>

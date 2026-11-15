@@ -314,6 +314,13 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Restores retained membership before separately replaying its ordered presentation edges.
+        /// </summary>
+        /// <param name="populated">Whether the authoritative source chain contains a contributor.</param>
+        internal void ApplyNetworkTractorMembership(bool populated) =>
+            HasTractorSources = populated;
+
+        /// <summary>
         /// Announces the gravity generator after its active movement has been applied.
         /// </summary>
         internal void RequestGravityWellPresentation() =>

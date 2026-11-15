@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using Rebellion.Game.Results;
 
 namespace Rebellion.Gameplay
 {
@@ -23,9 +24,10 @@ namespace Rebellion.Gameplay
     /// <summary>
     /// Owns ordered tactical selection, contextual requests, category commands, and selection playback.
     /// </summary>
-    public sealed class TacticalCombatSelection : IDisposable
+    public sealed partial class TacticalCombatSelection : IDisposable
     {
         private readonly TacticalCombatSession _session;
+        private readonly CombatSide _side;
         private readonly Queue<DisplayModeCommand> _displayCommands = new();
         private readonly Queue<Action> _commands = new();
         private readonly Queue<PointerCommand> _pointers = new();
@@ -59,7 +61,7 @@ namespace Rebellion.Gameplay
         public IReadOnlyList<Vector3> Waypoints { get; }
         public IReadOnlyList<TacticalCombatGroup> Groups { get; }
         public bool CanIssueCommands =>
-            _session.IsDirectControlEnabled
+            _session.IsSideDirectControlEnabled(_side)
             && Kind
                 is TacticalCombatSelectionKind.SingleObject
                     or TacticalCombatSelectionKind.MultipleObjects
@@ -70,9 +72,20 @@ namespace Rebellion.Gameplay
         /// Attaches selection ownership to one captured tactical encounter.
         /// </summary>
         /// <param name="session">The encounter whose command and audio boundaries are used.</param>
-        public TacticalCombatSelection(TacticalCombatSession session)
+        /// <param name="side">The faction owning this independent selection, or the local view's side.</param>
+        public TacticalCombatSelection(
+            TacticalCombatSession session,
+            Rebellion.Game.Results.CombatSide? side = null
+        )
         {
             _session = session ?? throw new ArgumentNullException(nameof(session));
+            _side = side ?? session.PlayerSide;
+            if (
+                _side
+                is not Rebellion.Game.Results.CombatSide.Attacker
+                    and not Rebellion.Game.Results.CombatSide.Defender
+            )
+                throw new ArgumentOutOfRangeException(nameof(side));
             Members = _members.AsReadOnly();
             Highlights = _highlights.AsReadOnly();
             Targets = _targets.AsReadOnly();
@@ -88,6 +101,17 @@ namespace Rebellion.Gameplay
         public void QueueObject(TacticalCombatUnit unit, bool extend = false)
         {
             ValidateUnit(unit);
+            if (
+                RequestNetwork(
+                    new()
+                    {
+                        Kind = TacticalCombatNetworkCommandKind.Object,
+                        UnitID = unit.InstanceID,
+                        Extend = extend,
+                    }
+                )
+            )
+                return;
             _pointers.Enqueue(new PointerCommand(unit, null, extend));
         }
 
@@ -103,13 +127,28 @@ namespace Rebellion.Gameplay
                     "The navigation marker is outside this encounter.",
                     nameof(point)
                 );
+            if (
+                RequestNetwork(
+                    new()
+                    {
+                        Kind = TacticalCombatNetworkCommandKind.Waypoint,
+                        Waypoint = new(point),
+                        Extend = extend,
+                    }
+                )
+            )
+                return;
             _pointers.Enqueue(new PointerCommand(null, point, extend));
         }
 
         /// <summary>
         /// Queues the empty pointer command used before an ordinary primary-button hit.
         /// </summary>
-        public void QueueClear() => _pointers.Enqueue(new PointerCommand(null, null, false));
+        public void QueueClear()
+        {
+            if (!RequestNetwork(new() { Kind = TacticalCombatNetworkCommandKind.Clear }))
+                _pointers.Enqueue(new PointerCommand(null, null, false));
+        }
 
         /// <summary>
         /// Queues traversal from the inspection panel's addressed capital before semantic and pointer input.
@@ -118,6 +157,12 @@ namespace Rebellion.Gameplay
         public void QueueDisplayMode(bool next)
         {
             ThrowIfDisposed();
+            if (
+                RequestNetwork(
+                    new() { Kind = TacticalCombatNetworkCommandKind.DisplayMode, Next = next }
+                )
+            )
+                return;
             if (PrimaryUnit != null)
                 _displayCommands.Enqueue(new DisplayModeCommand(PrimaryUnit, next));
         }
@@ -130,6 +175,16 @@ namespace Rebellion.Gameplay
         {
             if ((uint)category >= 8)
                 throw new ArgumentOutOfRangeException(nameof(category));
+            if (
+                RequestNetwork(
+                    new()
+                    {
+                        Kind = TacticalCombatNetworkCommandKind.ObjectCategory,
+                        Category = category,
+                    }
+                )
+            )
+                return;
             _commands.Enqueue(() => SelectObjectCategory(category));
         }
 
@@ -141,62 +196,89 @@ namespace Rebellion.Gameplay
         {
             if ((uint)category >= 4)
                 throw new ArgumentOutOfRangeException(nameof(category));
+            if (
+                RequestNetwork(
+                    new()
+                    {
+                        Kind = TacticalCombatNetworkCommandKind.FighterCategory,
+                        Category = category,
+                    }
+                )
+            )
+                return;
             _commands.Enqueue(() => SelectFighterCategory(category));
         }
 
         /// <summary>
         /// Queues the current context's nearest opposing-object operation.
         /// </summary>
-        public void QueueNearestTarget() => _commands.Enqueue(SelectNearestTarget);
+        public void QueueNearestTarget()
+        {
+            if (!RequestNetwork(new() { Kind = TacticalCombatNetworkCommandKind.NearestTarget }))
+                _commands.Enqueue(SelectNearestTarget);
+        }
 
         /// <summary>
         /// Queues continuation after prior display commands and before the simulation pause guard.
         /// </summary>
-        public void QueueImmediateResult() => _commands.Enqueue(_session.ApplyImmediateResult);
+        public void QueueImmediateResult()
+        {
+            if (!RequestNetwork(new() { Kind = TacticalCombatNetworkCommandKind.ImmediateResult }))
+                _commands.Enqueue(_session.ApplyImmediateResult);
+        }
 
         /// <summary>
         /// Queues a change between direct and automatic control without replacing selection.
         /// </summary>
-        public void QueueToggleAutomation() =>
+        public void QueueToggleAutomation()
+        {
+            if (RequestNetwork(new() { Kind = TacticalCombatNetworkCommandKind.ToggleAutomation }))
+                return;
             _commands.Enqueue(() =>
-                _session.SetAutomated(
-                    _session.PlayerSide,
-                    !_session.GetSide(_session.PlayerSide).IsAutomated
-                )
+                _session.SetAutomated(_side, !_session.GetSide(_side).IsAutomated)
             );
+        }
 
         /// <summary>
         /// Queues a confirmed withdrawal for a fresh eligibility check before ordered presentation and side mutation.
         /// </summary>
-        public void QueueWithdrawal() =>
+        public void QueueWithdrawal()
+        {
+            if (RequestNetwork(new() { Kind = TacticalCombatNetworkCommandKind.Withdrawal }))
+                return;
             _commands.Enqueue(() =>
             {
                 if (
-                    !_session.IsDirectControlEnabled
-                        && !_session.GetSide(_session.PlayerSide).IsAutomated
-                    || !_session.CanWithdraw(_session.PlayerSide)
+                    !_session.IsSideDirectControlEnabled(_side)
+                        && !_session.GetSide(_side).IsAutomated
+                    || !_session.CanWithdraw(_side)
                 )
                     return;
                 WithdrawalStarting?.Invoke();
                 StationControlsClosed?.Invoke();
-                _session.SuspendDirectCommands();
-                _session.ApplyWithdrawal(_session.PlayerSide);
+                _session.SuspendDirectCommands(_side);
+                _session.ApplyWithdrawal(_side);
                 WithdrawalDispatched?.Invoke();
             });
+        }
 
         /// <summary>
         /// Queues the station's target-selection context or toggles that context off.
         /// </summary>
-        public void QueueStationTarget() =>
+        public void QueueStationTarget()
+        {
+            if (RequestNetwork(new() { Kind = TacticalCombatNetworkCommandKind.StationTarget }))
+                return;
             _commands.Enqueue(() =>
             {
-                if (!_session.IsDirectControlEnabled)
+                if (!_session.IsSideDirectControlEnabled(_side))
                     return;
                 if (Kind == TacticalCombatSelectionKind.StationTarget)
                     Clear();
                 else if (_session.BattleStation?.CanBeginTargetSelection == true)
                     Replace(TacticalCombatSelectionKind.StationTarget);
             });
+        }
 
         /// <summary>
         /// Applies a right-panel behavior request to the current command context.
@@ -206,6 +288,12 @@ namespace Rebellion.Gameplay
         {
             ThrowIfDisposed();
             if (!CanIssueCommands)
+                return;
+            if (
+                RequestNetwork(
+                    new() { Kind = TacticalCombatNetworkCommandKind.Order, Order = order }
+                )
+            )
                 return;
             if (Kind == TacticalCombatSelectionKind.SingleObject)
             {
@@ -244,6 +332,16 @@ namespace Rebellion.Gameplay
             ThrowIfDisposed();
             if (!CanIssueCommands)
                 return;
+            if (
+                RequestNetwork(
+                    new()
+                    {
+                        Kind = TacticalCombatNetworkCommandKind.AttackMode,
+                        CloseAttack = close,
+                    }
+                )
+            )
+                return;
             if (Kind == TacticalCombatSelectionKind.SingleObject)
                 _session.CreateGroup(new[] { _primary }).SetAttackMode(close);
             else if (Kind == TacticalCombatSelectionKind.MultipleObjects)
@@ -264,6 +362,16 @@ namespace Rebellion.Gameplay
         {
             ThrowIfDisposed();
             if (!CanIssueCommands || Kind == TacticalCombatSelectionKind.SingleObject)
+                return;
+            if (
+                RequestNetwork(
+                    new()
+                    {
+                        Kind = TacticalCombatNetworkCommandKind.Formation,
+                        Formation = formation,
+                    }
+                )
+            )
                 return;
             if (Kind == TacticalCombatSelectionKind.MultipleObjects)
             {
@@ -406,7 +514,7 @@ namespace Rebellion.Gameplay
         /// <param name="extend">The contextual append or toggle modifier.</param>
         private void HandleObject(TacticalCombatUnit unit, bool extend)
         {
-            if (!_session.IsDirectControlEnabled)
+            if (!_session.IsSideDirectControlEnabled(_side))
             {
                 Inspect(unit);
                 return;
@@ -426,7 +534,7 @@ namespace Rebellion.Gameplay
                     HandleFighterGroup(unit, extend);
                     break;
                 case TacticalCombatSelectionKind.StationTarget:
-                    if (unit.Side != _session.PlayerSide && _session.BattleStation != null)
+                    if (unit.Side != _side && _session.BattleStation != null)
                         _session.FireSuperlaser(unit);
                     Clear();
                     break;
@@ -443,7 +551,7 @@ namespace Rebellion.Gameplay
         /// <param name="extend">Whether to append or toggle.</param>
         private void HandleSingleObject(TacticalCombatUnit unit, bool extend)
         {
-            if (unit.Side == _session.PlayerSide)
+            if (unit.Side == _side)
             {
                 if (ReferenceEquals(unit, _primary))
                     return;
@@ -481,7 +589,7 @@ namespace Rebellion.Gameplay
         /// <param name="extend">Whether to toggle friendly membership.</param>
         private void HandleMultipleObject(TacticalCombatUnit unit, bool extend)
         {
-            if (unit.Side == _session.PlayerSide)
+            if (unit.Side == _side)
             {
                 if (extend)
                 {
@@ -539,7 +647,7 @@ namespace Rebellion.Gameplay
         private void HandleObjectGroup(TacticalCombatUnit unit, bool extend)
         {
             TacticalCombatGroup group = Group;
-            if (unit.Side != _session.PlayerSide)
+            if (unit.Side != _side)
             {
                 if (extend && !group.RequestedTargets.Contains(unit) && !CanDesignateEnemy(unit))
                 {
@@ -597,7 +705,7 @@ namespace Rebellion.Gameplay
         /// <param name="extend">Whether to toggle a designated target.</param>
         private void HandleFighterGroup(TacticalCombatUnit unit, bool extend)
         {
-            if (unit.Side != _session.PlayerSide)
+            if (unit.Side != _side)
             {
                 SetEnemyTarget(Group, unit, extend, true, 0x44, 0xbe);
                 return;
@@ -668,7 +776,7 @@ namespace Rebellion.Gameplay
         /// <param name="extend">Whether to append or toggle.</param>
         private void HandleWaypoint(Vector3 point, bool extend)
         {
-            if (!_session.IsDirectControlEnabled || !CanIssueCommands)
+            if (!_session.IsSideDirectControlEnabled(_side) || !CanIssueCommands)
             {
                 if (Kind == TacticalCombatSelectionKind.StationTarget)
                     Clear();
@@ -740,7 +848,7 @@ namespace Rebellion.Gameplay
         /// <param name="category">The requested object slot.</param>
         private void SelectObjectCategory(int category)
         {
-            TacticalCombatGroup group = _session.GetObjectGroup(_session.PlayerSide, category);
+            TacticalCombatGroup group = _session.GetObjectGroup(_side, category);
             if (group != null)
             {
                 if (Kind == TacticalCombatSelectionKind.ObjectGroup && Category == category)
@@ -748,7 +856,7 @@ namespace Rebellion.Gameplay
                 else
                     SelectGroup(group, category, false);
             }
-            else if (_session.IsDirectControlEnabled)
+            else if (_session.IsSideDirectControlEnabled(_side))
             {
                 if (
                     Kind
@@ -772,7 +880,7 @@ namespace Rebellion.Gameplay
         /// <param name="category">The requested fighter slot.</param>
         private void SelectFighterCategory(int category)
         {
-            TacticalCombatGroup group = _session.GetFighterGroup(_session.PlayerSide, category);
+            TacticalCombatGroup group = _session.GetFighterGroup(_side, category);
             if (group == null)
                 return;
             if (Kind == TacticalCombatSelectionKind.FighterGroup && Category == category)
@@ -788,7 +896,7 @@ namespace Rebellion.Gameplay
         private void CreateCategory(int category)
         {
             TacticalCombatGroup group = _session.CreateGroup(_members.ToArray());
-            _session.SetObjectGroup(_session.PlayerSide, category, group);
+            _session.SetObjectGroup(_side, category, group);
             foreach (TacticalCombatUnit target in _targets)
                 _session.SetTarget(group, target, true);
             foreach (Vector3 point in _waypoints)
@@ -818,7 +926,7 @@ namespace Rebellion.Gameplay
             if (free >= 0)
             {
                 TacticalCombatGroup group = _session.CreateGroup(_members.ToArray());
-                _session.SetObjectGroup(_session.PlayerSide, free, group);
+                _session.SetObjectGroup(_side, free, group);
                 NotifyCategory(group, allianceMessage, empireMessage);
                 apply(group);
                 SelectGroup(group, free, false);
@@ -838,7 +946,7 @@ namespace Rebellion.Gameplay
         private int FindFreeCategory()
         {
             for (int index = 0; index < 8; index++)
-                if (_session.GetObjectGroup(_session.PlayerSide, index) == null)
+                if (_session.GetObjectGroup(_side, index) == null)
                     return index;
             return -1;
         }
@@ -864,7 +972,7 @@ namespace Rebellion.Gameplay
         private int FindObjectCategory(TacticalCombatGroup group)
         {
             for (int category = 0; category < 8; category++)
-                if (ReferenceEquals(_session.GetObjectGroup(_session.PlayerSide, category), group))
+                if (ReferenceEquals(_session.GetObjectGroup(_side, category), group))
                     return category;
             return -1;
         }
@@ -881,9 +989,7 @@ namespace Rebellion.Gameplay
             if (group.IsFighterGroup)
             {
                 for (int index = 0; index < 4; index++)
-                    if (
-                        ReferenceEquals(_session.GetFighterGroup(_session.PlayerSide, index), group)
-                    )
+                    if (ReferenceEquals(_session.GetFighterGroup(_side, index), group))
                     {
                         category = index;
                         break;
@@ -901,8 +1007,9 @@ namespace Rebellion.Gameplay
         /// <param name="alliance">The Alliance message ID.</param>
         /// <param name="empire">The Empire message ID.</param>
         private void Notify(int alliance, int empire) =>
-            _session.Audio.EnqueueNotification(
-                _session.GetSide(_session.PlayerSide).FactionIndex == 0 ? alliance : empire
+            _session.EnqueueFactionNotification(
+                _side,
+                _session.GetSide(_side).FactionIndex == 0 ? alliance : empire
             );
 
         /// <summary>
@@ -980,11 +1087,7 @@ namespace Rebellion.Gameplay
             float best = float.MaxValue;
             foreach (TacticalCombatUnit unit in _session.Units)
             {
-                if (
-                    unit.Side == _session.PlayerSide
-                    || unit.IsFighter != fighter
-                    || !IsDisplayObject(unit)
-                )
+                if (unit.Side == _side || unit.IsFighter != fighter || !IsDisplayObject(unit))
                     continue;
                 double dz = (double)origin.Z - unit.Position.Z;
                 double dy = (double)origin.Y - unit.Position.Y;
@@ -1005,7 +1108,7 @@ namespace Rebellion.Gameplay
         /// <param name="unit">The inspected participant.</param>
         private void Inspect(TacticalCombatUnit unit)
         {
-            bool opposing = unit.Side != _session.PlayerSide;
+            bool opposing = unit.Side != _side;
             uint incoming = opposing && !_session.IsPaused ? EnqueueSelectedNotification(unit) : 0;
             Replace(
                 opposing
@@ -1148,7 +1251,7 @@ namespace Rebellion.Gameplay
                 && (
                     _session.BattleStation?.CanKeepTargetSelection(
                         _session.GetSide(_session.BattleStation.Unit.Side).IsWithdrawing,
-                        _session.IsDirectControlEnabled
+                        _session.IsSideDirectControlEnabled(_side)
                     ) != true
                 )
             )
@@ -1175,6 +1278,11 @@ namespace Rebellion.Gameplay
         /// </summary>
         private void RefreshNotification()
         {
+            if (
+                _session.IsNetworked
+                && (!_session.IsRefreshingNetworkPresentation || _side != _session.PlayerSide)
+            )
+                return;
             if (
                 _notification != 0
                 && (!_session.Audio.Notifications.IsActive(_notification) || _session.IsPaused)
@@ -1205,6 +1313,11 @@ namespace Rebellion.Gameplay
         /// <returns>The scheduler-owned loop handle, or zero when the selected bank is silent.</returns>
         private uint EnqueueSelectedNotification(TacticalCombatUnit unit)
         {
+            if (
+                _session.IsNetworked
+                && (!_session.IsRefreshingNetworkPresentation || _side != _session.PlayerSide)
+            )
+                return 0;
             int message =
                 unit.IsFighter ? (_session.GetSide(unit.Side).FactionIndex == 0 ? 22 : 21)
                 : !(unit.Systems.MaximumHull >= 1100) ? 25

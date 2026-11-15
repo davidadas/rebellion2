@@ -373,6 +373,8 @@ namespace Rebellion.Multiplayer
         /// </summary>
         private void StartOrderedGameplay()
         {
+            ReleaseTacticalGameplay();
+            _pendingTacticalReady = null;
             _turnProtocol?.Dispose();
             _turnProtocol = new MultiplayerTurnProtocol(
                 _role,
@@ -385,6 +387,7 @@ namespace Rebellion.Multiplayer
             );
             _turnProtocol.StateChanged += _sessionManager.NotifyGameStateChanged;
             _turnProtocol.Faulted += HandleGameplayFailure;
+            _turnProtocol.ActionApplied += HandleTacticalActionApplied;
             _synchronizationReady = true;
             _sessionManager.ResumeMultiplayerOperations();
             EnsureSaveProtocol();
@@ -482,6 +485,8 @@ namespace Rebellion.Multiplayer
         /// </summary>
         private void ReleaseGameplay()
         {
+            ReleaseTacticalGameplay();
+            _pendingTacticalReady = null;
             CancelSharedSave();
             _localSaves = null;
             _turnProtocol?.Dispose();

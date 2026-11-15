@@ -382,6 +382,61 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             Assert.AreEqual(1, sounds[0].StopCount);
         }
 
+        [TestCase("completed")]
+        [TestCase("cancelled")]
+        [TestCase("failed")]
+        public void TacticalCombatCutsceneController_SharedMovieAcknowledgement_RetainsPauseUntilAgreement(
+            string releasePath
+        )
+        {
+            TacticalCombatSession session = CreateSession();
+            Action completed = null;
+            Queue<Action> posted = new();
+            List<TacticalCombatMovieRequest> acknowledgements = new();
+            List<bool> presentation = new();
+            Playback playback = new();
+            using TacticalCombatCutsceneController controller = new(
+                session,
+                (_, done) =>
+                {
+                    if (releasePath == "failed")
+                        throw new InvalidOperationException("Decoder unavailable.");
+                    completed = done;
+                    return playback;
+                },
+                presentation.Add,
+                _ => Assert.AreEqual("failed", releasePath),
+                posted.Enqueue,
+                acknowledgements.Add
+            );
+            session.ActiveAttackRun.ApplyState(TacticalCombatAttackRunState.Succeeded);
+            TacticalCombatMovieRequest request = session.PendingAttackRunMovie;
+
+            if (releasePath == "completed")
+            {
+                completed();
+                completed();
+            }
+            else if (releasePath == "cancelled")
+            {
+                controller.Dispose();
+                completed();
+            }
+            else
+                posted.Dequeue()();
+
+            CollectionAssert.AreEqual(new[] { request }, acknowledgements);
+            CollectionAssert.AreEqual(new[] { true, false }, presentation);
+            Assert.IsFalse(controller.IsPlaying);
+            Assert.IsTrue(session.IsPaused);
+            Assert.IsFalse(request.IsComplete);
+            Assert.AreSame(request, session.PendingAttackRunMovie);
+            if (releasePath != "failed")
+                Assert.AreEqual(1, playback.DisposeCount);
+            request.Complete();
+            Assert.IsFalse(session.IsPaused);
+        }
+
         private sealed class NotificationPlayback : ITacticalCombatNotificationPlayback
         {
             public bool IsPlaying { get; private set; } = true;

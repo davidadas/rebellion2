@@ -27,6 +27,7 @@ namespace Rebellion.Gameplay
         private readonly IRandomNumberProvider _random;
         private readonly Func<float> _commandBudget;
         private readonly int _playerFactionIndex;
+        private Action<int, int> _networkNotifications;
         private readonly List<TacticalCombatUnit> _candidates = new();
         private readonly Dictionary<TacticalCombatUnit, Pools> _entryPools = new();
         private bool _transitionPending;
@@ -53,6 +54,51 @@ namespace Rebellion.Gameplay
         public event Action<int> NotificationRequested;
         public event Action<TacticalCombatAttackRun> MovieRequested;
         public event Action<TacticalCombatGroup, TacticalCombatOrder> OrderRequested;
+
+        /// <summary>
+        /// Routes both factions' existing attack cues through the shared presentation authority.
+        /// </summary>
+        /// <param name="notifications">The recipient-faction and authored-message sink.</param>
+        internal void ConfigureNetworkNotifications(Action<int, int> notifications) =>
+            _networkNotifications = notifications;
+
+        /// <summary>
+        /// Emits one faction's authored cue without changing the attack's random decisions.
+        /// </summary>
+        /// <param name="faction">The authored recipient faction index.</param>
+        /// <param name="message">The authored message identity.</param>
+        private void NotifyFaction(int faction, int message)
+        {
+            if (_networkNotifications != null)
+                _networkNotifications(faction, message);
+            else if (_playerFactionIndex == faction)
+                NotificationRequested?.Invoke(message);
+        }
+
+        /// <summary>
+        /// Emits the existing paired command cues for the two recipient factions.
+        /// </summary>
+        /// <param name="alliance">The Alliance message.</param>
+        /// <param name="empire">The Empire message.</param>
+        private void NotifyFactions(int alliance, int empire)
+        {
+            NotifyFaction(0, alliance);
+            NotifyFaction(1, empire);
+        }
+
+        /// <summary>
+        /// Restores visible attack progress without advancing or selecting a local outcome.
+        /// </summary>
+        /// <param name="state">The authoritative attack state.</param>
+        /// <param name="remainingMilliseconds">The stored attack countdown.</param>
+        internal void ApplyNetworkState(
+            TacticalCombatAttackRunState state,
+            float remainingMilliseconds
+        )
+        {
+            State = state;
+            RemainingMilliseconds = remainingMilliseconds;
+        }
 
         /// <summary>
         /// Creates the attack sequence after an eligible fighter group receives its order.
@@ -114,12 +160,9 @@ namespace Rebellion.Gameplay
             if (_progressNotice < 9 && RemainingMilliseconds <= 120000 - _progressNotice * 12000)
             {
                 int notice = _progressNotice++;
-                if (_playerFactionIndex == 0)
-                {
-                    int? message = GetProgressMessage(notice);
-                    if (message.HasValue)
-                        NotificationRequested?.Invoke(message.Value);
-                }
+                int? message = GetProgressMessage(notice);
+                if (message.HasValue)
+                    NotifyFaction(0, message.Value);
                 ProgressChanged?.Invoke(this, notice);
             }
             RemainingMilliseconds -= elapsedMilliseconds;
@@ -155,9 +198,7 @@ namespace Rebellion.Gameplay
                 }
                 RemainingMilliseconds = 120000;
                 _progressNotice = 0;
-                NotificationRequested?.Invoke(
-                    _playerFactionIndex == 0 ? GetCategoryMessage(314, 302, 306, 310) : 285
-                );
+                NotifyFactions(GetCategoryMessage(314, 302, 306, 310), 285);
                 SelectSurvivor();
             }
             else if (state == TacticalCombatAttackRunState.Succeeded)
@@ -182,8 +223,7 @@ namespace Rebellion.Gameplay
             }
             else if (state == TacticalCombatAttackRunState.Failed)
             {
-                if (_playerFactionIndex == 0)
-                    NotificationRequested?.Invoke(GetCategoryMessage(315, 303, 307, 311));
+                NotifyFaction(0, GetCategoryMessage(315, 303, 307, 311));
                 MovieRequested?.Invoke(this);
                 foreach (TacticalCombatUnit member in new List<TacticalCombatUnit>(Group.Members))
                     UnitDestroyed?.Invoke(member);
@@ -254,9 +294,7 @@ namespace Rebellion.Gameplay
             if (_approachAnnounced)
                 return;
             _approachAnnounced = true;
-            NotificationRequested?.Invoke(
-                _playerFactionIndex == 0 ? GetCategoryMessage(313, 301, 305, 309) : 277
-            );
+            NotifyFactions(GetCategoryMessage(313, 301, 305, 309), 277);
         }
 
         /// <summary>

@@ -386,6 +386,79 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Applies an agreed network outcome before releasing the suspended campaign encounter.
+        /// </summary>
+        /// <param name="battleID">The host-issued identity of the active battle.</param>
+        /// <param name="outcome">The authoritative final tactical pools.</param>
+        /// <returns>The routed campaign battle summary.</returns>
+        public SpaceCombatResult CompleteNetworkTacticalCombat(
+            string battleID,
+            Rebellion.Game.SpaceCombat.TacticalCombatOutcome outcome
+        ) =>
+            CompleteCombatResolution(
+                _spaceCombatCommands.CompleteNetworkTacticalCombat(battleID, outcome)
+            );
+
+        /// <summary>
+        /// Rejects an invalid final network outcome before routing any campaign result or resuming time.
+        /// </summary>
+        /// <param name="battleID">The host-issued identity of the active encounter.</param>
+        /// <param name="outcome">The authoritative tactical pools.</param>
+        /// <param name="result">The routed campaign result, or null when validation rejected the outcome.</param>
+        /// <returns>Whether the final network encounter was committed.</returns>
+        public bool TryCompleteNetworkTacticalCombat(
+            string battleID,
+            Rebellion.Game.SpaceCombat.TacticalCombatOutcome outcome,
+            out SpaceCombatResult result
+        )
+        {
+            result = null;
+            if (
+                !_spaceCombatCommands.TryCompleteNetworkTacticalCombat(
+                    battleID,
+                    outcome,
+                    out List<GameResult> results
+                )
+            )
+                return false;
+            result = CompleteCombatResolution(results);
+            return true;
+        }
+
+        /// <summary>
+        /// Records one human's manual preference without bypassing the shared combat-response barrier.
+        /// </summary>
+        /// <param name="factionID">The authenticated responding faction.</param>
+        /// <param name="battleID">The host-issued identity of the proposed battle.</param>
+        /// <param name="seed">The host-issued tactical seed.</param>
+        /// <param name="scenerySeed">The host-issued scenery seed.</param>
+        /// <param name="result">A resolved withdrawal result, or null while the shared encounter remains pending.</param>
+        /// <returns>Whether the pending encounter accepted the response.</returns>
+        public bool TrySubmitTacticalCombatResponse(
+            string factionID,
+            string battleID,
+            uint seed,
+            int scenerySeed,
+            out SpaceCombatResult result
+        )
+        {
+            result = null;
+            if (
+                !_spaceCombatCommands.TrySubmitTacticalResponse(
+                    factionID,
+                    battleID,
+                    seed,
+                    scenerySeed,
+                    out List<GameResult> results
+                )
+            )
+                return false;
+            if (results != null)
+                result = CompleteCombatResolution(results);
+            return true;
+        }
+
+        /// <summary>
         /// Records a human combat response, keeping the day suspended until every required response arrives.
         /// </summary>
         /// <param name="factionID">The authenticated responding faction.</param>

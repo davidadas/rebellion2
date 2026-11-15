@@ -3,6 +3,7 @@ using System.Text;
 using NUnit.Framework;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.PlayerRequests;
+using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Multiplayer;
 
@@ -69,6 +70,83 @@ namespace Rebellion.Tests.Multiplayer
             Assert.That(restored.MainParticipantIDs, Is.EqualTo(action.MainParticipantIDs));
             Assert.That(restored.DecoyParticipantIDs, Is.EqualTo(action.DecoyParticipantIDs));
             Assert.That(restored.IsRepeating, Is.True);
+        }
+
+        [Test]
+        public void Deserialize_TacticalBegin_PreservesHostEncounterIdentityAndSeeds()
+        {
+            BeginTacticalCombatRequest request = new()
+            {
+                PlanetID = "battle-planet",
+                Tick = 17,
+                BattleID = "0123456789abcdef0123456789abcdef",
+                Seed = uint.MaxValue,
+                ScenerySeed = 12345,
+            };
+
+            BeginTacticalCombatRequest restored = (BeginTacticalCombatRequest)
+                MultiplayerPlayerRequestCodec.Deserialize(
+                    request.Kind,
+                    MultiplayerPlayerRequestCodec.Serialize(request)
+                );
+
+            Assert.AreEqual(request.PlanetID, restored.PlanetID);
+            Assert.AreEqual(request.Tick, restored.Tick);
+            Assert.AreEqual(request.BattleID, restored.BattleID);
+            Assert.AreEqual(request.Seed, restored.Seed);
+            Assert.AreEqual(request.ScenerySeed, restored.ScenerySeed);
+        }
+
+        [Test]
+        public void Deserialize_TacticalCompletion_PreservesTypedLossesAndTerminalFlags()
+        {
+            CompleteTacticalCombatRequest request = new()
+            {
+                PlanetID = "battle-planet",
+                Tick = 17,
+                BattleID = "0123456789abcdef0123456789abcdef",
+                Outcome = new TacticalCombatOutcome
+                {
+                    TerminalFlags = new[] { false, true, false, false, false, false, false },
+                    Ships = new[]
+                    {
+                        new TacticalCombatShipOutcome
+                        {
+                            UnitID = "ship",
+                            Hull = 37,
+                            SystemDamage = new CapitalShipSystemDamage { Engines = 2 },
+                            Withdrawn = true,
+                        },
+                    },
+                    Fighters = new[]
+                    {
+                        new TacticalCombatFighterOutcome
+                        {
+                            UnitID = "fighter",
+                            SquadronSize = 5,
+                            CarrierID = "ship",
+                            Withdrawn = true,
+                        },
+                    },
+                },
+            };
+
+            CompleteTacticalCombatRequest restored = (CompleteTacticalCombatRequest)
+                MultiplayerPlayerRequestCodec.Deserialize(
+                    request.Kind,
+                    MultiplayerPlayerRequestCodec.Serialize(request)
+                );
+
+            Assert.AreEqual(request.BattleID, restored.BattleID);
+            Assert.AreEqual(37, restored.Outcome.Ships[0].Hull);
+            Assert.AreEqual(2, restored.Outcome.Ships[0].SystemDamage.Engines);
+            Assert.IsTrue(restored.Outcome.Ships[0].Withdrawn);
+            Assert.AreEqual(5, restored.Outcome.Fighters[0].SquadronSize);
+            Assert.AreEqual("ship", restored.Outcome.Fighters[0].CarrierID);
+            CollectionAssert.AreEqual(
+                request.Outcome.TerminalFlags,
+                restored.Outcome.TerminalFlags
+            );
         }
 
         [Test]

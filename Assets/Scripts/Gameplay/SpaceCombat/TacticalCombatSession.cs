@@ -13,7 +13,7 @@ namespace Rebellion.Gameplay
     /// Runs an isolated tactical encounter with continuous movement and queued whole-second commands.
     /// Campaign units remain unchanged until the completed encounter is committed.
     /// </summary>
-    public sealed class TacticalCombatSession
+    public sealed partial class TacticalCombatSession
     {
         private readonly List<TacticalCombatUnit> _units;
         private readonly List<TacticalCombatGroup> _groups;
@@ -87,7 +87,9 @@ namespace Rebellion.Gameplay
         public TacticalCombatAudio Audio { get; }
         public TacticalCombatSelection Selection { get; }
         public int SystemTime =>
-            _scheduler == null ? _systemTime : unchecked((int)_scheduler.SystemTime);
+            _networkReplica ? _networkSystemTime
+            : _scheduler == null ? _systemTime
+            : unchecked((int)_scheduler.SystemTime);
         public bool IsComplete { get; private set; }
         public CombatSide? EnteringSide { get; }
         public bool IsArriving => _arrival?.IsComplete == false;
@@ -96,7 +98,15 @@ namespace Rebellion.Gameplay
         public bool IsPaused
         {
             get => _userPaused || _moviePauses > 0;
-            set => _userPaused = value;
+            set
+            {
+                if (
+                    !RequestNetworkCommand(
+                        new() { Kind = TacticalCombatNetworkCommandKind.Pause, Paused = value }
+                    )
+                )
+                    _userPaused = value;
+            }
         }
         public TacticalCombatMovieRequest PendingAttackRunMovie { get; private set; }
         public TacticalCombatSceneryRandom SceneryRandom { get; }
@@ -126,14 +136,14 @@ namespace Rebellion.Gameplay
         public event Action<TacticalCombatGroup> RecoveryUnavailable;
         public event Action Completed;
         public event Action GroupCategoryChanged;
-        public bool IsDirectControlEnabled =>
-            !_directCommandsSuspended && !IsArriving && !GetSide(PlayerSide).IsAutomated;
+        public bool IsDirectControlEnabled => IsSideDirectControlEnabled(PlayerSide);
 
         /// <summary>
         /// Gets whether the player can hand the surviving encounter to automatic resolution.
         /// </summary>
         public bool CanRequestImmediateResult =>
-            !IsComplete
+            !IsNetworked
+            && !IsComplete
             && !IsArriving
             && !_completionStarted
             && PendingAttackRunMovie == null
@@ -308,11 +318,11 @@ namespace Rebellion.Gameplay
             Selection = new TacticalCombatSelection(this);
             _director = new TacticalCombatDirector(
                 GetSide(PlayerSide).FactionIndex,
-                messageID => Audio.EnqueueNotification(messageID)
+                messageID => EnqueueFactionNotification(PlayerSide, messageID)
             );
             _ending = new TacticalCombatEnding(
                 GetSide(PlayerSide).FactionIndex,
-                messageID => Audio.EnqueueNotification(messageID),
+                messageID => EnqueueFactionNotification(PlayerSide, messageID),
                 AssignSurvivors,
                 Complete
             );
@@ -353,6 +363,7 @@ namespace Rebellion.Gameplay
         /// <param name="group">The new owner, or null to clear the category.</param>
         public void SetObjectGroup(CombatSide side, int category, TacticalCombatGroup group)
         {
+            RequireSimulationAuthority();
             if (group != null)
             {
                 ValidateGroup(group);
@@ -373,6 +384,7 @@ namespace Rebellion.Gameplay
         /// <param name="automated">Whether tactical automation should issue its orders.</param>
         public void SetAutomated(CombatSide side, bool automated)
         {
+            RequireSimulationAuthority();
             GetSide(side).IsAutomated = automated;
             foreach (TacticalCombatGroup group in _groupsByID.Values)
                 if (group.Side == side)
@@ -443,6 +455,7 @@ namespace Rebellion.Gameplay
         /// <returns>The newly registered tactical group.</returns>
         public TacticalCombatGroup CreateGroup(IReadOnlyList<TacticalCombatUnit> members)
         {
+            RequireSimulationAuthority();
             if (members == null || members.Count == 0)
                 throw new ArgumentException(
                     "A tactical group requires at least one member.",
@@ -707,6 +720,7 @@ namespace Rebellion.Gameplay
         /// <returns>Whether the target resolves within this encounter.</returns>
         public bool FireSuperlaser(TacticalCombatUnit target)
         {
+            RequireSimulationAuthority();
             if (
                 BattleStation == null
                 || target == null
@@ -728,6 +742,7 @@ namespace Rebellion.Gameplay
         /// <returns>Whether withdrawal was started.</returns>
         public bool BeginWithdrawal(CombatSide side)
         {
+            RequireSimulationAuthority();
             if (!CanWithdraw(side))
                 return false;
             ApplyWithdrawal(side);
@@ -749,11 +764,14 @@ namespace Rebellion.Gameplay
             state.Withdrawal = new TacticalCombatWithdrawal(
                 state.FactionIndex,
                 state.InitialWithdrawalMilliseconds,
-                Selection.ProcessStationDeparture,
+                () =>
+                    (
+                        _networkAuthority ? GetNetworkSelection(side) : Selection
+                    ).ProcessStationDeparture(),
                 () => QueueCommand(new Command(CommandKind.Withdraw, BattleStation.Unit))
             );
-            if (side == PlayerSide)
-                Audio.EnqueueNotification(state.FactionIndex == 0 ? 143 : 269);
+            if (side == PlayerSide || _networkAuthority)
+                EnqueueFactionNotification(side, state.FactionIndex == 0 ? 143 : 269);
             PrepareWithdrawalGroups(side);
             state.Withdrawal.SelectInitialDelay(BattleStation?.IsOperational == true);
         }
@@ -776,7 +794,7 @@ namespace Rebellion.Gameplay
                     SetOrder(group, TacticalCombatOrder.Withdraw);
                     continue;
                 }
-                if (side == PlayerSide)
+                if (side == PlayerSide || _networkAuthority)
                     ClearGroupCategories(group);
                 if (group.Members.Count == 0)
                     continue;
@@ -800,7 +818,10 @@ namespace Rebellion.Gameplay
                 TacticalCombatGroup applied = GetGroup(unit);
                 if (applied != null)
                 {
-                    if (applied.Side == PlayerSide && !HasUntrackedRequestedOwner(unit))
+                    if (
+                        (applied.Side == PlayerSide || _networkAuthority)
+                        && !HasUntrackedRequestedOwner(unit)
+                    )
                         ClearGroupCategories(applied);
                     RemoveGroupMember(applied, unit);
                 }
@@ -820,7 +841,12 @@ namespace Rebellion.Gameplay
             if (requested == null)
                 return false;
             for (int category = 0; category < 8; category++)
-                if (ReferenceEquals(_objectGroups[(int)PlayerSide, category], requested))
+                if (
+                    ReferenceEquals(
+                        _objectGroups[(int)(_networkAuthority ? unit.Side : PlayerSide), category],
+                        requested
+                    )
+                )
                     return false;
             return true;
         }
@@ -843,6 +869,7 @@ namespace Rebellion.Gameplay
         /// <param name="order">The requested behavior.</param>
         public void SetOrder(TacticalCombatGroup group, TacticalCombatOrder order)
         {
+            RequireSimulationAuthority();
             if (
                 !_groupsByID.TryGetValue(group.ID, out TacticalCombatGroup existing)
                 || !ReferenceEquals(existing, group)
@@ -924,6 +951,8 @@ namespace Rebellion.Gameplay
                 run.UnitDestroyed += Destroy;
                 run.UnitParticipationChanged += _spatial.Update;
                 run.NotificationRequested += RequestAttackRunNotification;
+                if (_networkAuthority)
+                    run.ConfigureNetworkNotifications(RouteNetworkAttackNotification);
                 group.AttackRun = run;
                 ActiveAttackRun = run;
                 AttackRunChanged?.Invoke(run);
@@ -945,7 +974,7 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="messageID">The authored command message.</param>
         private void RequestAttackRunNotification(int messageID) =>
-            Audio.EnqueueNotification(messageID);
+            EnqueueFactionNotification(PlayerSide, messageID);
 
         /// <summary>
         /// Releases every callback owned by a removed or replaced attack helper.
@@ -962,6 +991,7 @@ namespace Rebellion.Gameplay
             run.UnitDestroyed -= Destroy;
             run.UnitParticipationChanged -= _spatial.Update;
             run.NotificationRequested -= RequestAttackRunNotification;
+            run.ConfigureNetworkNotifications(null);
         }
 
         /// <summary>
@@ -975,6 +1005,17 @@ namespace Rebellion.Gameplay
             _moviePauses++;
             TacticalCombatMovieRequest request = new(run, CompleteAttackRunMovie);
             PendingAttackRunMovie = request;
+            if (_networkAuthority)
+            {
+                _networkMovieID++;
+                RecordNetworkEffect(
+                    new()
+                    {
+                        Kind = TacticalCombatNetworkEffectKind.Movie,
+                        MovieID = _networkMovieID,
+                    }
+                );
+            }
             bool notificationsEnabled = Audio.Notifications.Enabled;
             Audio.Notifications.Enabled = false;
             try
@@ -1048,6 +1089,7 @@ namespace Rebellion.Gameplay
         /// <param name="clock">The wrapping unsigned monotonic playback clock.</param>
         public void ConfigureClockedAdvance(Func<uint> clock)
         {
+            RequireSimulationAuthority();
             if (clock == null)
                 throw new ArgumentNullException(nameof(clock));
             if (_scheduler != null || _legacyTimeAdvanced)
@@ -1064,6 +1106,7 @@ namespace Rebellion.Gameplay
         /// <param name="elapsedMilliseconds">The frame interval for entry, briefing, and continuous-work admission.</param>
         public void AdvanceClocked(float elapsedMilliseconds)
         {
+            RequireSimulationAuthority();
             if (_scheduler == null)
                 throw new InvalidOperationException(
                     "The battle requires an explicit clock before clocked advancement."
@@ -1071,6 +1114,7 @@ namespace Rebellion.Gameplay
             if (!AdvanceArrival(elapsedMilliseconds) || IsComplete)
                 return;
             _director.Advance(elapsedMilliseconds, CaptureDirectorState());
+            AdvanceRemoteNotifications(elapsedMilliseconds);
             if (IsPaused)
             {
                 Selection.ProcessPendingCommands();
@@ -1104,6 +1148,7 @@ namespace Rebellion.Gameplay
         /// <param name="elapsedMilliseconds">The elapsed unpaused frame duration.</param>
         public void Advance(float elapsedMilliseconds)
         {
+            RequireSimulationAuthority();
             if (_scheduler != null && elapsedMilliseconds != 0)
                 throw new InvalidOperationException(
                     "Clock-bound encounters require clocked advancement."
@@ -1116,6 +1161,7 @@ namespace Rebellion.Gameplay
             if (IsComplete || elapsedMilliseconds <= 0)
                 return;
             _director.Advance(elapsedMilliseconds, CaptureDirectorState());
+            AdvanceRemoteNotifications(elapsedMilliseconds);
             _elapsedInTick += elapsedMilliseconds;
             if (IsPaused)
                 return;
@@ -1309,6 +1355,7 @@ namespace Rebellion.Gameplay
         /// <param name="group">The commanded group.</param>
         private void ValidateGroup(TacticalCombatGroup group)
         {
+            RequireSimulationAuthority();
             if (
                 group == null
                 || !_groupsByID.TryGetValue(group.ID, out TacticalCombatGroup registered)
@@ -1614,7 +1661,7 @@ namespace Rebellion.Gameplay
                 1000,
                 true,
                 BattleStation?.IsOperational == true,
-                side.Side == PlayerSide
+                side.Side == PlayerSide || _networkAuthority
             );
         }
 
@@ -1819,8 +1866,12 @@ namespace Rebellion.Gameplay
         /// </summary>
         private void NotifyStationCharged()
         {
-            if (GetSide(PlayerSide).FactionIndex == 1)
-                Audio.EnqueueNotification(275);
+            if (_networkAuthority)
+                foreach (TacticalCombatSide side in _sides)
+                    if (side.FactionIndex == 1)
+                        EnqueueFactionNotification(side.Side, 275);
+            if (!_networkAuthority && GetSide(PlayerSide).FactionIndex == 1)
+                EnqueueFactionNotification(PlayerSide, 275);
         }
 
         /// <summary>
@@ -1912,8 +1963,12 @@ namespace Rebellion.Gameplay
                     if (target.IsTargetable)
                     {
                         Audio.Enqueue(TacticalCombatSound.Superlaser);
-                        if (GetSide(PlayerSide).FactionIndex == 0)
-                            Audio.EnqueueNotification(145);
+                        if (_networkAuthority)
+                            foreach (TacticalCombatSide side in _sides)
+                                if (side.FactionIndex == 0)
+                                    EnqueueFactionNotification(side.Side, 145);
+                        if (!_networkAuthority && GetSide(PlayerSide).FactionIndex == 0)
+                            EnqueueFactionNotification(PlayerSide, 145);
                     }
                     SuperlaserFired?.Invoke(source, target);
                     break;
@@ -2120,15 +2175,34 @@ namespace Rebellion.Gameplay
                 || !_unitsByID.TryGetValue(attackerInstanceID, out TacticalCombatUnit attacker)
             )
                 return;
-            bool credited = attacker.Side == PlayerSide;
+            if (_networkAuthority)
+                foreach (TacticalCombatSide side in _sides)
+                    ReportFactionDestruction(victim, attacker, side.Side);
+            else
+                ReportFactionDestruction(victim, attacker, PlayerSide);
+        }
+
+        /// <summary>
+        /// Selects one faction's existing kill, loss, category, and personnel cues from the same destruction.
+        /// </summary>
+        /// <param name="victim">The destroyed participant.</param>
+        /// <param name="attacker">The credited firing participant.</param>
+        /// <param name="side">The faction receiving its command report.</param>
+        private void ReportFactionDestruction(
+            TacticalCombatUnit victim,
+            TacticalCombatUnit attacker,
+            CombatSide side
+        )
+        {
+            bool credited = attacker.Side == side;
             TacticalCombatUnit actor = credited ? attacker : victim;
-            int bank = GetSide(PlayerSide).FactionIndex == 0 ? 0 : 122;
+            int bank = GetSide(side).FactionIndex == 0 ? 0 : 122;
             int message = credited ? 85 : 98;
             if (actor.GroupID is int groupID)
             {
                 if (actor.IsFighter)
                 {
-                    int category = GetReportFighterCategory(groupID);
+                    int category = GetReportFighterCategory(groupID, side);
                     if (category < 0)
                         return;
                     message = (credited ? 94 : 107) + category;
@@ -2140,24 +2214,25 @@ namespace Rebellion.Gameplay
                         && _personnelHostCounts.TryGetValue(victim.InstanceID, out int count)
                     )
                         for (int index = 0; index < count; index++)
-                            Audio.EnqueueNotification(bank == 0 ? 134 : 260);
-                    int category = GetReportObjectCategory(groupID);
+                            EnqueueFactionNotification(side, bank == 0 ? 134 : 260);
+                    int category = GetReportObjectCategory(groupID, side);
                     if (category >= 0)
                         message += 1 + category;
                 }
             }
-            Audio.EnqueueNotification(message + bank);
+            EnqueueFactionNotification(side, message + bank);
         }
 
         /// <summary>
         /// Finds an applied capital group in the player's current command slots.
         /// </summary>
         /// <param name="groupID">The applied group identity.</param>
+        /// <param name="side">The receiving faction's retained category owner.</param>
         /// <returns>The matching command slot, or minus one when it has no slot.</returns>
-        private int GetReportObjectCategory(int groupID)
+        private int GetReportObjectCategory(int groupID, CombatSide side)
         {
             for (int category = 0; category < 8; category++)
-                if (_objectGroups[(int)PlayerSide, category]?.ID == groupID)
+                if (_objectGroups[(int)side, category]?.ID == groupID)
                     return category;
             return -1;
         }
@@ -2166,11 +2241,12 @@ namespace Rebellion.Gameplay
         /// Resolves a fighter group's current slot or retained deployment category.
         /// </summary>
         /// <param name="groupID">The applied group identity.</param>
+        /// <param name="side">The receiving faction's retained category owner.</param>
         /// <returns>The resolved category, or minus one for an unavailable fighter group.</returns>
-        private int GetReportFighterCategory(int groupID)
+        private int GetReportFighterCategory(int groupID, CombatSide side)
         {
             for (int category = 0; category < 4; category++)
-                if (_fighterGroups[(int)PlayerSide, category]?.ID == groupID)
+                if (_fighterGroups[(int)side, category]?.ID == groupID)
                     return category;
             return
                 _groupsByID.TryGetValue(groupID, out TacticalCombatGroup group)
@@ -2309,6 +2385,8 @@ namespace Rebellion.Gameplay
         /// <returns>The rounded sum of its current contributors, without a health or participation filter.</returns>
         private float GetTractorRestraint(TacticalCombatUnit target)
         {
+            if (_networkReplica)
+                return target.TractorRestraint;
             float restraint = 0;
             if (
                 _tractorSources.TryGetValue(
@@ -2403,6 +2481,12 @@ namespace Rebellion.Gameplay
             TacticalCombatForceAssessment second = CaptureForceAssessment(_sides[1]);
             TacticalCombatForceAssessment alliance = _sides[0].FactionIndex == 0 ? first : second;
             TacticalCombatForceAssessment empire = _sides[0].FactionIndex == 1 ? first : second;
+            _remoteNotificationEnding?.TryBegin(
+                alliance,
+                empire,
+                BattleStation?.IsOperational == true,
+                BattleStation?.HasDeparted == true
+            );
             if (
                 !_ending.TryBegin(
                     alliance,

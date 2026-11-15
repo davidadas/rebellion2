@@ -24,6 +24,17 @@ namespace Rebellion.Gameplay
         public event Action ChargeCompleted;
 
         /// <summary>
+        /// Restores the authoritative charge and departure facts without firing or withdrawing locally.
+        /// </summary>
+        /// <param name="charge">The stored charge.</param>
+        /// <param name="departed">Whether departure has completed.</param>
+        internal void ApplyNetworkState(float charge, bool departed)
+        {
+            Charge = charge;
+            HasDeparted = departed;
+        }
+
+        /// <summary>
         /// Captures the station and its protecting planetary facilities at battle entry.
         /// </summary>
         /// <param name="unit">The station's campaign-backed tactical unit.</param>

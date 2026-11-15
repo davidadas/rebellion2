@@ -127,6 +127,7 @@ namespace Rebellion.Gameplay
         public float AttackDelay { get; private set; }
         public float MovementDelay { get; private set; }
         public bool IsAlive => Hull > 0;
+
         public bool HasHyperdrive =>
             _componentDamage[(int)TacticalShipSystem.Hyperdrive] < _hyperdriveCount;
         public double HullFraction => (double)Hull / MaximumHull;
@@ -143,6 +144,32 @@ namespace Rebellion.Gameplay
         /// Requests the weapon's impact effect after the affected surface and hull state are stored.
         /// </summary>
         public event Action<TacticalWeaponType, TacticalCombatImpactKind> ImpactRequested;
+
+        /// <summary>
+        /// Restores authoritative visible pools and components without applying damage or requesting repairs.
+        /// </summary>
+        /// <param name="state">The validated participant projection.</param>
+        internal void ApplyNetworkState(TacticalCombatNetworkUnitState state)
+        {
+            Hull = state.Hull;
+            Shields = state.Shields;
+            _shieldLimit = state.ShieldLimit;
+            AttackDelay = state.AttackDelay;
+            MovementDelay = state.MovementDelay;
+            _weaponRecharge = state.WeaponRechargeSample;
+            _shieldRecharge = state.ShieldRechargeSample;
+            Array.Copy(state.ComponentDamage, _componentDamage, _componentDamage.Length);
+        }
+
+        /// <summary>
+        /// Captures retained recharge samples without calling their stateful budget getters.
+        /// </summary>
+        /// <param name="state">The participant projection receiving these samples.</param>
+        internal void CaptureNetworkSamples(TacticalCombatNetworkUnitState state)
+        {
+            state.WeaponRechargeSample = _weaponRecharge;
+            state.ShieldRechargeSample = _shieldRecharge;
+        }
 
         /// <summary>
         /// Captures one unit's combat system values before the battle begins.

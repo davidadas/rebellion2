@@ -74,6 +74,19 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Restores visible battery charge without admitting a local discharge or recharge.
+        /// </summary>
+        /// <param name="state">The validated participant projection.</param>
+        internal void ApplyNetworkState(TacticalCombatNetworkUnitState state)
+        {
+            for (int arc = 0; arc < 4; arc++)
+            {
+                _charge[arc] = state.Charge[arc];
+                _ready[arc] = state.Ready[arc] ? 1u : 0u;
+            }
+        }
+
+        /// <summary>
         /// Gets the charge currently held by one battery.
         /// </summary>
         /// <param name="arc">The battery to inspect.</param>

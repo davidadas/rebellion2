@@ -51,6 +51,12 @@ namespace Rebellion.Gameplay
         public bool IsComplete { get; private set; }
 
         /// <summary>
+        /// Restores the authoritative terminal flags without running local ending callbacks.
+        /// </summary>
+        /// <param name="flags">The seven validated terminal flags.</param>
+        internal void ApplyNetworkFlags(bool[] flags) => Array.Copy(flags, _flags, _flags.Length);
+
+        /// <summary>
         /// Captures notification and command ownership for one encounter's ending.
         /// </summary>
         /// <param name="playerFactionIndex">The authored faction index: Alliance 0 or Empire 1.</param>

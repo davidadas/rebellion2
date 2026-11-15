@@ -21,7 +21,7 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Tests.PlayerRequests
 {
     [TestFixture]
-    public sealed class PlayerRequestExecutorTests
+    public sealed partial class PlayerRequestExecutorTests
     {
         private const string _ownerID = "FNALL1";
         private const string _opponentID = "FNEMP1";

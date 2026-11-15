@@ -15,6 +15,7 @@ namespace Rebellion.Gameplay
     {
         private readonly HashSet<int> _authoredMessages;
         private bool _playbackAvailable = true;
+        public event Action<int, bool> NotificationRequested;
         public TacticalCombatNotifications Notifications { get; }
         public IReadOnlyList<TacticalCombatSoundClip> Clips { get; }
         public Func<
@@ -110,8 +111,13 @@ namespace Rebellion.Gameplay
         /// <param name="messageID">The addressed notification.</param>
         /// <param name="loop">Whether playback repeats until its queue handle is stopped.</param>
         /// <returns>The queue handle, or zero when the selected content bank omits this message.</returns>
-        public uint EnqueueNotification(int messageID, bool loop = false) =>
-            _authoredMessages.Contains(messageID) ? Notifications.Enqueue(messageID, loop) : 0;
+        public uint EnqueueNotification(int messageID, bool loop = false)
+        {
+            NotificationRequested?.Invoke(messageID, loop);
+            return _authoredMessages.Contains(messageID)
+                ? Notifications.Enqueue(messageID, loop)
+                : 0;
+        }
 
         /// <summary>
         /// Refreshes owned playbacks and pending notifications using unscaled presentation time.

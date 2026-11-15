@@ -20,11 +20,37 @@ namespace Rebellion.Gameplay
         public float AdmiralLeadership { get; }
         public float CommanderCombat { get; }
         public bool IsAutomated { get; internal set; }
-        public bool IsWithdrawing => Withdrawal != null;
+        private TacticalCombatNetworkSideState _networkState;
+        public bool IsWithdrawing => _networkState?.Withdrawing ?? Withdrawal != null;
         public float AttackBudget { get; internal set; }
-        public float WithdrawalMilliseconds => Withdrawal?.RemainingMilliseconds ?? 0;
-        public TacticalCombatWithdrawalPhase? WithdrawalPhase => Withdrawal?.Phase;
+        public float WithdrawalMilliseconds =>
+            _networkState?.WithdrawalMilliseconds ?? Withdrawal?.RemainingMilliseconds ?? 0;
+        public TacticalCombatWithdrawalPhase? WithdrawalPhase =>
+            _networkState != null
+                ? (_networkState.HasWithdrawalPhase ? _networkState.WithdrawalPhase : null)
+                : Withdrawal?.Phase;
         internal TacticalCombatWithdrawal Withdrawal { get; set; }
+
+        /// <summary>
+        /// Restores faction presentation facts without starting a local withdrawal lifecycle.
+        /// </summary>
+        /// <param name="state">The validated faction projection.</param>
+        internal void ApplyNetworkState(TacticalCombatNetworkSideState state)
+        {
+            _networkState = new TacticalCombatNetworkSideState
+            {
+                Side = state.Side,
+                Automated = state.Automated,
+                CommandsSuspended = state.CommandsSuspended,
+                Withdrawing = state.Withdrawing,
+                WithdrawalMilliseconds = state.WithdrawalMilliseconds,
+                HasWithdrawalPhase = state.HasWithdrawalPhase,
+                WithdrawalPhase = state.WithdrawalPhase,
+                AttackBudget = state.AttackBudget,
+            };
+            IsAutomated = state.Automated;
+            AttackBudget = state.AttackBudget;
+        }
 
         /// <summary>
         /// Captures the command officers and campaign withdrawal route at battle entry.

@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Logging;
@@ -22,6 +23,11 @@ namespace Rebellion.Gameplay
         public string PlanetInstanceID { get; set; }
         public bool? AttackerRetreatResponse { get; set; }
         public bool? DefenderRetreatResponse { get; set; }
+        public bool AttackerTakeCommand { get; set; }
+        public bool DefenderTakeCommand { get; set; }
+        public string TacticalBattleID { get; set; }
+        public uint TacticalSeed { get; set; }
+        public int TacticalScenerySeed { get; set; }
     }
 
     /// <summary>
@@ -38,6 +44,7 @@ namespace Rebellion.Gameplay
         private SpaceCombatDecision _pendingDecision;
         private readonly TacticalCombatFactory _tacticalFactory;
         private TacticalCombatSession _tacticalCombat;
+        private string _tacticalBattleID;
         private List<CombatUnitSnapshot> _tacticalAttackingUnits;
         private List<CombatUnitSnapshot> _tacticalDefendingUnits;
 
@@ -45,6 +52,16 @@ namespace Rebellion.Gameplay
         /// Whether a player-involved combat encounter is waiting for resolution.
         /// </summary>
         public bool HasPendingDecision => _pendingDecision != null;
+
+        /// <summary>
+        /// Gets the captured manual encounter while the campaign decision remains suspended.
+        /// </summary>
+        public TacticalCombatSession ActiveTacticalCombat => _tacticalCombat;
+
+        /// <summary>
+        /// Gets the identity of the active network battle, or null outside network combat.
+        /// </summary>
+        public string ActiveTacticalBattleID => _tacticalBattleID;
 
         /// <summary>
         /// Gets whether the waiting encounter has complete tactical deployment definitions.
@@ -80,6 +97,67 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Captures an ordered multiplayer encounter with host-issued entry seeds and identity.
+        /// </summary>
+        /// <param name="battleID">The host-issued identity for this encounter.</param>
+        /// <param name="seed">The authoritative battle random seed.</param>
+        /// <param name="scenerySeed">The authoritative scenery calendar seed.</param>
+        /// <returns>The authority-owned encounter or its local participant's passive projection.</returns>
+        public TacticalCombatSession BeginNetworkTacticalCombat(
+            string battleID,
+            uint seed,
+            int scenerySeed
+        )
+        {
+            if (!Guid.TryParseExact(battleID, "N", out _))
+                throw new ArgumentException(
+                    "A valid battle identity is required.",
+                    nameof(battleID)
+                );
+            if (_game.Metadata?.IsMultiplayer != true)
+                throw new InvalidOperationException("A multiplayer campaign is required.");
+            if (
+                _tacticalCombat != null
+                || !CanTakeCommand
+                || _pendingDecision.AttackerRetreatResponse != false
+                || _pendingDecision.DefenderRetreatResponse != false
+                || !_pendingDecision.AttackerTakeCommand && !_pendingDecision.DefenderTakeCommand
+            )
+                throw new InvalidOperationException("The encounter cannot enter tactical combat.");
+
+            Planet planet = _queries.ResolveCombatPlanet(_pendingDecision);
+            _tacticalAttackingUnits = CaptureCombatUnits(
+                _queries.GetFleets(_pendingDecision.AttackerFleetInstanceIDs),
+                planet,
+                _pendingDecision.AttackerOwnerInstanceID
+            );
+            _tacticalDefendingUnits = CaptureCombatUnits(
+                _queries.GetFleets(_pendingDecision.DefenderFleetInstanceIDs),
+                planet,
+                _pendingDecision.DefenderOwnerInstanceID
+            );
+            _tacticalCombat = _tacticalFactory.Create(
+                _pendingDecision,
+                seed,
+                unchecked((uint)scenerySeed),
+                _game.LocalPlayerFactionID != _game.Metadata.MultiplayerCampaign.HostFactionID
+            );
+            if (_game.LocalPlayerFactionID == _game.Metadata.MultiplayerCampaign.HostFactionID)
+            {
+                _tacticalCombat.SetAutomated(
+                    CombatSide.Attacker,
+                    !_pendingDecision.AttackerTakeCommand
+                );
+                _tacticalCombat.SetAutomated(
+                    CombatSide.Defender,
+                    !_pendingDecision.DefenderTakeCommand
+                );
+            }
+            _tacticalBattleID = battleID;
+            return _tacticalCombat;
+        }
+
+        /// <summary>
         /// Releases a prepared encounter whose required presentation assets could not be loaded.
         /// </summary>
         /// <param name="session">The unstarted encounter to release.</param>
@@ -90,6 +168,7 @@ namespace Rebellion.Gameplay
                     "Only an unstarted tactical encounter can be released."
                 );
             _tacticalCombat = null;
+            _tacticalBattleID = null;
             _tacticalAttackingUnits = null;
             _tacticalDefendingUnits = null;
         }
@@ -109,11 +188,76 @@ namespace Rebellion.Gameplay
                 throw new InvalidOperationException(
                     "The tactical encounter is not ready to commit."
                 );
+            return ImportTacticalResult(session.CreateResult(), session.ImmediateResultRequested);
+        }
+
+        /// <summary>
+        /// Imports one host-ordered outcome against this peer's captured encounter participants.
+        /// </summary>
+        /// <param name="battleID">The active battle identity from the ordered completion request.</param>
+        /// <param name="outcome">The detached authoritative tactical outcome.</param>
+        /// <returns>The applied campaign result and its resulting domain events.</returns>
+        public List<GameResult> CompleteNetworkTacticalCombat(
+            string battleID,
+            TacticalCombatOutcome outcome
+        )
+        {
+            if (!TryCompleteNetworkTacticalCombat(battleID, outcome, out List<GameResult> results))
+                throw new InvalidOperationException(
+                    "The network battle outcome cannot be committed."
+                );
+            return results;
+        }
+
+        /// <summary>
+        /// Rejects stale or malformed outcomes before entering the campaign mutation boundary.
+        /// </summary>
+        /// <param name="battleID">The host-issued identity of the completed encounter.</param>
+        /// <param name="outcome">The authoritative final tactical pools.</param>
+        /// <param name="results">The applied result and domain events, or null after rejection.</param>
+        /// <returns>Whether the final outcome was validated and committed.</returns>
+        public bool TryCompleteNetworkTacticalCombat(
+            string battleID,
+            TacticalCombatOutcome outcome,
+            out List<GameResult> results
+        )
+        {
+            results = null;
+            if (
+                _tacticalCombat?.IsComplete != true
+                || _pendingDecision == null
+                || string.IsNullOrEmpty(_tacticalBattleID)
+                || !string.Equals(_tacticalBattleID, battleID, StringComparison.Ordinal)
+            )
+                return false;
+            SpaceCombatResult result;
+            try
+            {
+                result = RestoreTacticalOutcome(outcome);
+            }
+            catch (System.IO.InvalidDataException)
+            {
+                return false;
+            }
+            results = ImportTacticalResult(result, outcome.TerminalFlags[6]);
+            return true;
+        }
+
+        /// <summary>
+        /// Applies captured tactical pools through the shared campaign loss and withdrawal boundary.
+        /// </summary>
+        /// <param name="result">The completed encounter's result using local campaign references.</param>
+        /// <param name="immediateResult">Whether surviving forces require automatic continuation.</param>
+        /// <returns>The final campaign result and its resulting domain events.</returns>
+        private List<GameResult> ImportTacticalResult(
+            SpaceCombatResult result,
+            bool immediateResult
+        )
+        {
             SpaceCombatDecision decision = _pendingDecision;
             List<Fleet> attackers = _queries.GetFleets(decision.AttackerFleetInstanceIDs);
             List<Fleet> defenders = _queries.GetFleets(decision.DefenderFleetInstanceIDs);
             Planet planet = _queries.ResolveCombatPlanet(decision);
-            SpaceCombatResult result = session.CreateResult();
             result.AttackerFleet = SpaceCombatQueries.GetRepresentativeFleet(attackers);
             result.DefenderFleet = SpaceCombatQueries.GetRepresentativeFleet(defenders);
             result.AttackerOwnerInstanceID = decision.AttackerOwnerInstanceID;
@@ -126,7 +270,7 @@ namespace Rebellion.Gameplay
             bool wasBlockaded = planet.IsBlockaded();
             List<GameResult> events = ApplyFighterResults(result);
             events.AddRange(ApplyShipResults(result, attackers, defenders));
-            if (session.ImmediateResultRequested)
+            if (immediateResult)
                 result = ResolveImmediateTacticalContinuation(
                     decision,
                     result,
@@ -185,6 +329,7 @@ namespace Rebellion.Gameplay
             ClearCombatFlags(decision);
             _pendingDecision = null;
             _tacticalCombat = null;
+            _tacticalBattleID = null;
             _tacticalAttackingUnits = null;
             _tacticalDefendingUnits = null;
             List<GameResult> results = new() { result };
@@ -390,6 +535,10 @@ namespace Rebellion.Gameplay
         /// <returns>Combat results generated by the encounter.</returns>
         public List<GameResult> ResolvePending(bool autoResolve)
         {
+            if (_tacticalCombat != null)
+                throw new InvalidOperationException(
+                    "The active manual encounter must finish first."
+                );
             if (_pendingDecision == null)
                 throw new InvalidOperationException("No pending combat to resolve.");
 
@@ -406,6 +555,10 @@ namespace Rebellion.Gameplay
         /// <returns>The combat results, or null when that side cannot withdraw.</returns>
         public List<GameResult> ResolvePendingRetreat(string retreatingFactionInstanceId)
         {
+            if (_tacticalCombat != null)
+                throw new InvalidOperationException(
+                    "The active manual encounter must finish first."
+                );
             if (_pendingDecision == null)
                 throw new InvalidOperationException("No pending combat to resolve.");
 

@@ -244,7 +244,11 @@ namespace Rebellion.Multiplayer
             ProcessTransportEvents();
             ProcessPendingCommit();
             if (_saveProtocol?.BlocksGameplay != true)
+            {
                 _turnProtocol?.Pump();
+                DeliverPendingTacticalReady();
+                _tacticalDriver?.Pump();
+            }
             _saveProtocol?.Pump();
             ProcessRejoinRecovery();
             TrySendInitialSnapshot();
@@ -638,6 +642,40 @@ namespace Rebellion.Multiplayer
                             );
                         }
                         _turnProtocol.Receive(packet);
+                        break;
+                    case MultiplayerMessageType.TacticalReady:
+                    case MultiplayerMessageType.TacticalCommand:
+                    case MultiplayerMessageType.TacticalCommandResult:
+                    case MultiplayerMessageType.TacticalFrame:
+                    case MultiplayerMessageType.TacticalFrameReceipt:
+                    case MultiplayerMessageType.TacticalMovieReceipt:
+                        MultiplayerSessionIdentity tacticalIdentity =
+                            JsonUtility.FromJson<MultiplayerSessionIdentity>(packet.Metadata);
+                        if (
+                            !MultiplayerSessionIdentity.Matches(
+                                _initializationID,
+                                tacticalIdentity?.initializationID
+                            )
+                        )
+                            break;
+                        if (
+                            packet.Type == MultiplayerMessageType.TacticalReady
+                            && _turnProtocol?.HasQueuedTacticalEntry == true
+                            && _tacticalDriver?.CompletionReady != false
+                        )
+                        {
+                            QueueTacticalReady(packet);
+                            break;
+                        }
+                        if (_tacticalDriver == null)
+                        {
+                            if (_waitingForRejoin)
+                                break;
+                            throw new InvalidOperationException(
+                                "The shared battle has not started."
+                            );
+                        }
+                        _tacticalDriver.Receive(packet);
                         break;
                     case MultiplayerMessageType.Disconnect:
                         HandlePeerDeparture(

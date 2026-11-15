@@ -18,7 +18,7 @@ namespace Rebellion.Gameplay
     /// <summary>
     /// Owns the orders, navigation points, target lists, and formation of a tactical group.
     /// </summary>
-    public sealed class TacticalCombatGroup
+    public sealed partial class TacticalCombatGroup
     {
         private static readonly Comparer<TacticalCombatUnit> _memberComparer =
             Comparer<TacticalCombatUnit>.Create(CompareMembers);

@@ -55,11 +55,16 @@ BUILD_TARGET=StandaloneWindows64 BUILD_PLAYER_PATH=build/rebellion2.exe ./build.
 
 ## Tactical space combat
 
-The battle alert opens manual combat in a single-player session when the selected content pack
+The battle alert opens manual combat when the selected content pack
 supplies tactical definitions for both factions and every participating unit. The campaign stays
 suspended while the encounter runs. Closing a completed encounter applies its losses, component damage, fighter recovery, and
 withdrawals through the shared combat-result pipeline. Surviving fighters without a carrier may
 remain at the encounter planet without changing its surface ownership or colonization.
+
+In multiplayer campaigns, both commanders respond to the alert before combat starts. If either
+takes command, the encounter opens for both players; a side that selected automatic control starts
+with its existing battle automation enabled. Withdrawal responses retain the shared campaign
+withdrawal path, and two automatic responses use the existing automatic resolution path.
 
 The tactical frame uses a fixed 640x480 layout. Left-click to replace the current selection; hold
 Ctrl to extend or toggle it. Right-click addresses an object or visible navigation marker within
@@ -80,14 +85,25 @@ models, effects, and render targets. Required media finishes loading before the 
 The shared content caches retain source assets; disposing the encounter releases its presentation
 instances and audio handles.
 
+`MultiplayerTacticalDriver` gives the host sole ownership of live combat progression. Each player
+loads their own faction HUD, camera, models, and audio before the ready barrier admits battle time.
+Authenticated orders address that player's side, while ordered state and presentation events update
+the other player's passive view. Frame acknowledgements bound pending traffic; shared movie
+acknowledgements hold the battle until both presentations finish. An acknowledged terminal frame
+precedes the host's ordered campaign-result commit, preserving one result and one tick resumption.
+Disconnects release the battle view and retain the existing shared recovery boundary rather than
+importing an unfinished encounter. Campaign orders and persistence remain blocked during combat;
+peer chat continues through its existing ordered request path.
+
 Operational weapon batteries enter combat charged. A unit shares its recharge budget across
 depleted batteries in queue order. Ion hits beyond shields accumulate the selected attack and
 movement delays and discharge the selected batteries. Damage control includes weapon damage
 already present when the encounter starts.
 
-Get immediate result ends interactive combat and imports its losses before the existing automatic
+In single-player, Get immediate result ends interactive combat and imports its losses before the existing automatic
 encounter resolver settles the surviving forces. The campaign receives one combined result and
 resumes after all pending encounters have been resolved.
+Immediate results are unavailable during multiplayer battles.
 
 Battle-station fighter attacks announce approach and attack entry. Alliance calls also reflect
 fighter category, outcome, and timed progress; Empire views use the approach and start cues.

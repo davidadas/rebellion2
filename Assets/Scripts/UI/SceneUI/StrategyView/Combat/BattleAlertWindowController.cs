@@ -486,6 +486,10 @@ public sealed class BattleAlertWindowController
     {
         if (observedCombats.TryGetValue(result, out _))
             return;
+        if (view == null || !sessions.ContainsKey(view))
+            view = FindWindow() ?? OpenWindow();
+        if (view == null)
+            return;
         observedCombats.Add(result, new object());
         PresentCombatResult(view, result);
     }
