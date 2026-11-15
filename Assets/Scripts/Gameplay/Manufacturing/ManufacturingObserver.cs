@@ -123,7 +123,7 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Restores persisted queue order and normalizes its sequence values.
+        /// Restores persisted queue order without changing the saved sequence values.
         /// </summary>
         /// <param name="candidates">The queued items discovered in the scene graph.</param>
         /// <returns>The items in manufacturing order.</returns>
@@ -131,12 +131,7 @@ namespace Rebellion.Gameplay
             IReadOnlyList<IManufacturable> candidates
         )
         {
-            List<IManufacturable> ordered = candidates
-                .OrderBy(item => item.ManufacturingQueueSequence)
-                .ToList();
-            for (int index = 0; index < ordered.Count; index++)
-                ordered[index].ManufacturingQueueSequence = index + 1;
-            return ordered;
+            return candidates.OrderBy(item => item.ManufacturingQueueSequence).ToList();
         }
 
         /// <summary>

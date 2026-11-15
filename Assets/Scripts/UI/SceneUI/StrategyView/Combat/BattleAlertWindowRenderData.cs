@@ -142,6 +142,8 @@ internal sealed class BattleAlertButtonRenderData
     public Texture2D Texture { get; }
 
     public Texture2D PressedTexture { get; }
+    public bool Selected { get; }
+    public Color SelectionColor { get; }
 
     /// <summary>
     /// Creates presentation data for one battle-alert button.
@@ -150,17 +152,23 @@ internal sealed class BattleAlertButtonRenderData
     /// <param name="texture">The normal-state texture.</param>
     /// <param name="pressedTexture">The pressed-state texture.</param>
     /// <param name="bounds">The optional source-space button bounds.</param>
+    /// <param name="selected">Whether the local player has selected this control.</param>
+    /// <param name="selectionColor">The local faction selection-frame color.</param>
     public BattleAlertButtonRenderData(
         bool interactable,
         Texture2D texture,
         Texture2D pressedTexture,
-        RectInt? bounds = null
+        RectInt? bounds = null,
+        bool selected = false,
+        Color selectionColor = default
     )
     {
         Interactable = interactable;
         Texture = texture;
         PressedTexture = pressedTexture;
         Bounds = bounds;
+        Selected = selected;
+        SelectionColor = selectionColor;
     }
 }
 
@@ -289,6 +297,8 @@ internal sealed class BattleAlertPendingRenderData
 
     public string Summary { get; }
 
+    public string ResponseStatus { get; }
+
     public IReadOnlyList<BattleAlertRowRenderData> Rows { get; }
 
     public IReadOnlyList<BattleAlertButtonRenderData> CommandButtons { get; }
@@ -302,19 +312,22 @@ internal sealed class BattleAlertPendingRenderData
     /// <param name="summary">The active summary text.</param>
     /// <param name="rows">The pending-list rows.</param>
     /// <param name="commandButtons">The pending-combat command buttons.</param>
+    /// <param name="responseStatus">The response receipt status without either player's choice.</param>
     public BattleAlertPendingRenderData(
         BattleAlertPanel panel,
         string title,
         string header,
         string summary,
         IEnumerable<BattleAlertRowRenderData> rows,
-        IEnumerable<BattleAlertButtonRenderData> commandButtons
+        IEnumerable<BattleAlertButtonRenderData> commandButtons,
+        string responseStatus = null
     )
     {
         Panel = panel;
         Title = title ?? string.Empty;
         Header = header ?? string.Empty;
         Summary = summary ?? string.Empty;
+        ResponseStatus = responseStatus ?? string.Empty;
         Rows = (rows ?? Enumerable.Empty<BattleAlertRowRenderData>()).ToList().AsReadOnly();
         CommandButtons = (commandButtons ?? Enumerable.Empty<BattleAlertButtonRenderData>())
             .ToList()

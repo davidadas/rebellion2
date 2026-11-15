@@ -256,6 +256,7 @@ public sealed class ConstructionWindowView
         infoButton.onClick.AddListener(RequestInfo);
         okButton.onClick.AddListener(RequestStart);
         cancelButton.onClick.AddListener(RequestCancel);
+        buildCountInputField.onSubmit.AddListener(RequestBuildOrder);
         buildCountInputField.onEndEdit.AddListener(RequestBuildCount);
     }
 
@@ -277,7 +278,10 @@ public sealed class ConstructionWindowView
         if (cancelButton != null)
             cancelButton.onClick.RemoveListener(RequestCancel);
         if (buildCountInputField != null)
+        {
+            buildCountInputField.onSubmit.RemoveListener(RequestBuildOrder);
             buildCountInputField.onEndEdit.RemoveListener(RequestBuildCount);
+        }
         UnbindDropdownRows();
         Destroyed?.Invoke(this);
     }
@@ -420,6 +424,16 @@ public sealed class ConstructionWindowView
     internal void RequestBuildCount(string value)
     {
         BuildCountSubmitted?.Invoke(this, value);
+    }
+
+    /// <summary>
+    /// Applies the submitted build count and requests the selected construction order.
+    /// </summary>
+    /// <param name="value">The submitted build-count text.</param>
+    private void RequestBuildOrder(string value)
+    {
+        RequestBuildCount(value);
+        RequestStart();
     }
 
     /// <summary>

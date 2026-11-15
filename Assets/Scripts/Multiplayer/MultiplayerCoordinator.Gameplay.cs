@@ -1,0 +1,498 @@
+using System;
+using System.IO;
+using System.Threading.Tasks;
+using Rebellion.Game;
+using Rebellion.Game.PlayerRequests;
+using Rebellion.Gameplay;
+using UnityEngine;
+
+namespace Rebellion.Multiplayer
+{
+    /// <summary>
+    /// Connects negotiated peers to stable player-action execution and shared day barriers.
+    /// </summary>
+    public sealed partial class MultiplayerCoordinator
+    {
+        private MultiplayerTurnProtocol _turnProtocol;
+        private bool _awaitingSnapshotReceipt;
+        private string _initialSnapshotHash;
+        private string _initialSimulationFingerprint;
+        private MultiplayerSnapshotMessage _pendingRejoinSnapshot;
+        private GameSession _readyPresentationSession;
+        private string _readyPresentationInitializationID;
+
+        /// <summary>
+        /// Gets whether the admitted peer can receive an ordered gameplay chat message.
+        /// </summary>
+        public bool CanSendPeerChat =>
+            _synchronizationReady && _turnProtocol != null && _peer?.IsConnected == true;
+
+        /// <summary>
+        /// Sends unchanged composer text through the admitted player's ordered action boundary.
+        /// </summary>
+        /// <param name="rawText">The unchanged multiline message text.</param>
+        /// <returns>Whether the message was accepted and delivered.</returns>
+        public async Task<bool> SendPeerChatAsync(string rawText)
+        {
+            if (!CanSendPeerChat)
+                return false;
+            PlayerRequestOutcome result = await ExecuteAsync(
+                new SendPeerChatRequest { Text = rawText }
+            );
+            return result.Accepted;
+        }
+
+        /// <summary>
+        /// Establishes admitted participant ownership before simulation services are constructed.
+        /// </summary>
+        /// <param name="game">The graph entering the declared multiplayer session.</param>
+        public void PrepareGame(GameRoot game)
+        {
+            if (_launchConfiguration == null)
+                throw new InvalidOperationException("A negotiated multiplayer launch is required.");
+            ConfigureGame(game);
+        }
+
+        /// <summary>
+        /// Binds execution, speed requests, and persistence before any strategy presentation starts.
+        /// </summary>
+        /// <param name="runtime">The active game runtime.</param>
+        public void BindSessionManager(GameSessionManager runtime)
+        {
+            if (_launchConfiguration == null)
+                throw new InvalidOperationException("A negotiated multiplayer launch is required.");
+            _sessionManager = runtime ?? throw new ArgumentNullException(nameof(runtime));
+            _readyPresentationSession = null;
+            _readyPresentationInitializationID = null;
+            runtime.GetActiveGameManager().BindSpeedRequests(RequestGameSpeed);
+        }
+
+        /// <summary>
+        /// Starts the synchronization handshake after the declared runtime's presentation is ready.
+        /// </summary>
+        /// <param name="runtime">The runtime reporting its completed presentation setup.</param>
+        public void NotifyPresentationReady(GameSessionManager runtime)
+        {
+            if (!ReferenceEquals(_sessionManager, runtime))
+                throw new InvalidOperationException(
+                    "The ready presentation belongs to another runtime."
+                );
+            if (
+                ReferenceEquals(_readyPresentationSession, runtime.GetActiveGameSession())
+                && _readyPresentationInitializationID == _initializationID
+            )
+                return;
+            _readyPresentationSession = runtime.GetActiveGameSession();
+            _readyPresentationInitializationID = _initializationID;
+            runtime.GetActiveGameManager().EnableCoordinatedSpeeds();
+            if (_pendingRejoinSnapshot != null)
+            {
+                MultiplayerSnapshotMessage metadata = _pendingRejoinSnapshot;
+                _pendingRejoinSnapshot = null;
+                AcceptInitialSnapshot(metadata);
+                return;
+            }
+            if (_waitingForRejoin)
+            {
+                SetStatus(CreateRejoinNotice());
+                return;
+            }
+            if (_role == MultiplayerRole.Guest)
+            {
+                QueueSend(
+                    new MultiplayerPacket(
+                        MultiplayerMessageType.Ready,
+                        JsonUtility.ToJson(
+                            new MultiplayerSessionIdentity { initializationID = _initializationID }
+                        )
+                    )
+                );
+                SetStatus("Game loaded; waiting for the host state");
+            }
+            else
+            {
+                SetStatus("Game loaded; waiting for the other player");
+                TrySendInitialSnapshot();
+            }
+        }
+
+        /// <summary>
+        /// Releases only the outgoing runtime while preserving an agreed scene-transfer operation.
+        /// </summary>
+        /// <param name="runtime">The runtime ending its current session.</param>
+        public void ReleaseSessionManager(GameSessionManager runtime)
+        {
+            if (!ReferenceEquals(_sessionManager, runtime))
+                return;
+            if (IsTransferringScene)
+                DetachGameForSceneTransfer(runtime);
+            else
+            {
+                ReleaseGameplay();
+                _sessionManager = null;
+                _synchronizationReady = false;
+            }
+        }
+
+        /// <summary>
+        /// Submits a local operation to the negotiated ordering owner.
+        /// </summary>
+        /// <param name="action">The typed operation.</param>
+        /// <returns>The completed operation, or a rejection while synchronization is unavailable.</returns>
+        public Task<PlayerRequestOutcome> ExecuteAsync(PlayerRequest action)
+        {
+            if (!_synchronizationReady || _turnProtocol == null)
+                return Task.FromResult(
+                    new PlayerRequestOutcome(false, "Waiting for the other player.")
+                );
+            return _turnProtocol.ExecuteAsync(action);
+        }
+
+        /// <summary>
+        /// Starts the next shared day when the configured host clock and both peers are ready.
+        /// </summary>
+        /// <param name="elapsedSeconds">The frame interval available to the host clock.</param>
+        /// <returns>Whether this peer should start its ordinary incremental tick.</returns>
+        public bool TryBeginGameTick(float elapsedSeconds)
+        {
+            if (
+                !_synchronizationReady
+                || _turnProtocol == null
+                || _checkpointPending
+                || _saveProtocol?.BlocksNewTicks == true
+            )
+                return false;
+            bool elapsed =
+                _turnProtocol.CanBeginHostTick
+                && _sessionManager.GetActiveGameManager().TryAdvanceTickTimer(elapsedSeconds);
+            return _turnProtocol.TryBeginTick(elapsed);
+        }
+
+        /// <summary>
+        /// Waits for terminal replay and presentation agreement before either scene releases the connection.
+        /// </summary>
+        /// <returns>True after the final host state is acknowledged, or false after interruption.</returns>
+        public async Task<bool> WaitForCampaignCompletionAsync()
+        {
+            MultiplayerTurnProtocol protocol = _turnProtocol;
+            GameSessionManager runtime = _sessionManager;
+            if (protocol == null || !await protocol.WaitForCampaignCompletionAsync())
+                return false;
+            if (
+                !ReferenceEquals(_turnProtocol, protocol)
+                || !ReferenceEquals(_sessionManager, runtime)
+            )
+                return false;
+            string campaignID = runtime.GetActiveGame().Metadata.CampaignID;
+            string userID = _backend.LocalUserID;
+            _checkpointPending = false;
+            await _recoveryPublication;
+            if (
+                !ReferenceEquals(_turnProtocol, protocol)
+                || !ReferenceEquals(_sessionManager, runtime)
+            )
+                return false;
+            try
+            {
+                GetRecoveryStore().Delete(userID, campaignID);
+            }
+            catch (Exception exception)
+                when (exception is IOException or UnauthorizedAccessException or ArgumentException)
+            {
+                Debug.LogWarning(
+                    "Could not remove completed campaign recovery: " + exception.Message
+                );
+            }
+            _recoveryRecord = null;
+            _recoverySnapshot = null;
+            return true;
+        }
+
+        /// <summary>
+        /// Stops replay after a tick exception that occurred in the strategy frame loop.
+        /// </summary>
+        /// <param name="exception">The tick failure.</param>
+        internal void ReportGameplayFailure(Exception exception)
+        {
+            if (_turnProtocol != null)
+                _turnProtocol.ReportFailure(exception);
+            else
+                HandleGameplayFailure(exception);
+        }
+
+        /// <summary>
+        /// Verifies the prepared world or supplies a new world once both presentation lifecycles are ready.
+        /// </summary>
+        private void TrySendInitialSnapshot()
+        {
+            if (
+                _role != MultiplayerRole.Host
+                || !_remoteReady
+                || _sessionManager?.GetActiveGame() == null
+                || !ReferenceEquals(
+                    _readyPresentationSession,
+                    _sessionManager.GetActiveGameSession()
+                )
+                || _synchronizationReady
+                || _awaitingSnapshotReceipt
+                || Failure != null
+            )
+                return;
+            if (!_sessionManager.GetActiveGameSession().CanCaptureSettledState)
+                return;
+            try
+            {
+                MultiplayerSnapshot snapshot = PrepareInitialState(
+                    out MultiplayerSnapshotMessage metadata
+                );
+                QueueSend(
+                    new MultiplayerPacket(
+                        MultiplayerMessageType.SnapshotCommit,
+                        JsonUtility.ToJson(metadata),
+                        snapshot?.Payload
+                    )
+                );
+                SetStatus("Synchronizing the game");
+            }
+            catch (Exception exception)
+            {
+                HandleGameplayFailure(exception);
+            }
+        }
+
+        /// <summary>
+        /// Prepares the loaded-state receipt barrier, capturing bytes only when no shared preflight supplied the world.
+        /// </summary>
+        /// <param name="metadata">Receives the initialization, payload hash, and loaded-state fingerprint.</param>
+        /// <returns>The new world payload, or null when both participants already verified it.</returns>
+        private MultiplayerSnapshot PrepareInitialState(out MultiplayerSnapshotMessage metadata)
+        {
+            MultiplayerSnapshot snapshot = null;
+            if (_snapshotAdmission.PreparedSnapshotHash == null)
+            {
+                snapshot = MultiplayerSnapshotCodec.Capture(_sessionManager.GetActiveGameSession());
+                GameRoot game = MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash);
+                ConfigureGame(game);
+                ReplaceGame(game);
+            }
+            _sessionManager.BlockGameOperations();
+            _initialSimulationFingerprint = MultiplayerStateFingerprint.ComputeSimulation(
+                _sessionManager.GetActiveGameSession()
+            );
+            metadata = new MultiplayerSnapshotMessage
+            {
+                hash = _snapshotAdmission.PreparedSnapshotHash ?? snapshot.Hash,
+                simulationFingerprint = _initialSimulationFingerprint,
+                initializationID = _initializationID,
+            };
+            _initialSnapshotHash = metadata.hash;
+            _awaitingSnapshotReceipt = true;
+            return snapshot;
+        }
+
+        /// <summary>
+        /// Applies the initial model once, then retains that graph throughout ordered gameplay.
+        /// </summary>
+        /// <param name="packet">The initial authoritative model.</param>
+        private void ApplySnapshotCommit(MultiplayerPacket packet)
+        {
+            MultiplayerSnapshotMessage metadata = JsonUtility.FromJson<MultiplayerSnapshotMessage>(
+                packet.Metadata
+            );
+            if (!MultiplayerSessionIdentity.Matches(_initializationID, metadata?.initializationID))
+                return;
+            if (packet.Payload.Length == 0)
+            {
+                if (!_snapshotAdmission.AcceptsPreparedSnapshot(metadata))
+                    throw new InvalidDataException(
+                        "The initial world was not verified for this shared load."
+                    );
+            }
+            else
+            {
+                GameRoot state = MultiplayerSnapshotCodec.Restore(packet.Payload, metadata.hash);
+                ConfigureGame(state);
+                ReplaceGame(state);
+            }
+            AcceptInitialSnapshot(metadata);
+        }
+
+        /// <summary>
+        /// Verifies a normally loaded world and acknowledges the shared initial-state barrier.
+        /// </summary>
+        /// <param name="metadata">The source's negotiated initial snapshot metadata.</param>
+        private void AcceptInitialSnapshot(MultiplayerSnapshotMessage metadata)
+        {
+            metadata.simulationFingerprint = MultiplayerStateFingerprint.VerifyLoadedGame(
+                _sessionManager.GetActiveGameSession(),
+                metadata.simulationFingerprint
+            );
+            StartOrderedGameplay();
+            QueueSend(
+                new MultiplayerPacket(
+                    MultiplayerMessageType.SnapshotReceipt,
+                    JsonUtility.ToJson(metadata)
+                )
+            );
+        }
+
+        /// <summary>
+        /// Opens ordered gameplay after the counterpart confirms the supplied initial world.
+        /// </summary>
+        /// <param name="packet">The counterpart's verified initial-state receipt.</param>
+        private void HandleSnapshotReceipt(MultiplayerPacket packet)
+        {
+            if (!_awaitingSnapshotReceipt)
+                return;
+            MultiplayerSnapshotMessage metadata = JsonUtility.FromJson<MultiplayerSnapshotMessage>(
+                packet.Metadata
+            );
+            if (!MultiplayerSessionIdentity.Matches(_initializationID, metadata?.initializationID))
+                return;
+            if (
+                !_snapshotAdmission.AcceptsReceipt(
+                    metadata,
+                    _initialSnapshotHash,
+                    _initialSimulationFingerprint
+                )
+            )
+            {
+                HandleGameplayFailure(
+                    new InvalidOperationException(
+                        "The initial synchronization receipt does not match."
+                    )
+                );
+                return;
+            }
+            _awaitingSnapshotReceipt = false;
+            StartOrderedGameplay();
+        }
+
+        /// <summary>
+        /// Binds command completion and lightweight invalidation to the current stable session.
+        /// </summary>
+        private void StartOrderedGameplay()
+        {
+            _turnProtocol?.Dispose();
+            _turnProtocol = new MultiplayerTurnProtocol(
+                _role,
+                _launchConfiguration.HostFactionID,
+                _launchConfiguration.GuestFactionID,
+                _sessionManager.GetActiveGameSession(),
+                _sessionManager.GetActiveGameManager(),
+                QueueSend,
+                _initializationID
+            );
+            _turnProtocol.StateChanged += _sessionManager.NotifyGameStateChanged;
+            _turnProtocol.Faulted += HandleGameplayFailure;
+            _synchronizationReady = true;
+            _sessionManager.ResumeMultiplayerOperations();
+            EnsureSaveProtocol();
+            _localSaves = null;
+            _saveProtocol.NotifySynchronized();
+            _sessionManager.RecordMultiplayerCampaignStarted();
+            GetAnalyticsTracker()
+                ?.RecordGameConnected(
+                    _sessionManager.GetActiveGame(),
+                    _role,
+                    _initializationID,
+                    _waitingForRejoin || _returningToRecovery
+                );
+            _waitingForRejoin = false;
+            _returningToRecovery = false;
+            _recoveryOfferSent = false;
+            _checkpointPending = true;
+            if (_backend.IsLobbyOwner)
+            {
+                _listingState = "started";
+                _ = UpdateHostedListingAsync(_sessionCancellation.Token);
+            }
+            SetStatus("Connected");
+        }
+
+        /// <summary>
+        /// Routes existing speed controls through the same ordered participant operation.
+        /// </summary>
+        /// <param name="speed">The local participant's speed choice.</param>
+        private async void RequestGameSpeed(TickSpeed speed)
+        {
+            try
+            {
+                await ExecuteAsync(new SetSpeedRequest { Speed = speed });
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception exception)
+            {
+                HandleGameplayFailure(exception);
+            }
+        }
+
+        /// <summary>
+        /// Pauses a failed session and retains the complete exception for diagnosis.
+        /// </summary>
+        /// <param name="exception">The failure that prevents safe continued replay.</param>
+        private void HandleGameplayFailure(Exception exception)
+        {
+            StopGameplay(exception, true);
+        }
+
+        /// <summary>
+        /// Stops both initialization and ordered gameplay without echoing a received failure indefinitely.
+        /// </summary>
+        /// <param name="exception">The failure that prevents safe continuation.</param>
+        /// <param name="notifyPeer">Whether the remote participant must also be stopped.</param>
+        private void StopGameplay(Exception exception, bool notifyPeer)
+        {
+            if (!_synchronizationReady && ReferenceEquals(Failure, exception))
+                return;
+            _analyticsTracker?.RecordStopped(_sessionManager?.GetActiveGame()?.CurrentTick);
+            _synchronizationReady = false;
+            Failure = exception;
+            if (_turnProtocol != null)
+                _turnProtocol.ReportFailure(exception);
+            else if (
+                notifyPeer
+                && !string.IsNullOrEmpty(_initializationID)
+                && _peer?.IsConnected == true
+            )
+                QueueSend(
+                    new MultiplayerPacket(
+                        MultiplayerMessageType.SynchronizationFailed,
+                        JsonUtility.ToJson(
+                            new MultiplayerSessionIdentity
+                            {
+                                initializationID = _initializationID,
+                                reason = exception.Message,
+                            }
+                        )
+                    )
+                );
+            if (IsTransferringScene)
+                CancelSharedSave(exception);
+            else
+                _saveProtocol?.ReportFailure(exception);
+            _sessionManager?.BlockGameOperations();
+            _sessionManager?.GetActiveGameManager()?.ApplyGameSpeed(TickSpeed.Paused);
+            Debug.LogException(exception);
+            SetStatus("Game synchronization stopped.");
+        }
+
+        /// <summary>
+        /// Releases connection-owned callbacks and pending operation completions.
+        /// </summary>
+        private void ReleaseGameplay()
+        {
+            CancelSharedSave();
+            _localSaves = null;
+            _turnProtocol?.Dispose();
+            _turnProtocol = null;
+            _awaitingSnapshotReceipt = false;
+            _initialSnapshotHash = null;
+            _initialSimulationFingerprint = null;
+            _pendingRejoinSnapshot = null;
+            _readyPresentationSession = null;
+            _readyPresentationInitializationID = null;
+            _sessionManager?.GetActiveGameManager()?.UnbindSpeedRequests();
+        }
+    }
+}

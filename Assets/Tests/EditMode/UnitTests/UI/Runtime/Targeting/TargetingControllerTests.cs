@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using NUnit.Framework;
 
 namespace Rebellion.Tests.UI.Runtime.Targeting
@@ -185,7 +186,7 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
         }
 
         [Test]
-        public void TrySubmit_ReceiverAccepts_ClearsRequestAndHidesCursor()
+        public async Task TrySubmitAsync_ReceiverAccepts_ClearsRequestAndHidesCursorAsync()
         {
             RecordingCursor cursor = new RecordingCursor();
             RecordingSubmissionReceiver receiver = new RecordingSubmissionReceiver
@@ -196,7 +197,7 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             TargetingController controller = new TargetingController(cursor);
             controller.Begin(request, 1, 2);
 
-            bool submitted = controller.TrySubmit();
+            bool submitted = await controller.TrySubmitAsync();
 
             Assert.IsTrue(submitted);
             Assert.IsFalse(controller.IsTargeting);
@@ -237,6 +238,125 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.IsFalse(controller.IsTargeting);
             Assert.AreEqual(1, receiver.UndoCount);
             Assert.AreEqual(1, receiver.CanceledCount);
+        }
+
+        [Test]
+        public async Task TrySelectTarget_SubmissionPending_PreservesPlanUntilRejectionAsync()
+        {
+            RecordingSubmissionReceiver receiver = new()
+            {
+                SubmissionCompletion = new TaskCompletionSource<bool>(),
+            };
+            TargetingController controller = new();
+            controller.Begin(new TargetingRequest("Target", null, receiver, true));
+            Task<bool> submission = controller.TrySubmitAsync();
+            StubTargetable target = new(new object());
+
+            Assert.IsFalse(controller.TrySelectTarget(target));
+            Assert.Zero(receiver.SelectedCount);
+            receiver.SubmissionCompletion.SetResult(false);
+            Assert.IsFalse(await submission);
+
+            Assert.IsTrue(controller.TrySelectTarget(target));
+            Assert.AreEqual(1, receiver.SelectedCount);
+        }
+
+        [Test]
+        public async Task TryCancel_SubmissionPending_PreservesPlanUntilRejectionAsync()
+        {
+            RecordingSubmissionReceiver receiver = new()
+            {
+                KeepActiveAfterUndo = true,
+                SubmissionCompletion = new TaskCompletionSource<bool>(),
+            };
+            TargetingController controller = new();
+            controller.Begin(new TargetingRequest("Target", null, receiver, true));
+            Task<bool> submission = controller.TrySubmitAsync();
+
+            Assert.IsFalse(controller.TryCancel());
+            Assert.Zero(receiver.UndoCount);
+            Assert.Zero(receiver.CanceledCount);
+            receiver.SubmissionCompletion.SetResult(false);
+            Assert.IsFalse(await submission);
+
+            Assert.IsTrue(controller.TryCancel());
+            Assert.AreEqual(1, receiver.UndoCount);
+        }
+
+        [Test]
+        public async Task TrySubmitAsync_SubmissionAccepted_EndsFrozenTargetingAsync()
+        {
+            RecordingSubmissionReceiver receiver = new()
+            {
+                SubmissionCompletion = new TaskCompletionSource<bool>(),
+            };
+            TargetingRequest request = new("Target", null, receiver, true);
+            TargetingController controller = new();
+            controller.Begin(request);
+            Task<bool> submission = controller.TrySubmitAsync();
+
+            Assert.IsFalse(await controller.TrySubmitAsync());
+            Assert.AreSame(request, controller.ActiveRequest);
+            receiver.SubmissionCompletion.SetResult(true);
+
+            Assert.IsTrue(await submission);
+            Assert.IsFalse(controller.IsTargeting);
+            Assert.AreEqual(1, receiver.SubmissionCount);
+        }
+
+        [Test]
+        public async Task TrySelectTarget_OlderSubmissionPending_SelectsReplacementRequestAsync()
+        {
+            RecordingSubmissionReceiver first = new()
+            {
+                SubmissionCompletion = new TaskCompletionSource<bool>(),
+            };
+            TargetingController controller = new();
+            controller.Begin(new TargetingRequest("First", null, first, true));
+            Task<bool> submission = controller.TrySubmitAsync();
+            controller.Begin(new TargetingRequest("Second", null, new RecordingReceiver()));
+
+            try
+            {
+                Assert.IsTrue(controller.TrySelectTarget(new StubTargetable(new object())));
+            }
+            finally
+            {
+                first.SubmissionCompletion.SetResult(false);
+                await submission;
+            }
+        }
+
+        [Test]
+        public async Task TrySubmitAsync_OlderSubmissionCompletes_KeepsReplacementFrozenAsync()
+        {
+            RecordingSubmissionReceiver first = new()
+            {
+                SubmissionCompletion = new TaskCompletionSource<bool>(),
+            };
+            RecordingSubmissionReceiver second = new()
+            {
+                SubmissionCompletion = new TaskCompletionSource<bool>(),
+            };
+            TargetingController controller = new();
+            controller.Begin(new TargetingRequest("First", null, first, true));
+            Task<bool> firstSubmission = controller.TrySubmitAsync();
+            controller.Begin(new TargetingRequest("Second", null, second, true));
+            Task<bool> secondSubmission = controller.TrySubmitAsync();
+
+            try
+            {
+                first.SubmissionCompletion.SetResult(true);
+                await firstSubmission;
+
+                Assert.IsFalse(controller.TrySelectTarget(new StubTargetable(new object())));
+            }
+            finally
+            {
+                first.SubmissionCompletion.TrySetResult(false);
+                second.SubmissionCompletion.TrySetResult(false);
+                await Task.WhenAll(firstSubmission, secondSubmission);
+            }
         }
 
         private sealed class StubTargetable : ITargetable
@@ -336,6 +456,8 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             public bool KeepActiveAfterUndo { get; set; }
             public TargetingRequest LastRequest { get; private set; }
             public int SubmissionCount { get; private set; }
+            public TaskCompletionSource<bool> SubmissionCompletion { get; set; }
+            public int SelectedCount { get; private set; }
             public int UndoCount { get; private set; }
 
             /// <summary>
@@ -343,7 +465,11 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             /// </summary>
             /// <param name="request">The request.</param>
             /// <param name="target">The target.</param>
-            public void OnTargetSelected(TargetingRequest request, object target) { }
+            public void OnTargetSelected(TargetingRequest request, object target)
+            {
+                SelectedCount++;
+                LastRequest = request;
+            }
 
             /// <summary>
             /// Executes on targeting cancelled.
@@ -360,11 +486,11 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             /// </summary>
             /// <param name="request">The request.</param>
             /// <returns>True when the operation succeeds; otherwise false.</returns>
-            public bool TrySubmitTargeting(TargetingRequest request)
+            public Task<bool> TrySubmitTargetingAsync(TargetingRequest request)
             {
                 SubmissionCount++;
                 LastRequest = request;
-                return AcceptSubmission;
+                return SubmissionCompletion?.Task ?? Task.FromResult(AcceptSubmission);
             }
 
             /// <summary>

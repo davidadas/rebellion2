@@ -111,6 +111,7 @@ namespace Rebellion.Game.Results
         public Faction Beneficiary { get; set; }
         public int OldPercent { get; set; }
         public int NewPercent { get; set; }
+        public bool EndedByOwnershipChange { get; set; }
     }
 
     /// <summary>
@@ -688,6 +689,11 @@ namespace Rebellion.Game.Results
         public bool Captured { get; set; }
 
         /// <summary>
+        /// Restores an existing detached snapshot without copying its unit reference again.
+        /// </summary>
+        private CombatUnitSnapshot() { }
+
+        /// <summary>
         /// Captures one unit without retaining its live scene-graph identity.
         /// </summary>
         /// <param name="unit">The unit to capture.</param>
@@ -792,6 +798,11 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class SpaceCombatResult : GameResult
     {
+        /// <summary>
+        /// Gets the faction that explicitly requested withdrawal, or null for an automatic resolution.
+        /// </summary>
+        public string ManualRetreatingFactionID { get; set; }
+
         public Fleet AttackerFleet { get; set; }
         public Fleet DefenderFleet { get; set; }
         public string AttackerOwnerInstanceID { get; set; }
@@ -821,6 +832,11 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class PendingCombatResult : GameResult
     {
+        public bool RequiresBothResponses { get; set; }
+        public bool? AttackerRetreatResponse { get; set; }
+        public bool? DefenderRetreatResponse { get; set; }
+        public bool AttackerHasResponded => AttackerRetreatResponse.HasValue;
+        public bool DefenderHasResponded => DefenderRetreatResponse.HasValue;
         public string AttackerOwnerInstanceID { get; set; }
         public string DefenderOwnerInstanceID { get; set; }
         public string PlanetInstanceID { get; set; }

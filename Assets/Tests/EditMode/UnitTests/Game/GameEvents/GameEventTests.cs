@@ -60,7 +60,6 @@ namespace Rebellion.Tests.Game.GameEvents
                 {
                     new TickCountConditional
                     {
-                        InstanceID = "TICK_CONDITION",
                         Ticks = 30,
                         Comparison = ComparisonOperator.GreaterThan,
                     },
@@ -70,7 +69,9 @@ namespace Rebellion.Tests.Game.GameEvents
             string xml = SerializationHelper.Serialize(gameEvent);
             GameEvent restored = SerializationHelper.Deserialize<GameEvent>(xml);
 
-            StringAssert.Contains("<TickCount Comparison=\"GreaterThan\" Ticks=\"30\">", xml);
+            XElement serialized = XElement.Parse(xml).Descendants("TickCount").Single();
+            Assert.AreEqual("GreaterThan", serialized.Attribute("Comparison")?.Value);
+            Assert.AreEqual("30", serialized.Attribute("Ticks")?.Value);
             Assert.IsFalse(xml.Contains("<TickCountConditional"));
             TickCountConditional conditional =
                 restored.Conditionals.Single() as TickCountConditional;
@@ -93,7 +94,8 @@ namespace Rebellion.Tests.Game.GameEvents
             string xml = SerializationHelper.Serialize(gameEvent);
             GameEvent restored = SerializationHelper.Deserialize<GameEvent>(xml);
 
-            StringAssert.Contains("<IsActive NodeInstanceID=\"DARTH_VADER\">", xml);
+            XElement serialized = XElement.Parse(xml).Descendants("IsActive").Single();
+            Assert.AreEqual("DARTH_VADER", serialized.Attribute("NodeInstanceID")?.Value);
             IsActiveConditional conditional = restored.Conditionals.Single() as IsActiveConditional;
             Assert.IsNotNull(conditional);
             Assert.AreEqual("DARTH_VADER", conditional.NodeInstanceID);

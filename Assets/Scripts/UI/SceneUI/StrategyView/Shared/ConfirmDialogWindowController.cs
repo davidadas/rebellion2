@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -20,6 +21,8 @@ public sealed class ConfirmDialogWindowController
         "Are you sure you want to stop construction of the following?";
 
     private readonly HashSet<ConfirmDialogWindowView> boundViews =
+        new HashSet<ConfirmDialogWindowView>();
+    private readonly HashSet<ConfirmDialogWindowView> pendingChoices =
         new HashSet<ConfirmDialogWindowView>();
     private readonly Action<UIWindow> closeWindow;
     private readonly Func<Vector2Int> getWindowPosition;
@@ -81,8 +84,8 @@ public sealed class ConfirmDialogWindowController
     /// Opens scrap confirmation for a resolved non-empty selection.
     /// </summary>
     /// <param name="sourceItems">The units selected for scrapping.</param>
-    /// <param name="confirmedAction">The action to invoke after confirmation.</param>
-    public void OpenScrap(IReadOnlyList<ISceneNode> sourceItems, Action confirmedAction)
+    /// <param name="confirmedAction">Completes with true only when the confirmed operation was accepted.</param>
+    public void OpenScrap(IReadOnlyList<ISceneNode> sourceItems, Func<Task<bool>> confirmedAction)
     {
         Open(sourceItems, ConfirmDialogKind.Scrap, -1, confirmedAction);
     }
@@ -91,8 +94,11 @@ public sealed class ConfirmDialogWindowController
     /// Opens stop-construction confirmation for queued items.
     /// </summary>
     /// <param name="sourceItems">The queued items selected for cancellation.</param>
-    /// <param name="confirmedAction">The action to invoke after confirmation.</param>
-    public void OpenStopConstruction(IReadOnlyList<ISceneNode> sourceItems, Action confirmedAction)
+    /// <param name="confirmedAction">Completes with true only when the confirmed operation was accepted.</param>
+    public void OpenStopConstruction(
+        IReadOnlyList<ISceneNode> sourceItems,
+        Func<Task<bool>> confirmedAction
+    )
     {
         Open(sourceItems, ConfirmDialogKind.StopConstruction, -1, confirmedAction);
     }
@@ -101,8 +107,8 @@ public sealed class ConfirmDialogWindowController
     /// Opens retirement confirmation for a personnel selection.
     /// </summary>
     /// <param name="sourceItems">The personnel selected for retirement.</param>
-    /// <param name="confirmedAction">The action to invoke after confirmation.</param>
-    public void OpenRetire(IReadOnlyList<ISceneNode> sourceItems, Action confirmedAction)
+    /// <param name="confirmedAction">Completes with true only when the confirmed operation was accepted.</param>
+    public void OpenRetire(IReadOnlyList<ISceneNode> sourceItems, Func<Task<bool>> confirmedAction)
     {
         Open(sourceItems, ConfirmDialogKind.Retire, -1, confirmedAction);
     }
@@ -112,11 +118,11 @@ public sealed class ConfirmDialogWindowController
     /// </summary>
     /// <param name="sourceItems">The units selected for movement.</param>
     /// <param name="transitTimeInDays">The displayed transit duration.</param>
-    /// <param name="confirmedAction">The action to invoke after confirmation.</param>
+    /// <param name="confirmedAction">Completes with true only when the confirmed operation was accepted.</param>
     public void OpenMove(
         IReadOnlyList<ISceneNode> sourceItems,
         int transitTimeInDays,
-        Action confirmedAction
+        Func<Task<bool>> confirmedAction
     )
     {
         Open(sourceItems, ConfirmDialogKind.Move, transitTimeInDays, confirmedAction);
@@ -126,8 +132,8 @@ public sealed class ConfirmDialogWindowController
     /// Opens abort confirmation for an active mission.
     /// </summary>
     /// <param name="mission">The mission being aborted.</param>
-    /// <param name="confirmedAction">The action to invoke after confirmation.</param>
-    public void OpenMissionAbort(Mission mission, Action confirmedAction)
+    /// <param name="confirmedAction">Completes with true only when the confirmed operation was accepted.</param>
+    public void OpenMissionAbort(Mission mission, Func<Task<bool>> confirmedAction)
     {
         OpenMissionAbort(
             mission == null ? Array.Empty<Mission>() : new[] { mission },
@@ -139,8 +145,8 @@ public sealed class ConfirmDialogWindowController
     /// Opens abort confirmation for a complete active mission selection.
     /// </summary>
     /// <param name="missions">The missions being aborted.</param>
-    /// <param name="confirmedAction">The action to invoke after confirmation.</param>
-    public void OpenMissionAbort(IReadOnlyList<Mission> missions, Action confirmedAction)
+    /// <param name="confirmedAction">Completes with true only when the confirmed operation was accepted.</param>
+    public void OpenMissionAbort(IReadOnlyList<Mission> missions, Func<Task<bool>> confirmedAction)
     {
         Open(
             missions?.Cast<ISceneNode>().ToArray() ?? Array.Empty<ISceneNode>(),
@@ -166,12 +172,12 @@ public sealed class ConfirmDialogWindowController
     /// <param name="sourceItems">The selected scene nodes.</param>
     /// <param name="kind">The confirmed action kind.</param>
     /// <param name="transitTimeInDays">The displayed movement duration.</param>
-    /// <param name="confirmedAction">The action to invoke after confirmation.</param>
+    /// <param name="confirmedAction">Completes with true only when the confirmed operation was accepted.</param>
     private void Open(
         IReadOnlyList<ISceneNode> sourceItems,
         ConfirmDialogKind kind,
         int transitTimeInDays,
-        Action confirmedAction
+        Func<Task<bool>> confirmedAction
     )
     {
         ConfirmDialogWindowView view = CreateWindow(out UIWindow window);
@@ -191,14 +197,14 @@ public sealed class ConfirmDialogWindowController
     /// <param name="sourceItems">The selected scene nodes.</param>
     /// <param name="kind">The confirmed action kind.</param>
     /// <param name="transitTimeInDays">The displayed movement duration.</param>
-    /// <param name="confirmedAction">The action to invoke after confirmation.</param>
+    /// <param name="confirmedAction">Completes with true only when the confirmed operation was accepted.</param>
     /// <returns>True when a valid session was created.</returns>
     private bool TryInitializeWindow(
         ConfirmDialogWindowView view,
         IReadOnlyList<ISceneNode> sourceItems,
         ConfirmDialogKind kind,
         int transitTimeInDays,
-        Action confirmedAction
+        Func<Task<bool>> confirmedAction
     )
     {
         List<ISceneNode> items = CopyItems(sourceItems);
@@ -278,24 +284,36 @@ public sealed class ConfirmDialogWindowController
     }
 
     /// <summary>
-    /// Executes or rejects a semantic confirmation choice, then closes the dialog.
+    /// Closes a cancellation or an accepted operation while retaining unresolved or rejected choices.
     /// </summary>
     /// <param name="view">The requesting confirmation view.</param>
     /// <param name="confirmed">Whether the user accepted the action.</param>
-    private void HandleChoiceRequested(ConfirmDialogWindowView view, bool confirmed)
+    private async void HandleChoiceRequested(ConfirmDialogWindowView view, bool confirmed)
     {
-        if (!sessions.TryGetValue(view, out ConfirmDialogSession session))
+        if (
+            !sessions.TryGetValue(view, out ConfirmDialogSession session)
+            || !pendingChoices.Add(view)
+        )
             return;
 
-        sessions.Remove(view);
+        bool shouldClose = !confirmed;
         try
         {
             if (confirmed)
-                session.ConfirmedAction();
+                shouldClose = await session.ConfirmedAction();
         }
         finally
         {
-            closeWindow(session.DialogWindow);
+            pendingChoices.Remove(view);
+            if (
+                shouldClose
+                && sessions.TryGetValue(view, out ConfirmDialogSession current)
+                && ReferenceEquals(current, session)
+            )
+            {
+                sessions.Remove(view);
+                closeWindow(session.DialogWindow);
+            }
         }
     }
 
@@ -454,7 +472,7 @@ public sealed class ConfirmDialogWindowController
 
         public IReadOnlyList<ISceneNode> Items { get; }
 
-        public Action ConfirmedAction { get; }
+        public Func<Task<bool>> ConfirmedAction { get; }
 
         public int TransitTimeInDays { get; }
 
@@ -465,13 +483,13 @@ public sealed class ConfirmDialogWindowController
         /// <param name="kind">The confirmed action kind.</param>
         /// <param name="items">The selected scene nodes.</param>
         /// <param name="transitTimeInDays">The displayed movement duration.</param>
-        /// <param name="confirmedAction">The action invoked after confirmation.</param>
+        /// <param name="confirmedAction">Completes with true only when the confirmed operation was accepted.</param>
         public ConfirmDialogSession(
             UIWindow dialogWindow,
             ConfirmDialogKind kind,
             IReadOnlyList<ISceneNode> items,
             int transitTimeInDays,
-            Action confirmedAction
+            Func<Task<bool>> confirmedAction
         )
         {
             DialogWindow = dialogWindow ?? throw new ArgumentNullException(nameof(dialogWindow));

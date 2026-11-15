@@ -67,6 +67,35 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ProcessTickIncrementally_NoProductionOrAI_YieldsWithoutReleasingMutationGuard()
+        {
+            int completions = 0;
+            _tick.TickCompleted += () => completions++;
+            IEnumerator tick = _tick.ProcessTickIncrementally();
+            try
+            {
+                Assert.IsTrue(tick.MoveNext());
+                do
+                {
+                    Assert.IsTrue(_tick.IsBusy);
+                    Assert.IsFalse(_tick.CanAcceptPlayerActions);
+                    Assert.IsFalse(_tick.IsSettled);
+                    Assert.AreEqual(0, completions);
+                } while (tick.MoveNext());
+
+                Assert.AreEqual(1, completions);
+                Assert.AreEqual(1, _game.CurrentTick);
+                Assert.IsFalse(_tick.IsBusy);
+                Assert.IsTrue(_tick.CanAcceptPlayerActions);
+                Assert.IsTrue(_tick.IsSettled);
+            }
+            finally
+            {
+                (tick as IDisposable)?.Dispose();
+            }
+        }
+
+        [Test]
         public void ProcessTickIncrementally_MultipleReadyFacilities_YieldsAfterEachProductionPoint()
         {
             Building order = CreateManufacturingScenario();

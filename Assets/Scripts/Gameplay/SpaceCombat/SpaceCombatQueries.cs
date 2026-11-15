@@ -59,6 +59,13 @@ namespace Rebellion.Gameplay
                 AttackerOwnerInstanceID = decision.AttackerOwnerInstanceID,
                 DefenderOwnerInstanceID = decision.DefenderOwnerInstanceID,
                 PlanetInstanceID = planet?.InstanceID,
+                RequiresBothResponses =
+                    _game.GetFactionPlayer(decision.AttackerOwnerInstanceID)?.ControllerType
+                        == PlayerControllerType.Human
+                    && _game.GetFactionPlayer(decision.DefenderOwnerInstanceID)?.ControllerType
+                        == PlayerControllerType.Human,
+                AttackerRetreatResponse = decision.AttackerRetreatResponse,
+                DefenderRetreatResponse = decision.DefenderRetreatResponse,
                 AttackerCanRetreat = CanRetreatForces(
                     attackerFleets,
                     defenderFleets,

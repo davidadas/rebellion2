@@ -32,6 +32,11 @@ namespace Rebellion.Gameplay
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
         /// <summary>
+        /// Gets whether completed operations still have gameplay reactions awaiting delivery.
+        /// </summary>
+        internal bool HasPendingResults => _pendingResults.Count > 0;
+
+        /// <summary>
         /// Raised after an immediate movement command produces results.
         /// </summary>
         public event Action<IReadOnlyList<GameResult>> ResultsProduced;
@@ -347,7 +352,7 @@ namespace Rebellion.Gameplay
             unit.Movement = new MovementState(
                 new MovementLeg(transitTicks, origin.GetPosition(), destinationPlanet.InstanceID),
                 origin.InstanceID,
-                Guid.NewGuid().ToString("N")
+                _game.GenerateRuntimeIdentifier()
             );
 
             GameLogger.Log(
@@ -386,7 +391,7 @@ namespace Rebellion.Gameplay
                     destinationPlanet.InstanceID
                 ),
                 previousLocationID,
-                Guid.NewGuid().ToString("N")
+                _game.GenerateRuntimeIdentifier()
             );
             results.Add(
                 new GameObjectEnrouteResult { GameObject = unit, Tick = _game.CurrentTick }
@@ -643,7 +648,7 @@ namespace Rebellion.Gameplay
                 List<ContainerNode> destinations = travelGroup
                     .Select(move => move.Destination)
                     .ToList();
-                string movementGroupID = Guid.NewGuid().ToString("N");
+                string movementGroupID = _game.GenerateRuntimeIdentifier();
                 int groupTransitTicks = CalculateGroupTransitTicks(returningGroup, destinations);
                 List<IMovable> immediatePersonnel = new List<IMovable>();
                 foreach (var move in travelGroup)
@@ -1066,7 +1071,7 @@ namespace Rebellion.Gameplay
                 return false;
 
             int groupTransitTicks = CalculateGroupTransitTicks(units, destinations);
-            string movementGroupID = Guid.NewGuid().ToString("N");
+            string movementGroupID = _game.GenerateRuntimeIdentifier();
             for (int index = 0; index < units.Count; index++)
             {
                 IMovable unit = units[index];
@@ -2188,7 +2193,7 @@ namespace Rebellion.Gameplay
             bool? opposingBlockadeAtDeparture = null
         )
         {
-            movementGroupID ??= Guid.NewGuid().ToString("N");
+            movementGroupID ??= _game.GenerateRuntimeIdentifier();
             destination = _queries.ResolveLiveContainer(destination);
 
             if (

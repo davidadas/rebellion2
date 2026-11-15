@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 
 /// <summary>
 /// Exposes the domain target represented by an interactive UI element.
@@ -98,7 +99,7 @@ public interface ITargetingSubmissionReceiver
     /// </summary>
     /// <param name="request">The active targeting request.</param>
     /// <returns>True when the request was committed and targeting should end.</returns>
-    bool TrySubmitTargeting(TargetingRequest request);
+    Task<bool> TrySubmitTargetingAsync(TargetingRequest request);
 }
 
 /// <summary>
@@ -122,10 +123,17 @@ public sealed class TargetingController : ICancelable
     private readonly ITargetingCursor cursor;
     private TargetingRequest activeRequest;
     private bool cursorVisible;
+    private TargetingRequest submittingRequest;
 
     public bool IsTargeting => activeRequest != null;
 
     public TargetingRequest ActiveRequest => activeRequest;
+
+    /// <summary>
+    /// Gets whether the active request is waiting for its submitted operation to complete.
+    /// </summary>
+    public bool IsSubmitting =>
+        activeRequest != null && ReferenceEquals(activeRequest, submittingRequest);
 
     /// <summary>
     /// Creates a targeting controller with an optional cursor presenter.
@@ -182,7 +190,7 @@ public sealed class TargetingController : ICancelable
     /// <returns><see langword="true"/> when an active request was completed.</returns>
     public bool TrySelectTarget(ITargetable targetable)
     {
-        if (activeRequest == null || targetable == null)
+        if (IsSubmitting || activeRequest == null || targetable == null)
             return false;
 
         TargetingRequest request = activeRequest;
@@ -199,19 +207,34 @@ public sealed class TargetingController : ICancelable
     /// <summary>
     /// Tries to submit an active multi-selection targeting request.
     /// </summary>
-    /// <returns>True when the receiver committed the request.</returns>
-    public bool TrySubmit()
+    /// <returns>True when the still-active request was accepted and targeting ended.</returns>
+    public async Task<bool> TrySubmitAsync()
     {
         if (
-            activeRequest == null
+            IsSubmitting
+            || activeRequest == null
             || activeRequest.Receiver is not ITargetingSubmissionReceiver receiver
-            || !receiver.TrySubmitTargeting(activeRequest)
         )
             return false;
 
-        activeRequest = null;
-        HideCursor();
-        return true;
+        TargetingRequest submittedRequest = activeRequest;
+        submittingRequest = submittedRequest;
+        try
+        {
+            if (
+                !await receiver.TrySubmitTargetingAsync(submittedRequest)
+                || !ReferenceEquals(activeRequest, submittedRequest)
+            )
+                return false;
+            activeRequest = null;
+            HideCursor();
+            return true;
+        }
+        finally
+        {
+            if (ReferenceEquals(submittingRequest, submittedRequest))
+                submittingRequest = null;
+        }
     }
 
     /// <summary>
@@ -235,7 +258,7 @@ public sealed class TargetingController : ICancelable
     /// <returns><see langword="true"/> when a request was canceled.</returns>
     public bool TryCancel()
     {
-        if (activeRequest == null)
+        if (IsSubmitting || activeRequest == null)
             return false;
 
         if (

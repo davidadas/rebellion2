@@ -21,7 +21,7 @@ public sealed class MenuDropdown : TMP_Dropdown
         float itemHeight = item.rect.height;
         popup.SetSizeWithCurrentAnchors(
             RectTransform.Axis.Vertical,
-            Mathf.Min(options.Count, _maximumVisibleOptions) * itemHeight
+            Mathf.Min(options.Count, _maximumVisibleOptions) * itemHeight + 4f
         );
         RectTransform content = (RectTransform)item.parent;
         content.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, itemHeight);
@@ -31,8 +31,8 @@ public sealed class MenuDropdown : TMP_Dropdown
         RectTransform viewport = scroll.viewport;
         viewport.anchorMin = Vector2.zero;
         viewport.anchorMax = Vector2.one;
-        viewport.offsetMin = new Vector2(2f, 0);
-        viewport.offsetMax = new Vector2(-2f, 0);
+        viewport.offsetMin = new Vector2(2f, 2f);
+        viewport.offsetMax = new Vector2(-2f, -2f);
         return base.CreateDropdownList(templateObject);
     }
 }

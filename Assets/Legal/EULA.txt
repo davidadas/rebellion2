@@ -1,0 +1,70 @@
+REBELLION II PLAYER AGREEMENT
+
+Operator: AdasGames
+
+Effective date: 7 November 2026
+
+SCOPE AND ACCEPTANCE
+
+This agreement covers your use of the packaged Rebellion II software and its online features.
+It is between you and the operator identified above. Read this agreement and accept it only if you agree to its terms. If you do not
+agree, do not use that release.
+
+The privacy notice available alongside this agreement explains how information is processed. Accepting this agreement
+does not grant consent to optional analytics.
+
+SOFTWARE LICENSE AND THIRD-PARTY RIGHTS
+
+The project's own source code is licensed under the PolyForm Noncommercial License 1.0.0 (LICENSE.md),
+subject to the scope and required notices in that file. That license governs your rights to use,
+modify, and distribute the covered software. This agreement does not remove rights granted by
+that license or by applicable law.
+
+That source license does not cover game content, images, models, audio, fonts, third-party
+software, names, or trademarks. Those materials remain subject to their respective rights and
+licenses. This agreement grants no additional rights to them. Obtain any required permissions
+or authorized access separately, and do not redistribute materials unless their rights holders
+permit it. Ownership of intellectual property does not transfer to you.
+
+ONLINE FEATURES AND ACCOUNTS
+
+Online multiplayer uses Steam or GOG sign-in together with Epic Online Services. It requires
+an internet connection and access to the relevant providers. You do not need to create a separate
+Epic Games account for this sign-in flow.
+
+Use an account you are authorized to use. Do not impersonate another person, obtain unauthorized
+access to another account or campaign, interfere with other players' connections, or attack or
+disrupt the online services. Do not use chat to threaten or harass others, distribute unlawful
+content, or disclose another person's private information without authorization.
+
+Online availability depends on the project and its providers. Support, answers to ordinary inquiries, updates, continuous availability, and compatibility
+between all versions or content packs are not promised or guaranteed. Keep
+backups of saves you want to retain.
+
+EPIC ONLINE SERVICES DISCLAIMER
+
+In this section, "Epic materials" means the Epic Online Services SDK, its included components,
+and related services used by the game.
+
+To the fullest extent permitted by law, the operator, Epic Games, Inc., its affiliates, and its
+licensors make no representations and disclaim all warranties and conditions concerning the
+Epic materials, whether express, implied, or statutory, including merchantability, fitness for
+a particular purpose, and non-infringement. The Epic materials are supplied "as is" and "as
+available." All liability relating to the Epic materials, including liability for service
+interruption, lost data, or inability to use them, is expressly disclaimed to the fullest extent
+permitted by law.
+
+PROJECT DISCLAIMER AND MANDATORY RIGHTS
+
+To the fullest extent permitted by law, the operator supplies the project's software without
+warranties or conditions and disclaims liability for loss or damage arising from its use or
+inability to be used. The software may contain defects, interrupt play, or damage or lose saves.
+The source license also contains its own disclaimer.
+
+The absence of a support promise does not remove duties imposed by applicable law.
+Nothing in this agreement excludes or limits a right, warranty, remedy, or liability that
+applicable law does not allow to be excluded or limited, including mandatory consumer rights.
+
+CONTACT
+
+Agreement questions: adasgames0@gmail.com

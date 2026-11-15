@@ -54,6 +54,8 @@ namespace Rebellion.Tests.Gameplay
                     .Where(result => result.GameObject == damage.Ship)
                     .Sum(result => result.DamageValue);
                 Assert.AreEqual(damage.HullBefore - damage.HullAfter, totalDamage);
+                if (damage.HullAfter > 0)
+                    Assert.Greater(damage.Ship.NextRepairTick, game.CurrentTick);
             }
             CombatUnitSnapshot empireShipSnapshot = combatResult.AttackingUnits.Single(unit =>
                 unit.Unit.GetInstanceID() == empireShip.GetInstanceID()
@@ -2268,6 +2270,7 @@ namespace Rebellion.Tests.Gameplay
                     : result.DefenderOutcome;
 
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, allianceOutcome);
+            Assert.IsNull(result.ManualRetreatingFactionID);
             Assert.AreSame(fighter, game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID));
             Assert.AreSame(allianceFallback, fighter.GetParentOfType<Planet>());
             Assert.IsNotNull(fighter.Movement);
@@ -3043,6 +3046,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsNull(empireFleet.Order);
             SpaceCombatResult combatResult = results.OfType<SpaceCombatResult>().Single();
             Assert.AreSame(combatPlanet, combatResult.Planet);
+            Assert.AreEqual("empire", combatResult.ManualRetreatingFactionID);
             bool empireWasAttacker = ReferenceEquals(combatResult.AttackerFleet, empireFleet);
             Assert.AreSame(
                 allianceFleet,

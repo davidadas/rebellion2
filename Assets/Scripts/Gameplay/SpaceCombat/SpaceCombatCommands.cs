@@ -20,12 +20,14 @@ namespace Rebellion.Gameplay
         public string AttackerOwnerInstanceID { get; set; }
         public string DefenderOwnerInstanceID { get; set; }
         public string PlanetInstanceID { get; set; }
+        public bool? AttackerRetreatResponse { get; set; }
+        public bool? DefenderRetreatResponse { get; set; }
     }
 
     /// <summary>
     /// Detects and resolves hostile fleet encounters.
     /// </summary>
-    public class SpaceCombatCommands
+    public partial class SpaceCombatCommands
     {
         private readonly GameRoot _game;
         private readonly SpaceCombatQueries _queries;
@@ -359,6 +361,7 @@ namespace Rebellion.Gameplay
             if (withdrawalPlan == null)
                 return false;
 
+            result.ManualRetreatingFactionID = retreatingFactionInstanceId;
             result.Events = ApplyCombatResult(
                 result,
                 attackerFleets,
@@ -1279,6 +1282,7 @@ namespace Rebellion.Gameplay
         )
         {
             List<GameResult> events = new List<GameResult>();
+            HashSet<(string PlanetInstanceId, string OwnerInstanceId)> shipyardLocations = null;
 
             foreach (ShipDamageResult damage in damageResults)
             {
@@ -1286,6 +1290,7 @@ namespace Rebellion.Gameplay
                 if (ship == null)
                     continue;
 
+                bool wasDamaged = ship.IsDamaged();
                 ship.CurrentHullStrength = damage.HullAfter;
                 if (damage.SystemDamage != null)
                     ship.SystemDamage = damage.SystemDamage.CreateCopy();
@@ -1331,6 +1336,14 @@ namespace Rebellion.Gameplay
                     );
                     GameLogger.Log($"Ship destroyed: {ship.GetDisplayName()}");
                 }
+                else if (!wasDamaged && ship.IsDamaged())
+                {
+                    shipyardLocations ??= RecoveryLocationRules.BuildShipyardIndex(_game);
+                    ship.ScheduleRepair(
+                        _game.CurrentTick,
+                        ShipRecoveryRules.GetRepairInterval(_game, ship, shipyardLocations)
+                    );
+                }
             }
 
             return events;
@@ -1356,7 +1369,7 @@ namespace Rebellion.Gameplay
             );
             HashSet<(string PlanetInstanceId, string OwnerInstanceId)> shipyardLocations =
                 needsReplacementSchedule
-                    ? FighterRecoveryRules.BuildShipyardIndex(_game)
+                    ? RecoveryLocationRules.BuildShipyardIndex(_game)
                     : new HashSet<(string PlanetInstanceId, string OwnerInstanceId)>();
             foreach (FighterLossResult loss in lossResults)
             {

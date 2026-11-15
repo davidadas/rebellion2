@@ -276,6 +276,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         }
 
         [Test]
+        public void BuildCountInputSubmitted_EnteredValue_SubmitsCountBeforeStartRequest()
+        {
+            string buildCount = null;
+            string buildCountAtStart = null;
+            _view.BuildCountSubmitted += (_, value) => buildCount = value;
+            _view.StartRequested += _ => buildCountAtStart = buildCount;
+            TMP_InputField input = FindComponent<TMP_InputField>("BuildCountInputField");
+            UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
+
+            input.onSubmit.Invoke("12");
+
+            Assert.AreEqual("12", buildCount);
+            Assert.AreEqual("12", buildCountAtStart);
+        }
+
+        [Test]
         public void OnPointerClick_OpenDropdownAndLeftButton_RequestsDismissal()
         {
             int dismissCount = 0;
@@ -366,6 +382,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             buildCountInput.onEndEdit.Invoke("12");
             incrementButton.onClick.Invoke();
             UIComponentTestHelper.InvokeLifecycle(_view, "OnDestroy");
+            buildCountInput.onSubmit.Invoke("15");
             buildCountInput.onEndEdit.Invoke("17");
             incrementButton.onClick.Invoke();
             row.GetComponentInChildren<Button>(true).onClick.Invoke();

@@ -9,6 +9,27 @@ namespace Rebellion.Tests.Content
     public sealed class SaveContentResolverTests
     {
         [Test]
+        public void Open_MatchingLaunchContent_RetainsActivePack()
+        {
+            ContentPack activePack = TestContent.Pack;
+            GameSummary summary = GameLaunchContext.CreateDefaultSummary(activePack);
+
+            Assert.AreSame(activePack, SaveContentResolver.Open(activePack, summary));
+        }
+
+        [Test]
+        public void Open_UnavailableLaunchVersion_RejectsContent()
+        {
+            ContentPack activePack = TestContent.Pack;
+            GameSummary summary = GameLaunchContext.CreateDefaultSummary(activePack);
+            summary.PackVersion = "unavailable-version";
+
+            Assert.Throws<InvalidOperationException>(() =>
+                SaveContentResolver.Open(activePack, summary)
+            );
+        }
+
+        [Test]
         public void Resolve_MatchingInstalledContent_ReturnsExactSelection()
         {
             ContentPack activePack = TestContent.Pack;

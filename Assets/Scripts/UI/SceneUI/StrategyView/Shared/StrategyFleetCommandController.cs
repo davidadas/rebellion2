@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.PlayerRequests;
 using Rebellion.SceneGraph;
 using Rebellion.Util.DependencyInjection;
 
@@ -16,17 +19,25 @@ public sealed class StrategyFleetCommandController
 {
     private readonly IServiceLocator services;
     private readonly Func<string> getPlayerFactionId;
+    private readonly IPlayerRequestDispatcher playerRequests;
 
     /// <summary>
     /// Creates a fleet command controller for the active game.
     /// </summary>
     /// <param name="services">Resolves services for the active game.</param>
     /// <param name="getPlayerFactionId">Returns the player faction identifier.</param>
-    public StrategyFleetCommandController(IServiceLocator services, Func<string> getPlayerFactionId)
+    /// <param name="playerRequests">Completes player orders through the session action boundary.</param>
+    public StrategyFleetCommandController(
+        IServiceLocator services,
+        Func<string> getPlayerFactionId,
+        IPlayerRequestDispatcher playerRequests
+    )
     {
         this.services = services ?? throw new ArgumentNullException(nameof(services));
         this.getPlayerFactionId =
             getPlayerFactionId ?? throw new ArgumentNullException(nameof(getPlayerFactionId));
+        this.playerRequests =
+            playerRequests ?? throw new ArgumentNullException(nameof(playerRequests));
     }
 
     /// <summary>
@@ -34,18 +45,23 @@ public sealed class StrategyFleetCommandController
     /// </summary>
     /// <param name="items">The selected capital ships.</param>
     /// <returns>True when a fleet was created.</returns>
-    public bool TryCreateFleetFromCapitalShips(IReadOnlyList<ISceneNode> items)
+    public async Task<bool> TryCreateFleetFromCapitalShipsAsync(IReadOnlyList<ISceneNode> items)
     {
         List<ISceneNode> sourceItems =
             items?.Where(item => item != null).ToList() ?? new List<ISceneNode>();
         List<CapitalShip> ships = sourceItems.OfType<CapitalShip>().ToList();
-        FleetCommands fleetSystem = services.GetService<FleetCommands>();
         string playerFactionId = getPlayerFactionId();
-        return fleetSystem != null
-            && !string.IsNullOrEmpty(playerFactionId)
+        return !string.IsNullOrEmpty(playerFactionId)
             && ships.Count > 0
             && ships.Count == sourceItems.Count
-            && fleetSystem.CreateFleet(ships, playerFactionId) != null;
+            && (
+                await playerRequests.ExecuteAsync(
+                    new CreateFleetRequest
+                    {
+                        ItemIDs = ships.Select(ship => ship.InstanceID).ToArray(),
+                    }
+                )
+            ).Accepted;
     }
 
     /// <summary>
@@ -65,9 +81,8 @@ public sealed class StrategyFleetCommandController
             return false;
 
         if (action.TryGetBombardmentType(out BombardmentType type))
-            return services.GetService<BombardmentCommands>() != null
-                && services.GetService<BombardmentQueries>()?.CanExecute(fleets, targetPlanet, type)
-                    == true;
+            return services.GetService<BombardmentQueries>()?.CanExecute(fleets, targetPlanet, type)
+                == true;
 
         return action == StrategyMenuAction.PlanetaryAssault
             && services.GetService<PlanetaryAssaultQueries>()?.CanExecute(fleets, targetPlanet)
@@ -81,7 +96,7 @@ public sealed class StrategyFleetCommandController
     /// <param name="targetPlanet">The requested target planet snapshot.</param>
     /// <param name="action">The requested planetary combat action.</param>
     /// <returns>The faction-visible combat report, or null when the command cannot execute.</returns>
-    public CombatReport ExecutePlanetaryCombat(
+    public async Task<CombatReport> ExecutePlanetaryCombatAsync(
         IReadOnlyList<ISceneNode> items,
         Planet targetPlanet,
         StrategyMenuAction action
@@ -94,16 +109,24 @@ public sealed class StrategyFleetCommandController
         if (string.IsNullOrEmpty(playerFactionId))
             return null;
 
+        PlayerRequest request;
         if (action.TryGetBombardmentType(out BombardmentType type))
-            return services
-                .GetService<BombardmentCommands>()
-                ?.TryExecuteReport(fleets, targetPlanet, type, playerFactionId);
-
-        return action == StrategyMenuAction.PlanetaryAssault
-            ? services
-                .GetService<PlanetaryAssaultCommands>()
-                ?.TryExecuteReport(fleets, targetPlanet, playerFactionId)
-            : null;
+            request = new BombardRequest
+            {
+                ItemIDs = fleets.Select(fleet => fleet.InstanceID).ToArray(),
+                ObservedTarget = targetPlanet,
+                Type = type,
+            };
+        else if (action == StrategyMenuAction.PlanetaryAssault)
+            request = new AssaultRequest
+            {
+                ItemIDs = fleets.Select(fleet => fleet.InstanceID).ToArray(),
+                ObservedTarget = targetPlanet,
+            };
+        else
+            return null;
+        PlayerRequestOutcome result = await playerRequests.ExecuteAsync(request);
+        return result.Accepted ? result.CombatReport : null;
     }
 
     /// <summary>

@@ -231,35 +231,35 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
             galaxyOffset: new Vector2Int(planet.X - sector.X, planet.Y - sector.Y),
             planetTexture: string.IsNullOrEmpty(image) ? null : assets.GetTexture(image),
             uprisingTexture: LoadTexture(assets, overlays?.PlanetSectorUprisingImagePath),
-            facilityTexture: LoadTexture(
+            facilityTexture: LoadSmoothTexture(
                 assets,
                 overlays?.PlanetOverlayIcons?.Buildings?.NormalImagePath
             ),
-            facilityPressedTexture: LoadTexture(
+            facilityPressedTexture: LoadSmoothTexture(
                 assets,
                 overlays?.PlanetOverlayIcons?.Buildings?.HoverImagePath
             ),
-            defenseTexture: LoadTexture(
+            defenseTexture: LoadSmoothTexture(
                 assets,
                 overlays?.PlanetOverlayIcons?.Defenses?.NormalImagePath
             ),
-            defensePressedTexture: LoadTexture(
+            defensePressedTexture: LoadSmoothTexture(
                 assets,
                 overlays?.PlanetOverlayIcons?.Defenses?.HoverImagePath
             ),
-            fleetTexture: LoadTexture(
+            fleetTexture: LoadSmoothTexture(
                 assets,
                 overlays?.PlanetOverlayIcons?.Fleets?.NormalImagePath
             ),
-            fleetPressedTexture: LoadTexture(
+            fleetPressedTexture: LoadSmoothTexture(
                 assets,
                 overlays?.PlanetOverlayIcons?.Fleets?.HoverImagePath
             ),
-            missionTexture: LoadTexture(
+            missionTexture: LoadSmoothTexture(
                 assets,
                 overlays?.PlanetOverlayIcons?.Missions?.NormalImagePath
             ),
-            missionPressedTexture: LoadTexture(
+            missionPressedTexture: LoadSmoothTexture(
                 assets,
                 overlays?.PlanetOverlayIcons?.Missions?.HoverImagePath
             ),
@@ -309,4 +309,13 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
     /// <returns>The resolved image, or null when no overlay is configured.</returns>
     private static Texture2D LoadTexture(ContentAssets assets, string path) =>
         string.IsNullOrEmpty(path) ? null : assets.GetTexture(path);
+
+    /// <summary>
+    /// Resolves optional preview artwork through the smooth minification cache.
+    /// </summary>
+    /// <param name="assets">The current asset source.</param>
+    /// <param name="path">The optional content address.</param>
+    /// <returns>The resolved image, or null when no overlay is configured.</returns>
+    private static Texture2D LoadSmoothTexture(ContentAssets assets, string path) =>
+        string.IsNullOrEmpty(path) ? null : assets.GetSmoothTexture(path);
 }

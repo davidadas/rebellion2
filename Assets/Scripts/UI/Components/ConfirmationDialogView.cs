@@ -6,9 +6,11 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders an authored modal confirmation dialog and emits the selected response.
 /// </summary>
-public sealed class ConfirmationDialogView : MonoBehaviour, IContentInitializable
+public sealed class ConfirmationDialogView : MonoBehaviour, IContentInitializable, ICancelable
 {
     private const string _backgroundAddress = "Application/Common/UI/ui_common_confirmation_dialog";
+    private const string _acknowledgmentBackgroundAddress =
+        "Application/Common/UI/ui_common_acknowledgment_dialog";
     private const string _confirmUpAddress =
         "Application/Common/UI/ui_common_confirmation_yes_button";
     private const string _confirmDownAddress =
@@ -20,6 +22,18 @@ public sealed class ConfirmationDialogView : MonoBehaviour, IContentInitializabl
 
     [SerializeField]
     private RawImage backgroundImage;
+
+    [SerializeField]
+    private Texture2D confirmationBackgroundTexture;
+
+    [SerializeField]
+    private Texture2D acknowledgmentBackgroundTexture;
+
+    [SerializeField]
+    private Vector2 confirmationButtonPosition;
+
+    [SerializeField]
+    private Vector2 acknowledgmentButtonPosition;
 
     [SerializeField]
     private Color messageTextColor;
@@ -58,6 +72,7 @@ public sealed class ConfirmationDialogView : MonoBehaviour, IContentInitializabl
     private TextMeshProUGUI messageTextField;
 
     private bool bound;
+    private bool acknowledgmentMode;
 
     /// <summary>
     /// Occurs when the dialog is confirmed.
@@ -78,7 +93,14 @@ public sealed class ConfirmationDialogView : MonoBehaviour, IContentInitializabl
         if (contentAssets == null)
             throw new ArgumentNullException(nameof(contentAssets));
 
-        backgroundImage.texture = ContentBindings.RequireTexture(contentAssets, _backgroundAddress);
+        confirmationBackgroundTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            _backgroundAddress
+        );
+        acknowledgmentBackgroundTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            _acknowledgmentBackgroundAddress
+        );
         confirmButtonUpTexture = ContentBindings.RequireTexture(contentAssets, _confirmUpAddress);
         confirmButtonDownTexture = ContentBindings.RequireTexture(
             contentAssets,
@@ -86,6 +108,7 @@ public sealed class ConfirmationDialogView : MonoBehaviour, IContentInitializabl
         );
         cancelButtonUpTexture = ContentBindings.RequireTexture(contentAssets, _cancelUpAddress);
         cancelButtonDownTexture = ContentBindings.RequireTexture(contentAssets, _cancelDownAddress);
+        ApplyDialogArtwork();
     }
 
     /// <summary>
@@ -94,15 +117,52 @@ public sealed class ConfirmationDialogView : MonoBehaviour, IContentInitializabl
     /// <param name="message">The confirmation prompt.</param>
     public void Show(string message)
     {
+        ShowDialog(message, false);
+    }
+
+    /// <summary>
+    /// Shows one acknowledgment action and retains the notice until its owner completes the transition.
+    /// </summary>
+    /// <param name="message">The notice to acknowledge.</param>
+    public void ShowAcknowledgment(string message)
+    {
+        ShowDialog(message, true);
+    }
+
+    /// <summary>
+    /// Applies the authored dialog presentation and the available response controls.
+    /// </summary>
+    /// <param name="message">The prompt or notice text.</param>
+    /// <param name="acknowledgment">Whether cancellation is unavailable and acceptance keeps the notice visible.</param>
+    private void ShowDialog(string message, bool acknowledgment)
+    {
         VerifyReferences();
         BindControls();
-        backgroundImage.enabled = backgroundImage.texture != null;
-        backgroundImage.raycastTarget = false;
+        bool selectConfirm = !acknowledgment || !acknowledgmentMode || !gameObject.activeSelf;
+        acknowledgmentMode = acknowledgment;
+        ApplyDialogArtwork();
         confirmButtonPressVisual.SetTextures(confirmButtonUpTexture, confirmButtonDownTexture);
         cancelButtonPressVisual.SetTextures(cancelButtonUpTexture, cancelButtonDownTexture);
+        cancelButton.gameObject.SetActive(!acknowledgment);
         UILayout.SetTextContent(messageTextField, message ?? string.Empty, messageTextColor);
         gameObject.SetActive(true);
-        confirmButton.Select();
+        if (selectConfirm)
+            confirmButton.Select();
+    }
+
+    /// <summary>
+    /// Applies the configured background and confirm-button position for the active dialog mode.
+    /// </summary>
+    private void ApplyDialogArtwork()
+    {
+        backgroundImage.texture = acknowledgmentMode
+            ? acknowledgmentBackgroundTexture
+            : confirmationBackgroundTexture;
+        backgroundImage.enabled = backgroundImage.texture != null;
+        backgroundImage.raycastTarget = false;
+        confirmButtonImage.rectTransform.anchoredPosition = acknowledgmentMode
+            ? acknowledgmentButtonPosition
+            : confirmationButtonPosition;
     }
 
     /// <summary>
@@ -114,12 +174,26 @@ public sealed class ConfirmationDialogView : MonoBehaviour, IContentInitializabl
     }
 
     /// <summary>
+    /// Consumes cancellation while an acknowledgment is visible or declines a normal confirmation.
+    /// </summary>
+    /// <returns>True when this visible dialog owns the cancellation request.</returns>
+    public bool TryCancel()
+    {
+        if (!gameObject.activeSelf)
+            return false;
+        Cancel();
+        return true;
+    }
+
+    /// <summary>
     /// Verifies every authored reference and texture required by the dialog.
     /// </summary>
     public void VerifyReferences()
     {
         if (backgroundImage == null)
             throw new MissingReferenceException("BackgroundImage is missing.");
+        if (confirmationBackgroundTexture == null || acknowledgmentBackgroundTexture == null)
+            throw new MissingReferenceException("Dialog background textures are incomplete.");
         if (confirmButtonImage == null || confirmButton == null || confirmButtonPressVisual == null)
             throw new MissingReferenceException("Confirm button references are incomplete.");
         if (cancelButtonImage == null || cancelButton == null || cancelButtonPressVisual == null)
@@ -167,19 +241,22 @@ public sealed class ConfirmationDialogView : MonoBehaviour, IContentInitializabl
     }
 
     /// <summary>
-    /// Hides the dialog and emits confirmation acceptance.
+    /// Emits acceptance while retaining acknowledgment notices for their transition owner.
     /// </summary>
     private void Confirm()
     {
-        Hide();
+        if (!acknowledgmentMode)
+            Hide();
         Confirmed?.Invoke();
     }
 
     /// <summary>
-    /// Hides the dialog and emits confirmation cancellation.
+    /// Hides a normal confirmation and emits cancellation while leaving acknowledgment notices intact.
     /// </summary>
     private void Cancel()
     {
+        if (acknowledgmentMode)
+            return;
         Hide();
         Canceled?.Invoke();
     }
@@ -191,6 +268,8 @@ public sealed class ConfirmationDialogView : MonoBehaviour, IContentInitializabl
     private bool ReferencesAssigned()
     {
         return backgroundImage != null
+            && confirmationBackgroundTexture != null
+            && acknowledgmentBackgroundTexture != null
             && confirmButtonImage != null
             && confirmButton != null
             && confirmButtonPressVisual != null

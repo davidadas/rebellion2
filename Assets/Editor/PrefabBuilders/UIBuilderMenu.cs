@@ -21,10 +21,11 @@ public static class UIBuilderMenu
     {
         RunInAuthoringScene(() =>
         {
-            BootPrefabBuilder.Rebuild();
             LoadingScreenPrefabBuilder.Rebuild();
             RebuildOptionsMenuAndDependencies();
+            BootPrefabBuilder.Rebuild();
             NewGameSettingsPrefabBuilder.Rebuild();
+            MultiplayerMenuPrefabBuilder.Rebuild();
             MainMenuPrefabBuilder.Rebuild();
             StrategyViewPrefabBuilder.Rebuild();
             ContentPackEditorPrefabBuilder.Rebuild();
@@ -71,6 +72,7 @@ public static class UIBuilderMenu
         {
             RebuildOptionsMenuAndDependencies();
             NewGameSettingsPrefabBuilder.Rebuild();
+            MultiplayerMenuPrefabBuilder.Rebuild();
             MainMenuPrefabBuilder.Rebuild();
         });
         SaveAndRefresh();
@@ -116,7 +118,11 @@ public static class UIBuilderMenu
     [MenuItem("Rebellion/Build/Build Boot UI", false, 23)]
     public static void BuildBoot()
     {
-        RunInAuthoringScene(BootPrefabBuilder.Rebuild);
+        RunInAuthoringScene(() =>
+        {
+            RebuildOptionsMenuAndDependencies();
+            BootPrefabBuilder.Rebuild();
+        });
         SaveAndRefresh();
     }
 

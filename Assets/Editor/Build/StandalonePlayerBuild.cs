@@ -21,6 +21,8 @@ public static class StandalonePlayerBuild
     private const string _buildPlayerPathArgument = "-buildPlayerPath";
     private const string _gameCIBuildPathArgument = "-customBuildPath";
     private const string _buildVersionArgument = "-buildVersion";
+    private const string _nativeAuditArgument = "-nativeAuditBuild";
+
     private const string _enableDiagnosticsArgument = "-enableDiagnostics";
     private const string _enableAnalyticsArgument = "-enableAnalytics";
     private const string _analyticsScriptingDefine = "REBELLION_ANALYTICS_ENABLED";
@@ -194,7 +196,13 @@ public static class StandalonePlayerBuild
             outputPath,
             enableDiagnostics,
             new[] { _bootScenePath, _mainMenuScenePath, _strategyScenePath },
-            enableAnalytics ? new[] { _analyticsScriptingDefine } : Array.Empty<string>()
+            (enableAnalytics ? new[] { _analyticsScriptingDefine } : Array.Empty<string>())
+                .Concat(
+                    Environment.GetCommandLineArgs().Contains(_nativeAuditArgument)
+                        ? new[] { "REBELLION_NATIVE_AUDIT" }
+                        : Array.Empty<string>()
+                )
+                .ToArray()
         );
     }
 
@@ -246,6 +254,7 @@ public static class StandalonePlayerBuild
             }
 
             VerifyDevelopmentContentWasNotPacked(report);
+            CopyLegalDocuments(target, outputPath);
 
             if (!File.Exists(outputPath) && !Directory.Exists(outputPath))
             {
@@ -260,6 +269,27 @@ public static class StandalonePlayerBuild
         {
             EngineDiagnosticsSettings.enabled = originalDiagnosticsEnabled;
         }
+    }
+
+    /// <summary>
+    /// Includes readable copies of the bundled documents in every desktop installation payload.
+    /// </summary>
+    /// <param name="target">The platform being packaged.</param>
+    /// <param name="outputPath">The built player artifact path.</param>
+    internal static void CopyLegalDocuments(UnityEditor.BuildTarget target, string outputPath)
+    {
+        string root =
+            target == UnityEditor.BuildTarget.StandaloneOSX
+                ? Path.Combine(outputPath, "Contents", "Resources")
+                : Path.GetDirectoryName(outputPath);
+        string destination = Path.Combine(root, "Legal");
+        Directory.CreateDirectory(destination);
+        foreach (string name in new[] { "EULA.txt", "Privacy.txt" })
+            File.Copy(
+                Path.Combine(UnityEngine.Application.dataPath, "Legal", name),
+                Path.Combine(destination, name),
+                true
+            );
     }
 
     /// <summary>

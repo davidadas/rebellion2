@@ -17,6 +17,16 @@ internal sealed class MessagesWindowSession
 
     public bool DetailVisible { get; private set; }
 
+    public bool ComposerVisible { get; private set; }
+
+    public string ComposerDraft { get; private set; } = string.Empty;
+
+    public int ComposerGeneration { get; private set; }
+
+    public bool SendingPeerChat { get; private set; }
+
+    public string ComposerStatus { get; private set; }
+
     public bool HasPresentedTab { get; private set; }
 
     public IReadOnlyList<Message> Messages => messages;
@@ -40,6 +50,7 @@ internal sealed class MessagesWindowSession
     /// <param name="tab">The semantic tab to display.</param>
     public void SelectTab(MessagesTab tab)
     {
+        CloseComposer();
         ActiveTab = tab;
         DetailVisible = false;
         ClearSelection();
@@ -224,6 +235,7 @@ internal sealed class MessagesWindowSession
     /// </summary>
     public void ShowDetail()
     {
+        CloseComposer();
         DetailVisible = true;
     }
 
@@ -232,7 +244,75 @@ internal sealed class MessagesWindowSession
     /// </summary>
     public void HideDetail()
     {
+        CloseComposer();
         DetailVisible = false;
+    }
+
+    /// <summary>
+    /// Opens an empty draft without changing the active message-index category.
+    /// </summary>
+    public void OpenComposer()
+    {
+        CloseComposer();
+        DetailVisible = false;
+        ComposerVisible = true;
+    }
+
+    /// <summary>
+    /// Records the raw multiline input while the editor accepts changes.
+    /// </summary>
+    /// <param name="rawText">The entered message text.</param>
+    public void SetComposerDraft(string rawText)
+    {
+        if (!ComposerVisible || SendingPeerChat)
+            return;
+        ComposerDraft = rawText ?? string.Empty;
+        ComposerStatus = null;
+    }
+
+    /// <summary>
+    /// Records that the current nonempty draft is awaiting submission acceptance.
+    /// </summary>
+    /// <returns>True when a new submission can begin.</returns>
+    public bool BeginPeerChatSubmission()
+    {
+        if (!ComposerVisible || SendingPeerChat || ComposerDraft.Length == 0)
+            return false;
+        SendingPeerChat = true;
+        ComposerStatus = null;
+        return true;
+    }
+
+    /// <summary>
+    /// Applies a submission result only to the draft that initiated it.
+    /// </summary>
+    /// <param name="generation">The submitting editor generation.</param>
+    /// <param name="accepted">Whether the session accepted the message.</param>
+    /// <returns>True when the result belonged to the current draft.</returns>
+    public bool CompletePeerChatSubmission(int generation, bool accepted)
+    {
+        if (!ComposerVisible || ComposerGeneration != generation || !SendingPeerChat)
+            return false;
+        if (accepted)
+            CloseComposer();
+        else
+        {
+            SendingPeerChat = false;
+            ComposerStatus = "Message could not be sent.";
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Discards the draft and invalidates any pending presentation completion.
+    /// </summary>
+    private void CloseComposer()
+    {
+        ComposerVisible = false;
+        ComposerDraft = string.Empty;
+        SendingPeerChat = false;
+        ComposerStatus = null;
+        ComposerGeneration++;
     }
 
     /// <summary>

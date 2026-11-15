@@ -16,6 +16,25 @@ namespace Rebellion.Tests.Gameplay
     public class UprisingResolverTests
     {
         [Test]
+        public void RecordGarrisonWarning_LoadedCurrentWorld_DoesNotReplayEarlierChange()
+        {
+            (GameRoot game, Planet planet, _) = BuildScene(ownerSupport: 10, troopCount: 6);
+            game.DetachNode(planet.GetChildren<Regiment>()[0]);
+            PlanetaryControlCommands control = new(
+                game,
+                new PlanetaryControlQueries(game),
+                new FogOfWarQueries(game)
+            );
+            using JediCommands jediCommands = new(game, new ThrowingRNG());
+            UprisingResolver restored = new(game, new ThrowingRNG(), control, jediCommands);
+            List<GameResult> results = new();
+
+            restored.RecordGarrisonWarning(planet, results);
+
+            Assert.That(results.OfType<PlanetNearUprisingResult>(), Is.Empty);
+        }
+
+        [Test]
         public void Constructor_OwnedPlanet_DoesNotConsumeRandomValues()
         {
             Assert.DoesNotThrow(() => BuildScene(rng: new ThrowingRNG()));
@@ -184,7 +203,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ProcessTick_GarrisonFallsToRequirement_ReportsNearUprisingOnce()
+        public void RecordGarrisonWarning_GarrisonFallsToRequirement_ReportsNearUprisingOnce()
         {
             (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 10,
@@ -192,12 +211,10 @@ namespace Rebellion.Tests.Gameplay
             );
             game.DetachNode(planet.GetChildren<Regiment>()[0]);
 
-            IReadOnlyList<GameResult> firstResults = new UprisingTickProcessor(system).ProcessTick(
-                game
-            );
-            IReadOnlyList<GameResult> secondResults = new UprisingTickProcessor(system).ProcessTick(
-                game
-            );
+            List<GameResult> firstResults = new();
+            system.RecordGarrisonWarning(planet, firstResults);
+            List<GameResult> secondResults = new();
+            system.RecordGarrisonWarning(planet, secondResults);
 
             Assert.AreEqual(1, firstResults.OfType<PlanetNearUprisingResult>().Count());
             Assert.IsEmpty(secondResults.OfType<PlanetNearUprisingResult>());
@@ -855,7 +872,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ReconcileGarrison_CapturedPlanetAtRequirement_ReportsNearUprising()
+        public void RecordGarrisonWarning_CapturedPlanetAtRequirement_ReportsNearUprising()
         {
             (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 10,
@@ -869,7 +886,8 @@ namespace Rebellion.Tests.Gameplay
             occupyingRegiment.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(occupyingRegiment, planet);
 
-            List<GameResult> results = system.ReconcileGarrison(planet);
+            List<GameResult> results = new();
+            system.RecordGarrisonWarning(planet, results);
 
             Assert.AreEqual(1, results.OfType<PlanetNearUprisingResult>().Count());
             Assert.IsEmpty(results.OfType<PlanetUprisingStartedResult>());

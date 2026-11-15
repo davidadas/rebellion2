@@ -237,6 +237,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
+        public void PrefabProperties_SessionNotice_RemainsAboveModalWindows()
+        {
+            UIRequestNoticeView notice = GetField<UIRequestNoticeView>("sessionNotice");
+            Transform notices = notice.transform.parent;
+            Transform modal = notices.parent.Find("ModalWindows");
+
+            Assert.AreEqual("SessionNotices", notices.name);
+            Assert.Greater(notices.GetSiblingIndex(), modal.GetSiblingIndex());
+        }
+
+        [Test]
         public void Render_MissingOptionalImages_HidesImagesAndDisablesNotification()
         {
             StrategyHudViewData data = new StrategyHudViewData(

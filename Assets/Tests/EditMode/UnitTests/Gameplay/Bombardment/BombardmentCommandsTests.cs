@@ -463,6 +463,7 @@ namespace Rebellion.Tests.Gameplay
                 20,
                 result.AttackerShipDamage[0].HullBefore - result.AttackerShipDamage[0].HullAfter
             );
+            Assert.Greater(ship.NextRepairTick, game.CurrentTick);
         }
 
         [Test]

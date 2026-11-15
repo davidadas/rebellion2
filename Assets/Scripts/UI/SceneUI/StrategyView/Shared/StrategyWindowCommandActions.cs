@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
@@ -41,7 +42,7 @@ public interface IStrategyWindowCommandActions
     /// <param name="target">The selected move target.</param>
     /// <param name="items">The selected movable items.</param>
     /// <returns>True when the move was executed.</returns>
-    bool TryExecuteMove(
+    Task<bool> TryExecuteMoveAsync(
         UIWindow sourceWindow,
         StrategyMissionTarget target,
         IReadOnlyList<ISceneNode> items
@@ -72,7 +73,7 @@ public interface IStrategyWindowCommandActions
     /// </summary>
     /// <param name="source">The active waypoint targeting session.</param>
     /// <returns>True when the complete route was committed.</returns>
-    bool TryCommitFleetWaypointPlan(StrategyWindowTargetingSource source);
+    Task<bool> TryCommitFleetWaypointPlanAsync(StrategyWindowTargetingSource source);
 
     /// <summary>
     /// Removes the newest stop from an active waypoint plan.
@@ -86,7 +87,7 @@ public interface IStrategyWindowCommandActions
     /// </summary>
     /// <param name="items">The selected fleets or their visible snapshots.</param>
     /// <returns>True when at least one waypoint was cleared.</returns>
-    bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items);
+    Task<bool> ClearFleetWaypointsAsync(IReadOnlyList<ISceneNode> items);
 }
 
 /// <summary>
@@ -100,7 +101,7 @@ public interface IOfficerCommandActions
     /// <param name="items">The selected strategy-window items.</param>
     /// <param name="rank">The requested command rank.</param>
     /// <returns>True when an appointment changed.</returns>
-    bool TrySetOfficerCommand(IReadOnlyList<ISceneNode> items, OfficerRank rank);
+    Task<bool> TrySetOfficerCommandAsync(IReadOnlyList<ISceneNode> items, OfficerRank rank);
 }
 
 /// <summary>

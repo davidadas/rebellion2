@@ -118,6 +118,8 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
 
     private RectInt cardTemplateRect;
     private bool initialized;
+    private bool headerTemplateRichText;
+    private bool lineTemplateRichText;
     private RectInt linesScrollAreaTemplateRect;
     private RectInt linesViewportTemplateRect;
     private RectInt linesScrollbarTemplateRect;
@@ -224,6 +226,8 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
         RenderScaledImage(overlayImage, data.OverlayTexture, overlayTemplateRect);
         SetImageAtAuthoredRect(bodyImage, bodyTexture);
         SetImageAtAuthoredRect(iconImage, data.IconTexture);
+        headerTextField.richText = !data.PlainText && headerTemplateRichText;
+        lineTextTemplate.richText = !data.PlainText && lineTemplateRichText;
         UILayout.SetTextContent(headerTextField, data.Header);
         SetNavigationButton(
             nextButtonImage,
@@ -362,6 +366,8 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
         linesScrollbarTemplateRect = UILayout.GetSourceRect(
             linesScrollArea.GetComponentInChildren<Scrollbar>(true).transform as RectTransform
         );
+        headerTemplateRichText = headerTextField.richText;
+        lineTemplateRichText = lineTextTemplate.richText;
         lineTextTemplateRect = UILayout.GetSourceRect(lineTextTemplate.rectTransform);
         nextButton.onClick.AddListener(RequestNext);
         previousButton.onClick.AddListener(RequestPrevious);
@@ -487,6 +493,7 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
         for (int index = 0; index < safeLines.Count; index++)
         {
             TextMeshProUGUI text = GetLineTextField(index);
+            text.richText = lineTextTemplate.richText;
             UILayout.SetTemplateText(
                 text,
                 lineTextTemplate,

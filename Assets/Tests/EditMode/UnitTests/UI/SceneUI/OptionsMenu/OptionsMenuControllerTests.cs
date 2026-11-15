@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -31,6 +32,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         private bool _menuOpenWhenLoadCalled;
         private string _loadedFileName;
         private string _testModDirectoryPath;
+        private TaskCompletionSource<bool> _saveCompletion;
+        private TaskCompletionSource<bool> _loadCompletion;
+        private int _saveRequests;
         private string _testPackDirectoryPath;
 
         /// <summary>
@@ -43,6 +47,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             _loadResult = false;
             _menuOpenWhenLoadCalled = false;
             _loadedFileName = null;
+            _saveCompletion = null;
+            _loadCompletion = null;
+            _saveRequests = 0;
             DestroyAudioManagers();
             GameLaunchContext.Reset(TestContent.Pack);
             _saveDirectoryPath = Path.Combine(
@@ -134,7 +141,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         public void Open_SaveLoadUnavailable_PreventsSavedGameMutations()
         {
             _saveGameManager.SaveGameData(CreateGame(), "existing_save", "Existing Save");
-            _bootstrap.GetRuntime().StartGame(CreateGame());
+            _bootstrap.GetGameSessionManager().StartGame(CreateGame());
             _controller.Dispose();
             _controller = CreateController(GetPrefab(), allowSaveLoad: false);
             OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
@@ -757,8 +764,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         [Test]
         public void HandleBackToGame_ActiveGame_RestoresSpeedAndClosesWindow()
         {
-            _bootstrap.GetRuntime().StartGame(CreateGame());
-            GameManager gameManager = _bootstrap.GetRuntime().GetActiveGameManager();
+            _bootstrap.GetGameSessionManager().StartGame(CreateGame());
+            GameManager gameManager = _bootstrap.GetGameSessionManager().GetActiveGameManager();
             gameManager.SetGameSpeed(TickSpeed.Fast);
 
             OptionsMenuView view = OpenAndRender();
@@ -769,13 +776,68 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(TickSpeed.Fast, gameManager.GetGameSpeed());
         }
 
+        [TestCase(TickSpeed.Paused, TickSpeed.Paused)]
+        [TestCase(TickSpeed.VerySlow, TickSpeed.VerySlow)]
+        public void HandleBackToGame_DifferentOtherSelection_RestoresOnlyLocalPreference(
+            TickSpeed otherSpeed,
+            TickSpeed effectiveAfterClosing
+        )
+        {
+            GameRoot game = CreateGame();
+            ContentScenarioDefinition scenario = _bootstrap.GetContentPack().Scenario;
+            string hostFactionID = scenario.DefaultPlayerFactionID;
+            string localFactionID = scenario.PlayableFactionIDs.First(id => id != hostFactionID);
+            game.GetFactions()
+                .AddRange(
+                    new[]
+                    {
+                        new Faction { InstanceID = hostFactionID },
+                        new Faction { InstanceID = localFactionID },
+                    }
+                );
+            game.SetFactionController(hostFactionID, "first-player", PlayerControllerType.Human);
+            game.SetFactionController(localFactionID, "second-player", PlayerControllerType.Human);
+            game.LocalPlayerFactionID = localFactionID;
+            _bootstrap.GetGameSessionManager().StartGame(game);
+            GameManager gameManager = _bootstrap.GetGameSessionManager().GetActiveGameManager();
+            gameManager.SetGameSpeed(TickSpeed.Fast);
+            gameManager.EnableCoordinatedSpeeds();
+            gameManager.ApplyPlayerGameSpeed(hostFactionID, otherSpeed);
+            gameManager.BindSpeedRequests(speed =>
+                gameManager.ApplyPlayerGameSpeed(localFactionID, speed)
+            );
+
+            OptionsMenuView view = OpenAndRender();
+
+            Assert.AreEqual(TickSpeed.Paused, gameManager.GetGameSpeed());
+            Assert.AreEqual(
+                TickSpeed.Paused,
+                game.GetFactionPlayer(localFactionID).RequestedGameSpeed
+            );
+            Assert.AreEqual(otherSpeed, game.GetFactionPlayer(hostFactionID).RequestedGameSpeed);
+
+            GetField<Button>(view, "_backToGameButton").onClick.Invoke();
+
+            Assert.IsFalse(_controller.IsOpen);
+            Assert.AreEqual(
+                TickSpeed.Fast,
+                game.GetFactionPlayer(localFactionID).RequestedGameSpeed
+            );
+            Assert.AreEqual(otherSpeed, game.GetFactionPlayer(hostFactionID).RequestedGameSpeed);
+            Assert.AreEqual(effectiveAfterClosing, gameManager.GetGameSpeed());
+
+            gameManager.ApplyPlayerGameSpeed(hostFactionID, TickSpeed.Fast);
+
+            Assert.AreEqual(TickSpeed.Fast, gameManager.GetGameSpeed());
+        }
+
         [Test]
         public void HandleBackToGame_UnavailableSavedPack_ClosesWindow()
         {
             _bootstrap.GetUserSettingsManager().Settings.Content.ActivePackID = "missing-pack";
             _controller.Dispose();
             _controller = CreateController(GetPrefab());
-            _bootstrap.GetRuntime().StartGame(CreateGame());
+            _bootstrap.GetGameSessionManager().StartGame(CreateGame());
             OptionsMenuView view = OpenAndRender();
 
             GetField<Button>(view, "_backToGameButton").onClick.Invoke();
@@ -786,7 +848,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         [Test]
         public void HandleMainMenuRequested_ActiveGame_WarnsAboutUnsavedProgress()
         {
-            _bootstrap.GetRuntime().StartGame(CreateGame());
+            _bootstrap.GetGameSessionManager().StartGame(CreateGame());
             OptionsMenuView view = OpenAndRender();
             ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
                 view,
@@ -805,7 +867,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         [Test]
         public void HandleQuitRequested_ActiveGame_WarnsAboutUnsavedProgress()
         {
-            _bootstrap.GetRuntime().StartGame(CreateGame());
+            _bootstrap.GetGameSessionManager().StartGame(CreateGame());
             OptionsMenuView view = OpenAndRender();
             ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
                 view,
@@ -878,7 +940,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         public void HandleLoadRequested_SelectedSaveAfterOverwrite_LoadsThroughHostAndClosesWindow()
         {
             GameRoot game = CreateGame();
-            _bootstrap.GetRuntime().StartGame(game);
+            _bootstrap.GetGameSessionManager().StartGame(game);
             _saveGameManager.SaveGameData(game, "existing_save", "Existing Save");
             _loadResult = true;
             OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
@@ -897,7 +959,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             GetField<Button>(saveList, "_loadButton").onClick.Invoke();
 
             Assert.AreEqual("existing_save", _loadedFileName);
-            Assert.IsFalse(_menuOpenWhenLoadCalled);
+            Assert.IsTrue(_menuOpenWhenLoadCalled);
             Assert.IsFalse(_controller.IsOpen);
             Assert.AreEqual(
                 "Existing Save",
@@ -987,6 +1049,184 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void HandleSaveRequested_ConsecutiveNewSaves_KeepsBothSaves()
+        {
+            _bootstrap.GetGameSessionManager().StartGame(CreateGame());
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
+            OptionsSaveListView saveList = GetField<OptionsSaveListView>(view, "_saveListView");
+            TMP_InputField rename = GetField<TMP_InputField>(saveList, "_renameField");
+
+            foreach (string name in new[] { "First Save", "Second Save" })
+            {
+                view.GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "SlotRow0")
+                    .onClick.Invoke();
+                rename.text = name;
+                GetField<Button>(saveList, "_saveButton").onClick.Invoke();
+                _controller.RenderWindows();
+            }
+
+            CollectionAssert.AreEquivalent(
+                new[] { "First Save", "Second Save" },
+                _saveGameManager.GetSavedGames().Select(entry => entry.Metadata.SaveDisplayName)
+            );
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public async Task HandleLoadRequested_PendingOwner_ClosesOnlyAfterAcceptedCompletionAsync(
+            bool accepted
+        )
+        {
+            GameRoot game = CreateGame();
+            _bootstrap.GetGameSessionManager().StartGame(game);
+            _saveGameManager.SaveGameData(game, "existing_save", "Existing Save");
+            _loadCompletion = new TaskCompletionSource<bool>();
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
+            view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "SlotRow1")
+                .onClick.Invoke();
+            OptionsSaveListView saveList = GetField<OptionsSaveListView>(view, "_saveListView");
+
+            GetField<Button>(saveList, "_loadButton").onClick.Invoke();
+
+            Assert.IsTrue(_controller.IsOpen);
+            Assert.IsTrue(_menuOpenWhenLoadCalled);
+            Assert.AreSame(view, GetOpenView());
+            _loadCompletion.SetResult(accepted);
+            await _loadCompletion.Task;
+            await Task.Yield();
+
+            Assert.AreEqual(!accepted, _controller.IsOpen);
+            if (!accepted)
+                Assert.AreSame(view, GetOpenView());
+        }
+
+        [Test]
+        public async Task HandleLoadRequested_CanceledOwner_LeavesViewOpenAndAllowsRetryAsync()
+        {
+            GameRoot game = CreateGame();
+            _bootstrap.GetGameSessionManager().StartGame(game);
+            _saveGameManager.SaveGameData(game, "existing_save", "Existing Save");
+            _loadCompletion = new TaskCompletionSource<bool>();
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
+            view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "SlotRow1")
+                .onClick.Invoke();
+            OptionsSaveListView saveList = GetField<OptionsSaveListView>(view, "_saveListView");
+            Button load = GetField<Button>(saveList, "_loadButton");
+            load.onClick.Invoke();
+
+            _loadCompletion.SetCanceled();
+            await Task.Yield();
+
+            Assert.IsTrue(_controller.IsOpen);
+            Assert.AreSame(view, GetOpenView());
+            _loadCompletion = new TaskCompletionSource<bool>();
+            load.onClick.Invoke();
+            _loadCompletion.SetResult(true);
+            await _loadCompletion.Task;
+            await Task.Yield();
+
+            Assert.IsFalse(_controller.IsOpen);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public async Task HandleSaveRequested_PendingOwner_RefreshesOnlyAfterAcceptedCompletionAsync(
+            bool accepted
+        )
+        {
+            GameRoot game = CreateGame();
+            _bootstrap.GetGameSessionManager().StartGame(game);
+            _saveGameManager.SaveGameData(game, "existing_save", "Existing Save");
+            _saveCompletion = new TaskCompletionSource<bool>();
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
+            view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "SlotRow1")
+                .onClick.Invoke();
+            OptionsSaveListView saveList = GetField<OptionsSaveListView>(view, "_saveListView");
+            Button save = GetField<Button>(saveList, "_saveButton");
+            int dirtyCount = _dirtyCount;
+
+            save.onClick.Invoke();
+            GetField<Button>(
+                GetField<ConfirmationDialogView>(view, "_confirmDialog"),
+                "confirmButton"
+            )
+                .onClick.Invoke();
+            save.onClick.Invoke();
+
+            Assert.AreEqual(1, _saveRequests);
+            Assert.AreEqual(dirtyCount, _dirtyCount);
+            Assert.AreEqual(
+                "Existing Save",
+                _saveGameManager.GetSavedGames().Single().Metadata.SaveDisplayName
+            );
+            _saveCompletion.SetResult(accepted);
+            await _saveCompletion.Task;
+            await Task.Yield();
+
+            Assert.AreEqual(dirtyCount + (accepted ? 1 : 0), _dirtyCount);
+            Assert.IsTrue(_controller.IsOpen);
+        }
+
+        [Test]
+        public async Task HandleSlotRenamed_PendingNewSave_DoesNotReportSuccessBeforeCompletionAsync()
+        {
+            _bootstrap.GetGameSessionManager().StartGame(CreateGame());
+            _saveCompletion = new TaskCompletionSource<bool>();
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
+            OptionsSaveListView saveList = GetField<OptionsSaveListView>(view, "_saveListView");
+            view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "SlotRow0")
+                .onClick.Invoke();
+            int dirtyCount = _dirtyCount;
+
+            GetField<TMP_InputField>(saveList, "_renameField").onSubmit.Invoke("Pending Save");
+
+            Assert.AreEqual(1, _saveRequests);
+            Assert.AreEqual(dirtyCount, _dirtyCount);
+            Assert.IsEmpty(_saveGameManager.GetSavedGames());
+            _saveCompletion.SetResult(false);
+            await _saveCompletion.Task;
+            await Task.Yield();
+
+            Assert.AreEqual(dirtyCount, _dirtyCount);
+            Assert.IsEmpty(_saveGameManager.GetSavedGames());
+        }
+
+        [Test]
+        public async Task HandleSaveRequested_WindowReopened_DoesNotRefreshReplacementViewAsync()
+        {
+            GameRoot game = CreateGame();
+            _bootstrap.GetGameSessionManager().StartGame(game);
+            _saveGameManager.SaveGameData(game, "existing_save", "Existing Save");
+            _saveCompletion = new TaskCompletionSource<bool>();
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
+            view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "SlotRow1")
+                .onClick.Invoke();
+            OptionsSaveListView saveList = GetField<OptionsSaveListView>(view, "_saveListView");
+            GetField<Button>(saveList, "_saveButton").onClick.Invoke();
+            GetField<Button>(
+                GetField<ConfirmationDialogView>(view, "_confirmDialog"),
+                "confirmButton"
+            )
+                .onClick.Invoke();
+            _controller.Close();
+            OptionsMenuView replacement = OpenAndRender();
+            int dirtyCount = _dirtyCount;
+
+            _saveCompletion.SetResult(true);
+            await _saveCompletion.Task;
+            await Task.Yield();
+
+            Assert.AreSame(replacement, GetOpenView());
+            Assert.AreEqual(dirtyCount, _dirtyCount);
+        }
+
+        [Test]
         public void RefreshSaveSlots_SavedDetails_RendersDifficultyAndTurn()
         {
             GameRoot game = CreateGame();
@@ -1024,7 +1264,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         [Test]
         public void HandleSaveRequested_ValidNewSaveName_EnablesButtonAndCreatesSave()
         {
-            _bootstrap.GetRuntime().StartGame(CreateGame());
+            _bootstrap.GetGameSessionManager().StartGame(CreateGame());
             OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
             OptionsSaveListView saveList = GetField<OptionsSaveListView>(view, "_saveListView");
             Button saveButton = GetField<Button>(saveList, "_saveButton");
@@ -1050,34 +1290,36 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void HandleSaveRequested_ConsecutiveNewSaves_KeepsBothSaves()
+        public void RenderWindows_SaveDraftLosesFocus_PreservesDraftUntilExplicitSave()
         {
-            _bootstrap.GetRuntime().StartGame(CreateGame());
+            _bootstrap.GetGameSessionManager().StartGame(CreateGame());
             OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
-            OptionsSaveListView saveList = GetField<OptionsSaveListView>(view, "_saveListView");
-            TMP_InputField rename = GetField<TMP_InputField>(saveList, "_renameField");
+            OptionsSaveListView saveList = view.GetComponentInChildren<OptionsSaveListView>(true);
+            view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "SlotRow0")
+                .onClick.Invoke();
+            TMP_InputField field = saveList.GetComponentInChildren<TMP_InputField>(true);
+            field.text = "Campaign draft";
 
-            foreach (string name in new[] { "First Save", "Second Save" })
-            {
-                view.GetComponentsInChildren<Button>(true)
-                    .Single(button => button.name == "SlotRow0")
-                    .onClick.Invoke();
-                rename.text = name;
-                GetField<Button>(saveList, "_saveButton").onClick.Invoke();
-                _controller.RenderWindows();
-            }
+            field.onEndEdit.Invoke(field.text);
+            _controller.RenderWindows();
 
-            CollectionAssert.AreEquivalent(
-                new[] { "First Save", "Second Save" },
-                _saveGameManager.GetSavedGames().Select(entry => entry.Metadata.SaveDisplayName)
+            Assert.IsTrue(field.gameObject.activeSelf);
+            Assert.AreEqual("Campaign draft", field.text);
+            Assert.IsEmpty(_saveGameManager.GetSavedGames());
+            saveList.transform.Find("SaveIcon").GetComponent<Button>().onClick.Invoke();
+            Assert.AreEqual(
+                "Campaign draft",
+                _saveGameManager.GetSavedGames().Single().Metadata.SaveDisplayName
             );
+            Assert.IsFalse(field.gameObject.activeSelf);
         }
 
         [Test]
         public void RefreshSaveSlots_PersistedSlotChanges_ReflectRenameCreationAndDeletion()
         {
             GameRoot game = CreateGame();
-            _bootstrap.GetRuntime().StartGame(game);
+            _bootstrap.GetGameSessionManager().StartGame(game);
             _saveGameManager.SaveGameData(game, "existing_save", "Existing Save");
             OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
             OptionsSaveListView saveList = GetField<OptionsSaveListView>(view, "_saveListView");
@@ -1087,7 +1329,12 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 
             existingRow.onClick.Invoke();
             existingRow.onClick.Invoke();
-            rename.onEndEdit.Invoke("Renamed Save");
+            rename.onSubmit.Invoke("Renamed Save");
+            GetField<Button>(
+                GetField<ConfirmationDialogView>(view, "_confirmDialog"),
+                "confirmButton"
+            )
+                .onClick.Invoke();
             _controller.RenderWindows();
             Assert.AreEqual(
                 "Renamed Save",
@@ -1166,6 +1413,46 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.Throws<ObjectDisposedException>(() => _controller.Open());
         }
 
+        [Test]
+        public void RefreshSaveSlots_InjectedRoleQuery_UsesVisibleOwnerCopiesAndSinglePlayerSources()
+        {
+            GameRoot game = CreateGame();
+            _bootstrap.GetGameSessionManager().StartGame(game);
+            _saveGameManager.SaveGameData(game, "single-player-source", "Single-player source");
+            game.Metadata.MultiplayerCampaign = new MultiplayerCampaignIdentity
+            {
+                HostUserID = "host-account",
+                GuestUserID = "guest-account",
+                HostFactionID = "FNALL1",
+                GuestFactionID = "FNEMP1",
+            };
+            string hostName = SaveGameManager.GetMultiplayerSaveFileName(
+                game.Metadata.CampaignID,
+                true,
+                "checkpoint"
+            );
+            string guestName = SaveGameManager.GetMultiplayerSaveFileName(
+                game.Metadata.CampaignID,
+                false,
+                "checkpoint"
+            );
+            _saveGameManager.SaveGameData(game, hostName, "Host checkpoint");
+            _saveGameManager.SaveGameData(game, guestName, "Guest checkpoint");
+            _controller.Dispose();
+            _controller = CreateController(
+                GetPrefab(),
+                getSavedGames: () => _saveGameManager.GetSavedGames(true)
+            );
+
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
+
+            Assert.AreEqual(
+                3,
+                view.GetComponentsInChildren<Button>()
+                    .Count(button => button.name.StartsWith("SlotRow", StringComparison.Ordinal))
+            );
+        }
+
         /// <summary>
         /// Opens an existing save and requests its replacement through the authored controls.
         /// </summary>
@@ -1174,7 +1461,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         private OptionsMenuView RequestExistingSaveOverwrite(bool submitName)
         {
             GameRoot game = CreateGame();
-            _bootstrap.GetRuntime().StartGame(game);
+            _bootstrap.GetGameSessionManager().StartGame(game);
             game.CurrentTick = 7;
             _saveGameManager.SaveGameData(game, "existing_save", "Existing Save");
             game.CurrentTick = 42;
@@ -1200,11 +1487,13 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         /// <param name="prefab">The Options prefab.</param>
         /// <param name="showModsTab">Whether the controller exposes content management.</param>
         /// <param name="allowSaveLoad">Whether the owning interaction permits saved-game operations.</param>
+        /// <param name="getSavedGames">The injected save visibility query.</param>
         /// <returns>The created controller.</returns>
         private OptionsMenuController CreateController(
             OptionsMenuView prefab,
             bool showModsTab = true,
-            bool allowSaveLoad = true
+            bool allowSaveLoad = true,
+            Func<IReadOnlyList<SaveGameEntry>> getSavedGames = null
         )
         {
             return new OptionsMenuController(
@@ -1216,22 +1505,26 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 _bootstrap,
                 (fileName, displayName) =>
                 {
-                    GameRoot game = _bootstrap.GetRuntime().GetActiveGame();
+                    GameRoot game = _bootstrap.GetGameSessionManager().GetActiveGame();
                     if (game == null)
-                        return false;
+                        return Task.FromResult(false);
 
+                    _saveRequests++;
+                    if (_saveCompletion != null)
+                        return _saveCompletion.Task;
                     _saveGameManager.SaveGameData(game, fileName, displayName);
-                    return true;
+                    return Task.FromResult(true);
                 },
                 fileName =>
                 {
                     _menuOpenWhenLoadCalled = _controller.IsOpen;
                     _loadedFileName = fileName;
-                    return _loadResult;
+                    return _loadCompletion?.Task ?? Task.FromResult(_loadResult);
                 },
                 () => _dirtyCount++,
                 _saveGameManager,
                 showModsTab,
+                getSavedGames,
                 allowSaveLoad
             );
         }

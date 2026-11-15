@@ -490,7 +490,9 @@ public sealed class BattleAlertWindowView : MonoBehaviour
 
         if (pending.Panel == BattleAlertPanel.Summary)
         {
-            headerTextField.gameObject.SetActive(false);
+            headerTextField.gameObject.SetActive(!string.IsNullOrEmpty(pending.ResponseStatus));
+            if (!string.IsNullOrEmpty(pending.ResponseStatus))
+                UILayout.SetTextContent(headerTextField, pending.ResponseStatus, data.TitleColor);
             rowsScrollArea.gameObject.SetActive(false);
             HideRows();
             UILayout.SetTextContent(summaryTextField, pending.Summary, data.TitleColor);
@@ -884,6 +886,9 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     )
     {
         bool visible = data != null;
+        button
+            .GetComponentInChildren<UISelectionFrameView>(true)
+            ?.Render(data?.Selected == true, data?.SelectionColor ?? Color.white);
         button.interactable = data?.Interactable == true;
         if (data?.Bounds is RectInt bounds)
         {

@@ -16,6 +16,11 @@ namespace Rebellion.Gameplay
         private bool _isPublishing;
 
         /// <summary>
+        /// Gets whether a result delivery or reaction wave is currently executing.
+        /// </summary>
+        internal bool IsPublishing => _isPublishing;
+
+        /// <summary>
         /// Subscribes a reaction that publishes any follow-up changes through this bus.
         /// </summary>
         /// <typeparam name="T">The result type delivered to the subscriber.</typeparam>

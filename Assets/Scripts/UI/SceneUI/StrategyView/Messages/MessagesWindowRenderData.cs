@@ -20,6 +20,8 @@ public sealed class MessagesWindowRenderData
 
     public MessagesDetailPanelRenderData DetailPanel { get; }
 
+    public MessagesChatComposerRenderData Composer { get; }
+
     /// <summary>
     /// Creates a messages window presentation snapshot.
     /// </summary>
@@ -29,13 +31,15 @@ public sealed class MessagesWindowRenderData
     /// <param name="commandBar">The command-bar presentation.</param>
     /// <param name="indexPanel">The message-index presentation.</param>
     /// <param name="detailPanel">The message-detail presentation.</param>
+    /// <param name="composer">The optional player-message editor presentation.</param>
     public MessagesWindowRenderData(
         bool detailVisible,
         Vector2Int framePosition,
         Texture overlayFrameTexture,
         MessagesCommandBarRenderData commandBar,
         MessagesIndexPanelRenderData indexPanel,
-        MessagesDetailPanelRenderData detailPanel
+        MessagesDetailPanelRenderData detailPanel,
+        MessagesChatComposerRenderData composer = null
     )
     {
         DetailVisible = detailVisible;
@@ -44,10 +48,11 @@ public sealed class MessagesWindowRenderData
         CommandBar = commandBar ?? throw new ArgumentNullException(nameof(commandBar));
         if (detailVisible && detailPanel == null)
             throw new ArgumentNullException(nameof(detailPanel));
-        if (!detailVisible && indexPanel == null)
+        if (!detailVisible && indexPanel == null && composer == null)
             throw new ArgumentNullException(nameof(indexPanel));
         IndexPanel = indexPanel;
         DetailPanel = detailPanel;
+        Composer = composer;
     }
 }
 
@@ -315,6 +320,8 @@ public sealed class MessagesDetailPanelRenderData
 
     public bool MissionContinuationChoiceVisible { get; }
 
+    public bool PlainText { get; }
+
     /// <summary>
     /// Creates a message-detail presentation snapshot.
     /// </summary>
@@ -327,6 +334,7 @@ public sealed class MessagesDetailPanelRenderData
     /// <param name="previousDisabled">Whether previous navigation is disabled.</param>
     /// <param name="nextDisabled">Whether next navigation is disabled.</param>
     /// <param name="missionContinuationChoiceVisible">Whether the continuing mission can be continued or aborted.</param>
+    /// <param name="plainText">Whether header and body markup must be displayed literally.</param>
     public MessagesDetailPanelRenderData(
         string messageId,
         string header,
@@ -336,7 +344,8 @@ public sealed class MessagesDetailPanelRenderData
         Texture iconTexture,
         bool previousDisabled,
         bool nextDisabled,
-        bool missionContinuationChoiceVisible = false
+        bool missionContinuationChoiceVisible = false,
+        bool plainText = false
     )
     {
         MessageId = messageId ?? string.Empty;
@@ -348,5 +357,6 @@ public sealed class MessagesDetailPanelRenderData
         PreviousDisabled = previousDisabled;
         NextDisabled = nextDisabled;
         MissionContinuationChoiceVisible = missionContinuationChoiceVisible;
+        PlainText = plainText;
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -53,12 +54,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         public void Constructor_NullServices_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new StrategyFleetCommandController(null, () => _playerFactionId)
+                new StrategyFleetCommandController(
+                    null,
+                    () => _playerFactionId,
+                    TestPlayerRequests.Create(_session, () => _playerFactionId)
+                )
             );
         }
 
         [Test]
-        public void TryCreateFleetFromCapitalShips_OwnedShip_CreatesFleet()
+        public async Task TryCreateFleetFromCapitalShipsAsync_OwnedShip_CreatesFleetAsync()
         {
             CapitalShip ship = CreateShip("ship", _playerFactionId);
             GameFleet sourceFleet = new GameFleet(_playerFactionId, "source-fleet");
@@ -66,7 +71,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             _game.AttachNode(ship, sourceFleet);
             StrategyFleetCommandController controller = CreateController();
 
-            bool created = controller.TryCreateFleetFromCapitalShips(new ISceneNode[] { ship });
+            bool created = await controller.TryCreateFleetFromCapitalShipsAsync(
+                new ISceneNode[] { ship }
+            );
 
             Assert.IsTrue(created);
             Assert.AreEqual(1, _planet.GetChildren<GameFleet>().Count);
@@ -75,18 +82,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
-        public void TryCreateFleetFromCapitalShips_InvalidSelection_ReturnsFalse()
+        public async Task TryCreateFleetFromCapitalShipsAsync_InvalidSelection_ReturnsFalseAsync()
         {
             CapitalShip enemyShip = CreateShip("enemy-ship", "enemy");
             Officer officer = new Officer { OwnerInstanceID = _playerFactionId };
             StrategyFleetCommandController controller = CreateController();
 
-            bool nullResult = controller.TryCreateFleetFromCapitalShips(null);
-            bool emptyResult = controller.TryCreateFleetFromCapitalShips(Array.Empty<ISceneNode>());
-            bool enemyResult = controller.TryCreateFleetFromCapitalShips(
+            bool nullResult = await controller.TryCreateFleetFromCapitalShipsAsync(null);
+            bool emptyResult = await controller.TryCreateFleetFromCapitalShipsAsync(
+                Array.Empty<ISceneNode>()
+            );
+            bool enemyResult = await controller.TryCreateFleetFromCapitalShipsAsync(
                 new ISceneNode[] { enemyShip }
             );
-            bool mixedResult = controller.TryCreateFleetFromCapitalShips(
+            bool mixedResult = await controller.TryCreateFleetFromCapitalShipsAsync(
                 new ISceneNode[] { enemyShip, officer }
             );
 
@@ -97,7 +106,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
-        public void ExecutePlanetaryCombat_BombardmentSnapshot_UsesLiveGraphObjects()
+        public async Task ExecutePlanetaryCombatAsync_BombardmentSnapshot_UsesLiveGraphObjectsAsync()
         {
             _planet.OwnerInstanceID = _opposingFactionId;
             GameFleet fleet = AddCombatFleet("fleet", bombardment: 1);
@@ -108,7 +117,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Planet requestedTarget = new Planet { InstanceID = _planet.InstanceID };
             StrategyFleetCommandController controller = CreateController();
 
-            CombatReport report = controller.ExecutePlanetaryCombat(
+            CombatReport report = await controller.ExecutePlanetaryCombatAsync(
                 new ISceneNode[] { requestedFleet },
                 requestedTarget,
                 StrategyMenuAction.BombardCivilianFacilities
@@ -126,22 +135,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
-        public void ExecutePlanetaryCombat_InvalidBombardmentInputOrNullResult_ReturnsNull()
+        public async Task ExecutePlanetaryCombatAsync_InvalidBombardmentInputOrNullResult_ReturnsNullAsync()
         {
             GameFleet fleet = new GameFleet(_playerFactionId, "fleet");
             StrategyFleetCommandController controller = CreateController();
 
-            CombatReport noFleetResult = controller.ExecutePlanetaryCombat(
+            CombatReport noFleetResult = await controller.ExecutePlanetaryCombatAsync(
                 Array.Empty<ISceneNode>(),
                 _planet,
                 StrategyMenuAction.BombardMilitaryFacilities
             );
-            CombatReport missingTargetResult = controller.ExecutePlanetaryCombat(
+            CombatReport missingTargetResult = await controller.ExecutePlanetaryCombatAsync(
                 new ISceneNode[] { fleet },
                 new Planet { InstanceID = "missing" },
                 StrategyMenuAction.BombardMilitaryFacilities
             );
-            CombatReport nullCommandResult = controller.ExecutePlanetaryCombat(
+            CombatReport nullCommandResult = await controller.ExecutePlanetaryCombatAsync(
                 new ISceneNode[] { fleet },
                 _planet,
                 StrategyMenuAction.BombardMilitaryFacilities
@@ -153,7 +162,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
-        public void ExecutePlanetaryCombat_AssaultSnapshot_UsesLiveGraphObjects()
+        public async Task ExecutePlanetaryCombatAsync_AssaultSnapshot_UsesLiveGraphObjectsAsync()
         {
             _planet.OwnerInstanceID = _opposingFactionId;
             GameFleet fleet = AddCombatFleet("fleet", includeRegiment: true);
@@ -164,7 +173,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Planet requestedTarget = new Planet { InstanceID = _planet.InstanceID };
             StrategyFleetCommandController controller = CreateController();
 
-            CombatReport report = controller.ExecutePlanetaryCombat(
+            CombatReport report = await controller.ExecutePlanetaryCombatAsync(
                 new ISceneNode[] { requestedFleet },
                 requestedTarget,
                 StrategyMenuAction.PlanetaryAssault
@@ -177,7 +186,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
-        public void ExecutePlanetaryCombat_AssaultWithMultipleFleets_UsesFullLiveSelection()
+        public async Task ExecutePlanetaryCombatAsync_AssaultWithMultipleFleets_UsesFullLiveSelectionAsync()
         {
             _planet.OwnerInstanceID = _opposingFactionId;
             GameFleet firstFleet = AddCombatFleet("first", includeRegiment: true);
@@ -201,7 +210,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                 requestedTarget,
                 StrategyMenuAction.PlanetaryAssault
             );
-            CombatReport report = controller.ExecutePlanetaryCombat(
+            CombatReport report = await controller.ExecutePlanetaryCombatAsync(
                 new ISceneNode[] { requestedEligibleFleet, requestedIneligibleFleet },
                 requestedTarget,
                 StrategyMenuAction.PlanetaryAssault
@@ -214,22 +223,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
-        public void ExecutePlanetaryCombat_InvalidAssaultInputOrNullResult_ReturnsNull()
+        public async Task ExecutePlanetaryCombatAsync_InvalidAssaultInputOrNullResult_ReturnsNullAsync()
         {
             GameFleet fleet = new GameFleet(_playerFactionId, "fleet");
             StrategyFleetCommandController controller = CreateController();
 
-            CombatReport noFleetResult = controller.ExecutePlanetaryCombat(
+            CombatReport noFleetResult = await controller.ExecutePlanetaryCombatAsync(
                 Array.Empty<ISceneNode>(),
                 _planet,
                 StrategyMenuAction.PlanetaryAssault
             );
-            CombatReport missingTargetResult = controller.ExecutePlanetaryCombat(
+            CombatReport missingTargetResult = await controller.ExecutePlanetaryCombatAsync(
                 new ISceneNode[] { fleet },
                 new Planet { InstanceID = "missing" },
                 StrategyMenuAction.PlanetaryAssault
             );
-            CombatReport nullCommandResult = controller.ExecutePlanetaryCombat(
+            CombatReport nullCommandResult = await controller.ExecutePlanetaryCombatAsync(
                 new ISceneNode[] { fleet },
                 _planet,
                 StrategyMenuAction.PlanetaryAssault
@@ -273,7 +282,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         /// <returns>The created controller.</returns>
         private StrategyFleetCommandController CreateController()
         {
-            return new StrategyFleetCommandController(_session, () => _playerFactionId);
+            return new StrategyFleetCommandController(
+                _session,
+                () => _playerFactionId,
+                TestPlayerRequests.Create(_session, () => _playerFactionId)
+            );
         }
 
         /// <summary>

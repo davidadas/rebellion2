@@ -31,10 +31,35 @@ internal sealed class SaveContentSelection
 }
 
 /// <summary>
-/// Resolves the exact installed content identity required by saved-game metadata.
+/// Resolves exact installed content from launch summaries and saved-game metadata.
 /// </summary>
 internal static class SaveContentResolver
 {
+    /// <summary>
+    /// Opens exact launch content, retaining the active pack when its identity already matches.
+    /// </summary>
+    /// <param name="activePack">The application's current content root.</param>
+    /// <param name="summary">The complete launch content identity.</param>
+    /// <returns>The verified installed content.</returns>
+    internal static ContentPack Open(ContentPack activePack, GameSummary summary)
+    {
+        if (summary == null)
+            throw new ArgumentNullException(nameof(summary));
+        if (activePack.MatchesContentIdentity(summary))
+            return activePack;
+        return Resolve(
+            activePack,
+            new GameMetadata
+            {
+                PackID = summary.PackID,
+                PackVersion = summary.PackVersion,
+                ScenarioID = summary.ScenarioID,
+                ModIDs = summary.ModIDs,
+                ModVersions = summary.ModVersions,
+            }
+        ).Pack;
+    }
+
     /// <summary>
     /// Opens and verifies the exact pack, scenario, and mods required by a save.
     /// </summary>
