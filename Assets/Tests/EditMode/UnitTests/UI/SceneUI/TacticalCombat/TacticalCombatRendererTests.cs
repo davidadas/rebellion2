@@ -1180,15 +1180,18 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             TacticalCombatSession encounter = CreateEncounter(pack.GameData, gravityWell: true);
             yield return PrepareRenderer(encounter, pack);
             TacticalCombatUnit unit = encounter.GetUnit("ALCS008");
+            int gravityRequests = 0;
+            unit.GravityWellPresentationRequested += () => gravityRequests++;
 
             unit.SetTractorSources(true);
             Assert.IsFalse(
                 view.Renderer.GetComponentsInChildren<Transform>(true)
                     .Any(item => item.name == "Lock")
             );
-            for (int second = 0; second < 6; second++)
-                encounter.Advance(1000);
+            for (int frame = 0; frame < 120; frame++)
+                encounter.Advance(50);
 
+            Assert.Greater(gravityRequests, 0);
             MeshRenderer[] loops = view
                 .Renderer.GetComponentsInChildren<MeshRenderer>(true)
                 .Where(renderer => renderer.name == "Lock")
@@ -1218,11 +1221,15 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 pack,
                 new UserVideoSettings { ShowPyro = false }
             );
-            encounter.GetUnit("ALCS008").SetTractorSources(true);
+            TacticalCombatUnit unit = encounter.GetUnit("ALCS008");
+            int gravityRequests = 0;
+            unit.GravityWellPresentationRequested += () => gravityRequests++;
+            unit.SetTractorSources(true);
 
-            for (int second = 0; second < 6; second++)
-                encounter.Advance(1000);
+            for (int frame = 0; frame < 120; frame++)
+                encounter.Advance(50);
 
+            Assert.Greater(gravityRequests, 0);
             Assert.IsFalse(
                 view.Renderer.GetComponentsInChildren<Transform>(true)
                     .Any(item => item.name == "Lock")
@@ -1496,6 +1503,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         /// <param name="fighterCategory">The fighter group's authored category, or four for an uncategorized group.</param>
         /// <param name="allCapitalsPlayer">Whether all capitals belong to the player for multiple-category ownership tests.</param>
         /// <param name="playerSide">The side whose faction artwork and controls are presented.</param>
+        /// <param name="gravityWell">The generator flag override, or null to keep each roster entry's configured value.</param>
         /// <returns>The isolated encounter.</returns>
         private static TacticalCombatSession CreateEncounter(
             GameDataCatalog catalog,

@@ -421,6 +421,7 @@ internal sealed class TacticalCombatImpactEffects : IDisposable
         /// <param name="unit">The moving effect owner.</param>
         /// <param name="parent">The encounter's coordinate frame.</param>
         /// <param name="camera">The battle camera.</param>
+        /// <param name="animations">The encounter's authored impact and lock animations.</param>
         public void Advance(
             float seconds,
             TacticalCombatUnit unit,

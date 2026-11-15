@@ -56,8 +56,8 @@ BUILD_TARGET=StandaloneWindows64 BUILD_PLAYER_PATH=build/rebellion2.exe ./build.
 ## Tactical space combat
 
 The battle alert opens manual combat in a single-player session when the selected content pack
-supplies tactical definitions for both factions and every participating unit. The campaign stays suspended while the encounter
-runs. Closing a completed encounter applies its losses, component damage, fighter recovery, and
+supplies tactical definitions for both factions and every participating unit. The campaign stays
+suspended while the encounter runs. Closing a completed encounter applies its losses, component damage, fighter recovery, and
 withdrawals through the shared combat-result pipeline. Surviving fighters without a carrier may
 remain at the encounter planet without changing its surface ownership or colonization.
 
@@ -81,8 +81,9 @@ instances and audio handles.
 A pack selects its definition XML with `TacticalCombatDefinitionsPath` in `pack.xml`. It contains
 faction deployment, unit geometry and model detail paths, fighter images, environments, sound
 variants, impact sequences, looping tractor/gravity indicators, retreat settings, and component-repair
-intervals. Paths resolve through the pack's existing file resolver. Keep these assets in the private media checkout and copy them
-into the ignored development content directory before rebuilding the UI or running tests.
+intervals. Paths resolve through the pack's existing file resolver. Keep these assets in the private
+media checkout and copy them into the ignored development content directory before rebuilding the
+UI or running tests.
 
 Keep tactical models, fighter sprites, and palette textures beside the unit's existing artwork.
 Shared planet backgrounds belong in `Shared/Planets`; HUD images use the existing shared and
