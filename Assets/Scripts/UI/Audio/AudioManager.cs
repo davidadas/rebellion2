@@ -791,11 +791,21 @@ public sealed class AudioManager : MonoBehaviour
     /// </summary>
     private void StopFadeOut()
     {
+        ClearMusicInterruption();
         if (_fadeOutCoroutine == null)
             return;
 
         StopCoroutine(_fadeOutCoroutine);
         _fadeOutCoroutine = null;
+    }
+
+    /// <summary>
+    /// Discards any pending lifecycle resume so an explicit playback transition remains final.
+    /// </summary>
+    private void ClearMusicInterruption()
+    {
+        _resumeMusicOnNextUpdate = false;
+        _musicInterruption.Clear();
     }
 
     /// <summary>
@@ -1028,8 +1038,7 @@ public sealed class AudioManager : MonoBehaviour
 
         _musicPlaybackActive = false;
         _lastKnownMusicTimeSamples = 0;
-        _resumeMusicOnNextUpdate = false;
-        _musicInterruption.Clear();
+        ClearMusicInterruption();
         _musicClipLoad = null;
     }
 
@@ -1057,6 +1066,7 @@ public sealed class AudioManager : MonoBehaviour
         {
             source.Stop();
             _musicPlaybackActive = false;
+            ClearMusicInterruption();
             ApplyVolumes();
             _fadeOutCoroutine = null;
             yield break;
@@ -1074,6 +1084,7 @@ public sealed class AudioManager : MonoBehaviour
 
         source.Stop();
         _musicPlaybackActive = false;
+        ClearMusicInterruption();
         ApplyVolumes();
         _fadeOutCoroutine = null;
     }
