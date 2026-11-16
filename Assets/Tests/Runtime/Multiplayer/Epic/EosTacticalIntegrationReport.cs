@@ -18,6 +18,8 @@ namespace Rebellion.Tests.MultiplayerIntegration
         public string localUserID;
         public string battleID;
         public string campaignFingerprint;
+        public string pausedStateFingerprint;
+        public string orderedEffectDigest;
         public string errorType;
         public string errorStack;
         public string cleanupErrorType;
@@ -41,6 +43,15 @@ namespace Rebellion.Tests.MultiplayerIntegration
         public bool manualControlVerified;
         public bool localOrdersObserved;
         public bool remoteOrdersObserved;
+        public bool localTargetObserved;
+        public bool remoteTargetObserved;
+        public bool pauseRequested;
+        public bool sharedPauseObserved;
+        public bool opponentInspectionVerified;
+        public bool pauseCheckReady;
+        public bool pauseCheckComplete;
+        public bool resumeRequested;
+        public bool sharedResumeObserved;
         public bool hullDamageObserved;
         public bool completionAgreed;
         public bool dayBarrierVerified;
@@ -62,6 +73,9 @@ namespace Rebellion.Tests.MultiplayerIntegration
         public int fighterShots;
         public int impacts;
         public int destructions;
+        public int withdrawals;
+        public int recoveries;
+        public int pausedSystemTime;
         public int results;
         public int coordinatorResults;
         public int completedTicks;

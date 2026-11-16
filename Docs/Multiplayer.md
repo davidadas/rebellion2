@@ -103,6 +103,18 @@ Use `-eosTacticalCapitalsPerSide 1 -eosTacticalSquadronsPerSide 2` for the small
 must request the same roster and relay policy. Authored unit statistics and carrier capacities are
 retained. `-eosTacticalDeadlineSeconds` bounds wall-clock duration between 30 and 1800 seconds.
 
+Both fleet cases first exercise the same shared control check. Each faction must visibly retain
+accepted enemy targets for capital ships and deployed fighters, together with its distinct formation.
+The guest then requests the regular shared tactical pause. While paused, both players inspect an
+opponent and verify that inspection grants no command ownership. They independently fingerprint
+public unit and group state at the same frozen system time, excluding local selection, audio, and
+interpolated presentation. Both reports must publish matching validated evidence before the host
+requests resume. Each player must observe resumed combat before completing the case. Campaign speed
+controls are not used to alter tactical simulation.
+The role-specific `host-paused-state.json` and `guest-paused-state.json` sidecars retain the exact
+named comparison input once, including floating-point bit patterns, so a mismatched field can be
+diagnosed without relaxing the fingerprint assertion.
+
 With no withdrawal option, the battle must finish through normal combat. To exercise a deliberate
 human retreat in the large fleet case, pass `-eosTacticalGuestWithdrawalAtSystemTime 300` to both
 processes. Only the guest confirms withdrawal, once authoritative state has reached that system
@@ -124,3 +136,6 @@ authentication and launch, both participants' authenticated orders, capital and 
 impacts and hull damage, one agreed battle result and campaign-day resumption, matching terminal
 campaign fingerprints and effects, and completed connection cleanup. This verifies live service and
 transport behavior without opening game windows; it does not measure rendered frame rate.
+Reliable shot, impact, destruction, withdrawal, and fighter-recovery callbacks must match in count
+and in a streaming SHA256 digest of their ordered identities and lossless transported payloads.
+Matching counts alone do not satisfy the event comparison.

@@ -35,6 +35,8 @@ namespace Rebellion.Tests.MultiplayerIntegration
         private Task<PlayerRequestOutcome> _dayFence;
         private IEnumerator _tick;
         private GameResultPipeline _resultPipeline;
+        private EosTacticalCombatEvidence _evidence;
+        private EosTacticalIntegrationReport _peerReport;
         private double _nextSearch;
         private double _nextReport;
         private double _nextOrders;
@@ -46,6 +48,10 @@ namespace Rebellion.Tests.MultiplayerIntegration
         private bool _outcomePublished;
         private bool _finished;
         private bool _speedRequested;
+        private bool _inspectionRequested;
+        private bool _pauseReadyPublished;
+        private bool _pauseCheckPublished;
+        private bool _targetsPublished;
         private EosTacticalRouteObserver _route;
         private string _state;
 
@@ -556,10 +562,13 @@ namespace Rebellion.Tests.MultiplayerIntegration
                     "The admitted campaign must bind both factions to real human controllers."
                 );
                 _report.humanControllersVerified = true;
+                _evidence = new EosTacticalCombatEvidence();
                 session.NetworkCommandRequested += HandleCommand;
                 session.ShotFired += HandleShot;
                 session.ImpactApplied += HandleImpact;
                 session.UnitDestroyed += HandleDestroyed;
+                session.UnitWithdrawn += HandleWithdrawn;
+                session.FighterRecovered += HandleRecovered;
                 driver.Prepare(new Arrival());
                 _state = "combat";
                 SetPhase("combat");
@@ -599,10 +608,12 @@ namespace Rebellion.Tests.MultiplayerIntegration
             );
             _report.manualControlVerified = true;
             ObserveOrders(session);
+            AdvanceControlCheck(session);
             ObserveGuestWithdrawal(session);
             TryRequestGuestWithdrawal(session);
             if (
                 !session.IsArriving
+                && !session.IsPaused
                 && !session.IsComplete
                 && !session.GetSide(session.PlayerSide).IsWithdrawing
                 && !_withdrawalAttempted
@@ -617,6 +628,14 @@ namespace Rebellion.Tests.MultiplayerIntegration
             if (!_driver.CompletionReady)
                 return;
             _report.completionAgreed = true;
+            _report.orderedEffectDigest = _evidence.Complete();
+            Require(
+                _report.pauseCheckComplete
+                    && _report.sharedResumeObserved
+                    && _report.localTargetObserved
+                    && _report.remoteTargetObserved,
+                "Both players must verify shared pause, target ownership, and resumed combat."
+            );
             if (_options.GuestWithdrawalAtSystemTime > 0)
                 Require(
                     _report.guestWithdrawalObserved,
@@ -655,6 +674,153 @@ namespace Rebellion.Tests.MultiplayerIntegration
         }
 
         /// <summary>
+        /// Exercises authenticated targeting and shared pause while comparing independently observed frozen state.
+        /// </summary>
+        /// <param name="session">The authoritative-frame-backed local combat view.</param>
+        private void AdvanceControlCheck(TacticalCombatSession session)
+        {
+            if (_report.pauseCheckComplete && !session.IsPaused)
+            {
+                _report.sharedResumeObserved = true;
+                return;
+            }
+            bool targetsAccepted =
+                HasEnemyTargets(session, session.PlayerSide)
+                && HasEnemyTargets(
+                    session,
+                    session.PlayerSide == CombatSide.Attacker
+                        ? CombatSide.Defender
+                        : CombatSide.Attacker
+                );
+            if (
+                _options.Role == "guest"
+                && !_report.pauseRequested
+                && !session.IsArriving
+                && !session.IsComplete
+                && targetsAccepted
+                && _report.localOrdersObserved
+                && _report.remoteOrdersObserved
+                && _targetsPublished
+                && _peerReport?.localOrdersObserved == true
+                && _peerReport.remoteOrdersObserved
+                && _peerReport.localTargetObserved
+                && _peerReport.remoteTargetObserved
+            )
+            {
+                _report.pauseRequested = true;
+                session.IsPaused = true;
+                SetPhase("combat-control-check");
+            }
+            bool pauseRequested =
+                _options.Role == "guest"
+                    ? _report.pauseRequested
+                    : _peerReport?.pauseRequested == true;
+            if (!pauseRequested)
+                return;
+            if (!session.IsPaused || session.PendingAttackRunMovie != null)
+                return;
+            _report.sharedPauseObserved = true;
+            if (!_inspectionRequested)
+            {
+                TacticalCombatUnit enemy = session.Units.First(unit =>
+                    unit.Side != session.PlayerSide && unit.IsTargetable
+                );
+                session.Selection.QueueClear();
+                session.Selection.QueueObject(enemy);
+                _inspectionRequested = true;
+                return;
+            }
+            if (!_report.pauseCheckReady)
+            {
+                TacticalCombatSelection selection = session.Selection;
+                if (selection.Kind != TacticalCombatSelectionKind.EnemyInspection)
+                    return;
+                Require(
+                    selection.PrimaryUnit != null
+                        && selection.PrimaryUnit.Side != session.PlayerSide
+                        && !selection.CanIssueCommands,
+                    "Opponent inspection must never grant command ownership."
+                );
+                Require(
+                    targetsAccepted,
+                    "Both factions must retain accepted capital and fighter enemy targets while paused."
+                );
+                _report.opponentInspectionVerified = true;
+                _report.pausedSystemTime = session.SystemTime;
+                _report.pausedStateFingerprint = EosTacticalCombatEvidence.CapturePausedState(
+                    session,
+                    Path.Combine(_options.ReportDirectory, _options.Role + "-paused-state.json")
+                );
+                _report.pauseCheckReady = true;
+                Publish();
+            }
+            if (!_pauseReadyPublished || _peerReport?.pauseCheckReady != true)
+                return;
+            Require(
+                session.SystemTime == _report.pausedSystemTime
+                    && _peerReport.pausedSystemTime == _report.pausedSystemTime
+                    && _peerReport.pausedStateFingerprint == _report.pausedStateFingerprint,
+                "The paused peers must observe identical public state at the same frozen system time."
+            );
+            Require(
+                _peerReport.sharedPauseObserved
+                    && _peerReport.opponentInspectionVerified
+                    && _peerReport.localTargetObserved
+                    && _peerReport.remoteTargetObserved,
+                "The counterpart must independently verify pause, target acceptance, and opponent inspection."
+            );
+            if (!_report.pauseCheckComplete)
+            {
+                _report.pauseCheckComplete = true;
+                Publish();
+            }
+            if (
+                _options.Role == "host"
+                && _pauseCheckPublished
+                && _peerReport.pauseCheckComplete
+                && !_report.resumeRequested
+            )
+            {
+                _report.resumeRequested = true;
+                session.IsPaused = false;
+                Publish();
+            }
+        }
+
+        /// <summary>
+        /// Requires accepted enemy targets for both a capital group and a deployed fighter group of one side.
+        /// </summary>
+        /// <param name="session">The locally observed battle.</param>
+        /// <param name="side">The authenticated group owner.</param>
+        /// <returns>Whether both group kinds retain an applied or requested valid enemy target.</returns>
+        private static bool HasEnemyTargets(TacticalCombatSession session, CombatSide side)
+        {
+            bool capitals = false;
+            bool fighters = false;
+            for (int category = 0; category < 12; category++)
+            {
+                TacticalCombatGroup group =
+                    category < 8
+                        ? session.GetObjectGroup(side, category)
+                        : session.GetFighterGroup(side, category - 8);
+                if (
+                    group?.Side != side
+                    || group.RequestedMembers.Any(unit => unit.IsTargetable) != true
+                    || group.RequestedMembers.Any(unit => unit.Side != side)
+                    || !group
+                        .Targets.Concat(group.RequestedTargets)
+                        .Any(unit => unit.Side != side && unit.IsTargetable)
+                )
+                    continue;
+                if (group.IsFighterGroup)
+                    fighters = true;
+                else
+                    capitals = true;
+            }
+            return capitals && fighters;
+        }
+
+        /// <summary>
         /// Submits one explicitly requested guest retreat through the same prepare and confirm operations as the combat view.
         /// </summary>
         /// <param name="session">The authoritative-frame-backed local combat view.</param>
@@ -662,6 +828,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
         {
             if (
                 _options.Role != "guest"
+                || !_report.sharedResumeObserved
                 || _options.GuestWithdrawalAtSystemTime == 0
                 || _withdrawalAttempted
                 || session.IsArriving
@@ -836,6 +1003,10 @@ namespace Rebellion.Tests.MultiplayerIntegration
                 && group.Side == other
                 && group.RequestedFormation == otherFormation
             );
+            _report.localTargetObserved =
+                _report.localTargetObserved || HasEnemyTargets(session, session.PlayerSide);
+            _report.remoteTargetObserved =
+                _report.remoteTargetObserved || HasEnemyTargets(session, other);
         }
 
         /// <summary>
@@ -852,7 +1023,11 @@ namespace Rebellion.Tests.MultiplayerIntegration
                     && peer.dayBarrierVerified
                     && peer.humanControllersVerified
                     && peer.authoritativeStateObserved
-                    && peer.manualControlVerified,
+                    && peer.manualControlVerified
+                    && peer.localTargetObserved
+                    && peer.remoteTargetObserved
+                    && peer.pauseCheckComplete
+                    && peer.sharedResumeObserved,
                 "The other real participant did not reach final protocol agreement."
             );
             Require(
@@ -866,8 +1041,11 @@ namespace Rebellion.Tests.MultiplayerIntegration
             Require(
                 peer.shots == _report.shots
                     && peer.impacts == _report.impacts
-                    && peer.destructions == _report.destructions,
-                "Reliable battle firing, impact, or unit-destruction effects were lost or replayed."
+                    && peer.destructions == _report.destructions
+                    && peer.withdrawals == _report.withdrawals
+                    && peer.recoveries == _report.recoveries
+                    && peer.orderedEffectDigest == _report.orderedEffectDigest,
+                "Reliable battle events must match in count, order, identity, and lossless payload."
             );
             Require(
                 peer.results == 1
@@ -933,6 +1111,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
         /// <param name="shot">The real discharged or projected shot.</param>
         private void HandleShot(TacticalCombatShot shot)
         {
+            _evidence.RecordShot(shot);
             _report.shots++;
             if (shot.Source.IsFighter)
                 _report.fighterShots++;
@@ -950,13 +1129,41 @@ namespace Rebellion.Tests.MultiplayerIntegration
             TacticalCombatUnit unit,
             TacticalWeaponType weapon,
             TacticalCombatImpactKind impact
-        ) => _report.impacts++;
+        )
+        {
+            _evidence.RecordImpact(unit, weapon, impact);
+            _report.impacts++;
+        }
 
         /// <summary>
         /// Counts actual destruction callbacks without changing unit state.
         /// </summary>
         /// <param name="unit">The naturally destroyed unit.</param>
-        private void HandleDestroyed(TacticalCombatUnit unit) => _report.destructions++;
+        private void HandleDestroyed(TacticalCombatUnit unit)
+        {
+            _evidence.RecordUnit(TacticalCombatNetworkEffectKind.Destroyed, unit);
+            _report.destructions++;
+        }
+
+        /// <summary>
+        /// Records the reliable withdrawal identity and its position in the common event stream.
+        /// </summary>
+        /// <param name="unit">The naturally departing participant.</param>
+        private void HandleWithdrawn(TacticalCombatUnit unit)
+        {
+            _evidence.RecordUnit(TacticalCombatNetworkEffectKind.Withdrawn, unit);
+            _report.withdrawals++;
+        }
+
+        /// <summary>
+        /// Records the reliable fighter recovery identity and its position in the common event stream.
+        /// </summary>
+        /// <param name="unit">The recovered fighter squadron.</param>
+        private void HandleRecovered(TacticalCombatUnit unit)
+        {
+            _evidence.RecordUnit(TacticalCombatNetworkEffectKind.Recovered, unit);
+            _report.recoveries++;
+        }
 
         /// <summary>
         /// Counts the coordinator's already committed campaign-result notification.
@@ -1030,6 +1237,13 @@ namespace Rebellion.Tests.MultiplayerIntegration
                 // A report consumer can briefly prevent replacement; the next Update retries.
                 return false;
             }
+            _pauseReadyPublished |= _report.pauseCheckReady;
+            _pauseCheckPublished |= _report.pauseCheckComplete;
+            _targetsPublished |=
+                _report.localOrdersObserved
+                && _report.remoteOrdersObserved
+                && _report.localTargetObserved
+                && _report.remoteTargetObserved;
             return true;
         }
 
@@ -1073,6 +1287,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
                 string.IsNullOrEmpty(report.errorType),
                 "The other real participant reported an integration failure."
             );
+            _peerReport = report;
             if (
                 _options.Role == "host"
                 && _options.GuestWithdrawalAtSystemTime > 0
@@ -1186,7 +1401,11 @@ namespace Rebellion.Tests.MultiplayerIntegration
                 _driver.Session.ShotFired -= HandleShot;
                 _driver.Session.ImpactApplied -= HandleImpact;
                 _driver.Session.UnitDestroyed -= HandleDestroyed;
+                _driver.Session.UnitWithdrawn -= HandleWithdrawn;
+                _driver.Session.FighterRecovered -= HandleRecovered;
             }
+            _evidence?.Dispose();
+            _evidence = null;
             _coordinator?.Disconnect();
             (_tick as IDisposable)?.Dispose();
             _tick = null;
