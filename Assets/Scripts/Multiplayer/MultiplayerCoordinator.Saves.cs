@@ -363,24 +363,15 @@ namespace Rebellion.Multiplayer
                 );
                 publication = runtime.SaveGameLocallyAsync(fileName, command.displayName);
             }
-            byte[] metadataPayload = MultiplayerSnapshotCodec.Serialize(
-                typeof(GameMetadata),
-                current.Metadata
+            return await MultiplayerSaveCheckpointPublication.CompleteHostSaveAsync(
+                command,
+                current.Metadata,
+                publication,
+                () =>
+                    ReferenceEquals(_sessionManager, runtime)
+                    && ReferenceEquals(_saveProtocol, owner),
+                cancellationToken
             );
-            if (!await publication)
-                throw new InvalidOperationException(
-                    command.automatic
-                        ? "The scheduled automatic checkpoint was not written."
-                        : "The host checkpoint was not at a writable boundary."
-                );
-            cancellationToken.ThrowIfCancellationRequested();
-            if (
-                !ReferenceEquals(_sessionManager, runtime) || !ReferenceEquals(_saveProtocol, owner)
-            )
-                throw new OperationCanceledException(
-                    "The outgoing connection no longer owns this checkpoint."
-                );
-            return new MultiplayerSaveCheckpoint { Command = command, Payload = metadataPayload };
         }
 
         /// <summary>
