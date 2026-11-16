@@ -2,6 +2,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
+using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
@@ -41,6 +42,8 @@ namespace Rebellion.Game.PlayerRequests
         ToggleManufacturingReservation,
         SendPeerChat,
         RespondToSpeed,
+        BeginTacticalCombat,
+        CompleteTacticalCombat,
     }
 
     /// <summary>
@@ -281,6 +284,31 @@ namespace Rebellion.Game.PlayerRequests
         public string PlanetID { get; set; }
         public int Tick { get; set; }
         public bool Retreat { get; set; }
+    }
+
+    /// <summary>
+    /// Takes command of a displayed encounter using an identity and entry seeds assigned by the host.
+    /// </summary>
+    public sealed class BeginTacticalCombatRequest : PlayerRequest
+    {
+        public override PlayerRequestKind Kind => PlayerRequestKind.BeginTacticalCombat;
+        public string PlanetID { get; set; }
+        public int Tick { get; set; }
+        public string BattleID { get; set; }
+        public uint Seed { get; set; }
+        public int ScenerySeed { get; set; }
+    }
+
+    /// <summary>
+    /// Commits the host's completed manual encounter through ordered campaign request replay.
+    /// </summary>
+    public sealed class CompleteTacticalCombatRequest : PlayerRequest
+    {
+        public override PlayerRequestKind Kind => PlayerRequestKind.CompleteTacticalCombat;
+        public string PlanetID { get; set; }
+        public int Tick { get; set; }
+        public string BattleID { get; set; }
+        public TacticalCombatOutcome Outcome { get; set; }
     }
 
     /// <summary>

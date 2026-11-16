@@ -3,6 +3,15 @@ name: Resolve media revision
 on:
   workflow_call:
     inputs:
+      checkout_ref:
+        type: string
+        required: true
+      expected_base_sha:
+        type: string
+        default: ''
+      expected_head_sha:
+        type: string
+        default: ''
       branch:
         type: string
         default: ''
@@ -24,6 +33,44 @@ jobs:
       sha: ${{ steps.resolve.outputs.sha }}
 
     steps:
+      - name: Checkout trusted media resolver
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+          sparse-checkout: Tools/resolve_media_revision.py
+          sparse-checkout-cone-mode: false
+          path: .ci/workflow-tools
+
+      - name: Checkout tested media pin
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.checkout_ref }}
+          persist-credentials: false
+          sparse-checkout: .github/media-revision
+          sparse-checkout-cone-mode: false
+          path: .ci/source-metadata
+
+      - name: Verify tested merge revision
+        if: inputs.expected_head_sha != ''
+        working-directory: .ci/source-metadata
+        env:
+          EXPECTED_BASE_SHA: ${{ inputs.expected_base_sha }}
+          EXPECTED_HEAD_SHA: ${{ inputs.expected_head_sha }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$EXPECTED_BASE_SHA" =~ ^[a-f0-9]{40}$ ]] ||
+             [[ ! "$EXPECTED_HEAD_SHA" =~ ^[a-f0-9]{40}$ ]]; then
+            echo "Exact base and head revisions are required."
+            exit 1
+          fi
+          parents="$(git show --no-patch --format=%P HEAD)"
+          if [[ " $parents " != *" $EXPECTED_BASE_SHA "* ]] ||
+             [[ " $parents " != *" $EXPECTED_HEAD_SHA "* ]]; then
+            echo "The tested media revision is not the approved pull request merge."
+            exit 1
+          fi
+
       - name: Checkout media metadata
         uses: actions/checkout@v4
         with:
@@ -38,22 +85,8 @@ jobs:
         env:
           PULL_REQUEST_BRANCH: ${{ inputs.branch }}
         run: |
-          revision="main"
-          if [ -n "$PULL_REQUEST_BRANCH" ]; then
-            for candidate in "$PULL_REQUEST_BRANCH" "$PULL_REQUEST_BRANCH-media"; do
-              if git -C .ci/rebellion2-media ls-remote --exit-code --heads origin \
-                "refs/heads/$candidate" >/dev/null; then
-                revision="$candidate"
-                break
-              fi
-            done
-          fi
-          sha="$(git -C .ci/rebellion2-media ls-remote origin "refs/heads/$revision" | awk 'NR == 1 { print $1 }')"
-          if [ -z "$sha" ]; then
-            echo "Could not resolve rebellion2-media revision: $revision"
-            exit 1
-          fi
-          echo "Using rebellion2-media revision: $revision"
-          echo "Using rebellion2-media commit: $sha"
-          echo "revision=$revision" >> "$GITHUB_OUTPUT"
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          python3 .ci/workflow-tools/Tools/resolve_media_revision.py \
+            --source-root .ci/source-metadata \
+            --media-checkout .ci/rebellion2-media \
+            --branch "$PULL_REQUEST_BRANCH" | tee -a "$GITHUB_OUTPUT"

@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
+using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
@@ -39,6 +40,7 @@ namespace Rebellion.Game
 
         // Scene graph.
         private GalaxyMap _galaxy;
+        private readonly SpaceCombatEntryTracker _spaceCombatEntries = new();
 
         /// <summary>
         /// Reports an officer whose retained discovery state has just become enabled.
@@ -295,6 +297,20 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Binds authored combat faction indexes without changing retained planet entry values.
+        /// </summary>
+        /// <param name="definition">The active content pack's combat definitions.</param>
+        internal void ConfigureSpaceCombatEntries(TacticalCombatDefinition definition) =>
+            _spaceCombatEntries.Configure(definition.Factions);
+
+        /// <summary>
+        /// Commits combat presence after related containment and transit changes are complete.
+        /// </summary>
+        /// <returns>A scope that commits the final state of this scene update.</returns>
+        internal SpaceCombatEntryTracker.UpdateScope BeginSceneUpdate() =>
+            _spaceCombatEntries.BeginUpdate();
+
+        /// <summary>
         /// Gets the game configuration.
         /// Throws if config not set (caller forgot to inject).
         /// </summary>
@@ -532,6 +548,7 @@ namespace Rebellion.Game
         /// <param name="node">The subtree root to delete.</param>
         public void DeleteNode(ISceneNode node)
         {
+            using SpaceCombatEntryTracker.UpdateScope update = BeginSceneUpdate();
             if (node == null)
                 throw new ArgumentNullException(nameof(node));
             if (node.GetParent() == null)
@@ -579,6 +596,7 @@ namespace Rebellion.Game
         /// </param>
         public void ChangeOwnership(ISceneNode node, string ownerInstanceId)
         {
+            using SpaceCombatEntryTracker.UpdateScope update = BeginSceneUpdate();
             if (node == null)
                 throw new ArgumentNullException(nameof(node));
 
@@ -624,6 +642,7 @@ namespace Rebellion.Game
         /// <exception cref="SceneAccessException">Thrown when the node is not allowed to be attached.</exception>
         public void AttachNode(ISceneNode node, ISceneNode parent)
         {
+            using SpaceCombatEntryTracker.UpdateScope update = BeginSceneUpdate();
             // If the node already has a parent, throw an exception.
             if (node.GetParent() != null)
             {
@@ -652,6 +671,7 @@ namespace Rebellion.Game
         /// <exception cref="SceneAccessException">Thrown when the node is not allowed to be detached.</exception>
         public void DetachNode(ISceneNode node)
         {
+            using SpaceCombatEntryTracker.UpdateScope update = BeginSceneUpdate();
             if (node.GetParent() == null)
             {
                 throw new InvalidOperationException(
@@ -683,6 +703,7 @@ namespace Rebellion.Game
         /// <exception cref="InvalidOperationException">Thrown when the destination rejects the node.</exception>
         public void MoveNode(ISceneNode node, ISceneNode newParent)
         {
+            using SpaceCombatEntryTracker.UpdateScope update = BeginSceneUpdate();
             if (node == null)
                 throw new ArgumentNullException(nameof(node));
             if (newParent == null)
@@ -722,6 +743,109 @@ namespace Rebellion.Game
             }
             if (UnitPresenceChanged != null)
                 UnitPresenceChanged(node, origin, GetContainingPlanet(node));
+        }
+
+        /// <summary>
+        /// Moves squadrons in input order after releasing all outgoing host berths.
+        /// </summary>
+        /// <param name="assignments">The distinct squadrons and their final planets or capital ships.</param>
+        /// <exception cref="ArgumentNullException">Thrown when the assignment list is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when an assignment is incomplete, repeated, or has an unsupported host.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when a squadron lacks a parent or a final destination rejects it.</exception>
+        public void MoveStarfighters(IReadOnlyList<StarfighterHostAssignment> assignments)
+        {
+            if (assignments == null)
+                throw new ArgumentNullException(nameof(assignments));
+            if (assignments.Count == 0)
+                return;
+
+            using SpaceCombatEntryTracker.UpdateScope update = BeginSceneUpdate();
+            List<StarfighterHostAssignment> changes = new(assignments.Count);
+            List<Planet> origins = UnitPresenceChanged == null ? null : new(assignments.Count);
+            HashSet<Starfighter> fighters = new();
+            Dictionary<ContainerNode, StarfighterRosterSnapshot> rosters = new();
+            foreach (StarfighterHostAssignment assignment in assignments)
+            {
+                Starfighter fighter = assignment.Fighter;
+                ContainerNode host = assignment.Host;
+                if (fighter == null || host == null || !fighters.Add(fighter))
+                    throw new ArgumentException(
+                        "Each squadron requires one final host.",
+                        nameof(assignments)
+                    );
+                ISceneNode previous = fighter.GetParent();
+                if (previous == null)
+                    throw new InvalidOperationException(
+                        "A squadron must have a host before relocation."
+                    );
+                if (ReferenceEquals(previous, host))
+                    continue;
+                if (previous is not ContainerNode oldHost)
+                    throw new ArgumentException(
+                        "A squadron's current host must be a planet or capital ship.",
+                        nameof(assignments)
+                    );
+                CaptureStarfighterRoster(oldHost, rosters);
+                CaptureStarfighterRoster(host, rosters);
+                changes.Add(assignment);
+                origins?.Add(GetContainingPlanet(fighter));
+            }
+
+            try
+            {
+                foreach (StarfighterHostAssignment assignment in changes)
+                    assignment.Fighter.GetParent().RemoveChild(assignment.Fighter);
+                foreach (StarfighterHostAssignment assignment in changes)
+                {
+                    if (!assignment.Host.CanAcceptChild(assignment.Fighter))
+                        throw new InvalidOperationException(
+                            "A final host cannot accept its squadron."
+                        );
+                    assignment.Host.AddChild(assignment.Fighter);
+                }
+            }
+            catch
+            {
+                foreach (StarfighterRosterSnapshot roster in rosters.Values)
+                    roster.Restore();
+                throw;
+            }
+
+            foreach (StarfighterHostAssignment assignment in changes)
+                assignment.Fighter.SetParent(assignment.Host);
+            if (origins != null)
+                for (int index = 0; index < changes.Count; index++)
+                    UnitPresenceChanged?.Invoke(
+                        changes[index].Fighter,
+                        origins[index],
+                        GetContainingPlanet(changes[index].Fighter)
+                    );
+        }
+
+        /// <summary>
+        /// Captures each affected host once before changing any squadron collection.
+        /// </summary>
+        /// <param name="host">The squadron host whose roster may change.</param>
+        /// <param name="rosters">The snapshots already captured for this update.</param>
+        private static void CaptureStarfighterRoster(
+            ContainerNode host,
+            Dictionary<ContainerNode, StarfighterRosterSnapshot> rosters
+        )
+        {
+            if (rosters.ContainsKey(host))
+                return;
+            rosters.Add(
+                host,
+                host switch
+                {
+                    CapitalShip ship => ship.CaptureStarfighterRoster(),
+                    Planet planet => planet.CaptureStarfighterRoster(),
+                    _ => throw new ArgumentException(
+                        "A squadron host must be a planet or capital ship.",
+                        nameof(host)
+                    ),
+                }
+            );
         }
 
         /// <summary>
@@ -946,6 +1070,7 @@ namespace Rebellion.Game
             }
             if (node is Officer registeredOfficer)
                 registeredOfficer.ReconcileForceDiscoveryState();
+            _spaceCombatEntries.Register(node);
         }
 
         /// <summary>
@@ -954,6 +1079,7 @@ namespace Rebellion.Game
         /// <param name="node">The scene node to deregister.</param>
         public void RemoveSceneNodeByInstanceID(ISceneNode node)
         {
+            _spaceCombatEntries.Unregister(node);
             NodesByInstanceID.Remove(node.InstanceID);
             if (node is Officer officer)
             {
@@ -993,6 +1119,7 @@ namespace Rebellion.Game
         /// </summary>
         public void RebuildSceneState()
         {
+            _spaceCombatEntries.Clear();
             foreach (Officer officer in _registeredOfficers)
                 officer.UnbindForceRuntime();
             NodesByInstanceID.Clear();
@@ -1023,6 +1150,9 @@ namespace Rebellion.Game
         /// <param name="root">The root.</param>
         private void InitializeSceneRoot(ISceneNode root)
         {
+            using SpaceCombatEntryTracker.UpdateScope update = _spaceCombatEntries.BeginUpdate(
+                restoring: true
+            );
             ((BaseSceneNode)root).TraverseIncludingDisabled(
                 (ISceneNode node) =>
                 {

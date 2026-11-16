@@ -23,6 +23,7 @@ public sealed class CutscenePlayer : MonoBehaviour
     private Action onFinished;
     private bool isEnding;
     private Color authoredScreenColor;
+    private CutsceneSkipInput skipInput;
 
     /// <summary>
     /// Applies the effective volume for video playback.
@@ -31,6 +32,15 @@ public sealed class CutscenePlayer : MonoBehaviour
     internal void SetVolume(float volume)
     {
         audioSource.volume = Mathf.Clamp01(volume);
+    }
+
+    /// <summary>
+    /// Selects the input gestures admitted while this video's controls own focus.
+    /// </summary>
+    /// <param name="input">The skip gestures admitted by the caller.</param>
+    internal void SetSkipInput(CutsceneSkipInput input)
+    {
+        skipInput = input;
     }
 
     /// <summary>
@@ -148,6 +158,8 @@ public sealed class CutscenePlayer : MonoBehaviour
     /// </returns>
     private bool IsSkipPressed()
     {
+        if (skipInput == CutsceneSkipInput.EscapeOrPrimaryPointer)
+            return Input.GetKey(KeyCode.Escape) || Input.GetMouseButton(0);
         return Input.anyKeyDown
             || Input.GetMouseButtonDown(0)
             || Input.GetMouseButtonDown(1)

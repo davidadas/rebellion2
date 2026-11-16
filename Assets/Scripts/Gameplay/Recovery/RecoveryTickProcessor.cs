@@ -233,7 +233,7 @@ namespace Rebellion.Gameplay
                 foreach (CapitalShip ship in GetArrivingShips(result?.Unit))
                 {
                     if (
-                        ship.IsDamaged()
+                        ship.CurrentHullStrength < ship.MaxHullStrength
                         && ship.ManufacturingStatus == ManufacturingStatus.Complete
                     )
                         shipArrivals[ship] = result.Tick;
@@ -377,44 +377,62 @@ namespace Rebellion.Gameplay
         )
         {
             List<CapitalShip> ships = game.GetSceneNodesByType<CapitalShip>();
-            if (
-                !ships.Any(ship =>
-                    ship.IsDamaged()
-                    && ship.ManufacturingStatus == ManufacturingStatus.Complete
-                    && ((IMovable)ship).GetTransitMovement() == null
-                )
-            )
+            if (!ships.Exists(CanRepairShip))
             {
                 foreach (CapitalShip ship in ships)
+                {
                     ship.ClearRepairSchedule();
+                    if (ship.IsDamaged())
+                    {
+                        ship.SystemDamage.RepairDueTick = 0;
+                        ship.SystemDamage.RepairInterval = 0;
+                    }
+                }
                 return;
             }
 
             shipyardLocations ??= RecoveryLocationRules.BuildShipyardIndex(game);
             foreach (CapitalShip ship in ships)
             {
-                if (
-                    !ship.IsDamaged()
-                    || ship.ManufacturingStatus != ManufacturingStatus.Complete
-                    || ((IMovable)ship).GetTransitMovement() != null
-                )
+                if (!CanRepairShip(ship))
                 {
                     ship.ClearRepairSchedule();
+                    if (ship.IsDamaged())
+                    {
+                        ship.SystemDamage.RepairDueTick = 0;
+                        ship.SystemDamage.RepairInterval = 0;
+                    }
                     continue;
                 }
 
-                int interval = ShipRecoveryRules.GetRepairInterval(game, ship, shipyardLocations);
-                if (ship.NextRepairTick <= 0 || ship.RepairIntervalTicks != interval)
-                {
-                    ship.ScheduleRepair(game.CurrentTick, interval);
-                    continue;
-                }
-
-                if (game.CurrentTick < ship.NextRepairTick)
-                    continue;
-
+                bool atShipyard = RecoveryLocationRules.HasFriendlyOperationalShipyard(
+                    ship,
+                    ship,
+                    shipyardLocations
+                );
                 int before = ship.CurrentHullStrength;
-                ship.RepairHull(ShipRecoveryRules.GetRepairAmount(ship));
+                if (ship.SystemDamage.Total > 0)
+                    RepairSystems(game, ship, atShipyard);
+                if (ship.CurrentHullStrength < ship.MaxHullStrength)
+                {
+                    int interval = ShipRecoveryRules.GetRepairInterval(
+                        game,
+                        ship,
+                        shipyardLocations
+                    );
+                    if (ship.NextRepairTick <= 0 || ship.RepairIntervalTicks != interval)
+                        ship.ScheduleRepair(game.CurrentTick, interval);
+                    else if (game.CurrentTick >= ship.NextRepairTick)
+                    {
+                        ship.RepairHull(ShipRecoveryRules.GetRepairAmount(ship));
+                        if (ship.CurrentHullStrength < ship.MaxHullStrength)
+                            ship.ScheduleRepair(game.CurrentTick, interval);
+                        else
+                            ship.ClearRepairSchedule();
+                    }
+                }
+                else
+                    ship.ClearRepairSchedule();
 
                 if (!ship.IsDamaged())
                 {
@@ -429,10 +447,45 @@ namespace Rebellion.Gameplay
                         }
                     );
                 }
-                else
-                {
-                    ship.ScheduleRepair(game.CurrentTick, interval);
-                }
+            }
+        }
+
+        /// <summary>
+        /// Checks whether a damaged ship is complete and stationary before repair resources are resolved.
+        /// </summary>
+        /// <param name="ship">The ship being assessed.</param>
+        /// <returns>Whether hull or component repairs can advance this tick.</returns>
+        private static bool CanRepairShip(CapitalShip ship)
+        {
+            return ship.IsDamaged()
+                && ship.ManufacturingStatus == ManufacturingStatus.Complete
+                && ((IMovable)ship).GetTransitMovement() == null;
+        }
+
+        /// <summary>
+        /// Advances the ship's persistent repair timer and attempts one weighted component repair.
+        /// </summary>
+        /// <param name="game">The active campaign and random stream.</param>
+        /// <param name="ship">The damaged ship.</param>
+        /// <param name="atShipyard">Whether an operational friendly shipyard is available.</param>
+        private static void RepairSystems(GameRoot game, CapitalShip ship, bool atShipyard)
+        {
+            CapitalShipSystemDamage damage = ship.SystemDamage;
+            int interval = ship.GetSystemRepairInterval(atShipyard);
+            if (damage.RepairDueTick == 0 || damage.RepairInterval != interval)
+            {
+                damage.RepairInterval = interval;
+                damage.RepairDueTick = game.CurrentTick + interval;
+            }
+            if (game.CurrentTick < damage.RepairDueTick)
+                return;
+            damage.RepairDueTick = game.CurrentTick + interval;
+            if (game.Random.NextInt(1, 101) <= ship.DamageControl)
+                damage.RepairComponent(game.Random.NextInt(0, damage.Total));
+            if (damage.Total == 0)
+            {
+                damage.RepairDueTick = 0;
+                damage.RepairInterval = 0;
             }
         }
 

@@ -5,7 +5,9 @@ using System.Xml.Linq;
 using System.Xml.Schema;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
+using Rebellion.Util.Serialization;
 using UnityEngine;
 
 namespace Rebellion.Tests.Content
@@ -78,6 +80,54 @@ namespace Rebellion.Tests.Content
             + "<DetectionRatingMultiplier>1.375</DetectionRatingMultiplier>"
             + "<MaintenanceCapacityPercent>150</MaintenanceCapacityPercent>"
             + "</GameModifier></Value></Entry></DifficultyModifiers></GameConfig>";
+
+        [Test]
+        public void OpenActive_TacticalAssetAddresses_ResolveEveryDeclaredResource()
+        {
+            ContentPack pack = TestContent.Pack;
+            using MemoryStream serialized = new MemoryStream();
+            new GameSerializer(typeof(TacticalCombatDefinition)).Serialize(
+                serialized,
+                pack.GameData.TacticalCombat
+            );
+            serialized.Position = 0;
+            string[] addresses = XDocument
+                .Load(serialized)
+                .Descendants()
+                .Where(element => !element.HasElements)
+                .Select(element => element.Value)
+                .Where(address =>
+                    address.StartsWith("Pack/", StringComparison.Ordinal)
+                    || address.StartsWith("Application/", StringComparison.Ordinal)
+                )
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+
+            Assert.IsNotEmpty(addresses);
+            foreach (string address in addresses)
+                Assert.IsNotNull(
+                    pack.FileResolver.ResolveFile(address, ".png", ".glb", ".wav", ".mp4"),
+                    $"Missing tactical combat resource: {address}"
+                );
+        }
+
+        [Test]
+        public void OpenActive_TacticalRoster_ContainsEveryAuthoredShipAndFighter()
+        {
+            GameDataCatalog data = TestContent.Pack.GameData;
+            string[] authoredTypeIDs = data
+                .CapitalShips.Select(ship => ship.TypeID)
+                .Concat(data.Starfighters.Select(fighter => fighter.TypeID))
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            string[] tacticalTypeIDs = data
+                .TacticalCombat.Units.Select(unit => unit.UnitTypeID)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+
+            Assert.IsNotEmpty(authoredTypeIDs);
+            CollectionAssert.AreEquivalent(authoredTypeIDs, tacticalTypeIDs);
+        }
 
         /// <summary>
         /// Verifies that stock ship suppression is loaded independently from destruction capability.

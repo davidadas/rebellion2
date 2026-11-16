@@ -211,6 +211,56 @@ namespace Rebellion.Tests.Content
             StringAssert.Contains("travel-time percentage", exception.Message);
         }
 
+        [Test]
+        public void Constructor_SharedShipTemplates_DoesNotMutateRuntimeEquipmentBindings()
+        {
+            GameDataCatalog source = TestContent.Data;
+            CapitalShip template = source.CapitalShips.First(ship =>
+                source.TacticalCombat.Units.Any(unit =>
+                    unit.UnitTypeID == ship.TypeID && unit.BackupHyperdrive > 0
+                )
+            );
+            CapitalShip[] supplied = { template };
+            GameDataCatalog derived = new(
+                source.GameConfig,
+                source.GenerationConfig,
+                source.Factions,
+                source.PlanetSectors,
+                source.Buildings,
+                supplied,
+                source.Starfighters,
+                source.Regiments,
+                source.SpecialForces,
+                source.Officers,
+                source.GameEvents,
+                source.MessageDefinitions,
+                source.EncyclopediaEntries,
+                source.FactionThemes,
+                source.OfficerTraits
+            );
+            UnitFactory sourceFactory = new(
+                source.Buildings,
+                supplied,
+                source.Starfighters,
+                source.Regiments,
+                source.SpecialForces,
+                source.TacticalCombat
+            );
+            UnitFactory derivedFactory = new(
+                source.Buildings,
+                derived.CapitalShips,
+                source.Starfighters,
+                source.Regiments,
+                source.SpecialForces,
+                derived.TacticalCombat
+            );
+            CapitalShip captured = sourceFactory.Create<CapitalShip>(template.TypeID, "owner");
+            derivedFactory.Create<CapitalShip>(template.TypeID, "owner");
+            captured.SystemDamage.PrimaryHyperdrive = 1;
+            Assert.Greater(captured.GetOperationalHyperdrive(), 0);
+            Assert.AreSame(template, derived.CapitalShips[0]);
+        }
+
         /// <summary>
         /// Creates building.
         /// </summary>

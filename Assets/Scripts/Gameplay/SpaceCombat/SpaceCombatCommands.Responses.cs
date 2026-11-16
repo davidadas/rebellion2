@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -16,17 +17,20 @@ namespace Rebellion.Gameplay
         /// <param name="factionID">The authenticated responding faction.</param>
         /// <param name="retreat">Whether that faction chooses withdrawal.</param>
         /// <param name="results">The resolved results, or null while another human response is outstanding.</param>
+        /// <param name="takeCommand">Whether this explicit response selects manual tactical control.</param>
         /// <returns>Whether the response was valid for the pending encounter.</returns>
         internal bool TrySubmitResponse(
             string factionID,
             bool retreat,
-            out List<GameResult> results
+            out List<GameResult> results,
+            bool takeCommand = false
         )
         {
             results = null;
             SpaceCombatDecision decision = _pendingDecision;
             if (
                 decision == null
+                || _tacticalCombat != null
                 || (
                     factionID != decision.AttackerOwnerInstanceID
                     && factionID != decision.DefenderOwnerInstanceID
@@ -37,6 +41,9 @@ namespace Rebellion.Gameplay
             bool? previous = attacker
                 ? decision.AttackerRetreatResponse
                 : decision.DefenderRetreatResponse;
+            bool previousCommand = attacker
+                ? decision.AttackerTakeCommand
+                : decision.DefenderTakeCommand;
             if (retreat)
             {
                 PendingCombatResult pending = _queries.BuildPendingCombatResult(decision);
@@ -44,9 +51,15 @@ namespace Rebellion.Gameplay
                     return false;
             }
             if (attacker)
+            {
                 decision.AttackerRetreatResponse = retreat;
+                decision.AttackerTakeCommand = takeCommand;
+            }
             else
+            {
                 decision.DefenderRetreatResponse = retreat;
+                decision.DefenderTakeCommand = takeCommand;
+            }
             if (
                 (
                     RequiresHumanResponse(decision.AttackerOwnerInstanceID)
@@ -76,15 +89,70 @@ namespace Rebellion.Gameplay
                         ? decision.AttackerOwnerInstanceID
                         : decision.DefenderOwnerInstanceID
                 );
+            else if (decision.AttackerTakeCommand || decision.DefenderTakeCommand)
+            {
+                BeginNetworkTacticalCombat(
+                    decision.TacticalBattleID,
+                    decision.TacticalSeed,
+                    decision.TacticalScenerySeed
+                );
+                return true;
+            }
             else
                 results = ResolvePending(true);
             if (results != null)
                 return true;
             if (attacker)
+            {
                 decision.AttackerRetreatResponse = previous;
+                decision.AttackerTakeCommand = previousCommand;
+            }
             else
+            {
                 decision.DefenderRetreatResponse = previous;
+                decision.DefenderTakeCommand = previousCommand;
+            }
             return false;
+        }
+
+        /// <summary>
+        /// Records a manual preference through the same participant response barrier as automatic combat and retreat.
+        /// </summary>
+        /// <param name="factionID">The authenticated participant taking command.</param>
+        /// <param name="battleID">The host-issued identity of the first manual response.</param>
+        /// <param name="seed">The host-issued battle seed.</param>
+        /// <param name="scenerySeed">The host-issued scenery seed.</param>
+        /// <param name="results">The resolved withdrawal result, or null while waiting or entering manual combat.</param>
+        /// <returns>Whether this pending encounter admitted the manual response.</returns>
+        internal bool TrySubmitTacticalResponse(
+            string factionID,
+            string battleID,
+            uint seed,
+            int scenerySeed,
+            out List<GameResult> results
+        )
+        {
+            results = null;
+            if (
+                _game.Metadata?.IsMultiplayer != true
+                || !Guid.TryParseExact(battleID, "N", out _)
+                || _tacticalCombat != null
+                || !CanTakeCommand
+                || factionID != _pendingDecision.AttackerOwnerInstanceID
+                    && factionID != _pendingDecision.DefenderOwnerInstanceID
+            )
+                return false;
+            SpaceCombatDecision decision = _pendingDecision;
+            if (
+                string.IsNullOrEmpty(decision.TacticalBattleID)
+                || !decision.AttackerTakeCommand && !decision.DefenderTakeCommand
+            )
+            {
+                decision.TacticalBattleID = battleID;
+                decision.TacticalSeed = seed;
+                decision.TacticalScenerySeed = scenerySeed;
+            }
+            return TrySubmitResponse(factionID, false, out results, takeCommand: true);
         }
 
         /// <summary>

@@ -1,0 +1,81 @@
+name: Native vector math
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Native math (${{ matrix.target }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            target: win-x64
+          - runner: ubuntu-22.04
+            target: linux-x64
+          - runner: macos-15
+            target: osx
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - uses: msys2/setup-msys2@v2
+        if: runner.os == 'Windows'
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-make
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-python
+      - name: Build and verify Windows library
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: python Tools/build_tactical_math.py --build-directory native-build --output-directory native-output/TacticalMath --target win-x64
+      - name: Build and verify Unix library
+        if: runner.os != 'Windows'
+        run: python3 Tools/build_tactical_math.py --build-directory native-build --output-directory native-output/TacticalMath --target ${{ matrix.target }}
+      - name: Verify managed public geometry
+        run: dotnet test Native/TacticalMath/managed-tests/TacticalMath.ManagedTests.csproj -p:NativeTarget=${{ matrix.target }} -p:NativeRoot=${{ github.workspace }}/native-output/TacticalMath --verbosity minimal
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tactical-math-${{ matrix.target }}
+          path: native-output/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'macOS'
+        with:
+          name: tactical-math-osx-contracts
+          path: native-build/TacticalMathContracts
+          if-no-files-found: error
+
+  verify-macos-intel:
+    name: Verify universal library on Intel macOS
+    needs: build
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - uses: actions/download-artifact@v4
+        with:
+          name: tactical-math-osx
+          path: native-output
+      - uses: actions/download-artifact@v4
+        with:
+          name: tactical-math-osx-contracts
+          path: native-output/TacticalMath/osx
+      - name: Verify the same universal binary on Intel
+        run: |
+          chmod +x native-output/TacticalMath/osx/TacticalMathContracts
+          native-output/TacticalMath/osx/TacticalMathContracts
+          dotnet test Native/TacticalMath/managed-tests/TacticalMath.ManagedTests.csproj -p:NativeTarget=osx -p:NativeRoot="$PWD/native-output/TacticalMath" --verbosity minimal

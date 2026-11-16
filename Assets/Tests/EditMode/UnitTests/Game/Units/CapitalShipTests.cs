@@ -43,6 +43,85 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void SerializeAndDeserialize_SystemDamage_PreservesLevelsAndRepairTimer()
+        {
+            _capitalShip.SystemDamage = new CapitalShipSystemDamage
+            {
+                Shields = 2,
+                Weapons = 3,
+                TractorBeam = 4,
+                Engines = 1,
+                PrimaryHyperdrive = 1,
+                BackupHyperdrive = 1,
+                RepairDueTick = 120,
+                RepairInterval = 30,
+            };
+            CapitalShip restored = SerializationHelper.Deserialize<CapitalShip>(
+                SerializationHelper.Serialize(_capitalShip)
+            );
+            Assert.AreEqual(12, restored.SystemDamage.Total);
+            Assert.AreEqual(120, restored.SystemDamage.RepairDueTick);
+            Assert.AreEqual(30, restored.SystemDamage.RepairInterval);
+        }
+
+        [Test]
+        public void SerializeAndDeserialize_LegacyShipWithoutSystemDamage_LoadsUndamagedSystems()
+        {
+            string xml = SerializationHelper.Serialize(_capitalShip);
+            System.Xml.XmlDocument document = new();
+            document.LoadXml(xml);
+            System.Xml.XmlNode damage = document.DocumentElement.SelectSingleNode("SystemDamage");
+            Assert.IsNotNull(damage);
+            damage.ParentNode.RemoveChild(damage);
+            CapitalShip restored = SerializationHelper.Deserialize<CapitalShip>(document.OuterXml);
+            Assert.AreEqual(0, restored.SystemDamage.Total);
+        }
+
+        [Test]
+        public void CreateCopy_SystemDamage_OwnsIndependentDamageRecord()
+        {
+            _capitalShip.SystemDamage.Engines = 2;
+            CapitalShip copy = (CapitalShip)_capitalShip.CreateCopy();
+            copy.SystemDamage.Engines = 0;
+            Assert.AreEqual(2, _capitalShip.SystemDamage.Engines);
+        }
+
+        [Test]
+        public void GetOperationalHyperdrive_DamagedPrimary_UsesInstalledBackup()
+        {
+            GameDataCatalog data = TestContent.Data;
+            CapitalShip template = data.CapitalShips.First(item =>
+                item.Hyperdrive > 0
+                && data.TacticalCombat.Units.Any(definition =>
+                    definition.UnitTypeID == item.TypeID && definition.BackupHyperdrive > 0
+                )
+            );
+            UnitFactory factory = new(
+                data.Buildings,
+                data.CapitalShips,
+                data.Starfighters,
+                data.Regiments,
+                data.SpecialForces,
+                data.TacticalCombat
+            );
+            CapitalShip ship = factory.Create<CapitalShip>(template.TypeID, "owner");
+            ship.SystemDamage.PrimaryHyperdrive = 1;
+            int backup = TestContent
+                .Data.TacticalCombat.Units.Single(item => item.UnitTypeID == ship.TypeID)
+                .BackupHyperdrive;
+            Assert.AreEqual(backup, ship.GetOperationalHyperdrive());
+        }
+
+        [Test]
+        public void GetOperationalHyperdrive_BothDrivesDamaged_ReturnsZero()
+        {
+            _capitalShip.Hyperdrive = 1;
+            _capitalShip.SystemDamage.PrimaryHyperdrive = 1;
+            _capitalShip.SystemDamage.BackupHyperdrive = 1;
+            Assert.AreEqual(0, _capitalShip.GetOperationalHyperdrive());
+        }
+
+        [Test]
         public void AssignName_ValidName_ReplacesDisplayNameAndMarksAssigned()
         {
             _capitalShip.DisplayName = "Generic Ship";

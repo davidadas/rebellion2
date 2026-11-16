@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Logging;
@@ -22,6 +23,11 @@ namespace Rebellion.Gameplay
         public string PlanetInstanceID { get; set; }
         public bool? AttackerRetreatResponse { get; set; }
         public bool? DefenderRetreatResponse { get; set; }
+        public bool AttackerTakeCommand { get; set; }
+        public bool DefenderTakeCommand { get; set; }
+        public string TacticalBattleID { get; set; }
+        public uint TacticalSeed { get; set; }
+        public int TacticalScenerySeed { get; set; }
     }
 
     /// <summary>
@@ -36,11 +42,400 @@ namespace Rebellion.Gameplay
         private readonly SpaceCombatAutoResolver _autoResolver;
         private readonly SpaceCombatWithdrawalResolver _withdrawalResolver;
         private SpaceCombatDecision _pendingDecision;
+        private readonly TacticalCombatFactory _tacticalFactory;
+        private TacticalCombatSession _tacticalCombat;
+        private string _tacticalBattleID;
+        private List<CombatUnitSnapshot> _tacticalAttackingUnits;
+        private List<CombatUnitSnapshot> _tacticalDefendingUnits;
 
         /// <summary>
         /// Whether a player-involved combat encounter is waiting for resolution.
         /// </summary>
         public bool HasPendingDecision => _pendingDecision != null;
+
+        /// <summary>
+        /// Gets the captured manual encounter while the campaign decision remains suspended.
+        /// </summary>
+        public TacticalCombatSession ActiveTacticalCombat => _tacticalCombat;
+
+        /// <summary>
+        /// Gets the identity of the active network battle, or null outside network combat.
+        /// </summary>
+        public string ActiveTacticalBattleID => _tacticalBattleID;
+
+        /// <summary>
+        /// Gets whether the waiting encounter has complete tactical deployment definitions.
+        /// </summary>
+        public bool CanTakeCommand =>
+            _pendingDecision != null && _tacticalFactory?.Supports(_pendingDecision) == true;
+
+        /// <summary>
+        /// Captures an interactive battle while keeping campaign time and its pending decision suspended.
+        /// </summary>
+        /// <returns>The deployed tactical encounter.</returns>
+        public TacticalCombatSession BeginTacticalCombat()
+        {
+            if (_tacticalCombat != null)
+                throw new InvalidOperationException("A tactical encounter is already active.");
+            if (!CanTakeCommand)
+                throw new InvalidOperationException(
+                    "Tactical deployment is unavailable for this encounter."
+                );
+            Planet planet = _queries.ResolveCombatPlanet(_pendingDecision);
+            _tacticalAttackingUnits = CaptureCombatUnits(
+                _queries.GetFleets(_pendingDecision.AttackerFleetInstanceIDs),
+                planet,
+                _pendingDecision.AttackerOwnerInstanceID
+            );
+            _tacticalDefendingUnits = CaptureCombatUnits(
+                _queries.GetFleets(_pendingDecision.DefenderFleetInstanceIDs),
+                planet,
+                _pendingDecision.DefenderOwnerInstanceID
+            );
+            _tacticalCombat = _tacticalFactory.Create(_pendingDecision);
+            return _tacticalCombat;
+        }
+
+        /// <summary>
+        /// Captures an ordered multiplayer encounter with host-issued entry seeds and identity.
+        /// </summary>
+        /// <param name="battleID">The host-issued identity for this encounter.</param>
+        /// <param name="seed">The authoritative battle random seed.</param>
+        /// <param name="scenerySeed">The authoritative scenery calendar seed.</param>
+        /// <returns>The authority-owned encounter or its local participant's passive projection.</returns>
+        public TacticalCombatSession BeginNetworkTacticalCombat(
+            string battleID,
+            uint seed,
+            int scenerySeed
+        )
+        {
+            if (!Guid.TryParseExact(battleID, "N", out _))
+                throw new ArgumentException(
+                    "A valid battle identity is required.",
+                    nameof(battleID)
+                );
+            if (_game.Metadata?.IsMultiplayer != true)
+                throw new InvalidOperationException("A multiplayer campaign is required.");
+            if (
+                _tacticalCombat != null
+                || !CanTakeCommand
+                || _pendingDecision.AttackerRetreatResponse != false
+                || _pendingDecision.DefenderRetreatResponse != false
+                || !_pendingDecision.AttackerTakeCommand && !_pendingDecision.DefenderTakeCommand
+            )
+                throw new InvalidOperationException("The encounter cannot enter tactical combat.");
+
+            Planet planet = _queries.ResolveCombatPlanet(_pendingDecision);
+            _tacticalAttackingUnits = CaptureCombatUnits(
+                _queries.GetFleets(_pendingDecision.AttackerFleetInstanceIDs),
+                planet,
+                _pendingDecision.AttackerOwnerInstanceID
+            );
+            _tacticalDefendingUnits = CaptureCombatUnits(
+                _queries.GetFleets(_pendingDecision.DefenderFleetInstanceIDs),
+                planet,
+                _pendingDecision.DefenderOwnerInstanceID
+            );
+            _tacticalCombat = _tacticalFactory.Create(
+                _pendingDecision,
+                seed,
+                unchecked((uint)scenerySeed),
+                _game.LocalPlayerFactionID != _game.Metadata.MultiplayerCampaign.HostFactionID
+            );
+            if (_game.LocalPlayerFactionID == _game.Metadata.MultiplayerCampaign.HostFactionID)
+            {
+                _tacticalCombat.SetAutomated(
+                    CombatSide.Attacker,
+                    !_pendingDecision.AttackerTakeCommand
+                );
+                _tacticalCombat.SetAutomated(
+                    CombatSide.Defender,
+                    !_pendingDecision.DefenderTakeCommand
+                );
+            }
+            _tacticalBattleID = battleID;
+            return _tacticalCombat;
+        }
+
+        /// <summary>
+        /// Releases a prepared encounter whose required presentation assets could not be loaded.
+        /// </summary>
+        /// <param name="session">The unstarted encounter to release.</param>
+        public void CancelTacticalPreparation(TacticalCombatSession session)
+        {
+            if (!ReferenceEquals(session, _tacticalCombat) || session.SystemTime != 3)
+                throw new InvalidOperationException(
+                    "Only an unstarted tactical encounter can be released."
+                );
+            _tacticalCombat = null;
+            _tacticalBattleID = null;
+            _tacticalAttackingUnits = null;
+            _tacticalDefendingUnits = null;
+        }
+
+        /// <summary>
+        /// Commits a completed interactive encounter through the campaign's combat result boundary.
+        /// </summary>
+        /// <param name="session">The completed encounter created by these commands.</param>
+        /// <returns>The applied combat result and its destruction and blockade events.</returns>
+        public List<GameResult> CompleteTacticalCombat(TacticalCombatSession session)
+        {
+            if (
+                !ReferenceEquals(session, _tacticalCombat)
+                || !session.IsComplete
+                || _pendingDecision == null
+            )
+                throw new InvalidOperationException(
+                    "The tactical encounter is not ready to commit."
+                );
+            return ImportTacticalResult(session.CreateResult(), session.ImmediateResultRequested);
+        }
+
+        /// <summary>
+        /// Imports one host-ordered outcome against this peer's captured encounter participants.
+        /// </summary>
+        /// <param name="battleID">The active battle identity from the ordered completion request.</param>
+        /// <param name="outcome">The detached authoritative tactical outcome.</param>
+        /// <returns>The applied campaign result and its resulting domain events.</returns>
+        public List<GameResult> CompleteNetworkTacticalCombat(
+            string battleID,
+            TacticalCombatOutcome outcome
+        )
+        {
+            if (!TryCompleteNetworkTacticalCombat(battleID, outcome, out List<GameResult> results))
+                throw new InvalidOperationException(
+                    "The network battle outcome cannot be committed."
+                );
+            return results;
+        }
+
+        /// <summary>
+        /// Rejects stale or malformed outcomes before entering the campaign mutation boundary.
+        /// </summary>
+        /// <param name="battleID">The host-issued identity of the completed encounter.</param>
+        /// <param name="outcome">The authoritative final tactical pools.</param>
+        /// <param name="results">The applied result and domain events, or null after rejection.</param>
+        /// <returns>Whether the final outcome was validated and committed.</returns>
+        public bool TryCompleteNetworkTacticalCombat(
+            string battleID,
+            TacticalCombatOutcome outcome,
+            out List<GameResult> results
+        )
+        {
+            results = null;
+            if (
+                _tacticalCombat?.IsComplete != true
+                || _pendingDecision == null
+                || string.IsNullOrEmpty(_tacticalBattleID)
+                || !string.Equals(_tacticalBattleID, battleID, StringComparison.Ordinal)
+            )
+                return false;
+            SpaceCombatResult result;
+            try
+            {
+                result = RestoreTacticalOutcome(outcome);
+            }
+            catch (System.IO.InvalidDataException)
+            {
+                return false;
+            }
+            results = ImportTacticalResult(result, outcome.TerminalFlags[6]);
+            return true;
+        }
+
+        /// <summary>
+        /// Applies captured tactical pools through the shared campaign loss and withdrawal boundary.
+        /// </summary>
+        /// <param name="result">The completed encounter's result using local campaign references.</param>
+        /// <param name="immediateResult">Whether surviving forces require automatic continuation.</param>
+        /// <returns>The final campaign result and its resulting domain events.</returns>
+        private List<GameResult> ImportTacticalResult(
+            SpaceCombatResult result,
+            bool immediateResult
+        )
+        {
+            SpaceCombatDecision decision = _pendingDecision;
+            List<Fleet> attackers = _queries.GetFleets(decision.AttackerFleetInstanceIDs);
+            List<Fleet> defenders = _queries.GetFleets(decision.DefenderFleetInstanceIDs);
+            Planet planet = _queries.ResolveCombatPlanet(decision);
+            result.AttackerFleet = SpaceCombatQueries.GetRepresentativeFleet(attackers);
+            result.DefenderFleet = SpaceCombatQueries.GetRepresentativeFleet(defenders);
+            result.AttackerOwnerInstanceID = decision.AttackerOwnerInstanceID;
+            result.DefenderOwnerInstanceID = decision.DefenderOwnerInstanceID;
+            result.Planet = planet;
+            result.PlanetOwnerInstanceID = planet.OwnerInstanceID;
+            result.Tick = _game.CurrentTick;
+            result.AttackingUnits = _tacticalAttackingUnits;
+            result.DefendingUnits = _tacticalDefendingUnits;
+            bool wasBlockaded = planet.IsBlockaded();
+            List<GameResult> events = ApplyFighterResults(result);
+            events.AddRange(ApplyShipResults(result, attackers, defenders));
+            if (immediateResult)
+                result = ResolveImmediateTacticalContinuation(
+                    decision,
+                    result,
+                    wasBlockaded,
+                    events
+                );
+            else
+            {
+                HashSet<ISceneNode> departures = result.WithdrawnUnits.ToHashSet();
+                SpaceCombatWithdrawalPlan attackerPlan = _queries.GetTacticalWithdrawalPlan(
+                    attackers,
+                    planet,
+                    decision.AttackerOwnerInstanceID,
+                    departures,
+                    result.FighterRecovery
+                );
+                SpaceCombatWithdrawalPlan defenderPlan = _queries.GetTacticalWithdrawalPlan(
+                    defenders,
+                    planet,
+                    decision.DefenderOwnerInstanceID,
+                    departures,
+                    result.FighterRecovery
+                );
+                result.AttackerRetreatPlanetInstanceID = attackerPlan.GetRetreatPlanetInstanceID();
+                result.DefenderRetreatPlanetInstanceID = defenderPlan.GetRetreatPlanetInstanceID();
+                CompleteFighterWithdrawal(attackerPlan);
+                CompleteFighterWithdrawal(defenderPlan);
+                result.Events = CompleteCombatResult(
+                    result,
+                    attackerPlan,
+                    defenderPlan,
+                    wasBlockaded,
+                    events
+                );
+            }
+            result.AttackingUnits = _tacticalAttackingUnits;
+            result.DefendingUnits = _tacticalDefendingUnits;
+            IEnumerable<ISceneNode> destroyed = result
+                .Events.OfType<GameObjectDestroyedResult>()
+                .Select(destruction => destruction.DestroyedObject)
+                .OfType<ISceneNode>();
+            IEnumerable<ISceneNode> damaged = result
+                .ShipDamage.Where(damage =>
+                    damage.HullAfter < damage.Ship.MaxHullStrength || damage.SystemDamage?.Total > 0
+                )
+                .Select(damage => (ISceneNode)damage.Ship)
+                .Concat(
+                    result
+                        .FighterLosses.Where(loss =>
+                            loss.SquadsAfter < loss.Fighter.MaxSquadronSize
+                        )
+                        .Select(loss => (ISceneNode)loss.Fighter)
+                );
+            CombatUnitSnapshot.RecordOutcomes(result.AttackingUnits, damaged, destroyed);
+            CombatUnitSnapshot.RecordOutcomes(result.DefendingUnits, damaged, destroyed);
+            ClearCombatFlags(decision);
+            _pendingDecision = null;
+            _tacticalCombat = null;
+            _tacticalBattleID = null;
+            _tacticalAttackingUnits = null;
+            _tacticalDefendingUnits = null;
+            List<GameResult> results = new() { result };
+            results.AddRange(
+                result.Events.Where(item =>
+                    item is GameObjectDestroyedResult or BlockadeChangedResult
+                )
+            );
+            return results;
+        }
+
+        /// <summary>
+        /// Imports the current losses before automatically resolving survivors through the shared encounter path.
+        /// </summary>
+        /// <param name="decision">The encounter being continued.</param>
+        /// <param name="tactical">The already-applied tactical damage snapshot.</param>
+        /// <param name="wasBlockaded">The blockade state before either resolution phase.</param>
+        /// <param name="events">The events produced while importing tactical losses.</param>
+        /// <returns>The single result spanning both resolution phases.</returns>
+        private SpaceCombatResult ResolveImmediateTacticalContinuation(
+            SpaceCombatDecision decision,
+            SpaceCombatResult tactical,
+            bool wasBlockaded,
+            List<GameResult> events
+        )
+        {
+            SpaceCombatResult result = ResolveAutomaticFleetEncounter(decision)
+                .OfType<SpaceCombatResult>()
+                .SingleOrDefault();
+            if (result == null)
+            {
+                result = tactical;
+                UpdateCombatEncounterResultOutcomes(result, decision);
+            }
+            else
+                MergeTacticalLosses(result, tactical);
+
+            result.Events = events
+                .Concat(result.Events)
+                .Where(resultEvent => resultEvent is not BlockadeChangedResult)
+                .ToList();
+            BlockadeChangedResult blockade = _blockadeTransitionResolver.Resolve(
+                result.Planet,
+                wasBlockaded
+            );
+            if (blockade != null)
+                result.Events.Add(blockade);
+            return result;
+        }
+
+        /// <summary>
+        /// Retains original hull and squadron counts and participants lost before automatic continuation.
+        /// </summary>
+        /// <param name="result">The automatic continuation's result.</param>
+        /// <param name="tactical">The previously imported tactical losses.</param>
+        private void MergeTacticalLosses(SpaceCombatResult result, SpaceCombatResult tactical)
+        {
+            Dictionary<CapitalShip, ShipDamageResult> ships = result.ShipDamage.ToDictionary(
+                damage => damage.Ship
+            );
+            foreach (ShipDamageResult previous in tactical.ShipDamage)
+                if (ships.TryGetValue(previous.Ship, out ShipDamageResult damage))
+                {
+                    damage.HullBefore = previous.HullBefore;
+                    damage.SystemDamage ??= previous.SystemDamage;
+                }
+                else
+                    result.ShipDamage.Add(previous);
+
+            Dictionary<Starfighter, FighterLossResult> fighters = result.FighterLosses.ToDictionary(
+                loss => loss.Fighter
+            );
+            foreach (FighterLossResult previous in tactical.FighterLosses)
+                if (fighters.TryGetValue(previous.Fighter, out FighterLossResult loss))
+                    loss.SquadsBefore = previous.SquadsBefore;
+                else
+                    result.FighterLosses.Add(previous);
+
+            result.FighterRecovery.Clear();
+            foreach (FighterLossResult loss in result.FighterLosses)
+            {
+                Starfighter fighter = loss.Fighter;
+                CapitalShip carrier = null;
+                if (
+                    loss.SquadsAfter > 0
+                    && ReferenceEquals(
+                        _game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID),
+                        fighter
+                    )
+                )
+                {
+                    CapitalShip parent = fighter.GetParent() as CapitalShip;
+                    if (
+                        parent != null
+                        && ReferenceEquals(
+                            _game.GetSceneNodeByInstanceID<CapitalShip>(parent.InstanceID),
+                            parent
+                        )
+                    )
+                        carrier = parent;
+                }
+                result.FighterRecovery.Add(
+                    new FighterRecoveryResult { Fighter = fighter, Carrier = carrier }
+                );
+            }
+        }
 
         /// <summary>
         /// Gets the presentation snapshot for the combat encounter awaiting player input.
@@ -63,14 +458,17 @@ namespace Rebellion.Gameplay
         /// <param name="movement">Movement operations used for retreats and evacuation.</param>
         /// <param name="queries">Encounter and retreat eligibility queries.</param>
         /// <param name="blockadeTransitionResolver">Resolves blockade changes after combat mutations.</param>
+        /// <param name="tacticalFactory">Captures interactive deployment from the selected content.</param>
         public SpaceCombatCommands(
             GameRoot game,
             MovementCommands movement,
             SpaceCombatQueries queries,
-            BlockadeTransitionResolver blockadeTransitionResolver = null
+            BlockadeTransitionResolver blockadeTransitionResolver = null,
+            TacticalCombatFactory tacticalFactory = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
+            _tacticalFactory = tacticalFactory;
             _movement = movement ?? throw new ArgumentNullException(nameof(movement));
             _autoResolver = new SpaceCombatAutoResolver(
                 game.Config.Combat.SpaceCombat,
@@ -137,6 +535,10 @@ namespace Rebellion.Gameplay
         /// <returns>Combat results generated by the encounter.</returns>
         public List<GameResult> ResolvePending(bool autoResolve)
         {
+            if (_tacticalCombat != null)
+                throw new InvalidOperationException(
+                    "The active manual encounter must finish first."
+                );
             if (_pendingDecision == null)
                 throw new InvalidOperationException("No pending combat to resolve.");
 
@@ -153,6 +555,10 @@ namespace Rebellion.Gameplay
         /// <returns>The combat results, or null when that side cannot withdraw.</returns>
         public List<GameResult> ResolvePendingRetreat(string retreatingFactionInstanceId)
         {
+            if (_tacticalCombat != null)
+                throw new InvalidOperationException(
+                    "The active manual encounter must finish first."
+                );
             if (_pendingDecision == null)
                 throw new InvalidOperationException("No pending combat to resolve.");
 
@@ -339,9 +745,9 @@ namespace Rebellion.Gameplay
             if (autoResolve)
                 return ResolveFleetEncounter(decision);
 
-            RunManualCombat();
-            ClearCombatFlags(decision);
-            return new List<GameResult>();
+            throw new InvalidOperationException(
+                "Interactive combat must be started and completed through its tactical session."
+            );
         }
 
         /// <summary>
@@ -637,6 +1043,19 @@ namespace Rebellion.Gameplay
             foreach (KeyValuePair<Fleet, Planet> assignment in plan.FleetDestinations)
             {
                 Fleet fleet = assignment.Key;
+                List<CapitalShip> escapingShips = fleet
+                    .GetChildren<CapitalShip>()
+                    .Where(ship => plan.Contains(ship))
+                    .ToList();
+                if (escapingShips.Count != fleet.GetChildren<CapitalShip>().Count)
+                    fleet =
+                        new FleetCommands(_game).CreateFleet(
+                            escapingShips,
+                            fleet.GetOwnerInstanceID()
+                        )
+                        ?? throw new InvalidOperationException(
+                            "The withdrawing ships could not form a fleet."
+                        );
                 Planet originalPlanet = fleet.GetParentOfType<Planet>();
                 if (
                     !_movement.TryRequestMoveWithImmediateBlockadeResults(
@@ -657,11 +1076,6 @@ namespace Rebellion.Gameplay
                     fleet.Order = null;
             }
         }
-
-        /// <summary>
-        /// Placeholder for interactive/manual combat resolution.
-        /// </summary>
-        private void RunManualCombat() { }
 
         /// <summary>
         /// Resolves one battle with the headless tactical auto-resolver.
@@ -822,7 +1236,7 @@ namespace Rebellion.Gameplay
         /// <param name="planet">The system where combat occurs.</param>
         /// <param name="ownerInstanceId">The side's faction instance identifier.</param>
         /// <returns>The selected Admiral and Commander.</returns>
-        private static (Officer Admiral, Officer Commander) GetCommandOfficers(
+        internal static (Officer Admiral, Officer Commander) GetCommandOfficers(
             IReadOnlyList<Fleet> fleets,
             Planet planet,
             string ownerInstanceId
@@ -996,17 +1410,91 @@ namespace Rebellion.Gameplay
         )
         {
             bool wasBlockaded = result.Planet.IsBlockaded();
-            List<GameResult> events = ApplyFighterSquadronLosses(
-                result.FighterLosses,
-                result.Planet
-            );
+            List<GameResult> events = ApplyFighterResults(result);
             CompleteFighterWithdrawal(attackerWithdrawalPlan);
             CompleteFighterWithdrawal(defenderWithdrawalPlan);
             events.AddRange(
                 RecoverFightersFromDestroyedCarriers(result, attackerFleets, defenderFleets)
             );
-            events.AddRange(ApplyShipDamage(result.ShipDamage, result.Planet));
+            events.AddRange(ApplyShipResults(result, attackerFleets, defenderFleets));
+            return CompleteCombatResult(
+                result,
+                attackerWithdrawalPlan,
+                defenderWithdrawalPlan,
+                wasBlockaded,
+                events
+            );
+        }
+
+        /// <summary>
+        /// Commits fighter counts and final carrier assignments before departure destinations are applied.
+        /// </summary>
+        /// <param name="result">The combat result containing fighter losses and recovery assignments.</param>
+        /// <returns>The fighter destruction events.</returns>
+        private List<GameResult> ApplyFighterResults(SpaceCombatResult result)
+        {
+            List<GameResult> events = ApplyFighterSquadronLosses(
+                result.FighterLosses,
+                result.Planet
+            );
+            List<StarfighterHostAssignment> assignments = null;
+            foreach (FighterRecoveryResult recovery in result.FighterRecovery)
+                if (
+                    recovery.Fighter.CurrentSquadronSize > 0
+                    && !ReferenceEquals(
+                        recovery.Fighter.GetParent(),
+                        recovery.Carrier ?? (ContainerNode)result.Planet
+                    )
+                )
+                {
+                    assignments ??= new List<StarfighterHostAssignment>();
+                    assignments.Add(
+                        new StarfighterHostAssignment(
+                            recovery.Fighter,
+                            recovery.Carrier ?? (ContainerNode)result.Planet
+                        )
+                    );
+                }
+            if (assignments != null)
+                _game.MoveStarfighters(assignments);
+            return events;
+        }
+
+        /// <summary>
+        /// Commits capital-ship hull and component state and removes fleets left without survivors.
+        /// </summary>
+        /// <param name="result">The combat result containing final ship damage.</param>
+        /// <param name="attackerFleets">The attacking fleets to clean up.</param>
+        /// <param name="defenderFleets">The defending fleets to clean up.</param>
+        /// <returns>The ship damage and destruction events.</returns>
+        private List<GameResult> ApplyShipResults(
+            SpaceCombatResult result,
+            IReadOnlyList<Fleet> attackerFleets,
+            IReadOnlyList<Fleet> defenderFleets
+        )
+        {
+            List<GameResult> events = ApplyShipDamage(result.ShipDamage, result.Planet);
             RemoveEmptyFleets(attackerFleets, defenderFleets);
+            return events;
+        }
+
+        /// <summary>
+        /// Applies fleet departures and blockade transitions, then records destroyed-unit outcomes.
+        /// </summary>
+        /// <param name="result">The combat result receiving final unit outcomes.</param>
+        /// <param name="attackerWithdrawalPlan">The attacking side's reserved withdrawal.</param>
+        /// <param name="defenderWithdrawalPlan">The defending side's reserved withdrawal.</param>
+        /// <param name="wasBlockaded">Whether the combat planet was blockaded before unit results were committed.</param>
+        /// <param name="events">The committed unit events receiving departure and blockade events.</param>
+        /// <returns>The complete combat event collection.</returns>
+        private List<GameResult> CompleteCombatResult(
+            SpaceCombatResult result,
+            SpaceCombatWithdrawalPlan attackerWithdrawalPlan,
+            SpaceCombatWithdrawalPlan defenderWithdrawalPlan,
+            bool wasBlockaded,
+            List<GameResult> events
+        )
+        {
             BlockadeChangedResult blockade = _blockadeTransitionResolver.Resolve(
                 result.Planet,
                 wasBlockaded
@@ -1213,15 +1701,18 @@ namespace Rebellion.Gameplay
 
                 bool wasDamaged = ship.IsDamaged();
                 ship.CurrentHullStrength = damage.HullAfter;
+                if (damage.SystemDamage != null)
+                    ship.SystemDamage = damage.SystemDamage.CreateCopy();
 
-                events.Add(
-                    new GameObjectDamagedResult
-                    {
-                        GameObject = ship,
-                        DamageValue = damage.HullBefore - damage.HullAfter,
-                        Tick = _game.CurrentTick,
-                    }
-                );
+                if (damage.HullAfter < damage.HullBefore)
+                    events.Add(
+                        new GameObjectDamagedResult
+                        {
+                            GameObject = ship,
+                            DamageValue = damage.HullBefore - damage.HullAfter,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
 
                 if (damage.HullAfter <= 0)
                 {

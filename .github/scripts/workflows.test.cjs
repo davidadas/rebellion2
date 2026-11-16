@@ -68,6 +68,9 @@ test('same-repository PRs run private tests automatically from the protected wor
   assert.equal(media.if, trustedPullRequestCondition);
   assert.equal(media.uses, './.github/workflows/resolve-media.yml');
   assert.equal(media.with.branch, '${{ github.event.pull_request.head.ref }}');
+  assert.equal(media.with.checkout_ref, '${{ github.event.pull_request.merge_commit_sha }}');
+  assert.equal(media.with.expected_base_sha, '${{ github.event.pull_request.base.sha }}');
+  assert.equal(media.with.expected_head_sha, '${{ github.event.pull_request.head.sha }}');
   assert.equal(media.secrets, 'inherit');
   assert.equal(unity.if, trustedPullRequestCondition);
   assert.ok(needs(unity).includes('trusted-media'));
@@ -146,6 +149,91 @@ test('fork pull_request jobs never receive repository or environment secrets', (
   }
   assert.ok(ci.concurrency.group.includes('github.event_name'));
   assert.ok(ci.concurrency.group.includes('inputs.pull_request_number'));
+});
+
+test('Unity tests build the Linux native dependency from the verified tested checkout', () => {
+  const job = runner.jobs.test;
+  assert.equal(job['runs-on'], 'ubuntu-22.04');
+  const steps = job.steps;
+  const baseCheckout = steps.findIndex(step => step.name === 'Checkout PR base');
+  const headCheckout = steps.findIndex(step => step.name === 'Checkout reviewed PR head');
+  const merge = steps.findIndex(step => step.name === 'Prepare reviewed merge');
+  const native = steps.findIndex(step => step.name === 'Build and verify Linux native vector library');
+  const unity = steps.findIndex(step => step.uses === 'game-ci/unity-test-runner@v4');
+  assert.ok(
+    baseCheckout >= 0 &&
+      baseCheckout < headCheckout &&
+      headCheckout < merge &&
+      merge < native &&
+      native < unity,
+  );
+  assert.equal(steps[baseCheckout].with.ref, '${{ inputs.base_sha }}');
+  assert.equal(steps[baseCheckout].with['persist-credentials'], false);
+  assert.equal(steps[headCheckout].with.repository, '${{ inputs.reviewed_head_repository }}');
+  assert.equal(steps[headCheckout].with.ref, '${{ inputs.reviewed_head_sha }}');
+  assert.equal(steps[headCheckout].with['persist-credentials'], false);
+  assert.match(steps[native].run, /python3 Tools\/build_tactical_math\.py/);
+  assert.match(steps[native].run, /--target linux-x64/);
+  assert.equal(steps[native].env, undefined);
+});
+
+test('desktop builds install every verified native platform without copying contract executables', () => {
+  assert.ok(needs(ci.jobs.build).includes('native-math'));
+  assert.equal(ci.jobs['native-math'].uses, './.github/workflows/native-math.yml');
+  assert.equal(ci.jobs['native-math'].secrets, undefined);
+  const native = ci.jobs.build.steps.filter(step => step.uses === 'actions/download-artifact@v4');
+  assert.deepEqual(native.map(step => step.with.name).sort(), [
+    'tactical-math-linux-x64', 'tactical-math-osx', 'tactical-math-win-x64',
+  ]);
+  assert.ok(native.every(step => step.with.path === 'Assets/Plugins'));
+});
+
+test('media resolution reads the tested pin while executing only the workflow revision helper', () => {
+  assert.equal(mediaResolver.on.workflow_call.inputs.checkout_ref.required, true);
+  assert.equal(ci.jobs['resolve-media'].with.checkout_ref, '${{ github.sha }}');
+  assert.equal(
+    ci.jobs['resolve-pr-media'].with.checkout_ref,
+    'refs/pull/${{ inputs.pull_request_number }}/merge',
+  );
+  assert.equal(
+    ci.jobs['resolve-pr-media'].with.expected_base_sha,
+    '${{ needs.approve-pr.outputs.base_sha }}',
+  );
+  assert.equal(ci.jobs['resolve-pr-media'].with.expected_head_sha, '${{ inputs.head_sha }}');
+  assert.equal(ci.jobs['resolve-pr-media'].with.branch, '${{ needs.approve-pr.outputs.media_branch }}');
+  const steps = mediaResolver.jobs.resolve.steps;
+  const trusted = steps.find(step => step.name === 'Checkout trusted media resolver');
+  const pin = steps.find(step => step.name === 'Checkout tested media pin');
+  assert.equal(trusted.with.ref, '${{ github.workflow_sha }}');
+  assert.equal(trusted.with.path, '.ci/workflow-tools');
+  assert.equal(trusted.with['persist-credentials'], false);
+  assert.equal(pin.with.ref, '${{ inputs.checkout_ref }}');
+  assert.equal(pin.with['sparse-checkout'], '.github/media-revision');
+  assert.equal(pin.with.path, '.ci/source-metadata');
+  assert.equal(pin.with['persist-credentials'], false);
+  const verify = steps.find(step => step.name === 'Verify tested merge revision');
+  assert.equal(verify.if, "inputs.expected_head_sha != ''");
+  assert.equal(verify.env.EXPECTED_BASE_SHA, '${{ inputs.expected_base_sha }}');
+  assert.equal(verify.env.EXPECTED_HEAD_SHA, '${{ inputs.expected_head_sha }}');
+  assert.match(verify.run, /git show --no-patch --format=%P HEAD/);
+  assert.match(verify.run, /approved pull request merge/);
+  const resolve = steps.find(step => step.id === 'resolve');
+  assert.match(resolve.run, /python3 \.ci\/workflow-tools\/Tools\/resolve_media_revision\.py/);
+  assert.match(resolve.run, /--source-root \.ci\/source-metadata/);
+  assert.match(resolve.run, /--branch "\$PULL_REQUEST_BRANCH"/);
+  assert.equal(resolve.env.PULL_REQUEST_BRANCH, '${{ inputs.branch }}');
+  assert.ok(steps.indexOf(trusted) < steps.indexOf(resolve));
+  assert.ok(steps.indexOf(pin) < steps.indexOf(resolve));
+  assert.ok(steps.indexOf(verify) < steps.indexOf(resolve));
+});
+
+test('trusted builds and reviewed tests consume the exact resolved media commit', () => {
+  const buildMedia = ci.jobs.build.steps.find(step => step.with?.repository === 'adasgames/rebellion2-media');
+  const testMedia = runner.jobs.test.steps.find(step => step.with?.repository === 'adasgames/rebellion2-media');
+  assert.equal(buildMedia.with.ref, '${{ needs.resolve-media.outputs.sha }}');
+  assert.equal(testMedia.with.ref, '${{ inputs.media_sha }}');
+  assert.equal(ci.jobs.test.with.media_sha, '${{ needs.resolve-media.outputs.sha }}');
+  assert.equal(ci.jobs['test-pr'].with.media_sha, '${{ needs.resolve-pr-media.outputs.sha }}');
 });
 
 test('every CI secret-bearing job is restricted to a default-branch push or reviewed PR', () => {

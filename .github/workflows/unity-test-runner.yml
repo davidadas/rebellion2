@@ -33,7 +33,7 @@ env:
 jobs:
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     environment: production
 
     steps:
@@ -94,6 +94,9 @@ jobs:
             echo "The prepared merge does not contain the approved revisions."
             exit 1
           fi
+
+      - name: Build and verify Linux native vector library
+        run: python3 Tools/build_tactical_math.py --build-directory "$RUNNER_TEMP/tactical-math" --target linux-x64
 
       - name: Checkout media (git only, no LFS)
         uses: actions/checkout@v4

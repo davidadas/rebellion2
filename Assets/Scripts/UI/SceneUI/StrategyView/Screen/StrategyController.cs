@@ -96,6 +96,17 @@ public sealed class StrategyController
     [SerializeField]
     private ConfirmationDialogView briefingSkipConfirmation;
 
+    [SerializeField]
+    private TacticalCombatView tacticalCombatPrefab;
+
+    private TacticalCombatController tacticalCombatController;
+    private TacticalCombatOptionsHost tacticalOptionsHost;
+    private MultiplayerCoordinator tacticalCoordinator;
+    private ITacticalCombatPresentationDriver pendingTacticalDriver;
+    private ITacticalCombatPresentationDriver presentedTacticalDriver;
+    private ITacticalCombatPresentationDriver activeTacticalDriver;
+    private bool tacticalCombatStarting;
+    private IDisposable tacticalShortcutSuppression;
     private CancelStack cancelStack;
     private GameManager gameManager;
     private GameSession session;
@@ -214,7 +225,13 @@ public sealed class StrategyController
         runtime.GameStateChanged += RefreshStrategyState;
         runtime.SaveStateChanged += HandleSaveStateChanged;
         if (MultiplayerCoordinator.Instance != null)
-            MultiplayerCoordinator.Instance.StateChanged += MarkDirty;
+        {
+            tacticalCoordinator = MultiplayerCoordinator.Instance;
+            tacticalCoordinator.StateChanged += HandleMultiplayerStateChanged;
+            tacticalCoordinator.TacticalCombatAvailable += HandleNetworkTacticalCombat;
+            if (tacticalCoordinator.ActiveTacticalCombatDriver?.CompletionReady == false)
+                pendingTacticalDriver = tacticalCoordinator.ActiveTacticalCombatDriver;
+        }
         session.Tick.CombatDecisionRequired += RefreshStrategyState;
         session.Tick.TickCompleted += RefreshStrategyState;
         session.Tick.TickProgressed += HandleManufacturingProgress;
@@ -779,7 +796,9 @@ public sealed class StrategyController
             strategyWindowManager,
             windowPlacementController.GetBattleAlertWindowPosition,
             CloseWindow,
-            MarkDirty
+            MarkDirty,
+            CanTakeTacticalCommand,
+            BeginTacticalCombatAsync
         );
         confirmDialogWindowController = new ConfirmDialogWindowController(
             () => uiContext,
@@ -1088,6 +1107,19 @@ public sealed class StrategyController
     /// </summary>
     private void OnDestroy()
     {
+        DisposeTacticalOptions();
+        tacticalShortcutSuppression?.Dispose();
+        tacticalShortcutSuppression = null;
+        tacticalCombatController?.Dispose();
+        tacticalCombatController = null;
+        pendingTacticalDriver?.Dispose();
+        pendingTacticalDriver = null;
+        if (tacticalCoordinator != null)
+        {
+            tacticalCoordinator.TacticalCombatAvailable -= HandleNetworkTacticalCombat;
+            tacticalCoordinator.StateChanged -= HandleMultiplayerStateChanged;
+        }
+        tacticalCoordinator = null;
         briefingController?.Dispose();
         if (_appBootstrap != null)
         {
@@ -1114,8 +1146,6 @@ public sealed class StrategyController
             runtime.GameReplaced -= HandleGameReplaced;
             runtime.GameStateChanged -= RefreshStrategyState;
             runtime.SaveStateChanged -= HandleSaveStateChanged;
-            if (MultiplayerCoordinator.Instance != null)
-                MultiplayerCoordinator.Instance.StateChanged -= MarkDirty;
             session.Tick.CombatDecisionRequired -= RefreshStrategyState;
             session.Tick.TickCompleted -= RefreshStrategyState;
             session.Tick.TickProgressed -= HandleManufacturingProgress;
@@ -1134,6 +1164,15 @@ public sealed class StrategyController
         if (gameManager == null || !contentReady || runtime?.GetActiveGameSession() != session)
             return;
 
+        TryPresentNetworkTacticalCombat();
+        if (tacticalCombatController != null)
+        {
+            tacticalOptionsHost?.Render();
+            tacticalCombatController.Advance(Time.unscaledDeltaTime);
+            return;
+        }
+        if (tacticalCombatStarting)
+            return;
         CaptureChangedWindows();
         if (_saveIndicator.Refresh(runtime.ActiveSaveKind, Time.unscaledTime))
             dirty = true;
@@ -4084,11 +4123,325 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Checks deployment availability while retaining shared battle entry in the ordered request channel.
+    /// </summary>
+    /// <returns>Whether the current participant can request manual combat.</returns>
+    private bool CanTakeTacticalCommand() =>
+        session.GetService<SpaceCombatCommands>().CanTakeCommand
+        && (
+            tacticalCoordinator?.IsMultiplayerGame != true
+            || tacticalCoordinator.IsSynchronized
+                && (tacticalCoordinator.ActiveTacticalCombatDriver?.CompletionReady != false)
+        );
+
+    /// <summary>
+    /// Prepares an interactive encounter while preserving its pending campaign decision.
+    /// </summary>
+    /// <param name="origin">The report window that will display the completed result.</param>
+    private async void BeginTacticalCombatAsync(BattleAlertWindowView origin)
+    {
+        if (tacticalCombatController != null || tacticalCombatStarting || !CanTakeTacticalCommand())
+            return;
+        tacticalCombatStarting = true;
+        TacticalCombatSession battle = null;
+        SpaceCombatCommands commands = session.GetService<SpaceCombatCommands>();
+        try
+        {
+            if (tacticalCoordinator?.IsMultiplayerGame == true)
+            {
+                if (!commands.TryGetPendingCombat(out PendingCombatResult pending))
+                    return;
+                PlayerRequestOutcome outcome = await runtime.PlayerRequests.ExecuteAsync(
+                    new BeginTacticalCombatRequest
+                    {
+                        PlanetID = pending.PlanetInstanceID,
+                        Tick = pending.Tick,
+                    }
+                );
+                if (outcome.Accepted && outcome.SpaceCombatResult != null)
+                    battleAlertWindowController.ShowTacticalResult(
+                        origin,
+                        outcome.SpaceCombatResult
+                    );
+                return;
+            }
+            if (tacticalCombatPrefab == null)
+                throw new MissingReferenceException(
+                    "The strategy screen is missing its tactical combat prefab."
+                );
+            battle = commands.BeginTacticalCombat();
+            await PrepareTacticalPresentationAsync(origin, battle, null);
+        }
+        catch (Exception exception)
+        {
+            if (battle != null)
+                commands.CancelTacticalPreparation(battle);
+            if (exception is not OperationCanceledException)
+                Debug.LogException(exception);
+        }
+        finally
+        {
+            tacticalCombatStarting = false;
+            TryPresentNetworkTacticalCombat();
+        }
+    }
+
+    /// <summary>
+    /// Retains an ordered battle announcement until this peer's strategy media is ready.
+    /// </summary>
+    /// <param name="driver">The admitted shared encounter and its local presentation contract.</param>
+    private void HandleNetworkTacticalCombat(ITacticalCombatPresentationDriver driver)
+    {
+        if (driver == null || ReferenceEquals(driver, presentedTacticalDriver))
+            return;
+        pendingTacticalDriver = driver;
+        TryPresentNetworkTacticalCombat();
+    }
+
+    /// <summary>
+    /// Releases a stopped shared battle's overlay so strategy can present the connection failure or exit notice.
+    /// </summary>
+    private void HandleMultiplayerStateChanged()
+    {
+        MarkDirty();
+        if (
+            tacticalCoordinator == null
+            || activeTacticalDriver == null && pendingTacticalDriver == null
+        )
+            return;
+        if (
+            tacticalCoordinator.IsMultiplayerGame
+            && tacticalCoordinator.IsSynchronized
+            && tacticalCoordinator.Failure == null
+            && !tacticalCoordinator.SessionEndNotice.IsPending
+        )
+            return;
+        TacticalCombatController controller = tacticalCombatController;
+        ITacticalCombatPresentationDriver pending = pendingTacticalDriver;
+        ITacticalCombatPresentationDriver active = activeTacticalDriver;
+        tacticalCombatController = null;
+        pendingTacticalDriver = null;
+        activeTacticalDriver = null;
+        DisposeTacticalOptions();
+        controller?.Dispose();
+        if (controller == null)
+            active?.Dispose();
+        pending?.Dispose();
+        if (this != null)
+            SetTacticalInteraction(false);
+    }
+
+    /// <summary>
+    /// Opens the local view for an admitted shared encounter without submitting another entry request.
+    /// </summary>
+    private async void TryPresentNetworkTacticalCombat()
+    {
+        if (
+            pendingTacticalDriver == null
+            || !contentReady
+            || tacticalCombatStarting
+            || tacticalCombatController != null
+            || runtime?.GetActiveGameSession() != session
+        )
+            return;
+        ITacticalCombatPresentationDriver driver = pendingTacticalDriver;
+        pendingTacticalDriver = null;
+        presentedTacticalDriver = driver;
+        tacticalCombatStarting = true;
+        try
+        {
+            await PrepareTacticalPresentationAsync(
+                battleAlertWindowController.FindWindow(),
+                driver.Session,
+                driver
+            );
+        }
+        catch (Exception exception)
+        {
+            if (exception is not OperationCanceledException)
+                Debug.LogException(exception);
+        }
+        finally
+        {
+            tacticalCombatStarting = false;
+        }
+    }
+
+    /// <summary>
+    /// Loads the same authored battle view for local and coordinated encounters before releasing its ready barrier.
+    /// </summary>
+    /// <param name="origin">The existing battle alert, or null when the remote request opened the encounter.</param>
+    /// <param name="battle">The local encounter or passive projection to present.</param>
+    /// <param name="driver">The shared encounter driver, or null for local simulation ownership.</param>
+    /// <returns>The asynchronous presentation preparation.</returns>
+    private async Task PrepareTacticalPresentationAsync(
+        BattleAlertWindowView origin,
+        TacticalCombatSession battle,
+        ITacticalCombatPresentationDriver driver
+    )
+    {
+        TacticalCombatController controller = null;
+        TacticalCombatView view = null;
+        activeTacticalDriver = driver;
+        try
+        {
+            if (tacticalCombatPrefab == null)
+                throw new MissingReferenceException(
+                    "The strategy screen is missing its tactical combat prefab."
+                );
+            SetTacticalInteraction(true);
+            view = Instantiate(tacticalCombatPrefab);
+            controller = new TacticalCombatController(
+                battle,
+                view,
+                completed => CompleteTacticalCombat(origin, completed, driver),
+                presentationCancellationToken,
+                AppBootstrap.Instance.GetUserSettingsManager().Settings.Video,
+                driver
+            );
+            tacticalCombatController = controller;
+            AppBootstrap bootstrap = AppBootstrap.Instance;
+            tacticalOptionsHost = new TacticalCombatOptionsHost(
+                controller,
+                battle,
+                view,
+                (RectTransform)strategyWindowManager.transform,
+                bootstrap.GetContentAssets(),
+                (parent, windows, invalidate) =>
+                    new OptionsMenuController(
+                        strategyWindowLayerView.OptionsMenuWindowPrefab,
+                        parent,
+                        windows,
+                        windowPlacementController.GetOptionsWindowPosition,
+                        windows.DestroyWindow,
+                        bootstrap,
+                        bootstrap.GetGameSessionManager().SaveGameAsync,
+                        bootstrap.LoadSaveAsync,
+                        invalidate,
+                        saveGameManager,
+                        showModsTab: false,
+                        allowSaveLoad: false
+                    )
+            );
+            tacticalOptionsHost.VisibilityChanged += HandleTacticalOptionsVisibility;
+            await controller.PrepareAsync(
+                AppBootstrap.Instance.GetContentModelCache(),
+                AppBootstrap.Instance.GetContentAssets()
+            );
+        }
+        catch
+        {
+            DisposeTacticalOptions();
+            controller?.Dispose();
+            if (controller == null)
+            {
+                driver?.Dispose();
+                if (view != null)
+                    Destroy(view.gameObject);
+            }
+            tacticalCombatController = null;
+            activeTacticalDriver = null;
+            if (this != null)
+                SetTacticalInteraction(false);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Commits a local encounter or displays the shared encounter's agreed result before restoring strategy input.
+    /// </summary>
+    /// <param name="origin">The originating report view.</param>
+    /// <param name="battle">The completed tactical encounter.</param>
+    /// <param name="driver">The shared result owner, or null when this screen commits a local encounter.</param>
+    private void CompleteTacticalCombat(
+        BattleAlertWindowView origin,
+        TacticalCombatSession battle,
+        ITacticalCombatPresentationDriver driver
+    )
+    {
+        SpaceCombatResult result =
+            driver == null
+                ? session.Tick.CompleteTacticalCombat(battle)
+                : driver.CommittedResult
+                    ?? throw new InvalidOperationException(
+                        "The shared battle has no agreed campaign result."
+                    );
+        DisposeTacticalOptions();
+        tacticalCombatController.Dispose();
+        tacticalCombatController = null;
+        activeTacticalDriver = null;
+        SetTacticalInteraction(false);
+        battleAlertWindowController.ShowTacticalResult(origin, result);
+        MarkDirty();
+    }
+
+    /// <summary>
+    /// Transfers application shortcuts to Options while preserving battle ownership of campaign input.
+    /// </summary>
+    /// <param name="visible">Whether the application Options menu owns modal input.</param>
+    private void HandleTacticalOptionsVisibility(bool visible)
+    {
+        if (visible)
+        {
+            tacticalShortcutSuppression?.Dispose();
+            tacticalShortcutSuppression = null;
+        }
+        else if (tacticalCombatController != null)
+            SetTacticalInteraction(true);
+    }
+
+    /// <summary>
+    /// Releases the battle's application-menu surface before its input owner is destroyed.
+    /// </summary>
+    private void DisposeTacticalOptions()
+    {
+        if (tacticalOptionsHost == null)
+            return;
+        tacticalOptionsHost.VisibilityChanged -= HandleTacticalOptionsVisibility;
+        tacticalOptionsHost.Dispose();
+        tacticalOptionsHost = null;
+    }
+
+    /// <summary>
+    /// Suspends strategy-specific input while the independently authored battle canvas owns focus.
+    /// </summary>
+    /// <param name="active">Whether tactical presentation owns input.</param>
+    private void SetTacticalInteraction(bool active)
+    {
+        contentGroup.interactable = !active;
+        contentGroup.blocksRaycasts = !active;
+        if (active)
+        {
+            tacticalShortcutSuppression ??= AppBootstrap
+                .Instance.GetInputManager()
+                .SuppressApplicationShortcuts();
+            _strategyInputActionMap?.Disable();
+            UnregisterCancelHandlers();
+            targetingController?.Cancel();
+            contextMenuController?.Cancel();
+        }
+        else
+        {
+            tacticalShortcutSuppression?.Dispose();
+            tacticalShortcutSuppression = null;
+            if (presentationActive)
+            {
+                _strategyInputActionMap?.Enable();
+                RegisterCancelHandlers();
+            }
+        }
+    }
+
+    /// <summary>
     /// Toggles the Options menu.
     /// </summary>
     private void HandleToggleOptions()
     {
-        if (_optionsMenuController == null)
+        if (
+            _optionsMenuController == null
+            || tacticalCombatController != null
+            || tacticalCombatStarting
+        )
             return;
 
         // The tutorial uses Escape to open its confirmation dialog.

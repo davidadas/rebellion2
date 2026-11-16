@@ -37,6 +37,15 @@ namespace Rebellion.Multiplayer
         RecoveryWelcome = 31,
         CampaignComplete = 32,
         CampaignCompleteReceipt = 33,
+        TacticalReady = 34,
+        TacticalCommand = 35,
+        TacticalCommandResult = 36,
+        TacticalFrame = 37,
+        TacticalFrameReceipt = 38,
+        TacticalMovieReceipt = 39,
+        TacticalCheckpoint = 40,
+        TacticalEffects = 41,
+        TacticalResync = 42,
     }
 
     /// <summary>

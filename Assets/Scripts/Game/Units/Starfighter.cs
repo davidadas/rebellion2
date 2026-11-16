@@ -197,10 +197,34 @@ namespace Rebellion.Game.Units
         public string ProducerPlanetID { get; set; }
         public long ManufacturingQueueSequence { get; set; }
         public int ManufacturingProgress { get; set; } = 0;
-        public ManufacturingStatus ManufacturingStatus { get; set; } = ManufacturingStatus.Building;
+        public ManufacturingStatus ManufacturingStatus
+        {
+            get => _manufacturingStatus;
+            set
+            {
+                if (_manufacturingStatus == value)
+                    return;
+                _manufacturingStatus = value;
+                OnAvailabilityChanged();
+            }
+        }
+
+        private ManufacturingStatus _manufacturingStatus = ManufacturingStatus.Building;
 
         // Movement Info.
-        public MovementState Movement { get; set; }
+        public MovementState Movement
+        {
+            get => _movement;
+            set
+            {
+                if (ReferenceEquals(_movement, value))
+                    return;
+                _movement = value;
+                OnAvailabilityChanged();
+            }
+        }
+
+        private MovementState _movement;
 
         /// <summary>
         /// Default constructor used for deserialization.

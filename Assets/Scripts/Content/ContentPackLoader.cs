@@ -593,6 +593,14 @@ public static class ContentPackLoader
                 pack.OfficerTraitsPath,
                 "OfficerTraits"
             );
+        Rebellion.Game.SpaceCombat.TacticalCombatDefinition tacticalCombat =
+            string.IsNullOrWhiteSpace(pack.TacticalCombatDefinitionsPath)
+                ? null
+                : DeserializeGameData<Rebellion.Game.SpaceCombat.TacticalCombatDefinition>(
+                    fileResolver,
+                    pack.TacticalCombatDefinitionsPath,
+                    "TacticalCombatDefinition"
+                );
         GameEvent[] gameEvents = DeserializeGameData<GameEvent[]>(
             fileResolver,
             pack.GameEventsPath,
@@ -687,7 +695,8 @@ public static class ContentPackLoader
             messageDefinitions,
             encyclopediaEntries,
             themes,
-            officerTraits
+            officerTraits,
+            tacticalCombat
         );
     }
 

@@ -44,6 +44,47 @@ namespace Rebellion.Tests.Multiplayer
                 yield return new ExitPlayMode();
         }
 
+        [Test]
+        public void Pump_BeginTacticalCombatGuestParameters_CommitsOnlyHostIssuedIdentityAndSeeds()
+        {
+            using PeerPair peers = new();
+            BeginTacticalCombatRequest hostApplied = null;
+            BeginTacticalCombatRequest guestApplied = null;
+            peers.Host.ActionApplied += (request, _) =>
+                hostApplied = request as BeginTacticalCombatRequest;
+            peers.Guest.ActionApplied += (request, _) =>
+                guestApplied = request as BeginTacticalCombatRequest;
+            string forgedID = Guid.NewGuid().ToString("N");
+            long hostRandom = (
+                (Rebellion.Util.Random.SystemRandomProvider)peers.HostGame.Random
+            ).CallCount;
+            peers.Guest.ExecuteAsync(
+                new BeginTacticalCombatRequest
+                {
+                    PlanetID = "unavailable-battle",
+                    Tick = 0,
+                    BattleID = forgedID,
+                    Seed = 123,
+                    ScenerySeed = int.MinValue,
+                }
+            );
+
+            peers.Flush();
+
+            Assert.IsNotNull(hostApplied);
+            Assert.IsNotNull(guestApplied);
+            Assert.AreNotEqual(forgedID, hostApplied.BattleID);
+            Assert.IsTrue(Guid.TryParseExact(hostApplied.BattleID, "N", out _));
+            Assert.AreEqual(hostApplied.BattleID, guestApplied.BattleID);
+            Assert.AreEqual(hostApplied.Seed, guestApplied.Seed);
+            Assert.AreEqual(hostApplied.ScenerySeed, guestApplied.ScenerySeed);
+            Assert.AreNotEqual(int.MinValue, hostApplied.ScenerySeed);
+            Assert.AreEqual(
+                hostRandom,
+                ((Rebellion.Util.Random.SystemRandomProvider)peers.HostGame.Random).CallCount
+            );
+        }
+
         [TestCaseSource(nameof(MissionStartCases))]
         public void Pump_MissionFamilyRequest_PreservesMatchingContinuationAfterReload(
             MultiplayerRole role,
