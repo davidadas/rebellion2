@@ -11,6 +11,7 @@ namespace Rebellion.Gameplay
     public sealed class GameResultBus
     {
         private readonly List<Subscription> _subscribers = new();
+        private readonly List<Subscription> _afterReactions = new();
         private readonly List<Subscription> _observers = new();
         private readonly List<GameResult> _pendingResults = new();
         private bool _isPublishing;
@@ -45,6 +46,41 @@ namespace Rebellion.Gameplay
                 throw new ArgumentNullException(nameof(subscriber));
 
             return Subscribe<T>(results =>
+            {
+                Publish(subscriber(results));
+            });
+        }
+
+        /// <summary>
+        /// Subscribes a reaction after ordinary reaction waves settle and before observers run.
+        /// Each callback receives only newly delivered facts. All callbacks for that batch finish
+        /// before their queued follow-ups are delivered.
+        /// </summary>
+        /// <typeparam name="T">The result type delivered to the subscriber.</typeparam>
+        /// <param name="subscriber">The callback receiving each matching settled reaction batch.</param>
+        /// <returns>A handle that detaches the subscriber when disposed.</returns>
+        public IDisposable SubscribeAfterReactions<T>(Action<IReadOnlyList<T>> subscriber)
+            where T : GameResult
+        {
+            return Register(subscriber, _afterReactions);
+        }
+
+        /// <summary>
+        /// Subscribes an operation after ordinary reactions settle, queuing its returned facts
+        /// before terminal observation without delivering the completed facts again.
+        /// </summary>
+        /// <typeparam name="T">The result type delivered to the subscriber.</typeparam>
+        /// <param name="subscriber">The callback returning follow-up results.</param>
+        /// <returns>A handle that detaches the subscriber when disposed.</returns>
+        public IDisposable SubscribeAfterReactions<T>(
+            Func<IReadOnlyList<T>, List<GameResult>> subscriber
+        )
+            where T : GameResult
+        {
+            if (subscriber == null)
+                throw new ArgumentNullException(nameof(subscriber));
+
+            return SubscribeAfterReactions<T>(results =>
             {
                 Publish(subscriber(results));
             });
@@ -90,6 +126,7 @@ namespace Rebellion.Gameplay
 
         /// <summary>
         /// Publishes a batch and drains breadth-first reaction waves without recursive delivery.
+        /// Reactions registered after ordinary delivery settle before terminal observers run.
         /// Exceptions propagate, abandoning the unfinished delivery as in the existing processor.
         /// </summary>
         /// <param name="results">The completed changes; null collections and entries are ignored.</param>
@@ -109,13 +146,34 @@ namespace Rebellion.Gameplay
                 do
                 {
                     List<GameResult> settledResults = new();
-                    while (_pendingResults.Count > 0)
+                    int completedReactionCount = 0;
+                    while (true)
                     {
-                        List<GameResult> currentResults = new(_pendingResults);
-                        _pendingResults.Clear();
-                        settledResults.AddRange(currentResults);
-                        foreach (Subscription subscriber in _subscribers.ToArray())
-                            subscriber.Deliver(currentResults);
+                        while (_pendingResults.Count > 0)
+                        {
+                            List<GameResult> currentResults = new(_pendingResults);
+                            _pendingResults.Clear();
+                            settledResults.AddRange(currentResults);
+                            foreach (Subscription subscriber in _subscribers.ToArray())
+                                subscriber.Deliver(currentResults);
+                        }
+
+                        if (
+                            _afterReactions.Count == 0
+                            || completedReactionCount == settledResults.Count
+                        )
+                            break;
+
+                        IReadOnlyList<GameResult> completedResults =
+                            completedReactionCount == 0
+                                ? settledResults
+                                : settledResults.GetRange(
+                                    completedReactionCount,
+                                    settledResults.Count - completedReactionCount
+                                );
+                        completedReactionCount = settledResults.Count;
+                        foreach (Subscription subscriber in _afterReactions.ToArray())
+                            subscriber.Deliver(completedResults);
                     }
 
                     resolvedResults.AddRange(settledResults);
@@ -137,7 +195,7 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <typeparam name="T">The result type accepted by the callback.</typeparam>
         /// <param name="callback">The callback invoked for nonempty matching batches.</param>
-        /// <param name="subscriptions">The ordered reaction or observer subscriptions.</param>
+        /// <param name="subscriptions">The ordered subscriptions for the selected phase.</param>
         /// <returns>The disposable registration.</returns>
         private static IDisposable Register<T>(
             Action<IReadOnlyList<T>> callback,

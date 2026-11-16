@@ -208,6 +208,9 @@ namespace Rebellion.Tests.Gameplay
                 calls.Add("handler");
                 return new List<GameResult>();
             });
+            processor.SubscribeAfterReactions<PlanetGarrisonChangedResult>(_ =>
+                calls.Add("after reactions")
+            );
             processor.Observe<PlanetGarrisonChangedResult>(_ => calls.Add("observer"));
 
             Assert.Throws<InvalidOperationException>(() =>
@@ -420,6 +423,233 @@ namespace Rebellion.Tests.Gameplay
             bus.Publish(new MissionCompletedResult());
 
             Assert.AreEqual(0, garrisonCalls);
+        }
+
+        [Test]
+        public void Publish_AfterReactions_WaitsForOrdinaryFollowUps()
+        {
+            GameResultBus bus = new();
+            PlanetGarrisonChangedResult initial = new();
+            PlanetUprisingStartedResult followUp = new();
+            List<string> calls = new();
+            List<IReadOnlyList<GameResult>> completedBatches = new();
+            bus.Subscribe<PlanetGarrisonChangedResult>(_ =>
+            {
+                calls.Add("initial reaction");
+                return new List<GameResult> { followUp };
+            });
+            bus.Subscribe<PlanetUprisingStartedResult>(_ => calls.Add("follow-up reaction"));
+            bus.SubscribeAfterReactions<GameResult>(results =>
+            {
+                calls.Add("after reactions");
+                completedBatches.Add(results);
+            });
+            bus.ObserveAll(_ => calls.Add("observer"));
+
+            List<GameResult> results = bus.Publish(initial);
+
+            CollectionAssert.AreEqual(
+                new[] { "initial reaction", "follow-up reaction", "after reactions", "observer" },
+                calls
+            );
+            Assert.AreEqual(1, completedBatches.Count);
+            CollectionAssert.AreEqual(new GameResult[] { initial, followUp }, completedBatches[0]);
+            CollectionAssert.AreEqual(new GameResult[] { initial, followUp }, results);
+        }
+
+        [Test]
+        public void Publish_AfterReactionCallbacks_CombinesFollowUpsAfterBothFinish()
+        {
+            GameResultBus bus = new();
+            MissionCompletedResult first = new();
+            ForceExperienceResult second = new();
+            List<string> calls = new();
+            List<IReadOnlyList<GameResult>> ordinaryBatches = new();
+            IReadOnlyList<GameResult> nestedResults = null;
+            bus.Subscribe<GameResult>(results => ordinaryBatches.Add(results));
+            bus.SubscribeAfterReactions<PlanetGarrisonChangedResult>(_ =>
+            {
+                calls.Add("first callback");
+                nestedResults = bus.Publish(first);
+                calls.Add("first callback finished");
+            });
+            bus.SubscribeAfterReactions<PlanetGarrisonChangedResult>(_ =>
+            {
+                calls.Add("second callback");
+                return new List<GameResult> { second };
+            });
+            bus.Subscribe<MissionCompletedResult>(_ => calls.Add("first follow-up"));
+            bus.Subscribe<ForceExperienceResult>(_ => calls.Add("second follow-up"));
+            bus.ObserveAll(_ => calls.Add("observer"));
+
+            bus.Publish(new PlanetGarrisonChangedResult());
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    "first callback",
+                    "first callback finished",
+                    "second callback",
+                    "first follow-up",
+                    "second follow-up",
+                    "observer",
+                },
+                calls
+            );
+            Assert.IsEmpty(nestedResults);
+            Assert.AreEqual(2, ordinaryBatches.Count);
+            CollectionAssert.AreEqual(new GameResult[] { first, second }, ordinaryBatches[1]);
+        }
+
+        [Test]
+        public void Publish_AfterReactionFollowUps_DeliversOnlyNewFactsToCompletionPhase()
+        {
+            GameResultBus bus = new();
+            PlanetGarrisonChangedResult initial = new();
+            MissionCompletedResult followUp = new();
+            ForceExperienceResult ordinaryFollowUp = new();
+            List<IReadOnlyList<GameResult>> completedBatches = new();
+            List<IReadOnlyList<GameResult>> observations = new();
+            List<GameResult> ordinaryDeliveries = new();
+            bus.Subscribe<GameResult>(results => ordinaryDeliveries.AddRange(results));
+            bus.Subscribe<MissionCompletedResult>(_ => new List<GameResult> { ordinaryFollowUp });
+            bus.SubscribeAfterReactions<GameResult>(results => completedBatches.Add(results));
+            bus.SubscribeAfterReactions<PlanetGarrisonChangedResult>(_ => new List<GameResult>
+            {
+                followUp,
+            });
+            bus.ObserveAll(results => observations.Add(results));
+
+            List<GameResult> results = bus.Publish(initial);
+
+            Assert.AreEqual(2, completedBatches.Count);
+            CollectionAssert.AreEqual(new[] { initial }, completedBatches[0]);
+            CollectionAssert.AreEqual(
+                new GameResult[] { followUp, ordinaryFollowUp },
+                completedBatches[1]
+            );
+            GameResult[] expected = { initial, followUp, ordinaryFollowUp };
+            CollectionAssert.AreEqual(expected, ordinaryDeliveries);
+            CollectionAssert.AreEqual(expected, results);
+            Assert.AreEqual(1, observations.Count);
+            CollectionAssert.AreEqual(expected, observations[0]);
+        }
+
+        [Test]
+        public void Publish_ObserverPublishesFollowUp_CompletesNewRoundWithoutRedeliveringOriginal()
+        {
+            GameResultBus bus = new();
+            List<string> calls = new();
+            bus.SubscribeAfterReactions<PlanetGarrisonChangedResult>(_ =>
+                calls.Add("initial complete")
+            );
+            bus.Observe<PlanetGarrisonChangedResult>(_ =>
+            {
+                calls.Add("first observer");
+                bus.Publish(new MissionCompletedResult());
+            });
+            bus.Observe<PlanetGarrisonChangedResult>(_ => calls.Add("second observer"));
+            bus.Subscribe<MissionCompletedResult>(_ => calls.Add("follow-up reaction"));
+            bus.SubscribeAfterReactions<MissionCompletedResult>(_ =>
+                calls.Add("follow-up complete")
+            );
+            bus.Observe<MissionCompletedResult>(_ => calls.Add("follow-up observer"));
+
+            bus.Publish(new PlanetGarrisonChangedResult());
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    "initial complete",
+                    "first observer",
+                    "second observer",
+                    "follow-up reaction",
+                    "follow-up complete",
+                    "follow-up observer",
+                },
+                calls
+            );
+        }
+
+        [Test]
+        public void SubscribeAfterReactions_DisposedHandle_DetachesOnlyItsCallback()
+        {
+            GameResultBus bus = new();
+            List<string> calls = new();
+            IDisposable removed = bus.SubscribeAfterReactions<PlanetGarrisonChangedResult>(_ =>
+                calls.Add("removed")
+            );
+            bus.SubscribeAfterReactions<PlanetGarrisonChangedResult>(_ => calls.Add("retained"));
+            bus.SubscribeAfterReactions<MissionCompletedResult>(_ => calls.Add("unrelated"));
+
+            removed.Dispose();
+            removed.Dispose();
+            bus.Publish(new PlanetGarrisonChangedResult());
+
+            CollectionAssert.AreEqual(new[] { "retained" }, calls);
+        }
+
+        [Test]
+        public void Publish_AfterReactionSubscriptionDisposedDuringDelivery_SkipsDetachedCallback()
+        {
+            GameResultBus bus = new();
+            List<string> calls = new();
+            IDisposable removed = null;
+            bus.SubscribeAfterReactions<PlanetGarrisonChangedResult>(_ => removed.Dispose());
+            removed = bus.SubscribeAfterReactions<PlanetGarrisonChangedResult>(_ =>
+                calls.Add("removed")
+            );
+            bus.SubscribeAfterReactions<PlanetGarrisonChangedResult>(_ => calls.Add("retained"));
+
+            bus.Publish(new PlanetGarrisonChangedResult());
+
+            CollectionAssert.AreEqual(new[] { "retained" }, calls);
+        }
+
+        [Test]
+        public void Publish_AfterReactionThrows_DiscardsQueuedFactsAndResetsDelivery()
+        {
+            GameResultBus bus = new();
+            InvalidOperationException failure = new("completion failed");
+            List<GameResult> delivered = new();
+            List<GameResult> completed = new();
+            List<GameResult> observed = new();
+            bus.Subscribe<GameResult>(results => delivered.AddRange(results));
+            bus.SubscribeAfterReactions<PlanetGarrisonChangedResult>(_ =>
+            {
+                bus.Publish(new PlanetUprisingStartedResult());
+                throw failure;
+            });
+            bus.SubscribeAfterReactions<GameResult>(results => completed.AddRange(results));
+            bus.ObserveAll(results => observed.AddRange(results));
+
+            InvalidOperationException thrown = Assert.Throws<InvalidOperationException>(() =>
+                bus.Publish(new PlanetGarrisonChangedResult())
+            );
+            MissionCompletedResult next = new();
+            List<GameResult> results = bus.Publish(next);
+
+            Assert.AreSame(failure, thrown);
+            Assert.AreEqual(2, delivered.Count);
+            Assert.AreSame(next, delivered[1]);
+            CollectionAssert.AreEqual(new[] { next }, completed);
+            CollectionAssert.AreEqual(new[] { next }, observed);
+            CollectionAssert.AreEqual(new[] { next }, results);
+        }
+
+        [Test]
+        public void SubscribeAfterReactions_NullCallback_RejectsRegistration()
+        {
+            GameResultBus bus = new();
+
+            Assert.Throws<ArgumentNullException>(() =>
+                bus.SubscribeAfterReactions<GameResult>((Action<IReadOnlyList<GameResult>>)null)
+            );
+            Assert.Throws<ArgumentNullException>(() =>
+                bus.SubscribeAfterReactions<GameResult>(
+                    (Func<IReadOnlyList<GameResult>, List<GameResult>>)null
+                )
+            );
         }
 
         /// <summary>
