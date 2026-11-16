@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Gameplay;
 using Rebellion.PlayerRequests;
 using Rebellion.Util.Logging;
+using UnityEngine;
 
 /// <summary>
 /// Owns the active simulation, clock, player request routing, and save/load lifecycle.
