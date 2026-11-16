@@ -58,6 +58,58 @@ namespace Rebellion.Tests.Game.FogOfWar
         }
 
         [Test]
+        public void RecordMissionSnapshot_InTransitEnemyForces_DoesNotRevealForces()
+        {
+            Officer travellingOfficer = CreateOfficer("TRAVELLING_OFFICER", _empire);
+            travellingOfficer.CurrentRank = OfficerRank.General;
+            travellingOfficer.Movement = TestMovement.Create(transitTicks: 20, ticksElapsed: 5);
+            _game.AttachNode(travellingOfficer, _coruscant);
+            Fleet travellingFleet = CreateFleet("TRAVELLING_FLEET", _empire);
+            travellingFleet.Movement = TestMovement.Create(transitTicks: 20, ticksElapsed: 5);
+            _game.AttachNode(travellingFleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(travellingFleet, _empire, "TRAVELLING_SHIP");
+            Officer commander = CreateOfficer("TRAVELLING_COMMANDER", _empire);
+            commander.CurrentRank = OfficerRank.Admiral;
+            _game.AttachNode(commander, ship);
+
+            new FogOfWarRecorder().RecordMissionSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
+            Assert.That(snapshot.Fleets, Is.Empty);
+            Assert.That(snapshot.Officers, Is.Empty);
+        }
+
+        [Test]
+        public void RecordEspionageSnapshot_InTransitEnemyForces_RevealsForces()
+        {
+            Officer travellingOfficer = CreateOfficer("TRAVELLING_OFFICER", _empire);
+            travellingOfficer.Movement = TestMovement.Create(transitTicks: 20, ticksElapsed: 5);
+            _game.AttachNode(travellingOfficer, _coruscant);
+            Fleet travellingFleet = CreateFleet("TRAVELLING_FLEET", _empire);
+            travellingFleet.Movement = TestMovement.Create(transitTicks: 20, ticksElapsed: 5);
+            _game.AttachNode(travellingFleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(travellingFleet, _empire, "TRAVELLING_SHIP");
+            Officer commander = CreateOfficer("TRAVELLING_COMMANDER", _empire);
+            _game.AttachNode(commander, ship);
+
+            new FogOfWarRecorder().RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
+            Assert.That(
+                snapshot.Fleets.Single().InstanceID,
+                Is.EqualTo(travellingFleet.InstanceID)
+            );
+            Assert.That(
+                snapshot.Officers.Single().InstanceID,
+                Is.EqualTo(travellingOfficer.InstanceID)
+            );
+            Assert.That(
+                snapshot.Fleets.Single().GetChildren<Officer>(recursive: true).Single().InstanceID,
+                Is.EqualTo(commander.InstanceID)
+            );
+        }
+
+        [Test]
         public void RecordMissionSnapshot_PreviousCargoIntelligence_PreservesUnrefreshedKnowledge()
         {
             Fleet fleet = CreateFleet("FLEET", _empire);

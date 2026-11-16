@@ -630,6 +630,7 @@ namespace Rebellion.Game.FogOfWar
                         .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
                         .SelectMany(ship => ship.GetChildren<Officer>())
                 )
+                .Where(officer => IsObservableAtPlanet(officer, faction.InstanceID))
                 .ToDictionary(officer => officer.InstanceID);
             Officer[] rememberedCommanders = snapshot
                 .Officers.Concat(
@@ -646,7 +647,8 @@ namespace Rebellion.Game.FogOfWar
                 faction,
                 planet,
                 snapshot,
-                PlanetIntelligenceCategory.CapitalShips | PlanetIntelligenceCategory.Starfighters
+                PlanetIntelligenceCategory.CapitalShips | PlanetIntelligenceCategory.Starfighters,
+                includeInTransit: false
             );
             foreach (Officer remembered in rememberedCommanders)
             {
@@ -734,7 +736,7 @@ namespace Rebellion.Game.FogOfWar
             )
                 snapshot.FleetsObservedAtTick = currentTick;
             UpdateOfficerIntelligence(faction, planet, snapshot, categories, includeDescendants);
-            UpdateFleetIntelligence(faction, planet, snapshot, categories);
+            UpdateFleetIntelligence(faction, planet, snapshot, categories, includeInTransit: true);
             UpdateGroundForceIntelligence(
                 faction,
                 planet,
@@ -793,18 +795,26 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="planet">The planet.</param>
         /// <param name="snapshot">The snapshot.</param>
         /// <param name="categories">The categories.</param>
+        /// <param name="includeInTransit">Whether fleets still traveling to the planet are observable.</param>
         private void UpdateFleetIntelligence(
             Faction faction,
             Planet planet,
             PlanetSnapshot snapshot,
-            PlanetIntelligenceCategory categories
+            PlanetIntelligenceCategory categories,
+            bool includeInTransit
         )
         {
             bool revealsFleets = categories.HasFlag(PlanetIntelligenceCategory.Fleets);
             if (revealsFleets)
             {
                 snapshot.Fleets.Clear();
-                AddFleetsToSnapshot(faction, planet.GetChildren<Fleet>(), snapshot, true);
+                AddFleetsToSnapshot(
+                    faction,
+                    planet.GetChildren<Fleet>(),
+                    snapshot,
+                    includeEspionageIntelligence: true,
+                    includeInTransit: includeInTransit
+                );
                 ReconcileFleetPlacements(snapshot);
                 return;
             }
@@ -820,7 +830,13 @@ namespace Rebellion.Game.FogOfWar
                     )
                     .ToList();
                 snapshot.Fleets.Clear();
-                AddFleetsToSnapshot(faction, planet.GetChildren<Fleet>(), snapshot, true);
+                AddFleetsToSnapshot(
+                    faction,
+                    planet.GetChildren<Fleet>(),
+                    snapshot,
+                    includeEspionageIntelligence: true,
+                    includeInTransit: includeInTransit
+                );
                 FilterFleetIntelligence(snapshot.Fleets, categories);
                 PreserveUnrevealedFleetCargo(previousFleets, snapshot.Fleets, categories);
                 ReconcileFleetPlacements(snapshot);
@@ -1536,7 +1552,8 @@ namespace Rebellion.Game.FogOfWar
                 activeChildren.OfType<Fleet>(),
                 planetSnapshot,
                 includeEspionageIntelligence,
-                includePersonnel
+                includeInTransit: includeEspionageIntelligence,
+                includePersonnel: includePersonnel
             );
             AddEntityCopiesToSnapshot(
                 activeChildren.OfType<Regiment>(),
@@ -2179,12 +2196,14 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="fleets">The active fleets at the observed planet.</param>
         /// <param name="snapshot">The snapshot being populated.</param>
         /// <param name="includeEspionageIntelligence">Whether hidden intelligence should be included.</param>
+        /// <param name="includeInTransit">Whether fleets still traveling to the planet are observable.</param>
         /// <param name="includePersonnel">Whether personnel aboard observed fleets should be included.</param>
         private void AddFleetsToSnapshot(
             Faction faction,
             IEnumerable<Fleet> fleets,
             PlanetSnapshot snapshot,
             bool includeEspionageIntelligence,
+            bool includeInTransit,
             bool includePersonnel = true
         )
         {
@@ -2198,17 +2217,14 @@ namespace Rebellion.Game.FogOfWar
                     continue;
                 }
 
-                if (
-                    !includeEspionageIntelligence
-                    && !IsObservableAtPlanet(fleet, faction.InstanceID)
-                )
+                if (!includeInTransit && !IsObservableAtPlanet(fleet, faction.InstanceID))
                     continue;
 
                 Fleet fleetCopy = CopyObservedFleetForSnapshot(
                     fleet,
                     faction.InstanceID,
                     includeEspionageIntelligence,
-                    includeEspionageIntelligence,
+                    includeInTransit,
                     snapshot.TickCaptured
                 );
                 if (fleetCopy == null)
