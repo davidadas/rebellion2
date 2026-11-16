@@ -58,27 +58,31 @@ async function plan({ github, context, core, number, headSha }) {
   core.setOutput('review_url', `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/pull/${request.number}/commits/${request.headSha}`);
 }
 
-/** Resolve an immutable merge containing the reviewed head after environment approval. */
-async function approve({ github, context, core, number, headSha, sleep = ms => new Promise(resolve => setTimeout(resolve, ms)) }) {
+/** Bind the approved test run to the current base and reviewed head revisions. */
+async function approve({ github, context, core, number, headSha, checkId }) {
   const request = parseRequest(number, headSha);
   await requireReviewProtection(github, context.repo);
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const pull = await readRequest(github, context.repo, request);
-    if (pull.mergeable === false) throw new Error('Resolve the merge conflicts before running tests.');
-    if (/^[a-f0-9]{40}$/.test(pull.merge_commit_sha || '')) {
-      const { data: merge } = await github.rest.git.getCommit({
-        ...context.repo, commit_sha: pull.merge_commit_sha,
-      });
-      const parents = merge.parents.map(parent => parent.sha);
-      if (parents.includes(request.headSha) && parents.includes(pull.base.sha)) {
-        core.setOutput('merge_sha', pull.merge_commit_sha);
-        core.setOutput('media_branch', pull.head.ref);
-        return;
-      }
-    }
-    if (attempt < 4) await sleep(1000);
+  const pull = await readRequest(github, context.repo, request);
+  if (!/^[a-f0-9]{40}$/.test(pull.base?.sha || '')) {
+    throw new Error('The exact pull request base SHA is required.');
   }
-  throw new Error('GitHub has not prepared the current merge commit. Rerun the workflow.');
+  if (!pull.head?.repo?.full_name) throw new Error('The pull request head repository is required.');
+  if (!/^[1-9]\d*$/.test(String(checkId)) || !Number.isSafeInteger(Number(checkId))) {
+    throw new Error('A valid PR check ID is required.');
+  }
+
+  core.setOutput('base_sha', pull.base.sha);
+  core.setOutput('head_repository', pull.head.repo.full_name);
+  core.setOutput('media_branch', pull.head.ref);
+  await github.rest.checks.update({
+    ...context.repo,
+    check_run_id: Number(checkId),
+    status: 'in_progress',
+    output: {
+      title: 'Unity tests running',
+      summary: `Testing reviewed commit ${request.headSha} against base ${pull.base.sha}.`,
+    },
+  });
 }
 
 /** Report the actual test outcome on the reviewed PR head, rather than on the default branch. */

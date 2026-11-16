@@ -32,9 +32,12 @@ test('private PR media and Unity execution both depend on the required-reviewer 
   assert.equal(dependsOn('resolve-pr-media', 'approve-pr'), true);
   assert.equal(dependsOn('test-pr', 'approve-pr'), true);
   assert.equal(dependsOn('test-pr', 'resolve-pr-media'), true);
-  assert.equal(ci.jobs['approve-pr'].outputs.merge_sha, '${{ steps.approve.outputs.merge_sha }}');
-  assert.equal(ci.jobs['test-pr'].with.checkout_ref, '${{ needs.approve-pr.outputs.merge_sha }}');
+  assert.equal(ci.jobs['approve-pr'].outputs.base_sha, '${{ steps.approve.outputs.base_sha }}');
+  assert.equal(ci.jobs['approve-pr'].outputs.head_repository, '${{ steps.approve.outputs.head_repository }}');
+  assert.equal(ci.jobs['approve-pr'].permissions.checks, 'write');
+  assert.equal(ci.jobs['test-pr'].with.base_sha, '${{ needs.approve-pr.outputs.base_sha }}');
   assert.equal(ci.jobs['test-pr'].with.reviewed_head_sha, '${{ inputs.head_sha }}');
+  assert.equal(ci.jobs['test-pr'].with.reviewed_head_repository, '${{ needs.approve-pr.outputs.head_repository }}');
 });
 
 test('metadata planning and result reporting never check out contributor code', () => {
@@ -69,10 +72,30 @@ test('same-repository PRs run private tests automatically from the protected wor
   assert.equal(unity.if, trustedPullRequestCondition);
   assert.ok(needs(unity).includes('trusted-media'));
   assert.equal(unity.uses, './.github/workflows/unity-test-runner.yml');
-  assert.equal(unity.with.checkout_ref, '${{ github.event.pull_request.merge_commit_sha }}');
+  assert.equal(unity.with.base_sha, '${{ github.event.pull_request.base.sha }}');
   assert.equal(unity.with.reviewed_head_sha, '${{ github.event.pull_request.head.sha }}');
+  assert.equal(unity.with.reviewed_head_repository, '${{ github.event.pull_request.head.repo.full_name }}');
   assert.equal(unity.with.media_sha, '${{ needs.trusted-media.outputs.sha }}');
   assert.equal(unity.secrets, 'inherit');
+});
+
+test('the shared runner prepares and verifies PR merges from exact base and head revisions', () => {
+  assert.equal(runner.on.workflow_call.inputs.base_sha.default, '');
+  assert.equal(runner.on.workflow_call.inputs.reviewed_head_sha.default, '');
+  assert.equal(runner.on.workflow_call.inputs.reviewed_head_repository.default, '');
+  const baseCheckout = runner.jobs.test.steps.find(step => step.name === 'Checkout PR base');
+  const headCheckout = runner.jobs.test.steps.find(step => step.name === 'Checkout reviewed PR head');
+  const merge = runner.jobs.test.steps.find(step => step.name === 'Prepare reviewed merge');
+  assert.equal(baseCheckout.with.ref, '${{ inputs.base_sha }}');
+  assert.equal(baseCheckout.with['fetch-depth'], 0);
+  assert.equal(baseCheckout.with['persist-credentials'], false);
+  assert.equal(headCheckout.with.repository, '${{ inputs.reviewed_head_repository }}');
+  assert.equal(headCheckout.with.ref, '${{ inputs.reviewed_head_sha }}');
+  assert.equal(headCheckout.with['fetch-depth'], 0);
+  assert.equal(headCheckout.with['persist-credentials'], false);
+  assert.match(merge.run, /git fetch --no-tags \.ci\/reviewed-head/);
+  assert.match(merge.run, /merge --no-ff --no-edit/);
+  assert.match(merge.run, /prepared merge does not contain the approved revisions/);
 });
 
 test('reviewed PR tests cannot write GitHub checks or poison shared caches', () => {

@@ -52,8 +52,9 @@ jobs:
     needs: trusted-media
     uses: ./.github/workflows/unity-test-runner.yml
     with:
-      checkout_ref: ${{ github.event.pull_request.merge_commit_sha }}
+      base_sha: ${{ github.event.pull_request.base.sha }}
       reviewed_head_sha: ${{ github.event.pull_request.head.sha }}
+      reviewed_head_repository: ${{ github.event.pull_request.head.repo.full_name }}
       media_sha: ${{ needs.trusted-media.outputs.sha }}
     secrets: inherit
     permissions:
