@@ -4,12 +4,18 @@ on:
   workflow_call:
     inputs:
       checkout_ref:
-        required: true
         type: string
+        default: ''
+      base_sha:
+        type: string
+        default: ''
       media_sha:
         required: true
         type: string
       reviewed_head_sha:
+        type: string
+        default: ''
+      reviewed_head_repository:
         type: string
         default: ''
       publish_checks:
@@ -32,29 +38,62 @@ jobs:
 
     steps:
       - name: Checkout repository
+        if: inputs.reviewed_head_sha == ''
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.checkout_ref }}
           fetch-depth: 2
           persist-credentials: false
 
-      - name: Verify reviewed revision
+      - name: Checkout PR base
+        if: inputs.reviewed_head_sha != ''
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.base_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout reviewed PR head
+        if: inputs.reviewed_head_sha != ''
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.reviewed_head_repository }}
+          ref: ${{ inputs.reviewed_head_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          path: .ci/reviewed-head
+
+      - name: Prepare reviewed merge
         if: inputs.reviewed_head_sha != ''
         env:
+          BASE_SHA: ${{ inputs.base_sha }}
           REVIEWED_HEAD_SHA: ${{ inputs.reviewed_head_sha }}
+          REVIEWED_HEAD_REPOSITORY: ${{ inputs.reviewed_head_repository }}
         run: |
           set -euo pipefail
-          if [[ ! "$REVIEWED_HEAD_SHA" =~ ^[a-f0-9]{40}$ ]]; then
-            echo "An exact reviewed head SHA is required."
+          if [[ ! "$BASE_SHA" =~ ^[a-f0-9]{40}$ ]] ||
+             [[ ! "$REVIEWED_HEAD_SHA" =~ ^[a-f0-9]{40}$ ]] ||
+             [[ ! "$REVIEWED_HEAD_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+            echo "Exact base, head, and repository inputs are required."
             exit 1
           fi
-          for parent in $(git show --no-patch --format=%P HEAD); do
-            if [ "$parent" = "$REVIEWED_HEAD_SHA" ]; then
-              exit 0
-            fi
-          done
-          echo "The checkout does not contain the reviewed PR head."
-          exit 1
+          if [ "$(git rev-parse HEAD)" != "$BASE_SHA" ]; then
+            echo "The base checkout does not match the approved base revision."
+            exit 1
+          fi
+          if [ "$(git -C .ci/reviewed-head rev-parse HEAD)" != "$REVIEWED_HEAD_SHA" ]; then
+            echo "The head checkout does not match the reviewed revision."
+            exit 1
+          fi
+          git fetch --no-tags .ci/reviewed-head "$REVIEWED_HEAD_SHA"
+          rm -rf .ci/reviewed-head
+          git -c user.name=github-actions -c user.email=github-actions@github.com \
+            merge --no-ff --no-edit "$REVIEWED_HEAD_SHA"
+          parents="$(git show --no-patch --format=%P HEAD)"
+          if [[ " $parents " != *" $BASE_SHA "* ]] || [[ " $parents " != *" $REVIEWED_HEAD_SHA "* ]]; then
+            echo "The prepared merge does not contain the approved revisions."
+            exit 1
+          fi
 
       - name: Build and verify Linux native vector library
         run: python3 Tools/build_tactical_math.py --build-directory "$RUNNER_TEMP/tactical-math" --target linux-x64

@@ -366,10 +366,12 @@ jobs:
       url: ${{ needs.pr-plan.outputs.review_url }}
     permissions:
       actions: read
+      checks: write
       contents: read
       pull-requests: read
     outputs:
-      merge_sha: ${{ steps.approve.outputs.merge_sha }}
+      base_sha: ${{ steps.approve.outputs.base_sha }}
+      head_repository: ${{ steps.approve.outputs.head_repository }}
       media_branch: ${{ steps.approve.outputs.media_branch }}
     steps:
       - uses: actions/checkout@v4
@@ -381,11 +383,13 @@ jobs:
         env:
           PR_NUMBER: ${{ inputs.pull_request_number }}
           PR_HEAD_SHA: ${{ inputs.head_sha }}
+          CHECK_ID: ${{ needs.pr-plan.outputs.check_id }}
         with:
           script: |
             const { approve } = require('./.github/scripts/pr-tests.cjs');
             await approve({ github, context, core,
-              number: process.env.PR_NUMBER, headSha: process.env.PR_HEAD_SHA });
+              number: process.env.PR_NUMBER, headSha: process.env.PR_HEAD_SHA,
+              checkId: process.env.CHECK_ID });
 
   resolve-pr-media:
     name: Resolve approved PR media
@@ -403,8 +407,9 @@ jobs:
     needs: [approve-pr, resolve-pr-media]
     uses: ./.github/workflows/unity-test-runner.yml
     with:
-      checkout_ref: ${{ needs.approve-pr.outputs.merge_sha }}
+      base_sha: ${{ needs.approve-pr.outputs.base_sha }}
       reviewed_head_sha: ${{ inputs.head_sha }}
+      reviewed_head_repository: ${{ needs.approve-pr.outputs.head_repository }}
       media_sha: ${{ needs.resolve-pr-media.outputs.sha }}
       publish_checks: false
       save_cache: false
