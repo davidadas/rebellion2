@@ -923,6 +923,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <param name="busy">Whether a library operation owns the installation.</param>
     public void SetLibraryBusy(bool busy)
     {
+        fileButton.interactable = !busy;
+        viewButton.interactable = !busy;
+        editButton.interactable = !busy && project != null;
+        testButton.interactable = !busy && project != null;
         newPackButton.interactable = !busy;
         openPackButton.interactable = !busy;
         libraryButton.interactable = !busy;
@@ -1161,7 +1165,11 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// Changes the content size without scaling application menu text.
     /// </summary>
     /// <param name="amount">The signed scale adjustment.</param>
-    public void ZoomContent(float amount) => workbenchLayout.SetZoom(workbenchLayout.Zoom + amount);
+    public void ZoomContent(float amount)
+    {
+        workbenchLayout.SetZoom(workbenchLayout.Zoom + amount);
+        libraryView.SetZoom(workbenchLayout.Zoom);
+    }
 
     /// <summary>
     /// Restores application presentation independently of the currently open content pack.
@@ -1171,6 +1179,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     {
         SetColorMode(settings.ColorMode);
         workbenchLayout.SetZoom(settings.Zoom);
+        libraryView.SetZoom(settings.Zoom);
         workbenchLayout.SetSplit(settings.Split);
     }
 

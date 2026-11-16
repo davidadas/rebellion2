@@ -184,6 +184,7 @@ internal static class ContentLibraryPrefabBuilder
         Assign(view, "detailDescription", description);
         Assign(view, "detailMetadata", metadata);
         Assign(view, "detailScroll", details);
+        Assign(view, "layout", layout);
         Assign(view, "image", remoteImage);
         Assign(view, "installButton", install);
         Assign(view, "removeButton", remove);

@@ -58,6 +58,9 @@ public sealed class ContentLibraryView : MonoBehaviour
     private ScrollAreaLayout detailScroll;
 
     [SerializeField]
+    private ContentEditorWorkbenchLayout layout;
+
+    [SerializeField]
     private RemoteImageView image;
 
     [SerializeField]
@@ -228,6 +231,12 @@ public sealed class ContentLibraryView : MonoBehaviour
         Initialize();
         resumeButton.gameObject.SetActive(available);
     }
+
+    /// <summary>
+    /// Applies the editor's shared content zoom to the library panes.
+    /// </summary>
+    /// <param name="value">The application content scale.</param>
+    public void SetZoom(float value) => layout.SetZoom(value);
 
     /// <summary>
     /// Marks text wrapping and pooled row widths for reflow after a pane is resized.

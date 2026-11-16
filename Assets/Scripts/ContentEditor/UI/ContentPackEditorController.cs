@@ -700,6 +700,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             assets?.Dispose();
             assets = null;
             ContentBindings.Apply(view.gameObject, applicationAssets);
+            librarySession?.Refresh();
         });
     }
 

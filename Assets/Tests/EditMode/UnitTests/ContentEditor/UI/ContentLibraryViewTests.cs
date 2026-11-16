@@ -40,6 +40,36 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
+        public void ZoomContent_LibraryOpen_ScalesLibraryPanes()
+        {
+            editor.ZoomContent(0.2f);
+            TMP_InputField search = editor
+                .Library.GetComponentsInChildren<TMP_InputField>(true)
+                .Single(input => input.name == "LibrarySearch");
+            Assert.AreEqual(1.2f, search.transform.parent.localScale.x, 0.001f);
+        }
+
+        [Test]
+        public void ApplySettings_LibraryOpen_RestoresContentZoom()
+        {
+            editor.ApplySettings(new ContentEditorSettings { Zoom = 1.5f });
+            TMP_InputField search = editor
+                .Library.GetComponentsInChildren<TMP_InputField>(true)
+                .Single(input => input.name == "LibrarySearch");
+            Assert.AreEqual(1.5f, search.transform.parent.localScale.x, 0.001f);
+        }
+
+        [Test]
+        public void SetLibraryBusy_PendingOperation_DisablesProjectCommands()
+        {
+            editor.SetLibraryBusy(true);
+            Button file = editor
+                .GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "File");
+            Assert.IsFalse(file.interactable);
+        }
+
+        [Test]
         public void Render_EmptyCollection_ShowsEmptyMessage()
         {
             editor.Library.Render(
