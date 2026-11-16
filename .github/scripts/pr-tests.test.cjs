@@ -4,22 +4,19 @@ const { parseRequest, plan, approve, report } = require('./pr-tests.cjs');
 
 const HEAD = '1'.repeat(40);
 const BASE = '2'.repeat(40);
-const MERGE = '3'.repeat(40);
 
 function fixture() {
   const calls = [];
   const outputs = {};
   const pull = {
-    state: 'open', mergeable: true, merge_commit_sha: MERGE,
+    state: 'open',
     base: { sha: BASE, repo: { full_name: 'owner/game' } },
-    head: { sha: HEAD, ref: 'contributor-feature' },
+    head: { sha: HEAD, ref: 'contributor-feature', repo: { full_name: 'contributor/game' } },
   };
   const environment = { protection_rules: [{ type: 'required_reviewers', reviewers: [{ type: 'User', reviewer: { id: 1 } }] }] };
-  const merge = { parents: [{ sha: BASE }, { sha: HEAD }] };
   const github = { rest: {
     repos: { getEnvironment: async () => ({ data: environment }) },
     pulls: { get: async () => ({ data: pull }) },
-    git: { getCommit: async () => ({ data: merge }) },
     checks: {
       create: async data => { calls.push(data); return { data: { id: 23 } }; },
       update: async data => { calls.push(data); },
@@ -27,7 +24,7 @@ function fixture() {
   } };
   return { github, context: { repo: { owner: 'owner', repo: 'game' }, serverUrl: 'https://github.com', runId: 45 },
     core: { setOutput: (key, value) => { outputs[key] = value; } },
-    number: '7', headSha: HEAD, sleep: async () => {}, calls, outputs, pull, environment, merge };
+    number: '7', headSha: HEAD, checkId: '23', calls, outputs, pull, environment };
 }
 
 test('dispatch inputs reject malformed numbers and mutable refs', () => {
@@ -48,7 +45,7 @@ test('planning binds a pending check and review link to the exact PR head', asyn
   assert.equal(f.calls[0].details_url, 'https://github.com/owner/game/actions/runs/45');
   assert.equal(f.outputs.check_id, '23');
   assert.equal(f.outputs.review_url, `https://github.com/owner/game/pull/7/commits/${HEAD}`);
-  assert.equal(f.outputs.merge_sha, undefined);
+  assert.equal(f.outputs.base_sha, undefined);
 });
 
 test('an absent required-reviewer rule blocks planning without creating a check', async () => {
@@ -62,7 +59,7 @@ test('an empty reviewer list cannot unlock testing', async () => {
   const f = fixture();
   f.environment.protection_rules[0].reviewers = [];
   await assert.rejects(approve(f), /required reviewers/);
-  assert.equal(f.outputs.merge_sha, undefined);
+  assert.equal(f.outputs.base_sha, undefined);
 });
 
 for (const [name, change, message] of [
@@ -75,51 +72,19 @@ for (const [name, change, message] of [
     change(f);
     await assert.rejects(plan(f), message);
     await assert.rejects(approve(f), message);
-    assert.equal(f.outputs.merge_sha, undefined);
+    assert.equal(f.outputs.base_sha, undefined);
   });
 }
 
-test('approval resolves an immutable merge containing the reviewed head', async () => {
+test('approval binds testing to the exact base and reviewed head repository', async () => {
   const f = fixture();
   await approve(f);
-  assert.equal(f.outputs.merge_sha, MERGE);
+  assert.equal(f.outputs.base_sha, BASE);
+  assert.equal(f.outputs.head_repository, 'contributor/game');
   assert.equal(f.outputs.media_branch, 'contributor-feature');
-});
-
-test('approval rejects a stale merge with a different head', async () => {
-  const f = fixture();
-  f.merge.parents[1].sha = '4'.repeat(40);
-  await assert.rejects(approve(f), /current merge/);
-  assert.equal(f.outputs.merge_sha, undefined);
-});
-
-test('approval rejects a stale merge based on another base revision', async () => {
-  const f = fixture();
-  f.merge.parents[0].sha = '4'.repeat(40);
-  await assert.rejects(approve(f), /current merge/);
-});
-
-test('a transient merge calculation retries metadata without changing the approved head', async () => {
-  const f = fixture();
-  f.pull.merge_commit_sha = null;
-  let retries = 0;
-  f.sleep = async () => { retries++; f.pull.merge_commit_sha = MERGE; };
-  await approve(f);
-  assert.equal(retries, 1);
-  assert.equal(f.outputs.merge_sha, MERGE);
-});
-
-test('a push while GitHub computes a merge invalidates the approval', async () => {
-  const f = fixture();
-  f.pull.merge_commit_sha = null;
-  f.sleep = async () => { f.pull.head.sha = '4'.repeat(40); };
-  await assert.rejects(approve(f), /changed/);
-});
-
-test('merge conflicts block approval', async () => {
-  const f = fixture();
-  f.pull.mergeable = false;
-  await assert.rejects(approve(f), /merge conflicts/);
+  assert.equal(f.calls[0].check_run_id, 23);
+  assert.equal(f.calls[0].status, 'in_progress');
+  assert.equal(f.calls[0].output.title, 'Unity tests running');
 });
 
 test('removing the review environment after planning fails closed', async () => {
@@ -127,7 +92,14 @@ test('removing the review environment after planning fails closed', async () => 
   await plan(f);
   f.github.rest.repos.getEnvironment = async () => { throw new Error('Not Found'); };
   await assert.rejects(approve(f), /Not Found/);
-  assert.equal(f.outputs.merge_sha, undefined);
+  assert.equal(f.outputs.base_sha, undefined);
+});
+
+test('approval rejects an invalid check before exposing revisions to downstream jobs', async () => {
+  const f = fixture();
+  f.checkId = 'invalid';
+  await assert.rejects(approve(f), /check ID/);
+  assert.deepEqual(f.outputs, {});
 });
 
 for (const [testResult, mediaResult, approvalResult, conclusion] of [
