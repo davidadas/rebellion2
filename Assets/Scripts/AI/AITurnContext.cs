@@ -170,7 +170,8 @@ namespace Rebellion.AI
                         assessment.GetMissionDetectorCommander,
                         new MissionEncounterOdds.Cache(
                             game.Config.AI.MissionPlanning.EncounterCacheCapacity
-                        )
+                        ),
+                        reuseObservedState: true
                     )
                 );
             Movement = movement;

@@ -3,6 +3,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
@@ -15,6 +16,49 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class UprisingResolverTests
     {
+        [Test]
+        public void ProcessTick_Incident_RevealsOneCategoryToTheOpposingFaction()
+        {
+            var (game, planet, resolver) = BuildScene(ownerSupport: 10, troopCount: 2);
+            game.Config.Uprising.IncidentIntelligence.Add(PlanetIntelligenceCategory.PlanetControl);
+            ScheduleIncident(planet, 1);
+            game.CurrentTick = 1;
+
+            IReadOnlyList<GameResult> results = new UprisingTickProcessor(resolver).ProcessTick(
+                game
+            );
+
+            Faction recipient = game.GetFactionByOwnerInstanceID("rebels");
+            PlanetSnapshot snapshot = recipient.Fog.Snapshots["sector1"].Planets[planet.InstanceID];
+            Assert.That(snapshot.PopularSupport["empire"], Is.EqualTo(10));
+            Assert.That(snapshot.Regiments, Is.Empty);
+            PlanetUprisingIncidentResult report = results
+                .OfType<PlanetUprisingIncidentResult>()
+                .Single();
+            Assert.That(report.Recipient, Is.SameAs(recipient));
+            Assert.That(report.Intelligence, Is.EqualTo(PlanetIntelligenceCategory.PlanetControl));
+            Assert.That(game.GetFactionByOwnerInstanceID("empire").Fog.Snapshots, Is.Empty);
+        }
+
+        [Test]
+        public void ProcessTick_IncidentWithLosses_RecordsIntelligenceBeforeDestroyingUnits()
+        {
+            var (game, planet, resolver) = BuildScene(ownerSupport: 10, troopCount: 2);
+            game.Config.Uprising.IncidentIntelligence.Add(PlanetIntelligenceCategory.Regiments);
+            game.Config.Uprising.PrimaryConsequenceTable.Clear();
+            game.Config.Uprising.PrimaryConsequenceTable.Add(int.MinValue, 2);
+            game.Config.Uprising.SecondaryConsequenceTable.Clear();
+            ScheduleIncident(planet, 1);
+            game.CurrentTick = 1;
+
+            new UprisingTickProcessor(resolver).ProcessTick(game);
+
+            Faction recipient = game.GetFactionByOwnerInstanceID("rebels");
+            PlanetSnapshot snapshot = recipient.Fog.Snapshots["sector1"].Planets[planet.InstanceID];
+            Assert.That(snapshot.Regiments, Has.Count.EqualTo(2));
+            Assert.That(planet.GetAllRegiments(), Has.Count.EqualTo(1));
+        }
+
         [Test]
         public void RecordGarrisonWarning_LoadedCurrentWorld_DoesNotReplayEarlierChange()
         {
@@ -352,6 +396,32 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsEmpty(results.OfType<OfficerKilledResult>());
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ProcessTick_OfficerOnLocalMission_OnlyInjuresArrivedParticipant(bool moving)
+        {
+            var (game, planet, resolver, officer) = BuildOfficerIncident(0, new StubRNG());
+            Mission mission = MissionTestFactory.TryCreate(
+                SubdueUprisingMission.MissionTypeID,
+                game,
+                "empire",
+                planet,
+                new List<IMissionParticipant> { officer }
+            );
+            game.AttachNode(mission, planet);
+            game.MoveNode(officer, mission);
+            mission.Initiate(100);
+            if (moving)
+                officer.Movement = TestMovement.Create();
+
+            IReadOnlyList<GameResult> results = new UprisingTickProcessor(resolver).ProcessTick(
+                game
+            );
+
+            Assert.AreEqual(!moving, officer.InjuryPoints > 0);
+            Assert.AreEqual(moving ? 0 : 1, results.OfType<OfficerInjuredResult>().Count());
+        }
+
         [Test]
         public void ProcessTick_OfficerIncidentWithoutEligibleOfficers_DoesNotInjureAnyone()
         {
@@ -383,9 +453,9 @@ namespace Rebellion.Tests.Gameplay
             Officer captive = new Officer
             {
                 InstanceID = "o1",
-                OwnerInstanceID = "empire",
+                OwnerInstanceID = "rebels",
                 IsCaptured = true,
-                CaptorInstanceID = "rebels",
+                CaptorInstanceID = "empire",
                 CanEscape = true,
                 NextEscapeAttemptTick = 10,
             };
@@ -404,6 +474,52 @@ namespace Rebellion.Tests.Gameplay
                 results.OfType<OfficerCaptureStateResult>().Any(r => !r.IsCaptured),
                 "Should emit OfficerCaptureStateResult with IsCaptured=false"
             );
+        }
+
+        [TestCase(4, 1)]
+        [TestCase(5, 2)]
+        public void ProcessTick_CaptiveRelease_SelectsOfficersHeldByController(
+            int consequence,
+            int released
+        )
+        {
+            var (game, planet, resolver) = BuildScene(ownerSupport: 10, troopCount: 1);
+            game.Config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int> { { 0, 0 } };
+            game.Config.Uprising.SecondaryConsequenceTable = new Dictionary<int, int>
+            {
+                { 0, consequence },
+            };
+            for (int index = 0; index < 2; index++)
+                game.AttachNode(
+                    new Officer
+                    {
+                        InstanceID = $"prisoner-{index}",
+                        OwnerInstanceID = "rebels",
+                        IsCaptured = true,
+                        CaptorInstanceID = "empire",
+                    },
+                    planet
+                );
+            Officer otherCaptive = new()
+            {
+                InstanceID = "other-captive",
+                OwnerInstanceID = "empire",
+                IsCaptured = true,
+                CaptorInstanceID = "rebels",
+            };
+            game.AttachNode(otherCaptive, planet);
+            ScheduleIncident(planet, 1);
+            game.CurrentTick = 1;
+
+            IReadOnlyList<GameResult> results = new UprisingTickProcessor(resolver).ProcessTick(
+                game
+            );
+
+            Assert.AreEqual(
+                released,
+                results.OfType<OfficerCaptureStateResult>().Count(result => !result.IsCaptured)
+            );
+            Assert.IsTrue(otherCaptive.IsCaptured);
         }
 
         [Test]
@@ -642,6 +758,7 @@ namespace Rebellion.Tests.Gameplay
             game.Config.Uprising.DiceAddend = 0;
             game.Config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int>
             {
+                { int.MinValue, 0 },
                 { destructionThreshold, 1 },
             };
             game.Config.Uprising.SecondaryConsequenceTable.Clear();
@@ -663,6 +780,114 @@ namespace Rebellion.Tests.Gameplay
                 expectedDestruction,
                 game.GetSceneNodeByInstanceID<Building>(facility.InstanceID) == null
             );
+        }
+
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        public void ProcessTick_SuppressingGarrison_ReducesIncidentScore(
+            bool suppressing,
+            bool destroyed
+        )
+        {
+            var (game, planet, resolver) = BuildScene(ownerSupport: 10, troopCount: 1);
+            game.Config.Uprising.DiceRange = 0;
+            game.Config.Uprising.DiceAddend = 0;
+            game.Config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int>
+            {
+                { int.MinValue, 0 },
+                { 4, 1 },
+            };
+            game.Config.Uprising.SecondaryConsequenceTable.Clear();
+            game.Config.Uprising.SuppressionRegiments.Add("guard", "empire");
+            planet.GetAllRegiments().Single().TypeID = suppressing ? "guard" : "ordinary";
+            planet.EnergyCapacity = 1;
+            Building facility = EntityFactory.CreateBuilding("facility", "empire");
+            facility.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(facility, planet);
+            ScheduleIncident(planet, 1);
+            game.CurrentTick = 1;
+
+            new UprisingTickProcessor(resolver).ProcessTick(game);
+
+            Assert.AreEqual(
+                destroyed,
+                game.GetSceneNodeByInstanceID<Building>(facility.InstanceID) == null
+            );
+        }
+
+        [TestCase(false, false, 2, true)]
+        [TestCase(true, false, 2, true)]
+        [TestCase(false, true, 2, false)]
+        [TestCase(true, true, 2, false)]
+        [TestCase(false, true, 1, true)]
+        [TestCase(true, true, 1, true)]
+        public void ProcessTick_IncidentGarrisonBonus_RequiresSectorSuppression(
+            bool core,
+            bool suppressionPresent,
+            int resistance,
+            bool destroyed
+        )
+        {
+            var (game, planet, resolver) = BuildScene(
+                ownerSupport: 10,
+                troopCount: 1,
+                isCoreSector: core
+            );
+            game.GetFactionByOwnerInstanceID("empire").Settings.UprisingResistance = resistance;
+            game.Config.AI.Garrison.SupportThreshold = 60;
+            game.Config.AI.Garrison.GarrisonDivisor = 10;
+            game.Config.Uprising.DiceRange = 0;
+            game.Config.Uprising.DiceAddend = 0;
+            game.Config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int>
+            {
+                { int.MinValue, 0 },
+                { 4, 1 },
+            };
+            game.Config.Uprising.SecondaryConsequenceTable.Clear();
+            planet.EnergyCapacity = 1;
+            Building facility = EntityFactory.CreateBuilding("facility", "empire");
+            facility.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(facility, planet);
+            if (suppressionPresent)
+            {
+                Planet sourcePlanet = new Planet { InstanceID = "source-planet" };
+                game.AttachNode(sourcePlanet, planet.GetParent());
+                Fleet fleet = EntityFactory.CreateFleet("suppression-fleet", "empire");
+                game.AttachNode(fleet, sourcePlanet);
+                game.AttachNode(
+                    new CapitalShip
+                    {
+                        InstanceID = "suppression-ship",
+                        OwnerInstanceID = "empire",
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                        SectorSuppression = 2,
+                    },
+                    fleet
+                );
+            }
+            ScheduleIncident(planet, 1);
+            game.CurrentTick = 1;
+
+            new UprisingTickProcessor(resolver).ProcessTick(game);
+
+            Assert.AreEqual(
+                destroyed,
+                game.GetSceneNodeByInstanceID<Building>(facility.InstanceID) == null
+            );
+        }
+
+        [Test]
+        public void ProcessTick_ZeroPrimaryConsequence_StillResolvesSecondaryConsequence()
+        {
+            var (game, planet, resolver) = BuildScene(ownerSupport: 10, troopCount: 1);
+            game.Config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int> { { 0, 0 } };
+            game.Config.Uprising.SecondaryConsequenceTable = new Dictionary<int, int> { { 0, 2 } };
+            ScheduleIncident(planet, 1);
+            game.CurrentTick = 1;
+
+            new UprisingTickProcessor(resolver).ProcessTick(game);
+
+            Assert.Zero(planet.GetRegimentCount());
         }
 
         [Test]
@@ -1066,6 +1291,7 @@ namespace Rebellion.Tests.Gameplay
         )
         {
             GameConfig config = TestConfig.Create();
+            config.Uprising.IncidentIntelligence.Clear();
             config.Uprising.ActiveSupportDriftMinTicks = 1;
             config.Uprising.ActiveSupportDriftMaxTicks = 1;
             config.Uprising.IncidentPulseMinTicks = 1;

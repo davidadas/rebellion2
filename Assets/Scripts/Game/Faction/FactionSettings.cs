@@ -66,8 +66,8 @@ namespace Rebellion.Game.Factions
         }
 
         /// <summary>
-        /// Uprising resistance multiplier.
-        /// Higher values mean the faction is better at suppressing uprisings.
+        /// Garrison strength multiplier during uprising incidents in sectors supported by
+        /// an operational suppression ship.
         /// </summary>
         public int UprisingResistance
         {

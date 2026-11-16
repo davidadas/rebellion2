@@ -921,7 +921,16 @@ namespace Rebellion.Gameplay
         {
             private readonly ResourceProductionQueries _queries;
             private readonly Faction _faction;
-            private readonly IReadOnlyList<(Planet Planet, Building[] Buildings)> _planets;
+            private readonly (
+                int MineLimit,
+                Building[] Mines,
+                Building[] Refineries
+            )[] _activeFacilities;
+            private readonly (int Mines, int RawNodes)[] _minesByPlanet;
+            private readonly ILookup<string, (int Planet, BuildingType Type)> _resourceFacilities;
+            private readonly Dictionary<int, int> _excludedMinesByPlanet = new();
+            private readonly int _capturedMines;
+            private readonly int _capturedRefineries;
             private readonly Dictionary<string, int> _buildingMaintenance = new(
                 StringComparer.Ordinal
             );
@@ -939,7 +948,51 @@ namespace Rebellion.Gameplay
             {
                 _queries = queries;
                 _faction = faction;
-                _planets = CaptureResourcePlanets(faction);
+                var planets = CaptureResourcePlanets(faction);
+                _minesByPlanet = new (int Mines, int RawNodes)[planets.Count];
+                List<(int MineLimit, Building[] Mines, Building[] Refineries)> active = new();
+                List<(string Id, int Planet, BuildingType Type)> facilities = new();
+                for (int index = 0; index < planets.Count; index++)
+                {
+                    var entry = planets[index];
+                    int mines = 0;
+                    List<Building> activeMines = new();
+                    List<Building> activeRefineries = new();
+                    foreach (Building building in entry.Buildings)
+                    {
+                        if (building.BuildingType == BuildingType.Mine)
+                            mines++;
+                        else if (building.BuildingType == BuildingType.Refinery)
+                            _capturedRefineries++;
+                        else
+                            continue;
+                        facilities.Add((building.InstanceID, index, building.BuildingType));
+                        if (entry.Planet.IsColonized && building.ProcessRate > 0)
+                        {
+                            if (building.BuildingType == BuildingType.Mine)
+                                activeMines.Add(building);
+                            else
+                                activeRefineries.Add(building);
+                        }
+                    }
+                    int rawNodes = entry.Planet.GetRawResourceNodes();
+                    _minesByPlanet[index] = (mines, rawNodes);
+                    _capturedMines += Math.Min(rawNodes, mines);
+                    if (entry.Planet.IsColonized)
+                        active.Add(
+                            (
+                                entry.Planet.NumRawResourceNodes,
+                                activeMines.ToArray(),
+                                activeRefineries.ToArray()
+                            )
+                        );
+                }
+                _activeFacilities = active.ToArray();
+                _resourceFacilities = facilities.ToLookup(
+                    entry => entry.Id,
+                    entry => (entry.Planet, entry.Type),
+                    StringComparer.Ordinal
+                );
                 _committedMaintenance = CalculateMaintenanceCosts(
                     faction,
                     new HashSet<string>()
@@ -972,26 +1025,21 @@ namespace Rebellion.Gameplay
                 int maintenance = GetRemainingMaintenance(excluded);
                 List<Building> mines = new();
                 List<Building> refineries = new();
-                foreach (var entry in _planets)
+                foreach (var entry in _activeFacilities)
                 {
-                    if (!entry.Planet.IsColonized)
-                        continue;
-                    mines.AddRange(
-                        ResourceProductionQueries.GetActiveFacilities(
-                            entry.Planet,
-                            entry.Buildings,
-                            BuildingType.Mine,
-                            excluded
-                        )
-                    );
-                    refineries.AddRange(
-                        ResourceProductionQueries.GetActiveFacilities(
-                            entry.Planet,
-                            entry.Buildings,
-                            BuildingType.Refinery,
-                            excluded
-                        )
-                    );
+                    int mineCount = 0;
+                    foreach (Building mine in entry.Mines)
+                    {
+                        if (mineCount >= entry.MineLimit)
+                            break;
+                        if (excluded.Contains(mine.InstanceID))
+                            continue;
+                        mines.Add(mine);
+                        mineCount++;
+                    }
+                    foreach (Building refinery in entry.Refineries)
+                        if (!excluded.Contains(refinery.InstanceID))
+                            refineries.Add(refinery);
                 }
                 int capacity = GetMaintenanceCapacity(excluded);
                 return _queries.CalculateOperatingEconomy(
@@ -1049,20 +1097,36 @@ namespace Rebellion.Gameplay
             }
 
             /// <summary>
-            /// Returns the captured capacity or recalculates resource pairs after exclusions.
+            /// Applies exclusions to captured resource counts without rescanning unaffected buildings.
             /// </summary>
             /// <param name="excluded">Distinct owned facility identifiers omitted from the alternative.</param>
             /// <returns>The maintenance capacity available to the alternative.</returns>
             private int GetMaintenanceCapacity(HashSet<string> excluded)
             {
-                return excluded.Count == 0
-                    ? _maintenanceCapacity
-                    : CalculateMaintenanceCapacity(
-                        _planets,
-                        excluded,
-                        _availableNodes,
-                        _facilityCapacity
-                    );
+                if (excluded.Count == 0)
+                    return _maintenanceCapacity;
+                int mines = _capturedMines;
+                int refineries = _capturedRefineries;
+                _excludedMinesByPlanet.Clear();
+                foreach (string id in excluded)
+                foreach (var facility in _resourceFacilities[id])
+                {
+                    if (facility.Type == BuildingType.Refinery)
+                        refineries--;
+                    else
+                    {
+                        _excludedMinesByPlanet.TryGetValue(facility.Planet, out int count);
+                        _excludedMinesByPlanet[facility.Planet] = count + 1;
+                    }
+                }
+                foreach (var entry in _excludedMinesByPlanet)
+                {
+                    var site = _minesByPlanet[entry.Key];
+                    mines -=
+                        Math.Min(site.RawNodes, site.Mines)
+                        - Math.Min(site.RawNodes, site.Mines - entry.Value);
+                }
+                return Math.Min(_availableNodes, Math.Min(mines, refineries)) * _facilityCapacity;
             }
         }
     }

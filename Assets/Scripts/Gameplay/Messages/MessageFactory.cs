@@ -154,6 +154,7 @@ namespace Rebellion.Gameplay
                 batch.OfType<PlanetNearUprisingResult>(),
                 batch.OfType<PlanetUprisingStartedResult>(),
                 batch.OfType<PlanetUprisingEndedResult>(),
+                batch.OfType<PlanetUprisingIncidentResult>(),
                 game,
                 deliveries
             );
@@ -1278,7 +1279,8 @@ namespace Rebellion.Gameplay
                     or MissionCompletionReason.Success
                     or MissionCompletionReason.Failure
                     or MissionCompletionReason.Foiled
-                    or MissionCompletionReason.ResearchBreakthrough;
+                    or MissionCompletionReason.ResearchBreakthrough
+                    or MissionCompletionReason.UprisingProgress;
 
         /// <summary>
         /// Gets the display name for a completed mission result.
@@ -3520,12 +3522,14 @@ namespace Rebellion.Gameplay
         /// <param name="nearResults">The near results.</param>
         /// <param name="startedResults">The started results.</param>
         /// <param name="endedResults">The ended results.</param>
+        /// <param name="incidentResults">The incidents that supplied informant intelligence.</param>
         /// <param name="game">The game.</param>
         /// <param name="deliveries">The deliveries.</param>
         private void AddUprisingMessages(
             IEnumerable<PlanetNearUprisingResult> nearResults,
             IEnumerable<PlanetUprisingStartedResult> startedResults,
             IEnumerable<PlanetUprisingEndedResult> endedResults,
+            IEnumerable<PlanetUprisingIncidentResult> incidentResults,
             GameRoot game,
             ICollection<MessageDelivery> deliveries
         )
@@ -3567,6 +3571,20 @@ namespace Rebellion.Gameplay
                     controller,
                     CreateUprisingEnded(controller, result, controller)
                 );
+            }
+
+            foreach (PlanetUprisingIncidentResult result in incidentResults)
+            {
+                MessageDelivery message = BuildPoliticalMessage(
+                    MessageResultType.InformantsReport,
+                    result.Recipient,
+                    new Dictionary<string, string> { { "system", result.Planet.GetDisplayName() } },
+                    result.Planet.InstanceID,
+                    AdvisorNotificationType.None
+                );
+                if (message != null)
+                    message.AdvisorSubjectNotification = AdvisorSubjectNotification.Report;
+                AddPoliticalDelivery(deliveries, result.Recipient, message);
             }
         }
 

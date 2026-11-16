@@ -34,7 +34,8 @@ namespace Rebellion.AI.Proposals
 
         public IReadOnlyList<IMissionParticipant> DecoyParticipants { get; }
 
-        public IMissionParticipant Participant => MainParticipants.FirstOrDefault();
+        public IMissionParticipant Participant =>
+            MainParticipants.Count > 0 ? MainParticipants[0] : null;
 
         // Mission Definition.
         public string MissionTypeID { get; }
@@ -78,13 +79,16 @@ namespace Rebellion.AI.Proposals
             bool isInterception = false
         )
         {
-            MainParticipants =
-                mainParticipants?.Where(participant => participant != null).ToList()
-                ?? new List<IMissionParticipant>();
-            DecoyParticipants =
-                decoyParticipants?.Where(participant => participant != null).ToList()
-                ?? new List<IMissionParticipant>();
-            Participants = MainParticipants.Concat(DecoyParticipants).ToList();
+            IMissionParticipant[] mains = SnapshotParticipants(mainParticipants);
+            IMissionParticipant[] decoys = SnapshotParticipants(decoyParticipants);
+            IMissionParticipant[] participants = new IMissionParticipant[
+                mains.Length + decoys.Length
+            ];
+            Array.Copy(mains, 0, participants, 0, mains.Length);
+            Array.Copy(decoys, 0, participants, mains.Length, decoys.Length);
+            MainParticipants = mains;
+            DecoyParticipants = decoys;
+            Participants = participants;
             MissionTypeID = missionTypeId;
             TargetPlanet = targetPlanet;
             SelectedTarget = selectedTarget;
@@ -105,6 +109,29 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
+        /// Captures ordered non-null personnel without borrowing the caller's collection.
+        /// </summary>
+        /// <param name="participants">The roster to capture.</param>
+        /// <returns>An independent roster snapshot, or the shared empty array.</returns>
+        private static IMissionParticipant[] SnapshotParticipants(
+            IEnumerable<IMissionParticipant> participants
+        )
+        {
+            if (participants == null)
+                return Array.Empty<IMissionParticipant>();
+            if (participants is IReadOnlyList<IMissionParticipant> roster)
+            {
+                if (roster.Count == 0)
+                    return Array.Empty<IMissionParticipant>();
+                if (roster.Count == 1)
+                    return roster[0] == null
+                        ? Array.Empty<IMissionParticipant>()
+                        : new[] { roster[0] };
+            }
+            return participants.Where(participant => participant != null).ToArray();
+        }
+
+        /// <summary>
         /// Captures immutable identity components before deterministic ordering is requested.
         /// </summary>
         /// <returns>The eagerly evaluated proposal identity components.</returns>
@@ -118,8 +145,18 @@ namespace Rebellion.AI.Proposals
                 TargetOfficer?.InstanceID,
                 SelectedTarget?.InstanceID,
                 Discipline?.ToString(),
-                string.Join(",", MainParticipants.Select(participant => participant.InstanceID)),
-                string.Join(",", DecoyParticipants.Select(participant => participant.InstanceID)),
+                MainParticipants.Count == 1
+                    ? MainParticipants[0].InstanceID
+                    : string.Join(
+                        ",",
+                        MainParticipants.Select(participant => participant.InstanceID)
+                    ),
+                DecoyParticipants.Count == 0
+                    ? string.Empty
+                    : string.Join(
+                        ",",
+                        DecoyParticipants.Select(participant => participant.InstanceID)
+                    ),
             };
         }
 
@@ -301,7 +338,7 @@ namespace Rebellion.AI.Proposals
         /// <returns>The time until every surviving participant could return.</returns>
         internal long EstimateReturnTravelTicks(AITurnContext context, Planet departure = null)
         {
-            if (departure != null)
+            if (departure != null || Participants.Count == 1)
                 return EstimateGroupReturnTravelTicks(context, Participants, departure);
 
             int returning = 0;

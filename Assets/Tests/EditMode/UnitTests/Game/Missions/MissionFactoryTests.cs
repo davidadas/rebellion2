@@ -48,6 +48,7 @@ namespace Rebellion.Tests.Game.Missions
             {
                 InstanceID = planet.InstanceID,
                 OwnerInstanceID = "rebels",
+                IsColonized = true,
             };
             MissionContext context = CreateContext(
                 game,

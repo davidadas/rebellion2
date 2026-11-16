@@ -18,6 +18,37 @@ namespace Rebellion.Tests.AI.Proposals
     [TestFixture]
     public class AIMissionProposalTests
     {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Constructor_MutableInputRosters_PreservesOrderedNonNullPersonnel(
+            bool singleMain
+        )
+        {
+            Officer first = EntityFactory.CreateOfficer("first", "empire");
+            Officer second = EntityFactory.CreateOfficer("second", "empire");
+            Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
+            List<IMissionParticipant> mains = singleMain
+                ? new() { first }
+                : new() { first, null, second };
+            List<IMissionParticipant> decoys = new() { null, decoy };
+            AIMissionProposal proposal = new(
+                mains,
+                MissionTypeIDs.Espionage,
+                new Planet { InstanceID = "target" },
+                decoyParticipants: decoys
+            );
+            IMissionParticipant[] expectedMains = singleMain
+                ? new IMissionParticipant[] { first }
+                : new IMissionParticipant[] { first, second };
+
+            mains.Clear();
+            decoys.Clear();
+
+            CollectionAssert.AreEqual(expectedMains, proposal.MainParticipants);
+            CollectionAssert.AreEqual(new[] { decoy }, proposal.DecoyParticipants);
+            CollectionAssert.AreEqual(expectedMains.Concat(new[] { decoy }), proposal.Participants);
+        }
+
         [Test]
         public void CanSelect_WithCapturedOfficer_ReturnsFalse()
         {

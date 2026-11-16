@@ -347,7 +347,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ProcessTick_EnemyDetectorSucceeds_FoilsReconnaissance()
+        public void ProcessTick_InterceptedDuringArrival_DoesNotRevealPlanet()
         {
             (
                 GameRoot game,
@@ -357,12 +357,16 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
-            Regiment detector = EntityFactory.CreateRegiment("detector", "rebels");
-            detector.DetectionRating = 100;
-            detector.ManufacturingStatus = ManufacturingStatus.Complete;
-            game.AttachNode(detector, enemyPlanet);
+            CapitalShip detector = new CapitalShip
+            {
+                InstanceID = "detector",
+                OwnerInstanceID = "rebels",
+                DetectionRating = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
             Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "rebels" };
             game.AttachNode(fleet, enemyPlanet);
+            game.AttachNode(detector, fleet);
 
             game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
             {
@@ -412,7 +416,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ProcessTick_VisitedEnemyPlanetFoilsReconnaissance_DoesNotRefreshSnapshot()
+        public void ProcessTick_InterceptedBeforeObjective_RefreshesControlWithoutRefreshingResources()
         {
             (
                 GameRoot game,
@@ -425,6 +429,8 @@ namespace Rebellion.Tests.Game.Missions
             PlanetSector sector = enemyPlanet.GetParentOfType<PlanetSector>();
             new FogOfWarRecorder().RecordPlanetSnapshot(empire, enemyPlanet, sector, 1);
             enemyPlanet.EnergyCapacity = 9;
+            enemyPlanet.PopularSupport["rebels"] = 65;
+            game.CurrentTick = 2;
 
             Regiment detector = EntityFactory.CreateRegiment("detector", "rebels");
             detector.DetectionRating = 100;
@@ -469,7 +475,9 @@ namespace Rebellion.Tests.Game.Missions
                 enemyPlanet.InstanceID
             ];
             Assert.AreEqual(5, snapshot.EnergyCapacity);
-            Assert.AreEqual(1, snapshot.TickCaptured);
+            Assert.AreEqual(2, snapshot.TickCaptured);
+            Assert.AreEqual(65, snapshot.PopularSupport["rebels"]);
+            Assert.That(snapshot.Regiments, Is.Empty);
         }
 
         [Test]

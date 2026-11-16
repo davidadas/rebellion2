@@ -214,8 +214,8 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus.Delivering
             ).MaintenanceCost = 4;
             Planet remote = AddPlanet("Z", 2, support: 80);
-            AddBuilding(remote, BuildingType.Mine, 3);
-            AddBuilding(remote, BuildingType.Refinery, 2);
+            Building remoteMine = AddBuilding(remote, BuildingType.Mine, 3);
+            Building remoteRefinery = AddBuilding(remote, BuildingType.Refinery, 2);
             Planet suspended = AddPlanet("S", 1);
             suspended.IsInUprising = true;
             AddBuilding(suspended, BuildingType.Mine, 1);
@@ -252,6 +252,8 @@ namespace Rebellion.Tests.Gameplay
                 disabled,
                 industry,
                 missing,
+                remoteMine,
+                remoteRefinery,
             };
             ResourceProductionQueries queries = new(_game);
             var captured = queries.CaptureOperatingEconomy(_faction);
@@ -273,6 +275,11 @@ namespace Rebellion.Tests.Gameplay
                     queries.GetOperatingEconomy(_faction, excluded),
                     captured.GetOperatingEconomy(excluded),
                     $"exclusions={mask}"
+                );
+                Assert.AreEqual(
+                    queries.GetOperatingEconomy(_faction, excluded).MaintenanceHeadroom,
+                    captured.GetMaintenanceHeadroom(excluded),
+                    $"headroom exclusions={mask}"
                 );
             }
             Assert.AreEqual(

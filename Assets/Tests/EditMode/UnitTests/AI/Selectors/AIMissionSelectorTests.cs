@@ -23,6 +23,119 @@ namespace Rebellion.Tests.AI.Selectors
     [TestFixture]
     public class AIMissionSelectorTests
     {
+        [TestCase(false, false)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void TryResolve_ResolvingAnotherMission_PreservesPreviouslyResolvedTeam(
+            bool scoped,
+            bool transferReservation
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "origin",
+                faction.InstanceID
+            );
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", enemy.InstanceID);
+            Officer first = EntityFactory.CreateOfficer("first", faction.InstanceID);
+            Officer second = EntityFactory.CreateOfficer("second", faction.InstanceID);
+            SpecialForces firstDecoy = CreateSpecialForces("first-decoy", faction.InstanceID);
+            SpecialForces secondDecoy = CreateSpecialForces("second-decoy", faction.InstanceID);
+            game.AttachNode(first, origin);
+            game.AttachNode(second, origin);
+            game.AttachNode(firstDecoy, origin);
+            game.AttachNode(secondDecoy, origin);
+            AITestSceneBuilder.RevealPlanet(game, faction, target);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            context.SetSpecialForcesIntent(firstDecoy, SpecialForcesIntent.Decoy);
+            context.SetSpecialForcesIntent(secondDecoy, SpecialForcesIntent.Decoy);
+            AISelectionState state = new();
+            AIMissionSelector selector = new(state, scoped ? context : null);
+            Assert.That(
+                selector.TryResolve(
+                    context,
+                    new(new[] { first }, MissionTypeIDs.Espionage, target),
+                    out AIMissionProposal original
+                ),
+                Is.True
+            );
+            IMissionParticipant[] originalTeam = original.Participants.ToArray();
+            state.Reserve(
+                new[]
+                {
+                    new AISelectionReservation(
+                        transferReservation
+                            ? AISelectionReservationKind.UnitTransfer
+                            : AISelectionReservationKind.MissionActor,
+                        firstDecoy.InstanceID
+                    ),
+                }
+            );
+
+            bool resolved = selector.TryResolve(
+                context,
+                new(new[] { second }, MissionTypeIDs.Espionage, target),
+                out AIMissionProposal next
+            );
+
+            Assert.That(resolved, Is.True);
+            Assert.That(next.DecoyParticipants.Contains(firstDecoy), Is.False);
+            CollectionAssert.AreEqual(originalTeam, original.Participants);
+            CollectionAssert.AreEqual(
+                new[] { firstDecoy, secondDecoy },
+                original.DecoyParticipants
+            );
+        }
+
+        [Test]
+        public void TryResolve_PreferredDecoyIsPrimary_PreservesPreferenceForAnotherTeam()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "origin",
+                faction.InstanceID
+            );
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", enemy.InstanceID);
+            SpecialForces strongest = CreateSpecialForces("strongest", faction.InstanceID);
+            SpecialForces second = CreateSpecialForces("second", faction.InstanceID);
+            SpecialForces third = CreateSpecialForces("third", faction.InstanceID);
+            strongest.Ratings[SkillRating.Espionage] = 100;
+            second.Ratings[SkillRating.Espionage] = 70;
+            third.Ratings[SkillRating.Espionage] = 50;
+            game.AttachNode(strongest, origin);
+            game.AttachNode(second, origin);
+            game.AttachNode(third, origin);
+            AITestSceneBuilder.RevealPlanet(game, faction, target);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            AIMissionSelector selector = new(new AISelectionState(), context);
+
+            Assert.That(
+                selector.TryResolve(
+                    context,
+                    new(new[] { strongest }, MissionTypeIDs.Espionage, target),
+                    out AIMissionProposal first
+                ),
+                Is.True
+            );
+            Assert.That(
+                selector.TryResolve(
+                    context,
+                    new(new[] { third }, MissionTypeIDs.Espionage, target),
+                    out AIMissionProposal next
+                ),
+                Is.True
+            );
+
+            CollectionAssert.AreEqual(new[] { second }, first.DecoyParticipants);
+            CollectionAssert.AreEqual(new[] { strongest }, next.DecoyParticipants);
+        }
+
         [Test]
         public void FinalizeSelection_StaleIntelOfficerRiskAboveLimit_RejectsMission()
         {

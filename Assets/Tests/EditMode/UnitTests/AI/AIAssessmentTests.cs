@@ -22,6 +22,44 @@ namespace Rebellion.Tests.AI
     [TestFixture]
     public class AIAssessmentTests
     {
+        [TestCase(nameof(AIAssessment.GetReadyFleetCombatValueAgainstCapitalShips))]
+        [TestCase(nameof(AIAssessment.GetProjectedFleetCombatValueAgainstCapitalShips))]
+        [TestCase(nameof(AIAssessment.GetReadyFleetRegimentCount))]
+        [TestCase(nameof(AIAssessment.GetReadyFleetRegimentCapacity))]
+        [TestCase(nameof(AIAssessment.GetReadyFleetRegimentAttackStrength))]
+        [TestCase(nameof(AIAssessment.GetProjectedFleetRegimentAttackStrength))]
+        public void BeginExecution_WithFleetReinforcements_ReturnsCurrentCapabilities(string query)
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "planet", empire.InstanceID);
+            Fleet fleet = new() { InstanceID = "fleet", OwnerInstanceID = empire.InstanceID };
+            Fleet donor = new() { InstanceID = "donor", OwnerInstanceID = empire.InstanceID };
+            CapitalShip first = AITestSceneBuilder.CreateCapitalShip("first", empire.InstanceID);
+            CapitalShip second = AITestSceneBuilder.CreateCapitalShip("second", empire.InstanceID);
+            game.AttachNode(fleet, planet);
+            game.AttachNode(donor, planet);
+            game.AttachNode(first, fleet);
+            game.AttachNode(second, donor);
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("first-army", empire.InstanceID),
+                first
+            );
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("second-army", empire.InstanceID),
+                second
+            );
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+            assessment.BeginPlanning();
+            int before = MeasureFleetCapability(assessment, fleet, query);
+            Assert.Greater(before, 0);
+
+            assessment.BeginExecution();
+            game.MoveNode(second, fleet);
+
+            Assert.AreEqual(before * 2, MeasureFleetCapability(assessment, fleet, query));
+        }
+
         [TestCase(PlanetIntelligenceCategory.GroundForces, PlanetIntelligenceCategory.Regiments)]
         [TestCase(
             PlanetIntelligenceCategory.Regiments | PlanetIntelligenceCategory.SpecialForces,
@@ -477,6 +515,479 @@ namespace Rebellion.Tests.AI
                 second.PersonnelLossProbability,
                 0.000000001
             );
+        }
+
+        [TestCase(MissionTypeIDs.Espionage)]
+        [TestCase(MissionTypeIDs.Reconnaissance)]
+        public void GetOperationalMissionOdds_EquivalentAgentsAtOwnedOrigins_ReusesForecast(
+            string missionType
+        )
+        {
+            AITurnContext context = CreateAgentForecastContext(
+                out SpecialForces first,
+                out SpecialForces second
+            );
+            MissionContext request = new()
+            {
+                MissionTypeID = missionType,
+                Location = context.Assessment.GetKnownPlanet("target"),
+                MainParticipants = new List<IMissionParticipant> { first },
+            };
+
+            MissionOdds firstOdds = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+            request.MainParticipants[0] = second;
+            MissionOdds secondOdds = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+
+            Assert.That(firstOdds, Is.Not.Null);
+            Assert.That(secondOdds, Is.SameAs(firstOdds));
+        }
+
+        [Test]
+        public void GetOperationalMissionOdds_DifferentAgentRatings_KeepsForecastsSeparate()
+        {
+            AITurnContext context = CreateAgentForecastContext(
+                out SpecialForces first,
+                out SpecialForces second
+            );
+            second.Ratings[SkillRating.Espionage] += 1;
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Espionage,
+                Location = context.Assessment.GetKnownPlanet("target"),
+                MainParticipants = new List<IMissionParticipant> { first },
+            };
+
+            MissionOdds firstOdds = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+            request.MainParticipants[0] = second;
+            MissionOdds secondOdds = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+
+            Assert.That(firstOdds, Is.Not.Null);
+            Assert.That(secondOdds, Is.Not.Null.And.Not.SameAs(firstOdds));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void GetOperationalMissionOdds_EquivalentAgentTeams_ReusesForecast(bool hasDecoy)
+        {
+            AITurnContext context = CreateAgentTeamForecastContext(out SpecialForces[] agents);
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Espionage,
+                Location = context.Assessment.GetKnownPlanet("target"),
+                MainParticipants = new List<IMissionParticipant> { agents[0], agents[1] },
+                DecoyParticipants = hasDecoy
+                    ? new List<IMissionParticipant> { agents[4] }
+                    : new List<IMissionParticipant>(),
+            };
+
+            MissionOdds first = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+            request.MainParticipants = new List<IMissionParticipant> { agents[2], agents[3] };
+            MissionOdds second = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+
+            Assert.That(first, Is.Not.Null);
+            Assert.That(second, Is.SameAs(first));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void GetOperationalMissionOdds_DuplicateAgentRoles_DoesNotReuseValidTeamForecast(
+            bool duplicatesDecoy
+        )
+        {
+            AITurnContext context = CreateAgentTeamForecastContext(out SpecialForces[] agents);
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Espionage,
+                Location = context.Assessment.GetKnownPlanet("target"),
+                MainParticipants = new List<IMissionParticipant> { agents[0], agents[1] },
+                DecoyParticipants = new List<IMissionParticipant> { agents[4] },
+            };
+            MissionOdds valid = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+            request.MainParticipants[1] = duplicatesDecoy ? agents[4] : agents[0];
+
+            MissionOdds invalid = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+
+            Assert.That(valid, Is.Not.Null);
+            Assert.That(invalid, Is.Null);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void GetMissionOdds_EquivalentAgentWithSameOfficer_ReusesForecast(bool officerFirst)
+        {
+            AITurnContext context = CreateAgentTeamForecastContext(out SpecialForces[] agents);
+            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>("spy");
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Espionage,
+                Location = context.Assessment.GetKnownPlanet("target"),
+                MainParticipants = officerFirst
+                    ? new List<IMissionParticipant> { officer, agents[0] }
+                    : new List<IMissionParticipant> { agents[0], officer },
+            };
+            MissionOdds first = context.Assessment.GetMissionOdds(context.MissionQueries, request);
+            request.MainParticipants[officerFirst ? 1 : 0] = agents[1];
+
+            MissionOdds second = context.Assessment.GetMissionOdds(context.MissionQueries, request);
+
+            Assert.That(first, Is.Not.Null);
+            Assert.That(second, Is.SameAs(first));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void GetMissionOdds_EquivalentDecoyAgents_ReusesForecast(bool officerLed)
+        {
+            AITurnContext context = CreateAgentTeamForecastContext(out SpecialForces[] agents);
+            IMissionParticipant leader = officerLed
+                ? context.Game.GetSceneNodeByInstanceID<Officer>("spy")
+                : agents[0];
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Espionage,
+                Location = context.Assessment.GetKnownPlanet("target"),
+                MainParticipants = new List<IMissionParticipant> { leader },
+                DecoyParticipants = new List<IMissionParticipant> { agents[1] },
+            };
+            MissionOdds first = context.Assessment.GetMissionOdds(context.MissionQueries, request);
+            request.DecoyParticipants[0] = agents[2];
+
+            MissionOdds second = context.Assessment.GetMissionOdds(context.MissionQueries, request);
+            AITurnContext fresh = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            MissionOdds uncached = fresh.Assessment.GetMissionOdds(fresh.MissionQueries, request);
+
+            Assert.That(first, Is.Not.Null);
+            Assert.That(second, Is.SameAs(first));
+            Assert.That(
+                second.ObjectiveSuccessProbability,
+                Is.EqualTo(uncached.ObjectiveSuccessProbability)
+            );
+            Assert.That(second.FoilProbability, Is.EqualTo(uncached.FoilProbability));
+            Assert.That(
+                second.PersonnelLossProbability,
+                Is.EqualTo(uncached.PersonnelLossProbability)
+            );
+        }
+
+        [Test]
+        public void GetOperationalMissionOdds_DifferentDecoyRatings_KeepsForecastsSeparate()
+        {
+            AITurnContext context = CreateAgentTeamForecastContext(out SpecialForces[] agents);
+            agents[2].Ratings[SkillRating.Espionage] += 1;
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Espionage,
+                Location = context.Assessment.GetKnownPlanet("target"),
+                MainParticipants = new List<IMissionParticipant> { agents[0] },
+                DecoyParticipants = new List<IMissionParticipant> { agents[1] },
+            };
+            MissionOdds first = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+            request.DecoyParticipants[0] = agents[2];
+
+            MissionOdds second = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+
+            Assert.That(first, Is.Not.Null);
+            Assert.That(second, Is.Not.Null.And.Not.SameAs(first));
+        }
+
+        [Test]
+        public void GetOperationalMissionOdds_UnqualifiedDecoy_DoesNotReuseEligibleForecast()
+        {
+            AITurnContext context = CreateAgentTeamForecastContext(out SpecialForces[] agents);
+            agents[2].AllowedMissionTypeIDs.Remove(MissionTypeIDs.Espionage);
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Espionage,
+                Location = context.Assessment.GetKnownPlanet("target"),
+                MainParticipants = new List<IMissionParticipant> { agents[0] },
+                DecoyParticipants = new List<IMissionParticipant> { agents[1] },
+            };
+            MissionOdds first = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+            request.DecoyParticipants[0] = agents[2];
+
+            MissionOdds second = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+
+            Assert.That(first, Is.Not.Null);
+            Assert.That(second, Is.Null);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void GetOperationalMissionOdds_DuplicateDecoyRoles_DoesNotReuseValidForecast(
+            bool duplicatesMain
+        )
+        {
+            AITurnContext context = CreateAgentTeamForecastContext(out SpecialForces[] agents);
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Espionage,
+                Location = context.Assessment.GetKnownPlanet("target"),
+                MainParticipants = new List<IMissionParticipant> { agents[0] },
+                DecoyParticipants = new List<IMissionParticipant> { agents[1], agents[2] },
+            };
+            MissionOdds first = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+            request.DecoyParticipants[1] = duplicatesMain ? agents[0] : agents[1];
+
+            MissionOdds second = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+
+            Assert.That(first, Is.Not.Null);
+            Assert.That(second, Is.Null);
+        }
+
+        [Test]
+        public void GetMissionOddsAfterArrival_EquivalentInboundAgents_ReusesProjectedForecast()
+        {
+            AssertEquivalentProjectedAgentsShareForecast(true);
+        }
+
+        [Test]
+        public void GetMissionOddsFromDeparture_EquivalentAgents_ReusesProjectedForecast()
+        {
+            AssertEquivalentProjectedAgentsShareForecast(false);
+        }
+
+        [Test]
+        public void GetMissionOddsAfterArrival_AgentHeadingElsewhere_DoesNotReuseCorrectArrival()
+        {
+            AITurnContext context = CreateAgentForecastContext(
+                out SpecialForces first,
+                out SpecialForces second
+            );
+            Planet departure = first.GetParentOfType<Planet>();
+            first.Movement = TestMovement.Create(transitTicks: 13);
+            second.Movement = TestMovement.Create(transitTicks: 8);
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Espionage,
+                Location = context.Assessment.GetKnownPlanet("target"),
+                MainParticipants = new List<IMissionParticipant> { first },
+            };
+            MissionOdds valid = context.Assessment.GetMissionOddsAfterArrival(
+                context.MissionQueries,
+                request,
+                departure,
+                true
+            );
+            request.MainParticipants[0] = second;
+
+            MissionOdds invalid = context.Assessment.GetMissionOddsAfterArrival(
+                context.MissionQueries,
+                request,
+                departure,
+                true
+            );
+            MissionOdds relocated = context.Assessment.GetMissionOddsFromDeparture(
+                context.MissionQueries,
+                request,
+                departure,
+                true
+            );
+
+            Assert.That(valid, Is.Not.Null);
+            Assert.That(invalid, Is.Null);
+            Assert.That(relocated, Is.Not.Null);
+        }
+
+        [Test]
+        public void GetOperationalMissionOdds_AgentTeamAtDifferentOrigins_DoesNotReuseCoLocatedForecast()
+        {
+            AITurnContext context = CreateAgentTeamForecastContext(out SpecialForces[] agents);
+            context.Game.MoveNode(
+                agents[3],
+                context.Game.GetSceneNodeByInstanceID<Planet>("second-origin")
+            );
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Espionage,
+                Location = context.Assessment.GetKnownPlanet("target"),
+                MainParticipants = new List<IMissionParticipant> { agents[0], agents[1] },
+            };
+            MissionOdds valid = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+            request.MainParticipants = new List<IMissionParticipant> { agents[2], agents[3] };
+
+            MissionOdds invalid = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+
+            Assert.That(valid, Is.Not.Null);
+            Assert.That(invalid, Is.Null);
+        }
+
+        [Test]
+        public void GetOperationalMissionOdds_UnqualifiedAgent_DoesNotReuseEligibleForecast()
+        {
+            AITurnContext context = CreateAgentForecastContext(
+                out SpecialForces first,
+                out SpecialForces second
+            );
+            second.AllowedMissionTypeIDs.Remove(MissionTypeIDs.Espionage);
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Espionage,
+                Location = context.Assessment.GetKnownPlanet("target"),
+                MainParticipants = new List<IMissionParticipant> { first },
+            };
+
+            MissionOdds firstOdds = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+            request.MainParticipants[0] = second;
+            MissionOdds secondOdds = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+
+            Assert.That(firstOdds, Is.Not.Null);
+            Assert.That(secondOdds, Is.Null);
+        }
+
+        [Test]
+        public void GetOperationalMissionOdds_UnsupportedRepeat_DoesNotReuseOneShotForecast()
+        {
+            AITurnContext context = CreateAgentForecastContext(
+                out SpecialForces first,
+                out SpecialForces second
+            );
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Reconnaissance,
+                Location = context.Assessment.GetKnownPlanet("target"),
+                MainParticipants = new List<IMissionParticipant> { first },
+            };
+            MissionOdds valid = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+            request.MainParticipants[0] = second;
+            request.IsRepeating = true;
+
+            MissionOdds invalid = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+
+            Assert.That(valid, Is.Not.Null);
+            Assert.That(invalid, Is.Null);
+        }
+
+        [Test]
+        public void GetOperationalMissionOdds_AgentAtEnemyOrigin_KeepsForecastsSeparate()
+        {
+            AITurnContext context = CreateAgentForecastContext(
+                out SpecialForces first,
+                out SpecialForces second
+            );
+            Planet origin = second.GetParentOfType<Planet>();
+            origin.OwnerInstanceID = context
+                .Game.GetSceneNodeByInstanceID<Planet>("target")
+                .OwnerInstanceID;
+            AITestSceneBuilder.RevealPlanet(context.Game, context.Faction, origin);
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Espionage,
+                Location = context.Assessment.GetKnownPlanet("target"),
+                MainParticipants = new List<IMissionParticipant> { first },
+            };
+
+            MissionOdds firstOdds = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+            request.MainParticipants[0] = second;
+            MissionOdds secondOdds = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+
+            Assert.That(firstOdds, Is.Not.Null);
+            Assert.That(secondOdds, Is.Not.Null.And.Not.SameAs(firstOdds));
+        }
+
+        [Test]
+        public void TryGetOperationalMissionOdds_RepeatedRejectedFloor_PreservesUnboundedForecast()
+        {
+            AITurnContext context = CreateAgentForecastContext(out SpecialForces first, out _);
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Espionage,
+                Location = context.Assessment.GetKnownPlanet("target"),
+                MainParticipants = new List<IMissionParticipant> { first },
+            };
+
+            bool firstAccepted = context.Assessment.TryGetOperationalMissionOdds(
+                context.MissionQueries,
+                request,
+                101,
+                out _
+            );
+            bool secondAccepted = context.Assessment.TryGetOperationalMissionOdds(
+                context.MissionQueries,
+                request,
+                101,
+                out _
+            );
+            MissionOdds unbounded = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+
+            Assert.That(firstAccepted, Is.False);
+            Assert.That(secondAccepted, Is.False);
+            Assert.That(unbounded, Is.Not.Null);
         }
 
         [Test]
@@ -2719,6 +3230,121 @@ namespace Rebellion.Tests.AI
         }
 
         /// <summary>
+        /// Creates co-located agents with interchangeable mission qualifications.
+        /// </summary>
+        /// <param name="agents">Receives the available agents in stable identity order.</param>
+        /// <returns>The faction turn containing the complete team.</returns>
+        private static AITurnContext CreateAgentTeamForecastContext(out SpecialForces[] agents)
+        {
+            AITurnContext context = CreateAgentForecastContext(
+                out SpecialForces first,
+                out SpecialForces second
+            );
+            Planet origin = first.GetParentOfType<Planet>();
+            context.Game.MoveNode(second, origin);
+            agents = new SpecialForces[] { first, second, null, null, null };
+            for (int index = 2; index < agents.Length; index++)
+            {
+                SpecialForces agent = (SpecialForces)first.CreateCopy();
+                agent.InstanceID = "team-agent-" + index;
+                context.Game.AttachNode(agent, origin);
+                agents[index] = agent;
+            }
+            return AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+        }
+
+        /// <summary>
+        /// Checks forecast reuse while preserving each projected agent's live movement.
+        /// </summary>
+        /// <param name="requireArrival">Whether the agents must already be traveling to the departure.</param>
+        private static void AssertEquivalentProjectedAgentsShareForecast(bool requireArrival)
+        {
+            AITurnContext context = CreateAgentForecastContext(
+                out SpecialForces first,
+                out SpecialForces second
+            );
+            Planet departure = first.GetParentOfType<Planet>();
+            if (requireArrival)
+                context.Game.MoveNode(second, departure);
+            first.Movement = TestMovement.Create(transitTicks: 13);
+            second.Movement = TestMovement.Create(transitTicks: 8);
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Espionage,
+                Location = context.Assessment.GetKnownPlanet("target"),
+                MainParticipants = new List<IMissionParticipant> { first },
+            };
+            MissionOdds firstOdds = requireArrival
+                ? context.Assessment.GetMissionOddsAfterArrival(
+                    context.MissionQueries,
+                    request,
+                    departure,
+                    true
+                )
+                : context.Assessment.GetMissionOddsFromDeparture(
+                    context.MissionQueries,
+                    request,
+                    departure,
+                    true
+                );
+            request.MainParticipants[0] = second;
+
+            MissionOdds secondOdds = requireArrival
+                ? context.Assessment.GetMissionOddsAfterArrival(
+                    context.MissionQueries,
+                    request,
+                    departure,
+                    true
+                )
+                : context.Assessment.GetMissionOddsFromDeparture(
+                    context.MissionQueries,
+                    request,
+                    departure,
+                    true
+                );
+
+            Assert.That(firstOdds, Is.Not.Null);
+            Assert.That(secondOdds, Is.SameAs(firstOdds));
+            Assert.That(first.Movement, Is.Not.Null);
+            Assert.That(second.Movement, Is.Not.Null);
+        }
+
+        /// <summary>
+        /// Creates equivalent agents at two owned departure planets.
+        /// </summary>
+        /// <param name="first">Receives the first available agent.</param>
+        /// <param name="second">Receives the second available agent.</param>
+        /// <returns>The faction turn containing the observed objective and agents.</returns>
+        private static AITurnContext CreateAgentForecastContext(
+            out SpecialForces first,
+            out SpecialForces second
+        )
+        {
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            Planet origin = context.Game.GetSceneNodeByInstanceID<Planet>("origin");
+            Planet secondOrigin = AITestSceneBuilder.AddPlanet(
+                context.Game,
+                origin.GetParentOfType<PlanetSector>(),
+                "second-origin",
+                context.Faction.InstanceID
+            );
+            first = AITestSceneBuilder.CreateSpecialForces(
+                "agent",
+                context.Faction.InstanceID,
+                MissionTypeIDs.Espionage,
+                MissionTypeIDs.Reconnaissance
+            );
+            first.InstanceID = "first-agent";
+            first.Ratings[SkillRating.Espionage] = 50;
+            second = (SpecialForces)first.CreateCopy();
+            second.InstanceID = "second-agent";
+            context.Game.AttachNode(first, origin);
+            context.Game.AttachNode(second, secondOrigin);
+            return AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+        }
+
+        /// <summary>
         /// Arranges an unfinished defense and its session-owned priority.
         /// </summary>
         /// <param name="status">The manufacturing status to inspect.</param>
@@ -2758,5 +3384,34 @@ namespace Rebellion.Tests.AI
             producer.AddToManufacturingQueue(order);
             return AITestSceneBuilder.CreateContext(game, faction);
         }
+
+        /// <summary>
+        /// Invokes the requested fleet capability through its query contract.
+        /// </summary>
+        /// <param name="assessment">The current faction assessment.</param>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <param name="query">The capability query under test.</param>
+        /// <returns>The measured capability.</returns>
+        private static int MeasureFleetCapability(
+            AIAssessment assessment,
+            Fleet fleet,
+            string query
+        ) =>
+            query switch
+            {
+                nameof(AIAssessment.GetReadyFleetCombatValueAgainstCapitalShips) =>
+                    assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet),
+                nameof(AIAssessment.GetProjectedFleetCombatValueAgainstCapitalShips) =>
+                    assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet),
+                nameof(AIAssessment.GetReadyFleetRegimentCount) =>
+                    assessment.GetReadyFleetRegimentCount(fleet),
+                nameof(AIAssessment.GetReadyFleetRegimentCapacity) =>
+                    assessment.GetReadyFleetRegimentCapacity(fleet),
+                nameof(AIAssessment.GetReadyFleetRegimentAttackStrength) =>
+                    assessment.GetReadyFleetRegimentAttackStrength(fleet),
+                nameof(AIAssessment.GetProjectedFleetRegimentAttackStrength) =>
+                    assessment.GetProjectedFleetRegimentAttackStrength(fleet),
+                _ => throw new System.ArgumentOutOfRangeException(nameof(query)),
+            };
     }
 }

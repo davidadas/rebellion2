@@ -193,6 +193,8 @@ namespace Rebellion.AI.Planners
                     referencePlanets[type] =
                         bySector[sectorId].FirstOrDefault() ?? sectorPlanets[type].FirstOrDefault();
                 }
+                if (referencePlanets.Count == 0)
+                    continue;
                 var best = SelectInfrastructureLayout(
                     context,
                     orders,
@@ -277,10 +279,7 @@ namespace Rebellion.AI.Planners
         )
         {
             Dictionary<(BuildingType Type, int Index), (Planet Planet, int Target)> best = null;
-            Dictionary<
-                string,
-                Dictionary<(BuildingType Type, int Index), (Planet Planet, int Target)>
-            > layoutsByOrder = new(StringComparer.Ordinal);
+            HashSet<string> evaluatedOrders = new(StringComparer.Ordinal);
             double bestConstructionCoverage = -1;
             double bestPortfolioCoverage = -1;
             double bestCoverage = -1;
@@ -294,18 +293,16 @@ namespace Rebellion.AI.Planners
                         .Where(demand => referencePlanets.ContainsKey(demand.BuildingType))
                         .Select(demand => demand.BuildingType)
                 );
-                if (!layoutsByOrder.TryGetValue(orderKey, out var layout))
-                {
-                    layout = BuildInfrastructureLayout(
-                        context,
-                        order,
-                        sectorPlanets,
-                        referencePlanets,
-                        placementScorer,
-                        capacities
-                    );
-                    layoutsByOrder.Add(orderKey, layout);
-                }
+                if (!evaluatedOrders.Add(orderKey))
+                    continue;
+                var layout = BuildInfrastructureLayout(
+                    context,
+                    order,
+                    sectorPlanets,
+                    referencePlanets,
+                    placementScorer,
+                    capacities
+                );
                 double constructionCoverage = layout
                     .Where(entry => entry.Key.Type == BuildingType.ConstructionFacility)
                     .Sum(entry =>

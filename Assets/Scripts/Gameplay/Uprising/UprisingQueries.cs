@@ -29,5 +29,18 @@ namespace Rebellion.Gameplay
         {
             return planet.GetGarrisonRequirement(faction, config, popularSupport);
         }
+
+        /// <summary>
+        /// Calculates the garrison needed to complete a subdue mission after support changes.
+        /// </summary>
+        /// <param name="planet">The mission location.</param>
+        /// <param name="faction">The controlling faction.</param>
+        /// <param name="config">The garrison rules.</param>
+        /// <returns>The normal garrison requirement, without an uprising multiplier.</returns>
+        public static int CalculateNormalGarrisonRequirement(
+            Planet planet,
+            Faction faction,
+            GameConfig.GarrisonConfig config
+        ) => planet.GetNormalGarrisonRequirement(faction, config);
     }
 }

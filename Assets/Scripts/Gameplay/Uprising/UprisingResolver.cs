@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
@@ -22,6 +23,7 @@ namespace Rebellion.Gameplay
         private readonly IRandomNumberProvider _provider;
         private readonly PlanetaryControlCommands _planetaryControl;
         private readonly DuelResolver _duelResolver;
+        private readonly FogOfWarRecorder _intelligence = new();
         private readonly Dictionary<Planet, int> _garrisonSurplusByPlanet =
             new Dictionary<Planet, int>();
 
@@ -140,6 +142,12 @@ namespace Rebellion.Gameplay
             MissionCompletionReason completionReason = objectiveAchieved
                 ? MissionCompletionReason.Success
                 : MissionCompletionReason.Failure;
+            if (
+                !objectiveAchieved
+                && mission is InciteUprisingMission
+                && mission.GetParentOfType<Planet>()?.IsInUprising == true
+            )
+                completionReason = MissionCompletionReason.UprisingProgress;
             results.Add(mission.BuildCompletedResult(outcome, completionReason, _game));
             return results;
         }
@@ -219,7 +227,15 @@ namespace Rebellion.Gameplay
                 return true;
 
             Faction controller = GetControllingFaction(planet);
-            if (controller == null || CalculateGarrisonSurplus(planet, controller) < 0)
+            if (
+                controller == null
+                || CountControllingRegiments(planet, controller)
+                    < UprisingQueries.CalculateNormalGarrisonRequirement(
+                        planet,
+                        controller,
+                        _game.Config.AI.Garrison
+                    )
+            )
                 return false;
 
             planet.EndUprising();
@@ -519,6 +535,7 @@ namespace Rebellion.Gameplay
             List<GameResult> results
         )
         {
+            RevealIncidentIntelligence(planet, faction, results);
             int ownerSupport = planet.GetPopularSupport(faction.InstanceID);
             int troopCount = CountControllingRegiments(planet, faction);
 
@@ -540,6 +557,54 @@ namespace Rebellion.Gameplay
                     faction,
                     _game.Config.Uprising.InciteMissionSupportShift
                 );
+        }
+
+        /// <summary>
+        /// Records the information supplied by informants before incident consequences change it.
+        /// </summary>
+        /// <param name="planet">The planet supplying the information.</param>
+        /// <param name="controller">The faction controlling the planet before the incident.</param>
+        /// <param name="results">The collection receiving the incident report.</param>
+        private void RevealIncidentIntelligence(
+            Planet planet,
+            Faction controller,
+            List<GameResult> results
+        )
+        {
+            List<PlanetIntelligenceCategory> categories = _game
+                .Config
+                .Uprising
+                .IncidentIntelligence;
+            if (categories.Count == 0)
+                return;
+            Faction recipient = _game
+                .GetFactions()
+                .FirstOrDefault(faction => faction != controller);
+            PlanetSector sector = planet.GetParentOfType<PlanetSector>();
+            if (recipient == null || sector == null)
+                return;
+
+            PlanetIntelligenceCategory category = categories[
+                _provider.NextInt(0, categories.Count)
+            ];
+            _intelligence.RecordIntelligenceSnapshot(
+                recipient,
+                planet,
+                sector,
+                _game.CurrentTick,
+                category,
+                includeDescendants: false
+            );
+            results.Add(
+                new PlanetUprisingIncidentResult
+                {
+                    Planet = planet,
+                    Faction = controller,
+                    Recipient = recipient,
+                    Intelligence = category,
+                    Tick = _game.CurrentTick,
+                }
+            );
         }
 
         /// <summary>
@@ -790,17 +855,15 @@ namespace Rebellion.Gameplay
                         _game.Config.AI.Garrison,
                         supportForController,
                         controllerTroopCount,
-                        missionAdjustment
+                        missionAdjustment,
+                        planet.GetUprisingSuppression(config)
                     )
             );
 
-            uprisingEffect = GameConfig.UprisingConfig.GetConsequence(
-                config.PrimaryConsequenceTable,
-                combinedScore
-            );
+            uprisingEffect = ProbabilityTable.Lookup(config.PrimaryConsequenceTable, combinedScore);
 
-            if (uprisingEffect > 0)
-                uprisingSeverity = GameConfig.UprisingConfig.GetConsequence(
+            if (config.PrimaryConsequenceTable.Count > 0)
+                uprisingSeverity = ProbabilityTable.Lookup(
                     config.SecondaryConsequenceTable,
                     combinedScore
                 );
@@ -1003,7 +1066,7 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Frees one randomly selected captured controller-owned officer on the planet.
+        /// Frees one randomly selected officer held captive by the controller on the planet.
         /// </summary>
         /// <param name="planet">The planet experiencing the uprising.</param>
         /// <param name="controllerInstanceId">The controlling faction's instance ID.</param>
@@ -1027,7 +1090,7 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Frees all captured controller-owned officers on the planet.
+        /// Frees all officers held captive by the controller on the planet.
         /// </summary>
         /// <param name="planet">The planet experiencing the uprising.</param>
         /// <param name="controllerInstanceId">The controlling faction's instance ID.</param>
@@ -1048,7 +1111,8 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Gets stationary, living controller officers in one capture state.
+        /// Gets stationary, living officers on the surface or a local mission.
+        /// Free officers must serve the controller; captives must be held by the controller.
         /// </summary>
         /// <param name="planet">The planet whose officers are inspected.</param>
         /// <param name="controllerInstanceId">The controlling faction identifier.</param>
@@ -1062,8 +1126,19 @@ namespace Rebellion.Gameplay
         {
             return planet
                 .GetAllOfficers()
+                .Concat(
+                    planet
+                        .GetChildren<Mission>()
+                        .SelectMany(mission =>
+                            mission
+                                .GetMainParticipants(includeDisabled: true)
+                                .Concat(mission.GetDecoyParticipants(includeDisabled: true))
+                        )
+                        .OfType<Officer>()
+                )
                 .Where(officer =>
-                    officer.GetOwnerInstanceID() == controllerInstanceId
+                    (isCaptured ? officer.CaptorInstanceID : officer.GetOwnerInstanceID())
+                        == controllerInstanceId
                     && officer.Movement == null
                     && !officer.IsKilled
                     && officer.IsCaptured == isCaptured
@@ -1079,16 +1154,13 @@ namespace Rebellion.Gameplay
         /// <param name="results">The result collection receiving the state change.</param>
         private void FreeOfficer(Officer officer, Planet planet, List<GameResult> results)
         {
-            officer.ReleaseFromCaptivity();
-
             results.Add(
-                new OfficerCaptureStateResult
-                {
-                    TargetOfficer = officer,
-                    IsCaptured = false,
-                    Context = planet,
-                    Tick = _game.CurrentTick,
-                }
+                CaptiveStateTransition.Release(
+                    officer,
+                    planet,
+                    _game.CurrentTick,
+                    officer.CaptorInstanceID
+                )
             );
         }
 

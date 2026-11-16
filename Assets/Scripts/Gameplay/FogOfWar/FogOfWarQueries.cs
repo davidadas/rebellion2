@@ -78,14 +78,16 @@ namespace Rebellion.Gameplay
         public GalaxyMap BuildFactionView(Faction faction)
         {
             GalaxyMap factionView = new GalaxyMap();
+            IReadOnlyList<Faction> factions = _game.GetFactions();
 
             foreach (PlanetSector masterSector in _game.Galaxy.GetChildren<PlanetSector>())
             {
                 PlanetSector viewSector = (PlanetSector)masterSector.CreateCopy();
-                viewSector.SetProjectedSectorSuppression(
-                    faction.InstanceID,
-                    masterSector.GetSectorSuppressionDivisor(faction.InstanceID)
-                );
+                foreach (Faction sectorFaction in factions)
+                    viewSector.SetProjectedSectorSuppression(
+                        sectorFaction.InstanceID,
+                        masterSector.GetSectorSuppressionDivisor(sectorFaction.InstanceID)
+                    );
                 viewSector.SetPlanets(Enumerable.Empty<Planet>());
                 viewSector.SetParent(factionView);
 

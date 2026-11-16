@@ -138,6 +138,7 @@ namespace Rebellion.Game.Messages
         OfficerAssassinated,
         UnitsArrived,
         HeadquartersArrived,
+        InformantsReport,
     }
 
     /// <summary>

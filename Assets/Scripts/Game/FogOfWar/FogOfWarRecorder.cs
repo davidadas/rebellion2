@@ -601,6 +601,81 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
+        /// Records local control, orbital forces, and command personnel observed by a mission.
+        /// Surface forces, facilities, resources, and unranked personnel retain their previous observations.
+        /// </summary>
+        /// <param name="faction">The faction receiving the information.</param>
+        /// <param name="planet">The mission's location.</param>
+        /// <param name="sector">The containing sector.</param>
+        /// <param name="currentTick">The observation tick.</param>
+        public void RecordMissionSnapshot(
+            Faction faction,
+            Planet planet,
+            PlanetSector sector,
+            int currentTick
+        )
+        {
+            if (faction == null || planet == null || sector == null)
+                return;
+
+            planet.AddVisitor(faction.InstanceID);
+            PlanetSectorSnapshot sectorSnapshot = GetOrCreatePlanetSectorSnapshot(faction, sector);
+            faction.Fog.PlanetToSector[planet.InstanceID] = sector.InstanceID;
+            PlanetSnapshot snapshot = GetOrCreatePlanetSnapshot(sectorSnapshot, planet);
+            Dictionary<string, Officer> localOfficers = planet
+                .GetChildren<Officer>()
+                .Concat(
+                    planet
+                        .GetChildren<Fleet>()
+                        .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
+                        .SelectMany(ship => ship.GetChildren<Officer>())
+                )
+                .Where(officer => IsObservableAtPlanet(officer, faction.InstanceID))
+                .ToDictionary(officer => officer.InstanceID);
+            Officer[] rememberedCommanders = snapshot
+                .Officers.Concat(
+                    snapshot.Fleets.SelectMany(fleet => fleet.GetChildren<Officer>(recursive: true))
+                )
+                .Where(officer => officer.CurrentRank != OfficerRank.None)
+                .ToArray();
+            UpdatePlanetControlState(snapshot, planet, currentTick);
+            snapshot.IsInUprising = planet.IsInUprising;
+            snapshot.RevealedCategories |=
+                PlanetIntelligenceCategory.PlanetControl | PlanetIntelligenceCategory.CapitalShips;
+            snapshot.FleetsObservedAtTick = currentTick;
+            UpdateFleetIntelligence(
+                faction,
+                planet,
+                snapshot,
+                PlanetIntelligenceCategory.CapitalShips | PlanetIntelligenceCategory.Starfighters,
+                includeInTransit: false
+            );
+            foreach (Officer remembered in rememberedCommanders)
+            {
+                localOfficers.TryGetValue(remembered.InstanceID, out Officer current);
+                RemoveEntityFromSnapshot(snapshot, remembered.InstanceID);
+                if (
+                    current != null
+                    && current.ParentInstanceID
+                        == (remembered.ParentInstanceID ?? planet.InstanceID)
+                    && (current.OwnerInstanceID != faction.InstanceID || current.IsCaptured)
+                )
+                    RecordUnitIntelligence(snapshot, current);
+            }
+            foreach (
+                Officer officer in localOfficers.Values.Where(officer =>
+                    officer.CurrentRank != OfficerRank.None
+                )
+            )
+            {
+                if (officer.OwnerInstanceID != faction.InstanceID || officer.IsCaptured)
+                    RecordUnitIntelligence(snapshot, officer);
+            }
+            ReconcileEntityLocations(faction, planet.InstanceID, snapshot);
+            RemoveUnrepresentedEntityLocations(faction);
+        }
+
+        /// <summary>
         /// Returns the existing planet snapshot or creates its initial strategic state.
         /// </summary>
         /// <param name="sectorSnapshot">The sector snapshot.</param>
@@ -661,7 +736,7 @@ namespace Rebellion.Game.FogOfWar
             )
                 snapshot.FleetsObservedAtTick = currentTick;
             UpdateOfficerIntelligence(faction, planet, snapshot, categories, includeDescendants);
-            UpdateFleetIntelligence(faction, planet, snapshot, categories);
+            UpdateFleetIntelligence(faction, planet, snapshot, categories, includeInTransit: true);
             UpdateGroundForceIntelligence(
                 faction,
                 planet,
@@ -720,18 +795,26 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="planet">The planet.</param>
         /// <param name="snapshot">The snapshot.</param>
         /// <param name="categories">The categories.</param>
+        /// <param name="includeInTransit">Whether fleets still traveling to the planet are observable.</param>
         private void UpdateFleetIntelligence(
             Faction faction,
             Planet planet,
             PlanetSnapshot snapshot,
-            PlanetIntelligenceCategory categories
+            PlanetIntelligenceCategory categories,
+            bool includeInTransit
         )
         {
             bool revealsFleets = categories.HasFlag(PlanetIntelligenceCategory.Fleets);
             if (revealsFleets)
             {
                 snapshot.Fleets.Clear();
-                AddFleetsToSnapshot(faction, planet.GetChildren<Fleet>(), snapshot, true);
+                AddFleetsToSnapshot(
+                    faction,
+                    planet.GetChildren<Fleet>(),
+                    snapshot,
+                    includeEspionageIntelligence: true,
+                    includeInTransit: includeInTransit
+                );
                 ReconcileFleetPlacements(snapshot);
                 return;
             }
@@ -747,7 +830,13 @@ namespace Rebellion.Game.FogOfWar
                     )
                     .ToList();
                 snapshot.Fleets.Clear();
-                AddFleetsToSnapshot(faction, planet.GetChildren<Fleet>(), snapshot, true);
+                AddFleetsToSnapshot(
+                    faction,
+                    planet.GetChildren<Fleet>(),
+                    snapshot,
+                    includeEspionageIntelligence: true,
+                    includeInTransit: includeInTransit
+                );
                 FilterFleetIntelligence(snapshot.Fleets, categories);
                 PreserveUnrevealedFleetCargo(previousFleets, snapshot.Fleets, categories);
                 ReconcileFleetPlacements(snapshot);
@@ -1463,7 +1552,8 @@ namespace Rebellion.Game.FogOfWar
                 activeChildren.OfType<Fleet>(),
                 planetSnapshot,
                 includeEspionageIntelligence,
-                includePersonnel
+                includeInTransit: includeEspionageIntelligence,
+                includePersonnel: includePersonnel
             );
             AddEntityCopiesToSnapshot(
                 activeChildren.OfType<Regiment>(),
@@ -2106,12 +2196,14 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="fleets">The active fleets at the observed planet.</param>
         /// <param name="snapshot">The snapshot being populated.</param>
         /// <param name="includeEspionageIntelligence">Whether hidden intelligence should be included.</param>
+        /// <param name="includeInTransit">Whether fleets still traveling to the planet are observable.</param>
         /// <param name="includePersonnel">Whether personnel aboard observed fleets should be included.</param>
         private void AddFleetsToSnapshot(
             Faction faction,
             IEnumerable<Fleet> fleets,
             PlanetSnapshot snapshot,
             bool includeEspionageIntelligence,
+            bool includeInTransit,
             bool includePersonnel = true
         )
         {
@@ -2125,17 +2217,14 @@ namespace Rebellion.Game.FogOfWar
                     continue;
                 }
 
-                if (
-                    !includeEspionageIntelligence
-                    && !IsObservableAtPlanet(fleet, faction.InstanceID)
-                )
+                if (!includeInTransit && !IsObservableAtPlanet(fleet, faction.InstanceID))
                     continue;
 
                 Fleet fleetCopy = CopyObservedFleetForSnapshot(
                     fleet,
                     faction.InstanceID,
                     includeEspionageIntelligence,
-                    includeEspionageIntelligence,
+                    includeInTransit,
                     snapshot.TickCaptured
                 );
                 if (fleetCopy == null)

@@ -242,6 +242,7 @@ namespace Rebellion.AI
                     factionView,
                     _officerBehaviors
                 );
+                assessment.BeginPlanning();
                 AIStrategicPlan strategicPlan = new AIStrategicPlan(_game, assessment);
                 context = new AITurnContext(
                     _game,
@@ -261,7 +262,8 @@ namespace Rebellion.AI
                     new MissionQueries(
                         _game,
                         assessment.GetMissionDetectorCommander,
-                        _missionEncounterCache
+                        _missionEncounterCache,
+                        reuseObservedState: true
                     )
                 );
                 context.IsDecisionTick = isDecisionTick;

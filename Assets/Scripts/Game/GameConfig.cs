@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Units;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
@@ -1714,6 +1715,19 @@ namespace Rebellion.Game
         [PersistableObject]
         public class UprisingConfig
         {
+            /// <summary>
+            /// Equally likely intelligence categories revealed to the opposing faction before an incident.
+            /// An empty list disables incident intelligence.
+            /// </summary>
+            public List<PlanetIntelligenceCategory> IncidentIntelligence { get; set; } = new();
+
+            /// <summary>
+            /// Maps suppressing regiment types to the faction that must control them.
+            /// Each matching stationary regiment contributes one point of suppression.
+            /// </summary>
+            public Dictionary<string, string> SuppressionRegiments { get; set; } =
+                new Dictionary<string, string>();
+
             public int DiceRange { get; set; }
 
             public int DiceAddend { get; set; }
@@ -1751,36 +1765,17 @@ namespace Rebellion.Game
             public int ClearUprisingMaxTicks { get; set; }
 
             /// <summary>
-            /// Looks up the consequence at the highest satisfied threshold.
-            /// </summary>
-            /// <param name="table">The configured consequence table.</param>
-            /// <param name="score">The incident score.</param>
-            /// <returns>The matching consequence, or zero below the first threshold.</returns>
-            internal static int GetConsequence(Dictionary<int, int> table, int score)
-            {
-                int consequence = 0;
-                int matchedThreshold = int.MinValue;
-                bool found = false;
-                foreach (KeyValuePair<int, int> entry in table)
-                {
-                    if (entry.Key <= score && (!found || entry.Key > matchedThreshold))
-                    {
-                        matchedThreshold = entry.Key;
-                        consequence = entry.Value;
-                        found = true;
-                    }
-                }
-                return consequence;
-            }
-
-            /// <summary>
             /// Creates an independent snapshot of these settings.
             /// </summary>
             /// <returns>A copy retaining all values and owning its mutable settings and collections.</returns>
             public UprisingConfig CreateCopy() =>
                 new UprisingConfig
                 {
+                    IncidentIntelligence = new List<PlanetIntelligenceCategory>(
+                        IncidentIntelligence
+                    ),
                     DiceRange = DiceRange,
+                    SuppressionRegiments = new Dictionary<string, string>(SuppressionRegiments),
                     DiceAddend = DiceAddend,
                     MissionLeadershipDivisor = MissionLeadershipDivisor,
                     InciteMissionSupportShift = InciteMissionSupportShift,
@@ -2717,7 +2712,7 @@ namespace Rebellion.Game
                 if (table == null || table.Count == 0)
                     return DefaultSuccessProbability;
 
-                return new ProbabilityTable(table).Lookup(score);
+                return ProbabilityTable.Lookup(table, score);
             }
 
             /// <summary>

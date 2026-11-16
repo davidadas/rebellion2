@@ -75,6 +75,7 @@ namespace Rebellion.Game.Missions
     public class MissionFactory
     {
         private readonly GameRoot _game;
+        private readonly HashSet<string> _participantIds = new(StringComparer.Ordinal);
         private static readonly List<MissionOption> _options = new List<MissionOption>
         {
             new MissionOption(
@@ -174,6 +175,13 @@ namespace Rebellion.Game.Missions
             ),
         };
 
+        private static readonly Dictionary<
+            (string MissionType, ResearchDiscipline? Discipline),
+            MissionOption
+        > _optionsByType = _options.ToDictionary(option =>
+            (option.MissionTypeID, option.Discipline)
+        );
+
         /// <summary>
         /// Initializes a mission factory for the supplied game state.
         /// </summary>
@@ -227,9 +235,9 @@ namespace Rebellion.Game.Missions
             )
                 return false;
 
-            MissionOption option = _options.Find(candidate =>
-                candidate.MissionTypeID == context.MissionTypeID
-                && candidate.Discipline == context.Discipline
+            _optionsByType.TryGetValue(
+                (context.MissionTypeID, context.Discipline),
+                out MissionOption option
             );
             if (
                 option == null
@@ -297,16 +305,27 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="context">The context.</param>
         /// <returns>True when the unique participants condition is met; otherwise false.</returns>
-        private static bool HasUniqueParticipants(MissionContext context)
+        private bool HasUniqueParticipants(MissionContext context)
         {
-            HashSet<string> participantIds = new HashSet<string>(StringComparer.Ordinal);
-            return context
-                .MainParticipants.Concat(context.DecoyParticipants)
-                .All(participant =>
-                    participant != null
-                    && !string.IsNullOrEmpty(participant.InstanceID)
-                    && participantIds.Add(participant.InstanceID)
-                );
+            if (context.MainParticipants.Count == 1 && context.DecoyParticipants.Count == 0)
+                return !string.IsNullOrEmpty(context.MainParticipants[0]?.InstanceID);
+
+            _participantIds.Clear();
+            foreach (IMissionParticipant participant in context.MainParticipants)
+                if (
+                    participant == null
+                    || string.IsNullOrEmpty(participant.InstanceID)
+                    || !_participantIds.Add(participant.InstanceID)
+                )
+                    return false;
+            foreach (IMissionParticipant participant in context.DecoyParticipants)
+                if (
+                    participant == null
+                    || string.IsNullOrEmpty(participant.InstanceID)
+                    || !_participantIds.Add(participant.InstanceID)
+                )
+                    return false;
+            return true;
         }
 
         /// <summary>
