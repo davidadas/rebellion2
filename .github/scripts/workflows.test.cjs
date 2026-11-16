@@ -15,6 +15,10 @@ const needs = job => typeof job.needs === 'string' ? [job.needs] : job.needs || 
 const environmentName = job => typeof job.environment === 'string'
   ? job.environment
   : job.environment?.name;
+const trustedPullRequestCondition =
+  "github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)";
+const forkPullRequestCondition =
+  'github.event.pull_request.head.repo.full_name != github.repository';
 
 function dependsOn(jobName, required) {
   return needs(ci.jobs[jobName]).some(parent => parent === required || dependsOn(parent, required));
@@ -44,9 +48,9 @@ test('metadata planning and result reporting never check out contributor code', 
   }
 });
 
-test('the pull_request_target dispatcher requests a protected workflow run for every PR', () => {
+test('the pull_request_target dispatcher requests a protected workflow run only for fork PRs', () => {
   assert.ok(dispatcher.on.pull_request_target);
-  assert.equal(dispatcher.jobs.request.if, undefined);
+  assert.equal(dispatcher.jobs.request.if, forkPullRequestCondition);
   const steps = dispatcher.jobs.request.steps;
   assert.equal(steps.length, 1);
   assert.equal(steps[0].uses, 'actions/github-script@v7');
@@ -92,11 +96,11 @@ test('PR results require actual Unity execution and target the PR check', () => 
   assert.equal(script.env.TEST_RESULT, '${{ needs.test-pr.result }}');
 });
 
-test('ordinary pull_request jobs never receive repository or environment secrets', () => {
+test('fork pull_request jobs never receive repository or environment secrets', () => {
   assert.equal(ci.on.pull_request?.branches, undefined);
   assert.deepEqual(needs(ci.jobs.lint), []);
-  assert.equal(ci.jobs['resolve-media'].if, "github.event_name == 'push'");
-  assert.equal(ci.jobs.test.if, "github.event_name == 'push'");
+  assert.equal(ci.jobs['resolve-media'].if, trustedPullRequestCondition);
+  assert.equal(ci.jobs.test.if, trustedPullRequestCondition);
   assert.equal(ci.jobs.build.if, "github.event_name == 'push'");
   for (const jobName of ['lint', 'windows-build-tools']) {
     assert.doesNotMatch(JSON.stringify(ci.jobs[jobName]), /secrets\.|"secrets":"inherit"/);
@@ -105,14 +109,15 @@ test('ordinary pull_request jobs never receive repository or environment secrets
   assert.ok(ci.concurrency.group.includes('inputs.pull_request_number'));
 });
 
-test('every secret-bearing job is restricted to a default-branch push or reviewed PR', () => {
+test('every secret-bearing job is restricted to a trusted revision or reviewed PR', () => {
   for (const [jobName, job] of Object.entries(ci.jobs)) {
     const definition = JSON.stringify(job);
     if (!/secrets\.|"secrets":"inherit"/.test(definition)) continue;
-    const runsOnlyOnPush = job.if === "github.event_name == 'push'";
+    const runsOnlyOnTrustedRevision =
+      job.if === "github.event_name == 'push'" || job.if === trustedPullRequestCondition;
     const dependsOnReview = dependsOn(jobName, 'approve-pr');
     assert.equal(
-      runsOnlyOnPush || dependsOnReview,
+      runsOnlyOnTrustedRevision || dependsOnReview,
       true,
       `${jobName} can receive secrets without a protected execution path`,
     );
