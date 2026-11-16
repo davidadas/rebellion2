@@ -35,3 +35,28 @@ jobs:
                 head_sha: pr.head.sha,
               },
             });
+
+  trusted-media:
+    name: Resolve trusted PR media
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    uses: ./.github/workflows/resolve-media.yml
+    with:
+      branch: ${{ github.event.pull_request.head.ref }}
+    secrets: inherit
+    permissions:
+      contents: read
+
+  trusted-test:
+    name: Test trusted PR
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    needs: trusted-media
+    uses: ./.github/workflows/unity-test-runner.yml
+    with:
+      checkout_ref: ${{ github.event.pull_request.merge_commit_sha }}
+      reviewed_head_sha: ${{ github.event.pull_request.head.sha }}
+      media_sha: ${{ needs.trusted-media.outputs.sha }}
+    secrets: inherit
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write

@@ -15,10 +15,10 @@ const needs = job => typeof job.needs === 'string' ? [job.needs] : job.needs || 
 const environmentName = job => typeof job.environment === 'string'
   ? job.environment
   : job.environment?.name;
-const trustedPullRequestCondition =
-  "github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)";
 const forkPullRequestCondition =
   'github.event.pull_request.head.repo.full_name != github.repository';
+const trustedPullRequestCondition =
+  'github.event.pull_request.head.repo.full_name == github.repository';
 
 function dependsOn(jobName, required) {
   return needs(ci.jobs[jobName]).some(parent => parent === required || dependsOn(parent, required));
@@ -57,6 +57,22 @@ test('the pull_request_target dispatcher requests a protected workflow run only 
   assert.match(steps[0].with.script, /createWorkflowDispatch/);
   assert.match(steps[0].with.script, /context.payload.repository.default_branch/);
   assert.equal(dispatcher.jobs.request.environment, undefined);
+});
+
+test('same-repository PRs run private tests automatically from the protected workflow revision', () => {
+  const media = dispatcher.jobs['trusted-media'];
+  const unity = dispatcher.jobs['trusted-test'];
+  assert.equal(media.if, trustedPullRequestCondition);
+  assert.equal(media.uses, './.github/workflows/resolve-media.yml');
+  assert.equal(media.with.branch, '${{ github.event.pull_request.head.ref }}');
+  assert.equal(media.secrets, 'inherit');
+  assert.equal(unity.if, trustedPullRequestCondition);
+  assert.ok(needs(unity).includes('trusted-media'));
+  assert.equal(unity.uses, './.github/workflows/unity-test-runner.yml');
+  assert.equal(unity.with.checkout_ref, '${{ github.event.pull_request.merge_commit_sha }}');
+  assert.equal(unity.with.reviewed_head_sha, '${{ github.event.pull_request.head.sha }}');
+  assert.equal(unity.with.media_sha, '${{ needs.trusted-media.outputs.sha }}');
+  assert.equal(unity.secrets, 'inherit');
 });
 
 test('reviewed PR tests cannot write GitHub checks or poison shared caches', () => {
@@ -99,8 +115,8 @@ test('PR results require actual Unity execution and target the PR check', () => 
 test('fork pull_request jobs never receive repository or environment secrets', () => {
   assert.equal(ci.on.pull_request?.branches, undefined);
   assert.deepEqual(needs(ci.jobs.lint), []);
-  assert.equal(ci.jobs['resolve-media'].if, trustedPullRequestCondition);
-  assert.equal(ci.jobs.test.if, trustedPullRequestCondition);
+  assert.equal(ci.jobs['resolve-media'].if, "github.event_name == 'push'");
+  assert.equal(ci.jobs.test.if, "github.event_name == 'push'");
   assert.equal(ci.jobs.build.if, "github.event_name == 'push'");
   for (const jobName of ['lint', 'windows-build-tools']) {
     assert.doesNotMatch(JSON.stringify(ci.jobs[jobName]), /secrets\.|"secrets":"inherit"/);
@@ -109,17 +125,28 @@ test('fork pull_request jobs never receive repository or environment secrets', (
   assert.ok(ci.concurrency.group.includes('inputs.pull_request_number'));
 });
 
-test('every secret-bearing job is restricted to a trusted revision or reviewed PR', () => {
+test('every CI secret-bearing job is restricted to a default-branch push or reviewed PR', () => {
   for (const [jobName, job] of Object.entries(ci.jobs)) {
     const definition = JSON.stringify(job);
     if (!/secrets\.|"secrets":"inherit"/.test(definition)) continue;
-    const runsOnlyOnTrustedRevision =
-      job.if === "github.event_name == 'push'" || job.if === trustedPullRequestCondition;
+    const runsOnlyOnPush = job.if === "github.event_name == 'push'";
     const dependsOnReview = dependsOn(jobName, 'approve-pr');
     assert.equal(
-      runsOnlyOnTrustedRevision || dependsOnReview,
+      runsOnlyOnPush || dependsOnReview,
       true,
       `${jobName} can receive secrets without a protected execution path`,
+    );
+  }
+});
+
+test('every dispatcher secret-bearing job is restricted to same-repository PRs', () => {
+  for (const [jobName, job] of Object.entries(dispatcher.jobs)) {
+    const definition = JSON.stringify(job);
+    if (!/secrets\.|"secrets":"inherit"/.test(definition)) continue;
+    assert.equal(
+      job.if,
+      trustedPullRequestCondition,
+      `${jobName} can receive secrets for a fork PR`,
     );
   }
 });
