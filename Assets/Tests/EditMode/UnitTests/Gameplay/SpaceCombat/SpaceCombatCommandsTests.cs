@@ -3903,6 +3903,87 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(100, allianceFleet.GetChildren<CapitalShip>()[0].CurrentHullStrength);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ProcessTick_TorpedoSquadronAgainstPlanetDestroyer_DestroysItUnlessAPlanetaryShieldProtectsIt(
+            bool shielded
+        )
+        {
+            GameRoot game = CreateAutomaticCombatGame();
+            game.Random = new SequenceRNG();
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "empire");
+            (Planet allianceHome, _) = CreatePlanet(game, "allianceHome", owner: "alliance");
+            Fleet planetDestroyerFleet = CreateFleet(
+                game,
+                "ef1",
+                "empire",
+                combatPlanet,
+                1,
+                25000,
+                0
+            );
+            CapitalShip planetDestroyer = planetDestroyerFleet.GetChildren<CapitalShip>().Single();
+            planetDestroyer.TypeID = "planet-destroyer-type";
+            planetDestroyer.CanDestroyPlanets = true;
+            if (shielded)
+            {
+                combatPlanet.AddTestChild(
+                    new Building
+                    {
+                        InstanceID = "planet-destroyer-shield",
+                        OwnerInstanceID = "empire",
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                        ProtectedUnitTypeIDs = { "planet-destroyer-type" },
+                    }
+                );
+            }
+
+            Fleet strikeFleet = CreateFleet(game, "af1", "alliance", combatPlanet, 1, 100, 0);
+            CapitalShip carrier = strikeFleet.GetChildren<CapitalShip>().Single();
+            carrier.StarfighterCapacity = 1;
+            Starfighter torpedoSquadron = new Starfighter
+            {
+                InstanceID = "y-wing",
+                OwnerInstanceID = "alliance",
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                ShieldStrength = 1,
+                Hyperdrive = 1,
+                SublightSpeed = 8,
+                Torpedoes = 4,
+                TorpedoRange = 7,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(torpedoSquadron, carrier);
+            SpaceCombatCommands manager = MakeSpaceCombat(game);
+
+            IReadOnlyList<GameResult> results = new SpaceCombatTickProcessor(manager).ProcessTick(
+                game
+            );
+            SpaceCombatResult result = results.OfType<SpaceCombatResult>().Single();
+
+            bool planetDestroyerSurvived =
+                game.GetSceneNodeByInstanceID<CapitalShip>(planetDestroyer.InstanceID) != null;
+            Assert.AreEqual(shielded, planetDestroyerSurvived);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>(carrier.InstanceID));
+            Assert.AreSame(
+                torpedoSquadron,
+                game.GetSceneNodeByInstanceID<Starfighter>(torpedoSquadron.InstanceID)
+            );
+            Assert.AreSame(allianceHome, torpedoSquadron.GetParentOfType<Planet>());
+            Assert.IsNotNull(torpedoSquadron.Movement);
+            SpaceCombatSideOutcome allianceOutcome =
+                result.AttackerOwnerInstanceID == "alliance"
+                    ? result.AttackerOutcome
+                    : result.DefenderOutcome;
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, allianceOutcome);
+            CombatSide expectedWinner =
+                result.AttackerOwnerInstanceID == (shielded ? "empire" : "alliance")
+                    ? CombatSide.Attacker
+                    : CombatSide.Defender;
+            Assert.AreEqual(expectedWinner, result.Winner);
+        }
+
         [Test]
         public void TrySubmitResponse_HumanSelectsAutomatic_DoesNotWithdrawHumanForce()
         {
@@ -5503,6 +5584,12 @@ namespace Rebellion.Tests.Gameplay
                         AutoResolveComponentDelayMinimum = 30,
                         AutoResolveComponentDelayMaximum = 50,
                         AutoResolveComponentDelayRecovery = 1,
+                        AttackRunSelectionMaximumEvaluations = 1001,
+                        AttackRunSelectionThresholdMultiplier = 0.5,
+                        AttackRunTorpedoBudgetMultiplier = 0.53333336,
+                        PlanetDestroyerSuperlaserRechargeIterations = 300,
+                        PlanetDestroyerAttackRunIterations = 120,
+                        PlanetDestroyerWithdrawalIterations = 150,
                     },
                 },
             };

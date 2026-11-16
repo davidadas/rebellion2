@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.PlayerRequests;
 using Rebellion.Gameplay;
+using Rebellion.Util.Logging;
 using UnityEngine;
 
 namespace Rebellion.Multiplayer
@@ -199,7 +200,7 @@ namespace Rebellion.Multiplayer
             catch (Exception exception)
                 when (exception is IOException or UnauthorizedAccessException or ArgumentException)
             {
-                Debug.LogWarning(
+                GameLogger.Warning(
                     "Could not remove completed campaign recovery: " + exception.Message
                 );
             }
@@ -476,7 +477,7 @@ namespace Rebellion.Multiplayer
                 _saveProtocol?.ReportFailure(exception);
             _sessionManager?.BlockGameOperations();
             _sessionManager?.GetActiveGameManager()?.ApplyGameSpeed(TickSpeed.Paused);
-            Debug.LogException(exception);
+            GameLogger.LogException(exception);
             SetStatus("Game synchronization stopped.");
         }
 

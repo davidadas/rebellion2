@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Logging;
 using UnityEngine;
 
 /// <summary>
@@ -263,7 +264,7 @@ public sealed class StrategyBriefingController : IDisposable
             )
                 return;
 
-            Debug.LogException(exception);
+            GameLogger.LogException(exception);
             Complete(false);
         }
     }

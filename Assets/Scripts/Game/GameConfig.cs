@@ -2128,6 +2128,18 @@ namespace Rebellion.Game
 
             public int AutoResolveComponentDelayRecovery { get; set; }
 
+            public int AttackRunSelectionMaximumEvaluations { get; set; }
+
+            public double AttackRunSelectionThresholdMultiplier { get; set; }
+
+            public double AttackRunTorpedoBudgetMultiplier { get; set; }
+
+            public int PlanetDestroyerSuperlaserRechargeIterations { get; set; }
+
+            public int PlanetDestroyerAttackRunIterations { get; set; }
+
+            public int PlanetDestroyerWithdrawalIterations { get; set; }
+
             /// <summary>
             /// Creates an independent snapshot of these settings.
             /// </summary>
@@ -2160,6 +2172,13 @@ namespace Rebellion.Game
                     AutoResolveComponentDelayMinimum = AutoResolveComponentDelayMinimum,
                     AutoResolveComponentDelayMaximum = AutoResolveComponentDelayMaximum,
                     AutoResolveComponentDelayRecovery = AutoResolveComponentDelayRecovery,
+                    AttackRunSelectionMaximumEvaluations = AttackRunSelectionMaximumEvaluations,
+                    AttackRunSelectionThresholdMultiplier = AttackRunSelectionThresholdMultiplier,
+                    AttackRunTorpedoBudgetMultiplier = AttackRunTorpedoBudgetMultiplier,
+                    PlanetDestroyerSuperlaserRechargeIterations =
+                        PlanetDestroyerSuperlaserRechargeIterations,
+                    PlanetDestroyerAttackRunIterations = PlanetDestroyerAttackRunIterations,
+                    PlanetDestroyerWithdrawalIterations = PlanetDestroyerWithdrawalIterations,
                 };
         }
 

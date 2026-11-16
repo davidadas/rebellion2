@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Rebellion.Util.Logging;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -171,7 +172,7 @@ public sealed class AnalyticsConsentView : MonoBehaviour
         catch (Exception exception)
         {
             ReleaseBackdrop();
-            Debug.LogWarning($"Analytics consent backdrop capture failed: {exception.Message}");
+            GameLogger.Warning($"Analytics consent backdrop capture failed: {exception.Message}");
         }
         finally
         {

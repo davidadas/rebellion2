@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Rebellion.Game;
+using Rebellion.Util.Logging;
 using UnityEngine;
 
 /// <summary>
@@ -153,7 +154,7 @@ public sealed class OptionsMenuController : ICancelable, IOptionsMenuPresenter
 
         if (_prefab == null)
         {
-            Debug.LogWarning(
+            GameLogger.Warning(
                 "OptionsMenu prefab is not assigned; run Build Options Menu UI to generate it."
             );
             return;

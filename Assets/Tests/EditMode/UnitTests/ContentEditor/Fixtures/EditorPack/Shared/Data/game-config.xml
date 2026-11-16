@@ -156,6 +156,12 @@
       <AutoResolveComponentDelayMinimum>30</AutoResolveComponentDelayMinimum>
       <AutoResolveComponentDelayMaximum>50</AutoResolveComponentDelayMaximum>
       <AutoResolveComponentDelayRecovery>1</AutoResolveComponentDelayRecovery>
+      <AttackRunSelectionMaximumEvaluations>1001</AttackRunSelectionMaximumEvaluations>
+      <AttackRunSelectionThresholdMultiplier>0.5</AttackRunSelectionThresholdMultiplier>
+      <AttackRunTorpedoBudgetMultiplier>0.53333336</AttackRunTorpedoBudgetMultiplier>
+      <PlanetDestroyerSuperlaserRechargeIterations>300</PlanetDestroyerSuperlaserRechargeIterations>
+      <PlanetDestroyerAttackRunIterations>120</PlanetDestroyerAttackRunIterations>
+      <PlanetDestroyerWithdrawalIterations>150</PlanetDestroyerWithdrawalIterations>
     </SpaceCombat>
   </Combat>
   <Uprising>

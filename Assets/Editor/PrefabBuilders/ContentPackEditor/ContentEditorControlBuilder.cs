@@ -213,6 +213,7 @@ internal static class ContentEditorControlBuilder
             200,
             34
         );
+        input.onFocusSelectAll = false;
         input.gameObject.AddComponent<TextInputHistory>();
         input.gameObject.AddComponent<TextInputOverflowView>();
         Image image = input.GetComponent<Image>();

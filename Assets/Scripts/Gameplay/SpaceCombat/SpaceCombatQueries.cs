@@ -425,6 +425,36 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Determines whether a completed shield generator on a planet protects a planet
+        /// destroyer there from fighter attack.
+        /// </summary>
+        /// <param name="planetDestroyer">The planet destroyer to inspect.</param>
+        /// <param name="planet">The planet the planet destroyer is at.</param>
+        /// <returns>
+        /// True when one of the planet destroyer's owner's generators on the planet lists its
+        /// type.
+        /// </returns>
+        internal static bool IsPlanetDestroyerShielded(CapitalShip planetDestroyer, Planet planet)
+        {
+            if (
+                planetDestroyer?.CanDestroyPlanets != true
+                || planet == null
+                || string.IsNullOrEmpty(planetDestroyer.TypeID)
+            )
+                return false;
+
+            string ownerInstanceId = planetDestroyer.GetOwnerInstanceID();
+            return planet
+                .GetChildren<Building>()
+                .Any(building =>
+                    building.ManufacturingStatus == ManufacturingStatus.Complete
+                    && building.Movement == null
+                    && building.GetOwnerInstanceID() == ownerInstanceId
+                    && building.ProtectedUnitTypeIDs?.Contains(planetDestroyer.TypeID) == true
+                );
+        }
+
+        /// <summary>
         /// Determines whether a capital ship can participate in space combat.
         /// </summary>
         /// <param name="ship">Capital ship to inspect.</param>

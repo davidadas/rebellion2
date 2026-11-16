@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Util.Logging;
 
@@ -62,6 +63,24 @@ namespace Rebellion.Tests.Util.Logging
             GameLogger.Log("hello world");
 
             StringAssert.Contains("hello world", File.ReadAllText(_tempFile));
+        }
+
+        [Test]
+        public void Log_ConcurrentFileWrites_PreservesEveryMessage()
+        {
+            GameLogger.Configure(
+                filePath: _tempFile,
+                enableFileLogging: true,
+                addTimestamps: false
+            );
+            File.WriteAllText(_tempFile, string.Empty);
+
+            Parallel.For(0, 16, index => GameLogger.Log($"Worker {index}."));
+
+            string[] messages = File.ReadAllLines(_tempFile);
+            Assert.That(messages, Has.Length.EqualTo(16));
+            for (int index = 0; index < 16; index++)
+                CollectionAssert.Contains(messages, $"[Info] Worker {index}.");
         }
 
         [Test]

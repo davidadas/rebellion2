@@ -122,7 +122,7 @@ public sealed class GameFlowController : MonoBehaviour
                 return;
 
             if (!LoadingScreenController.RecoverFromLoadFailure(exception))
-                Debug.LogException(exception);
+                GameLogger.LogException(exception);
         }
     }
 
@@ -737,7 +737,7 @@ public sealed class GameFlowController : MonoBehaviour
         }
         catch (Exception exception)
         {
-            Debug.LogException(exception);
+            GameLogger.LogException(exception);
             HandleQueuedCutsceneFinished();
         }
     }

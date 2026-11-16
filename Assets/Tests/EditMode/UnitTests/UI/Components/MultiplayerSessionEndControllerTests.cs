@@ -260,7 +260,7 @@ namespace Rebellion.Tests.UI.Components
             ConfirmationDialogView original = GetDialog();
             GetButton(original, "ConfirmButtonImage").onClick.Invoke();
             Assert.IsFalse(original.gameObject.activeSelf);
-            LogAssert.Expect(LogType.Exception, new Regex("Menu loading failed\\."));
+            LogAssert.Expect(LogType.Error, new Regex("Menu loading failed\\."));
 
             failures[0](new IOException("Menu loading failed."));
 
@@ -279,7 +279,7 @@ namespace Rebellion.Tests.UI.Components
             Initialize();
             notice.ShowOpponentDeparture();
             synchronousFailure = new IOException("Menu loading failed.");
-            LogAssert.Expect(LogType.Exception, new Regex("Menu loading failed\\."));
+            LogAssert.Expect(LogType.Error, new Regex("Menu loading failed\\."));
 
             GetButton(GetDialog(), "ConfirmButtonImage").onClick.Invoke();
 
@@ -294,7 +294,7 @@ namespace Rebellion.Tests.UI.Components
             Initialize();
             notice.ShowOpponentDeparture();
             GetButton(GetDialog(), "ConfirmButtonImage").onClick.Invoke();
-            LogAssert.Expect(LogType.Exception, new Regex("Menu loading failed\\."));
+            LogAssert.Expect(LogType.Error, new Regex("Menu loading failed\\."));
             failures[0](new IOException("Menu loading failed."));
             GetButton(GetDialog(), "ConfirmButtonImage").onClick.Invoke();
 

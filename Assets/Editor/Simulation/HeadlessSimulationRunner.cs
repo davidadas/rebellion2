@@ -42,7 +42,7 @@ public static partial class HeadlessSimulationRunner
         }
         catch (Exception ex)
         {
-            UnityEngine.Debug.LogException(ex);
+            GameLogger.LogException(ex);
             EditorApplication.Exit(1);
         }
     }
@@ -119,7 +119,7 @@ public static partial class HeadlessSimulationRunner
 
             string startMessage =
                 $"[HeadlessSim] starting ticks={options.TickCount} seed={options.Seed?.ToString() ?? "random"} galaxySize={summary.GalaxySize}";
-            UnityEngine.Debug.Log(startMessage);
+            GameLogger.Log(startMessage);
             LogToFile(logPath, startMessage);
 
             GameRoot game = string.IsNullOrWhiteSpace(options.InputSaveFileName)
@@ -341,7 +341,7 @@ public static partial class HeadlessSimulationRunner
             string resolvedPath = WriteSimulationSummary(options.OutputPath, report);
             string completeMessage =
                 $"[HeadlessSim] complete ticks={report.TicksCompleted} output={resolvedPath}";
-            UnityEngine.Debug.Log(completeMessage);
+            GameLogger.Log(completeMessage);
             LogToFile(logPath, completeMessage);
 
             return new SimulationRunResult

@@ -59,6 +59,9 @@ public sealed class ContentEditorAppearance : MonoBehaviour
             ContentEditorColorRole.Input => light
                 ? new Color32(252, 253, 255, 255)
                 : new Color32(46, 46, 48, 255),
+            ContentEditorColorRole.OverrideInput => light
+                ? new Color32(255, 241, 209, 255)
+                : new Color32(70, 58, 36, 255),
             ContentEditorColorRole.Muted => light
                 ? new Color32(96, 99, 104, 255)
                 : new Color32(150, 150, 151, 255),
@@ -96,8 +99,8 @@ public sealed class ContentEditorAppearance : MonoBehaviour
                 ? new Color32(110, 77, 24, 255)
                 : new Color32(218, 178, 111, 255),
             ContentEditorColorRole.TextSelection => light
-                ? new Color(0.32f, 0.55f, 0.85f, 0.4f)
-                : new Color(0.4f, 0.6f, 0.9f, 0.5f),
+                ? new Color(0.21f, 0.48f, 0.84f, 0.68f)
+                : new Color(0.34f, 0.58f, 0.94f, 0.78f),
             _ => light ? new Color32(42, 46, 52, 255) : new Color32(208, 196, 169, 255),
         };
     }
@@ -117,9 +120,10 @@ public sealed class ContentEditorAppearance : MonoBehaviour
                 or ContentEditorColorRole.TextButton
                 or ContentEditorColorRole.ButtonText => new Color32(226, 232, 229, 255),
                 ContentEditorColorRole.Accent => new Color32(139, 192, 151, 255),
+                ContentEditorColorRole.OverrideInput => new Color32(39, 70, 48, 255),
                 ContentEditorColorRole.Selection => new Color32(49, 76, 60, 255),
                 ContentEditorColorRole.ScrollThumb => new Color32(119, 170, 133, 255),
-                ContentEditorColorRole.TextSelection => new Color(0.34f, 0.60f, 0.42f, 0.45f),
+                ContentEditorColorRole.TextSelection => new Color(0.29f, 0.68f, 0.42f, 0.76f),
                 _ => ColorFor(ContentEditorColorMode.Dark, role),
             };
         bool rebels = mode == ContentEditorColorMode.Rebels;
@@ -134,6 +138,9 @@ public sealed class ContentEditorAppearance : MonoBehaviour
             ContentEditorColorRole.Input => rebels
                 ? new Color32(255, 255, 255, 255)
                 : new Color32(32, 60, 43, 255),
+            ContentEditorColorRole.OverrideInput => rebels
+                ? new Color32(255, 229, 225, 255)
+                : new Color32(72, 77, 55, 255),
             ContentEditorColorRole.Text or ContentEditorColorRole.TextButton => rebels
                 ? new Color32(48, 49, 52, 255)
                 : new Color32(235, 239, 237, 255),
@@ -168,8 +175,8 @@ public sealed class ContentEditorAppearance : MonoBehaviour
                 ? new Color32(167, 84, 79, 255)
                 : new Color32(151, 161, 166, 255),
             ContentEditorColorRole.TextSelection => rebels
-                ? new Color(0.77f, 0.25f, 0.21f, 0.23f)
-                : new Color(0.55f, 0.60f, 0.63f, 0.5f),
+                ? new Color(0.82f, 0.20f, 0.16f, 0.68f)
+                : new Color(0.61f, 0.67f, 0.52f, 0.76f),
             ContentEditorColorRole.Error => rebels
                 ? ColorFor(ContentEditorColorMode.Light, role)
                 : new Color32(255, 210, 210, 255),
@@ -200,6 +207,7 @@ public enum ContentEditorColorRole
     Border,
     Button,
     Input,
+    OverrideInput,
     TextButton,
     Selection,
     Accent,

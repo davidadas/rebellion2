@@ -69,6 +69,10 @@ namespace Rebellion.Gameplay
         /// <param name="defenderCanWithdraw">Whether the defending force can withdraw.</param>
         /// <param name="attackerCommand">The attacking side's tactical command bonuses.</param>
         /// <param name="defenderCommand">The defending side's tactical command bonuses.</param>
+        /// <param name="shieldedPlanetDestroyers">
+        /// The planet destroyers among the ships that a shield generator on the planet protects
+        /// from fighter attack, or null when none is.
+        /// </param>
         /// <returns>The resolved tactical state for both forces.</returns>
         public SpaceCombatResult Resolve(
             IReadOnlyList<CapitalShip> attackerShips,
@@ -78,7 +82,8 @@ namespace Rebellion.Gameplay
             bool attackerCanWithdraw,
             bool defenderCanWithdraw,
             SpaceCombatCommandModifiers attackerCommand = default,
-            SpaceCombatCommandModifiers defenderCommand = default
+            SpaceCombatCommandModifiers defenderCommand = default,
+            IReadOnlyCollection<CapitalShip> shieldedPlanetDestroyers = null
         )
         {
             CombatForce attacker = new CombatForce(
@@ -86,19 +91,29 @@ namespace Rebellion.Gameplay
                 attackerFighters,
                 attackerCanWithdraw,
                 _config,
-                attackerCommand
+                attackerCommand,
+                shieldedPlanetDestroyers
             );
             CombatForce defender = new CombatForce(
                 defenderShips,
                 defenderFighters,
                 defenderCanWithdraw,
                 _config,
-                defenderCommand
+                defenderCommand,
+                shieldedPlanetDestroyers
             );
             double previousAttackerDurability = GetTacticalDurability(attacker);
             double previousDefenderDurability = GetTacticalDurability(defender);
             double previousAttackerWithdrawalProgress = GetWithdrawalProgress(attacker);
             double previousDefenderWithdrawalProgress = GetWithdrawalProgress(defender);
+            long previousAttackerSuperlaserRecharge = GetSuperlaserRechargeProgress(
+                attacker,
+                defender
+            );
+            long previousDefenderSuperlaserRecharge = GetSuperlaserRechargeProgress(
+                defender,
+                attacker
+            );
             int stagnantIterations = 0;
             int iterationsCompleted = 0;
             Dictionary<TacticalUnit, PendingDamage> pendingDamage =
@@ -109,30 +124,53 @@ namespace Rebellion.Gameplay
                 if (CompleteEliminatedForces(attacker, defender))
                     break;
 
+                // Attack runs are ordered first: a side with squadrons on a run does not turn
+                // for home until the run is decided.
+                OrderAttackRuns(attacker, defender);
+                OrderAttackRuns(defender, attacker);
                 WithdrawUnitsAtThreshold(attacker, defender);
                 WithdrawUnitsAtThreshold(defender, attacker);
+                WithdrawFromPlanetDestroyer(attacker, defender);
+                WithdrawFromPlanetDestroyer(defender, attacker);
+                WithdrawPlanetDestroyerFromFighterStalemate(attacker, defender);
+                WithdrawPlanetDestroyerFromFighterStalemate(defender, attacker);
+                FireSuperlasers(attacker, defender);
+                FireSuperlasers(defender, attacker);
 
                 ResolveAttackPhase(attacker, defender, pendingDamage);
                 if (defender.HasCombatants)
                     ResolveAttackPhase(defender, attacker, pendingDamage);
                 AdvanceTacticalState(attacker);
                 AdvanceTacticalState(defender);
+                AdvancePlanetDestroyers(attacker);
+                AdvancePlanetDestroyers(defender);
+                ResolveAttackRuns(attacker);
+                ResolveAttackRuns(defender);
                 double attackerDurability = GetTacticalDurability(attacker);
                 double defenderDurability = GetTacticalDurability(defender);
                 double attackerWithdrawalProgress = GetWithdrawalProgress(attacker);
                 double defenderWithdrawalProgress = GetWithdrawalProgress(defender);
+                long attackerSuperlaserRecharge = GetSuperlaserRechargeProgress(attacker, defender);
+                long defenderSuperlaserRecharge = GetSuperlaserRechargeProgress(defender, attacker);
+                // Squadrons flying an attack run are progress too: every run ends.
                 bool stateChanged =
                     Math.Abs(attackerDurability - previousAttackerDurability) > double.Epsilon
                     || Math.Abs(defenderDurability - previousDefenderDurability) > double.Epsilon
                     || Math.Abs(attackerWithdrawalProgress - previousAttackerWithdrawalProgress)
                         > double.Epsilon
                     || Math.Abs(defenderWithdrawalProgress - previousDefenderWithdrawalProgress)
-                        > double.Epsilon;
+                        > double.Epsilon
+                    || attackerSuperlaserRecharge != previousAttackerSuperlaserRecharge
+                    || defenderSuperlaserRecharge != previousDefenderSuperlaserRecharge
+                    || attacker.HasAttackRunUnderWay
+                    || defender.HasAttackRunUnderWay;
                 stagnantIterations = stateChanged ? 0 : stagnantIterations + 1;
                 previousAttackerDurability = attackerDurability;
                 previousDefenderDurability = defenderDurability;
                 previousAttackerWithdrawalProgress = attackerWithdrawalProgress;
                 previousDefenderWithdrawalProgress = defenderWithdrawalProgress;
+                previousAttackerSuperlaserRecharge = attackerSuperlaserRecharge;
+                previousDefenderSuperlaserRecharge = defenderSuperlaserRecharge;
 
                 if (stagnantIterations >= _config.AutoResolveStagnationIterations)
                 {
@@ -222,14 +260,230 @@ namespace Rebellion.Gameplay
         /// <param name="opposingForce">The force providing the opposing tactical strength.</param>
         private void WithdrawUnitsAtThreshold(CombatForce force, CombatForce opposingForce)
         {
+            // A force with squadrons on an attack run waits for the outcome.
             if (
                 force.WithdrawalOrdered
                 || !force.CanWithdraw
+                || force.HasAttackRunUnderWay
                 || !HasReachedWithdrawalThreshold(force, opposingForce)
             )
                 return;
 
             force.BeginWithdrawal();
+        }
+
+        /// <summary>
+        /// Withdraws a force that has nothing left to fight but a planet destroyer it cannot
+        /// attack: staying would only feed its ships to the superlaser.
+        /// </summary>
+        /// <param name="force">The force whose withdrawal is evaluated.</param>
+        /// <param name="opposingForce">The force that may own a planet destroyer.</param>
+        private static void WithdrawFromPlanetDestroyer(
+            CombatForce force,
+            CombatForce opposingForce
+        )
+        {
+            if (
+                force.WithdrawalOrdered
+                || !force.CanWithdraw
+                || !force.HasCombatants
+                || !opposingForce.HasPlanetDestroyerInBattle
+                || opposingForce.HasCombatants
+                || opposingForce.WithdrawalOrdered
+            )
+                return;
+
+            bool canAttack =
+                opposingForce.PlanetDestroyers.Any(planetDestroyer => planetDestroyer.IsAttackable)
+                && force.Fighters.Any(fighter =>
+                    fighter.IsAlive && !fighter.HasWithdrawn && fighter.HasTorpedoes
+                );
+            if (!canAttack)
+                force.BeginWithdrawal();
+        }
+
+        /// <summary>
+        /// Withdraws an independently mobile planet destroyer when the opposing force contains
+        /// only fighters that cannot attack it and the planet destroyer has no valid target.
+        /// </summary>
+        /// <param name="force">The force containing the planet destroyer.</param>
+        /// <param name="opposingForce">The opposing fighter force.</param>
+        private static void WithdrawPlanetDestroyerFromFighterStalemate(
+            CombatForce force,
+            CombatForce opposingForce
+        )
+        {
+            if (
+                force.WithdrawalOrdered
+                || !force.CanWithdraw
+                || force.HasCombatants
+                || !force.HasPlanetDestroyerInBattle
+                || !opposingForce.HasCombatants
+                || opposingForce.HasTargetableShips
+                || opposingForce.WithdrawalOrdered
+            )
+                return;
+
+            bool opposingForceCanAttack =
+                force.PlanetDestroyers.Any(planetDestroyer => planetDestroyer.IsAttackable)
+                && opposingForce.Fighters.Any(fighter =>
+                    fighter.IsAlive && !fighter.HasWithdrawn && fighter.HasTorpedoes
+                );
+            if (!opposingForceCanAttack)
+                force.BeginWithdrawal();
+        }
+
+        /// <summary>
+        /// Sends a force's available torpedo squadrons on an attack run against the first enemy
+        /// planet destroyer that can be attacked and does not already have a run in progress.
+        /// </summary>
+        /// <param name="force">The force whose squadrons are sent.</param>
+        /// <param name="opposingForce">The force that may own a planet destroyer.</param>
+        private void OrderAttackRuns(CombatForce force, CombatForce opposingForce)
+        {
+            if (force.WithdrawalOrdered)
+                return;
+
+            PlanetDestroyerState planetDestroyer = opposingForce.PlanetDestroyers.FirstOrDefault(
+                candidate => candidate.IsAttackable && !candidate.HasAttackRun
+            );
+            if (planetDestroyer == null)
+                return;
+
+            List<StarfighterState> participants = force
+                .Fighters.Where(fighter =>
+                    fighter.IsTargetable && fighter.HasTorpedoes && fighter.AttackRunTarget == null
+                )
+                .ToList();
+            if (participants.Count == 0)
+                return;
+
+            planetDestroyer.BeginAttackRun(participants, SelectAttackRun(participants));
+        }
+
+        /// <summary>
+        /// Selects whether one of the participating squadrons can complete an attack run.
+        /// </summary>
+        /// <param name="participants">The squadrons available for the run in stable order.</param>
+        /// <returns>True when a squadron passes the run selection checks.</returns>
+        private bool SelectAttackRun(IReadOnlyList<StarfighterState> participants)
+        {
+            Queue<AttackRunCandidate> candidates = new Queue<AttackRunCandidate>(
+                participants.Select(fighter => new AttackRunCandidate(
+                    fighter,
+                    fighter.CurrentSquadronSize
+                ))
+            );
+            int maximumEvaluations = Math.Max(_config.AttackRunSelectionMaximumEvaluations, 0);
+            for (int pass = 0; pass < maximumEvaluations && candidates.Count > 0; pass++)
+            {
+                AttackRunCandidate candidate = candidates.Dequeue();
+                int craft = candidate.RemainingCraft;
+                if (candidate.Fighter.AttackRunTurnBudget < _random.NextInt(1, 11))
+                {
+                    if (craft <= 1)
+                        continue;
+
+                    craft -= _random.NextInt(1, craft + 1);
+                    if (craft <= 0)
+                        continue;
+                }
+
+                if (_random.NextInt(1, 101) <= candidate.Fighter.GetAttackRunSelectionThreshold())
+                    return true;
+
+                candidates.Enqueue(new AttackRunCandidate(candidate.Fighter, craft));
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Fires each charged superlaser at the first untargeted enemy capital ship in stable
+        /// combat order.
+        /// </summary>
+        /// <param name="force">The force whose planet destroyers fire.</param>
+        /// <param name="opposingForce">The force providing targets.</param>
+        private static void FireSuperlasers(CombatForce force, CombatForce opposingForce)
+        {
+            if (force.WithdrawalOrdered)
+                return;
+
+            foreach (PlanetDestroyerState planetDestroyer in force.PlanetDestroyers)
+            {
+                if (!planetDestroyer.IsSuperlaserReady)
+                    continue;
+
+                CapitalShipState target = opposingForce.Ships.FirstOrDefault(ship =>
+                    ship.IsTargetable
+                    && !force.PlanetDestroyers.Any(other =>
+                        ReferenceEquals(other.PendingSuperlaserTarget, ship)
+                    )
+                );
+
+                if (target != null)
+                    planetDestroyer.QueueSuperlaserStrike(target);
+            }
+        }
+
+        /// <summary>
+        /// Resolves pending superlaser strikes and advances each planet destroyer's recharge and
+        /// withdrawal state by one iteration.
+        /// </summary>
+        /// <param name="force">The force whose planet destroyers advance.</param>
+        private static void AdvancePlanetDestroyers(CombatForce force)
+        {
+            foreach (PlanetDestroyerState planetDestroyer in force.PlanetDestroyers)
+            {
+                TacticalUnit struck = planetDestroyer.Advance();
+                if (struck?.IsAlive == true && !struck.HasWithdrawn)
+                    struck.Destroy();
+            }
+        }
+
+        /// <summary>
+        /// Advances and resolves the fixed-duration fighter attack runs against one force's
+        /// planet destroyers. A successful run destroys the planet destroyer and half of multiple
+        /// participating squadrons; a failed run destroys every participant.
+        /// </summary>
+        /// <param name="planetDestroyerForce">The force whose planet destroyers are attacked.</param>
+        private static void ResolveAttackRuns(CombatForce planetDestroyerForce)
+        {
+            foreach (PlanetDestroyerState planetDestroyer in planetDestroyerForce.PlanetDestroyers)
+            {
+                IReadOnlyList<StarfighterState> run = planetDestroyer.AttackRunParticipants;
+                if (run.Count == 0)
+                    continue;
+
+                if (!planetDestroyer.IsAttackable)
+                {
+                    planetDestroyer.CancelAttackRun();
+                    continue;
+                }
+
+                if (!planetDestroyer.AdvanceAttackRun())
+                    continue;
+
+                bool succeeded = planetDestroyer.AttackRunSucceeded;
+                if (succeeded)
+                {
+                    int losses = run.Count > 1 ? run.Count / 2 : 0;
+                    for (int index = 0; index < run.Count; index++)
+                    {
+                        if (index < losses)
+                            run[index].Destroy();
+                        else
+                            run[index].EndAttackRun();
+                    }
+                    planetDestroyer.Destroy();
+                }
+                else
+                {
+                    foreach (StarfighterState fighter in run)
+                        fighter.Destroy();
+                    planetDestroyer.CompleteAttackRun();
+                }
+            }
         }
 
         /// <summary>
@@ -427,6 +681,10 @@ namespace Rebellion.Gameplay
                     canTargetFighters ? unit.GetEffectiveness(targetsFighters: true) : 0
                 );
             }
+
+            // A planet destroyer whose superlaser still has a capital ship to burn can always do harm.
+            if (canTargetCapitalShips && force.HasPlanetDestroyerInBattle)
+                strength += 1;
             return strength;
         }
 
@@ -443,6 +701,13 @@ namespace Rebellion.Gameplay
                 if (unit.IsTargetable)
                     durability += unit.RemainingDurability;
             }
+
+            foreach (PlanetDestroyerState planetDestroyer in force.PlanetDestroyers)
+            {
+                if (planetDestroyer.IsInBattle)
+                    durability += planetDestroyer.Durability;
+            }
+
             return durability;
         }
 
@@ -459,7 +724,33 @@ namespace Rebellion.Gameplay
                 if (unit.IsWithdrawing && unit.CanWithdrawIndependently)
                     progress += unit.WithdrawalDistance;
             }
+            foreach (PlanetDestroyerState planetDestroyer in force.PlanetDestroyers)
+                progress += planetDestroyer.WithdrawalProgress;
             return progress;
+        }
+
+        /// <summary>
+        /// Measures recharge movement for planet destroyers that still have a valid capital-ship
+        /// target. Recharge is tactical progress because it always ends in another strike.
+        /// </summary>
+        /// <param name="force">The force whose planet destroyers are charging.</param>
+        /// <param name="opposingForce">The force providing superlaser targets.</param>
+        /// <returns>The combined remaining recharge iterations for viable superlaser strikes.</returns>
+        private static long GetSuperlaserRechargeProgress(
+            CombatForce force,
+            CombatForce opposingForce
+        )
+        {
+            if (force.WithdrawalOrdered || !opposingForce.HasTargetableShips)
+                return 0;
+
+            return force
+                .PlanetDestroyers.Where(planetDestroyer =>
+                    planetDestroyer.IsInBattle && !planetDestroyer.IsWithdrawing
+                )
+                .Sum(planetDestroyer =>
+                    (long)planetDestroyer.SuperlaserRechargeIterationsRemaining
+                );
         }
 
         /// <summary>
@@ -487,6 +778,11 @@ namespace Rebellion.Gameplay
                 CompleteStalematedForce(defender);
                 return;
             }
+
+            // A surviving planet destroyer prevents a durability tie-breaker from manufacturing a
+            // victor when neither side can change the tactical state.
+            if (attacker.HasPlanetDestroyerInBattle || defender.HasPlanetDestroyerInBattle)
+                return;
 
             int comparison = attackerStrength.CompareTo(defenderStrength);
             if (comparison < 0)
@@ -518,6 +814,16 @@ namespace Rebellion.Gameplay
                 TacticalUnit unit in force.Units.Where(unit => unit.IsAlive && !unit.HasWithdrawn)
             )
                 unit.Destroy();
+            foreach (PlanetDestroyerState planetDestroyer in force.PlanetDestroyers)
+            {
+                if (!planetDestroyer.IsInBattle)
+                    continue;
+
+                if (planetDestroyer.IsWithdrawing && planetDestroyer.CanWithdrawIndependently)
+                    planetDestroyer.FinishWithdrawal();
+                else
+                    planetDestroyer.Destroy();
+            }
 
             if (force.HasWithdrawnUnits)
                 force.Outcome = SpaceCombatSideOutcome.Withdrawn;
@@ -547,6 +853,8 @@ namespace Rebellion.Gameplay
 
             AddShipResults(result, attacker.Ships);
             AddShipResults(result, defender.Ships);
+            AddPlanetDestroyerResults(result, attacker.PlanetDestroyers);
+            AddPlanetDestroyerResults(result, defender.PlanetDestroyers);
             AddFighterResults(result, attacker.Fighters);
             AddFighterResults(result, defender.Fighters);
             result.AttackingUnits.AddRange(CaptureCombatUnits(attacker));
@@ -557,6 +865,12 @@ namespace Rebellion.Gameplay
                     .Units.Concat(defender.Units)
                     .Where(unit => unit.HasWithdrawn)
                     .Select(unit => unit.Node)
+            );
+            result.WithdrawnUnits.AddRange(
+                attacker
+                    .PlanetDestroyers.Concat(defender.PlanetDestroyers)
+                    .Where(planetDestroyer => planetDestroyer.HasWithdrawn)
+                    .Select(planetDestroyer => planetDestroyer.Ship)
             );
             return result;
         }
@@ -583,6 +897,33 @@ namespace Rebellion.Gameplay
                         Ship = ship.Ship,
                         HullBefore = ship.InitialHull,
                         HullAfter = hullAfter,
+                    }
+                );
+            }
+        }
+
+        /// <summary>
+        /// Records destroyed planet destroyers in a combat result. A surviving planet destroyer
+        /// was never hit because ordinary weapons cannot reach it.
+        /// </summary>
+        /// <param name="result">The result receiving damage records.</param>
+        /// <param name="planetDestroyers">The resolved planet destroyers.</param>
+        private static void AddPlanetDestroyerResults(
+            SpaceCombatResult result,
+            IReadOnlyList<PlanetDestroyerState> planetDestroyers
+        )
+        {
+            foreach (PlanetDestroyerState planetDestroyer in planetDestroyers)
+            {
+                if (planetDestroyer.IsAlive)
+                    continue;
+
+                result.ShipDamage.Add(
+                    new ShipDamageResult
+                    {
+                        Ship = planetDestroyer.Ship,
+                        HullBefore = planetDestroyer.Ship.CurrentHullStrength,
+                        HullAfter = 0,
                     }
                 );
             }
@@ -635,10 +976,12 @@ namespace Rebellion.Gameplay
         private static List<CombatUnitSnapshot> CaptureCombatUnits(CombatForce force)
         {
             List<CombatUnitSnapshot> units = force
-                .Ships.SelectMany(ship =>
-                    new[] { ship.Ship }
+                .Ships.Select(ship => ship.Ship)
+                .Concat(force.PlanetDestroyers.Select(planetDestroyer => planetDestroyer.Ship))
+                .SelectMany(ship =>
+                    new[] { ship }
                         .Cast<ISceneNode>()
-                        .Concat(ship.Ship.GetChildren<ISceneNode>(recursive: true))
+                        .Concat(ship.GetChildren<ISceneNode>(recursive: true))
                 )
                 .Concat(force.Fighters.Select(fighter => fighter.Fighter))
                 .Where(unit => unit != null)
@@ -648,7 +991,14 @@ namespace Rebellion.Gameplay
             CombatUnitSnapshot.RecordOutcomes(
                 units,
                 force.Units.Where(unit => IsDamaged(unit)).Select(unit => unit.Node),
-                force.Units.Where(unit => !unit.IsAlive).Select(unit => unit.Node)
+                force
+                    .Units.Where(unit => !unit.IsAlive)
+                    .Select(unit => unit.Node)
+                    .Concat(
+                        force
+                            .PlanetDestroyers.Where(planetDestroyer => !planetDestroyer.IsAlive)
+                            .Select(planetDestroyer => (ISceneNode)planetDestroyer.Ship)
+                    )
             );
             return units;
         }
@@ -682,12 +1032,36 @@ namespace Rebellion.Gameplay
             if (attackerActive != defenderActive)
                 return attackerActive ? CombatSide.Attacker : CombatSide.Defender;
 
-            bool attackerSurvived = attacker.Units.Any(unit => unit.IsAlive);
-            bool defenderSurvived = defender.Units.Any(unit => unit.IsAlive);
+            bool attackerSurvived =
+                attacker.Units.Any(unit => unit.IsAlive)
+                || attacker.PlanetDestroyers.Any(planetDestroyer => planetDestroyer.IsAlive);
+            bool defenderSurvived =
+                defender.Units.Any(unit => unit.IsAlive)
+                || defender.PlanetDestroyers.Any(planetDestroyer => planetDestroyer.IsAlive);
             if (attackerSurvived == defenderSurvived)
                 return CombatSide.Draw;
 
             return attackerSurvived ? CombatSide.Attacker : CombatSide.Defender;
+        }
+
+        /// <summary>
+        /// Stores one squadron's temporary craft count during attack-run selection.
+        /// </summary>
+        private readonly struct AttackRunCandidate
+        {
+            internal StarfighterState Fighter { get; }
+            internal int RemainingCraft { get; }
+
+            /// <summary>
+            /// Creates a candidate for one attack-run selection pass.
+            /// </summary>
+            /// <param name="fighter">The candidate squadron.</param>
+            /// <param name="remainingCraft">The craft remaining in the selection model.</param>
+            internal AttackRunCandidate(StarfighterState fighter, int remainingCraft)
+            {
+                Fighter = fighter ?? throw new ArgumentNullException(nameof(fighter));
+                RemainingCraft = Math.Max(remainingCraft, 0);
+            }
         }
 
         /// <summary>
@@ -698,14 +1072,28 @@ namespace Rebellion.Gameplay
             internal readonly List<CapitalShipState> Ships;
             internal readonly List<StarfighterState> Fighters;
             internal readonly List<TacticalUnit> Units;
+
+            // Planet destroyers stand off from the fight and are not among the units.
+            internal readonly List<PlanetDestroyerState> PlanetDestroyers;
             private readonly List<TacticalUnit> _targetableUnits = new List<TacticalUnit>();
 
             internal bool HasCombatants => HasTargetableUnits(Units);
-            internal bool HasUnresolvedUnits => HasUnresolvedUnit(Units);
-            internal bool HasPendingWithdrawal => HasWithdrawingUnit(Units);
+            internal bool HasUnresolvedUnits =>
+                HasUnresolvedUnit(Units) || HasPlanetDestroyerInBattle;
+            internal bool HasPendingWithdrawal =>
+                HasWithdrawingUnit(Units)
+                || PlanetDestroyers.Any(planetDestroyer =>
+                    planetDestroyer.IsAlive && planetDestroyer.IsWithdrawing
+                );
             internal bool HasTargetableShips => HasTargetableUnits(Ships);
             internal bool HasTargetableFighters => HasTargetableUnits(Fighters);
-            internal bool HasWithdrawnUnits => HasWithdrawnUnit(Units);
+            internal bool HasWithdrawnUnits =>
+                HasWithdrawnUnit(Units)
+                || PlanetDestroyers.Any(planetDestroyer => planetDestroyer.HasWithdrawn);
+            internal bool HasPlanetDestroyerInBattle =>
+                PlanetDestroyers.Any(planetDestroyer => planetDestroyer.IsInBattle);
+            internal bool HasAttackRunUnderWay =>
+                Fighters.Any(fighter => fighter.IsAlive && fighter.AttackRunTarget != null);
             internal bool CanWithdraw { get; }
             internal SpaceCombatSideOutcome Outcome { get; set; }
             internal bool WithdrawalOrdered { get; private set; }
@@ -718,12 +1106,16 @@ namespace Rebellion.Gameplay
             /// <param name="canWithdraw">Whether the force can withdraw.</param>
             /// <param name="config">The automatic combat parameters.</param>
             /// <param name="command">The force's tactical command bonuses.</param>
+            /// <param name="shieldedPlanetDestroyers">
+            /// The planet destroyers a planetary shield generator protects, or null.
+            /// </param>
             internal CombatForce(
                 IReadOnlyList<CapitalShip> ships,
                 IReadOnlyList<Starfighter> fighters,
                 bool canWithdraw,
                 GameConfig.SpaceCombatConfig config,
-                SpaceCombatCommandModifiers command
+                SpaceCombatCommandModifiers command,
+                IReadOnlyCollection<CapitalShip> shieldedPlanetDestroyers
             )
             {
                 double capitalShipCommandBonus = GetCommandBonus(
@@ -734,8 +1126,18 @@ namespace Rebellion.Gameplay
                     command.CommanderCombat,
                     config.CommanderCombatDivisor
                 );
+                PlanetDestroyers = (ships ?? Array.Empty<CapitalShip>())
+                    .Where(ship => ship?.CanDestroyPlanets == true)
+                    .Select(ship => new PlanetDestroyerState(
+                        ship,
+                        shieldedPlanetDestroyers?.Contains(ship) == true,
+                        config.PlanetDestroyerSuperlaserRechargeIterations,
+                        config.PlanetDestroyerAttackRunIterations,
+                        config.PlanetDestroyerWithdrawalIterations
+                    ))
+                    .ToList();
                 Ships = (ships ?? Array.Empty<CapitalShip>())
-                    .Where(ship => ship != null)
+                    .Where(ship => ship?.CanDestroyPlanets == false)
                     .Select(ship => new CapitalShipState(ship, config, capitalShipCommandBonus))
                     .ToList();
                 Fighters = (fighters ?? Array.Empty<Starfighter>())
@@ -788,8 +1190,17 @@ namespace Rebellion.Gameplay
                     return;
 
                 WithdrawalOrdered = true;
+                // Squadrons out on an attack run break off and leave with the rest.
+                foreach (StarfighterState fighter in Fighters)
+                {
+                    if (fighter.IsAlive && fighter.AttackRunTarget != null)
+                        fighter.AttackRunTarget.CancelAttackRun();
+                }
+
                 foreach (TacticalUnit unit in Units.Where(unit => unit.IsTargetable))
                     unit.StartWithdrawal();
+                foreach (PlanetDestroyerState planetDestroyer in PlanetDestroyers)
+                    planetDestroyer.StartWithdrawal();
             }
 
             /// <summary>
@@ -812,7 +1223,25 @@ namespace Rebellion.Gameplay
                     unit.FinishWithdrawal();
                 }
 
-                if (HasWithdrawingIndependentUnit())
+                // A planet destroyer jumps last, once its countdown has run and its fleet is clear.
+                bool fleetLeaving = HasWithdrawingIndependentUnit();
+                bool planetDestroyerLeaving = false;
+                foreach (PlanetDestroyerState planetDestroyer in PlanetDestroyers)
+                {
+                    if (
+                        !planetDestroyer.IsAlive
+                        || !planetDestroyer.IsWithdrawing
+                        || !planetDestroyer.CanWithdrawIndependently
+                    )
+                        continue;
+
+                    if (planetDestroyer.IsJumpReady && !fleetLeaving)
+                        planetDestroyer.FinishWithdrawal();
+                    else
+                        planetDestroyerLeaving = true;
+                }
+
+                if (fleetLeaving || planetDestroyerLeaving)
                     return;
 
                 CompleteDependentWithdrawal();
@@ -830,6 +1259,12 @@ namespace Rebellion.Gameplay
                 )
                 {
                     unit.FinishWithdrawal();
+                }
+
+                foreach (PlanetDestroyerState planetDestroyer in PlanetDestroyers)
+                {
+                    if (planetDestroyer.IsInBattle && planetDestroyer.CanWithdrawIndependently)
+                        planetDestroyer.FinishWithdrawal();
                 }
 
                 CompleteDependentWithdrawal();
@@ -854,7 +1289,15 @@ namespace Rebellion.Gameplay
                             .Where(ship =>
                                 ship.IsAlive && ship.HasWithdrawn && ship.CanWithdrawIndependently
                             )
-                            .Select(ship => ship.Ship),
+                            .Select(ship => ship.Ship)
+                            .Concat(
+                                PlanetDestroyers
+                                    .Where(planetDestroyer =>
+                                        planetDestroyer.HasWithdrawn
+                                        && planetDestroyer.CanWithdrawIndependently
+                                    )
+                                    .Select(planetDestroyer => planetDestroyer.Ship)
+                            ),
                         Fighters.ConvertAll(fighter => fighter.Fighter),
                         carrierDependentFighters
                     );
@@ -870,6 +1313,13 @@ namespace Rebellion.Gameplay
                         unit.FinishWithdrawal();
                     else
                         unit.Destroy();
+                }
+
+                // A planet destroyer with no hyperdrive cannot follow its fleet out.
+                foreach (PlanetDestroyerState planetDestroyer in PlanetDestroyers)
+                {
+                    if (planetDestroyer.IsInBattle)
+                        planetDestroyer.Destroy();
                 }
             }
 
@@ -973,7 +1423,17 @@ namespace Rebellion.Gameplay
             internal bool CanFire => IsTargetable && !IsWithdrawing && !IsAttackDelayed;
             internal bool HasWithdrawn { get; private set; }
             internal bool IsWithdrawing { get; private set; }
-            internal bool IsTargetable => IsAlive && !HasWithdrawn && !IsWithdrawing;
+
+            /// <summary>
+            /// Gets whether enemies can still engage this unit.
+            /// </summary>
+            internal bool IsTargetable => IsAlive && !HasWithdrawn && !IsWithdrawing && !IsOffField;
+
+            /// <summary>
+            /// Gets whether the unit has left the fight without leaving the battle, as a squadron
+            /// does during a planet-destroyer attack run.
+            /// </summary>
+            internal virtual bool IsOffField => false;
             internal double WithdrawalDistance => _withdrawalDistance;
 
             /// <summary>
@@ -1133,6 +1593,208 @@ namespace Rebellion.Gameplay
 
                 double targetRate = Math.Max(target.ManeuverRate, _minimumManeuverRatio);
                 return Math.Max(Math.Min(ManeuverRate / targetRate, 1), _minimumManeuverRatio);
+            }
+        }
+
+        /// <summary>
+        /// Stores a planet destroyer's superlaser, attack-run, and withdrawal state.
+        /// </summary>
+        private sealed class PlanetDestroyerState
+        {
+            private readonly List<StarfighterState> _attackRunParticipants =
+                new List<StarfighterState>();
+            private readonly int _attackRunIterations;
+            private bool _attackRunActive;
+            private int _attackRunIterationsRemaining;
+            private int _jumpIterationsRemaining;
+            private readonly int _superlaserRechargeIterations;
+            private int _superlaserRechargeIterationsRemaining;
+            private readonly int _withdrawalIterations;
+
+            internal CapitalShip Ship { get; }
+            internal bool IsShielded { get; }
+            internal bool IsAlive { get; private set; } = true;
+            internal bool HasWithdrawn { get; private set; }
+            internal bool IsWithdrawing { get; private set; }
+            internal TacticalUnit PendingSuperlaserTarget { get; private set; }
+            internal bool IsInBattle => IsAlive && !HasWithdrawn;
+            internal bool IsAttackable => IsInBattle && !IsShielded;
+            internal bool IsSuperlaserReady =>
+                IsInBattle
+                && !IsWithdrawing
+                && PendingSuperlaserTarget == null
+                && _superlaserRechargeIterationsRemaining <= 0;
+            internal bool CanWithdrawIndependently => Ship.Hyperdrive > 0;
+            internal bool IsJumpReady => _jumpIterationsRemaining <= 0;
+            internal int SuperlaserRechargeIterationsRemaining =>
+                _superlaserRechargeIterationsRemaining;
+            internal bool HasAttackRun => _attackRunActive;
+            internal IReadOnlyList<StarfighterState> AttackRunParticipants =>
+                _attackRunParticipants;
+            internal bool AttackRunSucceeded { get; private set; }
+            internal int WithdrawalProgress =>
+                IsWithdrawing ? _withdrawalIterations - _jumpIterationsRemaining : 0;
+            internal double Durability =>
+                Math.Max(Ship.CurrentHullStrength, 0) + Math.Max(Ship.MaxShieldStrength, 0);
+
+            /// <summary>
+            /// Creates tactical state for one planet destroyer.
+            /// </summary>
+            /// <param name="ship">The planet destroyer entering combat.</param>
+            /// <param name="isShielded">Whether a planetary shield protects the ship.</param>
+            /// <param name="superlaserRechargeIterations">The delay between completed strikes.</param>
+            /// <param name="attackRunIterations">The duration of a fighter attack run.</param>
+            /// <param name="withdrawalIterations">The ship's withdrawal countdown.</param>
+            internal PlanetDestroyerState(
+                CapitalShip ship,
+                bool isShielded,
+                int superlaserRechargeIterations,
+                int attackRunIterations,
+                int withdrawalIterations
+            )
+            {
+                Ship = ship ?? throw new ArgumentNullException(nameof(ship));
+                IsShielded = isShielded;
+                _superlaserRechargeIterations = superlaserRechargeIterations;
+                _attackRunIterations = attackRunIterations;
+                _withdrawalIterations = withdrawalIterations;
+            }
+
+            /// <summary>
+            /// Queues a superlaser target for resolution at the end of the current iteration.
+            /// </summary>
+            /// <param name="target">The target destroyed when the strike completes.</param>
+            internal void QueueSuperlaserStrike(TacticalUnit target)
+            {
+                PendingSuperlaserTarget = target ?? throw new ArgumentNullException(nameof(target));
+            }
+
+            /// <summary>
+            /// Resolves a pending superlaser strike and advances the recharge and withdrawal
+            /// countdowns by one resolver iteration.
+            /// </summary>
+            /// <returns>The target whose superlaser strike completed, or null.</returns>
+            internal TacticalUnit Advance()
+            {
+                if (!IsInBattle)
+                    return null;
+
+                if (IsWithdrawing && _jumpIterationsRemaining > 0)
+                    _jumpIterationsRemaining--;
+
+                if (PendingSuperlaserTarget != null)
+                {
+                    TacticalUnit struck = PendingSuperlaserTarget;
+                    PendingSuperlaserTarget = null;
+                    _superlaserRechargeIterationsRemaining = _superlaserRechargeIterations;
+                    return struck;
+                }
+
+                if (_superlaserRechargeIterationsRemaining > 0)
+                    _superlaserRechargeIterationsRemaining--;
+
+                return null;
+            }
+
+            /// <summary>
+            /// Starts a fixed-duration fighter attack run against the planet destroyer.
+            /// </summary>
+            /// <param name="participants">The squadrons committed to the run.</param>
+            /// <param name="succeeds">Whether the completed run destroys the ship.</param>
+            internal void BeginAttackRun(
+                IReadOnlyList<StarfighterState> participants,
+                bool succeeds
+            )
+            {
+                if (participants == null)
+                    throw new ArgumentNullException(nameof(participants));
+
+                _attackRunParticipants.Clear();
+                for (int index = 0; index < participants.Count; index++)
+                {
+                    StarfighterState fighter = participants[index];
+                    _attackRunParticipants.Add(fighter);
+                    fighter.BeginAttackRun(this);
+                }
+                _attackRunActive = true;
+                AttackRunSucceeded = succeeds;
+                _attackRunIterationsRemaining = _attackRunIterations;
+            }
+
+            /// <summary>
+            /// Advances an active fighter attack run by one resolver iteration.
+            /// </summary>
+            /// <returns>True when the run completed during this iteration.</returns>
+            internal bool AdvanceAttackRun()
+            {
+                if (!_attackRunActive)
+                    return false;
+
+                _attackRunIterationsRemaining--;
+                if (_attackRunIterationsRemaining > 0)
+                    return false;
+
+                _attackRunActive = false;
+                return true;
+            }
+
+            /// <summary>
+            /// Cancels an active fighter attack run without resolving it.
+            /// </summary>
+            internal void CancelAttackRun()
+            {
+                CompleteAttackRun();
+                AttackRunSucceeded = false;
+            }
+
+            /// <summary>
+            /// Clears a completed attack run and returns its surviving participants to combat.
+            /// </summary>
+            internal void CompleteAttackRun()
+            {
+                for (int index = 0; index < _attackRunParticipants.Count; index++)
+                    _attackRunParticipants[index].EndAttackRun();
+
+                _attackRunParticipants.Clear();
+                _attackRunActive = false;
+                _attackRunIterationsRemaining = 0;
+            }
+
+            /// <summary>
+            /// Starts the planet destroyer's hyperspace withdrawal countdown.
+            /// </summary>
+            internal void StartWithdrawal()
+            {
+                if (!IsInBattle || IsWithdrawing)
+                    return;
+
+                IsWithdrawing = true;
+                _jumpIterationsRemaining = _withdrawalIterations;
+            }
+
+            /// <summary>
+            /// Marks the surviving planet destroyer as withdrawn from combat.
+            /// </summary>
+            internal void FinishWithdrawal()
+            {
+                if (!IsAlive)
+                    return;
+
+                HasWithdrawn = true;
+                IsWithdrawing = false;
+                PendingSuperlaserTarget = null;
+                CancelAttackRun();
+            }
+
+            /// <summary>
+            /// Marks the planet destroyer as destroyed.
+            /// </summary>
+            internal void Destroy()
+            {
+                IsAlive = false;
+                IsWithdrawing = false;
+                PendingSuperlaserTarget = null;
+                CancelAttackRun();
             }
         }
 
@@ -1799,6 +2461,8 @@ namespace Rebellion.Gameplay
             private readonly double _ionCannonFighterDamageMultiplier;
             private readonly double _laserCannonCapitalDamageMultiplier;
             private readonly double _commandBonus;
+            private readonly double _attackRunSelectionThresholdMultiplier;
+            private readonly double _attackRunTorpedoBudgetMultiplier;
             private readonly double _maximumShields;
             private readonly double _maximumTorpedoDamage;
             private readonly double _maximumWeaponCharge;
@@ -1828,6 +2492,15 @@ namespace Rebellion.Gameplay
             internal override bool CanScanForTargets =>
                 _maximumWeaponCharge > 0 && _currentWeaponCharge >= _maximumWeaponCharge;
             internal override double ClosingSpeed => Math.Max(Fighter.SublightSpeed, 0);
+            internal override bool IsOffField => AttackRunTarget != null;
+            internal bool HasTorpedoes => Fighter.Torpedoes > 0;
+            internal int AttackRunTurnBudget =>
+                Fighter.SublightSpeed <= 0 ? 1 : Math.Min(Math.Max(Fighter.Agility, 0) + 1, 9);
+
+            /// <summary>
+            /// Gets the planet destroyer the squadron has been sent to attack, or null.
+            /// </summary>
+            internal PlanetDestroyerState AttackRunTarget { get; private set; }
             internal override double ManeuverRate =>
                 Math.Max(
                     Fighter.SublightSpeed + Fighter.Agility + _commandBonus,
@@ -1850,6 +2523,14 @@ namespace Rebellion.Gameplay
                 Fighter = fighter;
                 InitialSquadronSize = Math.Max(fighter.CurrentSquadronSize, 0);
                 _commandBonus = Math.Max(commandBonus, 0);
+                _attackRunSelectionThresholdMultiplier = Math.Max(
+                    config.AttackRunSelectionThresholdMultiplier,
+                    0
+                );
+                _attackRunTorpedoBudgetMultiplier = Math.Max(
+                    config.AttackRunTorpedoBudgetMultiplier,
+                    0
+                );
                 _hullStrengthPerFighter = Math.Max(
                     config.AutoResolveFighterHullPerCraft,
                     double.Epsilon
@@ -1880,6 +2561,37 @@ namespace Rebellion.Gameplay
                     * Math.Max(fighter.MaxSquadronSize, 0)
                     * Math.Max(config.AutoResolveTorpedoDamagePerStrength, 0);
                 _currentWeaponCharge = _maximumWeaponCharge;
+            }
+
+            /// <summary>
+            /// Returns the attack-run selection threshold for the squadron's configured capacity.
+            /// </summary>
+            /// <returns>The inclusive one-to-one-hundred selection threshold.</returns>
+            internal int GetAttackRunSelectionThreshold()
+            {
+                double sideBudget = Math.Min(Math.Max(_commandBonus + 1, 1), 9);
+                double torpedoBudget =
+                    Math.Max(Fighter.Torpedoes, 0)
+                    * Math.Max(Fighter.MaxSquadronSize, 0)
+                    * _attackRunTorpedoBudgetMultiplier;
+                return (int)((torpedoBudget + sideBudget) * _attackRunSelectionThresholdMultiplier);
+            }
+
+            /// <summary>
+            /// Sends the squadron on an attack run against a planet destroyer.
+            /// </summary>
+            /// <param name="planetDestroyer">The planet destroyer to attack.</param>
+            internal void BeginAttackRun(PlanetDestroyerState planetDestroyer)
+            {
+                AttackRunTarget = planetDestroyer;
+            }
+
+            /// <summary>
+            /// Returns the squadron from its attack run to the tactical battle.
+            /// </summary>
+            internal void EndAttackRun()
+            {
+                AttackRunTarget = null;
             }
 
             /// <summary>

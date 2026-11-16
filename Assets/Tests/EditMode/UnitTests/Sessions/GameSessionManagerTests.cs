@@ -1129,7 +1129,7 @@ namespace Rebellion.Tests.Managers
             _sessionManager.PersistenceFailed += (_, operation, _) => reported = operation;
             Task<bool> saving = _sessionManager.SaveGameAsync("checkpoint", "Checkpoint");
             UnityEngine.TestTools.LogAssert.Expect(
-                UnityEngine.LogType.Exception,
+                UnityEngine.LogType.Error,
                 new System.Text.RegularExpressions.Regex("test storage failure")
             );
             coordinator.SaveCompletion.SetException(new IOException("test storage failure"));
@@ -1147,7 +1147,7 @@ namespace Rebellion.Tests.Managers
             _sessionManager.PersistenceFailed += (_, _, _) => reported = true;
             Task<bool> saving = _sessionManager.QuickSaveAsync();
             UnityEngine.TestTools.LogAssert.Expect(
-                UnityEngine.LogType.Exception,
+                UnityEngine.LogType.Error,
                 new System.Text.RegularExpressions.Regex("test storage failure")
             );
             coordinator.SaveCompletion.SetException(new IOException("test storage failure"));
@@ -1165,7 +1165,7 @@ namespace Rebellion.Tests.Managers
             _sessionManager.PersistenceFailed += (_, operation, _) => reported = operation;
             Task<bool> loading = _sessionManager.LoadGameAsync("checkpoint");
             UnityEngine.TestTools.LogAssert.Expect(
-                UnityEngine.LogType.Exception,
+                UnityEngine.LogType.Error,
                 new System.Text.RegularExpressions.Regex("test storage failure")
             );
             coordinator.LoadCompletion.SetException(new IOException("test storage failure"));
@@ -1184,7 +1184,7 @@ namespace Rebellion.Tests.Managers
             Task<bool> saving = _sessionManager.SaveGameAsync("checkpoint", "Checkpoint");
             _sessionManager.StartGame(CreateGame());
             UnityEngine.TestTools.LogAssert.Expect(
-                UnityEngine.LogType.Exception,
+                UnityEngine.LogType.Error,
                 new System.Text.RegularExpressions.Regex("test storage failure")
             );
             coordinator.SaveCompletion.SetException(new IOException("test storage failure"));
