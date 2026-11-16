@@ -1,11 +1,11 @@
-name: Request fork PR tests
+name: Request PR tests
 
 on:
   pull_request_target:
     types: [opened, reopened, synchronize, ready_for_review]
 
 concurrency:
-  group: fork-test-request-${{ github.event.pull_request.number }}
+  group: pr-test-request-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 permissions:
@@ -35,3 +35,29 @@ jobs:
                 head_sha: pr.head.sha,
               },
             });
+
+  trusted-media:
+    name: Resolve trusted PR media
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    uses: ./.github/workflows/resolve-media.yml
+    with:
+      branch: ${{ github.event.pull_request.head.ref }}
+    secrets: inherit
+    permissions:
+      contents: read
+
+  trusted-test:
+    name: Test trusted PR
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    needs: trusted-media
+    uses: ./.github/workflows/unity-test-runner.yml
+    with:
+      base_sha: ${{ github.event.pull_request.base.sha }}
+      reviewed_head_sha: ${{ github.event.pull_request.head.sha }}
+      reviewed_head_repository: ${{ github.event.pull_request.head.repo.full_name }}
+      media_sha: ${{ needs.trusted-media.outputs.sha }}
+    secrets: inherit
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
