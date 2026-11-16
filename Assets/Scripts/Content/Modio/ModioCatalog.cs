@@ -42,11 +42,40 @@ namespace Rebellion.Content.Modio
         [DataMember(Name = "summary")]
         public string Summary { get; set; }
 
+        [DataMember(Name = "description_plaintext")]
+        public string Description { get; set; }
+
+        [DataMember(Name = "submitted_by")]
+        public ModioAuthor Author { get; set; }
+
+        [DataMember(Name = "logo")]
+        public ModioLogo Logo { get; set; }
+
         [DataMember(Name = "profile_url")]
         public string WebsiteURL { get; set; }
 
         [DataMember(Name = "modfile")]
         public ModioFile File { get; set; }
+    }
+
+    /// <summary>
+    /// Identifies the creator shown on a community mod's public profile.
+    /// </summary>
+    [DataContract]
+    public sealed class ModioAuthor
+    {
+        [DataMember(Name = "username")]
+        public string Name { get; set; }
+    }
+
+    /// <summary>
+    /// Supplies a creator-uploaded thumbnail without requiring the original image.
+    /// </summary>
+    [DataContract]
+    public sealed class ModioLogo
+    {
+        [DataMember(Name = "thumb_640x360")]
+        public string ThumbnailURL { get; set; }
     }
 
     /// <summary>
@@ -95,7 +124,7 @@ namespace Rebellion.Content.Modio
     }
 
     /// <summary>
-    /// Reads and writes the JSON contracts shared by the game and launcher.
+    /// Reads and writes public catalog profiles and managed-installation records.
     /// </summary>
     internal static class ModioJson
     {

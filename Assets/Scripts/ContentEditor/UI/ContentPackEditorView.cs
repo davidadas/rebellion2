@@ -40,6 +40,16 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private Button newPackButton;
 
     [SerializeField]
+    private ContentLibraryView libraryView;
+
+    [SerializeField]
+    private Button libraryButton;
+
+    public ContentLibraryView Library => libraryView;
+
+    public event Action LibraryRequested;
+
+    [SerializeField]
     private Button openPackButton;
 
     [SerializeField]
@@ -330,6 +340,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || projectWorkspace == null
             || welcomePane == null
             || newPackButton == null
+            || libraryView == null
+            || libraryButton == null
             || openPackButton == null
             || viewButton == null
             || testButton == null
@@ -387,6 +399,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             heading.Hovered += HoverMenu;
         newPackButton.onClick.AddListener(ShowNewPackDialog);
         openPackButton.onClick.AddListener(RequestOpenPack);
+        libraryButton.onClick.AddListener(ShowLibrary);
+        libraryView.ResumeRequested += ResumeProject;
         searchInput.onValueChanged.AddListener(HandleSearchChanged);
         clearSearchButton.onClick.AddListener(ClearSearch);
         propertiesTab.onClick.AddListener(() => ShowSection("General"));
@@ -892,6 +906,55 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     }
 
     /// <summary>
+    /// Confirms removal using the same authored dialog as other destructive editor actions.
+    /// </summary>
+    /// <param name="name">The installed content's display name.</param>
+    /// <param name="remove">The exact confirmed removal operation.</param>
+    public void ConfirmContentRemoval(string name, Action remove) =>
+        confirmation.Show(
+            "Remove " + name + "? Its installed files will be deleted.",
+            "Remove",
+            remove
+        );
+
+    /// <summary>
+    /// Prevents authoring-project replacement while the library is changing installed files.
+    /// </summary>
+    /// <param name="busy">Whether a library operation owns the installation.</param>
+    public void SetLibraryBusy(bool busy)
+    {
+        newPackButton.interactable = !busy;
+        openPackButton.interactable = !busy;
+        libraryButton.interactable = !busy;
+    }
+
+    /// <summary>
+    /// Opens content management while retaining the editing project's documents and selection.
+    /// </summary>
+    public void ShowLibrary()
+    {
+        if (project != null && !CommitFields())
+            return;
+        menu.TryCancel();
+        StopAudioPreview();
+        projectWorkspace.SetActive(false);
+        welcomePane.SetActive(true);
+        libraryView.SetResumeAvailable(project != null);
+        LibraryRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// Returns to the retained project without reloading or discarding any edits.
+    /// </summary>
+    private void ResumeProject()
+    {
+        if (project == null)
+            return;
+        welcomePane.SetActive(false);
+        projectWorkspace.SetActive(true);
+    }
+
+    /// <summary>
     /// Clears project-owned forms before the controller releases their assets.
     /// </summary>
     public void ClearProject()
@@ -909,6 +972,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         project = null;
         projectWorkspace.SetActive(false);
         welcomePane.SetActive(true);
+        libraryView.SetResumeAvailable(false);
         editButton.interactable = false;
         catalogs = Array.Empty<ContentPackEditorCatalog>();
         recordList.Clear();

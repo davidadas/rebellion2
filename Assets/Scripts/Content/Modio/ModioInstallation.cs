@@ -4,7 +4,7 @@ using System.Runtime.Serialization;
 namespace Rebellion.Content.Modio
 {
     /// <summary>
-    /// Records the published archive installed by either the game or the launcher.
+    /// Records the published archive installed alongside a content definition.
     /// </summary>
     [DataContract]
     public sealed class ModioInstallation

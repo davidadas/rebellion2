@@ -215,7 +215,6 @@ public sealed class OptionsMenuRenderData
     public bool ShowModsTab { get; }
     public string StatusMessage { get; }
     public bool StatusIsError { get; }
-    public ModioBrowserRenderData ModioBrowser { get; }
 
     public bool HasActiveGame { get; }
     public bool CanSave { get; }
@@ -250,7 +249,6 @@ public sealed class OptionsMenuRenderData
     /// <param name="analyticsEnabled">Whether analytics collection is enabled.</param>
     /// <param name="statusMessage">The result of the most recent settings action.</param>
     /// <param name="statusIsError">Whether the settings status represents an error.</param>
-    /// <param name="modioBrowser">The community mod browser presentation, if available.</param>
     public OptionsMenuRenderData(
         int x,
         int y,
@@ -278,8 +276,7 @@ public sealed class OptionsMenuRenderData
         IReadOnlyDictionary<UserGraphicsSetting, OptionsGraphicsValue> graphicsValues = null,
         bool analyticsEnabled = false,
         string statusMessage = "",
-        bool statusIsError = false,
-        ModioBrowserRenderData modioBrowser = null
+        bool statusIsError = false
     )
     {
         X = x;
@@ -305,7 +302,6 @@ public sealed class OptionsMenuRenderData
         ShowModsTab = showModsTab;
         StatusMessage = statusMessage ?? string.Empty;
         StatusIsError = statusIsError;
-        ModioBrowser = modioBrowser;
         SelectedSlot = selectedSlot;
         HasActiveGame = hasActiveGame;
         CanSave = canSave;

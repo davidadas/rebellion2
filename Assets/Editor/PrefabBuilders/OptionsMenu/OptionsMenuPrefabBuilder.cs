@@ -215,9 +215,6 @@ public static class OptionsMenuPrefabBuilder
         Color textDim
     )
     {
-        RectTransform page = modsPage;
-        modsPage = CreateChildLayer("InstalledModsPanel", page);
-        AssignReference(view, "_installedModsPanel", modsPage.gameObject);
         CreateOptionsSectionHeader(modsPage, "ContentPackHeader", "CONTENT PACK", 16, accent);
         TextMeshProUGUI packValue = CreateOptionsFieldRow(
             modsPage,
@@ -266,22 +263,6 @@ public static class OptionsMenuPrefabBuilder
             0
         );
         rowTemplate.gameObject.SetActive(false);
-
-        Button browse = CreateMenuActionButton(
-            modsPage,
-            "BrowseCommunityMods",
-            "Browse mod.io",
-            210,
-            Color.white,
-            158
-        );
-        SetSourceRect((RectTransform)browse.transform, 210, 74, 158, 22);
-        AssignReference(view, "_browseModsButton", browse);
-        AssignReference(
-            view,
-            "_modioBrowser",
-            ModioBrowserPrefabBuilder.Build(page, accent, textDim)
-        );
 
         AssignReference(view, "_modsStatusTextField", status);
         AssignReference(view, "_contentPackValueField", packValue);

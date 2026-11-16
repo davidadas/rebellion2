@@ -3,24 +3,34 @@
 Rebellion 2 loads modded art, audio, video, configuration, and game data from loose files. Most
 content can therefore be changed without rebuilding the game.
 
-## Installing community mods
+## Installing and managing community mods
 
-Open **Options > Mods > Browse mod.io** in the game, or **Mods** in the launcher. Search for a
-mod and choose **Install**. Published updates appear with an **Update** action. Browsing and
-downloads use the public catalog and do not require a mod.io account.
+Open **Mod manager** from the launcher. The content manager opens directly to **Installed**, where
+packs and local mods can be inspected without opening an editing project. Select an entry to see
+its version, status and folder. Application-owned content is read-only. Removing local content
+requires confirmation, and packs required by other installed content cannot be removed first.
 
-The game and launcher share installed files and update records. After installing from the game,
-return to the installed Mods page and choose **Apply** to load the changes. Installations made
-from the launcher are discovered when the game starts or its Mods page is reopened.
+Choose **Browse** to search mod.io and install a published mod. **Check updates** refreshes managed
+installations; **Updates** lists available replacements. Select an entry and choose **Update** to
+install its current published archive. Browsing and downloads use the public catalog and do not
+require a mod.io account. Missing artwork has a text fallback.
+
+**New content pack** and **Open content pack** enter the existing editing workspace. Its **Mods**
+menu returns to the library, and **Back to editor** restores the open project. Close an editing
+project before replacing or removing installed content so its loaded files remain valid.
+
+Start the game to discover installed content. In the game's main menu, **Options > Mods** selects
+an installed pack and enables or disables its compatible mods; **Apply** loads the selection.
+The launcher opens the manager rather than providing a separate community browser.
 
 Archives can contain a `mod.xml` overlay and its `Content` directory, or an editor-exported
 `pack.xml` content pack. A single enclosing directory is also accepted. Required base packs and
 versions must already be installed. Existing manually installed mods are preserved.
 
 Managed packages live in `Mods/modio-<mod ID>`. Their `.modio.json` file identifies the game,
-mod, published archive, and content definition; both applications use it to recognize updates.
-Downloads are verified against the published size and digest, then extracted and checked before
-replacing the previous installation.
+mod, published archive, and content definition. Downloads are verified against the published size
+and digest, then extracted and checked before replacing the previous installation. Local content
+remains discoverable when the community service is unavailable.
 
 ## Configuring catalog access for development and builds
 

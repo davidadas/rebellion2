@@ -40,7 +40,7 @@ namespace Rebellion.Tests.Content.Modio
         }
 
         [Test]
-        public async Task InstallAsync_OverlayPackage_UsesExistingModDiscovery()
+        public async Task InstallAsync_OverlayPackage_UsesExistingModDiscoveryAsync()
         {
             string archive = Archive(("mod.xml", Definition()), ("Content/Pack/value.xml", "new"));
 
@@ -58,7 +58,7 @@ namespace Rebellion.Tests.Content.Modio
         }
 
         [Test]
-        public async Task InstallAsync_WrappedContentPack_UsesExistingPackDiscovery()
+        public async Task InstallAsync_WrappedContentPack_UsesExistingPackDiscoveryAsync()
         {
             string archive = Archive(
                 (
@@ -77,7 +77,7 @@ namespace Rebellion.Tests.Content.Modio
         }
 
         [Test]
-        public async Task InstallAsync_UpdatedArchive_ReplacesPreviousFiles()
+        public async Task InstallAsync_UpdatedArchive_ReplacesPreviousFilesAsync()
         {
             await _installer.InstallAsync(
                 Mod(),
@@ -136,7 +136,7 @@ namespace Rebellion.Tests.Content.Modio
         }
 
         [Test]
-        public async Task InstallAsync_ArchiveSuppliesInstallationRecord_WritesCurrentRecord()
+        public async Task InstallAsync_ArchiveSuppliesInstallationRecord_WritesCurrentRecordAsync()
         {
             string archive = Archive(
                 ("mod.xml", Definition()),
@@ -181,7 +181,7 @@ namespace Rebellion.Tests.Content.Modio
         }
 
         [Test]
-        public async Task InstallAsync_IncompatibleUpdate_PreservesInstalledVersion()
+        public async Task InstallAsync_IncompatibleUpdate_PreservesInstalledVersionAsync()
         {
             await _installer.InstallAsync(
                 Mod(),
@@ -255,7 +255,7 @@ namespace Rebellion.Tests.Content.Modio
 
         [TestCase(false)]
         [TestCase(true)]
-        public async Task InstallAsync_ChangedPackageIdentity_PreservesInstalledVersion(
+        public async Task InstallAsync_ChangedPackageIdentity_PreservesInstalledVersionAsync(
             bool changesType
         )
         {
@@ -288,7 +288,7 @@ namespace Rebellion.Tests.Content.Modio
         }
 
         [Test]
-        public async Task InstallAsync_CircularPackUpdate_PreservesPreviousPack()
+        public async Task InstallAsync_CircularPackUpdate_PreservesPreviousPackAsync()
         {
             await _installer.InstallAsync(
                 Mod(),
@@ -321,7 +321,7 @@ namespace Rebellion.Tests.Content.Modio
         }
 
         [Test]
-        public async Task InstallAsync_OverlayUsesPackIdentifier_KeepsNamespacesSeparate()
+        public async Task InstallAsync_OverlayUsesPackIdentifier_KeepsNamespacesSeparateAsync()
         {
             string archive = Archive(
                 ("mod.xml", Definition().Replace("<ID>community</ID>", "<ID>base</ID>")),

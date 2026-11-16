@@ -93,6 +93,9 @@ public static class ContentPackEditorPrefabBuilder
             menuHeadings[i] = menuHeading;
         }
         Assign(view, "menuHeadings", menuHeadings);
+        Button library = PlainButton("Mods", menuStrip.transform, "Mods");
+        Rect((RectTransform)library.transform, 260, 0, 60, 34);
+        Assign(view, "libraryButton", library);
         RectTransform projectWorkspace = Layer("ProjectWorkspace", canvasRoot);
         Stretch(projectWorkspace);
         Assign(view, "projectWorkspace", projectWorkspace.gameObject);
@@ -103,7 +106,7 @@ public static class ContentPackEditorPrefabBuilder
             14,
             true
         );
-        Stretch(project.rectTransform, 284, 0, 24, 0);
+        Stretch(project.rectTransform, 344, 0, 24, 0);
         project.alignment = TextAlignmentOptions.MidlineRight;
         Assign(view, "projectLabel", project);
         Image rule = Surface("MenuDivider", projectWorkspace, ContentEditorColorRole.Divider);
@@ -765,31 +768,7 @@ public static class ContentPackEditorPrefabBuilder
     /// <param name="view">The owning workspace.</param>
     private static void BuildWelcome(Transform parent, ContentPackEditorView view)
     {
-        RectTransform welcome = Layer("Welcome", parent);
-        Stretch(welcome, 0, 36);
-        RectTransform actions = Layer("Actions", welcome);
-        actions.anchorMin = actions.anchorMax = actions.pivot = new Vector2(0.5f, 0.5f);
-        actions.sizeDelta = new Vector2(600, 260);
-        TextMeshProUGUI title = Label("Title", actions, "Content pack editor", 30);
-        Rect(title.rectTransform, 0, 0, 600, 48);
-        title.alignment = TextAlignmentOptions.Midline;
-        TextMeshProUGUI explanation = Label(
-            "Description",
-            actions,
-            "Create your own content pack using an installed pack as a base.\nInstalled content stays unchanged.",
-            16,
-            true
-        );
-        Rect(explanation.rectTransform, 0, 66, 600, 62);
-        explanation.alignment = TextAlignmentOptions.Center;
-        explanation.textWrappingMode = TextWrappingModes.Normal;
-        Button create = Button("NewPack", actions, "New content pack");
-        Rect((RectTransform)create.transform, 54, 158, 236, 40);
-        Button open = Button("OpenPack", actions, "Open content pack");
-        Rect((RectTransform)open.transform, 310, 158, 236, 40);
-        Assign(view, "welcomePane", welcome.gameObject);
-        Assign(view, "newPackButton", create);
-        Assign(view, "openPackButton", open);
+        ContentLibraryPrefabBuilder.Build(parent, view);
     }
 
     /// <summary>

@@ -14,7 +14,7 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Content.Modio
 {
     /// <summary>
-    /// Installs verified community archives into the content layout shared with the launcher.
+    /// Installs verified community archives alongside local content packs and mods.
     /// </summary>
     public sealed class ModioInstaller
     {
@@ -61,6 +61,52 @@ namespace Rebellion.Content.Modio
                 )
             {
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// Refreshes, downloads, verifies and installs the current archive through one shared flow.
+        /// </summary>
+        /// <param name="client">The public catalog transport.</param>
+        /// <param name="modID">The requested community mod.</param>
+        /// <param name="progress">Receives download completion fractions.</param>
+        /// <param name="cancellationToken">Cancels outstanding transport and staging work.</param>
+        /// <returns>The refreshed mod whose archive was installed.</returns>
+        public async Task<ModioMod> DownloadAndInstallAsync(
+            ModioCatalogClient client,
+            long modID,
+            IProgress<double> progress,
+            CancellationToken cancellationToken
+        )
+        {
+            if (client == null)
+                throw new ArgumentNullException(nameof(client));
+            ModioMod mod = await client.GetModAsync(modID, cancellationToken).ConfigureAwait(false);
+            if (
+                mod.ID != modID
+                || mod.GameID != gameID
+                || mod.File == null
+                || mod.File.ModID != modID
+            )
+                throw new InvalidDataException(
+                    "This mod has no compatible archive available to download."
+                );
+            string temporary = Path.Combine(
+                Path.GetTempPath(),
+                "reb2-modio-" + Guid.NewGuid().ToString("N") + ".zip"
+            );
+            try
+            {
+                await client
+                    .DownloadAsync(mod.File, temporary, progress, cancellationToken)
+                    .ConfigureAwait(false);
+                await InstallAsync(mod, temporary, cancellationToken).ConfigureAwait(false);
+                return mod;
+            }
+            finally
+            {
+                if (File.Exists(temporary))
+                    File.Delete(temporary);
             }
         }
 

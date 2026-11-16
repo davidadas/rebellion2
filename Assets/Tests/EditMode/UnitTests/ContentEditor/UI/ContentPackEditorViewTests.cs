@@ -10,6 +10,27 @@ namespace Rebellion.Tests.ContentEditor.UI
     public sealed class ContentPackEditorViewTests : ContentEditorViewTestBase
     {
         [Test]
+        public void ShowLibrary_OpenProject_ReturnsToSameProject()
+        {
+            string title = view.GetComponentsInChildren<TMP_Text>(true)
+                .Single(text => text.name == "RecordName")
+                .text;
+            view.ShowLibrary();
+            Assert.IsTrue(view.Library.gameObject.activeSelf);
+            view.Library.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "ResumeEditor")
+                .onClick.Invoke();
+            Assert.IsFalse(view.Library.gameObject.activeSelf);
+            Assert.AreSame(project, workspace.Project);
+            Assert.AreEqual(
+                title,
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Single(text => text.name == "RecordName")
+                    .text
+            );
+        }
+
+        [Test]
         public void RenderValidationResult_NoWarnings_DoesNotOpenADialog()
         {
             view.RenderValidationResult(

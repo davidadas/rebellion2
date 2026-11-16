@@ -33,7 +33,7 @@ namespace Rebellion.Tests.Content.Modio
         }
 
         [Test]
-        public async Task BrowseAsync_EmptyCatalog_ReturnsEmptyPage()
+        public async Task BrowseAsync_EmptyCatalog_ReturnsEmptyPageAsync()
         {
             using ModioCatalogClient client = CreateClient(_ =>
                 Json("{\"data\":[],\"result_offset\":0,\"result_limit\":20,\"result_total\":0}")
@@ -50,7 +50,7 @@ namespace Rebellion.Tests.Content.Modio
         }
 
         [Test]
-        public async Task BrowseAsync_SearchWithQueryCharacters_EncodesSearchText()
+        public async Task BrowseAsync_SearchWithQueryCharacters_EncodesSearchTextAsync()
         {
             Uri requestURL = null;
             using ModioCatalogClient client = CreateClient(request =>
@@ -84,7 +84,7 @@ namespace Rebellion.Tests.Content.Modio
         }
 
         [Test]
-        public async Task GetModAsync_PublishedArchive_ReadsArchiveIdentity()
+        public async Task GetModAsync_PublishedArchive_ReadsArchiveIdentityAsync()
         {
             using ModioCatalogClient client = CreateClient(_ =>
                 Json(
@@ -100,7 +100,7 @@ namespace Rebellion.Tests.Content.Modio
         }
 
         [Test]
-        public async Task DownloadAsync_VerifiedBytes_WritesCompleteDownload()
+        public async Task DownloadAsync_VerifiedBytes_WritesCompleteDownloadAsync()
         {
             byte[] bytes = Encoding.UTF8.GetBytes("archive contents");
             Uri requestURL = null;

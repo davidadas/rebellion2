@@ -3,8 +3,10 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Xml.Linq;
+using Rebellion.Content.Modio;
 using TMPro;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -15,6 +17,88 @@ using Object = UnityEngine.Object;
 /// </summary>
 public static class ContentPackEditorPreview
 {
+    /// <summary>
+    /// Opens the real content manager scene for interactive review without a standalone player build.
+    /// </summary>
+    [MenuItem("Rebellion/Preview/Content manager")]
+    public static void Open()
+    {
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            return;
+        UIBuilderMenu.BuildContentPackEditor();
+        EditorSceneManager.OpenScene(ContentPackEditorPrefabBuilder.ScenePath);
+        EditorApplication.isPlaying = true;
+    }
+
+    /// <summary>
+    /// Renders the installed-content landing page from the real authored controls and local metadata.
+    /// </summary>
+    public static void ExportLibrary()
+    {
+        UIBuilderMenu.BuildContentPackEditor();
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            ContentPackEditorPrefabBuilder.PrefabPath
+        );
+        string contentRoot = Path.GetFullPath("Assets/Content");
+        using ContentAssets assets = new ContentAssets(
+            new ContentFileResolver(contentRoot, contentRoot)
+        );
+        PreviewRenderUtility preview = new PreviewRenderUtility();
+        try
+        {
+            GameObject root = CreatePreview(preview, prefab);
+            ContentPackEditorView view = root.GetComponent<ContentPackEditorView>();
+            ContentBindings.Apply(view.gameObject, assets);
+            view.Initialize(ContentPackLoader.DiscoverPacks(contentRoot), contentRoot);
+            using ContentLibrarySession session = new ContentLibrarySession(
+                contentRoot,
+                ModioConfiguration.Load(),
+                () => { },
+                () => { },
+                () => true
+            );
+            session.Refresh();
+            view.Library.Render(session.CreatePresentation());
+            SavePreview(preview, root, "_screenshots/ContentEditor/Library.png");
+        }
+        finally
+        {
+            preview.Cleanup();
+        }
+    }
+
+    /// <summary>
+    /// Configures the shared offscreen camera and instantiates the actual editor canvas.
+    /// </summary>
+    /// <param name="preview">The owning render utility.</param>
+    /// <param name="prefab">The authored editor root.</param>
+    /// <returns>The preview-owned canvas instance.</returns>
+    private static GameObject CreatePreview(PreviewRenderUtility preview, GameObject prefab)
+    {
+        Camera camera = preview.camera;
+        camera.cameraType = CameraType.Game;
+        camera.orthographic = true;
+        camera.orthographicSize = 450;
+        camera.nearClipPlane = 0.1f;
+        camera.farClipPlane = 2000;
+        camera.clearFlags = CameraClearFlags.SolidColor;
+        camera.backgroundColor = ContentEditorControlBuilder.Background;
+        camera.transform.position = new Vector3(800, -450, -1000);
+        camera.transform.rotation = Quaternion.identity;
+        HdrpRenderTargetBuilder.ConfigureCamera(camera);
+        GameObject root = Object.Instantiate(prefab.transform.Find("Canvas").gameObject);
+        preview.AddSingleGO(root);
+        Canvas canvas = root.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceCamera;
+        canvas.worldCamera = camera;
+        canvas.planeDistance = 100;
+        CanvasScaler scaler = root.GetComponent<CanvasScaler>();
+        scaler.referenceResolution = new Vector2(1600, 900);
+        camera.aspect = 1600f / 900;
+        Canvas.ForceUpdateCanvases();
+        return root;
+    }
+
     /// <summary>
     /// Rebuilds and renders the functional inspector without modifying its source content.
     /// </summary>
@@ -46,27 +130,7 @@ public static class ContentPackEditorPreview
         PreviewRenderUtility preview = new PreviewRenderUtility();
         try
         {
-            Camera camera = preview.camera;
-            camera.cameraType = CameraType.Game;
-            camera.orthographic = true;
-            camera.orthographicSize = 450;
-            camera.nearClipPlane = 0.1f;
-            camera.farClipPlane = 2000;
-            camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = ContentEditorControlBuilder.Background;
-            camera.transform.position = new Vector3(800, -450, -1000);
-            camera.transform.rotation = Quaternion.identity;
-            HdrpRenderTargetBuilder.ConfigureCamera(camera);
-            GameObject root = Object.Instantiate(prefab.transform.Find("Canvas").gameObject);
-            preview.AddSingleGO(root);
-            Canvas canvas = root.GetComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceCamera;
-            canvas.worldCamera = camera;
-            canvas.planeDistance = 100;
-            CanvasScaler scaler = root.GetComponent<CanvasScaler>();
-            scaler.referenceResolution = new Vector2(1600, 900);
-            camera.aspect = 1600f / 900;
-            Canvas.ForceUpdateCanvases();
+            GameObject root = CreatePreview(preview, prefab);
             ContentPackEditorView view = root.GetComponent<ContentPackEditorView>();
             using ContentPackEditorWorkspaceController workspace =
                 new ContentPackEditorWorkspaceController(view);

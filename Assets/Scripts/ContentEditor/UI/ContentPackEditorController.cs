@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
+using Rebellion.Content.Modio;
 using UnityEngine;
 
 /// <summary>
@@ -19,6 +20,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     private ContentPackEditorWorkspaceController workspace;
     private ContentAssets assets;
     private ContentAssets applicationAssets;
+    private ContentLibrarySession librarySession;
     private bool quitApproved;
     private CancellationTokenSource operationCancellation;
     private bool quitAfterOperation;
@@ -80,6 +82,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             );
             ContentBindings.Apply(view.gameObject, applicationAssets);
             view.Initialize(ContentPackLoader.DiscoverPacks(contentRootPath), contentRootPath);
+            InitializeLibrary();
             string[] arguments = Environment.GetCommandLineArgs();
             int packPathIndex = Array.IndexOf(arguments, "-packPath");
             if (packPathIndex >= 0)
@@ -112,6 +115,15 @@ public sealed class ContentPackEditorController : MonoBehaviour
     private void OnGUI()
     {
         Event key = Event.current;
+        if (librarySession?.IsBusy == true)
+        {
+            if (key.type == EventType.KeyDown && key.keyCode == KeyCode.Escape)
+            {
+                librarySession.Cancel();
+                key.Use();
+            }
+            return;
+        }
         if (operationCancellation != null)
         {
             if (key.type == EventType.KeyDown && key.keyCode == KeyCode.Escape)
@@ -129,6 +141,22 @@ public sealed class ContentPackEditorController : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
+        if (librarySession != null && view != null)
+        {
+            ContentLibraryView library = view.Library;
+            library.PageRequested -= OpenLibraryPage;
+            library.SearchChanged -= librarySession.SetSearch;
+            library.SearchRequested -= SearchLibrary;
+            library.SelectionRequested -= librarySession.Select;
+            library.InstallRequested -= InstallLibraryItem;
+            library.RemoveRequested -= ConfirmLibraryRemoval;
+            library.FolderRequested -= OpenLibraryFolder;
+            library.RefreshRequested -= RefreshLibrary;
+            library.CancelRequested -= librarySession.Cancel;
+            library.StepRequested -= StepLibrary;
+            view.LibraryRequested -= librarySession.Refresh;
+        }
+        librarySession?.Dispose();
         operationCancellation?.Cancel();
         Application.wantsToQuit -= CanQuit;
         if (view != null)
@@ -155,6 +183,115 @@ public sealed class ContentPackEditorController : MonoBehaviour
         workspace?.Dispose();
         assets?.Dispose();
         applicationAssets?.Dispose();
+    }
+
+    /// <summary>
+    /// Connects the library to the shared catalog transport and application-owned content discovery.
+    /// </summary>
+    private void InitializeLibrary()
+    {
+        ContentLibraryView library = view.Library;
+        librarySession = new ContentLibrarySession(
+            contentRootPath,
+            ModioConfiguration.Load(),
+            RenderLibrary,
+            RefreshContentSources,
+            () => project == null
+        );
+        library.PageRequested += OpenLibraryPage;
+        library.SearchChanged += librarySession.SetSearch;
+        library.SearchRequested += SearchLibrary;
+        library.SelectionRequested += librarySession.Select;
+        library.InstallRequested += InstallLibraryItem;
+        library.RemoveRequested += ConfirmLibraryRemoval;
+        library.FolderRequested += OpenLibraryFolder;
+        library.RefreshRequested += RefreshLibrary;
+        library.CancelRequested += librarySession.Cancel;
+        library.StepRequested += StepLibrary;
+        view.LibraryRequested += librarySession.Refresh;
+        librarySession.Refresh();
+    }
+
+    /// <summary>
+    /// Applies the current library projection while its application owner remains alive.
+    /// </summary>
+    private void RenderLibrary()
+    {
+        if (this != null && view != null)
+        {
+            view.SetLibraryBusy(librarySession.IsBusy);
+            view.Library.Render(librarySession.CreatePresentation());
+            if (!librarySession.IsBusy && quitAfterOperation)
+            {
+                quitAfterOperation = false;
+                Application.Quit();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Refreshes inheritance choices after installation or removal without replacing an editing project.
+    /// </summary>
+    private void RefreshContentSources()
+    {
+        if (this != null && view != null)
+            view.Initialize(ContentPackLoader.DiscoverPacks(contentRootPath), contentRootPath);
+    }
+
+    /// <summary>
+    /// Opens the requested library collection.
+    /// </summary>
+    /// <param name="page">The collection to display.</param>
+    private async void OpenLibraryPage(ContentLibraryPage page) =>
+        await librarySession.OpenAsync(page);
+
+    /// <summary>
+    /// Submits the current search to the public catalog when browsing.
+    /// </summary>
+    private async void SearchLibrary() => await librarySession.SearchAsync(0);
+
+    /// <summary>
+    /// Installs the selected mod through the shared download and archive-validation flow.
+    /// </summary>
+    private async void InstallLibraryItem() => await librarySession.InstallSelectedAsync();
+
+    /// <summary>
+    /// Checks updates after refreshing metadata from local disk.
+    /// </summary>
+    private async void RefreshLibrary()
+    {
+        librarySession.Refresh();
+        await librarySession.CheckUpdatesAsync();
+    }
+
+    /// <summary>
+    /// Changes the public catalog page.
+    /// </summary>
+    /// <param name="direction">The previous or next page direction.</param>
+    private async void StepLibrary(int direction) => await librarySession.StepAsync(direction);
+
+    /// <summary>
+    /// Requires explicit confirmation for removing a particular local content folder.
+    /// </summary>
+    /// <param name="key">The exact selected library identity.</param>
+    private void ConfirmLibraryRemoval(string key)
+    {
+        ContentLibraryRow row = librarySession
+            .CreatePresentation()
+            .Rows.FirstOrDefault(item => item.Key == key);
+        if (row?.CanRemove != true)
+            return;
+        view.ConfirmContentRemoval(row.Name, () => librarySession.Remove(key));
+    }
+
+    /// <summary>
+    /// Opens a selected local installation in the operating system's file manager.
+    /// </summary>
+    /// <param name="directory">The selected installed directory.</param>
+    private void OpenLibraryFolder(string directory)
+    {
+        if (!string.IsNullOrEmpty(directory) && Directory.Exists(directory))
+            Application.OpenURL(new Uri(Path.GetFullPath(directory)).AbsoluteUri);
     }
 
     /// <summary>
@@ -610,6 +747,12 @@ public sealed class ContentPackEditorController : MonoBehaviour
     {
         if (quitApproved)
             return true;
+        if (librarySession?.IsBusy == true)
+        {
+            quitAfterOperation = true;
+            librarySession.Cancel();
+            return false;
+        }
         if (operationCancellation != null)
         {
             quitAfterOperation = true;
@@ -650,7 +793,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     /// <param name="operation">The requested operation.</param>
     private void RunOperation(Action operation)
     {
-        if (operationCancellation != null)
+        if (operationCancellation != null || librarySession?.IsBusy == true)
             return;
         try
         {
@@ -669,7 +812,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     /// <returns>The completion of execution and workspace cleanup.</returns>
     private async Task RunOperationAsync(Func<CancellationToken, Task> operation)
     {
-        if (operationCancellation != null)
+        if (operationCancellation != null || librarySession?.IsBusy == true)
             return;
         using CancellationTokenSource cancellation = new CancellationTokenSource();
         operationCancellation = cancellation;
