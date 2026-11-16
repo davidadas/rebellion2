@@ -518,7 +518,7 @@ public sealed class IdleBarController
     {
         actions.CancelIdleBarItemDrag();
         ISceneNode target = string.IsNullOrEmpty(instanceId) ? null : resolveEntity(instanceId);
-        if (target is Officer or SpecialForces)
+        if (target is Officer or SpecialForces or Fleet)
             actions.TryStartIdleBarItemDrag(target, preview, eventData);
     }
 
