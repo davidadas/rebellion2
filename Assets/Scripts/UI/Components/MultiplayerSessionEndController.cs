@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Rebellion.Multiplayer;
+using Rebellion.Util.Logging;
 using UnityEngine;
 
 /// <summary>
@@ -254,7 +255,7 @@ public sealed class MultiplayerSessionEndController : MonoBehaviour, ICancelable
         transitionPending = false;
         notice.ShowOpponentDeparture();
         HandleNoticeChanged();
-        Debug.LogException(exception);
+        GameLogger.LogException(exception);
     }
 
     /// <summary>

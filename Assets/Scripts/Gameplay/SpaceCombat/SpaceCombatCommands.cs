@@ -756,7 +756,11 @@ namespace Rebellion.Gameplay
                 attackerCanWithdraw,
                 defenderCanWithdraw,
                 attackerCommand,
-                defenderCommand
+                defenderCommand,
+                attackerShips
+                    .Concat(defenderShips)
+                    .Where(ship => SpaceCombatQueries.IsPlanetDestroyerShielded(ship, planet))
+                    .ToList()
             );
             IncludeCommandOfficers(result.AttackingUnits, attackerCommandOfficers);
             IncludeCommandOfficers(result.DefendingUnits, defenderCommandOfficers);
@@ -998,6 +1002,9 @@ namespace Rebellion.Gameplay
             );
             CompleteFighterWithdrawal(attackerWithdrawalPlan);
             CompleteFighterWithdrawal(defenderWithdrawalPlan);
+            events.AddRange(
+                RecoverFightersFromDestroyedCarriers(result, attackerFleets, defenderFleets)
+            );
             events.AddRange(ApplyShipDamage(result.ShipDamage, result.Planet));
             RemoveEmptyFleets(attackerFleets, defenderFleets);
             BlockadeChangedResult blockade = _blockadeTransitionResolver.Resolve(
@@ -1025,6 +1032,141 @@ namespace Rebellion.Gameplay
                 destroyedUnits
             );
             return events;
+        }
+
+        /// <summary>
+        /// Moves surviving fighter squadrons away from carriers that combat destroyed before those
+        /// carrier subtrees are removed. Fighters use surviving carrier capacity first, then their
+        /// own hyperdrives; squadrons with neither option are recorded as combat losses.
+        /// </summary>
+        /// <param name="result">The combat result whose losses identify destroyed carriers.</param>
+        /// <param name="attackerFleets">The attacking fleets that participated.</param>
+        /// <param name="defenderFleets">The defending fleets that participated.</param>
+        /// <returns>Movement and destruction events produced while settling displaced squadrons.</returns>
+        private List<GameResult> RecoverFightersFromDestroyedCarriers(
+            SpaceCombatResult result,
+            IReadOnlyList<Fleet> attackerFleets,
+            IReadOnlyList<Fleet> defenderFleets
+        )
+        {
+            HashSet<CapitalShip> destroyedCarriers = result
+                .ShipDamage.Where(damage => damage?.Ship != null && damage.HullAfter <= 0)
+                .Select(damage => damage.Ship)
+                .ToHashSet();
+            if (destroyedCarriers.Count == 0)
+                return new List<GameResult>();
+
+            List<GameResult> events = new List<GameResult>();
+            List<FighterLossResult> unrecoverableLosses = new List<FighterLossResult>();
+            RecoverFightersFromDestroyedCarriers(
+                attackerFleets,
+                destroyedCarriers,
+                result.DefenderOutcome == SpaceCombatSideOutcome.Active,
+                unrecoverableLosses,
+                events
+            );
+            RecoverFightersFromDestroyedCarriers(
+                defenderFleets,
+                destroyedCarriers,
+                result.AttackerOutcome == SpaceCombatSideOutcome.Active,
+                unrecoverableLosses,
+                events
+            );
+            foreach (FighterLossResult unrecoverableLoss in unrecoverableLosses)
+            {
+                FighterLossResult recordedLoss = result.FighterLosses.FirstOrDefault(loss =>
+                    ReferenceEquals(loss.Fighter, unrecoverableLoss.Fighter)
+                );
+                if (recordedLoss == null)
+                    result.FighterLosses.Add(unrecoverableLoss);
+                else
+                    recordedLoss.SquadsAfter = 0;
+            }
+            events.AddRange(ApplyFighterSquadronLosses(unrecoverableLosses, result.Planet));
+            return events;
+        }
+
+        /// <summary>
+        /// Recovers one side's surviving squadrons from destroyed carriers in stable fleet order.
+        /// </summary>
+        /// <param name="fleets">The side's participating fleets.</param>
+        /// <param name="destroyedCarriers">The carriers that will be removed.</param>
+        /// <param name="opposingForceRemains">Whether the opposing force still blocks departure.</param>
+        /// <param name="unrecoverableLosses">Receives squadrons that cannot leave their carrier.</param>
+        /// <param name="events">Receives movement results from independent evacuation.</param>
+        private void RecoverFightersFromDestroyedCarriers(
+            IReadOnlyList<Fleet> fleets,
+            ISet<CapitalShip> destroyedCarriers,
+            bool opposingForceRemains,
+            ICollection<FighterLossResult> unrecoverableLosses,
+            ICollection<GameResult> events
+        )
+        {
+            List<CapitalShip> participatingShips = (fleets ?? Array.Empty<Fleet>())
+                .Where(fleet => fleet != null)
+                .SelectMany(SpaceCombatQueries.GetActiveCapitalShips)
+                .Distinct()
+                .ToList();
+            List<Starfighter> displacedFighters = participatingShips
+                .Where(destroyedCarriers.Contains)
+                .SelectMany(ship => ship.GetChildren<Starfighter>(includeDisabled: true))
+                .Where(SpaceCombatQueries.IsActiveStarfighter)
+                .Distinct()
+                .OrderBy(fighter => fighter.Hyperdrive > 0 ? 1 : 0)
+                .ToList();
+            if (displacedFighters.Count == 0)
+                return;
+
+            List<CapitalShip> survivingCarriers = participatingShips
+                .Where(ship => !destroyedCarriers.Contains(ship) && ship.StarfighterCapacity > 0)
+                .ToList();
+            List<Starfighter> existingFighters = survivingCarriers
+                .SelectMany(ship => ship.GetChildren<Starfighter>())
+                .Where(SpaceCombatQueries.IsActiveStarfighter)
+                .Distinct()
+                .ToList();
+            List<Starfighter> recoveryOrder = existingFighters
+                .Concat(displacedFighters)
+                .Distinct()
+                .ToList();
+            HashSet<Starfighter> fightersRequiringCapacity = recoveryOrder.ToHashSet();
+            Dictionary<Starfighter, CapitalShip> recoveryAssignments =
+                SpaceCombatWithdrawalPlanner.GetRecoveryAssignments(
+                    survivingCarriers,
+                    recoveryOrder,
+                    fightersRequiringCapacity
+                );
+
+            foreach (Starfighter fighter in displacedFighters)
+            {
+                if (
+                    recoveryAssignments.TryGetValue(fighter, out CapitalShip recoveryCarrier)
+                    && recoveryCarrier != null
+                )
+                {
+                    _game.MoveNode(fighter, recoveryCarrier);
+                    continue;
+                }
+
+                if (
+                    fighter.Hyperdrive > 0
+                    && _movement.TryEvacuateToNearestFriendlyPlanet(
+                        fighter,
+                        events,
+                        opposingBlockadeAtDeparture: opposingForceRemains
+                    )
+                )
+                    continue;
+
+                unrecoverableLosses.Add(
+                    new FighterLossResult
+                    {
+                        Fighter = fighter,
+                        SquadsBefore = fighter.CurrentSquadronSize,
+                        SquadsAfter = 0,
+                    }
+                );
+            }
         }
 
         /// <summary>

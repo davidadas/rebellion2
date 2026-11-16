@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Multiplayer;
 using Rebellion.UI.SceneUI.MainMenu.Multiplayer;
+using Rebellion.Util.Logging;
 using UnityEngine;
 
 /// <summary>
@@ -186,7 +187,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
                     RenderAnalyticsConsentGate(bootstrap);
                     mainMenuCanvas.enabled = true;
                 }
-                Debug.LogException(exception);
+                GameLogger.LogException(exception);
             }
         }
     }
@@ -422,7 +423,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             return;
         if (_optionsMenuPrefab == null)
         {
-            Debug.LogWarning(
+            GameLogger.Warning(
                 "MainMenu options prefab is not assigned; run Build Main Menu UI to wire it."
             );
             return;
@@ -628,7 +629,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             return;
         if (_multiplayerMenuPrefab == null)
         {
-            Debug.LogWarning(
+            GameLogger.Warning(
                 "MainMenu multiplayer prefab is not assigned; run Build Main Menu UI to wire it."
             );
             return;
@@ -649,7 +650,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
         catch (Exception exception)
         {
             _legalDocumentsView.ShowError("Your acceptance could not be saved. Please try again.");
-            Debug.LogException(exception);
+            GameLogger.LogException(exception);
             return;
         }
 

@@ -46,7 +46,7 @@ public static class PersistentSimulationRunner
         }
         catch (Exception ex)
         {
-            Debug.LogException(ex);
+            GameLogger.LogException(ex);
         }
     }
 
@@ -76,11 +76,11 @@ public static class PersistentSimulationRunner
         try
         {
             if (!TryRunNextJob())
-                Debug.Log("No queued simulation job found.");
+                GameLogger.Log("No queued simulation job found.");
         }
         catch (Exception ex)
         {
-            Debug.LogException(ex);
+            GameLogger.LogException(ex);
         }
     }
 
@@ -142,8 +142,7 @@ public static class PersistentSimulationRunner
             GameLogger.Configure(logPath, enableFileLogging: true);
             string startMessage =
                 $"[PersistentSim] running job={Path.GetFileName(runningPath)} type={simulationType} seed={(job.Seed >= 0 ? job.Seed.ToString() : "random")} ticks={job.TickCount} output={job.OutputPath}";
-            Debug.Log(startMessage);
-            LogToFile(logPath, startMessage);
+            GameLogger.Log(startMessage);
 
             bool saveAfterRun = simulationType == SimulationJobType.NormalAndSave;
             GameDifficulty difficulty = ParseDifficulty(job.Difficulty, runningPath);
@@ -177,7 +176,7 @@ public static class PersistentSimulationRunner
             File.Delete(runningPath);
             string completeMessage =
                 $"[PersistentSim] completed job={Path.GetFileName(completePath)}";
-            Debug.Log(completeMessage);
+            GameLogger.Log(completeMessage);
             LogToFile(logPath, completeMessage);
         }
         catch (Exception ex)
@@ -186,7 +185,7 @@ public static class PersistentSimulationRunner
                 File.WriteAllText(failedPath, ex.ToString());
             if (File.Exists(runningPath))
                 File.Delete(runningPath);
-            Debug.LogException(ex);
+            GameLogger.LogException(ex);
         }
         finally
         {

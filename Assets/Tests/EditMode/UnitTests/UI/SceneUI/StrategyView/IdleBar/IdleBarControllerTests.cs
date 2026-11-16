@@ -14,6 +14,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using GalaxyMapModel = Rebellion.Game.Galaxy.GalaxyMap;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
+using GameFleet = Rebellion.Game.Units.Fleet;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
 {
@@ -176,6 +177,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreSame(_officer, _actions.DraggedTarget);
             Assert.AreEqual(1, _actions.DragMoveCount);
             Assert.AreEqual(1, _actions.DragEndCount);
+        }
+
+        [Test]
+        public void EntryDrag_Fleet_StartsItemDrag()
+        {
+            GameFleet fleet = new GameFleet { InstanceID = "fleet", DisplayName = "Fleet" };
+            _resolvedEntity = fleet;
+            _view.Render(
+                new IdleBarRenderData(
+                    true,
+                    new List<IdleBarEntry> { new IdleBarEntry(fleet, null) },
+                    new RectInt(0, 0, 700, 350)
+                )
+            );
+            IdleBarSlotView slot = _view.GetComponentInChildren<IdleBarSlotView>(false);
+
+            slot.OnPointerDown(CreatePointerEvent(slot.gameObject));
+
+            Assert.AreSame(fleet, _actions.DraggedTarget);
         }
 
         [Test]

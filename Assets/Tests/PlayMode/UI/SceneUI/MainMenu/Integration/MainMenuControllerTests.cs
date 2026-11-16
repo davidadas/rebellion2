@@ -178,10 +178,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu.Integration
             _blockedSettingsPath = path;
 
             _accept.onClick.Invoke();
-            LogAssert.Expect(
-                LogType.Exception,
-                new Regex("IOException|UnauthorizedAccessException")
-            );
+            LogAssert.Expect(LogType.Error, new Regex("IOException|UnauthorizedAccessException"));
             _accept.onClick.Invoke();
 
             Assert.IsTrue(_documents.IsVisible);

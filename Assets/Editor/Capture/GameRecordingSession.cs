@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using Rebellion.Util.Logging;
 using UnityEditor;
 using UnityEditor.Recorder;
 using UnityEditor.Recorder.Encoder;
@@ -59,7 +60,7 @@ internal static class GameRecordingSession
         }
 
         GameRecordingControlsWindow.ShowWindow();
-        Debug.Log(
+        GameLogger.Log(
             $"Game recording started at {gameViewInputSettings.OutputWidth}x{gameViewInputSettings.OutputHeight}: {_recordingPath}"
         );
     }
@@ -81,7 +82,7 @@ internal static class GameRecordingSession
 
         if (!string.IsNullOrEmpty(_recordingPath))
         {
-            Debug.Log($"Game recording saved: {_recordingPath}");
+            GameLogger.Log($"Game recording saved: {_recordingPath}");
             _recordingPath = null;
         }
     }
@@ -171,7 +172,10 @@ internal static class GameRecordingSession
                 return true;
             }
 
-            Debug.LogError("Game recording could not be started. See preceding Recorder errors.");
+            GameLogger.Log(
+                "Game recording could not be started. See preceding Recorder errors.",
+                GameLogger.LogLevel.Error
+            );
         }
         catch
         {

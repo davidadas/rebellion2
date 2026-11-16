@@ -5,7 +5,6 @@ using Rebellion.Game;
 using Rebellion.Gameplay;
 using Rebellion.PlayerRequests;
 using Rebellion.Util.Logging;
-using UnityEngine;
 
 /// <summary>
 /// Owns the active simulation, clock, player request routing, and save/load lifecycle.
@@ -414,7 +413,7 @@ public sealed class GameSessionManager
         catch (Exception exception)
             when (exception is IOException || exception is UnauthorizedAccessException)
         {
-            Debug.LogException(exception);
+            GameLogger.LogException(exception);
             if (ReferenceEquals(_activeGameSession, requestedSession))
                 PersistenceFailed?.Invoke(this, operation, exception);
             return false;
@@ -462,9 +461,9 @@ public sealed class GameSessionManager
     {
         bool loaded = LoadGameLocally(SaveGameManager.QuickSaveFileName);
         if (loaded)
-            Debug.Log("Quick load completed.");
+            GameLogger.Log("Quick load completed.");
         else
-            Debug.LogWarning("Quick load skipped because no quick save exists.");
+            GameLogger.Warning("Quick load skipped because no quick save exists.");
         return loaded;
     }
 
@@ -569,7 +568,7 @@ public sealed class GameSessionManager
         catch (Exception exception)
         {
             _campaignAnalyticsTracker = null;
-            Debug.LogWarning($"Campaign analytics could not start: {exception.Message}");
+            GameLogger.Warning($"Campaign analytics could not start: {exception.Message}");
         }
     }
 

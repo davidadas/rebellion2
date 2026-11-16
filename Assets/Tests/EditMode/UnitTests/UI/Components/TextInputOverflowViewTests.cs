@@ -73,6 +73,20 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
+        public void ShowBeginning_MultilineInputWithoutScrollbar_PreservesCaretAndScrollPosition()
+        {
+            input.lineType = TMP_InputField.LineType.MultiLineNewline;
+            input.SetTextWithoutNotify("First line\nSecond line\nThird line");
+            input.selectionStringAnchorPosition = input.selectionStringFocusPosition = 23;
+            input.textComponent.rectTransform.anchoredPosition = new Vector2(0, 75);
+
+            view.ShowBeginning();
+
+            Assert.AreEqual(23, input.selectionStringFocusPosition);
+            Assert.AreEqual(75, input.textComponent.rectTransform.anchoredPosition.y);
+        }
+
+        [Test]
         public void ShowBeginning_RebindingToShortValue_RetainsItsAuthoredAlignment()
         {
             input.textComponent.alignment = TextAlignmentOptions.MidlineRight;

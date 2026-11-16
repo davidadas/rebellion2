@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using Rebellion.Util.IO;
+using Rebellion.Util.Logging;
 using UnityEngine;
 
 /// <summary>
@@ -262,7 +263,7 @@ public sealed class UserSettingsManager
         }
         catch (Exception ex)
         {
-            Debug.LogWarning($"Failed to load user settings: {ex.Message}");
+            GameLogger.Warning($"Failed to load user settings: {ex.Message}");
             return CreateDefaults();
         }
     }

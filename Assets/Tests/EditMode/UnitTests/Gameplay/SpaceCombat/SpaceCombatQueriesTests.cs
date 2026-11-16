@@ -274,6 +274,111 @@ namespace Rebellion.Tests.Gameplay
             CollectionAssert.AreEqual(new[] { allianceFleet }, defenderFleets);
         }
 
+        [Test]
+        public void IsPlanetDestroyerShielded_OwnersCompletedGeneratorListsTheShipType_ReturnsTrue()
+        {
+            (Planet planet, CapitalShip planetDestroyer, _) = CreateShieldScenario();
+
+            bool shielded = SpaceCombatQueries.IsPlanetDestroyerShielded(planetDestroyer, planet);
+
+            Assert.IsTrue(shielded);
+        }
+
+        [Test]
+        public void IsPlanetDestroyerShielded_OrdinaryCapitalShipHasProtectedType_ReturnsFalse()
+        {
+            (Planet planet, CapitalShip planetDestroyer, _) = CreateShieldScenario();
+            planetDestroyer.CanDestroyPlanets = false;
+
+            bool shielded = SpaceCombatQueries.IsPlanetDestroyerShielded(planetDestroyer, planet);
+
+            Assert.IsFalse(shielded);
+        }
+
+        [Test]
+        public void IsPlanetDestroyerShielded_GeneratorIsUnderConstruction_ReturnsFalse()
+        {
+            (Planet planet, CapitalShip planetDestroyer, Building shield) = CreateShieldScenario();
+            shield.ManufacturingStatus = ManufacturingStatus.Building;
+
+            bool shielded = SpaceCombatQueries.IsPlanetDestroyerShielded(planetDestroyer, planet);
+
+            Assert.IsFalse(shielded);
+        }
+
+        [Test]
+        public void IsPlanetDestroyerShielded_GeneratorIsMoving_ReturnsFalse()
+        {
+            (Planet planet, CapitalShip planetDestroyer, Building shield) = CreateShieldScenario();
+            shield.Movement = new MovementState();
+
+            bool shielded = SpaceCombatQueries.IsPlanetDestroyerShielded(planetDestroyer, planet);
+
+            Assert.IsFalse(shielded);
+        }
+
+        [Test]
+        public void IsPlanetDestroyerShielded_GeneratorHasDifferentOwner_ReturnsFalse()
+        {
+            (Planet planet, CapitalShip planetDestroyer, Building shield) = CreateShieldScenario();
+            shield.OwnerInstanceID = "alliance";
+
+            bool shielded = SpaceCombatQueries.IsPlanetDestroyerShielded(planetDestroyer, planet);
+
+            Assert.IsFalse(shielded);
+        }
+
+        [Test]
+        public void IsPlanetDestroyerShielded_GeneratorListsDifferentType_ReturnsFalse()
+        {
+            (Planet planet, CapitalShip planetDestroyer, Building shield) = CreateShieldScenario();
+            shield.ProtectedUnitTypeIDs.Clear();
+            shield.ProtectedUnitTypeIDs.Add("other-type");
+
+            bool shielded = SpaceCombatQueries.IsPlanetDestroyerShielded(planetDestroyer, planet);
+
+            Assert.IsFalse(shielded);
+        }
+
+        [Test]
+        public void IsPlanetDestroyerShielded_PlanetIsMissing_ReturnsFalse()
+        {
+            (_, CapitalShip planetDestroyer, _) = CreateShieldScenario();
+
+            bool shielded = SpaceCombatQueries.IsPlanetDestroyerShielded(planetDestroyer, null);
+
+            Assert.IsFalse(shielded);
+        }
+
+        /// <summary>
+        /// Creates a planet destroyer and a completed matching shield generator at its planet.
+        /// </summary>
+        /// <returns>The planet, planet destroyer, and shield generator.</returns>
+        private static (
+            Planet planet,
+            CapitalShip planetDestroyer,
+            Building shield
+        ) CreateShieldScenario()
+        {
+            Planet planet = new Planet { InstanceID = "shield-planet", OwnerInstanceID = "empire" };
+            CapitalShip planetDestroyer = new CapitalShip
+            {
+                InstanceID = "planet-destroyer",
+                TypeID = "planet-destroyer-type",
+                OwnerInstanceID = "empire",
+                CanDestroyPlanets = true,
+            };
+            Building shield = new Building
+            {
+                InstanceID = "planet-destroyer-shield",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                ProtectedUnitTypeIDs = { "planet-destroyer-type" },
+            };
+            planet.AddTestChild(shield);
+            return (planet, planetDestroyer, shield);
+        }
+
         /// <summary>
         /// Creates a stationary fleet and the read-only combat query dependencies.
         /// </summary>

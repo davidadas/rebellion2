@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Rebellion.Game;
+using Rebellion.Util.Logging;
 using UnityEngine;
 
 namespace Rebellion.Multiplayer
@@ -509,7 +510,7 @@ namespace Rebellion.Multiplayer
             catch (Exception) when (cancellationToken.IsCancellationRequested) { }
             catch (Exception exception)
             {
-                Debug.LogWarning("Could not acknowledge rejected join: " + exception.Message);
+                GameLogger.Warning("Could not acknowledge rejected join: " + exception.Message);
             }
             finally
             {

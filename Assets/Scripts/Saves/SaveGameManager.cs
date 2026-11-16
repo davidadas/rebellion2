@@ -8,7 +8,6 @@ using Rebellion.Game;
 using Rebellion.Util.IO;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
-using UnityEngine;
 
 /// <summary>
 /// Identifies the persistence operation whose storage failure needs acknowledgment.
@@ -889,7 +888,7 @@ public class SaveGameManager
         }
         catch (Exception ex)
         {
-            Debug.LogWarning($"Failed to read save metadata for {fileName}.sav: {ex.Message}");
+            GameLogger.Warning($"Failed to read save metadata for {fileName}.sav: {ex.Message}");
             return null;
         }
     }

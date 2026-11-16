@@ -150,30 +150,75 @@ public sealed class ContentPackEditorProject
     /// <param name="field">The owned setting being returned to inheritance.</param>
     public void ResetFieldToInherited(ContentPackEditorField field)
     {
-        RequireOwnedRecord(field.Record);
-        if (!field.CanInherit)
-            throw new InvalidOperationException("This setting cannot inherit independently.");
-        using (BeginEdit("Reset to inherited"))
+        ResetFieldsToInherited(new[] { field }, "Reset to inherited");
+    }
+
+    /// <summary>
+    /// Removes every local override in one inspector section as a single reversible edit.
+    /// </summary>
+    /// <param name="fields">The project-owned settings displayed by the section.</param>
+    public void ResetFieldsToInherited(IReadOnlyList<ContentPackEditorField> fields)
+    {
+        ResetFieldsToInherited(fields, "Reset section to defaults");
+    }
+
+    /// <summary>
+    /// Validates and removes a group of local setting overrides before rebuilding project wrappers.
+    /// </summary>
+    /// <param name="fields">The project-owned settings to return to inheritance.</param>
+    /// <param name="description">The operation shown in edit history.</param>
+    private void ResetFieldsToInherited(
+        IReadOnlyList<ContentPackEditorField> fields,
+        string description
+    )
+    {
+        if (fields == null)
+            throw new ArgumentNullException(nameof(fields));
+        ContentPackEditorField[] distinct = fields.Distinct().ToArray();
+        foreach (ContentPackEditorField field in distinct)
         {
-            if (
-                field.Record.Kind == "Building"
-                && field.MemberName == nameof(Building.BuildingType)
+            if (field == null)
+                throw new ArgumentException("Choose current settings.", nameof(fields));
+            RequireOwnedRecord(field.Record);
+            if (!field.CanInherit)
+                throw new InvalidOperationException("This setting cannot inherit independently.");
+        }
+        ContentPackEditorField[] overridden = distinct.Where(field => !field.IsInherited).ToArray();
+        if (overridden.Length == 0)
+            return;
+        using (BeginEdit(description))
+        {
+            foreach (ContentPackEditorField field in overridden)
+                ResetFieldOverride(field);
+            foreach (
+                ContentPackEditorDocument document in overridden
+                    .Select(field => field.Document)
+                    .Distinct()
             )
-            {
-                ContentPackEditorField production = field.Record.GetField(
-                    nameof(Building.ProductionType)
-                );
-                field.Document.ResetSetting(
-                    production.XmlElement,
-                    production.XmlAttributeName,
-                    production.Container
-                );
-            }
-            field.Document.ResetSetting(field.XmlElement, field.XmlAttributeName, field.Container);
-            LinkRulesOverride(field.Document);
+                LinkRulesOverride(document);
         }
         catalogs = null;
         RefreshDefinition();
+    }
+
+    /// <summary>
+    /// Removes one validated override together with a building category's derived production value.
+    /// </summary>
+    /// <param name="field">The current project-owned setting.</param>
+    private static void ResetFieldOverride(ContentPackEditorField field)
+    {
+        if (field.Record.Kind == "Building" && field.MemberName == nameof(Building.BuildingType))
+        {
+            ContentPackEditorField production = field.Record.GetField(
+                nameof(Building.ProductionType)
+            );
+            field.Document.ResetSetting(
+                production.XmlElement,
+                production.XmlAttributeName,
+                production.Container
+            );
+        }
+        field.Document.ResetSetting(field.XmlElement, field.XmlAttributeName, field.Container);
     }
 
     /// <summary>

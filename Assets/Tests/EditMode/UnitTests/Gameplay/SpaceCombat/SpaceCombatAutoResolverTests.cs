@@ -2187,6 +2187,522 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(3, result.IterationsCompleted);
         }
 
+        [Test]
+        public void Resolve_PlanetDestroyer_FiresImmediatelyAndUsesConfiguredRechargeTiming()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.PlanetDestroyerSuperlaserRechargeIterations = 3;
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
+            CapitalShip[] targets =
+            {
+                CreatePassiveTarget("first", 100000),
+                CreatePassiveTarget("second", 100000),
+                CreatePassiveTarget("third", 100000),
+            };
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new[] { planetDestroyer },
+                new List<Starfighter>(),
+                targets,
+                new List<Starfighter>()
+            );
+
+            Assert.AreEqual(CombatSide.Attacker, result.Winner);
+            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
+            Assert.IsTrue(targets.All(target => GetShipOutcome(result, target).HullAfter == 0));
+            Assert.IsFalse(result.ShipDamage.Any(damage => damage.Ship == planetDestroyer));
+            Assert.AreEqual(10, result.IterationsCompleted);
+        }
+
+        [Test]
+        public void Resolve_MultiplePlanetDestroyers_TargetDistinctShipsInStableOrder()
+        {
+            CapitalShip firstPlanetDestroyer = CreatePlanetDestroyer("first-planet-destroyer");
+            CapitalShip secondPlanetDestroyer = CreatePlanetDestroyer("second-planet-destroyer");
+            CapitalShip firstTarget = CreatePassiveTarget("first-target", 100000);
+            CapitalShip secondTarget = CreatePassiveTarget("second-target", 100000);
+
+            SpaceCombatResult result = Resolve(
+                new[] { firstPlanetDestroyer, secondPlanetDestroyer },
+                new[] { firstTarget, secondTarget }
+            );
+
+            Assert.AreEqual(0, GetShipOutcome(result, firstTarget).HullAfter);
+            Assert.AreEqual(0, GetShipOutcome(result, secondTarget).HullAfter);
+            Assert.AreEqual(2, result.IterationsCompleted);
+        }
+
+        [Test]
+        public void Resolve_SingleSquadronAttackRun_SucceedsAfterConfiguredDurationWithoutFinalLoss()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.PlanetDestroyerAttackRunIterations = 3;
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
+            Starfighter torpedoFighter = CreateTorpedoFighter("y-wing", 12);
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { torpedoFighter },
+                new[] { planetDestroyer },
+                new List<Starfighter>(),
+                random: new SequenceRNG(new[] { 1, 1 })
+            );
+
+            Assert.AreEqual(CombatSide.Attacker, result.Winner);
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
+            Assert.AreEqual(
+                0,
+                result.ShipDamage.Single(damage => damage.Ship == planetDestroyer).HullAfter
+            );
+            Assert.IsFalse(result.FighterLosses.Any());
+            Assert.AreEqual(4, result.IterationsCompleted);
+        }
+
+        [Test]
+        public void Resolve_AttackRunSelectionDamageBeforeSuccess_DoesNotPersistIntoTheRun()
+        {
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
+            Starfighter torpedoFighter = CreateTorpedoFighter("y-wing", 12);
+
+            SpaceCombatResult result = Resolve(
+                CreateConfig(),
+                new List<CapitalShip>(),
+                new[] { torpedoFighter },
+                new[] { planetDestroyer },
+                new List<Starfighter>(),
+                random: new SequenceRNG(new[] { 10, 1, 1 })
+            );
+
+            Assert.AreEqual(12, GetFighterOutcome(result, torpedoFighter).SquadronSizeAfter);
+            Assert.AreEqual(0, GetShipOutcome(result, planetDestroyer).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_DamagedAttackRunSquadron_UsesConfiguredCapacityForSelection()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.PlanetDestroyerAttackRunIterations = 1;
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
+            Starfighter torpedoFighter = CreateTorpedoFighter("y-wing", 12);
+            torpedoFighter.CurrentSquadronSize = 1;
+            int[] selectionRolls = Enumerable
+                .Range(0, config.AttackRunSelectionMaximumEvaluations)
+                .SelectMany(_ => new[] { 1, 10 })
+                .ToArray();
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { torpedoFighter },
+                new[] { planetDestroyer },
+                new List<Starfighter>(),
+                random: new SequenceRNG(selectionRolls)
+            );
+
+            Assert.AreEqual(0, GetShipOutcome(result, planetDestroyer).HullAfter);
+            Assert.AreEqual(1, GetFighterOutcome(result, torpedoFighter).SquadronSizeAfter);
+        }
+
+        [Test]
+        public void Resolve_AttackRunSelectionMaximumEvaluations_ConfiguresRetryLimit()
+        {
+            GameConfig.SpaceCombatConfig singleEvaluationConfig = CreateConfig();
+            singleEvaluationConfig.PlanetDestroyerAttackRunIterations = 1;
+            singleEvaluationConfig.AttackRunSelectionMaximumEvaluations = 1;
+            GameConfig.SpaceCombatConfig retryConfig = singleEvaluationConfig.CreateCopy();
+            retryConfig.AttackRunSelectionMaximumEvaluations = 2;
+            CapitalShip firstPlanetDestroyer = CreatePlanetDestroyer("first-planet-destroyer");
+            CapitalShip secondPlanetDestroyer = CreatePlanetDestroyer("second-planet-destroyer");
+            Starfighter firstFighter = CreateTorpedoFighter("first-fighter", 12);
+            Starfighter secondFighter = CreateTorpedoFighter("second-fighter", 12);
+
+            SpaceCombatResult singleEvaluationResult = Resolve(
+                singleEvaluationConfig,
+                new List<CapitalShip>(),
+                new[] { firstFighter },
+                new[] { firstPlanetDestroyer },
+                new List<Starfighter>(),
+                random: new SequenceRNG(new[] { 1, 100, 1, 1 })
+            );
+            SpaceCombatResult retryResult = Resolve(
+                retryConfig,
+                new List<CapitalShip>(),
+                new[] { secondFighter },
+                new[] { secondPlanetDestroyer },
+                new List<Starfighter>(),
+                random: new SequenceRNG(new[] { 1, 100, 1, 1 })
+            );
+
+            Assert.AreEqual(
+                0,
+                GetFighterOutcome(singleEvaluationResult, firstFighter).SquadronSizeAfter
+            );
+            Assert.AreEqual(0, GetShipOutcome(retryResult, secondPlanetDestroyer).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_AttackRunSelectionThresholdMultiplier_ConfiguresSelectionChance()
+        {
+            GameConfig.SpaceCombatConfig lowThresholdConfig = CreateConfig();
+            lowThresholdConfig.PlanetDestroyerAttackRunIterations = 1;
+            lowThresholdConfig.AttackRunSelectionMaximumEvaluations = 1;
+            lowThresholdConfig.AttackRunSelectionThresholdMultiplier = 0.01;
+            GameConfig.SpaceCombatConfig highThresholdConfig = lowThresholdConfig.CreateCopy();
+            highThresholdConfig.AttackRunSelectionThresholdMultiplier = 1;
+            CapitalShip firstPlanetDestroyer = CreatePlanetDestroyer("first-planet-destroyer");
+            CapitalShip secondPlanetDestroyer = CreatePlanetDestroyer("second-planet-destroyer");
+            Starfighter firstFighter = CreateTorpedoFighter("first-fighter", 12);
+            Starfighter secondFighter = CreateTorpedoFighter("second-fighter", 12);
+
+            SpaceCombatResult lowThresholdResult = Resolve(
+                lowThresholdConfig,
+                new List<CapitalShip>(),
+                new[] { firstFighter },
+                new[] { firstPlanetDestroyer },
+                new List<Starfighter>(),
+                random: new SequenceRNG(new[] { 1, 2 })
+            );
+            SpaceCombatResult highThresholdResult = Resolve(
+                highThresholdConfig,
+                new List<CapitalShip>(),
+                new[] { secondFighter },
+                new[] { secondPlanetDestroyer },
+                new List<Starfighter>(),
+                random: new SequenceRNG(new[] { 1, 2 })
+            );
+
+            Assert.AreEqual(
+                0,
+                GetFighterOutcome(lowThresholdResult, firstFighter).SquadronSizeAfter
+            );
+            Assert.AreEqual(
+                0,
+                GetShipOutcome(highThresholdResult, secondPlanetDestroyer).HullAfter
+            );
+        }
+
+        [Test]
+        public void Resolve_AttackRunTorpedoBudgetMultiplier_ConfiguresSelectionChance()
+        {
+            GameConfig.SpaceCombatConfig lowBudgetConfig = CreateConfig();
+            lowBudgetConfig.PlanetDestroyerAttackRunIterations = 1;
+            lowBudgetConfig.AttackRunSelectionMaximumEvaluations = 1;
+            lowBudgetConfig.AttackRunSelectionThresholdMultiplier = 1;
+            lowBudgetConfig.AttackRunTorpedoBudgetMultiplier = 0.01;
+            GameConfig.SpaceCombatConfig highBudgetConfig = lowBudgetConfig.CreateCopy();
+            highBudgetConfig.AttackRunTorpedoBudgetMultiplier = 1;
+            CapitalShip firstPlanetDestroyer = CreatePlanetDestroyer("first-planet-destroyer");
+            CapitalShip secondPlanetDestroyer = CreatePlanetDestroyer("second-planet-destroyer");
+            Starfighter firstFighter = CreateTorpedoFighter("first-fighter", 12);
+            Starfighter secondFighter = CreateTorpedoFighter("second-fighter", 12);
+
+            SpaceCombatResult lowBudgetResult = Resolve(
+                lowBudgetConfig,
+                new List<CapitalShip>(),
+                new[] { firstFighter },
+                new[] { firstPlanetDestroyer },
+                new List<Starfighter>(),
+                random: new SequenceRNG(new[] { 1, 2 })
+            );
+            SpaceCombatResult highBudgetResult = Resolve(
+                highBudgetConfig,
+                new List<CapitalShip>(),
+                new[] { secondFighter },
+                new[] { secondPlanetDestroyer },
+                new List<Starfighter>(),
+                random: new SequenceRNG(new[] { 1, 2 })
+            );
+
+            Assert.AreEqual(0, GetFighterOutcome(lowBudgetResult, firstFighter).SquadronSizeAfter);
+            Assert.AreEqual(0, GetShipOutcome(highBudgetResult, secondPlanetDestroyer).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_FailedAttackRun_DestroysEveryParticipatingSquadron()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
+            Starfighter first = CreateTorpedoFighter("first", 1);
+            Starfighter second = CreateTorpedoFighter("second", 1);
+            first.Torpedoes = 1;
+            second.Torpedoes = 1;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { first, second },
+                new[] { planetDestroyer },
+                new List<Starfighter>(),
+                random: new SequenceRNG(new[] { 10, 10 })
+            );
+
+            Assert.AreEqual(2, result.FighterLosses.Count);
+            Assert.IsTrue(result.FighterLosses.All(loss => loss.SquadsAfter == 0));
+            Assert.IsFalse(result.ShipDamage.Any(damage => damage.Ship == planetDestroyer));
+            Assert.AreEqual(CombatSide.Defender, result.Winner);
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.AttackerOutcome);
+            Assert.AreEqual(121, result.IterationsCompleted);
+        }
+
+        [Test]
+        public void Resolve_SuccessfulAttackRunWithMultipleSquadrons_DestroysStableFirstHalf()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
+            Starfighter first = CreateTorpedoFighter("first", 12);
+            Starfighter second = CreateTorpedoFighter("second", 12);
+            Starfighter third = CreateTorpedoFighter("third", 12);
+            Starfighter fourth = CreateTorpedoFighter("fourth", 12);
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { first, second, third, fourth },
+                new[] { planetDestroyer },
+                new List<Starfighter>(),
+                random: new SequenceRNG(new[] { 1, 1 })
+            );
+
+            Assert.AreEqual(0, GetFighterOutcome(result, first).SquadronSizeAfter);
+            Assert.AreEqual(0, GetFighterOutcome(result, second).SquadronSizeAfter);
+            Assert.AreEqual(12, GetFighterOutcome(result, third).SquadronSizeAfter);
+            Assert.AreEqual(12, GetFighterOutcome(result, fourth).SquadronSizeAfter);
+            Assert.AreEqual(0, GetShipOutcome(result, planetDestroyer).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_AttackRunLongerThanStagnationWindow_CompletesBeforeStalemateResolution()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveStagnationIterations = 20;
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
+            Starfighter torpedoFighter = CreateTorpedoFighter("y-wing", 12);
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { torpedoFighter },
+                new[] { planetDestroyer },
+                new List<Starfighter>(),
+                random: new SequenceRNG(new[] { 1, 1 })
+            );
+
+            Assert.AreEqual(
+                0,
+                result.ShipDamage.Single(damage => damage.Ship == planetDestroyer).HullAfter
+            );
+            Assert.AreEqual(CombatSide.Attacker, result.Winner);
+            Assert.AreEqual(121, result.IterationsCompleted);
+        }
+
+        [Test]
+        public void Resolve_ShieldedPlanetDestroyer_IsNotAttackedAndItsEnemyLeaves()
+        {
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
+            Starfighter torpedoFighter = CreateTorpedoFighter("y-wing", 12);
+
+            SpaceCombatResult result = CreateResolver()
+                .Resolve(
+                    new List<CapitalShip>(),
+                    new[] { torpedoFighter },
+                    new[] { planetDestroyer },
+                    new List<Starfighter>(),
+                    attackerCanWithdraw: true,
+                    defenderCanWithdraw: false,
+                    shieldedPlanetDestroyers: new[] { planetDestroyer }
+                );
+
+            Assert.IsFalse(result.FighterLosses.Any());
+            Assert.IsFalse(result.ShipDamage.Any());
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
+            Assert.AreEqual(CombatSide.Defender, result.Winner);
+            Assert.Less(result.IterationsCompleted, 30);
+        }
+
+        [Test]
+        public void Resolve_PlanetDestroyerAndFightersUnableToDamageEachOther_RemainInAnIndecisiveBattle()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveStagnationIterations = 2;
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
+            Starfighter fighter = CreateFighter("fighter", squadronSize: 12, weaponStrength: 10);
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { fighter },
+                new[] { planetDestroyer },
+                new List<Starfighter>()
+            );
+
+            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.DefenderOutcome);
+            Assert.AreEqual(CombatSide.Draw, result.Winner);
+            Assert.IsFalse(result.FighterLosses.Any());
+            Assert.IsFalse(result.ShipDamage.Any());
+        }
+
+        [Test]
+        public void Resolve_PlanetDestroyerAndFightersUnableToDamageEachOther_WithdrawsEligiblePlanetDestroyer()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveStagnationIterations = 2;
+            config.PlanetDestroyerWithdrawalIterations = 3;
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
+            Starfighter fighter = CreateFighter("fighter", squadronSize: 12, weaponStrength: 10);
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { fighter },
+                new[] { planetDestroyer },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(CombatSide.Attacker, result.Winner);
+            Assert.IsTrue(result.WithdrawnUnits.Contains(planetDestroyer));
+            Assert.AreEqual(5, result.IterationsCompleted);
+        }
+
+        [Test]
+        public void Resolve_OutgunnedSideWithMobilePlanetDestroyer_UsesPlanetDestroyerWithdrawalCountdown()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveRetreatStrengthRatio = 0.33;
+            config.AutoResolveStagnationIterations = 2;
+            config.PlanetDestroyerWithdrawalIterations = 3;
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
+            CapitalShip escort = CreateShip("escort", hull: 10, weaponStrength: 1);
+            escort.SublightSpeed = 10;
+            CapitalShip raider = CreateShip("raider", hull: 100000, weaponStrength: 500);
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new[] { raider },
+                new List<Starfighter>(),
+                new[] { planetDestroyer, escort },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.IsTrue(GetShipOutcome(result, planetDestroyer).Withdrew);
+            Assert.AreEqual(
+                5,
+                result.IterationsCompleted,
+                "The planet destroyer withdrawal countdown must remain tactical progress."
+            );
+        }
+
+        [Test]
+        public void Resolve_SquadronsOnAttackRun_AreNotTargetedUntilRunCompletes()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveTargetScanDivisor = 1;
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
+            CapitalShip picket = CreateShip("picket", hull: 1000, weaponStrength: 0);
+            picket.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 500;
+            picket.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 100;
+            picket.WeaponRecharge = 500;
+            Starfighter torpedoFighter = CreateTorpedoFighter("y-wing", 12);
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { torpedoFighter },
+                new[] { planetDestroyer, picket },
+                new List<Starfighter>(),
+                random: new SequenceRNG(new[] { 1, 1 })
+            );
+
+            Assert.AreEqual(0, GetFighterOutcome(result, torpedoFighter).SquadronSizeAfter);
+            Assert.AreEqual(0, GetShipOutcome(result, planetDestroyer).HullAfter);
+            Assert.AreEqual(CombatSide.Defender, result.Winner);
+            Assert.Greater(result.IterationsCompleted, 121);
+        }
+
+        [Test]
+        public void Resolve_FleetFleeingAlonePlanetDestroyer_LeavesBeforeSuperlaserTargetsIt()
+        {
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
+            CapitalShip first = CreatePassiveTarget("first", 100000);
+            first.SublightSpeed = 4;
+            CapitalShip second = CreatePassiveTarget("second", 100000);
+            second.SublightSpeed = 4;
+            CapitalShip[] fleet = { first, second };
+
+            SpaceCombatResult result = Resolve(
+                CreateConfig(),
+                fleet,
+                new List<Starfighter>(),
+                new[] { planetDestroyer },
+                new List<Starfighter>(),
+                attackerCanWithdraw: true
+            );
+
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
+            Assert.AreEqual(0, fleet.Count(ship => GetShipOutcome(result, ship).HullAfter == 0));
+            Assert.AreEqual(2, fleet.Count(ship => GetShipOutcome(result, ship).Withdrew));
+            Assert.IsFalse(result.ShipDamage.Any(damage => damage.Ship == planetDestroyer));
+        }
+
+        [Test]
+        public void Resolve_PlanetDestroyerWithOnlyCapitalTargets_DestroysTargetsBeforeStalemate()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveStagnationIterations = 20;
+            CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
+            CapitalShip target = CreatePassiveTarget("target", 100000);
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new[] { planetDestroyer },
+                new List<Starfighter>(),
+                new[] { target, CreatePassiveTarget("other", 100000) },
+                new List<Starfighter>()
+            );
+
+            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
+            Assert.AreEqual(CombatSide.Attacker, result.Winner);
+            Assert.IsFalse(result.WithdrawnUnits.Contains(planetDestroyer));
+            Assert.AreEqual(303, result.IterationsCompleted);
+        }
+
+        /// <summary>
+        /// Creates a planet-destroying capital ship, which fights as a planet destroyer.
+        /// </summary>
+        /// <param name="instanceId">The instance identifier.</param>
+        /// <returns>The created ship.</returns>
+        private static CapitalShip CreatePlanetDestroyer(string instanceId)
+        {
+            CapitalShip planetDestroyer = CreateShip(instanceId, hull: 25000, weaponStrength: 1400);
+            planetDestroyer.TypeID = "planet-destroyer";
+            planetDestroyer.CanDestroyPlanets = true;
+            return planetDestroyer;
+        }
+
+        /// <summary>
+        /// Creates a fighter squadron that carries torpedoes and flies at a typical speed.
+        /// </summary>
+        /// <param name="instanceId">The instance identifier.</param>
+        /// <param name="squadronSize">The squadron size.</param>
+        /// <returns>The created squadron.</returns>
+        private static Starfighter CreateTorpedoFighter(string instanceId, int squadronSize)
+        {
+            Starfighter fighter = CreateFighter(instanceId, squadronSize, 0);
+            fighter.SublightSpeed = 8;
+            fighter.Torpedoes = 4;
+            fighter.TorpedoRange = 7;
+            return fighter;
+        }
+
         /// <summary>
         /// Resolves symmetric battle.
         /// </summary>
@@ -2323,6 +2839,12 @@ namespace Rebellion.Tests.Gameplay
                 AutoResolveComponentDelayMinimum = 30,
                 AutoResolveComponentDelayMaximum = 50,
                 AutoResolveComponentDelayRecovery = 1,
+                AttackRunSelectionMaximumEvaluations = 1001,
+                AttackRunSelectionThresholdMultiplier = 0.5,
+                AttackRunTorpedoBudgetMultiplier = 0.53333336,
+                PlanetDestroyerSuperlaserRechargeIterations = 300,
+                PlanetDestroyerAttackRunIterations = 120,
+                PlanetDestroyerWithdrawalIterations = 150,
             };
         }
 

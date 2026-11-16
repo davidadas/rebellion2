@@ -24,6 +24,42 @@ public sealed class WindowsWaveOutputTests
     }
 
     [Test]
+    public void Constructor_PrimingSilence_DoesNotReportListenerDelivery()
+    {
+        FakeWaveApi api = new FakeWaveApi();
+        using WindowsWaveOutput output = new WindowsWaveOutput(api, 48000, 2, 2);
+
+        Assert.IsFalse(output.HasReceivedMix);
+        Assert.IsFalse(output.HasQueuedMix);
+        Assert.IsFalse(output.HasQueuedSignal);
+    }
+
+    [Test]
+    public void TryWrite_SilentMix_ReportsDeliveryWithoutSignal()
+    {
+        FakeWaveApi api = new FakeWaveApi();
+        using WindowsWaveOutput output = new WindowsWaveOutput(api, 48000, 2, 2);
+
+        output.TryWrite(new float[] { 0, float.NaN, 0.000000001f, 0 }, 2);
+
+        Assert.IsTrue(output.HasReceivedMix);
+        Assert.IsTrue(output.HasQueuedMix);
+        Assert.IsFalse(output.HasQueuedSignal);
+    }
+
+    [Test]
+    public void TryWrite_SignalAfterSilence_ReportsAcceptedSignal()
+    {
+        FakeWaveApi api = new FakeWaveApi();
+        using WindowsWaveOutput output = new WindowsWaveOutput(api, 48000, 2, 2);
+        output.TryWrite(new float[4], 2);
+
+        output.TryWrite(new float[] { 0, 0, 0.5f, 0 }, 2);
+
+        Assert.IsTrue(output.HasQueuedSignal);
+    }
+
+    [Test]
     public void TryWrite_StereoMix_PreservesChannelsAndGain()
     {
         FakeWaveApi api = new FakeWaveApi();
@@ -70,6 +106,9 @@ public sealed class WindowsWaveOutputTests
         Assert.That(output.Failure, Does.Contain("write failed (5)"));
         Assert.IsFalse(output.TryWrite(mix, 2));
         Assert.AreEqual(1, api.WriteCalls);
+        Assert.IsTrue(output.HasReceivedMix);
+        Assert.IsFalse(output.HasQueuedMix);
+        Assert.IsFalse(output.HasQueuedSignal);
     }
 
     [TestCase(1, 4)]
@@ -85,6 +124,9 @@ public sealed class WindowsWaveOutputTests
         Assert.IsFalse(output.TryWrite(mix, channels));
         Assert.AreEqual(0.5f, mix[0]);
         Assert.AreEqual(0, api.WriteCalls);
+        Assert.IsTrue(output.HasReceivedMix);
+        Assert.IsFalse(output.HasQueuedMix);
+        Assert.IsFalse(output.HasQueuedSignal);
     }
 
     [Test]
