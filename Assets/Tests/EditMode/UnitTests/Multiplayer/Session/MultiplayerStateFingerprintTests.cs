@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
@@ -52,6 +53,23 @@ namespace Rebellion.Tests.Multiplayer
             Assert.AreEqual(
                 MultiplayerStateFingerprint.ComputeSimulation(_source),
                 MultiplayerStateFingerprint.ComputeSimulation(_restored)
+            );
+        }
+
+        [TestCase(null, false)]
+        [TestCase(null, true)]
+        [TestCase(false, true)]
+        public void Compute_PlanetSectorSupportEligibility_DetectsChangedRetainedState(
+            bool? firstState,
+            bool? secondState
+        )
+        {
+            Planet first = CreatePlanetWithSectorSupportEligibility(firstState);
+            Planet second = CreatePlanetWithSectorSupportEligibility(secondState);
+
+            Assert.AreNotEqual(
+                MultiplayerStateFingerprint.Compute(first),
+                MultiplayerStateFingerprint.Compute(second)
             );
         }
 
@@ -280,6 +298,21 @@ namespace Rebellion.Tests.Multiplayer
             state.Pending = after;
 
             Assert.AreNotEqual(fingerprint, MultiplayerStateFingerprint.Compute(state));
+        }
+
+        /// <summary>
+        /// Restores a planet whose only selected difference is retained sector support eligibility.
+        /// </summary>
+        /// <param name="state">The retained eligibility, or null for a save without that field.</param>
+        /// <returns>The independently restored planet.</returns>
+        private static Planet CreatePlanetWithSectorSupportEligibility(bool? state)
+        {
+            string element = state.HasValue
+                ? "<IsSectorSupportEligible>"
+                    + state.Value.ToString().ToLowerInvariant()
+                    + "</IsSectorSupportEligible>"
+                : string.Empty;
+            return SerializationHelper.Deserialize<Planet>("<Planet>" + element + "</Planet>");
         }
 
         /// <summary>
