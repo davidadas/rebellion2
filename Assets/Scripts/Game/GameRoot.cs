@@ -587,8 +587,8 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Transfers or releases a registered node between faction ownership indexes without
-        /// changing its parent, descendants, retained state, or remembered parent.
+        /// Transfers or releases a registered node between faction ownership indexes, recording
+        /// observed planetary control without changing its parent, descendants, or remembered parent.
         /// </summary>
         /// <param name="node">The node whose owner changes.</param>
         /// <param name="ownerInstanceId">
@@ -602,6 +602,15 @@ namespace Rebellion.Game
 
             if (ownerInstanceId != null)
                 GetFactionByOwnerInstanceID(ownerInstanceId);
+
+            if (
+                node is Planet controlledPlanet
+                && (
+                    !string.IsNullOrEmpty(node.OwnerInstanceID)
+                    || !string.IsNullOrEmpty(ownerInstanceId)
+                )
+            )
+                controlledPlanet.RecordFactionControl();
 
             DeregsiterOwnedUnit(node);
             node.SetOwnerInstanceID(ownerInstanceId);
@@ -626,6 +635,8 @@ namespace Rebellion.Game
             Faction previousOwner = string.IsNullOrEmpty(planet.OwnerInstanceID)
                 ? null
                 : GetFactionByOwnerInstanceID(planet.OwnerInstanceID);
+            if (previousOwner != null)
+                planet.RecordFactionControl();
             if (previousOwner?.HQInstanceID == planet.InstanceID)
                 previousOwner.HQInstanceID = null;
 

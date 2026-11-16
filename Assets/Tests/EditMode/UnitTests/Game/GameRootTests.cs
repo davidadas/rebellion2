@@ -1573,6 +1573,89 @@ namespace Rebellion.Tests.Game
             CollectionAssert.Contains(_faction1.GetOwnedUnitsByType<Officer>(), officer);
         }
 
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ChangeOwnership_NeutralPlanetAcquisition_RecordsFactionControl(bool? history)
+        {
+            Planet planet = AttachPlanetWithControlHistory(history);
+
+            _game.ChangeOwnership(planet, _faction1.InstanceID);
+
+            Assert.AreEqual(true, planet.HasBeenControlled);
+        }
+
+        [Test]
+        public void ChangeOwnership_OwnedPlanetReleasedToNeutral_RecordsPreviousFactionControl()
+        {
+            _game.AttachNode(_planetSector, _game.Galaxy);
+            _game.AttachNode(_planet, _planetSector);
+
+            _game.ChangeOwnership(_planet, null);
+
+            Assert.AreEqual(true, _planet.HasBeenControlled);
+        }
+
+        [Test]
+        public void ChangeOwnership_PlanetTransferredToAnotherFaction_RecordsFactionControl()
+        {
+            _game.AttachNode(_planetSector, _game.Galaxy);
+            _game.AttachNode(_planet, _planetSector);
+
+            _game.ChangeOwnership(_planet, _faction2.InstanceID);
+
+            Assert.AreEqual(true, _planet.HasBeenControlled);
+        }
+
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ChangeOwnership_PlanetRemainsNeutral_PreservesControlHistory(bool? history)
+        {
+            Planet planet = AttachPlanetWithControlHistory(history);
+
+            _game.ChangeOwnership(planet, null);
+
+            Assert.AreEqual(history, planet.HasBeenControlled);
+        }
+
+        [Test]
+        public void ChangeOwnership_InvalidFaction_DoesNotRecordPlanetControl()
+        {
+            Planet planet = AttachPlanetWithControlHistory(null);
+
+            Assert.Throws<SceneNodeNotFoundException>(() =>
+                _game.ChangeOwnership(planet, "UNKNOWN_FACTION")
+            );
+
+            Assert.IsNull(planet.HasBeenControlled);
+        }
+
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void RebuildSceneState_DestroyedNeutralPlanet_PreservesControlHistory(bool? history)
+        {
+            Planet planet = AttachPlanetWithControlHistory(history);
+            planet.IsDestroyed = true;
+
+            _game.RebuildSceneState();
+
+            Assert.AreEqual(history, planet.HasBeenControlled);
+        }
+
+        [Test]
+        public void RebuildSceneState_DestroyedOwnedPlanet_RecordsPreviousFactionControl()
+        {
+            _game.AttachNode(_planetSector, _game.Galaxy);
+            _game.AttachNode(_planet, _planetSector);
+            _planet.IsDestroyed = true;
+
+            _game.RebuildSceneState();
+
+            Assert.AreEqual(true, _planet.HasBeenControlled);
+        }
+
         [Test]
         public void DeleteNode_RegisteredOfficer_RemovesOfficerFromGameState()
         {
@@ -1679,6 +1762,7 @@ namespace Rebellion.Tests.Game
             Planet planet = restored.GetSceneNodeByInstanceID<Planet>(_planet.InstanceID);
             Fleet fleet = restored.GetSceneNodeByInstanceID<Fleet>(_fleet.InstanceID);
             Assert.IsNull(planet.OwnerInstanceID);
+            Assert.AreEqual(true, planet.HasBeenControlled);
             Assert.IsFalse(planet.IsColonized);
             Assert.IsFalse(planet.IsPopulated());
             Assert.IsFalse(planet.IsInUprising);
@@ -1694,6 +1778,26 @@ namespace Rebellion.Tests.Game
                     .GetFactionByOwnerInstanceID(_faction1.InstanceID)
                     .GetOwnedUnitsByType<Planet>()
             );
+        }
+
+        /// <summary>
+        /// Attaches a neutral planet with an explicit retained history state.
+        /// </summary>
+        /// <param name="history">The retained history value, or null when unknown.</param>
+        /// <returns>The registered planet.</returns>
+        private Planet AttachPlanetWithControlHistory(bool? history)
+        {
+            string historyElement = history.HasValue
+                ? "<HasBeenControlled>"
+                    + (history.Value ? "true" : "false")
+                    + "</HasBeenControlled>"
+                : string.Empty;
+            Planet planet = SerializationHelper.Deserialize<Planet>(
+                "<Planet><InstanceID>HISTORY_PLANET</InstanceID>" + historyElement + "</Planet>"
+            );
+            _game.AttachNode(_planetSector, _game.Galaxy);
+            _game.AttachNode(planet, _planetSector);
+            return planet;
         }
 
         /// <summary>
