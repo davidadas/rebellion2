@@ -78,11 +78,19 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     /// </summary>
     private void ApplyBackgroundRole()
     {
+        bool overridden = field?.CanInherit == true && !field.IsInherited;
         ContentEditorColorRole role =
-            field?.CanInherit == true && !field.IsInherited && input.gameObject.activeSelf
+            overridden && input.gameObject.activeSelf
                 ? ContentEditorColorRole.OverrideInput
                 : backgroundRole;
         input.GetComponent<ContentEditorColorBinding>().SetRole(role);
+        label
+            .GetComponent<ContentEditorColorBinding>()
+            .SetRole(
+                overridden && !input.gameObject.activeSelf
+                    ? ContentEditorColorRole.Accent
+                    : ContentEditorColorRole.Text
+            );
     }
 
     /// <summary>
@@ -697,6 +705,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         {
             Submitted?.Invoke(field, choiceValues.Where(selected.Contains).ToArray());
             error.text = string.Empty;
+            ApplyBackgroundRole();
             changed?.Invoke();
         }
         catch (ArgumentException exception)

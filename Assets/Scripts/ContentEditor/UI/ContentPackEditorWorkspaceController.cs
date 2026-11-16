@@ -148,8 +148,6 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
     /// <param name="fields">The project-owned settings displayed by the active section.</param>
     private void ResetSectionInheritance(IReadOnlyList<ContentPackEditorField> fields)
     {
-        if (!view.CommitFields())
-            return;
         Project.ResetFieldsToInherited(fields);
         view.RenderProject(Project, assets);
     }

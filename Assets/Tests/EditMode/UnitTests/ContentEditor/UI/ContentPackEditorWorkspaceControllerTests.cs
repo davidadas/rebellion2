@@ -68,6 +68,65 @@ namespace Rebellion.Tests.ContentEditor.UI
             );
         }
 
+        [Test]
+        public void SelectGenerationTask_TaskWithOverride_ShowsSectionResetImmediately()
+        {
+            project = ContentEditorTestData.CreateLoadableProject(
+                Path.Combine(folder, "InheritedContent")
+            );
+            ContentPackEditorRecord setup = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.Kind == "GameGenerationConfig");
+            ContentPackEditorField multiplier = setup
+                .GetFields()
+                .Single(field => field.MemberName == "CoreMineMultiplier");
+            project.SetField(multiplier, "999");
+            workspace.RenderProject(project, assets);
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("category/Starting setup"));
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "GenerationTab2")
+                .onClick.Invoke();
+            Button resetSection = view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "ResetSection");
+            Assert.IsFalse(resetSection.gameObject.activeSelf);
+
+            TMP_Dropdown task = view.GetComponentsInChildren<TMP_Dropdown>()
+                .Single(dropdown => dropdown.name == "SetupTask");
+            task.value = 3;
+
+            Assert.IsTrue(resetSection.gameObject.activeSelf);
+            Assert.IsTrue(resetSection.interactable);
+        }
+
+        [Test]
+        public void ResetSection_RemovedLookupThreshold_ShowsResetAndRestoresInheritedTables()
+        {
+            project = ContentEditorTestData.CreateLoadableProject(
+                Path.Combine(folder, "InheritedContent")
+            );
+            workspace.RenderProject(project, assets);
+            ContentEditorNumericGrid grid = SelectSharedMissionRules();
+            ContentPackEditorDocument document = grid.ResetFields.First().Document;
+            string inherited = document.Text;
+            Button removeFirstRow = view.GetComponentsInChildren<Button>()
+                .First(button =>
+                    button.name.StartsWith("RemoveScoreTemplate", StringComparison.Ordinal)
+                );
+
+            removeFirstRow.onClick.Invoke();
+
+            Button resetSection = view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "ResetSection");
+            Assert.AreNotEqual(inherited, document.Text);
+            Assert.IsTrue(resetSection.gameObject.activeSelf);
+            resetSection.onClick.Invoke();
+            Assert.AreEqual(inherited, document.Text);
+            Assert.IsFalse(resetSection.gameObject.activeSelf);
+        }
+
         [UnityTest]
         public IEnumerator ArrangeMapAsync_OverlappingPlanets_ClearsRenderedGeometryAndUndoesAsOneEdit()
         {

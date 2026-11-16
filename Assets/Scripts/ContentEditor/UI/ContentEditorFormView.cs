@@ -104,6 +104,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     public event Action<ContentPackEditorCollection, int> CollectionRemoveRequested;
 
     public event Action Changed;
+    public event Action PresentationChanged;
     public event Action<ContentPackEditorField, IReadOnlyList<string>> FieldSubmitted;
     public event Action<ContentPackEditorField> FieldValidationRequested;
     public event Action WidthChanged;
@@ -239,15 +240,14 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <returns>The distinct inheritable fields with local values in the active section.</returns>
     public IReadOnlyList<ContentPackEditorField> GetOverriddenFields()
     {
-        return fieldViews
-            .Where(view =>
-                view.gameObject.activeSelf
-                && view.Field?.CanInherit == true
-                && !view.Field.IsInherited
-            )
-            .Select(view => view.Field)
-            .Distinct()
-            .ToArray();
+        IEnumerable<ContentPackEditorField> fields = fieldViews
+            .Where(view => view.gameObject.activeSelf && view.Field != null)
+            .Select(view => view.Field);
+        if (probabilityGrid != null)
+            fields = fields
+                .Where(field => !probabilityGrid.ContainsTableField(field))
+                .Concat(probabilityGrid.ResetFields);
+        return fields.Where(field => field.CanInherit && !field.IsInherited).Distinct().ToArray();
     }
 
     /// <summary>
@@ -1341,6 +1341,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         if (Commit())
             setupTasks[section] = index;
         Refresh();
+        PresentationChanged?.Invoke();
     }
 
     /// <summary>

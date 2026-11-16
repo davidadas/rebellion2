@@ -27,6 +27,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 "<Officers><Officer><TypeID>OFFICER</TypeID>"
                     + "<DisplayName>Officer</DisplayName>"
                     + "<EncyclopediaDescription>Description.</EncyclopediaDescription>"
+                    + "<IsRecruitable>false</IsRecruitable>"
                     + "<RecruitingFactionInstanceIDs /></Officer></Officers>"
             );
             project = CreateWorkingProject();
@@ -226,6 +227,35 @@ namespace Rebellion.Tests.ContentEditor.UI
                 ),
                 control.GetComponentInChildren<TMP_InputField>().GetComponent<Image>().color
             );
+        }
+
+        [Test]
+        public void ApplyBoolean_InheritedCheckbox_UsesOverrideIndicatorAfterEdit()
+        {
+            ContentPackEditorField recruitable = officer.GetField("IsRecruitable");
+            control.Submitted += (field, values) => project.SetField(field, values.Single());
+            control.Render(
+                ContentPackEditorProjector.BuildField(project, recruitable),
+                null,
+                null,
+                null
+            );
+            TextMeshProUGUI label = control
+                .GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(text => text.name == "Label" && text.transform.parent == control.transform);
+            UICheckboxView checkbox = control.GetComponentInChildren<UICheckboxView>();
+            UIComponentTestHelper.InvokeLifecycle(checkbox, "Awake");
+
+            checkbox.GetComponent<Toggle>().isOn = true;
+
+            Assert.AreEqual(
+                ContentEditorAppearance.ColorFor(
+                    ContentEditorColorMode.Dark,
+                    ContentEditorColorRole.Accent
+                ),
+                label.color
+            );
+            Assert.AreEqual("true", recruitable.Value);
         }
 
         [Test]

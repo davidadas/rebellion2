@@ -412,6 +412,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         form.RemoveMessageRequested += ConfirmRemoveMessage;
         form.ClearFieldsRequested += ForwardClearFields;
         form.Changed += HandleFieldChanged;
+        form.PresentationChanged += UpdateResetSectionPresentation;
         form.FieldSubmitted += SubmitField;
         form.SelectionRequested += ShowFieldSelection;
         form.UnitSelectionRequested += ShowUnitSelection;
@@ -487,6 +488,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             form.RemoveMessageRequested -= ConfirmRemoveMessage;
             form.ClearFieldsRequested -= ForwardClearFields;
             form.Changed -= HandleFieldChanged;
+            form.PresentationChanged -= UpdateResetSectionPresentation;
             form.FieldSubmitted -= SubmitField;
             form.SelectionRequested -= ShowFieldSelection;
             form.UnitSelectionRequested -= ShowUnitSelection;

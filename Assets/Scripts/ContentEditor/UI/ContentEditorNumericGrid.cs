@@ -12,6 +12,7 @@ public sealed class ContentEditorNumericGrid
     public IReadOnlyList<string> Columns { get; }
     private readonly List<int> scores = new();
     private readonly (ContentPackEditorRecord Record, XElement Table)[] tables;
+    public IReadOnlyList<ContentPackEditorField> ResetFields { get; }
     public IReadOnlyList<int> Scores => scores;
     public IReadOnlyList<ContentPackEditorField> Settings { get; }
     public bool IsProbability { get; }
@@ -53,6 +54,13 @@ public sealed class ContentEditorNumericGrid
                     : ContentPackEditorField.FormatName(table.Table.Name.LocalName)
             )
             .ToArray();
+        ResetFields = tables
+            .Select(table => new ContentPackEditorField(
+                table.Record,
+                table.Table,
+                ContentPackEditorField.FormatName(table.Table.Name.LocalName)
+            ))
+            .ToArray();
         SortedSet<int> thresholds = new();
         foreach (var table in tables)
         foreach (XElement entry in table.Table.Elements("Entry"))
@@ -83,6 +91,15 @@ public sealed class ContentEditorNumericGrid
     /// <returns>The editable field, or null when the coordinates are outside the grid.</returns>
     public ContentPackEditorField GetCell(int score, int column) =>
         cells.TryGetValue((score, column), out var field) ? field : null;
+
+    /// <summary>
+    /// Checks whether a field is a value inside one of this grid's lookup tables.
+    /// </summary>
+    /// <param name="field">The displayed field.</param>
+    /// <returns>Whether the field belongs to a table represented by the grid.</returns>
+    public bool ContainsTableField(ContentPackEditorField field) =>
+        field != null
+        && tables.Any(table => field.XmlElement.AncestorsAndSelf().Contains(table.Table));
 
     /// <summary>
     /// Adds a detached editable row, leaving authored tables untouched until a cell is filled.
