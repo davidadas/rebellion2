@@ -105,9 +105,9 @@ public sealed class ContentEditorFormView : MonoBehaviour
     public event Action<ContentPackEditorCollection, int> CollectionRemoveRequested;
 
     public event Action Changed;
+    public event Action PresentationChanged;
     public event Action<ContentPackEditorField, IReadOnlyList<string>> FieldSubmitted;
     public event Action<ContentPackEditorField> FieldValidationRequested;
-    public event Action<ContentPackEditorField> FieldInheritanceResetRequested;
     public event Action WidthChanged;
     public event Action<Button> AddMessageRequested;
     public event Action AddNamePoolRequested;
@@ -190,7 +190,6 @@ public sealed class ContentEditorFormView : MonoBehaviour
             field.ValidationFailed -= ReportValidationError;
             field.Submitted -= SubmitField;
             field.ValidationRequested -= ValidateField;
-            field.InheritanceResetRequested -= ResetInheritance;
             field.SelectionRequested -= RequestSelection;
         }
     }
@@ -234,6 +233,22 @@ public sealed class ContentEditorFormView : MonoBehaviour
         )
             field.Commit();
         return fieldViews.All(field => !field.gameObject.activeSelf || !field.HasError);
+    }
+
+    /// <summary>
+    /// Collects the authored overrides currently displayed by this inspector section.
+    /// </summary>
+    /// <returns>The distinct inheritable fields with local values in the active section.</returns>
+    public IReadOnlyList<ContentPackEditorField> GetOverriddenFields()
+    {
+        IEnumerable<ContentPackEditorField> fields = fieldViews
+            .Where(view => view.gameObject.activeSelf && view.Field != null)
+            .Select(view => view.Field);
+        if (probabilityGrid != null)
+            fields = fields
+                .Where(field => !probabilityGrid.ContainsTableField(field))
+                .Concat(probabilityGrid.ResetFields);
+        return fields.Where(field => field.CanInherit && !field.IsInherited).Distinct().ToArray();
     }
 
     /// <summary>
@@ -1327,6 +1342,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         if (Commit())
             setupTasks[section] = index;
         Refresh();
+        PresentationChanged?.Invoke();
     }
 
     /// <summary>
@@ -1862,7 +1878,6 @@ public sealed class ContentEditorFormView : MonoBehaviour
             created.ValidationFailed += ReportValidationError;
             created.Submitted += SubmitField;
             created.ValidationRequested += ValidateField;
-            created.InheritanceResetRequested += ResetInheritance;
             created.SelectionRequested += RequestSelection;
             fieldViews.Add(created);
         }
@@ -2028,11 +2043,4 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="field">The member to check.</param>
     private void ValidateField(ContentPackEditorField field) =>
         FieldValidationRequested?.Invoke(field);
-
-    /// <summary>
-    /// Forwards a request to remove one local setting override.
-    /// </summary>
-    /// <param name="field">The setting being returned to inheritance.</param>
-    private void ResetInheritance(ContentPackEditorField field) =>
-        FieldInheritanceResetRequested?.Invoke(field);
 }

@@ -196,15 +196,26 @@ public static class ContentPackEditorPrefabBuilder
             (RectTransform)duplicate.transform
         ).anchorMax = Vector2.one;
         ((RectTransform)duplicate.transform).anchoredPosition = new Vector2(-208, -36);
+        Button resetSection = PlainButton("ResetSection", editor, "Reset section");
+        Rect((RectTransform)resetSection.transform, 0, 36, 124, 32);
+        ((RectTransform)resetSection.transform).anchorMin = (
+            (RectTransform)resetSection.transform
+        ).anchorMax = Vector2.one;
+        ((RectTransform)resetSection.transform).anchoredPosition = new Vector2(-344, -36);
+        resetSection
+            .gameObject.AddComponent<HelpTooltipView>()
+            .Configure("Remove every override in this section and use the inherited defaults.");
+        resetSection.gameObject.SetActive(false);
         Button delete = PlainButton("Delete", editor, "Delete");
         Rect((RectTransform)delete.transform, 0, 36, 84, 32);
         ((RectTransform)delete.transform).anchorMin = ((RectTransform)delete.transform).anchorMax =
             Vector2.one;
         ((RectTransform)delete.transform).anchoredPosition = new Vector2(-84, -36);
         Assign(view, "duplicateButton", duplicate);
+        Assign(view, "resetSectionButton", resetSection);
         Assign(view, "deleteButton", delete);
         TextMeshProUGUI title = Label("RecordName", editor, "Create or open a content pack", 28);
-        Stretch(title.rectTransform, 0, 0, 230, 0);
+        Stretch(title.rectTransform, 0, 0, 366, 0);
         title.rectTransform.anchorMin = Vector2.up;
         title.rectTransform.offsetMin = new Vector2(0, -38);
         TextMeshProUGUI subtitle = Label(
@@ -504,6 +515,8 @@ public static class ContentPackEditorPrefabBuilder
         TextMeshProUGUI label = Label("Label", root, "Property");
         Rect(label.rectTransform, 8, 8, 222, 34);
         TMP_InputField input = Input("Value", root, string.Empty);
+        AddInputScrollbar(input);
+        input.gameObject.AddComponent<ContentEditorInputScrollRelay>();
         Stretch((RectTransform)input.transform, 244, 8, 14, 22);
         Button import = Button("Import", root, "Import...");
         Rect((RectTransform)import.transform, 0, 8, 86, 34);
@@ -541,12 +554,6 @@ public static class ContentPackEditorPrefabBuilder
         Assign(field, "error", error);
         Assign(field, "importButton", import);
         Assign(field, "revertButton", revert);
-        Button inheritance = PlainButton("Inheritance", root, "Reset to inherited");
-        inheritance
-            .gameObject.AddComponent<HelpTooltipView>()
-            .Configure("Remove this override and use the current inherited value.");
-        inheritance.gameObject.SetActive(false);
-        Assign(field, "inheritanceButton", inheritance);
         Assign(field, "previewButton", preview);
         Assign(field, "choiceDropdown", choice);
         Assign(field, "help", HelpIcon(root));

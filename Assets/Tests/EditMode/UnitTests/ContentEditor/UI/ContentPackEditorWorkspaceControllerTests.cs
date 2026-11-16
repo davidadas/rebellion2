@@ -16,7 +16,7 @@ namespace Rebellion.Tests.ContentEditor.UI
     public sealed class ContentPackEditorWorkspaceControllerTests : ContentEditorViewTestBase
     {
         [Test]
-        public void ResetFieldToInherited_VisibleButton_RestoresInheritedValueAndSupportsUndo()
+        public void ResetSection_VisibleButton_ResetsOnlyTheCurrentSectionAndSupportsUndo()
         {
             project = ContentEditorTestData.CreateLoadableProject(
                 Path.Combine(folder, "InheritedContent")
@@ -27,23 +27,26 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .Records.First();
             string inheritedName = officer.GetField("DisplayName").Value;
             project.SetField(officer.GetField("DisplayName"), "Overridden name");
+            project.SetField(officer.GetField("EncyclopediaDescription"), "Overridden description");
             workspace.RenderProject(project, assets);
             SelectRecord(officer);
-            ContentEditorFieldView field = view.GetComponentsInChildren<ContentEditorFieldView>()
-                .Single(control => control.Field.MemberName == "DisplayName");
+            Button resetSection = view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "ResetSection");
 
-            field
-                .GetComponentsInChildren<Button>()
-                .Single(button => button.name == "Inheritance")
-                .onClick.Invoke();
+            resetSection.onClick.Invoke();
 
-            ContentPackEditorField reset = project
+            ContentPackEditorRecord reset = project
                 .GetCatalogs()
                 .First(catalog => catalog.Name == "Officers")
-                .Records.First()
-                .GetField("DisplayName");
-            Assert.AreEqual(inheritedName, reset.Value);
-            Assert.IsTrue(reset.IsInherited);
+                .Records.First();
+            Assert.AreEqual(inheritedName, reset.GetField("DisplayName").Value);
+            Assert.IsTrue(reset.GetField("DisplayName").IsInherited);
+            Assert.AreEqual(
+                "Overridden description",
+                reset.GetField("EncyclopediaDescription").Value
+            );
+            Assert.AreEqual("Reset section to defaults", project.UndoDescription);
+            Assert.IsFalse(resetSection.gameObject.activeSelf);
             Assert.IsTrue(project.Undo());
             Assert.AreEqual(
                 "Overridden name",
@@ -54,6 +57,74 @@ namespace Rebellion.Tests.ContentEditor.UI
                     .GetField("DisplayName")
                     .Value
             );
+            Assert.AreEqual(
+                "Overridden description",
+                project
+                    .GetCatalogs()
+                    .First(catalog => catalog.Name == "Officers")
+                    .Records.First()
+                    .GetField("EncyclopediaDescription")
+                    .Value
+            );
+        }
+
+        [Test]
+        public void SelectGenerationTask_TaskWithOverride_ShowsSectionResetImmediately()
+        {
+            project = ContentEditorTestData.CreateLoadableProject(
+                Path.Combine(folder, "InheritedContent")
+            );
+            ContentPackEditorRecord setup = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.Kind == "GameGenerationConfig");
+            ContentPackEditorField multiplier = setup
+                .GetFields()
+                .Single(field => field.MemberName == "CoreMineMultiplier");
+            project.SetField(multiplier, "999");
+            workspace.RenderProject(project, assets);
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("category/Starting setup"));
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "GenerationTab2")
+                .onClick.Invoke();
+            Button resetSection = view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "ResetSection");
+            Assert.IsFalse(resetSection.gameObject.activeSelf);
+
+            TMP_Dropdown task = view.GetComponentsInChildren<TMP_Dropdown>()
+                .Single(dropdown => dropdown.name == "SetupTask");
+            task.value = 3;
+
+            Assert.IsTrue(resetSection.gameObject.activeSelf);
+            Assert.IsTrue(resetSection.interactable);
+        }
+
+        [Test]
+        public void ResetSection_RemovedLookupThreshold_ShowsResetAndRestoresInheritedTables()
+        {
+            project = ContentEditorTestData.CreateLoadableProject(
+                Path.Combine(folder, "InheritedContent")
+            );
+            workspace.RenderProject(project, assets);
+            ContentEditorNumericGrid grid = SelectSharedMissionRules();
+            ContentPackEditorDocument document = grid.ResetFields.First().Document;
+            string inherited = document.Text;
+            Button removeFirstRow = view.GetComponentsInChildren<Button>()
+                .First(button =>
+                    button.name.StartsWith("RemoveScoreTemplate", StringComparison.Ordinal)
+                );
+
+            removeFirstRow.onClick.Invoke();
+
+            Button resetSection = view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "ResetSection");
+            Assert.AreNotEqual(inherited, document.Text);
+            Assert.IsTrue(resetSection.gameObject.activeSelf);
+            resetSection.onClick.Invoke();
+            Assert.AreEqual(inherited, document.Text);
+            Assert.IsFalse(resetSection.gameObject.activeSelf);
         }
 
         [UnityTest]

@@ -39,7 +39,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.XmlSubmitted += ApplyXml;
         view.FieldSubmitted += ApplyField;
         view.FieldValidationRequested += ValidateField;
-        view.FieldInheritanceResetRequested += ResetInheritance;
+        view.SectionInheritanceResetRequested += ResetSectionInheritance;
         view.CollectionAddRequested += AddCollectionEntry;
         view.CollectionRemoveRequested += RemoveCollectionEntry;
         view.CollectionQuantitiesSubmitted += ApplyCollectionQuantities;
@@ -143,14 +143,12 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
     }
 
     /// <summary>
-    /// Removes a setting override and rebinds the inspector to its inherited value.
+    /// Removes the active section's setting overrides and rebinds its inherited values.
     /// </summary>
-    /// <param name="field">The project-owned setting.</param>
-    private void ResetInheritance(ContentPackEditorField field)
+    /// <param name="fields">The project-owned settings displayed by the active section.</param>
+    private void ResetSectionInheritance(IReadOnlyList<ContentPackEditorField> fields)
     {
-        if (!view.CommitFields())
-            return;
-        Project.ResetFieldToInherited(field);
+        Project.ResetFieldsToInherited(fields);
         view.RenderProject(Project, assets);
     }
 
@@ -400,7 +398,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.XmlSubmitted -= ApplyXml;
         view.FieldSubmitted -= ApplyField;
         view.FieldValidationRequested -= ValidateField;
-        view.FieldInheritanceResetRequested -= ResetInheritance;
+        view.SectionInheritanceResetRequested -= ResetSectionInheritance;
         view.CollectionAddRequested -= AddCollectionEntry;
         view.CollectionRemoveRequested -= RemoveCollectionEntry;
         view.CollectionQuantitiesSubmitted -= ApplyCollectionQuantities;

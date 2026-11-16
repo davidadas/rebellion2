@@ -72,6 +72,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private Button duplicateButton;
 
     [SerializeField]
+    private Button resetSectionButton;
+
+    [SerializeField]
     private Button addUnitButton;
 
     [SerializeField]
@@ -218,7 +221,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     internal event Action<ContentEditorXmlScope, string, int> XmlSubmitted;
     internal event Action<ContentPackEditorField, IReadOnlyList<string>> FieldSubmitted;
     internal event Action<ContentPackEditorField> FieldValidationRequested;
-    internal event Action<ContentPackEditorField> FieldInheritanceResetRequested;
+    internal event Action<IReadOnlyList<ContentPackEditorField>> SectionInheritanceResetRequested;
     internal event Action<ContentPackEditorRecord> MapEditStarted;
     internal event Action<ContentPackEditorRecord, Vector2Int> MapMoved;
     internal event Action MapEditEnded;
@@ -372,6 +375,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || confirmation == null
             || imagePreview == null
             || previewAudio == null
+            || resetSectionButton == null
             || generationTabs == null
             || generationTabs.Length != ContentEditorContentSections.GenerationSections.Length
             || generationTabs.Any(button => button == null)
@@ -409,13 +413,13 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         form.RemoveMessageRequested += ConfirmRemoveMessage;
         form.ClearFieldsRequested += ForwardClearFields;
         form.Changed += HandleFieldChanged;
+        form.PresentationChanged += UpdateResetSectionPresentation;
         form.FieldSubmitted += SubmitField;
         form.SelectionRequested += ShowFieldSelection;
         form.UnitSelectionRequested += ShowUnitSelection;
         form.CollectionAddRequested += ForwardCollectionAdd;
         form.CollectionRemoveRequested += ConfirmCollectionRemove;
         form.FieldValidationRequested += ValidateField;
-        form.FieldInheritanceResetRequested += ResetInheritance;
         form.ImportRequested += ImportMedia;
         form.PreviewRequested += PreviewMedia;
         form.ValidationFailed += ReportFieldError;
@@ -425,6 +429,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         xml.DiscardRequested += RequestDiscardXml;
         xml.ScopeRequested += RequestXmlScope;
         duplicateButton.onClick.AddListener(DuplicateRecord);
+        resetSectionButton.onClick.AddListener(RequestSectionReset);
         addUnitButton.onClick.AddListener(AddUnit);
         deleteButton.onClick.AddListener(ConfirmDeleteRecord);
         packDialog.CreateRequested += ForwardCreateRequest;
@@ -456,6 +461,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             navigationScope: recordScroll.transform
         );
         duplicateButton.interactable = false;
+        resetSectionButton.gameObject.SetActive(false);
         deleteButton.interactable = false;
         form.HidePreview();
         tabRoot.gameObject.SetActive(false);
@@ -483,13 +489,13 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             form.RemoveMessageRequested -= ConfirmRemoveMessage;
             form.ClearFieldsRequested -= ForwardClearFields;
             form.Changed -= HandleFieldChanged;
+            form.PresentationChanged -= UpdateResetSectionPresentation;
             form.FieldSubmitted -= SubmitField;
             form.SelectionRequested -= ShowFieldSelection;
             form.UnitSelectionRequested -= ShowUnitSelection;
             form.CollectionAddRequested -= ForwardCollectionAdd;
             form.CollectionRemoveRequested -= ConfirmCollectionRemove;
             form.FieldValidationRequested -= ValidateField;
-            form.FieldInheritanceResetRequested -= ResetInheritance;
             form.ImportRequested -= ImportMedia;
             form.PreviewRequested -= PreviewMedia;
             form.ValidationFailed -= ReportFieldError;
@@ -504,6 +510,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             map.DragEnded -= FinishMapDrag;
             packDialog.CreateRequested -= ForwardCreateRequest;
             packDialog.BrowseRequested -= ForwardBrowseRequest;
+            resetSectionButton.onClick.RemoveListener(RequestSectionReset);
         }
     }
 
@@ -708,6 +715,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             map.gameObject.SetActive(false);
             form.gameObject.SetActive(false);
             tabRoot.gameObject.SetActive(false);
+            resetSectionButton.gameObject.SetActive(false);
             xml.Hide();
             duplicateButton.interactable = false;
             deleteButton.interactable = false;
@@ -919,6 +927,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         map.gameObject.SetActive(false);
         form.gameObject.SetActive(false);
         tabRoot.gameObject.SetActive(false);
+        resetSectionButton.gameObject.SetActive(false);
         xml.Hide();
         duplicateButton.interactable = deleteButton.interactable = false;
         recordTitle.text = "Create or open a content pack";
@@ -1402,6 +1411,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         map.gameObject.SetActive(isMap);
         tabRoot.gameObject.SetActive(record != null);
         form.gameObject.SetActive(record != null);
+        resetSectionButton.gameObject.SetActive(false);
         duplicateButton.interactable = record?.Catalog.CanDuplicate == true;
         deleteButton.interactable = record?.Kind == "Faction" || duplicateButton.interactable;
         if (record == null)
@@ -1625,6 +1635,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             textRedoTarget = null;
         ((RectTransform)form.transform).offsetMax = new Vector2(0, -inspectorTop);
         form.Render(project, assets, selectedRecord, selectedPage, section, rebind);
+        UpdateResetSectionPresentation();
     }
 
     /// <summary>
@@ -1634,6 +1645,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     {
         RefreshProjectState();
         RenderRecords(revealSelection: false);
+        UpdateResetSectionPresentation();
         fieldLayoutDirty = true;
         if (selectedRecord?.Catalog.IsMap == true)
             RenderMap();
@@ -1726,6 +1738,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         map.gameObject.SetActive(false);
         form.gameObject.SetActive(false);
         tabRoot.gameObject.SetActive(false);
+        resetSectionButton.gameObject.SetActive(false);
         xml.Show(eventConfiguration: true);
     }
 
@@ -2350,11 +2363,30 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         FieldValidationRequested?.Invoke(field);
 
     /// <summary>
-    /// Forwards a request to remove one authored setting override.
+    /// Shows the section reset only while the active inspector tab owns local overrides.
     /// </summary>
-    /// <param name="field">The setting being returned to inheritance.</param>
-    private void ResetInheritance(ContentPackEditorField field) =>
-        FieldInheritanceResetRequested?.Invoke(field);
+    private void UpdateResetSectionPresentation()
+    {
+        bool canReset =
+            selectedRecord != null
+            && section != "Advanced"
+            && form.gameObject.activeSelf
+            && form.GetOverriddenFields().Count > 0;
+        resetSectionButton.gameObject.SetActive(canReset);
+        resetSectionButton.interactable = canReset;
+    }
+
+    /// <summary>
+    /// Commits pending drafts before requesting one batch reset for the active inspector section.
+    /// </summary>
+    private void RequestSectionReset()
+    {
+        if (!CommitFields())
+            return;
+        IReadOnlyList<ContentPackEditorField> fields = form.GetOverriddenFields();
+        if (fields.Count > 0)
+            SectionInheritanceResetRequested?.Invoke(fields);
+    }
 }
 
 /// <summary>

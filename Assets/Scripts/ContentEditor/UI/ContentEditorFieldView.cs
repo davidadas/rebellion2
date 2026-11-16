@@ -29,9 +29,6 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     private Button revertButton;
 
     [SerializeField]
-    private Button inheritanceButton;
-
-    [SerializeField]
     private Button selectItemsButton;
 
     [SerializeField]
@@ -53,11 +50,11 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     private float lastLabelWidth;
     private IReadOnlyList<string> choiceValues = Array.Empty<string>();
     private IReadOnlyList<string> mediaFiles = Array.Empty<string>();
+    private ContentEditorColorRole backgroundRole = ContentEditorColorRole.Input;
 
     public event Action<string> ValidationFailed;
     public event Action<ContentPackEditorField, IReadOnlyList<string>> Submitted;
     public event Action<ContentPackEditorField> ValidationRequested;
-    public event Action<ContentPackEditorField> InheritanceResetRequested;
     public event Action<ContentPackEditorField> SelectionRequested;
 
     public int Height => PreferredHeight(((RectTransform)transform).rect.width, lastLabelWidth);
@@ -70,8 +67,31 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     /// Applies the owning form's background palette to the editable value.
     /// </summary>
     /// <param name="role">The background's semantic palette role.</param>
-    public void SetBackgroundRole(ContentEditorColorRole role) =>
+    public void SetBackgroundRole(ContentEditorColorRole role)
+    {
+        backgroundRole = role;
+        ApplyBackgroundRole();
+    }
+
+    /// <summary>
+    /// Distinguishes an authored override from the owning form's normal input background.
+    /// </summary>
+    private void ApplyBackgroundRole()
+    {
+        bool overridden = field?.CanInherit == true && !field.IsInherited;
+        ContentEditorColorRole role =
+            overridden && input.gameObject.activeSelf
+                ? ContentEditorColorRole.OverrideInput
+                : backgroundRole;
         input.GetComponent<ContentEditorColorBinding>().SetRole(role);
+        label
+            .GetComponent<ContentEditorColorBinding>()
+            .SetRole(
+                overridden && !input.gameObject.activeSelf
+                    ? ContentEditorColorRole.Accent
+                    : ContentEditorColorRole.Text
+            );
+    }
 
     /// <summary>
     /// Centers a compact numeric control and its text within the owning table cell.
@@ -135,14 +155,6 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             labelHeight + 24
         );
         bool multiline = field.IsMultiline || field.IsList && input.gameObject.activeSelf;
-        if (multiline && input.gameObject.activeSelf && !field.IsMediaDirectory)
-        {
-            float textWidth = Mathf.Max(1, bounds.width - valueLeft - 28);
-            float textHeight = input
-                .textComponent.GetPreferredValues(input.text, textWidth, float.PositiveInfinity)
-                .y;
-            height = Mathf.Max(height, Mathf.CeilToInt(textHeight + labelExtra + 52));
-        }
         int bodyHeight = height;
         int errorHeight = HasError
             ? Mathf.Max(
@@ -158,24 +170,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
                 )
             )
             : 0;
-        bounds.height = height + (HasError ? errorHeight + 8 : 0) + (field.CanInherit ? 36 : 0);
-        inheritanceButton.gameObject.SetActive(field.CanInherit);
-        inheritanceButton.interactable = !field.IsInherited;
-        if (field.CanInherit)
-        {
-            float available = Mathf.Max(1, bounds.width - valueLeft - 8);
-            UILayout.SetSourceRect(
-                (RectTransform)inheritanceButton.transform,
-                Mathf.RoundToInt(valueLeft),
-                bodyHeight + (HasError ? errorHeight + 8 : 0),
-                Mathf.RoundToInt(Mathf.Min(148, available)),
-                28
-            );
-            inheritanceButton.GetComponentInChildren<TMP_Text>().text =
-                field.IsInherited ? "Inherited"
-                : available < 148 ? "Reset"
-                : "Reset to inherited";
-        }
+        bounds.height = height + (HasError ? errorHeight + 8 : 0);
         RectTransform root = (RectTransform)transform;
         UILayout.SetSourceRect(
             root,
@@ -212,16 +207,14 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         value.anchorMax = Vector2.one;
         value.pivot = Vector2.up;
         value.offsetMin = new Vector2(valueLeft, -valueTop - valueHeight);
-        value.offsetMax = new Vector2(
-            field.IsMedia && !field.IsMediaDirectory && !stackedMedia ? -190 : -8,
-            -valueTop
-        );
+        float valueRight = field.IsMedia && !field.IsMediaDirectory && !stackedMedia ? 190 : 8;
+        value.offsetMax = new Vector2(-valueRight, -valueTop);
         if (field.IsNumber && !multiline)
         {
             value.anchorMin = value.anchorMax = value.pivot = Vector2.up;
             value.anchoredPosition = new Vector2(valueLeft, -valueTop);
             value.sizeDelta = new Vector2(
-                Mathf.Min(120, Mathf.Max(1, bounds.width - valueLeft - 8)),
+                Mathf.Min(120, Mathf.Max(1, bounds.width - valueLeft - valueRight)),
                 valueHeight
             );
         }
@@ -344,15 +337,6 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     }
 
     /// <summary>
-    /// Requests removal of this field's authored override.
-    /// </summary>
-    private void ResetToInherited()
-    {
-        if (field?.CanInherit == true && !field.IsInherited)
-            InheritanceResetRequested?.Invoke(field);
-    }
-
-    /// <summary>
     /// Restores the last accepted value without undoing other project changes.
     /// </summary>
     public void RevertDraft()
@@ -388,7 +372,6 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             || error == null
             || importButton == null
             || revertButton == null
-            || inheritanceButton == null
             || selectItemsButton == null
             || choiceDropdown == null
             || previewButton == null
@@ -396,7 +379,6 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         )
             throw new MissingReferenceException(name + " has incomplete field references.");
         revertButton.onClick.AddListener(RevertDraft);
-        inheritanceButton.onClick.AddListener(ResetToInherited);
         selectItemsButton.onClick.AddListener(RequestSelection);
         bound = true;
         input.onEndEdit.AddListener(ApplyText);
@@ -417,8 +399,6 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     {
         if (revertButton != null)
             revertButton.onClick.RemoveListener(RevertDraft);
-        if (inheritanceButton != null)
-            inheritanceButton.onClick.RemoveListener(ResetToInherited);
         if (selectItemsButton != null)
             selectItemsButton.onClick.RemoveListener(RequestSelection);
         if (bound)
@@ -443,11 +423,9 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         try
         {
             BindControls();
-            SetBackgroundRole(ContentEditorColorRole.Input);
             presentation = value;
             field = value.Field;
-            inheritanceButton.gameObject.SetActive(field.CanInherit);
-            inheritanceButton.interactable = !field.IsInherited;
+            backgroundRole = ContentEditorColorRole.Input;
             help.Configure(field.HelpText, input);
             IReadOnlyDictionary<string, string> referenceLabels = value.ReferenceLabels;
             choiceValues =
@@ -581,6 +559,11 @@ public sealed class ContentEditorFieldView : MonoBehaviour
                     field.IsMultiline || field.IsList
                         ? TMP_InputField.LineType.MultiLineNewline
                         : TMP_InputField.LineType.SingleLine;
+                bool multilineInput = input.lineType != TMP_InputField.LineType.SingleLine;
+                input.verticalScrollbar.gameObject.SetActive(multilineInput);
+                RectTransform viewport = input.textViewport;
+                viewport.offsetMin = new Vector2(10, 6);
+                viewport.offsetMax = new Vector2(multilineInput ? -28 : -10, -6);
                 input.textComponent.textWrappingMode =
                     field.IsMultiline || field.IsList
                         ? TextWrappingModes.Normal
@@ -599,6 +582,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             if (field.IsMediaDirectory)
                 RenderMediaFiles();
             input.GetComponent<TextInputHistory>()?.ClearHistory();
+            ApplyBackgroundRole();
             gameObject.SetActive(true);
         }
         finally
@@ -684,6 +668,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             error.text = string.Empty;
             if (field.IsMediaDirectory)
                 RenderMediaFiles();
+            ApplyBackgroundRole();
             if (modified)
                 changed?.Invoke();
         }
@@ -720,6 +705,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         {
             Submitted?.Invoke(field, choiceValues.Where(selected.Contains).ToArray());
             error.text = string.Empty;
+            ApplyBackgroundRole();
             changed?.Invoke();
         }
         catch (ArgumentException exception)

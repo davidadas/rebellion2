@@ -112,5 +112,47 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.AreEqual(before, document.Text);
             Assert.IsFalse(project.Undo());
         }
+
+        [Test]
+        public void ResetFieldsToInherited_AddedAndRemovedThresholds_RestoresEveryTableOverride()
+        {
+            project = ContentEditorTestData.CreateLoadableProject(
+                Path.Combine(folder, "InheritedContent")
+            );
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            navigation.SetExpanded(true);
+            grid = new ContentEditorNumericGrid(
+                navigation
+                    .GetRows(string.Empty)
+                    .Single(page => page.Caption == "Shared mission rules")
+                    .Fields
+            );
+            int[] inheritedColumns = Enumerable
+                .Range(0, grid.Columns.Count)
+                .Where(candidate => grid.ResetFields[candidate].CanInherit)
+                .ToArray();
+            Assert.IsNotEmpty(inheritedColumns);
+            int column = inheritedColumns[0];
+            int removedScore = grid.Scores.First(candidate =>
+                grid.GetCell(candidate, column).Value.Length > 0
+            );
+            ContentPackEditorField removedCell = grid.GetCell(removedScore, column);
+            ContentPackEditorDocument document = removedCell.Document;
+            string inherited = document.Text;
+            project.ClearFields(new[] { removedCell });
+            Assert.IsTrue(grid.AddScore(1234));
+            project.SetField(grid.GetCell(1234, column), "43");
+            string edited = document.Text;
+
+            project.ResetFieldsToInherited(
+                grid.ResetFields.Where(field => field.CanInherit).ToArray()
+            );
+
+            Assert.AreEqual(inherited, document.Text);
+            Assert.AreEqual("Reset section to defaults", project.UndoDescription);
+            Assert.IsTrue(project.Undo());
+            Assert.AreEqual(edited, document.Text);
+        }
     }
 }
