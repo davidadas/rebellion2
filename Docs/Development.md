@@ -127,4 +127,3 @@ authored metadata. See the media repository's README for the complete layout.
 
 Capital-ship component damage and its campaign repair timer are saved per ship. Shared tactical
 geometry and media references remain pack data. Older saves load with an undamaged component record.
-
