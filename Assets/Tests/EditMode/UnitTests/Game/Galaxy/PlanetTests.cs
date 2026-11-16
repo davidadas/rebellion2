@@ -71,60 +71,6 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(selector, copy.SpaceCombatEntryFaction);
         }
 
-        [TestCase(null)]
-        [TestCase(false)]
-        [TestCase(true)]
-        public void HasBeenControlled_SerializedPlanet_RetainsKnownOrUnknownHistory(bool? history)
-        {
-            Planet planet = CreatePlanetWithControlHistory(history);
-
-            string serialized = SerializationHelper.Serialize(planet);
-            Planet restored = SerializationHelper.Deserialize<Planet>(serialized);
-
-            Assert.AreEqual(history, restored.HasBeenControlled);
-            if (!history.HasValue)
-                StringAssert.DoesNotContain("HasBeenControlled", serialized);
-        }
-
-        [TestCase(null)]
-        [TestCase("FNALL1")]
-        public void HasBeenControlled_OlderPlanetWithoutHistory_RemainsUnknown(string ownerID)
-        {
-            Planet planet = SerializationHelper.Deserialize<Planet>(
-                "<Planet><DisplayName>Test planet</DisplayName><OwnerInstanceID>"
-                    + ownerID
-                    + "</OwnerInstanceID></Planet>"
-            );
-
-            Assert.IsNull(planet.HasBeenControlled);
-        }
-
-        [TestCase(null)]
-        [TestCase(false)]
-        [TestCase(true)]
-        public void CreateCopy_RetainedControlHistory_PreservesNullableState(bool? history)
-        {
-            Planet planet = CreatePlanetWithControlHistory(history);
-            planet.OwnerInstanceID = "FNALL1";
-
-            Planet copy = (Planet)planet.CreateCopy();
-
-            Assert.AreEqual(history, copy.HasBeenControlled);
-        }
-
-        [Test]
-        public void OwnerInstanceID_DetachedViewChanges_LeavesControlHistoryUnknown()
-        {
-            Planet planet = new();
-            Planet view = (Planet)planet.CreateCopy();
-
-            view.OwnerInstanceID = "FNALL1";
-            view.SetOwnerInstanceID(null);
-
-            Assert.IsNull(view.HasBeenControlled);
-            Assert.IsNull(planet.HasBeenControlled);
-        }
-
         [Test]
         public void GetProductionFacilities_DestroyedPlanet_ReturnsNoUsableCapacity()
         {
@@ -1515,23 +1461,6 @@ namespace Rebellion.Tests.Game.Galaxy
             double distance = _planet.GetRawDistanceTo(targetPlanet);
 
             Assert.AreEqual(5, distance);
-        }
-
-        /// <summary>
-        /// Reads an explicit retained history value, leaving an absent value unknown.
-        /// </summary>
-        /// <param name="history">The retained history value, or null for an older planet.</param>
-        /// <returns>The deserialized planet.</returns>
-        private static Planet CreatePlanetWithControlHistory(bool? history)
-        {
-            string historyElement = history.HasValue
-                ? "<HasBeenControlled>"
-                    + (history.Value ? "true" : "false")
-                    + "</HasBeenControlled>"
-                : string.Empty;
-            return SerializationHelper.Deserialize<Planet>(
-                "<Planet>" + historyElement + "</Planet>"
-            );
         }
 
         /// <summary>

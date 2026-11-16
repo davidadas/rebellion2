@@ -59,16 +59,6 @@ namespace Rebellion.Game.Galaxy
         public bool IsColonized { get; set; }
         public int PlanetDataId { get; set; }
 
-        [PersistableMember(Name = nameof(HasBeenControlled))]
-        private bool? _hasBeenControlled;
-
-        /// <summary>
-        /// Gets whether faction control has been established in this planet's history.
-        /// A null value retains unknown history rather than classifying an older planet.
-        /// </summary>
-        [PersistableIgnore]
-        public bool? HasBeenControlled => _hasBeenControlled;
-
         /// <summary>
         /// Gets or sets the retained faction selector for space-combat arrival presentation.
         /// Zero records no activation, one and two identify the two authored combat factions,
@@ -184,7 +174,6 @@ namespace Rebellion.Game.Galaxy
             Planet copy = (Planet)destination;
             copy.IsColonized = IsColonized;
             copy.PlanetDataId = PlanetDataId;
-            copy._hasBeenControlled = _hasBeenControlled;
             copy.SpaceCombatEntryFaction = SpaceCombatEntryFaction;
             copy.NumRawResourceNodes = NumRawResourceNodes;
             copy.EnergyCapacity = EnergyCapacity;
@@ -326,11 +315,6 @@ namespace Rebellion.Game.Galaxy
             IsInUprising = false;
             ResetUprisingTimers();
         }
-
-        /// <summary>
-        /// Records the observed fact that a faction has controlled this planet.
-        /// </summary>
-        internal void RecordFactionControl() => _hasBeenControlled = true;
 
         /// <summary>
         /// Clears a destroyed planet's control, population, and scheduled planetary activity.
