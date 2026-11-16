@@ -12,7 +12,6 @@ namespace Rebellion.Tests.MultiplayerIntegration
         internal string Role;
         internal string RunID;
         internal string ReportDirectory;
-        internal string SessionPath;
         internal bool ForceRelay;
         internal bool VerifyRecovery;
         internal int CapitalsPerSide = 1;
@@ -69,7 +68,6 @@ namespace Rebellion.Tests.MultiplayerIntegration
                 Role = role,
                 RunID = runID,
                 ReportDirectory = Path.Combine(reportDirectory, runID),
-                SessionPath = sessionPath,
             };
             if (values.TryGetValue("-eosTacticalForceRelay", out string relay))
             {

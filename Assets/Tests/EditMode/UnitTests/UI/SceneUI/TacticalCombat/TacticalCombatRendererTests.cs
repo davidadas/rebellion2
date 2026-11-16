@@ -263,7 +263,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             Assert.AreEqual(TacticalCombatSelectionKind.Empty, guest.Selection.Kind);
             Assert.IsTrue(host.ApplyNetworkCommand(CombatSide.Defender, commands[0]));
 
-            guest.ApplyNetworkFrame(host.CaptureNetworkFrame(1));
+            ApplyCapturedProjection(guest, host.CaptureNetworkFrame(1));
             controller.Advance(0);
 
             Assert.AreEqual(TacticalCombatSelectionKind.ObjectGroup, guest.Selection.Kind);
@@ -297,8 +297,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 target.Heading = Vector3N.Normalize(Vector3N.UnitZ + Vector3N.UnitX);
                 TacticalCombatNetworkFrame second = host.CaptureNetworkFrame(2);
                 second.TimestampMilliseconds = 100;
-                guest.ApplyNetworkFrame(first);
-                guest.ApplyNetworkFrame(second);
+                ApplyCapturedProjection(guest, first);
+                ApplyCapturedProjection(guest, second);
                 yield return PrepareRenderer(guest, pack);
                 guest.AdvanceNetworkPresentation(50);
 
@@ -383,8 +383,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 departing.HyperspaceMilliseconds = 1200;
                 TacticalCombatNetworkFrame second = host.CaptureNetworkFrame(2);
                 second.TimestampMilliseconds = 100;
-                guest.ApplyNetworkFrame(first);
-                guest.ApplyNetworkFrame(second);
+                ApplyCapturedProjection(guest, first);
+                ApplyCapturedProjection(guest, second);
                 yield return PrepareRenderer(guest, pack);
                 guest.AdvanceNetworkPresentation(50);
 
@@ -2102,6 +2102,22 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             /// Counts releases of the controller-owned driver.
             /// </summary>
             public void Dispose() => DisposeCount++;
+        }
+
+        /// <summary>
+        /// Applies a captured projection through the same separated state and reliable-effect boundaries as live playback.
+        /// </summary>
+        /// <param name="session">The passive encounter receiving the projection.</param>
+        /// <param name="frame">The captured state and its separately delivered effects.</param>
+        private static void ApplyCapturedProjection(
+            TacticalCombatSession session,
+            TacticalCombatNetworkFrame frame
+        )
+        {
+            TacticalCombatNetworkEffect[] effects = frame.Effects;
+            frame.Effects = System.Array.Empty<TacticalCombatNetworkEffect>();
+            session.ApplyNetworkState(frame);
+            session.ApplyNetworkEffects(effects);
         }
 
         /// <summary>

@@ -94,23 +94,6 @@ namespace Rebellion.Tests.MultiplayerIntegration
         internal EosTacticalRouteObservation[] Capture() => _observations.ToArray();
 
         /// <summary>
-        /// Tests actual callback evidence for the expected authenticated counterpart and network route.
-        /// </summary>
-        /// <param name="remoteProductUserID">The counterpart admitted by the production lobby.</param>
-        /// <param name="networkType">The network route that must have been observed.</param>
-        /// <returns>Whether the SDK reported that route for the exact admitted connection.</returns>
-        internal bool HasObserved(string remoteProductUserID, NetworkConnectionType networkType)
-        {
-            foreach (EosTacticalRouteObservation observation in _observations)
-                if (
-                    observation.RemoteUserID == remoteProductUserID
-                    && observation.NetworkType == networkType
-                )
-                    return true;
-            return false;
-        }
-
-        /// <summary>
         /// Releases only this test's independent native notification before platform shutdown.
         /// </summary>
         public void Dispose()

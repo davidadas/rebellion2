@@ -10,16 +10,6 @@ namespace Rebellion.Gameplay
         private TacticalCombatMovieRequest _unannouncedNetworkMovie;
 
         /// <summary>
-        /// Applies one complete authoritative projection after validating every referenced identity.
-        /// No local combat clock, random stream, damage, repair, or order queue is advanced.
-        /// </summary>
-        /// <param name="frame">The next authoritative state and ordered presentation edges.</param>
-        public void ApplyNetworkFrame(TacticalCombatNetworkFrame frame)
-        {
-            ApplyNetworkFrameCore(frame, false);
-        }
-
-        /// <summary>
         /// Restores replaceable authority state while retaining movie announcements for reliable effects.
         /// </summary>
         /// <param name="frame">The complete state without presentation effects.</param>
@@ -30,16 +20,6 @@ namespace Rebellion.Gameplay
                     "Replaceable state cannot contain presentation effects.",
                     nameof(frame)
                 );
-            ApplyNetworkFrameCore(frame, true);
-        }
-
-        /// <summary>
-        /// Applies a validated state and optionally defers its presentation announcement boundary.
-        /// </summary>
-        /// <param name="frame">The complete authority projection.</param>
-        /// <param name="deferMovie">Whether a reliable movie effect owns the pending announcement.</param>
-        private void ApplyNetworkFrameCore(TacticalCombatNetworkFrame frame, bool deferMovie)
-        {
             if (!_networkReplica)
                 throw new InvalidOperationException(
                     "Only a combat replica can receive an authoritative projection."
@@ -142,9 +122,6 @@ namespace Rebellion.Gameplay
                 _unannouncedNetworkMovie = null;
             }
             _appliedNetworkSequence = frame.Sequence;
-            ApplyNetworkEffects(frame.Effects);
-            if (!deferMovie && _unannouncedNetworkMovie != null)
-                AnnounceNetworkMovie();
             if (!withdrew && _networkCommandsSuspended[(int)PlayerSide])
                 Selection.ApplyNetworkWithdrawal();
             if (
@@ -171,7 +148,7 @@ namespace Rebellion.Gameplay
                 throw new InvalidOperationException(
                     "Only a combat replica can receive presentation effects."
                 );
-            ValidateNetworkEffects(effects, null);
+            ValidateNetworkEffects(effects);
             foreach (TacticalCombatNetworkEffect effect in effects)
                 if (effect.Kind == TacticalCombatNetworkEffectKind.Movie)
                 {
@@ -410,7 +387,6 @@ namespace Rebellion.Gameplay
                 RequireNetworkUnit(state.PrimaryID);
                 RequireNetworkUnit(state.InspectedID);
             }
-            ValidateNetworkEffects(frame.Effects, frame.MovieID);
             if (
                 frame.MovieID < 0
                 || frame.MovieID != 0
@@ -433,8 +409,7 @@ namespace Rebellion.Gameplay
         /// Validates every reliable edge before any edge in its batch can change presentation.
         /// </summary>
         /// <param name="effects">The proposed ordered batch.</param>
-        /// <param name="movieID">The movie identity required by a combined projection, when supplied.</param>
-        private void ValidateNetworkEffects(TacticalCombatNetworkEffect[] effects, int? movieID)
+        private void ValidateNetworkEffects(TacticalCombatNetworkEffect[] effects)
         {
             if (effects == null)
                 throw new ArgumentNullException(nameof(effects));
@@ -452,11 +427,7 @@ namespace Rebellion.Gameplay
                         && !Enum.IsDefined(typeof(TacticalCombatImpactKind), effect.Impact)
                     || effect.Kind == TacticalCombatNetworkEffectKind.Notification
                         && (uint)effect.MessageID >= 317
-                    || effect.Kind == TacticalCombatNetworkEffectKind.Movie
-                        && (
-                            effect.MovieID <= 0
-                            || movieID.HasValue && effect.MovieID != movieID.Value
-                        )
+                    || effect.Kind == TacticalCombatNetworkEffectKind.Movie && effect.MovieID <= 0
                 )
                     throw new ArgumentException(
                         "The combat effect projection is invalid.",

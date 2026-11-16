@@ -88,7 +88,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ApplyNetworkFrame_RemoteSelection_RestoresLocalFactionContextWithoutAdvancingRandom()
+        public void ApplyNetworkState_RemoteSelection_RestoresLocalFactionContextWithoutAdvancingRandom()
         {
             TacticalCombatSession authority = CreateAuthority();
             SystemRandomProvider random = new(12);
@@ -96,7 +96,7 @@ namespace Rebellion.Tests.Gameplay
             authority.ApplyNetworkCommand(CombatSide.Defender, Object("alliance"));
             long draws = random.CallCount;
 
-            replica.ApplyNetworkFrame(authority.CaptureNetworkFrame(1));
+            ApplyCapturedProjection(replica, authority.CaptureNetworkFrame(1));
 
             Assert.AreEqual(CombatSide.Defender, replica.PlayerSide);
             Assert.AreEqual(TacticalCombatSelectionKind.SingleObject, replica.Selection.Kind);
@@ -106,7 +106,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ApplyNetworkFrame_JsonRoundTrip_NormalizesAbsentOptionalIdentitiesAndRejectsInvalidReferences()
+        public void ApplyNetworkState_JsonRoundTrip_NormalizesAbsentOptionalIdentitiesAndRejectsInvalidReferences()
         {
             TacticalCombatSession authority = CreateAuthority();
             TacticalCombatSession replica = CreateReplica();
@@ -119,7 +119,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(string.Empty, restored.Units[0].CarrierID);
             Assert.AreEqual(string.Empty, restored.Units[0].TargetID);
 
-            replica.ApplyNetworkFrame(restored);
+            ApplyCapturedProjection(replica, restored);
 
             Assert.IsNull(replica.GetUnit(restored.Units[0].UnitID).CarrierID);
             Assert.IsNull(replica.GetUnit(restored.Units[0].UnitID).TargetID);
@@ -128,23 +128,23 @@ namespace Rebellion.Tests.Gameplay
                     UnityEngine.JsonUtility.ToJson(authority.CaptureNetworkFrame(2))
                 );
             next.Units[0].TargetID = "missing";
-            Assert.Throws<ArgumentException>(() => replica.ApplyNetworkFrame(next));
+            Assert.Throws<ArgumentException>(() => replica.ApplyNetworkState(next));
             next.Units[0].TargetID = string.Empty;
             next.Groups[0].Members[0] = string.Empty;
-            Assert.Throws<ArgumentException>(() => replica.ApplyNetworkFrame(next));
+            Assert.Throws<ArgumentException>(() => replica.ApplyNetworkState(next));
             Assert.AreEqual(captured.SystemTime, replica.SystemTime);
         }
 
         [Test]
-        public void ApplyNetworkFrame_SameKindDifferentSelection_NotifiesContextReplacementOnce()
+        public void ApplyNetworkState_SameKindDifferentSelection_NotifiesContextReplacementOnce()
         {
             TacticalCombatSession authority = CreateAuthority(additionalDefender: true);
             TacticalCombatSession replica = CreateReplica(additionalDefender: true);
             int replacements = 0;
             replica.Selection.ContextReplaced += _ => replacements++;
             authority.ApplyNetworkCommand(CombatSide.Defender, Object("alliance"));
-            replica.ApplyNetworkFrame(authority.CaptureNetworkFrame(1));
-            replica.ApplyNetworkFrame(authority.CaptureNetworkFrame(2));
+            ApplyCapturedProjection(replica, authority.CaptureNetworkFrame(1));
+            ApplyCapturedProjection(replica, authority.CaptureNetworkFrame(2));
             Assert.AreEqual(1, replacements);
             authority.ApplyNetworkCommand(
                 CombatSide.Defender,
@@ -152,7 +152,7 @@ namespace Rebellion.Tests.Gameplay
             );
             authority.ApplyNetworkCommand(CombatSide.Defender, Object("alliance-wing"));
 
-            replica.ApplyNetworkFrame(authority.CaptureNetworkFrame(3));
+            ApplyCapturedProjection(replica, authority.CaptureNetworkFrame(3));
 
             Assert.AreEqual(2, replacements);
             Assert.AreEqual(TacticalCombatSelectionKind.SingleObject, replica.Selection.Kind);
@@ -160,14 +160,14 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ApplyNetworkFrame_QueuedGroupCreation_PreservesRequestedAndAppliedOwnership()
+        public void ApplyNetworkState_QueuedGroupCreation_PreservesRequestedAndAppliedOwnership()
         {
             TacticalCombatSession authority = CreateAuthority();
             TacticalCombatSession replica = CreateReplica();
             authority.ApplyNetworkCommand(CombatSide.Defender, Object("alliance"));
             authority.ApplyNetworkCommand(CombatSide.Defender, Object("empire"));
 
-            replica.ApplyNetworkFrame(authority.CaptureNetworkFrame(1));
+            ApplyCapturedProjection(replica, authority.CaptureNetworkFrame(1));
 
             TacticalCombatUnit source = replica.GetUnit("alliance");
             Assert.AreNotSame(replica.GetGroup(source), replica.GetRequestedGroup(source));
@@ -179,7 +179,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ApplyNetworkFrame_ReplacedPendingGroup_RetainsEmptyIdentityUntilAuthoritativeDispatch()
+        public void ApplyNetworkState_ReplacedPendingGroup_RetainsEmptyIdentityUntilAuthoritativeDispatch()
         {
             TacticalCombatSession authority = CreateAuthority();
             TacticalCombatSession replica = CreateReplica();
@@ -195,7 +195,7 @@ namespace Rebellion.Tests.Gameplay
             );
             TacticalCombatNetworkFrame state = authority.CaptureNetworkFrame(1);
 
-            replica.ApplyNetworkFrame(state);
+            ApplyCapturedProjection(replica, state);
 
             Assert.IsTrue(
                 state.Groups.Any(group =>
@@ -238,7 +238,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ApplyNetworkFrame_NaturalFire_ReplaysEffectsOnceAndRestoresPools()
+        public void ApplyNetworkEffects_NaturalFire_ReplaysCapturedEffectsAndRestoresState()
         {
             TacticalCombatSession authority = CreateAuthority();
             TacticalCombatSession replica = CreateReplica();
@@ -259,7 +259,7 @@ namespace Rebellion.Tests.Gameplay
                 authority.Advance(50);
             TacticalCombatNetworkFrame state = authority.CaptureNetworkFrame(1);
 
-            replica.ApplyNetworkFrame(state);
+            ApplyCapturedProjection(replica, state);
 
             Assert.Greater(authoritativeShots, 0);
             Assert.AreEqual(authoritativeShots, projectedShots);
@@ -274,14 +274,14 @@ namespace Rebellion.Tests.Gameplay
                     projected.Weapons.GetCharge(TacticalWeaponArc.Forward)
                 );
             }
-            Assert.Throws<ArgumentException>(() => replica.ApplyNetworkFrame(state));
+            Assert.Throws<ArgumentException>(() => replica.ApplyNetworkState(state));
             Assert.AreEqual(authoritativeShots, projectedShots);
-            replica.ApplyNetworkFrame(authority.CaptureNetworkFrame(2));
+            ApplyCapturedProjection(replica, authority.CaptureNetworkFrame(2));
             Assert.AreEqual(authoritativeShots, projectedShots);
         }
 
         [Test]
-        public void ApplyNetworkFrame_UnknownGroupParticipant_RejectsBeforeMutatingPose()
+        public void ApplyNetworkState_UnknownGroupParticipant_RejectsBeforeMutatingPose()
         {
             TacticalCombatSession authority = CreateAuthority();
             TacticalCombatSession replica = CreateReplica();
@@ -290,7 +290,7 @@ namespace Rebellion.Tests.Gameplay
             state.Units[0].Position = new(new Vector3(40, 40, 40));
             state.Groups[0].Members[0] = "missing";
 
-            Assert.Throws<ArgumentException>(() => replica.ApplyNetworkFrame(state));
+            Assert.Throws<ArgumentException>(() => replica.ApplyNetworkState(state));
 
             Assert.AreEqual(initial, replica.GetUnit(state.Units[0].UnitID).Position);
             Assert.AreEqual(3, replica.SystemTime);
@@ -310,7 +310,7 @@ namespace Rebellion.Tests.Gameplay
                     new() { Kind = TacticalCombatNetworkCommandKind.Withdrawal }
                 )
             );
-            replica.ApplyNetworkFrame(authority.CaptureNetworkFrame(1));
+            ApplyCapturedProjection(replica, authority.CaptureNetworkFrame(1));
 
             Assert.IsTrue(authority.GetSide(CombatSide.Defender).IsWithdrawing);
             Assert.IsFalse(authority.GetSide(CombatSide.Attacker).IsWithdrawing);
@@ -332,7 +332,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsFalse(replica.IsPaused);
             Assert.AreEqual(TacticalCombatNetworkCommandKind.Pause, submitted.Kind);
             Assert.IsTrue(authority.ApplyNetworkCommand(CombatSide.Defender, submitted));
-            replica.ApplyNetworkFrame(authority.CaptureNetworkFrame(1));
+            ApplyCapturedProjection(replica, authority.CaptureNetworkFrame(1));
             Assert.IsTrue(replica.IsPaused);
             Assert.IsTrue(authority.IsPaused);
         }
@@ -382,7 +382,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ApplyNetworkFrame_AddressedBriefing_QueuesOnlyTheLocalFactionsCue()
+        public void ApplyNetworkEffects_AddressedBriefing_QueuesOnlyTheLocalFactionsCue()
         {
             TacticalCombatSession authority = CreateAuthority();
             TacticalCombatSession replica = CreateReplica();
@@ -390,14 +390,14 @@ namespace Rebellion.Tests.Gameplay
             replica.Audio.NotificationRequested += (message, _) => requested.Add(message);
             authority.Advance(50);
 
-            replica.ApplyNetworkFrame(authority.CaptureNetworkFrame(1));
+            ApplyCapturedProjection(replica, authority.CaptureNetworkFrame(1));
 
             CollectionAssert.Contains(requested, 32);
             CollectionAssert.DoesNotContain(requested, 154);
         }
 
         [Test]
-        public void ApplyNetworkFrame_TractorRestraint_RestoresLiveInspectionMovement()
+        public void ApplyNetworkState_TractorRestraint_RestoresLiveInspectionMovement()
         {
             TacticalCombatSession authority = CreateAuthority();
             TacticalCombatSession replica = CreateReplica();
@@ -405,7 +405,7 @@ namespace Rebellion.Tests.Gameplay
             state.Units.Single(unit => unit.UnitID == "alliance").TractorRestraint = 100;
             state.Units.Single(unit => unit.UnitID == "alliance").HasTractorSources = true;
 
-            replica.ApplyNetworkFrame(state);
+            ApplyCapturedProjection(replica, state);
 
             Assert.AreEqual(0, replica.GetMovementBudget(replica.GetUnit("alliance")));
             Assert.AreEqual(0, replica.GetMovementRatio(replica.GetUnit("alliance")));
@@ -457,7 +457,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ApplyNetworkFrame_RemovedAttackGroup_RetainsMovieWithoutRestoringLiveOwnership()
+        public void ApplyNetworkEffects_RemovedAttackGroup_RetainsMovieWithoutRestoringLiveOwnership()
         {
             TacticalCombatSession authority = CreateStationSession(CombatSide.Attacker);
             TacticalCombatSession replica = CreateStationSession(CombatSide.Defender);
@@ -475,7 +475,7 @@ namespace Rebellion.Tests.Gameplay
             int movieRequests = 0;
             replica.AttackRunMovieRequested += _ => movieRequests++;
 
-            replica.ApplyNetworkFrame(state);
+            ApplyCapturedProjection(replica, state);
 
             Assert.IsEmpty(state.Groups);
             Assert.AreEqual(
@@ -486,10 +486,10 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsNull(replica.GetRequestedGroup(replica.GetUnit("fighter")));
             Assert.AreEqual(1, movieRequests);
             Assert.IsTrue(replica.IsPaused);
-            replica.ApplyNetworkFrame(authority.CaptureNetworkFrame(2));
+            ApplyCapturedProjection(replica, authority.CaptureNetworkFrame(2));
             Assert.AreEqual(1, movieRequests);
             Assert.IsTrue(authority.CompleteNetworkMovie(state.MovieID));
-            replica.ApplyNetworkFrame(authority.CaptureNetworkFrame(3));
+            ApplyCapturedProjection(replica, authority.CaptureNetworkFrame(3));
             Assert.IsNull(replica.PendingAttackRunMovie);
             Assert.IsFalse(replica.IsPaused);
         }
@@ -513,7 +513,7 @@ namespace Rebellion.Tests.Gameplay
                 authority.Advance(50);
             authority.ActiveAttackRun.ApplyState(TacticalCombatAttackRunState.Failed);
 
-            replica.ApplyNetworkFrame(authority.CaptureNetworkFrame(1));
+            ApplyCapturedProjection(replica, authority.CaptureNetworkFrame(1));
 
             Assert.AreEqual(TacticalCombatSelectionKind.Empty, replica.Selection.Kind);
             Assert.IsEmpty(replica.Selection.Groups);
@@ -550,7 +550,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ApplyNetworkFrame_FailedAttack_PreservesCueMovieAndDestructionOrderingOnce()
+        public void ApplyNetworkEffects_FailedAttack_PreservesCueMovieAndDestructionOrderingOnce()
         {
             TacticalCombatSession authority = CreateStationSession(CombatSide.Defender);
             TacticalCombatSession replica = CreateStationSession(CombatSide.Attacker);
@@ -576,8 +576,8 @@ namespace Rebellion.Tests.Gameplay
             };
             authority.ActiveAttackRun.ApplyState(TacticalCombatAttackRunState.Failed);
 
-            replica.ApplyNetworkFrame(authority.CaptureNetworkFrame(1));
-            replica.ApplyNetworkFrame(authority.CaptureNetworkFrame(2));
+            ApplyCapturedProjection(replica, authority.CaptureNetworkFrame(1));
+            ApplyCapturedProjection(replica, authority.CaptureNetworkFrame(2));
 
             CollectionAssert.AreEqual(new[] { "cue", "movie", "destroyed" }, observed);
         }
@@ -627,6 +627,22 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(movieID, authority.PendingNetworkMovieID);
             Assert.IsTrue(authority.CompleteNetworkMovie(movieID));
             Assert.IsFalse(authority.IsPaused);
+        }
+
+        /// <summary>
+        /// Applies a captured projection through the same separated state and reliable-effect boundaries as live playback.
+        /// </summary>
+        /// <param name="session">The passive encounter receiving the projection.</param>
+        /// <param name="frame">The captured state and its separately delivered effects.</param>
+        private static void ApplyCapturedProjection(
+            TacticalCombatSession session,
+            TacticalCombatNetworkFrame frame
+        )
+        {
+            TacticalCombatNetworkEffect[] effects = frame.Effects;
+            frame.Effects = System.Array.Empty<TacticalCombatNetworkEffect>();
+            session.ApplyNetworkState(frame);
+            session.ApplyNetworkEffects(effects);
         }
 
         /// <summary>
