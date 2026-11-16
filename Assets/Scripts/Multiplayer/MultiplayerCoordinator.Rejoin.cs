@@ -24,6 +24,7 @@ namespace Rebellion.Multiplayer
         private Task _recoveryPublication = Task.CompletedTask;
         private MultiplayerRecoveryRecord _recoveryRecord;
         private MultiplayerSnapshot _recoverySnapshot;
+        private Exception _recoveryRejection;
 
         /// <summary>
         /// Gets whether this authenticated account has a durable multiplayer continuation to reopen.
@@ -194,11 +195,45 @@ namespace Rebellion.Multiplayer
         /// <param name="exception">The connection or saved-state failure to present.</param>
         private void FailRecovery(Exception exception)
         {
+            if (_recoveryRejection != null)
+                return;
+            GameLogger.LogException(exception);
+            if (_peer?.IsConnected != true)
+            {
+                FinishRecoveryFailure(exception);
+                return;
+            }
+
+            _sessionManager?.BlockGameOperations();
+            _sessionManager?.GetActiveGameManager()?.ApplyGameSpeed(TickSpeed.Paused);
+            ResetRecovery();
+            _recoveryRejection = exception;
+            Failure = exception;
+            QueueSend(
+                new MultiplayerPacket(
+                    MultiplayerMessageType.Welcome,
+                    JsonUtility.ToJson(
+                        new MultiplayerWelcomeMessage
+                        {
+                            accepted = false,
+                            error = exception.Message,
+                        }
+                    )
+                )
+            );
+            SetStatus("Could not reconnect to your previous game.");
+        }
+
+        /// <summary>
+        /// Releases a rejected connection after acknowledgment while retaining its checkpoint.
+        /// </summary>
+        /// <param name="exception">The failure already presented to the returning player.</param>
+        private void FinishRecoveryFailure(Exception exception)
+        {
             MultiplayerRecoveryRecord record = _recoveryRecord;
             Disconnect();
             _recoveryRecord = record;
             Failure = exception;
-            GameLogger.LogException(exception);
             SetStatus("Could not reconnect to your previous game.");
         }
 
@@ -377,10 +412,7 @@ namespace Rebellion.Multiplayer
             {
                 MultiplayerPacket packet = _pendingRejoinPacket;
                 _pendingRejoinPacket = null;
-                if (packet.Type == MultiplayerMessageType.RecoveryWelcome)
-                    HandleRecoveryWelcome(packet);
-                else
-                    HandleRecoveryHello(packet);
+                HandlePacket(packet);
             }
         }
 
@@ -689,6 +721,7 @@ namespace Rebellion.Multiplayer
             _waitingForRejoin = _checkpointPending = _recoveryPausePending = false;
             _recoveryOfferSent = _returningToRecovery = _publishedRecoveryOwner = false;
             _recoverySnapshot = null;
+            _recoveryRejection = null;
             _pendingRejoinSnapshot = null;
         }
     }

@@ -81,7 +81,8 @@ namespace Rebellion.Multiplayer
         /// Gets whether a cancellable room connection is still being negotiated.
         /// </summary>
         public bool IsConnecting =>
-            _launchConfiguration == null
+            _recoveryRejection == null
+            && _launchConfiguration == null
             && (
                 _returningToRecovery
                 || _role == MultiplayerRole.Host && _peer == null
@@ -245,6 +246,8 @@ namespace Rebellion.Multiplayer
         {
             _backend?.Poll();
             ProcessTransportEvents();
+            if (_recoveryRejection != null)
+                return;
             ProcessPendingCommit();
             if (_saveProtocol?.BlocksGameplay != true)
                 _turnProtocol?.Pump();
@@ -569,6 +572,12 @@ namespace Rebellion.Multiplayer
         /// <param name="packet">The received packet.</param>
         private void HandlePacket(MultiplayerPacket packet)
         {
+            if (_recoveryRejection != null)
+            {
+                if (packet.Type == MultiplayerMessageType.AdmissionRejectedAck)
+                    FinishRecoveryFailure(_recoveryRejection);
+                return;
+            }
             try
             {
                 switch (packet.Type)
@@ -674,7 +683,7 @@ namespace Rebellion.Multiplayer
             }
             catch (Exception exception)
             {
-                if (_returningToRecovery && _launchConfiguration == null)
+                if (_waitingForRejoin || _returningToRecovery)
                     FailRecovery(exception);
                 else
                     SetStatus($"Network state rejected: {exception.Message}");
@@ -783,7 +792,7 @@ namespace Rebellion.Multiplayer
         /// <param name="packet">The welcome packet.</param>
         private void HandleWelcome(MultiplayerPacket packet)
         {
-            if (_role != MultiplayerRole.Guest && !_returningToRecovery)
+            if (_role != MultiplayerRole.Guest && !_returningToRecovery && !_waitingForRejoin)
                 throw new InvalidOperationException("Only a guest can receive a welcome packet.");
             MultiplayerWelcomeMessage welcome = JsonUtility.FromJson<MultiplayerWelcomeMessage>(
                 packet.Metadata
@@ -793,7 +802,7 @@ namespace Rebellion.Multiplayer
                 FinishRejectedJoin(welcome?.error ?? "The host rejected the join.");
                 return;
             }
-            if (_returningToRecovery)
+            if (_returningToRecovery || _waitingForRejoin)
                 throw new InvalidOperationException("A saved-game offer is required to reconnect.");
 
             MultiplayerCompatibility.ValidateBuild(welcome.simulationBuild);
@@ -910,7 +919,9 @@ namespace Rebellion.Multiplayer
                     || sendingPeer?.IsConnected != true
                 )
                     return;
-                if (_sessionManager != null)
+                if (_recoveryRejection != null)
+                    FinishRecoveryFailure(_recoveryRejection);
+                else if (_sessionManager != null)
                     HandleGameplayFailure(exception);
                 else
                     SetStatus($"Send failed: {exception.Message}");

@@ -533,6 +533,11 @@ namespace Rebellion.Multiplayer
             MultiplayerDisconnectReason disconnectReason
         )
         {
+            if (_recoveryRejection != null)
+            {
+                FinishRecoveryFailure(_recoveryRejection);
+                return;
+            }
             if (_turnProtocol?.TryCompleteCampaignAfterPeerDeparture() == true)
             {
                 _synchronizationReady = false;

@@ -112,6 +112,20 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu.Integration
             Assert.IsFalse(_documents.Agreement.IsAccepted(_settings.Settings));
         }
 
+        [UnityTest]
+        public IEnumerator MultiplayerClosed_SameFrameConnectionChange_DoesNotRenderClosedBrowser()
+        {
+            _settings.AcceptAgreement(_documents.Agreement);
+            _multiplayer.onClick.Invoke();
+            AssertMultiplayerOpen();
+
+            Assert.IsTrue(_gameObject.GetComponentInChildren<MainMenuController>().TryCancel());
+            Assert.DoesNotThrow(MultiplayerCoordinator.Instance.Disconnect);
+            yield return null;
+
+            Assert.IsEmpty(_view.OptionsWindowManager.Windows);
+        }
+
         [Test]
         public void MultiplayerRequested_ChangedPrivacyNotice_RequiresAcceptanceAgain()
         {

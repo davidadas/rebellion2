@@ -258,6 +258,28 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
         }
 
         /// <summary>
+        /// Restores presentation subscriptions when an initialized console becomes visible again.
+        /// </summary>
+        private void OnEnable()
+        {
+            if (_coordinator == null)
+                return;
+            _operation.Changed += Render;
+            _coordinator.StateChanged += Render;
+            Render();
+        }
+
+        /// <summary>
+        /// Stops rendering before a closing console's deferred destruction completes.
+        /// </summary>
+        private void OnDisable()
+        {
+            _operation.Changed -= Render;
+            if (_coordinator != null)
+                _coordinator.StateChanged -= Render;
+        }
+
+        /// <summary>
         /// Releases presentation subscriptions without disconnecting a launched session.
         /// </summary>
         private void OnDestroy()

@@ -68,6 +68,9 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     private bool _reconnectOffered;
     private bool _reconnecting;
 
+    private bool HasAcceptedMultiplayerDocuments =>
+        _legalDocumentsView.Agreement.IsAccepted(_appBootstrap.GetUserSettingsManager().Settings);
+
     private bool IsStartupConsentBlocking =>
         _legalDocumentsView?.IsVisible == true
         || _analyticsConsentView?.IsVisible == true
@@ -176,7 +179,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             RenderAnalyticsConsentGate(bootstrap);
             mainMenuCanvas.enabled = true;
             _menuReady = true;
-            await _multiplayerCoordinator.CheckForRecoveryAsync();
+            if (HasAcceptedMultiplayerDocuments)
+                await _multiplayerCoordinator.CheckForRecoveryAsync();
         }
         catch (Exception exception)
         {
@@ -635,6 +639,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             return;
         }
 
+        _reconnectOffered = false;
         RequestMultiplayerEntry(ContinueToMultiplayer);
     }
 
@@ -731,6 +736,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             _multiplayerMenuView.CloseRequested -= HandleMultiplayerCloseRequested;
             _multiplayerMenuView.ConfirmationRequested -= RequestConfirmation;
             _multiplayerMenuView.ReconnectRequested -= ReconnectPreviousGame;
+            _multiplayerMenuView.gameObject.SetActive(false);
         }
         AppBootstrap.Instance?.GetCancelStack()?.Unregister(this);
         if (disconnect)
@@ -772,6 +778,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
         if (
             !_menuReady
             || mainMenuCanvas?.enabled != true
+            || !HasAcceptedMultiplayerDocuments
             || _reconnectOffered
             || !_multiplayerCoordinator.HasRecovery
             || _multiplayerCoordinator.IsSigningIn
@@ -908,11 +915,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// <param name="continueEntry">The selected multiplayer entry action.</param>
     private void RequestMultiplayerEntry(Action continueEntry)
     {
-        if (
-            _legalDocumentsView.Agreement.IsAccepted(
-                _appBootstrap.GetUserSettingsManager().Settings
-            )
-        )
+        if (HasAcceptedMultiplayerDocuments)
         {
             continueEntry();
             return;
