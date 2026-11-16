@@ -45,30 +45,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu.Integration
             settings.Analytics.Consent = UserAnalyticsConsent.Denied;
             File.WriteAllText(path, JsonUtility.ToJson(settings));
             _blockedSettingsPath = null;
-            AppBootstrap.EnsureExists(TestContent.Pack);
-
-            _gameObject = Object.Instantiate(
-                AssetDatabase.LoadAssetAtPath<GameObject>(
-                    "Assets/Prefabs/UI/MainMenu/MainMenuRoot.prefab"
-                )
-            );
-            foreach (Camera camera in _gameObject.GetComponentsInChildren<Camera>(true))
-                camera.enabled = false;
-            _view = _gameObject.GetComponentInChildren<MainMenuView>(true);
-            _documents = _gameObject.GetComponentInChildren<LegalDocumentsView>(true);
-            _settings = AppBootstrap.Instance.GetUserSettingsManager();
-            _multiplayer = _gameObject
-                .GetComponentsInChildren<Button>(true)
-                .Single(button => button.name == "MultiplayerButton");
-            _accept = _documents
-                .transform.Find("DocumentPanel/Console/AcceptButton")
-                .GetComponent<Button>();
-            Canvas canvas = _gameObject.transform.Find("UI/Canvas").GetComponent<Canvas>();
-            float deadline = Time.realtimeSinceStartup + 30f;
-            while (!canvas.enabled && Time.realtimeSinceStartup < deadline)
-                yield return null;
-            Assert.IsTrue(canvas.enabled, "The main-menu controller did not finish starting.");
-            Assert.IsFalse(_documents.IsVisible);
+            yield return StartMenu();
         }
 
         /// <summary>
@@ -135,6 +112,20 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu.Integration
             Assert.IsFalse(_documents.Agreement.IsAccepted(_settings.Settings));
         }
 
+        [UnityTest]
+        public IEnumerator MultiplayerClosed_SameFrameConnectionChange_DoesNotRenderClosedBrowser()
+        {
+            _settings.AcceptAgreement(_documents.Agreement);
+            _multiplayer.onClick.Invoke();
+            AssertMultiplayerOpen();
+
+            Assert.IsTrue(_gameObject.GetComponentInChildren<MainMenuController>().TryCancel());
+            Assert.DoesNotThrow(MultiplayerCoordinator.Instance.Disconnect);
+            yield return null;
+
+            Assert.IsEmpty(_view.OptionsWindowManager.Windows);
+        }
+
         [Test]
         public void MultiplayerRequested_ChangedPrivacyNotice_RequiresAcceptanceAgain()
         {
@@ -165,6 +156,26 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu.Integration
             Assert.IsFalse(_documents.Agreement.IsAccepted(_settings.Settings));
 
             _accept.onClick.Invoke();
+
+            Assert.IsFalse(_documents.IsVisible);
+            AssertMultiplayerOpen();
+            AssertAcceptanceSaved();
+        }
+
+        [UnityTest]
+        public IEnumerator MultiplayerAccepted_NewApplicationInstance_OpensWithoutPrompt()
+        {
+            _multiplayer.onClick.Invoke();
+            _accept.onClick.Invoke();
+            _accept.onClick.Invoke();
+            _settings.Save();
+            Object.Destroy(_gameObject);
+            Object.Destroy(AppBootstrap.Instance.gameObject);
+            Object.Destroy(MultiplayerCoordinator.Instance.gameObject);
+            yield return null;
+
+            yield return StartMenu();
+            _multiplayer.onClick.Invoke();
 
             Assert.IsFalse(_documents.IsVisible);
             AssertMultiplayerOpen();
@@ -202,6 +213,37 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu.Integration
             Assert.IsFalse(_documents.IsVisible);
             AssertMultiplayerOpen();
             AssertAcceptanceSaved();
+        }
+
+        /// <summary>
+        /// Starts a fresh runtime and the authored menu using the current saved settings.
+        /// </summary>
+        /// <returns>The menu initialization sequence.</returns>
+        private IEnumerator StartMenu()
+        {
+            AppBootstrap.EnsureExists(TestContent.Pack);
+            _gameObject = Object.Instantiate(
+                AssetDatabase.LoadAssetAtPath<GameObject>(
+                    "Assets/Prefabs/UI/MainMenu/MainMenuRoot.prefab"
+                )
+            );
+            foreach (Camera camera in _gameObject.GetComponentsInChildren<Camera>(true))
+                camera.enabled = false;
+            _view = _gameObject.GetComponentInChildren<MainMenuView>(true);
+            _documents = _gameObject.GetComponentInChildren<LegalDocumentsView>(true);
+            _settings = AppBootstrap.Instance.GetUserSettingsManager();
+            _multiplayer = _gameObject
+                .GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "MultiplayerButton");
+            _accept = _documents
+                .transform.Find("DocumentPanel/Console/AcceptButton")
+                .GetComponent<Button>();
+            Canvas canvas = _gameObject.transform.Find("UI/Canvas").GetComponent<Canvas>();
+            float deadline = Time.realtimeSinceStartup + 30f;
+            while (!canvas.enabled && Time.realtimeSinceStartup < deadline)
+                yield return null;
+            Assert.IsTrue(canvas.enabled, "The main-menu controller did not finish starting.");
+            Assert.IsFalse(_documents.IsVisible);
         }
 
         /// <summary>

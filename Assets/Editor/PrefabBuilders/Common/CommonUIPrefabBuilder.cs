@@ -492,18 +492,19 @@ public static class CommonUIPrefabBuilder
     }
 
     /// <summary>
-    /// Authors an independently visible native notice while sharing the scene's modal window registry.
+    /// Authors the full-screen confirmation layer shared by scene notices and modal requests.
     /// </summary>
     /// <param name="parent">The scene UI root outside presentation groups concealed during loading.</param>
     /// <param name="windowManager">The scene's existing window manager.</param>
     /// <param name="isMainMenu">Whether acknowledgment occurs after the scene has already returned to the menu.</param>
-    internal static void CreateMultiplayerSessionEndNotice(
+    /// <returns>The shared native confirmation template for the scene.</returns>
+    internal static ConfirmationDialogView CreateSceneConfirmationLayer(
         Transform parent,
         UIWindowManager windowManager,
         bool isMainMenu
     )
     {
-        GameObject root = CreateRectObject("MultiplayerSessionEndNotice", parent);
+        GameObject root = CreateRectObject("SceneConfirmationCanvas", parent);
         FillParent(root.GetComponent<RectTransform>());
         Canvas canvas = root.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -513,9 +514,8 @@ public static class CommonUIPrefabBuilder
         scaler.referenceResolution = new Vector2(853.3333f, 480f);
         scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
         root.AddComponent<GraphicRaycaster>();
-
         ConfirmationDialogView template = InstantiateConfirmationDialog(root.transform);
-        template.name = "SessionEndDialogTemplate";
+        template.name = "ConfirmationDialogTemplate";
         template.gameObject.AddComponent<UIWindow>();
         SetSourceRect(
             template.GetComponent<RectTransform>(),
@@ -539,6 +539,7 @@ public static class CommonUIPrefabBuilder
             root.AddComponent<SaveGameFailureNoticeController>();
         AssignReference(persistence, "windowManager", windowManager);
         AssignReference(persistence, "dialogTemplate", template);
+        return template;
     }
 
     /// <summary>

@@ -232,7 +232,8 @@ public sealed class UserSettingsManager
         try
         {
             Settings.AcceptedAgreementVersion = agreement.Version;
-            Save();
+            CaptureRuntimeSettings();
+            SaveToDisk(Settings, agreement.Version);
         }
         catch
         {
@@ -295,16 +296,25 @@ public sealed class UserSettingsManager
     }
 
     /// <summary>
-    /// Writes user settings to the settings file.
+    /// Writes user settings while preserving acceptance recorded by another running instance.
     /// </summary>
     /// <param name="settings">The settings to write.</param>
-    private void SaveToDisk(UserSettings settings)
+    /// <param name="acceptedAgreementVersion">A version explicitly accepted now, or null to retain the saved acceptance.</param>
+    private void SaveToDisk(UserSettings settings, string acceptedAgreementVersion = null)
     {
         settings ??= CreateDefaults();
         settings.Normalize();
 
         string path = GetSettingsFilePath();
-        AtomicTextFile.WriteAllText(path, JsonUtility.ToJson(settings, true));
+        AtomicTextFile.UpdateAllText(
+            path,
+            () =>
+            {
+                settings.AcceptedAgreementVersion =
+                    acceptedAgreementVersion ?? LoadFromDisk().AcceptedAgreementVersion;
+                return JsonUtility.ToJson(settings, true);
+            }
+        );
     }
 
     /// <summary>

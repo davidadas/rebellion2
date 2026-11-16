@@ -297,6 +297,55 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(5f, _contentRoot.anchoredPosition.y, 0.01f);
         }
 
+        [TestCase(1f, false)]
+        [TestCase(0.5f, false)]
+        [TestCase(0f, true)]
+        public void IsAtBottom_OverflowingContent_ReportsPosition(float position, bool expected)
+        {
+            _scrollArea.SetContentHeight(200, 10, true);
+            _scrollArea.VerticalNormalizedPosition = position;
+
+            Assert.AreEqual(expected, _scrollArea.IsAtBottom);
+        }
+
+        [Test]
+        public void IsAtBottom_QueuedScrollAwayFromBottom_ReturnsFalse()
+        {
+            _scrollArea.SetContentHeight(200, 10, true);
+            _scrollArea.VerticalNormalizedPosition = 0f;
+            _scrollArea.RelayScroll(new PointerEventData(null) { scrollDelta = Vector2.up });
+
+            Assert.IsFalse(_scrollArea.IsAtBottom);
+            Assert.AreEqual(150f, _contentRoot.anchoredPosition.y, 0.01f);
+        }
+
+        [Test]
+        public void SetContentHeight_PreservingOffsetDuringGrowth_KeepsVisibleContent()
+        {
+            _scrollArea.SetContentHeight(200, 10, true);
+            _scrollArea.VerticalNormalizedPosition = 0.5f;
+
+            _scrollArea.SetContentHeight(400, 10, false, preserveScrollOffset: true);
+            for (int frame = 0; frame < 30; frame++)
+                _scrollArea.AdvanceScroll(0.04f);
+
+            Assert.AreEqual(75f, _contentRoot.anchoredPosition.y, 0.01f);
+        }
+
+        [Test]
+        public void SetContentHeight_PreservingOffsetDuringGrowth_KeepsQueuedWheelMovement()
+        {
+            _scrollArea.SetContentHeight(200, 10, true);
+            _scrollArea.VerticalNormalizedPosition = 0.5f;
+            _scrollArea.RelayScroll(new PointerEventData(null) { scrollDelta = Vector2.up });
+
+            _scrollArea.SetContentHeight(400, 10, false, preserveScrollOffset: true);
+            for (int frame = 0; frame < 30; frame++)
+                _scrollArea.AdvanceScroll(0.04f);
+
+            Assert.AreEqual(70f, _contentRoot.anchoredPosition.y, 0.01f);
+        }
+
         [Test]
         public void RelayScroll_NullEventData_PreservesPosition()
         {

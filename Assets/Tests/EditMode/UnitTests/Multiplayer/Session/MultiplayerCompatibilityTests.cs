@@ -42,5 +42,16 @@ namespace Rebellion.Tests.Multiplayer
                 MultiplayerCompatibility.ValidateContent(null, null)
             );
         }
+
+        [Test]
+        public void ValidateContent_DifferentLiveData_RejectsPeer()
+        {
+            Assert.Throws<InvalidDataException>(() =>
+                MultiplayerCompatibility.ValidateContent(
+                    "local-gameplay-data",
+                    "remote-gameplay-data"
+                )
+            );
+        }
     }
 }

@@ -319,6 +319,52 @@ namespace Rebellion.Tests.Managers
             }
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Save_OtherInstanceAcceptedDocuments_PreservesLatestAcceptance(
+            bool previouslyAccepted
+        )
+        {
+            string directory = Path.Combine(
+                Path.GetTempPath(),
+                $"rebellion2-agreement-{Guid.NewGuid():N}"
+            );
+            string path = Path.Combine(directory, "user-settings.json");
+            try
+            {
+                UserSettingsManager stale = new UserSettingsManager(
+                    null,
+                    CreateDisplayManager(),
+                    null,
+                    path
+                );
+                stale.Load();
+                if (previouslyAccepted)
+                    stale.AcceptAgreement(new PlayerAgreement("Earlier agreement", "Privacy"));
+                UserSettingsManager active = new UserSettingsManager(
+                    null,
+                    CreateDisplayManager(),
+                    null,
+                    path
+                );
+                active.Load();
+                PlayerAgreement agreement = new PlayerAgreement("Current agreement", "Privacy");
+                active.AcceptAgreement(agreement);
+
+                stale.Settings.Gameplay.ShowMissionOdds = false;
+                stale.Save();
+                active.Load();
+
+                Assert.IsTrue(agreement.IsAccepted(active.Settings));
+                Assert.IsFalse(active.Settings.Gameplay.ShowMissionOdds);
+            }
+            finally
+            {
+                if (Directory.Exists(directory))
+                    Directory.Delete(directory, true);
+            }
+        }
+
         [Test]
         public void AcceptAgreement_SaveFails_DoesNotRetainAcceptance()
         {

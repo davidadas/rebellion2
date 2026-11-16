@@ -61,6 +61,23 @@ namespace Rebellion.Tests.Multiplayer
         }
 
         [Test]
+        public async Task CheckForRecoveryAsync_NoCheckpoint_LeavesCoordinatorOfflineAsync()
+        {
+            await _coordinator.CheckForRecoveryAsync();
+
+            Assert.IsFalse(_coordinator.HasRecovery);
+            Assert.AreEqual("Offline", _coordinator.Status);
+        }
+
+        [Test]
+        public void DiscardRecovery_NoCheckpoint_LeavesCoordinatorOffline()
+        {
+            Assert.DoesNotThrow(_coordinator.DiscardRecovery);
+            Assert.IsFalse(_coordinator.HasRecovery);
+            Assert.AreEqual("Offline", _coordinator.Status);
+        }
+
+        [Test]
         public void OpenBrowser_BackgroundDisabled_KeepsOnlineCallbacksRunning()
         {
             Application.runInBackground = false;

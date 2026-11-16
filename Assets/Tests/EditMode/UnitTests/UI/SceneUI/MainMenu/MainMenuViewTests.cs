@@ -81,6 +81,24 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void AuthoredPrefab_ConfirmationLayer_IsFullScreenOutsideLetterboxedViewport()
+        {
+            Transform layer = _prefabRoot.transform.Find("UI/SceneConfirmationCanvas");
+            Canvas canvas = layer.GetComponent<Canvas>();
+            Transform viewport = _prefabRoot.transform.Find("UI/Canvas/Viewport");
+            RectTransform blocker = (RectTransform)
+                layer.Find("ConfirmationDialogTemplate/InputBlocker");
+
+            Assert.AreEqual(RenderMode.ScreenSpaceOverlay, canvas.renderMode);
+            Assert.IsTrue(canvas.isRootCanvas);
+            Assert.IsFalse(layer.IsChildOf(viewport));
+            Assert.AreEqual(Vector2.zero, blocker.anchorMin);
+            Assert.AreEqual(Vector2.one, blocker.anchorMax);
+            Assert.AreEqual(Vector2.zero, blocker.offsetMin);
+            Assert.AreEqual(Vector2.zero, blocker.offsetMax);
+        }
+
+        [Test]
         public void AuthoredPrefab_IconAtlas_PreservesSourceColorEncoding()
         {
             Camera[] cameras = _prefabRoot.GetComponentsInChildren<Camera>(true);

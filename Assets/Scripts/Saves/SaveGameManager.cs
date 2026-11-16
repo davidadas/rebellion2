@@ -847,18 +847,31 @@ public class SaveGameManager
         Action<Type, string> unknownElementSkipped = null
     )
     {
-        GameSerializer serializer = CreateSaveDeserializer(
-            typeof(GameRoot),
-            unknownElementSkipped: unknownElementSkipped
-        );
-
         using FileStream fileStream = new FileStream(
             saveFilePath,
             FileMode.Open,
             FileAccess.Read,
             FileShare.Read
         );
-        return (GameRoot)serializer.Deserialize(fileStream);
+        return DeserializeGame(fileStream, unknownElementSkipped);
+    }
+
+    /// <summary>
+    /// Restores persisted game state using the same compatibility rules for every save container.
+    /// </summary>
+    /// <param name="stream">The readable XML game state.</param>
+    /// <param name="unknownElementSkipped">Receives elements omitted for compatibility.</param>
+    /// <returns>The deserialized game data.</returns>
+    internal static GameRoot DeserializeGame(
+        Stream stream,
+        Action<Type, string> unknownElementSkipped = null
+    )
+    {
+        GameSerializer serializer = CreateSaveDeserializer(
+            typeof(GameRoot),
+            unknownElementSkipped: unknownElementSkipped
+        );
+        return (GameRoot)serializer.Deserialize(stream);
     }
 
     /// <summary>

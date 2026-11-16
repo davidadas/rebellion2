@@ -4,6 +4,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
@@ -14,6 +15,24 @@ namespace Rebellion.Tests.Multiplayer
 {
     public sealed class MultiplayerSnapshotCodecTests
     {
+        [Test]
+        public void Restore_UnknownMember_RejectsPeerSnapshot()
+        {
+            XmlDocument document = new XmlDocument();
+            using MemoryStream source = new MemoryStream(
+                MultiplayerSnapshotCodec.Serialize(typeof(GameRoot), new GameRoot())
+            );
+            document.Load(source);
+            document.DocumentElement.AppendChild(document.CreateElement("UnknownSavedSetting"));
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.CapturePayload(
+                Encoding.UTF8.GetBytes(document.OuterXml)
+            );
+
+            Assert.Throws<InvalidOperationException>(() =>
+                MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash)
+            );
+        }
+
         [Test]
         public void ComputeStateFingerprint_UnchangedState_ReturnsSameFingerprint()
         {

@@ -38,7 +38,7 @@ namespace Rebellion.Multiplayer
         public static string GetBuildError(string remoteBuild) =>
             string.Equals(remoteBuild, SimulationBuild, StringComparison.Ordinal)
                 ? null
-                : "The simulation builds do not match.";
+                : "Both players need the same game version. Update both games and try again.";
 
         /// <summary>
         /// Rejects different composed gameplay data even when public pack versions match.
