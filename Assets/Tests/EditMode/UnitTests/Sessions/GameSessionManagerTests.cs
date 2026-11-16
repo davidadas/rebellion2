@@ -27,6 +27,7 @@ namespace Rebellion.Tests.Managers
         private GameSessionManager _sessionManager;
         private SaveGameManager _saveGameManager;
         private string _saveDirectoryPath;
+        private int _frame;
 
         /// <summary>
         /// Sets up.
@@ -52,10 +53,12 @@ namespace Rebellion.Tests.Managers
             );
             _gameplaySettings = new UserGameplaySettings();
             _saveGameManager = new SaveGameManager(_saveDirectoryPath);
+            _frame = 0;
             _sessionManager = new GameSessionManager(
                 _contentPack,
                 _saveGameManager,
-                () => _gameplaySettings
+                () => _gameplaySettings,
+                getFrameCount: () => _frame
             );
         }
 
@@ -651,7 +654,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void EndGame_SpeedObserverThrows_ReplacementSessionCanAutosave()
+        public async Task EndGame_SpeedObserverThrows_ReplacementSessionCanAutosaveAsync()
         {
             GameRoot game = CreateGame();
             game.CurrentTick = 39;
@@ -673,13 +676,14 @@ namespace Rebellion.Tests.Managers
             replacement.CurrentTick = 39;
             _sessionManager.StartGame(replacement).Tick.ProcessTick();
 
+            Assert.IsTrue(await CaptureScheduledAutosaveAsync());
             SaveGameEntry saved = _saveGameManager.GetSavedGames().Single();
             Assert.AreEqual(replacement.Metadata.CampaignID, saved.Metadata.CampaignID);
             Assert.AreNotEqual(game.Metadata.CampaignID, saved.Metadata.CampaignID);
         }
 
         [Test]
-        public void StartGame_PendingCombat_DefersAutosaveUntilResolution()
+        public async Task StartGame_PendingCombat_DefersAutosaveUntilResolutionAsync()
         {
             GameRoot game = CreateContestedGame();
             game.CurrentTick = 39;
@@ -690,14 +694,187 @@ namespace Rebellion.Tests.Managers
 
             Assert.IsEmpty(_saveGameManager.GetSavedGames());
             Assert.IsFalse(_sessionManager.CanSave);
+            Assert.IsNull(_sessionManager.ActiveSaveKind);
 
             session.Tick.ResolveCombat(true);
 
+            Assert.IsTrue(await CaptureScheduledAutosaveAsync());
             string autosavePath = _saveGameManager.GetSaveFilePath(
                 SaveGameManager.AutosaveFilePrefix + game.Metadata.CampaignID + "_0000000040"
             );
             Assert.IsTrue(File.Exists(autosavePath));
             Assert.IsTrue(_sessionManager.CanSave);
+        }
+
+        [Test]
+        public async Task ProcessPendingAutosaveAsync_SameFrameAsTick_WaitsForLaterFrameAsync()
+        {
+            GameRoot game = CreateGame();
+            game.CurrentTick = 39;
+            _gameplaySettings.AutosaveIntervalTicks = 40;
+            GameSession session = _sessionManager.StartGame(game);
+            int stateChanges = 0;
+            _sessionManager.SaveStateChanged += () => stateChanges++;
+
+            session.Tick.ProcessTick();
+
+            Assert.AreEqual(SaveGameKind.Automatic, _sessionManager.ActiveSaveKind);
+            Assert.AreEqual(1, stateChanges);
+            Assert.IsFalse(await _sessionManager.ProcessPendingAutosaveAsync());
+            Assert.AreEqual(SaveGameKind.Automatic, _sessionManager.ActiveSaveKind);
+            Assert.IsEmpty(_saveGameManager.GetSavedGames());
+
+            Assert.IsTrue(await CaptureScheduledAutosaveAsync());
+
+            Assert.IsTrue(
+                File.Exists(
+                    _saveGameManager.GetSaveFilePath(
+                        SaveGameManager.AutosaveFilePrefix
+                            + game.Metadata.CampaignID
+                            + "_0000000040"
+                    )
+                )
+            );
+            Assert.IsNull(_sessionManager.ActiveSaveKind);
+            Assert.AreEqual(2, stateChanges);
+        }
+
+        [Test]
+        public async Task TryBeginGameTick_AutosaveAwaitingCapture_HoldsClockUntilCapturedAsync()
+        {
+            GameRoot game = CreateGame();
+            game.CurrentTick = 39;
+            _gameplaySettings.AutosaveIntervalTicks = 40;
+            GameSession session = _sessionManager.StartGame(game);
+            _sessionManager.GetActiveGameManager().SetGameSpeed(TickSpeed.Fast);
+
+            session.Tick.ProcessTick();
+
+            Assert.IsFalse(_sessionManager.TryBeginGameTick(1000f));
+            Assert.IsTrue(await CaptureScheduledAutosaveAsync());
+            Assert.IsTrue(_sessionManager.TryBeginGameTick(1000f));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task ProcessPendingAutosaveAsync_PlayerRequestBeforeCapture_PreservesCompletedTickAsync(
+            bool duringCapture
+        )
+        {
+            GameRoot game = CreateGame();
+            Faction faction = new() { InstanceID = "FNALL1", TranslateCounterpart = false };
+            game.GetFactions().Add(faction);
+            game.Summary.PlayerFactionID = faction.InstanceID;
+            game.SetFactionController(faction.InstanceID, "player", PlayerControllerType.Human);
+            game.CurrentTick = 39;
+            _gameplaySettings.AutosaveIntervalTicks = 40;
+            GameSession session = _sessionManager.StartGame(game);
+            session.Tick.ProcessTick();
+            Task<PlayerRequestOutcome> request = null;
+            if (!duringCapture)
+                request = _sessionManager.PlayerRequests.ExecuteAsync(
+                    new ToggleAdvisorOptionRequest
+                    {
+                        Option = PlayerAdvisorOption.TranslateCounterpart,
+                    }
+                );
+            session.PumpCommands();
+            Assert.IsFalse(faction.TranslateCounterpart);
+            Assert.IsFalse(session.CanExecuteCommands);
+            _saveGameManager.Saving += () =>
+            {
+                if (duringCapture)
+                    request = _sessionManager.PlayerRequests.ExecuteAsync(
+                        new ToggleAdvisorOptionRequest
+                        {
+                            Option = PlayerAdvisorOption.TranslateCounterpart,
+                        }
+                    );
+                Assert.IsNotNull(request);
+                Assert.IsFalse(request.IsCompleted);
+                Assert.IsFalse(faction.TranslateCounterpart);
+            };
+
+            Task<bool> saving = CaptureScheduledAutosaveAsync();
+            session.PumpCommands();
+
+            Assert.IsTrue((await request).Accepted);
+            Assert.IsTrue(faction.TranslateCounterpart);
+            Assert.IsTrue(await saving);
+            GameRoot saved = _saveGameManager.LoadGameData(
+                SaveGameManager.AutosaveFilePrefix + game.Metadata.CampaignID + "_0000000040"
+            );
+            Assert.IsFalse(saved.GetFactions().Single().TranslateCounterpart);
+            Assert.AreEqual(40, saved.CurrentTick);
+        }
+
+        [Test]
+        public async Task ProcessPendingAutosaveAsync_TickNotDue_DoesNotScheduleAutosaveAsync()
+        {
+            GameRoot game = CreateGame();
+            game.CurrentTick = 40;
+            _gameplaySettings.AutosaveIntervalTicks = 40;
+            GameSession session = _sessionManager.StartGame(game);
+
+            session.Tick.ProcessTick();
+
+            Assert.IsNull(_sessionManager.ActiveSaveKind);
+            Assert.IsFalse(await CaptureScheduledAutosaveAsync());
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [Test]
+        public async Task ReplaceGame_AutosaveAwaitingCapture_DiscardsScheduledAutosaveAsync()
+        {
+            GameRoot game = CreateGame();
+            game.CurrentTick = 39;
+            _gameplaySettings.AutosaveIntervalTicks = 40;
+            _sessionManager.StartGame(game).Tick.ProcessTick();
+
+            _sessionManager.ReplaceGame(CreateGame());
+
+            Assert.IsNull(_sessionManager.ActiveSaveKind);
+            Assert.IsFalse(await CaptureScheduledAutosaveAsync());
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [Test]
+        public async Task EndGame_AutosaveAwaitingCapture_DiscardsScheduledAutosaveAsync()
+        {
+            GameRoot game = CreateGame();
+            game.CurrentTick = 39;
+            _gameplaySettings.AutosaveIntervalTicks = 40;
+            _sessionManager.StartGame(game).Tick.ProcessTick();
+
+            _sessionManager.EndGame();
+
+            Assert.IsNull(_sessionManager.ActiveSaveKind);
+            Assert.IsFalse(await CaptureScheduledAutosaveAsync());
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [Test]
+        public async Task ProcessPendingAutosaveAsync_PublicationFails_ClearsAutosaveStateAsync()
+        {
+            GameRoot game = CreateGame();
+            game.CurrentTick = 39;
+            _gameplaySettings.AutosaveIntervalTicks = 40;
+            GameSession session = _sessionManager.StartGame(game);
+            Directory.CreateDirectory(
+                _saveGameManager.GetSaveFilePath(
+                    SaveGameManager.AutosaveFilePrefix + game.Metadata.CampaignID + "_0000000040"
+                )
+            );
+            int stateChanges = 0;
+            _sessionManager.SaveStateChanged += () => stateChanges++;
+            session.Tick.ProcessTick();
+
+            bool saved = await CaptureScheduledAutosaveAsync();
+
+            Assert.IsFalse(saved);
+            Assert.IsNull(_sessionManager.ActiveSaveKind);
+            Assert.AreEqual(2, stateChanges);
+            Assert.IsEmpty(_saveGameManager.GetSavedGames());
         }
 
         [Test]
@@ -945,6 +1122,167 @@ namespace Rebellion.Tests.Managers
             Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
         }
 
+        [TestCase(false, true)]
+        [TestCase(false, false)]
+        [TestCase(true, true)]
+        [TestCase(true, false)]
+        public async Task SaveGameAsync_PendingRequest_TracksKindUntilCompletionAsync(
+            bool quick,
+            bool result
+        )
+        {
+            TestPersistenceCoordinator coordinator = new();
+            _sessionManager.StartGame(CreateGame(), coordinator);
+            List<SaveGameKind?> changes = new();
+            _sessionManager.SaveStateChanged += () => changes.Add(_sessionManager.ActiveSaveKind);
+            SaveGameKind kind = quick ? SaveGameKind.Quick : SaveGameKind.Manual;
+
+            Task<bool> saving = quick
+                ? _sessionManager.QuickSaveAsync()
+                : _sessionManager.SaveGameAsync("checkpoint", "Checkpoint");
+
+            Assert.AreEqual(kind, _sessionManager.ActiveSaveKind);
+            Assert.IsFalse(saving.IsCompleted);
+            coordinator.SaveCompletion.SetResult(result);
+            Assert.AreEqual(result, await saving);
+            Assert.IsNull(_sessionManager.ActiveSaveKind);
+            CollectionAssert.AreEqual(new SaveGameKind?[] { kind, null }, changes);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task SaveGameAsync_LocalCapture_ReportsKindBeforeCapturingAndClearsAfterWritingAsync(
+            bool quick
+        )
+        {
+            _sessionManager.StartGame(CreateGame());
+            SaveGameKind kind = quick ? SaveGameKind.Quick : SaveGameKind.Manual;
+            SaveGameKind? capturedKind = null;
+            _saveGameManager.Saving += () => capturedKind = _sessionManager.ActiveSaveKind;
+
+            bool saved = quick
+                ? await _sessionManager.QuickSaveAsync()
+                : await _sessionManager.SaveGameAsync("checkpoint", "Checkpoint");
+
+            Assert.IsTrue(saved);
+            Assert.AreEqual(kind, capturedKind);
+            Assert.IsNull(_sessionManager.ActiveSaveKind);
+            Assert.IsTrue(
+                File.Exists(
+                    _saveGameManager.GetSaveFilePath(
+                        quick ? SaveGameManager.QuickSaveFileName : "checkpoint"
+                    )
+                )
+            );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task SaveGameAsync_LocalPresentationPending_HoldsClockAndWaitsBeforeCapturingAsync(
+            bool quick
+        )
+        {
+            TaskCompletionSource<bool> presented = new();
+            _sessionManager = new GameSessionManager(
+                _contentPack,
+                _saveGameManager,
+                presentSaveIndicator: () => presented.Task
+            );
+            _sessionManager.StartGame(CreateGame());
+            _sessionManager.GetActiveGameManager().SetGameSpeed(TickSpeed.Fast);
+            bool captured = false;
+            _saveGameManager.Saving += () => captured = true;
+            Task<bool> saving = quick
+                ? _sessionManager.QuickSaveAsync()
+                : _sessionManager.SaveGameAsync("checkpoint", "Checkpoint");
+
+            Assert.IsFalse(captured);
+            Assert.IsFalse(saving.IsCompleted);
+            Assert.IsFalse(_sessionManager.TryBeginGameTick(1000f));
+            presented.SetResult(true);
+            Assert.IsTrue(await saving);
+            Assert.IsTrue(captured);
+            Assert.IsTrue(_sessionManager.TryBeginGameTick(1000f));
+            Assert.IsNull(_sessionManager.ActiveSaveKind);
+        }
+
+        [Test]
+        public async Task SaveGameAsync_ReplacedDuringPresentation_DoesNotSaveReplacementGameAsync()
+        {
+            TaskCompletionSource<bool> presented = new();
+            _sessionManager = new GameSessionManager(
+                _contentPack,
+                _saveGameManager,
+                presentSaveIndicator: () => presented.Task
+            );
+            _sessionManager.StartGame(CreateGame());
+            Task<bool> saving = _sessionManager.SaveGameAsync("old", "Old");
+            _sessionManager.StartGame(CreateGame());
+            presented.SetResult(true);
+
+            Assert.IsFalse(await saving);
+            Assert.IsNull(_sessionManager.ActiveSaveKind);
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [Test]
+        public async Task SaveGameLocallyAsync_CoordinatedLocalFallback_WaitsForPresentationBeforeCaptureAsync()
+        {
+            TaskCompletionSource<bool> presented = new();
+            _sessionManager = new GameSessionManager(
+                _contentPack,
+                _saveGameManager,
+                presentSaveIndicator: () => presented.Task
+            );
+            _sessionManager.StartGame(CreateGame(), new TestSessionOwner());
+            bool captured = false;
+            _saveGameManager.Saving += () => captured = true;
+
+            Task<bool> saving = _sessionManager.SaveGameLocallyAsync(
+                "local-fallback",
+                "Local fallback"
+            );
+
+            Assert.IsFalse(captured);
+            Assert.IsFalse(saving.IsCompleted);
+            presented.SetResult(true);
+            Assert.IsTrue(await saving);
+            Assert.IsTrue(captured);
+        }
+
+        [Test]
+        public async Task SaveGameAsync_OutgoingSaveCompletes_DoesNotClearReplacementSaveAsync()
+        {
+            TestPersistenceCoordinator outgoing = new();
+            _sessionManager.StartGame(CreateGame(), outgoing);
+            Task<bool> oldSave = _sessionManager.SaveGameAsync("old", "Old");
+            TestPersistenceCoordinator replacement = new();
+            _sessionManager.StartGame(CreateGame(), replacement);
+            Task<bool> currentSave = _sessionManager.QuickSaveAsync();
+
+            outgoing.SaveCompletion.SetResult(true);
+            await oldSave;
+            Assert.AreEqual(SaveGameKind.Quick, _sessionManager.ActiveSaveKind);
+            replacement.SaveCompletion.SetResult(true);
+            await currentSave;
+            Assert.IsNull(_sessionManager.ActiveSaveKind);
+        }
+
+        [Test]
+        public async Task SaveGameAsync_ExplicitSaveCompletes_RestoresPendingAutosaveKindAsync()
+        {
+            TestPersistenceCoordinator coordinator = new()
+            {
+                ActiveSaveKind = SaveGameKind.Automatic,
+            };
+            _sessionManager.StartGame(CreateGame(), coordinator);
+            Task<bool> saving = _sessionManager.SaveGameAsync("checkpoint", "Checkpoint");
+            Assert.AreEqual(SaveGameKind.Manual, _sessionManager.ActiveSaveKind);
+            coordinator.SaveCompletion.SetResult(true);
+            await saving;
+            Assert.AreEqual(SaveGameKind.Automatic, _sessionManager.ActiveSaveKind);
+        }
+
         [Test]
         public async Task LoadGameAsync_CoordinatedOwner_UsesOwnerWithoutLocalFileLookupAsync()
         {
@@ -1003,6 +1341,25 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void StartGame_CoordinatedAutosaveTick_ReportsOwnerAutosaveState()
+        {
+            GameRoot game = CreateGame();
+            game.CurrentTick = 39;
+            _gameplaySettings.AutosaveIntervalTicks = 40;
+            TestPersistenceCoordinator coordinator = new TestPersistenceCoordinator();
+            GameSession session = _sessionManager.StartGame(game, coordinator);
+            int stateChanges = 0;
+            _sessionManager.SaveStateChanged += () => stateChanges++;
+
+            session.Tick.ProcessTick();
+
+            Assert.AreEqual(SaveGameKind.Automatic, _sessionManager.ActiveSaveKind);
+            Assert.AreEqual(1, stateChanges);
+            coordinator.ActiveSaveKind = null;
+            Assert.IsNull(_sessionManager.ActiveSaveKind);
+        }
+
+        [Test]
         public async Task StartGame_ReplacingOwnedSessionWithLocalGame_RestoresLocalSavingAsync()
         {
             TestPersistenceCoordinator coordinator = new TestPersistenceCoordinator();
@@ -1051,6 +1408,7 @@ namespace Rebellion.Tests.Managers
 
             Assert.ThrowsAsync<TaskCanceledException>(async () => await saving);
             Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+            Assert.IsNull(_sessionManager.ActiveSaveKind);
         }
 
         [TestCase(true)]
@@ -1136,6 +1494,7 @@ namespace Rebellion.Tests.Managers
 
             Assert.That(await saving, Is.False);
             Assert.That(reported, Is.EqualTo(SaveGameOperation.Save));
+            Assert.IsNull(_sessionManager.ActiveSaveKind);
         }
 
         [Test]
@@ -1154,6 +1513,7 @@ namespace Rebellion.Tests.Managers
             await saving;
 
             Assert.That(reported, Is.True);
+            Assert.IsNull(_sessionManager.ActiveSaveKind);
         }
 
         [Test]
@@ -1233,6 +1593,7 @@ namespace Rebellion.Tests.Managers
         private class TestSessionOwner : IGameSessionOwner
         {
             public bool CanRequestSave => true;
+            public SaveGameKind? ActiveSaveKind { get; set; }
             public Task<bool> CampaignCompletion { get; set; } = Task.FromResult(true);
             private readonly IPlayerRequestDispatcher _actions;
             public readonly List<string> Calls = new();
@@ -1349,13 +1710,15 @@ namespace Rebellion.Tests.Managers
             }
 
             /// <summary>
-            /// Records the completed tick's automatic-save preferences without writing.
+            /// Records the completed tick's automatic-save preferences and reports a scheduled
+            /// autosave without writing.
             /// </summary>
             /// <param name="settings">The preferences supplied by the runtime.</param>
             public override void ProcessAutosaveTick(UserGameplaySettings settings)
             {
                 AutosaveTicks++;
                 AutosaveSettings = settings;
+                ActiveSaveKind = SaveGameKind.Automatic;
             }
         }
 
@@ -1474,6 +1837,16 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(template.PositionY, loaded.PositionY);
             Assert.AreEqual(templatePlanet.PositionX, loadedPlanet.PositionX);
             Assert.AreEqual(templatePlanet.PositionY, loadedPlanet.PositionY);
+        }
+
+        /// <summary>
+        /// Presents one more frame, then captures any scheduled autosave and awaits its file.
+        /// </summary>
+        /// <returns>True when a scheduled autosave was written.</returns>
+        private Task<bool> CaptureScheduledAutosaveAsync()
+        {
+            _frame++;
+            return _sessionManager.ProcessPendingAutosaveAsync();
         }
 
         /// <summary>

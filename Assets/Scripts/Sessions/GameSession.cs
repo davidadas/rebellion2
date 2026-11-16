@@ -26,6 +26,7 @@ namespace Rebellion.Gameplay
         private IRandomNumberProvider _randomProvider;
         private ServiceLocator _serviceScope;
         private readonly SimulationCommandQueue _commands;
+        private readonly Func<bool> _canExecuteCommands;
         private bool _disposed;
 
         public Exception CommandFailure => _commands.Failure;
@@ -39,7 +40,10 @@ namespace Rebellion.Gameplay
         /// <summary>
         /// Gets whether an external command can start outside tick execution and result callbacks.
         /// </summary>
-        public bool CanExecuteCommands => IsOperationBoundaryClear && Tick.CanAcceptPlayerActions;
+        public bool CanExecuteCommands =>
+            IsOperationBoundaryClear
+            && Tick.CanAcceptPlayerActions
+            && _canExecuteCommands?.Invoke() != false;
 
         /// <summary>
         /// Gets whether settled state can be saved, including the completed-tick callback before
@@ -80,9 +84,15 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="game">The active game graph.</param>
         /// <param name="gameData">The composed content catalog used to construct runtime dependencies.</param>
-        public GameSession(GameRoot game, GameDataCatalog gameData)
+        /// <param name="canExecuteCommands">Optional application admission policy for external mutations.</param>
+        public GameSession(
+            GameRoot game,
+            GameDataCatalog gameData,
+            Func<bool> canExecuteCommands = null
+        )
         {
             _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
+            _canExecuteCommands = canExecuteCommands;
             Pipeline = new GameResultPipeline(() => Results, () => MessageObserver);
             Tick = new GameTickProcessor(
                 (results, processMessages) => Pipeline.ProcessResults(results, processMessages),
@@ -90,6 +100,7 @@ namespace Rebellion.Gameplay
             );
             _commands = new SimulationCommandQueue(() =>
                 Tick.CanAcceptPlayerActions
+                && _canExecuteCommands?.Invoke() != false
                 && Results?.IsPublishing != true
                 && !Pipeline.IsProcessing
             );

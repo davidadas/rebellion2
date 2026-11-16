@@ -59,6 +59,37 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        [TestCase("Autosaving...")]
+        [TestCase("Quicksaving...")]
+        [TestCase("Saving...")]
+        [TestCase(null)]
+        public void Render_SaveLabel_ControlsInlineSavingLabel(string saving)
+        {
+            _view.Render(CreateViewData(CreateButtons(0), CreateNotifications(0), null, saving));
+
+            TextMeshProUGUI label = _view
+                .GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(field => field.name == "SavingLabel");
+            RawImage medallion = _view
+                .GetComponentsInChildren<RawImage>(true)
+                .Single(image => image.name == "Medallion");
+            Assert.AreEqual(saving ?? string.Empty, label.text);
+            Assert.AreEqual(saving != null, label.enabled);
+            Assert.AreEqual(
+                new RectInt(0, 0, 24, 24),
+                UILayout.GetSourceRect(medallion.rectTransform)
+            );
+            Assert.AreEqual(
+                new RectInt(25, 0, 63, 24),
+                UILayout.GetSourceRect(label.rectTransform)
+            );
+            Assert.AreEqual("123", GetField<TextMeshProUGUI>("tickTextField").text);
+            Assert.LessOrEqual(
+                label.GetPreferredValues(label.text).x,
+                label.rectTransform.rect.width
+            );
+        }
+
         [Test]
         public void Render_CompletePresentation_AppliesCountersImagesButtonsAndNotifications()
         {
@@ -459,11 +490,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         /// <param name="buttons">The buttons.</param>
         /// <param name="notifications">The notifications.</param>
         /// <param name="speedContextBounds">The speed context bounds.</param>
+        /// <param name="saveIndicatorText">The visible save label, or null when hidden.</param>
         /// <returns>The created view data.</returns>
         private StrategyHudViewData CreateViewData(
             StrategyHudButtonViewData[] buttons,
             StrategyHudMessageNotificationViewData[] notifications,
-            RectInt? speedContextBounds
+            RectInt? speedContextBounds,
+            string saveIndicatorText = null
         )
         {
             return new StrategyHudViewData(
@@ -521,7 +554,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 new RectInt(100, 20, 50, 16),
                 speedContextBounds,
                 buttons,
-                notifications
+                notifications,
+                saveIndicatorText: saveIndicatorText
             );
         }
 

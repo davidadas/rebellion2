@@ -1046,6 +1046,7 @@ public static class StrategyViewPrefabBuilder
         AssignWindowLayerLayout(windowsView);
         AssignReference(hudView, "backgroundImage", hudBackgroundImage);
         AssignReference(hudView, "tickTextField", tickLabel);
+        CreateSaveIndicator(hudView, hud.transform);
         AssignReference(hudView, "rawMaterialsTextField", rawMaterialsLabel);
         AssignReference(hudView, "refinedMaterialsTextField", refinedMaterialsLabel);
         AssignReference(hudView, "maintenanceTextField", maintenanceLabel);
@@ -1245,6 +1246,44 @@ public static class StrategyViewPrefabBuilder
         textField.raycastTarget = false;
         SetSourceRect(textField.rectTransform, x, y, width, height);
         return textField;
+    }
+
+    /// <summary>
+    /// Authors the compact sprite animation and adjacent save label.
+    /// </summary>
+    /// <param name="hudView">The HUD that presents save state.</param>
+    /// <param name="hudParent">The source-space HUD hierarchy.</param>
+    private static void CreateSaveIndicator(StrategyHudView hudView, Transform hudParent)
+    {
+        RectTransform indicator = CreateChildLayer("SaveIndicator", hudParent);
+        indicator.anchorMin = indicator.anchorMax = new Vector2(0f, 1f);
+        indicator.pivot = new Vector2(0f, 1f);
+        indicator.anchoredPosition = new Vector2(8f, -8f);
+        indicator.sizeDelta = new Vector2(88f, 24f);
+        indicator.gameObject.AddComponent<Canvas>();
+        RawImage image = CreateRawImage("Medallion", indicator, null, 0, 0);
+        SetSourceRect(image.rectTransform, 0, 0, 24, 24);
+        image.enabled = false;
+        image.raycastTarget = false;
+        TextMeshProUGUI label = CreateResourceBreakdownText(
+            "SavingLabel",
+            "Saving...",
+            indicator,
+            25,
+            0,
+            63,
+            24,
+            TextAlignmentOptions.MidlineLeft,
+            fontSize: 9f
+        );
+        label.enabled = false;
+
+        SpriteSheetAnimationView animation =
+            indicator.gameObject.AddComponent<SpriteSheetAnimationView>();
+        animation.enabled = false;
+        AssignReference(animation, "image", image);
+        AssignReference(hudView, "saveMedallion", animation);
+        AssignReference(hudView, "saveLabel", label);
     }
 
     /// <summary>

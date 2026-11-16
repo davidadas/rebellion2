@@ -61,6 +61,30 @@ namespace Rebellion.Multiplayer
         public bool IsTransferringScene { get; private set; }
 
         /// <summary>
+        /// Gets whether a host-scheduled autosave is queued or its checkpoint has not completed.
+        /// </summary>
+        public bool IsAutosavePending => _autosaveQueued && !_disposed && Failure == null;
+
+        /// <summary>
+        /// Gets the next or active save kind without treating loads or guest autosaves as writes.
+        /// </summary>
+        public SaveGameKind? ActiveSaveKind
+        {
+            get
+            {
+                if (_disposed || Failure != null)
+                    return null;
+                MultiplayerSaveRequest command =
+                    _current ?? (_pending.Count > 0 ? _pending.Peek().Command : null);
+                if (command?.load != false || command.automatic && _role != MultiplayerRole.Host)
+                    return null;
+                return command.automatic ? SaveGameKind.Automatic
+                    : command.fileName == SaveGameManager.QuickSaveFileName ? SaveGameKind.Quick
+                    : SaveGameKind.Manual;
+            }
+        }
+
+        /// <summary>
         /// Reports checkpoint failures without concealing a possible partial durable write.
         /// </summary>
         public event Action<Exception> Faulted;

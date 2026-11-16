@@ -161,6 +161,8 @@ public sealed class GameFlowController : MonoBehaviour
             return;
         }
 
+        GameSessionManager runtime = AppBootstrap.Instance.GetGameSessionManager();
+        CapturePendingAutosave(runtime);
         activeSession.PumpCommands();
         if (activeSession.CommandFailure != null)
         {
@@ -179,18 +181,14 @@ public sealed class GameFlowController : MonoBehaviour
                 && activeSession.CanExecuteCommands
             )
             {
-                campaignCompletion ??= AppBootstrap
-                    .Instance.GetGameSessionManager()
-                    .WaitForCampaignCompletionAsync();
+                campaignCompletion ??= runtime.WaitForCampaignCompletionAsync();
                 if (campaignCompletion.IsCompletedSuccessfully && campaignCompletion.Result)
                     FinishCampaign();
             }
             return;
         }
 
-        bool beginTick = AppBootstrap
-            .Instance.GetGameSessionManager()
-            .TryBeginGameTick(Time.deltaTime);
+        bool beginTick = runtime.TryBeginGameTick(Time.deltaTime);
         if (beginTick)
         {
             activeTick = activeSession.Tick.ProcessTickIncrementally();
@@ -222,6 +220,23 @@ public sealed class GameFlowController : MonoBehaviour
                 );
             else
                 multiplayer.Disconnect();
+        }
+    }
+
+    /// <summary>
+    /// Captures a scheduled autosave once its indicator has been presented, and reports unexpected
+    /// failures from its background publication.
+    /// </summary>
+    /// <param name="runtime">The runtime that owns the scheduled autosave.</param>
+    private static async void CapturePendingAutosave(GameSessionManager runtime)
+    {
+        try
+        {
+            await runtime.ProcessPendingAutosaveAsync();
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
         }
     }
 

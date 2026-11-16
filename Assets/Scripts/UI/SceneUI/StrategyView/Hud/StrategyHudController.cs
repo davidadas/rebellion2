@@ -284,7 +284,7 @@ public sealed class StrategyHudController : IContextMenuReceiver
         return new StrategyHudViewData(
             backgroundTexture: ResolveTexture(hudTheme?.ImagePath),
             tickCounter: CreateCounter(
-                data.Speed == TickSpeed.Paused ? "PAUSED" : data.TickText,
+                GetTickCounterText(data),
                 textColor,
                 hudTheme?.TickCounterSourceLayout
             ),
@@ -324,8 +324,46 @@ public sealed class StrategyHudController : IContextMenuReceiver
                 && GetSpeedRequest(data) != null,
             sessionNoticeBounds: CreateSessionNoticeBounds(
                 theme?.StrategyWindowPlacements?.WindowBounds
-            )
+            ),
+            saveIndicatorText: data.SaveKind switch
+            {
+                SaveGameKind.Automatic => "Autosaving...",
+                SaveGameKind.Quick => "Quicksaving...",
+                SaveGameKind.Manual => "Saving...",
+                _ => string.Empty,
+            },
+            saveIndicatorAnimation: CreateSaveIndicatorAnimation(theme?.SaveIndicatorAnimation)
         );
+    }
+
+    /// <summary>
+    /// Resolves the faction's sprite sheet through the existing texture cache.
+    /// </summary>
+    /// <param name="theme">The configured animation, or null for text-only presentation.</param>
+    /// <returns>The resolved playback data, or null when no texture is available.</returns>
+    private SpriteSheetAnimationViewData CreateSaveIndicatorAnimation(
+        SpriteSheetAnimationTheme theme
+    )
+    {
+        Texture2D texture = ResolveTexture(theme?.ImagePath);
+        return texture == null
+            ? null
+            : new SpriteSheetAnimationViewData(
+                texture,
+                theme.FrameCount,
+                theme.Columns,
+                theme.FramesPerSecond
+            );
+    }
+
+    /// <summary>
+    /// Selects the current tick or paused state independently of the save indicator.
+    /// </summary>
+    /// <param name="data">The immutable current HUD facts.</param>
+    /// <returns>PAUSED or the current tick.</returns>
+    internal static string GetTickCounterText(StrategyHudRenderData data)
+    {
+        return data.Speed == TickSpeed.Paused ? "PAUSED" : data.TickText;
     }
 
     /// <summary>
