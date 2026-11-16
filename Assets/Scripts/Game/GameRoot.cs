@@ -588,7 +588,8 @@ namespace Rebellion.Game
 
         /// <summary>
         /// Transfers or releases a registered node between faction ownership indexes without
-        /// changing its parent, descendants, retained state, or remembered parent.
+        /// changing its parent, descendants, or remembered parent. An actual populated-planet
+        /// acquisition retains its eligibility for sector support changes.
         /// </summary>
         /// <param name="node">The node whose owner changes.</param>
         /// <param name="ownerInstanceId">
@@ -603,14 +604,33 @@ namespace Rebellion.Game
             if (ownerInstanceId != null)
                 GetFactionByOwnerInstanceID(ownerInstanceId);
 
+            bool ownerChanged = node.GetOwnerInstanceID() != ownerInstanceId;
             DeregsiterOwnedUnit(node);
             node.SetOwnerInstanceID(ownerInstanceId);
+            if (ownerChanged && node is Planet controlledPlanet)
+                controlledPlanet.UpdateSectorSupportEligibilityAfterTransition();
             RegisterOwnedUnit(node);
             if (UnitPresenceChanged != null)
             {
                 Planet planet = GetContainingPlanet(node);
                 UnitPresenceChanged(node, planet, planet);
             }
+        }
+
+        /// <summary>
+        /// Populates an uncolonized planet, establishes its owner's support, and retains any
+        /// sector support eligibility earned by the completed population transition.
+        /// </summary>
+        /// <param name="planet">The planet receiving a completed settlement.</param>
+        internal void ColonizePlanet(Planet planet)
+        {
+            if (planet.IsColonized)
+                return;
+
+            planet.IsColonized = true;
+            planet.PopularSupport.Clear();
+            planet.SetFullPopularSupport(planet.OwnerInstanceID);
+            planet.UpdateSectorSupportEligibilityAfterTransition();
         }
 
         /// <summary>

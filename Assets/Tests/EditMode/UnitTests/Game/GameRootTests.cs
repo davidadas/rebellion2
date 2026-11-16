@@ -1540,6 +1540,189 @@ namespace Rebellion.Tests.Game
             Assert.IsFalse(officer.IsActive());
         }
 
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ChangeOwnership_PopulatedPlanetAcquired_GrantsSectorSupportEligibility(
+            bool? eligibility
+        )
+        {
+            Planet planet = CreateRegisteredSupportPlanet(eligibility, null, true);
+
+            _game.ChangeOwnership(planet, _faction1.InstanceID);
+
+            Assert.AreEqual(true, planet.IsSectorSupportEligible);
+        }
+
+        [Test]
+        public void ChangeOwnership_PopulatedPlanetTransferred_GrantsSectorSupportEligibility()
+        {
+            Planet planet = CreateRegisteredSupportPlanet(false, _faction1.InstanceID, true);
+
+            _game.ChangeOwnership(planet, _faction2.InstanceID);
+
+            Assert.AreEqual(true, planet.IsSectorSupportEligible);
+        }
+
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ChangeOwnership_UnpopulatedPlanetAcquired_PreservesSectorSupportEligibility(
+            bool? eligibility
+        )
+        {
+            Planet planet = CreateRegisteredSupportPlanet(eligibility, null, false);
+
+            _game.ChangeOwnership(planet, _faction1.InstanceID);
+
+            Assert.AreEqual(eligibility, planet.IsSectorSupportEligible);
+        }
+
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ChangeOwnership_PopulatedPlanetReleased_PreservesSectorSupportEligibility(
+            bool? eligibility
+        )
+        {
+            Planet planet = CreateRegisteredSupportPlanet(eligibility, _faction1.InstanceID, true);
+
+            _game.ChangeOwnership(planet, null);
+
+            Assert.AreEqual(eligibility, planet.IsSectorSupportEligible);
+        }
+
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ChangeOwnership_UnchangedFactionOwner_PreservesSectorSupportEligibility(
+            bool? eligibility
+        )
+        {
+            Planet planet = CreateRegisteredSupportPlanet(eligibility, _faction1.InstanceID, true);
+
+            _game.ChangeOwnership(planet, _faction1.InstanceID);
+
+            Assert.AreEqual(eligibility, planet.IsSectorSupportEligible);
+        }
+
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ChangeOwnership_UnchangedNeutralOwner_PreservesSectorSupportEligibility(
+            bool? eligibility
+        )
+        {
+            Planet planet = CreateRegisteredSupportPlanet(eligibility, null, true);
+
+            _game.ChangeOwnership(planet, null);
+
+            Assert.AreEqual(eligibility, planet.IsSectorSupportEligible);
+        }
+
+        [Test]
+        public void ChangeOwnership_InvalidFaction_PreservesUnknownSectorSupportEligibility()
+        {
+            Planet planet = CreateRegisteredSupportPlanet(null, null, true);
+
+            Assert.Throws<SceneNodeNotFoundException>(() =>
+                _game.ChangeOwnership(planet, "missing")
+            );
+
+            Assert.IsNull(planet.IsSectorSupportEligible);
+        }
+
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ColonizePlanet_OwnedPopulationTransition_GrantsSectorSupportEligibility(
+            bool? eligibility
+        )
+        {
+            Planet planet = CreateRegisteredSupportPlanet(eligibility, _faction1.InstanceID, false);
+
+            _game.ColonizePlanet(planet);
+
+            Assert.AreEqual(true, planet.IsSectorSupportEligible);
+        }
+
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ColonizePlanet_SupportSetterRejectsNeutralOwner_PreservesSectorSupportEligibility(
+            bool? eligibility
+        )
+        {
+            Planet planet = CreateRegisteredSupportPlanet(eligibility, null, false);
+
+            Assert.Throws<ArgumentNullException>(() => _game.ColonizePlanet(planet));
+
+            Assert.AreEqual(eligibility, planet.IsSectorSupportEligible);
+        }
+
+        [Test]
+        public void ColonizePlanet_SupportCallback_RunsBeforeGrantingSectorSupportEligibility()
+        {
+            Planet planet = CreateRegisteredSupportPlanet(false, _faction1.InstanceID, false);
+            bool? eligibilityDuringSupportChange = null;
+            planet.PopularSupportChanged += changed =>
+                eligibilityDuringSupportChange = changed.IsSectorSupportEligible;
+
+            _game.ColonizePlanet(planet);
+
+            Assert.AreEqual(false, eligibilityDuringSupportChange);
+            Assert.AreEqual(true, planet.IsSectorSupportEligible);
+        }
+
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ColonizePlanet_UnchangedPopulation_PreservesSectorSupportEligibility(
+            bool? eligibility
+        )
+        {
+            Planet planet = CreateRegisteredSupportPlanet(eligibility, _faction1.InstanceID, true);
+
+            _game.ColonizePlanet(planet);
+
+            Assert.AreEqual(eligibility, planet.IsSectorSupportEligible);
+        }
+
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void NeutralizeDestroyedPlanet_OwnedPlanet_PreservesSectorSupportEligibility(
+            bool? eligibility
+        )
+        {
+            Planet planet = CreateRegisteredSupportPlanet(eligibility, _faction1.InstanceID, true);
+            planet.IsDestroyed = true;
+
+            _game.NeutralizeDestroyedPlanet(planet);
+
+            Assert.AreEqual(eligibility, planet.IsSectorSupportEligible);
+        }
+
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void RebuildSceneState_SerializedOwnedPlanet_PreservesSectorSupportEligibility(
+            bool? eligibility
+        )
+        {
+            Planet planet = CreateRegisteredSupportPlanet(eligibility, _faction1.InstanceID, true);
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(
+                SerializationHelper.Serialize(_game)
+            );
+
+            restored.RebuildSceneState();
+
+            Assert.AreEqual(
+                eligibility,
+                restored.GetSceneNodeByInstanceID<Planet>(planet.InstanceID).IsSectorSupportEligible
+            );
+        }
+
         [Test]
         public void ChangeOwnership_NullOwner_ReleasesFactionOwnership()
         {
@@ -1694,6 +1877,31 @@ namespace Rebellion.Tests.Game
                     .GetFactionByOwnerInstanceID(_faction1.InstanceID)
                     .GetOwnedUnitsByType<Planet>()
             );
+        }
+
+        /// <summary>
+        /// Registers a planet with raw eligibility and current population and owner state.
+        /// </summary>
+        /// <param name="eligibility">The retained eligibility, or null for an older save.</param>
+        /// <param name="ownerInstanceId">The current faction owner, or null for neutrality.</param>
+        /// <param name="isColonized">Whether the current planet population is present.</param>
+        /// <returns>The registered planet.</returns>
+        private Planet CreateRegisteredSupportPlanet(
+            bool? eligibility,
+            string ownerInstanceId,
+            bool isColonized
+        )
+        {
+            string state = eligibility.HasValue
+                ? $"<IsSectorSupportEligible>{eligibility.Value.ToString().ToLowerInvariant()}</IsSectorSupportEligible>"
+                : "";
+            Planet planet = SerializationHelper.Deserialize<Planet>($"<Planet>{state}</Planet>");
+            planet.InstanceID = "support-planet";
+            planet.OwnerInstanceID = ownerInstanceId;
+            planet.IsColonized = isColonized;
+            _game.AttachNode(_planetSector, _game.Galaxy);
+            _game.AttachNode(planet, _planetSector);
+            return planet;
         }
 
         /// <summary>
