@@ -125,6 +125,20 @@ and the guest must submit exactly one authenticated withdrawal command. This cas
 completion rather than an uninterrupted battle to destruction. Final result, effect, day-barrier,
 campaign fingerprint, and cleanup requirements remain the same. Omitting the option disables it.
 
+Run recovery as a separate small-fleet case with `-eosTacticalVerifyRecovery true` on both processes,
+without a withdrawal option. After the shared control check and observed capital/fighter firing and
+hull damage, the guest disconnects through the normal coordinator. The host must detect departure
+and roll back to its last completed checkpoint without publishing a battle result or completing a
+campaign day. The same authenticated guest uses public campaign recovery, launching the actual
+restored world. Both processes must agree on the paused recovered campaign fingerprint, initial
+tick, and original faction ownership. They then advance one ordinary tick, independently verify
+fresh unanswered combat decisions, and admit new authoritative/replica battle views with the
+original unmodified campaign roster. This case ends after fresh battle admission and native lobby
+cleanup; it verifies checkpoint rollback and reentry, not continuation or terminal completion of
+the interrupted battle. Passing reports require `recoveryComplete` and exactly zero battle-result,
+campaign-day completion, and combat-resumption counts. Its independently captured checkpoint digest
+is `recoveredCampaignFingerprint`; terminal battle digest requirements apply to the other two cases.
+
 Run the relay case in fresh processes with a fresh run identity and
 `-eosTacticalForceRelay true` on both sides. Each authenticated platform applies and reads back the
 policy before negotiating its peer connection. A successful setting is insufficient: each report

@@ -21,7 +21,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
     /// <summary>
     /// Runs an explicitly requested two-account integration through real EOS lobby and tactical services.
     /// </summary>
-    public sealed class EosTacticalIntegrationRunner : MonoBehaviour
+    public sealed partial class EosTacticalIntegrationRunner : MonoBehaviour
     {
         private EosTacticalIntegrationOptions _options;
         private readonly EosTacticalIntegrationReport _report = new();
@@ -84,6 +84,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
                 _report.runID = _options.RunID;
                 _report.role = _options.Role;
                 _report.forceRelay = _options.ForceRelay;
+                _report.verifyRecovery = _options.VerifyRecovery;
                 _report.capitalsPerSide = _options.CapitalsPerSide;
                 _report.squadronsPerSide = _options.SquadronsPerSide;
                 _report.guestWithdrawalAtSystemTime = _options.GuestWithdrawalAtSystemTime;
@@ -178,6 +179,10 @@ namespace Rebellion.Tests.MultiplayerIntegration
                                 "The participants requested different transport policies."
                             );
                             Require(
+                                host.verifyRecovery == _options.VerifyRecovery,
+                                "The participants requested different recovery cases."
+                            );
+                            Require(
                                 host.capitalsPerSide == _options.CapitalsPerSide
                                     && host.squadronsPerSide == _options.SquadronsPerSide,
                                 "The participants requested different authored fleet counts."
@@ -210,6 +215,15 @@ namespace Rebellion.Tests.MultiplayerIntegration
                         break;
                     case "combat":
                         AdvanceCombat();
+                        break;
+                    case "recovery":
+                        AdvanceRecovery();
+                        break;
+                    case "recovery-entry":
+                        AdvanceRecoveryEntry();
+                        break;
+                    case "recovery-outcome":
+                        CompareRecoveryOutcome();
                         break;
                     case "day-barrier":
                         VerifyDayBarrier();
@@ -434,18 +448,19 @@ namespace Rebellion.Tests.MultiplayerIntegration
         {
             try
             {
+                DetachRuntimeObservers();
+                _runtime?.EndGame();
                 _runtime = new GameSessionManager(content, SaveGameManager.Instance);
                 GameSession session = _runtime.StartGame(
-                    EosTacticalScenario.Create(content, configuration.Summary, _options),
+                    configuration.RestoredGame
+                        ?? EosTacticalScenario.Create(content, configuration.Summary, _options),
                     _coordinator
                 );
-                session.Tick.TickCompleted += HandleTickCompleted;
-                session.Tick.CombatResumed += HandleCombatResumed;
-                _resultPipeline = session.Pipeline;
-                _resultPipeline.ResultsResolved += HandleResolvedResults;
+                AttachRuntimeObservers(session);
                 _coordinator.NotifyPresentationReady(_runtime);
-                _state = "campaign";
-                SetPhase("campaign");
+                _report.recoveryLaunchObserved |= configuration.RestoredGame != null;
+                _state = _recoveryInterrupted ? "recovery" : "campaign";
+                SetPhase(_state);
             }
             catch (Exception exception)
             {
@@ -462,6 +477,11 @@ namespace Rebellion.Tests.MultiplayerIntegration
             if (!_coordinator.IsSynchronized)
                 return;
             GameSession session = _runtime.GetActiveGameSession();
+            if (_options.VerifyRecovery && !_initialRecoveryTickObserved)
+            {
+                _initialRecoveryTickObserved = true;
+                _report.recoveryInitialTick = session.Game.CurrentTick;
+            }
             MultiplayerCampaignIdentity identity = session.Game.Metadata.MultiplayerCampaign;
             _report.hostUserID = identity.HostUserID;
             _report.guestUserID = identity.GuestUserID;
@@ -500,6 +520,8 @@ namespace Rebellion.Tests.MultiplayerIntegration
                     pending.PlanetInstanceID == EosTacticalScenario.PlanetID,
                     "An unrelated campaign encounter preceded the integration arena."
                 );
+                if (_recoveryInterrupted && !VerifyFreshResponses(pending))
+                    return;
                 _begin = _runtime.PlayerRequests.ExecuteAsync(
                     new BeginTacticalCombatRequest
                     {
@@ -547,6 +569,11 @@ namespace Rebellion.Tests.MultiplayerIntegration
                     .GetActiveGameSession()
                     .GetService<SpaceCombatCommands>()
                     .ActiveTacticalBattleID;
+                if (_recoveryInterrupted)
+                {
+                    _report.freshBattleID = _report.battleID;
+                }
+                RecordRecoveryEntry(driver);
                 Require(
                     session.IsReplica == (_options.Role == "guest"),
                     "The negotiated tactical authority is incorrect."
@@ -570,8 +597,8 @@ namespace Rebellion.Tests.MultiplayerIntegration
                 session.UnitWithdrawn += HandleWithdrawn;
                 session.FighterRecovered += HandleRecovered;
                 driver.Prepare(new Arrival());
-                _state = "combat";
-                SetPhase("combat");
+                _state = _recoveryInterrupted ? "recovery-entry" : "combat";
+                SetPhase(_state);
             }
             catch (Exception exception)
             {
@@ -584,6 +611,8 @@ namespace Rebellion.Tests.MultiplayerIntegration
         /// </summary>
         private void AdvanceCombat()
         {
+            if (TryEnterExpectedRecovery())
+                return;
             _driver.Advance(Time.unscaledDeltaTime);
             TacticalCombatSession session = _driver.Session;
             _report.systemTime = session.SystemTime;
@@ -609,6 +638,8 @@ namespace Rebellion.Tests.MultiplayerIntegration
             _report.manualControlVerified = true;
             ObserveOrders(session);
             AdvanceControlCheck(session);
+            if (TryDisconnectForRecovery(session))
+                return;
             ObserveGuestWithdrawal(session);
             TryRequestGuestWithdrawal(session);
             if (
@@ -627,6 +658,10 @@ namespace Rebellion.Tests.MultiplayerIntegration
                 _driver.AcknowledgeMovie(session.PendingAttackRunMovie);
             if (!_driver.CompletionReady)
                 return;
+            Require(
+                !_options.VerifyRecovery,
+                "The recovery case completed combat before its required real disconnect and rejoin."
+            );
             _report.completionAgreed = true;
             _report.orderedEffectDigest = _evidence.Complete();
             Require(
@@ -1244,6 +1279,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
                 && _report.remoteOrdersObserved
                 && _report.localTargetObserved
                 && _report.remoteTargetObserved;
+            RecordRecoveryPublication();
             return true;
         }
 
@@ -1390,22 +1426,8 @@ namespace Rebellion.Tests.MultiplayerIntegration
         {
             _route?.Dispose();
             _route = null;
-            if (_resultPipeline != null)
-            {
-                _resultPipeline.ResultsResolved -= HandleResolvedResults;
-                _resultPipeline = null;
-            }
-            if (_driver != null)
-            {
-                _driver.Session.NetworkCommandRequested -= HandleCommand;
-                _driver.Session.ShotFired -= HandleShot;
-                _driver.Session.ImpactApplied -= HandleImpact;
-                _driver.Session.UnitDestroyed -= HandleDestroyed;
-                _driver.Session.UnitWithdrawn -= HandleWithdrawn;
-                _driver.Session.FighterRecovered -= HandleRecovered;
-            }
-            _evidence?.Dispose();
-            _evidence = null;
+            DetachRuntimeObservers();
+            DetachCombatObservers();
             _coordinator?.Disconnect();
             (_tick as IDisposable)?.Dispose();
             _tick = null;

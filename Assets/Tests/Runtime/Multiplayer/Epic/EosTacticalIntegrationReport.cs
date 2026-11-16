@@ -20,6 +20,9 @@ namespace Rebellion.Tests.MultiplayerIntegration
         public string campaignFingerprint;
         public string pausedStateFingerprint;
         public string orderedEffectDigest;
+        public string recoveredCampaignFingerprint;
+        public string interruptedBattleID;
+        public string freshBattleID;
         public string errorType;
         public string errorStack;
         public string cleanupErrorType;
@@ -34,6 +37,17 @@ namespace Rebellion.Tests.MultiplayerIntegration
         public double defenderHullTotal;
         public bool authenticated;
         public bool forceRelay;
+        public bool verifyRecovery;
+        public bool expectedDisconnectSubmitted;
+        public bool peerDepartureObserved;
+        public bool rollbackObserved;
+        public bool recoveryResumeRequested;
+        public bool recoveryLaunchObserved;
+        public bool recoverySynchronized;
+        public bool recoveryRoleVerified;
+        public bool freshResponsesVerified;
+        public bool freshBattleVerified;
+        public bool recoveryComplete;
         public bool relayPolicyVerified;
         public bool hostReadyForJoin;
         public bool synchronized;
@@ -82,6 +96,8 @@ namespace Rebellion.Tests.MultiplayerIntegration
         public int combatResumptions;
         public int systemTime;
         public int finalTick;
+        public int recoveryInitialTick;
+        public int recoveredTick;
         public int guestWithdrawalAtSystemTime;
         public int guestWithdrawalSubmittedAtSystemTime;
         public int guestWithdrawalObservedAtSystemTime;

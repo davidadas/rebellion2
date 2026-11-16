@@ -14,6 +14,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
         internal string ReportDirectory;
         internal string SessionPath;
         internal bool ForceRelay;
+        internal bool VerifyRecovery;
         internal int CapitalsPerSide = 1;
         internal int SquadronsPerSide = 2;
         internal int GuestWithdrawalAtSystemTime;
@@ -75,6 +76,13 @@ namespace Rebellion.Tests.MultiplayerIntegration
                 if (!bool.TryParse(relay, out options.ForceRelay))
                     throw new ArgumentException("The forced-relay option must be true or false.");
             }
+            if (values.TryGetValue("-eosTacticalVerifyRecovery", out string recovery))
+            {
+                if (!bool.TryParse(recovery, out options.VerifyRecovery))
+                    throw new ArgumentException(
+                        "The recovery verification option must be true or false."
+                    );
+            }
             if (values.TryGetValue("-eosTacticalCapitalsPerSide", out string capitals))
             {
                 if (
@@ -126,6 +134,10 @@ namespace Rebellion.Tests.MultiplayerIntegration
                         "The optional guest withdrawal time must be a positive system-time integer."
                     );
             }
+            if (options.VerifyRecovery && options.GuestWithdrawalAtSystemTime != 0)
+                throw new ArgumentException(
+                    "Recovery verification and terminal withdrawal are separate integration cases."
+                );
             return options;
         }
 
