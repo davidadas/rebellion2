@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Rebellion.Util.Logging;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -638,7 +639,7 @@ public sealed class LoadingScreenView : MonoBehaviour
         }
         catch (Exception exception)
         {
-            Debug.LogWarning(
+            GameLogger.Warning(
                 $"Loading shuttle unavailable; continuing with hyperspace.\n{exception}"
             );
         }
@@ -702,7 +703,7 @@ public sealed class LoadingScreenView : MonoBehaviour
         }
         catch (Exception exception)
         {
-            Debug.LogWarning(
+            GameLogger.Warning(
                 $"Loading-screen reactor audio unavailable; continuing silently.\n{exception}"
             );
         }
@@ -769,7 +770,9 @@ public sealed class LoadingScreenView : MonoBehaviour
         )
             CreateEngineExhaust(engineRoot, engineBounds);
         else
-            Debug.LogWarning("Loading shuttle exhaust skipped because its engine mesh is missing.");
+            GameLogger.Warning(
+                "Loading shuttle exhaust skipped because its engine mesh is missing."
+            );
         shuttleRestPosition = shuttleModelRoot.localPosition;
         shuttleRestRotation = shuttleModelRoot.localRotation;
         shuttleRestScale = shuttleModelRoot.localScale;
@@ -785,7 +788,7 @@ public sealed class LoadingScreenView : MonoBehaviour
         Shader exhaustShader = Shader.Find(_exhaustShaderName);
         if (exhaustShader == null)
         {
-            Debug.LogWarning(
+            GameLogger.Warning(
                 $"Loading shuttle exhaust skipped because shader '{_exhaustShaderName}' is unavailable."
             );
             return;

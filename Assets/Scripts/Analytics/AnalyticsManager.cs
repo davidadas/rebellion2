@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Rebellion.Util.Logging;
 using Unity.Services.Analytics;
 using Unity.Services.Core;
 using UnityEngine;
@@ -187,7 +188,7 @@ public sealed class AnalyticsManager : IAnalyticsConsentRuntime, IAnalyticsEvent
         }
         catch (Exception exception)
         {
-            Debug.LogWarning($"Analytics flush failed: {exception.Message}");
+            GameLogger.Warning($"Analytics flush failed: {exception.Message}");
         }
     }
 
@@ -236,7 +237,7 @@ public sealed class AnalyticsManager : IAnalyticsConsentRuntime, IAnalyticsEvent
         catch (Exception exception)
         {
             _pendingEvents.Clear();
-            Debug.LogWarning($"Analytics initialization failed: {exception.Message}");
+            GameLogger.Warning($"Analytics initialization failed: {exception.Message}");
         }
     }
 
@@ -269,7 +270,7 @@ public sealed class AnalyticsManager : IAnalyticsConsentRuntime, IAnalyticsEvent
         }
         catch (Exception exception)
         {
-            Debug.LogWarning(
+            GameLogger.Warning(
                 $"Analytics event '{analyticsEvent.Name}' failed: {exception.Message}"
             );
         }

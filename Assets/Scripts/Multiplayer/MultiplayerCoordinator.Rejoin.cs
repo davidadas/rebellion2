@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Gameplay;
+using Rebellion.Util.Logging;
 using UnityEngine;
 
 namespace Rebellion.Multiplayer
@@ -63,7 +64,7 @@ namespace Rebellion.Multiplayer
             catch (Exception exception)
             {
                 _recoveryRecord = null;
-                Debug.LogWarning("Could not read multiplayer recovery: " + exception.Message);
+                GameLogger.Warning("Could not read multiplayer recovery: " + exception.Message);
             }
         }
 
@@ -128,7 +129,7 @@ namespace Rebellion.Multiplayer
                 Disconnect();
                 _recoveryRecord = record;
                 Failure = exception;
-                Debug.LogException(exception);
+                GameLogger.LogException(exception);
                 SetStatus("Could not resume: " + exception.Message);
             }
         }
@@ -350,7 +351,7 @@ namespace Rebellion.Multiplayer
             }
             catch (Exception exception)
             {
-                Debug.LogException(exception);
+                GameLogger.LogException(exception);
                 if (!_disposed && ReferenceEquals(_recoveryRecord, record))
                     SetStatus("The recovery checkpoint could not be saved: " + exception.Message);
             }

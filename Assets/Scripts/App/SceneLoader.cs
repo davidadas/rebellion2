@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Threading.Tasks;
+using Rebellion.Util.Logging;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -112,7 +113,7 @@ public sealed class SceneLoader : MonoBehaviour
         if (loadFailed != null)
             loadFailed(exception);
         else
-            Debug.LogException(exception);
+            GameLogger.LogException(exception);
     }
 
     /// <summary>

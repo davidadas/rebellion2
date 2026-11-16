@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Rebellion.Util.Logging;
 using AddNotifyLobbyMemberStatusReceivedOptions = Epic.OnlineServices.Lobby.AddNotifyLobbyMemberStatusReceivedOptions;
 using AttributeData = Epic.OnlineServices.Lobby.AttributeData;
 using Common = Epic.OnlineServices.Common;
@@ -749,9 +750,7 @@ namespace Rebellion.Multiplayer
             }
             catch (Exception exception)
             {
-                UnityEngine.Debug.LogWarning(
-                    "Multiplayer lobby cleanup failed: " + exception.Message
-                );
+                GameLogger.Warning("Multiplayer lobby cleanup failed: " + exception.Message);
             }
         }
 

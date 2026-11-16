@@ -10,17 +10,28 @@ internal static class WindowsAudioSessionProbe
     /// <summary>
     /// Checks whether Windows has a non-expired audio session owned by this process.
     /// </summary>
+    /// <param name="report">Receives the session state or the reason inspection was unavailable.</param>
     /// <returns>True for an existing session, false for none, or null when inspection fails.</returns>
-    public static bool? HasOutputSession()
+    public static bool? HasOutputSession(Action<string> report = null)
     {
         // Wine 10's session enumerator creates expired wrappers for default-session GUIDs.
         // An absent session there cannot establish that Unity's output failed.
         if (GetProcAddress(GetModuleHandle("ntdll.dll"), "wine_get_version") != IntPtr.Zero)
+        {
+            report?.Invoke(
+                "Session inspection unavailable: Wine session enumeration is unreliable."
+            );
             return null;
+        }
         int initialized = CoInitializeEx(IntPtr.Zero, 0);
         bool ownsInitialization = initialized >= 0;
         if (!ownsInitialization)
+        {
+            report?.Invoke(
+                $"Session inspection unavailable: COM initialization 0x{initialized:X8}."
+            );
             return null;
+        }
         try
         {
             Guid clsid = new Guid("BCDE0395-E52F-467C-8E3D-C4579291692E");
@@ -35,13 +46,16 @@ internal static class WindowsAudioSessionProbe
             {
                 Check(Method<Item>(collection, 4)(collection, index, out IntPtr device));
                 using ComReference deviceReference = new ComReference(device);
-                if (HasProcessSession(device, processId))
+                if (HasProcessSession(device, processId, report))
                     return true;
             }
             return false;
         }
-        catch
+        catch (Exception exception)
         {
+            report?.Invoke(
+                $"Session inspection failed: {exception.GetType().Name} (0x{exception.HResult:X8}): {exception.Message}"
+            );
             return null;
         }
         finally
@@ -56,8 +70,9 @@ internal static class WindowsAudioSessionProbe
     /// </summary>
     /// <param name="device">The active render endpoint.</param>
     /// <param name="processId">The game's Windows process identifier.</param>
+    /// <param name="report">Receives the state of a matching game render session.</param>
     /// <returns>True when a non-expired session belongs to this process.</returns>
-    private static bool HasProcessSession(IntPtr device, uint processId)
+    private static bool HasProcessSession(IntPtr device, uint processId, Action<string> report)
     {
         Guid managerId = new Guid("77AA99A0-1BD6-484F-8BC7-2C654C9A9B6F");
         Check(
@@ -79,7 +94,12 @@ internal static class WindowsAudioSessionProbe
             using ComReference extendedReference = new ComReference(extended);
             Check(Method<Unsigned>(extended, 14)(extended, out uint sessionProcess));
             if (sessionProcess == processId)
+            {
+                report?.Invoke(
+                    $"Existing game render session: state={state} (0=inactive, 1=active)."
+                );
                 return true;
+            }
         }
         return false;
     }

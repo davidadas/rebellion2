@@ -11,6 +11,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.Tests.Game.Factions
 {
@@ -822,9 +823,9 @@ namespace Rebellion.Tests.Game.Factions
             _faction.PendingRawMaterialFacilityIDs.AddRange(new[] { "REFINERY1", "REFINERY2" });
             _faction.PendingRefinedMaterialFacilityIDs.AddRange(new[] { "SHIPYARD1", "SHIPYARD2" });
             string serialized = SerializationHelper.Serialize(_faction);
-            Console.WriteLine("=== SERIALIZED XML ===");
-            Console.WriteLine(serialized);
-            Console.WriteLine("=== END ===");
+            GameLogger.Debug("=== SERIALIZED XML ===");
+            GameLogger.Debug(serialized);
+            GameLogger.Debug("=== END ===");
             Faction deserialized = SerializationHelper.Deserialize<Faction>(serialized);
 
             Assert.AreEqual(

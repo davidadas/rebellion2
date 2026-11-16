@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
+using Rebellion.Util.Logging;
 using UnityEngine;
 
 /// <summary>
@@ -721,14 +722,14 @@ public sealed class ContentPackEditorController : MonoBehaviour
     private void ReportError(Exception exception, string message = null)
     {
         if (exception.InnerException != null)
-            Debug.LogWarning(exception.ToString());
+            GameLogger.Warning(exception.ToString());
         if (
             exception is not ArgumentException
             && exception is not IOException
             && exception is not XmlException
             && exception is not UnauthorizedAccessException
         )
-            Debug.LogException(exception);
+            GameLogger.LogException(exception);
         view.RenderStatus(message ?? exception.Message, true);
     }
 }

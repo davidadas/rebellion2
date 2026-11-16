@@ -1,4 +1,5 @@
 using System;
+using Rebellion.Util.Logging;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Video;
@@ -170,7 +171,7 @@ public sealed class CutscenePlayer : MonoBehaviour
     /// <param name="message">The platform decoder's error message.</param>
     private void HandlePlaybackError(VideoPlayer source, string message)
     {
-        Debug.LogWarning($"Cutscene playback failed: {message}", source);
+        GameLogger.Warning($"Cutscene playback failed: {message}", source);
         EndCutscene();
     }
 

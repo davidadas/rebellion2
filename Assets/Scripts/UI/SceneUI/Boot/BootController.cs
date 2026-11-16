@@ -1,4 +1,5 @@
 using System;
+using Rebellion.Util.Logging;
 using UnityEngine;
 
 /// <summary>
@@ -39,7 +40,7 @@ public sealed class BootController : MonoBehaviour
         }
         catch (Exception exception)
         {
-            Debug.LogException(exception);
+            GameLogger.LogException(exception);
             LoadingScreenController.ShowStartupFailure(exception);
         }
     }

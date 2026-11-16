@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Xml.Linq;
 using Rebellion.Game;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
 using TMPro;
 using UnityEngine;
@@ -721,7 +722,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         }
         catch (ArgumentException exception)
         {
-            Debug.LogWarning("Invalid artwork path: " + exception.Message);
+            GameLogger.Warning("Invalid artwork path: " + exception.Message);
             ValidationFailed?.Invoke("Image path is invalid. Use Import to choose an image.");
         }
         previewImage.texture = texture;

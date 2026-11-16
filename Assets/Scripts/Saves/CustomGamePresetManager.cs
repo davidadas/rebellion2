@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
-using UnityEngine;
 
 /// <summary>
 /// Describes one saved custom-game configuration.
@@ -92,7 +92,7 @@ public sealed class CustomGamePresetManager
             }
             catch (Exception exception)
             {
-                Debug.LogWarning(
+                GameLogger.Warning(
                     $"Failed to read custom-game preset '{Path.GetFileName(path)}': {exception.Message}"
                 );
             }
