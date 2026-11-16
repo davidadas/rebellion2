@@ -527,7 +527,12 @@ namespace Rebellion.AI.Proposals
 
             if (
                 Destination is Fleet destinationFleet
-                && !context.StrategicPlan.CanReinforce(destinationFleet)
+                && (
+                    !ReferenceEquals(
+                        context.Game.GetSceneNodeByInstanceID<Fleet>(destinationFleet.InstanceID),
+                        destinationFleet
+                    ) || !context.StrategicPlan.CanReinforce(destinationFleet)
+                )
             )
                 return false;
 
