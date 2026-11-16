@@ -6,6 +6,12 @@ on:
       checkout_ref:
         type: string
         required: true
+      expected_base_sha:
+        type: string
+        default: ''
+      expected_head_sha:
+        type: string
+        default: ''
       branch:
         type: string
         default: ''
@@ -44,6 +50,26 @@ jobs:
           sparse-checkout: .github/media-revision
           sparse-checkout-cone-mode: false
           path: .ci/source-metadata
+
+      - name: Verify tested merge revision
+        if: inputs.expected_head_sha != ''
+        working-directory: .ci/source-metadata
+        env:
+          EXPECTED_BASE_SHA: ${{ inputs.expected_base_sha }}
+          EXPECTED_HEAD_SHA: ${{ inputs.expected_head_sha }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$EXPECTED_BASE_SHA" =~ ^[a-f0-9]{40}$ ]] ||
+             [[ ! "$EXPECTED_HEAD_SHA" =~ ^[a-f0-9]{40}$ ]]; then
+            echo "Exact base and head revisions are required."
+            exit 1
+          fi
+          parents="$(git show --no-patch --format=%P HEAD)"
+          if [[ " $parents " != *" $EXPECTED_BASE_SHA "* ]] ||
+             [[ " $parents " != *" $EXPECTED_HEAD_SHA "* ]]; then
+            echo "The tested media revision is not the approved pull request merge."
+            exit 1
+          fi
 
       - name: Checkout media metadata
         uses: actions/checkout@v4

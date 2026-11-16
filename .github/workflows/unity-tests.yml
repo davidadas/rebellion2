@@ -397,7 +397,9 @@ jobs:
     uses: ./.github/workflows/resolve-media.yml
     with:
       branch: ${{ needs.approve-pr.outputs.media_branch }}
-      checkout_ref: ${{ needs.approve-pr.outputs.merge_sha }}
+      checkout_ref: refs/pull/${{ inputs.pull_request_number }}/merge
+      expected_base_sha: ${{ needs.approve-pr.outputs.base_sha }}
+      expected_head_sha: ${{ inputs.head_sha }}
     secrets: inherit
     permissions:
       contents: read

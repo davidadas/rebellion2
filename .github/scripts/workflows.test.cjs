@@ -69,6 +69,8 @@ test('same-repository PRs run private tests automatically from the protected wor
   assert.equal(media.uses, './.github/workflows/resolve-media.yml');
   assert.equal(media.with.branch, '${{ github.event.pull_request.head.ref }}');
   assert.equal(media.with.checkout_ref, '${{ github.event.pull_request.merge_commit_sha }}');
+  assert.equal(media.with.expected_base_sha, '${{ github.event.pull_request.base.sha }}');
+  assert.equal(media.with.expected_head_sha, '${{ github.event.pull_request.head.sha }}');
   assert.equal(media.secrets, 'inherit');
   assert.equal(unity.if, trustedPullRequestCondition);
   assert.ok(needs(unity).includes('trusted-media'));
@@ -153,13 +155,23 @@ test('Unity tests build the Linux native dependency from the verified tested che
   const job = runner.jobs.test;
   assert.equal(job['runs-on'], 'ubuntu-22.04');
   const steps = job.steps;
-  const checkout = steps.findIndex(step => step.name === 'Checkout repository');
-  const verify = steps.findIndex(step => step.name === 'Verify reviewed revision');
+  const baseCheckout = steps.findIndex(step => step.name === 'Checkout PR base');
+  const headCheckout = steps.findIndex(step => step.name === 'Checkout reviewed PR head');
+  const merge = steps.findIndex(step => step.name === 'Prepare reviewed merge');
   const native = steps.findIndex(step => step.name === 'Build and verify Linux native vector library');
   const unity = steps.findIndex(step => step.uses === 'game-ci/unity-test-runner@v4');
-  assert.ok(checkout >= 0 && checkout < verify && verify < native && native < unity);
-  assert.equal(steps[checkout].with.ref, '${{ inputs.checkout_ref }}');
-  assert.equal(steps[checkout].with['persist-credentials'], false);
+  assert.ok(
+    baseCheckout >= 0 &&
+      baseCheckout < headCheckout &&
+      headCheckout < merge &&
+      merge < native &&
+      native < unity,
+  );
+  assert.equal(steps[baseCheckout].with.ref, '${{ inputs.base_sha }}');
+  assert.equal(steps[baseCheckout].with['persist-credentials'], false);
+  assert.equal(steps[headCheckout].with.repository, '${{ inputs.reviewed_head_repository }}');
+  assert.equal(steps[headCheckout].with.ref, '${{ inputs.reviewed_head_sha }}');
+  assert.equal(steps[headCheckout].with['persist-credentials'], false);
   assert.match(steps[native].run, /python3 Tools\/build_tactical_math\.py/);
   assert.match(steps[native].run, /--target linux-x64/);
   assert.equal(steps[native].env, undefined);
@@ -179,7 +191,15 @@ test('desktop builds install every verified native platform without copying cont
 test('media resolution reads the tested pin while executing only the workflow revision helper', () => {
   assert.equal(mediaResolver.on.workflow_call.inputs.checkout_ref.required, true);
   assert.equal(ci.jobs['resolve-media'].with.checkout_ref, '${{ github.sha }}');
-  assert.equal(ci.jobs['resolve-pr-media'].with.checkout_ref, '${{ needs.approve-pr.outputs.merge_sha }}');
+  assert.equal(
+    ci.jobs['resolve-pr-media'].with.checkout_ref,
+    'refs/pull/${{ inputs.pull_request_number }}/merge',
+  );
+  assert.equal(
+    ci.jobs['resolve-pr-media'].with.expected_base_sha,
+    '${{ needs.approve-pr.outputs.base_sha }}',
+  );
+  assert.equal(ci.jobs['resolve-pr-media'].with.expected_head_sha, '${{ inputs.head_sha }}');
   assert.equal(ci.jobs['resolve-pr-media'].with.branch, '${{ needs.approve-pr.outputs.media_branch }}');
   const steps = mediaResolver.jobs.resolve.steps;
   const trusted = steps.find(step => step.name === 'Checkout trusted media resolver');
@@ -191,6 +211,12 @@ test('media resolution reads the tested pin while executing only the workflow re
   assert.equal(pin.with['sparse-checkout'], '.github/media-revision');
   assert.equal(pin.with.path, '.ci/source-metadata');
   assert.equal(pin.with['persist-credentials'], false);
+  const verify = steps.find(step => step.name === 'Verify tested merge revision');
+  assert.equal(verify.if, "inputs.expected_head_sha != ''");
+  assert.equal(verify.env.EXPECTED_BASE_SHA, '${{ inputs.expected_base_sha }}');
+  assert.equal(verify.env.EXPECTED_HEAD_SHA, '${{ inputs.expected_head_sha }}');
+  assert.match(verify.run, /git show --no-patch --format=%P HEAD/);
+  assert.match(verify.run, /approved pull request merge/);
   const resolve = steps.find(step => step.id === 'resolve');
   assert.match(resolve.run, /python3 \.ci\/workflow-tools\/Tools\/resolve_media_revision\.py/);
   assert.match(resolve.run, /--source-root \.ci\/source-metadata/);
@@ -198,6 +224,7 @@ test('media resolution reads the tested pin while executing only the workflow re
   assert.equal(resolve.env.PULL_REQUEST_BRANCH, '${{ inputs.branch }}');
   assert.ok(steps.indexOf(trusted) < steps.indexOf(resolve));
   assert.ok(steps.indexOf(pin) < steps.indexOf(resolve));
+  assert.ok(steps.indexOf(verify) < steps.indexOf(resolve));
 });
 
 test('trusted builds and reviewed tests consume the exact resolved media commit', () => {

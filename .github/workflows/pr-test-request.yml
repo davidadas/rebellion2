@@ -43,6 +43,8 @@ jobs:
     with:
       branch: ${{ github.event.pull_request.head.ref }}
       checkout_ref: ${{ github.event.pull_request.merge_commit_sha }}
+      expected_base_sha: ${{ github.event.pull_request.base.sha }}
+      expected_head_sha: ${{ github.event.pull_request.head.sha }}
     secrets: inherit
     permissions:
       contents: read
