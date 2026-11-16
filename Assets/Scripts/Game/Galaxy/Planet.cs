@@ -585,8 +585,7 @@ namespace Rebellion.Game.Galaxy
             SupportChange direction = shift > 0 ? SupportChange.Increase : SupportChange.Decrease;
             if (
                 faction.Settings.SupportResistance == direction
-                && GetParentOfType<PlanetSector>()?.GetSectorSuppressionDivisor(faction.InstanceID)
-                    > 1
+                && GetParentOfType<PlanetSector>()?.GetSectorSuppressionDivisor() > 1
                 && game.Config.SupportShift.WeakSupportPenaltyDivisor > 1
             )
                 shift /= game.Config.SupportShift.WeakSupportPenaltyDivisor;

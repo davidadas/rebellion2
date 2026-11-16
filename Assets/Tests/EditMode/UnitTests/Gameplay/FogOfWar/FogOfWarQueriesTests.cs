@@ -26,6 +26,34 @@ namespace Rebellion.Tests.Gameplay
             _queries = new FogOfWarQueries(_game);
         }
 
+        [Test]
+        public void BuildFactionView_HiddenSuppressionSource_PreservesSectorPresence()
+        {
+            Fleet fleet = new() { OwnerInstanceID = _empire.InstanceID };
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = new()
+            {
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                SectorSuppression = 2,
+            };
+            _game.AttachNode(ship, fleet);
+
+            PlanetSector viewSector = _queries
+                .BuildFactionView(_alliance)
+                .GetChildren<PlanetSector>()
+                .Single(sector => sector.InstanceID == _coreSector.InstanceID);
+
+            Assert.IsFalse(
+                viewSector
+                    .GetChildren<Planet>()
+                    .SelectMany(planet => planet.GetChildren<Fleet>())
+                    .SelectMany(candidate => candidate.GetChildren<CapitalShip>())
+                    .Any(candidate => candidate.InstanceID == ship.InstanceID)
+            );
+            Assert.AreEqual(2, viewSector.GetSectorSuppressionDivisor());
+        }
+
         [TestCase(false, false)]
         [TestCase(true, false)]
         [TestCase(false, true)]
