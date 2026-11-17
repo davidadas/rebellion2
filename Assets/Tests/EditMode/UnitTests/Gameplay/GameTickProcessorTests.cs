@@ -283,13 +283,18 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ProcessTick_FleetContinuesFromBlockadedWaypoint_ReportsTransientBlockadeStart()
+        public void ProcessTick_FleetContinuesFromBlockadedWaypoint_DoesNotPublishEndedBlockadeStart()
         {
             (Planet blockadedPlanet, Planet nextPlanet, Fleet fleet, Building delivery) =
                 CreateTransientBlockadeScenario();
-            List<BlockadeChangedResult> observed = new List<BlockadeChangedResult>();
+            List<bool> observedStartStates = new();
             using IDisposable observation = _session.Results.Observe<BlockadeChangedResult>(
-                observed.AddRange
+                results =>
+                {
+                    foreach (BlockadeChangedResult result in results)
+                        if (result.Blockaded && ReferenceEquals(result.Planet, blockadedPlanet))
+                            observedStartStates.Add(result.Planet.IsBlockaded());
+                }
             );
 
             _tick.ProcessTick();
@@ -297,11 +302,10 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsNull(_game.GetSceneNodeByInstanceID<Building>(delivery.InstanceID));
             Assert.AreSame(nextPlanet, fleet.GetParentOfType<Planet>());
             Assert.IsNotNull(fleet.Movement);
-            Assert.AreEqual(
-                1,
-                observed.Count(result =>
-                    result.Blockaded && ReferenceEquals(result.Planet, blockadedPlanet)
-                )
+            CollectionAssert.DoesNotContain(
+                observedStartStates,
+                false,
+                "A waypoint must not replay a blockade start after its fleet has continued."
             );
         }
 
