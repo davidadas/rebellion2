@@ -138,24 +138,15 @@
       <CommanderCombatDivisor>20</CommanderCombatDivisor>
       <LaserCannonCapitalDamageMultiplier>0.1666666666666667</LaserCannonCapitalDamageMultiplier>
       <TurbolaserFighterDamageMultiplier>0.5</TurbolaserFighterDamageMultiplier>
-      <FighterIonCannonFighterDamageMultiplier>0.5</FighterIonCannonFighterDamageMultiplier>
       <AutoResolveWeaponDamagePerStrength>0.2666666666666667</AutoResolveWeaponDamagePerStrength>
       <AutoResolveTorpedoDamagePerStrength>0.53333336</AutoResolveTorpedoDamagePerStrength>
+      <AutoResolveCapitalWeaponRechargeMultiplier>3.75</AutoResolveCapitalWeaponRechargeMultiplier>
       <AutoResolveFighterWeaponRechargeMultiplier>3.751</AutoResolveFighterWeaponRechargeMultiplier>
       <AutoResolveFighterShieldRechargePerCraft>0.025</AutoResolveFighterShieldRechargePerCraft>
       <AutoResolveFighterHullPerCraft>8</AutoResolveFighterHullPerCraft>
-      <AutoResolveMaximumIterations>4096</AutoResolveMaximumIterations>
       <AutoResolveStagnationIterations>1200</AutoResolveStagnationIterations>
       <AutoResolveRetreatStrengthRatio>0.33</AutoResolveRetreatStrengthRatio>
       <AutoResolveMinimumManeuverRatio>0.1</AutoResolveMinimumManeuverRatio>
-      <AutoResolveTargetScanDivisor>3</AutoResolveTargetScanDivisor>
-      <AutoResolveStartingDistance>75</AutoResolveStartingDistance>
-      <AutoResolveWithdrawalDistance>10</AutoResolveWithdrawalDistance>
-      <AutoResolveComponentDamageInterval>1</AutoResolveComponentDamageInterval>
-      <AutoResolveComponentDamageRollMaximum>10</AutoResolveComponentDamageRollMaximum>
-      <AutoResolveComponentDelayMinimum>30</AutoResolveComponentDelayMinimum>
-      <AutoResolveComponentDelayMaximum>50</AutoResolveComponentDelayMaximum>
-      <AutoResolveComponentDelayRecovery>1</AutoResolveComponentDelayRecovery>
       <AttackRunSelectionMaximumEvaluations>1001</AttackRunSelectionMaximumEvaluations>
       <AttackRunSelectionThresholdMultiplier>0.5</AttackRunSelectionThresholdMultiplier>
       <AttackRunTorpedoBudgetMultiplier>0.53333336</AttackRunTorpedoBudgetMultiplier>

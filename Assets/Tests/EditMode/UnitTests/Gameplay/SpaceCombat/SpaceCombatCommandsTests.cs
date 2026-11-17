@@ -66,8 +66,44 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsFalse(results.OfType<GameObjectDamagedResult>().Any());
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void GetCommandModifiers_ZeroLeadership_DistinguishesSelectedAdmiralFromNoAdmiral(
+            bool hasAdmiral
+        )
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "empire" };
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
+            Fleet fleet = CreateFleet(game, "fleet", "empire", planet, 1, 100, 10);
+            CapitalShip ship = fleet.GetChildren<CapitalShip>().Single();
+            if (hasAdmiral)
+            {
+                Officer admiral = new Officer
+                {
+                    InstanceID = "admiral",
+                    OwnerInstanceID = "empire",
+                    CurrentRank = OfficerRank.Admiral,
+                };
+                admiral.SetBaseRating(SkillRating.Leadership, 0);
+                game.AttachNode(admiral, ship);
+            }
+
+            SpaceCombatCommandModifiers modifiers = SpaceCombatCommands.GetCommandModifiers(
+                new[] { fleet },
+                planet,
+                "empire"
+            );
+
+            Assert.AreEqual(0, modifiers.AdmiralLeadership);
+            Assert.AreSame(hasAdmiral ? ship : null, modifiers.AdmiralShip);
+        }
+
         [Test]
-        public void GetCommandModifiers_MultipleEligibleOfficers_SelectsBestFleetAdmiralAndSystemOrFleetCommander()
+        public void GetCommandModifiers_SelectedCommanderOnPlanet_DoesNotUseLowerRatedShipCommander()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
@@ -122,7 +158,9 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.AreEqual(80, modifiers.AdmiralLeadership);
-            Assert.AreEqual(70, modifiers.CommanderCombat);
+            Assert.AreEqual(0, modifiers.CommanderCombat);
+            Assert.AreSame(secondFleet.GetChildren<CapitalShip>().Single(), modifiers.AdmiralShip);
+            Assert.IsNull(modifiers.CommanderShip);
         }
 
         [Test]
@@ -679,7 +717,9 @@ namespace Rebellion.Tests.Gameplay
                 RegimentCapacity = 1,
                 ShieldRechargeRate = 0,
                 ManufacturingStatus = ManufacturingStatus.Complete,
+                WeaponRecharge = 2,
             };
+            carrier.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 1, 0, 0, 0, 100 };
             CapitalShip survivor = new CapitalShip
             {
                 InstanceID = "survivor",
@@ -769,6 +809,7 @@ namespace Rebellion.Tests.Gameplay
                 CurrentSquadronSize = 10,
                 ShieldStrength = 1,
                 Hyperdrive = 60,
+                LaserCannon = 1,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(allianceFighter, planet);
@@ -847,9 +888,9 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsFalse(HasOpposingReadyFleets(planet));
         }
 
-        [TestCase(true, CombatSide.Attacker)]
-        [TestCase(false, CombatSide.Defender)]
-        public void Resolve_OnlyOneUnarmedSideCanEvacuate_ReportsSurvivingSideVictory(
+        [TestCase(true, CombatSide.Defender)]
+        [TestCase(false, CombatSide.Attacker)]
+        public void Resolve_OnlyOneUnarmedSideCanEvacuate_ReportsStationarySideVictory(
             bool attackerCanEvacuate,
             CombatSide expectedWinner
         )
@@ -866,23 +907,87 @@ namespace Rebellion.Tests.Gameplay
 
             SpaceCombatResult combatResult = GetCombatResult(results);
             Fleet retreatingFleet = attackerCanEvacuate ? attacker : defender;
-            Fleet destroyedFleet = attackerCanEvacuate ? defender : attacker;
+            Fleet stationaryFleet = attackerCanEvacuate ? defender : attacker;
             Assert.AreEqual(expectedWinner, combatResult.Winner);
             Assert.AreEqual(
                 attackerCanEvacuate
                     ? SpaceCombatSideOutcome.Withdrawn
-                    : SpaceCombatSideOutcome.Destroyed,
+                    : SpaceCombatSideOutcome.Active,
                 combatResult.AttackerOutcome
             );
             Assert.AreEqual(
                 attackerCanEvacuate
-                    ? SpaceCombatSideOutcome.Destroyed
+                    ? SpaceCombatSideOutcome.Active
                     : SpaceCombatSideOutcome.Withdrawn,
                 combatResult.DefenderOutcome
             );
             Assert.AreSame(fallbackPlanet, retreatingFleet.GetParentOfType<Planet>());
             Assert.IsNotNull(retreatingFleet.Movement);
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(destroyedFleet.InstanceID));
+            Assert.AreSame(
+                stationaryFleet,
+                game.GetSceneNodeByInstanceID<Fleet>(stationaryFleet.InstanceID)
+            );
+            Assert.AreSame(combatPlanet, stationaryFleet.GetParentOfType<Planet>());
+            Assert.IsNull(stationaryFleet.Movement);
+        }
+
+        [TestCase(PlayerControllerType.Human, PlayerControllerType.AI, true)]
+        [TestCase(PlayerControllerType.AI, PlayerControllerType.AI, false)]
+        [TestCase(PlayerControllerType.AI, PlayerControllerType.Human, false)]
+        [TestCase(PlayerControllerType.Human, PlayerControllerType.Human, false)]
+        public void ProcessTick_ControllerRetreatPolicies_UsesHumanOrConfiguredThreshold(
+            PlayerControllerType weakerController,
+            PlayerControllerType strongerController,
+            bool waitsForStalemate
+        )
+        {
+            GameRoot game = CreateAutomaticCombatGame();
+            game.Random = new SequenceRNG();
+            game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 0.5;
+            game.Config.Combat.SpaceCombat.AutoResolveStagnationIterations = 2;
+            game.SetFactionController("empire", "empire-controller", weakerController);
+            game.SetFactionController("alliance", "alliance-controller", strongerController);
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat");
+            CreatePlanet(game, "empire-fallback", owner: "empire");
+            CreatePlanet(game, "alliance-fallback", owner: "alliance");
+            Fleet weakerFleet = CreateFleet(
+                game,
+                "weaker",
+                "empire",
+                combatPlanet,
+                1,
+                1000,
+                1,
+                shieldRechargeRate: 20
+            );
+            Fleet strongerFleet = CreateFleet(
+                game,
+                "stronger",
+                "alliance",
+                combatPlanet,
+                1,
+                1000,
+                10,
+                shieldRechargeRate: 20
+            );
+            weakerFleet.GetChildren<CapitalShip>().Single().MaxShieldStrength = 1000;
+            strongerFleet.GetChildren<CapitalShip>().Single().MaxShieldStrength = 1000;
+            SpaceCombatCommands commands = MakeSpaceCombat(game);
+
+            IReadOnlyList<GameResult> results = new SpaceCombatTickProcessor(commands).ProcessTick(
+                game
+            );
+            if (commands.HasPendingDecision)
+                results = commands.ResolvePending(autoResolve: true);
+            SpaceCombatResult result = GetCombatResult(results);
+
+            if (waitsForStalemate)
+                Assert.Greater(result.IterationsCompleted, 1);
+            else
+                Assert.AreEqual(1, result.IterationsCompleted);
+            Assert.IsEmpty(result.ShipDamage);
+            Assert.IsNotNull(weakerFleet.Movement);
+            Assert.IsNull(strongerFleet.Movement);
         }
 
         [Test]
@@ -961,6 +1066,7 @@ namespace Rebellion.Tests.Gameplay
         public void Resolve_ShieldRechargeRate_RestoresShieldStrengthBetweenRounds()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Random = new MaximumRNG();
             game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 0;
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
@@ -1057,6 +1163,7 @@ namespace Rebellion.Tests.Gameplay
         public void Resolve_ShieldDamageFullyRecharged_DestroysStrandedFleetsAndRecordsLosses()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Random = new MaximumRNG();
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(empire);
@@ -1133,6 +1240,7 @@ namespace Rebellion.Tests.Gameplay
         public void Resolve_PreDamagedShipWithStableShields_DoesNotReportExistingHullDamage()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Random = new MaximumRNG();
             game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 0;
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
@@ -1183,6 +1291,7 @@ namespace Rebellion.Tests.Gameplay
         public void Resolve_DamagedHull_ReducesShieldRechargeRate()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Random = new MaximumRNG();
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(empire);
@@ -1200,7 +1309,7 @@ namespace Rebellion.Tests.Gameplay
                 planet,
                 1,
                 1000,
-                1,
+                3,
                 shieldRechargeRate: 0
             );
             Fleet defender = CreateFleet(
@@ -1228,6 +1337,7 @@ namespace Rebellion.Tests.Gameplay
         public void Resolve_FighterDamage_IsAbsorbedByCapitalShipShields()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Random = new MaximumRNG();
             game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 0;
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
@@ -1552,9 +1662,6 @@ namespace Rebellion.Tests.Gameplay
             game.Config.Combat.SpaceCombat.LaserCannonCapitalDamageMultiplier = 1;
             game.Random = new SequenceRNG();
             game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = double.MaxValue;
-            game.Config.Combat.SpaceCombat.AutoResolveStartingDistance = 0;
-            game.Config.Combat.SpaceCombat.AutoResolveWithdrawalDistance = 20;
-            game.Config.Combat.SpaceCombat.AutoResolveTargetScanDivisor = 1;
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
             CreatePlanet(game, "empire-fallback", owner: "empire");
             CreatePlanet(game, "alliance-fallback", owner: "alliance");
@@ -1600,9 +1707,6 @@ namespace Rebellion.Tests.Gameplay
             GameRoot game = CreateAutomaticCombatGame();
             game.Random = new SequenceRNG();
             game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = double.MaxValue;
-            game.Config.Combat.SpaceCombat.AutoResolveStartingDistance = 0;
-            game.Config.Combat.SpaceCombat.AutoResolveWithdrawalDistance = 20;
-            game.Config.Combat.SpaceCombat.AutoResolveTargetScanDivisor = 1;
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
             CreatePlanet(game, "empire-fallback", owner: "empire");
             CreatePlanet(game, "alliance-fallback", owner: "alliance");
@@ -2240,9 +2344,9 @@ namespace Rebellion.Tests.Gameplay
                 1,
                 1000,
                 9,
-                shieldRechargeRate: 0
+                shieldRechargeRate: 20
             );
-            attackerFleet.GetChildren<CapitalShip>().Single().WeaponRecharge = 9;
+            attackerFleet.GetChildren<CapitalShip>().Single().MaxShieldStrength = 1000;
             Starfighter fighter = new Starfighter
             {
                 InstanceID = "planet-fighter",
@@ -2280,12 +2384,12 @@ namespace Rebellion.Tests.Gameplay
         public void ResolvePending_PlanetaryNonHyperdriveFightersReachWithdrawalThreshold_DestroysFighters()
         {
             GameRoot game = CreateAutomaticCombatGame();
-            game.Random = new SequenceRNG();
+            game.Random = new MaximumRNG();
             game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
             CreatePlanet(game, "alliance-fallback", owner: "alliance");
             CreatePlanet(game, "empire-fallback", owner: "empire");
-            CreateFleet(
+            Fleet attackerFleet = CreateFleet(
                 game,
                 "attacker",
                 "empire",
@@ -2293,8 +2397,9 @@ namespace Rebellion.Tests.Gameplay
                 1,
                 1000,
                 9,
-                shieldRechargeRate: 0
+                shieldRechargeRate: 20
             );
+            attackerFleet.GetChildren<CapitalShip>().Single().MaxShieldStrength = 1000;
             Starfighter fighter = new Starfighter
             {
                 InstanceID = "planet-fighter",
@@ -2346,7 +2451,7 @@ namespace Rebellion.Tests.Gameplay
                 1,
                 1000,
                 76,
-                shieldRechargeRate: 0
+                shieldRechargeRate: 1000
             );
             Starfighter attackerFighter = new Starfighter
             {
@@ -2359,6 +2464,7 @@ namespace Rebellion.Tests.Gameplay
                 LaserCannon = 1,
             };
             CapitalShip attackerShip = attackerFleet.GetChildren<CapitalShip>().Single();
+            attackerShip.MaxShieldStrength = 1000;
             attackerShip.StarfighterCapacity = 1;
             game.AttachNode(attackerFighter, attackerShip);
             Fleet defenderFleet = CreateFleet(
@@ -2367,7 +2473,7 @@ namespace Rebellion.Tests.Gameplay
                 "alliance",
                 combatPlanet,
                 1,
-                100,
+                1000,
                 10,
                 shieldRechargeRate: 0
             );
@@ -2425,16 +2531,17 @@ namespace Rebellion.Tests.Gameplay
                 1,
                 1000,
                 76,
-                shieldRechargeRate: 0
+                shieldRechargeRate: 1000
             );
             CapitalShip attackingShip = attackingFleet.GetChildren<CapitalShip>().Single();
+            attackingShip.MaxShieldStrength = 1000;
             Fleet retreatingFleet = CreateFleet(
                 game,
                 "retreating-fleet",
                 "alliance",
                 combatPlanet,
                 1,
-                100,
+                1000,
                 10,
                 shieldRechargeRate: 0
             );
@@ -2491,7 +2598,7 @@ namespace Rebellion.Tests.Gameplay
                 1,
                 1000,
                 200,
-                shieldRechargeRate: 0
+                shieldRechargeRate: 1000
             );
             Starfighter attackerFighter = new Starfighter
             {
@@ -2504,6 +2611,7 @@ namespace Rebellion.Tests.Gameplay
                 LaserCannon = 1,
             };
             CapitalShip attackerShip = attackerFleet.GetChildren<CapitalShip>().Single();
+            attackerShip.MaxShieldStrength = 1000;
             attackerShip.StarfighterCapacity = 1;
             game.AttachNode(attackerFighter, attackerShip);
             Fleet defenderFleet = CreateFleet(
@@ -2718,7 +2826,8 @@ namespace Rebellion.Tests.Gameplay
             ) = ResolveCarrierDestructionWithdrawal(
                 recoveryCapacity: 2,
                 displacedFighterHyperdrives: new[] { 0, 0 },
-                existingRecoveryFighterCount: 1
+                existingRecoveryFighterCount: 1,
+                recoverExistingFightersFirst: true
             );
             Starfighter existingFighter = existingFighters.Single();
             Starfighter recoveredFighter = displacedFighters[0];
@@ -2889,8 +2998,6 @@ namespace Rebellion.Tests.Gameplay
         {
             GameRoot game = CreateAutomaticCombatGame();
             game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 1.01;
-            game.Config.Combat.SpaceCombat.AutoResolveStartingDistance = 0;
-            game.Config.Combat.SpaceCombat.AutoResolveWithdrawalDistance = 0;
             game.Random = new SequenceRNG();
             game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "empire");
@@ -3654,7 +3761,9 @@ namespace Rebellion.Tests.Gameplay
                 CurrentHullStrength = 1,
                 ShieldRechargeRate = 0,
                 ManufacturingStatus = ManufacturingStatus.Complete,
+                WeaponRecharge = 2,
             };
+            weakShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 1, 0, 0, 0, 100 };
             CapitalShip strongShip = new CapitalShip
             {
                 InstanceID = "strong",
@@ -3942,6 +4051,7 @@ namespace Rebellion.Tests.Gameplay
             Fleet strikeFleet = CreateFleet(game, "af1", "alliance", combatPlanet, 1, 100, 0);
             CapitalShip carrier = strikeFleet.GetChildren<CapitalShip>().Single();
             carrier.StarfighterCapacity = 1;
+            carrier.Hyperdrive = 0;
             Starfighter torpedoSquadron = new Starfighter
             {
                 InstanceID = "y-wing",
@@ -3986,11 +4096,10 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void TrySubmitResponse_HumanSelectsAutomatic_DoesNotWithdrawHumanForce()
+        public void TrySubmitResponse_UnarmedHumanSelectsAutomatic_WithdrawsHumanForce()
         {
             (GameRoot game, SpaceCombatCommands commands, Fleet empireFleet, Fleet allianceFleet) =
                 CreatePendingEncounter();
-            game.Config.Combat.SpaceCombat.AutoResolveMaximumIterations = 0;
             CapitalShip empireShip = empireFleet.GetChildren<CapitalShip>().Single();
             CapitalShip allianceShip = allianceFleet.GetChildren<CapitalShip>().Single();
             empireShip.PrimaryWeapons.Clear();
@@ -4009,8 +4118,9 @@ namespace Rebellion.Tests.Gameplay
                 result.AttackerOwnerInstanceID == empireFleet.OwnerInstanceID
                     ? result.AttackerOutcome
                     : result.DefenderOutcome;
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, humanOutcome);
-            Assert.IsNull(empireFleet.Movement);
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, humanOutcome);
+            Assert.AreEqual(1, result.IterationsCompleted);
+            Assert.IsNotNull(empireFleet.Movement);
         }
 
         [Test]
@@ -4205,6 +4315,7 @@ namespace Rebellion.Tests.Gameplay
         /// <param name="includeUnrelatedOutboundCarrier">Whether an unrelated outbound fleet has spare carrier capacity.</param>
         /// <param name="destroyExistingRecoveryFighters">Whether opposing fire destroys existing recovery-carrier fighters.</param>
         /// <param name="destroyedCarrierHyperdrive">The doomed carrier's hyperdrive rating.</param>
+        /// <param name="recoverExistingFightersFirst">Whether the recovery carrier's squadrons precede displaced squadrons in recovery order.</param>
         /// <returns>The resolved carrier destruction withdrawal.</returns>
         private (
             GameRoot game,
@@ -4224,13 +4335,11 @@ namespace Rebellion.Tests.Gameplay
             bool recoveryCarrierInSeparateFleet = false,
             bool includeUnrelatedOutboundCarrier = false,
             bool destroyExistingRecoveryFighters = false,
-            int destroyedCarrierHyperdrive = 1
+            int destroyedCarrierHyperdrive = 1,
+            bool recoverExistingFightersFirst = false
         )
         {
             GameRoot game = CreateAutomaticCombatGame();
-            game.Config.Combat.SpaceCombat.AutoResolveTargetScanDivisor = 1;
-            game.Config.Combat.SpaceCombat.AutoResolveStartingDistance = 0;
-            game.Config.Combat.SpaceCombat.AutoResolveWithdrawalDistance = 10;
             game.Random = new SequenceRNG();
             game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
@@ -4249,9 +4358,20 @@ namespace Rebellion.Tests.Gameplay
             );
             if (destroyExistingRecoveryFighters)
             {
-                CapitalShip attackingShip = attackingFleet.GetChildren<CapitalShip>().Single();
-                attackingShip.SublightSpeed = 0;
-                attackingShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new int[]
+                game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 0.01;
+                CapitalShip fighterHunter = new CapitalShip
+                {
+                    InstanceID = "fighter-hunter",
+                    OwnerInstanceID = "empire",
+                    MaxHullStrength = 1000,
+                    CurrentHullStrength = 1000,
+                    MaxShieldStrength = 1000,
+                    ShieldRechargeRate = 1000,
+                    Hyperdrive = 1,
+                    WeaponRecharge = 1000,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                };
+                fighterHunter.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[]
                 {
                     1000,
                     0,
@@ -4259,14 +4379,7 @@ namespace Rebellion.Tests.Gameplay
                     0,
                     100,
                 };
-                attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new int[]
-                {
-                    1000,
-                    0,
-                    0,
-                    0,
-                    100,
-                };
+                game.AttachNode(fighterHunter, attackingFleet);
             }
             Fleet retreatingFleet = CreateFleet(
                 game,
@@ -4284,6 +4397,7 @@ namespace Rebellion.Tests.Gameplay
             destroyedCarrier.CurrentHullStrength = 1;
             destroyedCarrier.Hyperdrive = destroyedCarrierHyperdrive;
             destroyedCarrier.StarfighterCapacity = displacedFighterHyperdrives.Count;
+            destroyedCarrier.WeaponRecharge = 20;
             destroyedCarrier.SublightSpeed = 10;
             destroyedCarrier.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new int[]
             {
@@ -4296,6 +4410,11 @@ namespace Rebellion.Tests.Gameplay
             CapitalShip recoveryCarrier = retreatingShips[1];
             recoveryCarrier.StarfighterCapacity = recoveryCapacity;
             recoveryCarrier.SublightSpeed = 10;
+            if (recoverExistingFightersFirst)
+            {
+                game.DetachNode(destroyedCarrier);
+                game.AttachNode(destroyedCarrier, retreatingFleet);
+            }
             if (recoveryCarrierInSeparateFleet)
             {
                 Fleet recoveryFleet = new Fleet
@@ -4408,25 +4527,17 @@ namespace Rebellion.Tests.Gameplay
                     {
                         AdmiralLeadershipDivisor = 10,
                         CommanderCombatDivisor = 20,
+                        LaserCannonCapitalDamageMultiplier = 0.167,
                         TurbolaserFighterDamageMultiplier = 0.5,
-                        FighterIonCannonFighterDamageMultiplier = 0.5,
                         AutoResolveWeaponDamagePerStrength = 4.0 / 15.0,
+                        AutoResolveCapitalWeaponRechargeMultiplier = 3.75,
                         AutoResolveTorpedoDamagePerStrength = 0.53333336,
                         AutoResolveFighterWeaponRechargeMultiplier = 3.751,
                         AutoResolveFighterShieldRechargePerCraft = 0.025,
                         AutoResolveFighterHullPerCraft = 8,
-                        AutoResolveMaximumIterations = 4096,
                         AutoResolveStagnationIterations = 1200,
                         AutoResolveRetreatStrengthRatio = 0.33,
                         AutoResolveMinimumManeuverRatio = 0.1,
-                        AutoResolveTargetScanDivisor = 3,
-                        AutoResolveStartingDistance = 75,
-                        AutoResolveComponentDamageInterval = 1,
-                        AutoResolveComponentDamageRollMaximum = 10,
-                        AutoResolveWithdrawalDistance = 10,
-                        AutoResolveComponentDelayMinimum = 30,
-                        AutoResolveComponentDelayMaximum = 50,
-                        AutoResolveComponentDelayRecovery = 1,
                         AttackRunSelectionMaximumEvaluations = 1001,
                         AttackRunSelectionThresholdMultiplier = 0.5,
                         AttackRunTorpedoBudgetMultiplier = 0.53333336,
@@ -4494,7 +4605,7 @@ namespace Rebellion.Tests.Gameplay
                     ShieldRechargeRate = shieldRechargeRate,
                     Hyperdrive = 1,
                     ManufacturingStatus = ManufacturingStatus.Complete,
-                    WeaponRecharge = 1,
+                    WeaponRecharge = Math.Max(weaponPower, 0),
                 };
 
                 // Add weapon arcs

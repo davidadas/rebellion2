@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.FogOfWar;
@@ -76,6 +77,79 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        public void CreateCopy_SpaceCombatMetadata_DetachesNestedCollections()
+        {
+            GameConfig.SpaceCombatConfig source = new GameConfig.SpaceCombatConfig
+            {
+                StarfighterGroups = new Dictionary<string, List<string>>
+                {
+                    ["faction"] = new List<string> { "scout", "interceptor" },
+                },
+                HyperdriveSystemCounts = new Dictionary<string, int> { ["cruiser"] = 2 },
+            };
+            GameConfig.SpaceCombatConfig copy = source.CreateCopy();
+
+            CollectionAssert.AreEqual(
+                source.StarfighterGroups["faction"],
+                copy.StarfighterGroups["faction"]
+            );
+            CollectionAssert.AreEquivalent(
+                source.HyperdriveSystemCounts,
+                copy.HyperdriveSystemCounts
+            );
+            copy.StarfighterGroups["faction"].Reverse();
+            copy.StarfighterGroups.Add("another-faction", new List<string>());
+            copy.HyperdriveSystemCounts["cruiser"] = 1;
+
+            CollectionAssert.AreEqual(
+                new[] { "scout", "interceptor" },
+                source.StarfighterGroups["faction"]
+            );
+            Assert.AreEqual(1, source.StarfighterGroups.Count);
+            Assert.AreEqual(2, source.HyperdriveSystemCounts["cruiser"]);
+        }
+
+        [Test]
+        public void Serialize_SpaceCombatMetadata_PreservesGroupOrderAndSystemCounts()
+        {
+            GameConfig config = new GameConfig();
+            config.Combat.SpaceCombat.StarfighterGroups.Add(
+                "faction",
+                new List<string> { "scout", "unused", "interceptor" }
+            );
+            config.Combat.SpaceCombat.StarfighterGroups.Add("another-faction", new List<string>());
+            config.Combat.SpaceCombat.HyperdriveSystemCounts.Add("immobile", 0);
+            config.Combat.SpaceCombat.HyperdriveSystemCounts.Add("cruiser", 3);
+
+            GameConfig loaded = SerializationHelper.Deserialize<GameConfig>(
+                SerializationHelper.Serialize(config)
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { "scout", "unused", "interceptor" },
+                loaded.Combat.SpaceCombat.StarfighterGroups["faction"]
+            );
+            CollectionAssert.IsEmpty(
+                loaded.Combat.SpaceCombat.StarfighterGroups["another-faction"]
+            );
+            CollectionAssert.AreEquivalent(
+                config.Combat.SpaceCombat.HyperdriveSystemCounts,
+                loaded.Combat.SpaceCombat.HyperdriveSystemCounts
+            );
+        }
+
+        [Test]
+        public void Deserialize_OmittedSpaceCombatMetadata_UsesEmptyCollections()
+        {
+            GameConfig config = SerializationHelper.Deserialize<GameConfig>(
+                "<GameConfig><Combat><SpaceCombat/></Combat></GameConfig>"
+            );
+
+            CollectionAssert.IsEmpty(config.Combat.SpaceCombat.StarfighterGroups);
+            CollectionAssert.IsEmpty(config.Combat.SpaceCombat.HyperdriveSystemCounts);
+        }
+
+        [Test]
         public void CreateCopy_OmittedRules_PreservesNullSettings()
         {
             GameConfig source = new GameConfig
@@ -107,6 +181,49 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(0, config.Recovery.NormalRepairIntervalTicks);
             StringAssert.DoesNotContain("FastRepairAmount", serialized);
             StringAssert.DoesNotContain("NormalRepairAmount", serialized);
+        }
+
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(4096)]
+        public void Deserialize_LegacyCombatIterationLimit_AcceptsWithoutWritingIt(int limit)
+        {
+            string xml =
+                "<GameConfig><Combat><SpaceCombat>"
+                + $"<AutoResolveMaximumIterations>{limit}</AutoResolveMaximumIterations>"
+                + "<AutoResolveStagnationIterations>5</AutoResolveStagnationIterations>"
+                + "</SpaceCombat></Combat></GameConfig>";
+
+            GameConfig config = SerializationHelper.Deserialize<GameConfig>(xml);
+
+            Assert.AreEqual(5, config.Combat.SpaceCombat.AutoResolveStagnationIterations);
+            StringAssert.DoesNotContain(
+                "AutoResolveMaximumIterations",
+                SerializationHelper.Serialize(config)
+            );
+        }
+
+        [TestCase("FighterIonCannonFighterDamageMultiplier")]
+        [TestCase("AutoResolveTargetScanDivisor")]
+        [TestCase("AutoResolveStartingDistance")]
+        [TestCase("AutoResolveWithdrawalDistance")]
+        [TestCase("AutoResolveComponentDamageInterval")]
+        [TestCase("AutoResolveComponentDamageRollMaximum")]
+        [TestCase("AutoResolveComponentDelayMinimum")]
+        [TestCase("AutoResolveComponentDelayMaximum")]
+        [TestCase("AutoResolveComponentDelayRecovery")]
+        public void Deserialize_LegacyVolleySetting_AcceptsWithoutWritingIt(string setting)
+        {
+            string xml =
+                "<GameConfig><Combat><SpaceCombat>"
+                + $"<{setting}>3</{setting}>"
+                + "<AutoResolveStagnationIterations>5</AutoResolveStagnationIterations>"
+                + "</SpaceCombat></Combat></GameConfig>";
+
+            GameConfig config = SerializationHelper.Deserialize<GameConfig>(xml);
+
+            Assert.AreEqual(5, config.Combat.SpaceCombat.AutoResolveStagnationIterations);
+            StringAssert.DoesNotContain(setting, SerializationHelper.Serialize(config));
         }
 
         [TestCase(0, ForceRankLabel.None)]

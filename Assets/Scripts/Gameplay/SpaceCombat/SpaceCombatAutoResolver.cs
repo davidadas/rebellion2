@@ -25,14 +25,33 @@ namespace Rebellion.Gameplay
         public int CommanderCombat { get; }
 
         /// <summary>
+        /// Gets the Admiral's carrier, whose presence sustains the capital-ship command bonus.
+        /// </summary>
+        public CapitalShip AdmiralShip { get; }
+
+        /// <summary>
+        /// Gets the Commander's carrier at the start of the battle.
+        /// </summary>
+        public CapitalShip CommanderShip { get; }
+
+        /// <summary>
         /// Creates command modifiers from the officers selected for tactical command.
         /// </summary>
         /// <param name="admiralLeadership">The selected Admiral's effective Leadership.</param>
         /// <param name="commanderCombat">The selected Commander's effective Combat.</param>
-        public SpaceCombatCommandModifiers(int admiralLeadership, int commanderCombat)
+        /// <param name="admiralShip">The Admiral's carrier, or null for an unbound rating estimate.</param>
+        /// <param name="commanderShip">The Commander's carrier, or null for an unbound rating estimate.</param>
+        public SpaceCombatCommandModifiers(
+            int admiralLeadership,
+            int commanderCombat,
+            CapitalShip admiralShip = null,
+            CapitalShip commanderShip = null
+        )
         {
             AdmiralLeadership = Math.Max(admiralLeadership, 0);
             CommanderCombat = Math.Max(commanderCombat, 0);
+            AdmiralShip = admiralShip;
+            CommanderShip = commanderShip;
         }
     }
 
@@ -73,6 +92,9 @@ namespace Rebellion.Gameplay
         /// The planet destroyers among the ships that a shield generator on the planet protects
         /// from fighter attack, or null when none is.
         /// </param>
+        /// <param name="attackerHasInitiative">Whether the attacker performs the first side update.</param>
+        /// <param name="attackerRetreatStrengthRatio">The attacker's retreat threshold, or null for the content setting.</param>
+        /// <param name="defenderRetreatStrengthRatio">The defender's retreat threshold, or null for the content setting.</param>
         /// <returns>The resolved tactical state for both forces.</returns>
         public SpaceCombatResult Resolve(
             IReadOnlyList<CapitalShip> attackerShips,
@@ -83,7 +105,10 @@ namespace Rebellion.Gameplay
             bool defenderCanWithdraw,
             SpaceCombatCommandModifiers attackerCommand = default,
             SpaceCombatCommandModifiers defenderCommand = default,
-            IReadOnlyCollection<CapitalShip> shieldedPlanetDestroyers = null
+            IReadOnlyCollection<CapitalShip> shieldedPlanetDestroyers = null,
+            bool attackerHasInitiative = false,
+            double? attackerRetreatStrengthRatio = null,
+            double? defenderRetreatStrengthRatio = null
         )
         {
             CombatForce attacker = new CombatForce(
@@ -92,7 +117,9 @@ namespace Rebellion.Gameplay
                 attackerCanWithdraw,
                 _config,
                 attackerCommand,
-                shieldedPlanetDestroyers
+                shieldedPlanetDestroyers,
+                _random,
+                attackerRetreatStrengthRatio
             );
             CombatForce defender = new CombatForce(
                 defenderShips,
@@ -100,111 +127,77 @@ namespace Rebellion.Gameplay
                 defenderCanWithdraw,
                 _config,
                 defenderCommand,
-                shieldedPlanetDestroyers
+                shieldedPlanetDestroyers,
+                _random,
+                defenderRetreatStrengthRatio
             );
-            double previousAttackerDurability = GetTacticalDurability(attacker);
-            double previousDefenderDurability = GetTacticalDurability(defender);
-            double previousAttackerWithdrawalProgress = GetWithdrawalProgress(attacker);
-            double previousDefenderWithdrawalProgress = GetWithdrawalProgress(defender);
-            long previousAttackerSuperlaserRecharge = GetSuperlaserRechargeProgress(
-                attacker,
-                defender
-            );
-            long previousDefenderSuperlaserRecharge = GetSuperlaserRechargeProgress(
-                defender,
-                attacker
-            );
-            int stagnantIterations = 0;
+            attacker.InitializeGroups(_config, attackerHasInitiative);
+            defender.InitializeGroups(_config, !attackerHasInitiative);
+            CombatForce first = attackerHasInitiative ? attacker : defender;
+            CombatForce second = attackerHasInitiative ? defender : attacker;
+            bool hasPlanetDestroyers =
+                first.PlanetDestroyers.Count > 0 || second.PlanetDestroyers.Count > 0;
+            float firstMinimum = (float)GetTacticalStrength(first, second);
+            float secondMinimum = (float)GetTacticalStrength(second, first);
+            int firstStall = 0;
+            int secondStall = 0;
             int iterationsCompleted = 0;
-            Dictionary<TacticalUnit, PendingDamage> pendingDamage =
-                new Dictionary<TacticalUnit, PendingDamage>();
-            for (int iteration = 0; iteration < _config.AutoResolveMaximumIterations; iteration++)
+            while (true)
             {
-                iterationsCompleted = iteration + 1;
                 if (CompleteEliminatedForces(attacker, defender))
                     break;
 
-                // Attack runs are ordered first: a side with squadrons on a run does not turn
-                // for home until the run is decided.
-                OrderAttackRuns(attacker, defender);
-                OrderAttackRuns(defender, attacker);
-                WithdrawUnitsAtThreshold(attacker, defender);
-                WithdrawUnitsAtThreshold(defender, attacker);
-                WithdrawFromPlanetDestroyer(attacker, defender);
-                WithdrawFromPlanetDestroyer(defender, attacker);
-                WithdrawPlanetDestroyerFromFighterStalemate(attacker, defender);
-                WithdrawPlanetDestroyerFromFighterStalemate(defender, attacker);
-                FireSuperlasers(attacker, defender);
-                FireSuperlasers(defender, attacker);
-
-                ResolveAttackPhase(attacker, defender, pendingDamage);
-                if (defender.HasCombatants)
-                    ResolveAttackPhase(defender, attacker, pendingDamage);
-                AdvanceTacticalState(attacker);
-                AdvanceTacticalState(defender);
-                AdvancePlanetDestroyers(attacker);
-                AdvancePlanetDestroyers(defender);
-                ResolveAttackRuns(attacker);
-                ResolveAttackRuns(defender);
-                double attackerDurability = GetTacticalDurability(attacker);
-                double defenderDurability = GetTacticalDurability(defender);
-                double attackerWithdrawalProgress = GetWithdrawalProgress(attacker);
-                double defenderWithdrawalProgress = GetWithdrawalProgress(defender);
-                long attackerSuperlaserRecharge = GetSuperlaserRechargeProgress(attacker, defender);
-                long defenderSuperlaserRecharge = GetSuperlaserRechargeProgress(defender, attacker);
-                // Squadrons flying an attack run are progress too: every run ends.
-                bool stateChanged =
-                    Math.Abs(attackerDurability - previousAttackerDurability) > double.Epsilon
-                    || Math.Abs(defenderDurability - previousDefenderDurability) > double.Epsilon
-                    || Math.Abs(attackerWithdrawalProgress - previousAttackerWithdrawalProgress)
-                        > double.Epsilon
-                    || Math.Abs(defenderWithdrawalProgress - previousDefenderWithdrawalProgress)
-                        > double.Epsilon
-                    || attackerSuperlaserRecharge != previousAttackerSuperlaserRecharge
-                    || defenderSuperlaserRecharge != previousDefenderSuperlaserRecharge
-                    || attacker.HasAttackRunUnderWay
-                    || defender.HasAttackRunUnderWay;
-                stagnantIterations = stateChanged ? 0 : stagnantIterations + 1;
-                previousAttackerDurability = attackerDurability;
-                previousDefenderDurability = defenderDurability;
-                previousAttackerWithdrawalProgress = attackerWithdrawalProgress;
-                previousDefenderWithdrawalProgress = defenderWithdrawalProgress;
-                previousAttackerSuperlaserRecharge = attackerSuperlaserRecharge;
-                previousDefenderSuperlaserRecharge = defenderSuperlaserRecharge;
-
-                if (stagnantIterations >= _config.AutoResolveStagnationIterations)
+                iterationsCompleted++;
+                if (hasPlanetDestroyers)
                 {
-                    ResolveStalemate(
-                        attacker,
-                        defender,
-                        GetTacticalStrength(attacker, defender),
-                        GetTacticalStrength(defender, attacker)
-                    );
-                    break;
+                    if (iterationsCompleted == 1)
+                    {
+                        first.LaunchFighters();
+                        second.LaunchFighters();
+                    }
+                    OrderAttackRuns(first, second);
+                    OrderAttackRuns(second, first);
+                    PreparePlanetDestroyerWithdrawal(first, second);
+                    PreparePlanetDestroyerWithdrawal(second, first);
+                    FireSuperlasers(first, second);
+                    FireSuperlasers(second, first);
                 }
-            }
+                ResolveSide(first, second, hasPlanetDestroyers);
+                ResolveSide(second, first, hasPlanetDestroyers);
+                if (hasPlanetDestroyers)
+                {
+                    AdvancePlanetDestroyers(first, second);
+                    AdvancePlanetDestroyers(second, first);
+                    ResolveAttackRuns(first, second);
+                    ResolveAttackRuns(second, first);
+                }
+                if (CompleteEliminatedForces(attacker, defender))
+                    break;
 
-            if (!CompleteEliminatedForces(attacker, defender))
-            {
+                float firstStrength = (float)GetTacticalStrength(first, second);
+                float secondStrength = (float)GetTacticalStrength(second, first);
+                bool specialProgress =
+                    hasPlanetDestroyers
+                    && (
+                        HasPlanetDestroyerProgress(first, second)
+                        || HasPlanetDestroyerProgress(second, first)
+                    );
+                firstStall = specialProgress || firstStrength < firstMinimum ? 0 : firstStall + 1;
+                secondStall =
+                    specialProgress || secondStrength < secondMinimum ? 0 : secondStall + 1;
+                firstMinimum = Math.Min(firstMinimum, firstStrength);
+                secondMinimum = Math.Min(secondMinimum, secondStrength);
                 if (
-                    attacker.Outcome == SpaceCombatSideOutcome.Active
-                    && defender.Outcome == SpaceCombatSideOutcome.Active
+                    firstStall >= _config.AutoResolveStagnationIterations
+                    && secondStall >= _config.AutoResolveStagnationIterations
                 )
                 {
-                    ResolveStalemate(
-                        attacker,
-                        defender,
-                        GetTacticalStrength(attacker, defender),
-                        GetTacticalStrength(defender, attacker)
-                    );
-                }
-                else if (attacker.Outcome == SpaceCombatSideOutcome.Active)
-                {
-                    CompleteStalematedForce(attacker);
-                }
-                else if (defender.Outcome == SpaceCombatSideOutcome.Active)
-                {
-                    CompleteStalematedForce(defender);
+                    if (first.HasPlanetDestroyerInBattle || second.HasPlanetDestroyerInBattle)
+                        break;
+                    if (firstStrength <= secondStrength)
+                        ResolveStalledSide(first, second);
+                    if (secondStrength <= firstStrength)
+                        ResolveStalledSide(second, first);
                 }
             }
 
@@ -212,25 +205,140 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Resolves one force's attacks before the opposing force receives its firing phase.
+        /// Advances one side's groups, retreat decisions, and shield recovery in combat order.
         /// </summary>
-        /// <param name="firingForce">The force performing attacks.</param>
-        /// <param name="targetForce">The force receiving attacks.</param>
-        /// <param name="pendingDamage">The reusable damage buffer.</param>
-        private void ResolveAttackPhase(
-            CombatForce firingForce,
-            CombatForce targetForce,
-            Dictionary<TacticalUnit, PendingDamage> pendingDamage
+        /// <param name="force">The side taking its update.</param>
+        /// <param name="opponent">The opposing side.</param>
+        /// <param name="hasPlanetDestroyers">Whether special actions advance in shared phases.</param>
+        private void ResolveSide(CombatForce force, CombatForce opponent, bool hasPlanetDestroyers)
+        {
+            if (!force.HasUnresolvedUnits)
+                return;
+            if (force.HasInitiative && !hasPlanetDestroyers)
+            {
+                force.LaunchFighters();
+                opponent.LaunchFighters();
+            }
+            force.AssignTargets(opponent);
+            foreach (CombatGroup group in force.Groups)
+            {
+                TacticalUnit target = group.Target;
+                if (
+                    target?.IsAlive != true
+                    || group.IsRetired
+                    || (hasPlanetDestroyers && !target.IsTargetable)
+                )
+                    continue;
+                target.ApplyDamage(group.GetDamageRate(target), _random);
+                if (!target.IsAlive)
+                    opponent.RemoveDestroyedUnit(target);
+            }
+            if (
+                !hasPlanetDestroyers
+                && CanWithdraw(force, opponent)
+                && !force.HasAttackRunUnderWay
+                && HasReachedWithdrawalThreshold(force, opponent)
+            )
+                force.CompleteWithdrawal();
+            AdvanceTacticalState(force);
+        }
+
+        /// <summary>
+        /// Orders escorts and special ships to escape before superlaser targets are reserved.
+        /// </summary>
+        /// <param name="force">The side whose escape decisions are prepared.</param>
+        /// <param name="opponent">The side providing the opposing escort strength.</param>
+        private static void PreparePlanetDestroyerWithdrawal(
+            CombatForce force,
+            CombatForce opponent
         )
         {
-            IReadOnlyList<TacticalUnit> targets = targetForce.GetTargetableUnits();
-            pendingDamage.Clear();
-            QueueAttacks(firingForce, targets, pendingDamage);
-            ApplyPendingDamage(pendingDamage);
+            if (
+                !force.WithdrawalOrdered
+                && force.HasCombatants
+                && !force.HasAttackRunUnderWay
+                && CanWithdraw(force, opponent)
+            )
+            {
+                double opposingStrength = GetPlanetDestroyerEscortStrength(opponent);
+                if (
+                    opposingStrength > 0
+                    && GetPlanetDestroyerEscortStrength(force) / opposingStrength
+                        < force.RetreatStrengthRatio
+                )
+                    force.BeginWithdrawal();
+            }
+            WithdrawFromPlanetDestroyer(force, opponent);
+            WithdrawPlanetDestroyerFromFighterStalemate(force, opponent);
+            if (force.WithdrawalOrdered)
+                force.CompleteWithdrawal();
+        }
 
-            pendingDamage.Clear();
-            QueueFollowUpAttacks(firingForce, targets, pendingDamage);
-            ApplyPendingDamage(pendingDamage);
+        /// <summary>
+        /// Measures ordinary escort strength for special-ship withdrawal decisions.
+        /// </summary>
+        /// <param name="force">The side whose escorts are measured.</param>
+        /// <returns>The sustained output of its targetable ordinary units.</returns>
+        private static double GetPlanetDestroyerEscortStrength(CombatForce force)
+        {
+            double strength = 0;
+            foreach (TacticalUnit unit in force.Units)
+                if (unit.IsTargetable)
+                    strength += unit.GetEffectiveness();
+            return strength;
+        }
+
+        /// <summary>
+        /// Keeps finite special actions from being classified as a stalled battle.
+        /// </summary>
+        /// <param name="force">The side whose special actions are inspected.</param>
+        /// <param name="opponent">The side that may still supply a superlaser target.</param>
+        /// <returns>True when an attack run, withdrawal, or usable superlaser is progressing.</returns>
+        private static bool HasPlanetDestroyerProgress(CombatForce force, CombatForce opponent)
+        {
+            if (force.HasAttackRunUnderWay || force.HasPendingWithdrawal)
+                return true;
+            if (force.WithdrawalOrdered || !opponent.HasTargetableShips)
+                return false;
+            foreach (PlanetDestroyerState ship in force.PlanetDestroyers)
+                if (ship.IsInBattle && !ship.IsWithdrawing)
+                    return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Determines whether a side still has a usable escape route and mobile hyperdrives.
+        /// </summary>
+        /// <param name="force">The side requesting escape.</param>
+        /// <param name="opponent">The side that may prevent escape.</param>
+        /// <returns>Whether an automatic withdrawal can be attempted.</returns>
+        private static bool CanWithdraw(CombatForce force, CombatForce opponent)
+        {
+            if (!force.CanWithdraw || force.Outcome != SpaceCombatSideOutcome.Active)
+                return false;
+            foreach (CapitalShipState ship in opponent.Ships)
+                if (ship.IsTargetable && ship.Ship.HasGravityWell)
+                    return false;
+            foreach (TacticalUnit unit in force.Units)
+                if (unit.IsTargetable && unit.CanWithdrawIndependently)
+                    return true;
+            return force.HasPlanetDestroyerInBattle
+                && force.PlanetDestroyers.Any(ship =>
+                    ship.IsInBattle && ship.CanWithdrawIndependently
+                );
+        }
+
+        /// <summary>
+        /// Forces a stalled side to leave on its next update or destroys its trapped units.
+        /// </summary>
+        /// <param name="force">The stalled side.</param>
+        /// <param name="opponent">Its opponent.</param>
+        private static void ResolveStalledSide(CombatForce force, CombatForce opponent)
+        {
+            if (CanWithdraw(force, opponent))
+                force.ForcedWithdrawal = true;
+            else if (!force.HasPlanetDestroyerInBattle)
+                force.DestroyRemainingUnits();
         }
 
         /// <summary>
@@ -251,25 +359,6 @@ namespace Rebellion.Gameplay
             if (!defenderUnresolved)
                 CompleteForce(defender);
             return !attacker.HasPendingWithdrawal && !defender.HasPendingWithdrawal;
-        }
-
-        /// <summary>
-        /// Begins per-unit withdrawal after a force falls below the opposing-strength threshold.
-        /// </summary>
-        /// <param name="force">The force whose withdrawal state is evaluated.</param>
-        /// <param name="opposingForce">The force providing the opposing tactical strength.</param>
-        private void WithdrawUnitsAtThreshold(CombatForce force, CombatForce opposingForce)
-        {
-            // A force with squadrons on an attack run waits for the outcome.
-            if (
-                force.WithdrawalOrdered
-                || !force.CanWithdraw
-                || force.HasAttackRunUnderWay
-                || !HasReachedWithdrawalThreshold(force, opposingForce)
-            )
-                return;
-
-            force.BeginWithdrawal();
         }
 
         /// <summary>
@@ -431,13 +520,19 @@ namespace Rebellion.Gameplay
         /// withdrawal state by one iteration.
         /// </summary>
         /// <param name="force">The force whose planet destroyers advance.</param>
-        private static void AdvancePlanetDestroyers(CombatForce force)
+        /// <param name="opponent">The side owning any struck ordinary unit.</param>
+        private static void AdvancePlanetDestroyers(CombatForce force, CombatForce opponent)
         {
             foreach (PlanetDestroyerState planetDestroyer in force.PlanetDestroyers)
             {
+                if (planetDestroyer.IsWithdrawing && planetDestroyer.IsJumpReady)
+                {
+                    planetDestroyer.FinishWithdrawal();
+                    continue;
+                }
                 TacticalUnit struck = planetDestroyer.Advance();
                 if (struck?.IsAlive == true && !struck.HasWithdrawn)
-                    struck.Destroy();
+                    opponent.RemoveDestroyedUnit(struck);
             }
         }
 
@@ -447,7 +542,11 @@ namespace Rebellion.Gameplay
         /// participating squadrons; a failed run destroys every participant.
         /// </summary>
         /// <param name="planetDestroyerForce">The force whose planet destroyers are attacked.</param>
-        private static void ResolveAttackRuns(CombatForce planetDestroyerForce)
+        /// <param name="opponent">The side owning the participating squadrons.</param>
+        private static void ResolveAttackRuns(
+            CombatForce planetDestroyerForce,
+            CombatForce opponent
+        )
         {
             foreach (PlanetDestroyerState planetDestroyer in planetDestroyerForce.PlanetDestroyers)
             {
@@ -471,7 +570,7 @@ namespace Rebellion.Gameplay
                     for (int index = 0; index < run.Count; index++)
                     {
                         if (index < losses)
-                            run[index].Destroy();
+                            opponent.RemoveDestroyedUnit(run[index]);
                         else
                             run[index].EndAttackRun();
                     }
@@ -480,7 +579,7 @@ namespace Rebellion.Gameplay
                 else
                 {
                     foreach (StarfighterState fighter in run)
-                        fighter.Destroy();
+                        opponent.RemoveDestroyedUnit(fighter);
                     planetDestroyer.CompleteAttackRun();
                 }
             }
@@ -495,15 +594,13 @@ namespace Rebellion.Gameplay
         /// <returns>True when the withdrawal threshold has been reached.</returns>
         private bool HasReachedWithdrawalThreshold(CombatForce force, CombatForce opposingForce)
         {
-            if (!force.HasCombatants)
-                return false;
-
-            double opposingStrength = GetRetreatStrength(opposingForce);
-            if (opposingStrength <= 0)
-                return false;
-
-            double forceStrength = GetRetreatStrength(force);
-            return forceStrength / opposingStrength < _config.AutoResolveRetreatStrengthRatio;
+            if (force.ForcedWithdrawal)
+                return true;
+            double own = GetTacticalStrength(force, opposingForce);
+            if (own == 0)
+                return true;
+            double opposing = GetTacticalStrength(opposingForce, force);
+            return opposing > 0 && own / opposing < (float)force.RetreatStrengthRatio;
         }
 
         /// <summary>
@@ -518,114 +615,6 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Queues attacks from one force against another.
-        /// </summary>
-        /// <param name="firingForce">The force performing attacks.</param>
-        /// <param name="targets">The opposing units available at the start of the firing phase.</param>
-        /// <param name="pendingDamage">Damage grouped by tactical target.</param>
-        private void QueueAttacks(
-            CombatForce firingForce,
-            IReadOnlyList<TacticalUnit> targets,
-            IDictionary<TacticalUnit, PendingDamage> pendingDamage
-        )
-        {
-            int scanDivisor = Math.Max(_config.AutoResolveTargetScanDivisor, 1);
-
-            foreach (TacticalUnit attacker in firingForce.Units)
-            {
-                if (!attacker.CanFire)
-                    continue;
-
-                bool scansForTarget =
-                    attacker.CanScanForTargets && _random.NextInt(0, scanDivisor) == 0;
-                attacker.QueueAvailableAttacks(
-                    targets,
-                    scansForTarget,
-                    _config.AutoResolveStartingDistance,
-                    pendingDamage
-                );
-            }
-        }
-
-        /// <summary>
-        /// Queues attacks that depend on damage resolved earlier in the same firing phase.
-        /// </summary>
-        /// <param name="firingForce">The force performing follow-up attacks.</param>
-        /// <param name="targets">The opposing units available at the start of the firing phase.</param>
-        /// <param name="pendingDamage">Damage grouped by tactical target.</param>
-        private static void QueueFollowUpAttacks(
-            CombatForce firingForce,
-            IReadOnlyList<TacticalUnit> targets,
-            IDictionary<TacticalUnit, PendingDamage> pendingDamage
-        )
-        {
-            foreach (StarfighterState fighter in firingForce.Fighters)
-                fighter.QueueAvailableTorpedoAttack(targets, pendingDamage);
-        }
-
-        /// <summary>
-        /// Applies all queued damage for the current force's firing phase.
-        /// </summary>
-        /// <param name="pendingDamage">Damage grouped by tactical target.</param>
-        private void ApplyPendingDamage(
-            IReadOnlyDictionary<TacticalUnit, PendingDamage> pendingDamage
-        )
-        {
-            foreach (KeyValuePair<TacticalUnit, PendingDamage> entry in pendingDamage)
-            {
-                foreach (PendingHit hit in entry.Value.Hits)
-                {
-                    entry.Key.ApplyDamage(
-                        hit.IsIonDamage ? 0 : hit.Damage,
-                        hit.IsIonDamage ? hit.Damage : 0,
-                        _config,
-                        _random
-                    );
-                }
-            }
-        }
-
-        /// <summary>
-        /// Keeps queued hits in firing order until the current force has finished firing.
-        /// </summary>
-        private sealed class PendingDamage
-        {
-            private readonly List<PendingHit> _hits = new List<PendingHit>();
-
-            internal IReadOnlyList<PendingHit> Hits => _hits;
-
-            /// <summary>
-            /// Adds one weapon lane's damage to the appropriate channel.
-            /// </summary>
-            /// <param name="damage">The positive damage to add.</param>
-            /// <param name="isIonDamage">Whether the damage comes from ion weapons.</param>
-            internal void Add(double damage, bool isIonDamage)
-            {
-                _hits.Add(new PendingHit(damage, isIonDamage));
-            }
-        }
-
-        /// <summary>
-        /// Records one conventional or ion hit in its original firing order.
-        /// </summary>
-        private readonly struct PendingHit
-        {
-            internal double Damage { get; }
-            internal bool IsIonDamage { get; }
-
-            /// <summary>
-            /// Creates a pending hit.
-            /// </summary>
-            /// <param name="damage">The positive damage dealt by the hit.</param>
-            /// <param name="isIonDamage">Whether the hit uses ion damage.</param>
-            internal PendingHit(double damage, bool isIonDamage)
-            {
-                Damage = damage;
-                IsIonDamage = isIonDamage;
-            }
-        }
-
-        /// <summary>
         /// Advances temporary damage timers and capital-ship shield and weapon recharge.
         /// </summary>
         /// <param name="force">The force whose tactical state advances.</param>
@@ -636,199 +625,41 @@ namespace Rebellion.Gameplay
                 if (!unit.IsAlive || unit.HasWithdrawn)
                     continue;
 
-                unit.AdvanceTacticalState(_config, _random);
+                unit.AdvanceTacticalState(_config);
             }
-
-            force.CompleteReadyWithdrawals(Math.Max(_config.AutoResolveWithdrawalDistance, 0));
         }
 
         /// <summary>
-        /// Calculates the remaining strength used by the withdrawal threshold check.
+        /// Calculates strength not suppressed by opposing combat groups.
         /// </summary>
         /// <param name="force">The force being measured.</param>
-        /// <returns>The force's remaining tactical strength.</returns>
-        private static double GetRetreatStrength(CombatForce force)
-        {
-            double strength = 0;
-            foreach (TacticalUnit unit in force.Units)
-            {
-                if (!unit.IsTargetable)
-                    continue;
-
-                strength += unit.GetEffectiveness(targetsFighters: false);
-            }
-            return strength;
-        }
-
-        /// <summary>
-        /// Calculates the remaining strength used by the completion checks.
-        /// </summary>
-        /// <param name="force">The force being measured.</param>
-        /// <param name="opposingForce">The force providing the available target types.</param>
+        /// <param name="opposingForce">The side whose current targets can suppress capital ships.</param>
         /// <returns>The force's remaining tactical strength.</returns>
         private static double GetTacticalStrength(CombatForce force, CombatForce opposingForce)
         {
-            bool canTargetCapitalShips = opposingForce.HasTargetableShips;
-            bool canTargetFighters = opposingForce.HasTargetableFighters;
-            double strength = 0;
+            float strength = 0;
             foreach (TacticalUnit unit in force.Units)
             {
-                if (!unit.IsTargetable)
+                if (!unit.IsTargetable && !(force.HasInitiative && unit.IsAlive && unit.IsDocked))
                     continue;
-
-                strength += Math.Max(
-                    canTargetCapitalShips ? unit.GetEffectiveness(targetsFighters: false) : 0,
-                    canTargetFighters ? unit.GetEffectiveness(targetsFighters: true) : 0
-                );
+                bool suppressed = false;
+                if (!unit.IsStarfighter)
+                    foreach (CombatGroup group in opposingForce.Groups)
+                        if (
+                            !group.IsRetired
+                            && ReferenceEquals(group.Target, unit)
+                            && unit.ShieldRechargeRate <= group.GetDamageRate(unit)
+                        )
+                        {
+                            suppressed = true;
+                            break;
+                        }
+                if (!suppressed)
+                    strength = (float)(strength + unit.GetEffectiveness());
             }
-
-            // A planet destroyer whose superlaser still has a capital ship to burn can always do harm.
-            if (canTargetCapitalShips && force.HasPlanetDestroyerInBattle)
-                strength += 1;
+            if (force.HasPlanetDestroyerInBattle)
+                strength += 20000000;
             return strength;
-        }
-
-        /// <summary>
-        /// Calculates the remaining hull, shields, and fighter durability used to detect progress.
-        /// </summary>
-        /// <param name="force">The force being measured.</param>
-        /// <returns>The force's remaining tactical durability.</returns>
-        private static double GetTacticalDurability(CombatForce force)
-        {
-            double durability = 0;
-            foreach (TacticalUnit unit in force.Units)
-            {
-                if (unit.IsTargetable)
-                    durability += unit.RemainingDurability;
-            }
-
-            foreach (PlanetDestroyerState planetDestroyer in force.PlanetDestroyers)
-            {
-                if (planetDestroyer.IsInBattle)
-                    durability += planetDestroyer.Durability;
-            }
-
-            return durability;
-        }
-
-        /// <summary>
-        /// Calculates movement completed by units currently leaving combat.
-        /// </summary>
-        /// <param name="force">The force whose withdrawal motion is measured.</param>
-        /// <returns>The combined withdrawal distance of units still moving toward safety.</returns>
-        private static double GetWithdrawalProgress(CombatForce force)
-        {
-            double progress = 0;
-            foreach (TacticalUnit unit in force.Units)
-            {
-                if (unit.IsWithdrawing && unit.CanWithdrawIndependently)
-                    progress += unit.WithdrawalDistance;
-            }
-            foreach (PlanetDestroyerState planetDestroyer in force.PlanetDestroyers)
-                progress += planetDestroyer.WithdrawalProgress;
-            return progress;
-        }
-
-        /// <summary>
-        /// Measures recharge movement for planet destroyers that still have a valid capital-ship
-        /// target. Recharge is tactical progress because it always ends in another strike.
-        /// </summary>
-        /// <param name="force">The force whose planet destroyers are charging.</param>
-        /// <param name="opposingForce">The force providing superlaser targets.</param>
-        /// <returns>The combined remaining recharge iterations for viable superlaser strikes.</returns>
-        private static long GetSuperlaserRechargeProgress(
-            CombatForce force,
-            CombatForce opposingForce
-        )
-        {
-            if (force.WithdrawalOrdered || !opposingForce.HasTargetableShips)
-                return 0;
-
-            return force
-                .PlanetDestroyers.Where(planetDestroyer =>
-                    planetDestroyer.IsInBattle && !planetDestroyer.IsWithdrawing
-                )
-                .Sum(planetDestroyer =>
-                    (long)planetDestroyer.SuperlaserRechargeIterationsRemaining
-                );
-        }
-
-        /// <summary>
-        /// Resolves forces that can no longer change the tactical state.
-        /// </summary>
-        /// <param name="attacker">The attacking force.</param>
-        /// <param name="defender">The defending force.</param>
-        /// <param name="attackerStrength">The attacker's current strength.</param>
-        /// <param name="defenderStrength">The defender's current strength.</param>
-        private static void ResolveStalemate(
-            CombatForce attacker,
-            CombatForce defender,
-            double attackerStrength,
-            double defenderStrength
-        )
-        {
-            if (attacker.HasPendingWithdrawal)
-            {
-                CompleteStalematedForce(attacker);
-                return;
-            }
-
-            if (defender.HasPendingWithdrawal)
-            {
-                CompleteStalematedForce(defender);
-                return;
-            }
-
-            // A surviving planet destroyer prevents a durability tie-breaker from manufacturing a
-            // victor when neither side can change the tactical state.
-            if (attacker.HasPlanetDestroyerInBattle || defender.HasPlanetDestroyerInBattle)
-                return;
-
-            int comparison = attackerStrength.CompareTo(defenderStrength);
-            if (comparison < 0)
-            {
-                CompleteStalematedForce(attacker);
-                return;
-            }
-
-            if (comparison > 0)
-            {
-                CompleteStalematedForce(defender);
-                return;
-            }
-
-            CompleteStalematedForce(attacker);
-            CompleteStalematedForce(defender);
-        }
-
-        /// <summary>
-        /// Withdraws or destroys a force selected by the stagnation resolver.
-        /// </summary>
-        /// <param name="force">The force to complete.</param>
-        private static void CompleteStalematedForce(CombatForce force)
-        {
-            if (force.CanWithdraw && !force.WithdrawalOrdered)
-                force.CompleteWithdrawal();
-
-            foreach (
-                TacticalUnit unit in force.Units.Where(unit => unit.IsAlive && !unit.HasWithdrawn)
-            )
-                unit.Destroy();
-            foreach (PlanetDestroyerState planetDestroyer in force.PlanetDestroyers)
-            {
-                if (!planetDestroyer.IsInBattle)
-                    continue;
-
-                if (planetDestroyer.IsWithdrawing && planetDestroyer.CanWithdrawIndependently)
-                    planetDestroyer.FinishWithdrawal();
-                else
-                    planetDestroyer.Destroy();
-            }
-
-            if (force.HasWithdrawnUnits)
-                force.Outcome = SpaceCombatSideOutcome.Withdrawn;
-            else
-                force.Outcome = SpaceCombatSideOutcome.Destroyed;
         }
 
         /// <summary>
@@ -1075,7 +906,33 @@ namespace Rebellion.Gameplay
 
             // Planet destroyers stand off from the fight and are not among the units.
             internal readonly List<PlanetDestroyerState> PlanetDestroyers;
-            private readonly List<TacticalUnit> _targetableUnits = new List<TacticalUnit>();
+            internal readonly List<CombatGroup> Groups = new List<CombatGroup>();
+            private readonly IRandomNumberProvider _random;
+            private readonly double _capitalCommandBonus;
+            private readonly bool _requiresAdmiralCarrier;
+            private readonly CapitalShipState _admiralCarrier;
+            private readonly PlanetDestroyerState _admiralPlanetDestroyer;
+            private readonly List<TacticalUnit> _candidates = new List<TacticalUnit>();
+            private readonly List<TacticalUnit> _capitalCandidates = new List<TacticalUnit>();
+            private readonly List<TacticalUnit> _fighterCandidates = new List<TacticalUnit>();
+            private readonly List<CombatGroup> _capitalGroups = new List<CombatGroup>();
+            private readonly List<CombatGroup> _laserGroups = new List<CombatGroup>();
+            private readonly List<CombatGroup> _remainingGroups = new List<CombatGroup>();
+            private readonly List<(float Score, CombatGroup Group)> _metrics =
+                new List<(float, CombatGroup)>();
+
+            internal bool HasInitiative { get; private set; }
+            internal bool ForcedWithdrawal { get; set; }
+            internal double RetreatStrengthRatio { get; }
+            internal double CapitalCommandBonus =>
+                !_requiresAdmiralCarrier
+                || _admiralCarrier?.IsTargetable == true
+                || (
+                    _admiralPlanetDestroyer?.IsInBattle == true
+                    && !_admiralPlanetDestroyer.IsWithdrawing
+                )
+                    ? _capitalCommandBonus
+                    : 1;
 
             internal bool HasCombatants => HasTargetableUnits(Units);
             internal bool HasUnresolvedUnits =>
@@ -1109,23 +966,32 @@ namespace Rebellion.Gameplay
             /// <param name="shieldedPlanetDestroyers">
             /// The planet destroyers a planetary shield generator protects, or null.
             /// </param>
+            /// <param name="random">The battle's random stream.</param>
+            /// <param name="retreatStrengthRatio">The side's retreat threshold, or null for the content setting.</param>
             internal CombatForce(
                 IReadOnlyList<CapitalShip> ships,
                 IReadOnlyList<Starfighter> fighters,
                 bool canWithdraw,
                 GameConfig.SpaceCombatConfig config,
                 SpaceCombatCommandModifiers command,
-                IReadOnlyCollection<CapitalShip> shieldedPlanetDestroyers
+                IReadOnlyCollection<CapitalShip> shieldedPlanetDestroyers,
+                IRandomNumberProvider random,
+                double? retreatStrengthRatio
             )
             {
-                double capitalShipCommandBonus = GetCommandBonus(
+                _random = random;
+                RetreatStrengthRatio =
+                    retreatStrengthRatio ?? config.AutoResolveRetreatStrengthRatio;
+                float scaledLeadership = (float)GetCommandBonus(
                     command.AdmiralLeadership,
                     config.AdmiralLeadershipDivisor
                 );
-                double starfighterCommandBonus = GetCommandBonus(
-                    command.CommanderCombat,
-                    config.CommanderCombatDivisor
-                );
+                _capitalCommandBonus =
+                    config.AdmiralLeadershipDivisor > 0
+                    && (command.AdmiralShip != null || command.AdmiralLeadership > 0)
+                        ? Math.Clamp(9.0 - scaledLeadership, 1, 9)
+                        : 1;
+                _requiresAdmiralCarrier = command.AdmiralShip != null;
                 PlanetDestroyers = (ships ?? Array.Empty<CapitalShip>())
                     .Where(ship => ship?.CanDestroyPlanets == true)
                     .Select(ship => new PlanetDestroyerState(
@@ -1138,8 +1004,26 @@ namespace Rebellion.Gameplay
                     .ToList();
                 Ships = (ships ?? Array.Empty<CapitalShip>())
                     .Where(ship => ship?.CanDestroyPlanets == false)
-                    .Select(ship => new CapitalShipState(ship, config, capitalShipCommandBonus))
+                    .Select(ship => new CapitalShipState(ship, config, this))
                     .ToList();
+                _admiralCarrier = Ships.Find(ship =>
+                    ReferenceEquals(ship.Ship, command.AdmiralShip)
+                );
+                _admiralPlanetDestroyer = PlanetDestroyers.Find(ship =>
+                    ReferenceEquals(ship.Ship, command.AdmiralShip)
+                );
+                bool commanderPresent =
+                    command.CommanderShip == null
+                    || Ships.Any(ship =>
+                        ship.IsAlive && ReferenceEquals(ship.Ship, command.CommanderShip)
+                    )
+                    || PlanetDestroyers.Any(ship =>
+                        ship.IsAlive && ReferenceEquals(ship.Ship, command.CommanderShip)
+                    );
+                double starfighterCommandBonus = GetCommandBonus(
+                    commanderPresent ? command.CommanderCombat : 0,
+                    config.CommanderCombatDivisor
+                );
                 Fighters = (fighters ?? Array.Empty<Starfighter>())
                     .Where(fighter => fighter != null)
                     .Select(fighter => new StarfighterState(
@@ -1167,18 +1051,335 @@ namespace Rebellion.Gameplay
             }
 
             /// <summary>
-            /// Returns the force's currently targetable units in stable combat order.
+            /// Creates stable weapon formations and captures the original carrier relationships.
             /// </summary>
-            /// <returns>The reusable target collection.</returns>
-            internal IReadOnlyList<TacticalUnit> GetTargetableUnits()
+            /// <param name="config">The combat formation rules.</param>
+            /// <param name="hasInitiative">Whether this side performs the first update.</param>
+            internal void InitializeGroups(GameConfig.SpaceCombatConfig config, bool hasInitiative)
             {
-                _targetableUnits.Clear();
-                foreach (TacticalUnit unit in Units)
+                HasInitiative = hasInitiative;
+                for (int i = 0; i < Units.Count; i++)
+                    Units[i].StableOrder = i;
+                Dictionary<CapitalShip, CapitalShipState> carriers = Ships.ToDictionary(ship =>
+                    ship.Ship
+                );
+                foreach (StarfighterState fighter in Fighters)
                 {
-                    if (unit.IsTargetable)
-                        _targetableUnits.Add(unit);
+                    CapitalShip parent = fighter.Fighter.GetParent() as CapitalShip;
+                    if (
+                        parent != null
+                        && carriers.TryGetValue(parent, out CapitalShipState carrier)
+                    )
+                    {
+                        fighter.OriginalCarrier = carrier;
+                        if (!fighter.CanWithdrawIndependently)
+                        {
+                            fighter.DockedCarrier = carrier;
+                            carrier.DockedFighters.Add(fighter);
+                        }
+                    }
                 }
-                return _targetableUnits;
+                string owner =
+                    Units.Count == 0
+                        ? string.Empty
+                        : Units[0].Node.GetOwnerInstanceID() ?? string.Empty;
+                List<string> typeOrder =
+                    config.StarfighterGroups != null
+                    && config.StarfighterGroups.TryGetValue(owner, out List<string> configured)
+                        ? new List<string>(configured)
+                        : new List<string>();
+                foreach (
+                    string type in Fighters
+                        .Select(f => f.Fighter.TypeID ?? string.Empty)
+                        .Distinct()
+                        .OrderBy(id => id, StringComparer.Ordinal)
+                )
+                    if (!typeOrder.Contains(type))
+                        typeOrder.Add(type);
+                while (typeOrder.Count < 4)
+                    typeOrder.Add(null);
+                CombatGroup[] buckets = new CombatGroup[typeOrder.Count];
+                int[] counts = new int[typeOrder.Count];
+                for (int i = 0; i < buckets.Length; i++)
+                {
+                    if (typeOrder[i] == null)
+                        continue;
+                    List<TacticalUnit> members = Fighters
+                        .Where(f => (f.Fighter.TypeID ?? string.Empty) == typeOrder[i])
+                        .Cast<TacticalUnit>()
+                        .ToList();
+                    counts[i] = members.Count;
+                    if (members.Count > 0)
+                        buckets[i] = AddGroup(members);
+                }
+                for (int i = 0; i < buckets.Length; i++)
+                {
+                    if (counts[i] != 0)
+                        continue;
+                    int largest = 0;
+                    for (int j = 1; j < counts.Length; j++)
+                        if (counts[j] > counts[largest])
+                            largest = j;
+                    if (counts[largest] < 8)
+                        continue;
+                    counts[i] = counts[largest] / 2;
+                    counts[largest] -= counts[i];
+                    int moved = Math.Min(
+                        HasInitiative ? 1 : counts[i],
+                        buckets[largest].Members.Count
+                    );
+                    List<TacticalUnit> members = buckets[largest].Members.GetRange(0, moved);
+                    buckets[largest].Members.RemoveRange(0, moved);
+                    buckets[i] = AddGroup(members);
+                }
+                List<TacticalUnit> heavy = Ships
+                    .Where(ship => ship.HasWeapons && !ship.HasLasers)
+                    .Cast<TacticalUnit>()
+                    .ToList();
+                List<TacticalUnit> lasers = Ships
+                    .Where(ship => ship.HasLasers)
+                    .Cast<TacticalUnit>()
+                    .ToList();
+                List<TacticalUnit> unarmed = Ships
+                    .Where(ship => !ship.HasWeapons)
+                    .Cast<TacticalUnit>()
+                    .ToList();
+                int first = AddCapitalGroups(heavy, 0, 3);
+                int second = AddCapitalGroups(lasers, first, first + 3);
+                AddCapitalGroups(unarmed, first + second, 7);
+            }
+
+            /// <summary>
+            /// Adds one formation in stable firing order.
+            /// </summary>
+            /// <param name="members">The formation's combatants.</param>
+            /// <returns>The new formation.</returns>
+            private CombatGroup AddGroup(List<TacticalUnit> members)
+            {
+                CombatGroup group = new CombatGroup(Groups.Count, members);
+                Groups.Add(group);
+                return group;
+            }
+
+            /// <summary>
+            /// Distributes a range-sorted capital-ship category over bounded formations.
+            /// </summary>
+            /// <param name="members">The ships in this category.</param>
+            /// <param name="lower">The first formation slot.</param>
+            /// <param name="upper">The last formation slot.</param>
+            /// <returns>The number of created formations.</returns>
+            private int AddCapitalGroups(List<TacticalUnit> members, int lower, int upper)
+            {
+                if (members.Count == 0)
+                    return 0;
+                members.Sort(
+                    (a, b) =>
+                    {
+                        int score = (
+                            (float)(b.MaximumActiveRange * 10000 + b.ClosingSpeed)
+                        ).CompareTo((float)(a.MaximumActiveRange * 10000 + a.ClosingSpeed));
+                        return score != 0 ? score : a.StableOrder.CompareTo(b.StableOrder);
+                    }
+                );
+                int count = members.Count <= 1 ? 1 : Math.Min((int)Math.Sqrt(members.Count), upper);
+                count = Math.Min(count, upper - lower + 1);
+                int spacing = members.Count / count;
+                int created = 0;
+                CombatGroup current = null;
+                for (int i = 0; i < members.Count; i++)
+                {
+                    if (i % spacing == 0 && created < count)
+                    {
+                        current = AddGroup(new List<TacticalUnit>());
+                        created++;
+                    }
+                    current.Members.Add(members[i]);
+                }
+                foreach (CombatGroup group in Groups)
+                    group.Members.Sort((a, b) => a.StableOrder.CompareTo(b.StableOrder));
+                return count;
+            }
+
+            /// <summary>
+            /// Releases pending squadrons from their launch carriers.
+            /// </summary>
+            internal void LaunchFighters()
+            {
+                foreach (StarfighterState fighter in Fighters)
+                {
+                    fighter.DockedCarrier?.DockedFighters.Remove(fighter);
+                    fighter.DockedCarrier = null;
+                }
+            }
+
+            /// <summary>
+            /// Rebuilds candidate preferences while preserving viable existing engagements.
+            /// </summary>
+            /// <param name="opponent">The opposing side.</param>
+            internal void AssignTargets(CombatForce opponent)
+            {
+                _candidates.Clear();
+                foreach (TacticalUnit unit in opponent.Units)
+                    if (unit.IsTargetable)
+                        _candidates.Add(unit);
+                _candidates.Sort(
+                    (a, b) =>
+                    {
+                        int availability = b.IsAvailableTarget.CompareTo(a.IsAvailableTarget);
+                        if (availability != 0)
+                            return availability;
+                        int score = b.TargetPriority.CompareTo(a.TargetPriority);
+                        return score != 0 ? score : a.StableOrder.CompareTo(b.StableOrder);
+                    }
+                );
+                if (_candidates.Count == 0)
+                    return;
+                _capitalCandidates.Clear();
+                _fighterCandidates.Clear();
+                foreach (TacticalUnit unit in _candidates)
+                    if (!unit.IsStarfighter)
+                        _capitalCandidates.Add(unit);
+                foreach (TacticalUnit unit in _candidates)
+                    if (unit.IsStarfighter)
+                        _fighterCandidates.Add(unit);
+                foreach (TacticalUnit unit in _candidates)
+                    if (!unit.IsStarfighter)
+                        _fighterCandidates.Add(unit);
+                _capitalCandidates.AddRange(_fighterCandidates);
+                _capitalGroups.Clear();
+                _laserGroups.Clear();
+                foreach (CombatGroup group in Groups)
+                {
+                    TacticalUnit primary = group.PrimaryMember;
+                    if (group.IsRetired || group.HasOffFieldMembers || RetainsTarget(group))
+                        continue;
+                    (primary?.HasLasers == true ? _laserGroups : _capitalGroups).Add(group);
+                }
+                Regroup(_capitalGroups, _capitalCandidates);
+                Regroup(_laserGroups, _fighterCandidates);
+            }
+
+            /// <summary>
+            /// Checks the combined effort of groups already assigned to the same target.
+            /// </summary>
+            /// <param name="group">The formation whose target is checked.</param>
+            /// <returns>Whether the target can be retained.</returns>
+            private bool RetainsTarget(CombatGroup group)
+            {
+                TacticalUnit target = group.Target;
+                if (target?.IsAvailableTarget != true)
+                    return false;
+                float budget = 0;
+                float metric = group.GetTargetMetric(target, ref budget);
+                if (metric >= 0 && metric < 300)
+                    return true;
+                foreach (CombatGroup other in Groups)
+                    if (!ReferenceEquals(group, other) && ReferenceEquals(other.Target, target))
+                        metric = other.GetTargetMetric(target, ref budget);
+                return metric >= 0 && metric < 300;
+            }
+
+            /// <summary>
+            /// Distributes formations over candidates using their combined damage budgets.
+            /// </summary>
+            /// <param name="groups">The formations requiring new assignments.</param>
+            /// <param name="candidates">Targets in category preference order.</param>
+            private void Regroup(List<CombatGroup> groups, List<TacticalUnit> candidates)
+            {
+                if (groups.Count == 0 || candidates.Count == 0)
+                    return;
+                _remainingGroups.Clear();
+                _remainingGroups.AddRange(groups);
+                foreach (TacticalUnit candidate in candidates)
+                {
+                    if (!candidate.IsAvailableTarget)
+                        continue;
+                    _metrics.Clear();
+                    foreach (CombatGroup group in _remainingGroups)
+                    {
+                        float budget = 0;
+                        float metric = group.GetTargetMetric(candidate, ref budget);
+                        float score = metric >= 0 && metric <= 180 ? metric : 100000 - budget;
+                        _metrics.Add((score, group));
+                    }
+                    _metrics.Sort(
+                        (a, b) =>
+                        {
+                            int score = a.Score.CompareTo(b.Score);
+                            return score != 0 ? score : a.Group.Order.CompareTo(b.Group.Order);
+                        }
+                    );
+                    if (_metrics.Count == 0)
+                        return;
+                    if (_metrics.Count == 1)
+                    {
+                        _metrics[0].Group.Target = candidate;
+                        return;
+                    }
+                    float combined = _metrics[0].Group.GetDamageRate(candidate);
+                    for (int index = _metrics.Count - 1; index > 0; index--)
+                    {
+                        float metric = _metrics[index]
+                            .Group.GetTargetMetric(candidate, ref combined);
+                        if (metric < 0 || metric > 180)
+                            continue;
+                        for (int assigned = _metrics.Count - 1; assigned >= index; assigned--)
+                        {
+                            CombatGroup group = _metrics[assigned].Group;
+                            group.Target = candidate;
+                            _remainingGroups.Remove(group);
+                        }
+                        break;
+                    }
+                }
+                TacticalUnit fallback =
+                    candidates.Find(unit => unit.IsAvailableTarget) ?? candidates[0];
+                foreach (CombatGroup group in _remainingGroups)
+                    group.Target = fallback;
+            }
+
+            /// <summary>
+            /// Removes a lost combatant and any squadrons actually docked aboard it.
+            /// </summary>
+            /// <param name="unit">The destroyed combatant.</param>
+            internal void RemoveDestroyedUnit(TacticalUnit unit)
+            {
+                if (unit.IsAlive)
+                    unit.ApplyDamage(100000, _random);
+                unit.Destroy();
+                RetireMember(unit);
+                if (unit is CapitalShipState ship)
+                {
+                    foreach (StarfighterState fighter in ship.DockedFighters)
+                    {
+                        if (fighter.IsAlive)
+                            fighter.ApplyDamage(100000, _random);
+                        fighter.Destroy();
+                        RetireMember(fighter);
+                    }
+                    ship.DockedFighters.Clear();
+                }
+            }
+
+            /// <summary>
+            /// Removes a departing combatant while preserving the identity of other formations.
+            /// </summary>
+            /// <param name="unit">The destroyed or withdrawn combatant.</param>
+            private void RetireMember(TacticalUnit unit)
+            {
+                foreach (CombatGroup group in Groups)
+                    if (group.Members.Remove(unit) && group.Members.Count == 0)
+                        group.IsRetired = true;
+            }
+
+            /// <summary>
+            /// Destroys every unit still present in a trapped force.
+            /// </summary>
+            internal void DestroyRemainingUnits()
+            {
+                foreach (TacticalUnit unit in Units)
+                    if (unit.IsAlive && !unit.HasWithdrawn)
+                        RemoveDestroyedUnit(unit);
             }
 
             /// <summary>
@@ -1204,123 +1405,65 @@ namespace Rebellion.Gameplay
             }
 
             /// <summary>
-            /// Completes each mobile withdrawal that has reached safety.
-            /// </summary>
-            /// <param name="withdrawalDistance">The distance required to leave combat.</param>
-            internal void CompleteReadyWithdrawals(double withdrawalDistance)
-            {
-                if (!WithdrawalOrdered)
-                    return;
-
-                foreach (
-                    TacticalUnit unit in Units.Where(unit =>
-                        unit.IsWithdrawing
-                        && unit.CanWithdrawIndependently
-                        && unit.WithdrawalDistance >= withdrawalDistance
-                    )
-                )
-                {
-                    unit.FinishWithdrawal();
-                }
-
-                // A planet destroyer jumps last, once its countdown has run and its fleet is clear.
-                bool fleetLeaving = HasWithdrawingIndependentUnit();
-                bool planetDestroyerLeaving = false;
-                foreach (PlanetDestroyerState planetDestroyer in PlanetDestroyers)
-                {
-                    if (
-                        !planetDestroyer.IsAlive
-                        || !planetDestroyer.IsWithdrawing
-                        || !planetDestroyer.CanWithdrawIndependently
-                    )
-                        continue;
-
-                    if (planetDestroyer.IsJumpReady && !fleetLeaving)
-                        planetDestroyer.FinishWithdrawal();
-                    else
-                        planetDestroyerLeaving = true;
-                }
-
-                if (fleetLeaving || planetDestroyerLeaving)
-                    return;
-
-                CompleteDependentWithdrawal();
-            }
-
-            /// <summary>
-            /// Immediately resolves withdrawal for every surviving unit.
+            /// Resolves ordinary withdrawals and starts any special ship's escape countdown.
             /// </summary>
             internal void CompleteWithdrawal()
             {
-                foreach (
-                    TacticalUnit unit in Units.Where(unit =>
-                        unit.IsAlive && !unit.HasWithdrawn && unit.CanWithdrawIndependently
-                    )
-                )
+                WithdrawalOrdered = true;
+                foreach (StarfighterState fighter in Fighters)
                 {
-                    unit.FinishWithdrawal();
+                    if (!fighter.IsAlive || fighter.HasWithdrawn)
+                        continue;
+                    if (fighter.CanWithdrawIndependently)
+                    {
+                        fighter.FinishWithdrawal();
+                        continue;
+                    }
+                    CapitalShipState carrier = fighter.OriginalCarrier;
+                    if (!CanRecover(carrier))
+                        carrier = Ships.Find(CanRecover);
+                    if (carrier != null)
+                    {
+                        fighter.DockedCarrier = carrier;
+                        carrier.DockedFighters.Add(fighter);
+                        fighter.FinishWithdrawal();
+                    }
+                    else
+                        RemoveDestroyedUnit(fighter);
                 }
-
-                foreach (PlanetDestroyerState planetDestroyer in PlanetDestroyers)
+                foreach (CapitalShipState ship in Ships)
                 {
-                    if (planetDestroyer.IsInBattle && planetDestroyer.CanWithdrawIndependently)
-                        planetDestroyer.FinishWithdrawal();
+                    if (!ship.IsAlive || ship.HasWithdrawn)
+                        continue;
+                    if (ship.CanWithdrawIndependently)
+                        ship.FinishWithdrawal();
+                    else
+                        RemoveDestroyedUnit(ship);
                 }
-
-                CompleteDependentWithdrawal();
+                foreach (PlanetDestroyerState ship in PlanetDestroyers)
+                {
+                    if (!ship.IsInBattle)
+                        continue;
+                    if (ship.CanWithdrawIndependently)
+                        ship.StartWithdrawal();
+                    else
+                        ship.Destroy();
+                }
+                foreach (TacticalUnit unit in Units)
+                    if (unit.HasWithdrawn || !unit.IsAlive)
+                        RetireMember(unit);
             }
 
             /// <summary>
-            /// Resolves stranded units after every mobile survivor has escaped.
+            /// Determines whether a present carrier has room to recover another squadron.
             /// </summary>
-            private void CompleteDependentWithdrawal()
+            /// <param name="carrier">The potential recovery ship.</param>
+            /// <returns>Whether another squadron fits.</returns>
+            private static bool CanRecover(CapitalShipState carrier)
             {
-                HashSet<Starfighter> carrierDependentFighters = Fighters
-                    .Where(fighter =>
-                        fighter.IsAlive
-                        && !fighter.HasWithdrawn
-                        && !fighter.CanWithdrawIndependently
-                    )
-                    .Select(fighter => fighter.Fighter)
-                    .ToHashSet();
-                Dictionary<Starfighter, CapitalShip> recoveryAssignments =
-                    SpaceCombatWithdrawalPlanner.GetRecoveryAssignments(
-                        Ships
-                            .Where(ship =>
-                                ship.IsAlive && ship.HasWithdrawn && ship.CanWithdrawIndependently
-                            )
-                            .Select(ship => ship.Ship)
-                            .Concat(
-                                PlanetDestroyers
-                                    .Where(planetDestroyer =>
-                                        planetDestroyer.HasWithdrawn
-                                        && planetDestroyer.CanWithdrawIndependently
-                                    )
-                                    .Select(planetDestroyer => planetDestroyer.Ship)
-                            ),
-                        Fighters.ConvertAll(fighter => fighter.Fighter),
-                        carrierDependentFighters
-                    );
-
-                foreach (
-                    TacticalUnit unit in Units.Where(unit => unit.IsAlive && !unit.HasWithdrawn)
-                )
-                {
-                    if (
-                        unit is StarfighterState fighter
-                        && recoveryAssignments.ContainsKey(fighter.Fighter)
-                    )
-                        unit.FinishWithdrawal();
-                    else
-                        unit.Destroy();
-                }
-
-                // A planet destroyer with no hyperdrive cannot follow its fleet out.
-                foreach (PlanetDestroyerState planetDestroyer in PlanetDestroyers)
-                {
-                    if (planetDestroyer.IsInBattle)
-                        planetDestroyer.Destroy();
-                }
+                return carrier?.IsAlive == true
+                    && !carrier.HasWithdrawn
+                    && carrier.DockedFighters.Count < carrier.Ship.StarfighterCapacity;
             }
 
             /// <summary>
@@ -1371,20 +1514,6 @@ namespace Rebellion.Gameplay
             }
 
             /// <summary>
-            /// Determines whether an independently mobile unit is still withdrawing.
-            /// </summary>
-            /// <returns>True when an independently mobile survivor has not reached safety.</returns>
-            private bool HasWithdrawingIndependentUnit()
-            {
-                foreach (TacticalUnit unit in Units)
-                {
-                    if (unit.IsAlive && unit.IsWithdrawing && unit.CanWithdrawIndependently)
-                        return true;
-                }
-                return false;
-            }
-
-            /// <summary>
             /// Determines whether a tactical collection contains a withdrawn unit.
             /// </summary>
             /// <param name="units">The units to inspect.</param>
@@ -1401,26 +1530,102 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Owns one weapon formation and its retained target for a battle.
+        /// </summary>
+        private sealed class CombatGroup
+        {
+            internal readonly int Order;
+            internal readonly List<TacticalUnit> Members;
+            internal TacticalUnit Target { get; set; }
+            internal bool IsRetired { get; set; }
+            internal TacticalUnit PrimaryMember =>
+                Members.Find(unit => unit.IsAlive && !unit.HasWithdrawn);
+            internal bool HasOffFieldMembers =>
+                Members.Any(unit => unit.IsAlive && unit.IsOffField);
+
+            /// <summary>
+            /// Captures a formation's stable order and member list.
+            /// </summary>
+            /// <param name="order">The stable firing order.</param>
+            /// <param name="members">The participating combatants.</param>
+            internal CombatGroup(int order, List<TacticalUnit> members)
+            {
+                Order = order;
+                Members = members;
+            }
+
+            /// <summary>
+            /// Adds every active member's output against one target in member order.
+            /// </summary>
+            /// <param name="target">The potential target.</param>
+            /// <returns>The combined damage rate.</returns>
+            internal float GetDamageRate(TacticalUnit target)
+            {
+                float damage = 0;
+                foreach (TacticalUnit member in Members)
+                    if (member.IsAlive && !member.HasWithdrawn && !member.IsOffField)
+                        damage = (float)(damage + member.GetDamageRate(target));
+                return damage;
+            }
+
+            /// <summary>
+            /// Evaluates durability against the accumulated fire committed to a target.
+            /// </summary>
+            /// <param name="target">The potential target.</param>
+            /// <param name="budget">The combined output including previously evaluated formations.</param>
+            /// <returns>The estimated effort, or negative one when recharge prevents progress.</returns>
+            internal float GetTargetMetric(TacticalUnit target, ref float budget)
+            {
+                budget = (float)(budget + GetDamageRate(target));
+                double net = budget - target.ShieldRechargeRate;
+                float durability = (float)(
+                    target.ShieldStrength + target.HullStrength * (double)0.65f
+                );
+                return net > 0 ? (float)(Math.Max(1, durability) / net) : -1;
+            }
+        }
+
+        /// <summary>
         /// Provides common tactical state and target-specific attack behavior.
         /// </summary>
         private abstract class TacticalUnit
         {
             private readonly double _minimumManeuverRatio;
-            private double _approachDistance;
-            private double _withdrawalDistance;
+            private readonly int[] _systemDamage = new int[5];
+            protected readonly int InstalledHyperdriveSystems;
 
-            protected double MinimumManeuverRatio => _minimumManeuverRatio;
+            protected int ShieldDamage => _systemDamage[0];
+            protected int WeaponDamage => _systemDamage[1];
+            protected int EngineDamage => _systemDamage[3];
+            protected int HyperdriveDamage => _systemDamage[4];
+            internal int StableOrder { get; set; }
+            internal abstract double HullStrength { get; }
+            internal abstract double HullFraction { get; }
+            internal abstract double ShieldRechargeRate { get; }
+            internal abstract double ShieldRechargeRatio { get; }
+            internal abstract double WeaponRechargeRate { get; }
+            internal abstract bool HasLasers { get; }
+            internal abstract bool HasWeapons { get; }
+            internal abstract double MaximumActiveRange { get; }
+            internal virtual bool IsDocked => false;
+            internal virtual int HostedUnitCount => 0;
+            internal bool IsAvailableTarget => IsTargetable && WeaponRechargeRate != 0;
+            internal float TargetPriority
+            {
+                get
+                {
+                    float score = (float)(HostedUnitCount + 15 * GetEffectiveness());
+                    score = (float)(score - 0.01f * ShieldRechargeRatio);
+                    return (float)(score - 0.01f * HullFraction);
+                }
+            }
             internal abstract ISceneNode Node { get; }
             internal abstract bool IsAlive { get; }
             internal abstract bool CanWithdrawIndependently { get; }
             internal abstract double ManeuverRate { get; }
             internal abstract double ClosingSpeed { get; }
-            internal virtual double WithdrawalSpeed => ClosingSpeed;
             internal abstract bool IsStarfighter { get; }
-            internal abstract double RemainingDurability { get; }
-            internal abstract bool CanScanForTargets { get; }
-            internal virtual bool IsAttackDelayed => false;
-            internal bool CanFire => IsTargetable && !IsWithdrawing && !IsAttackDelayed;
+            internal abstract double ShieldStrength { get; }
             internal bool HasWithdrawn { get; private set; }
             internal bool IsWithdrawing { get; private set; }
 
@@ -1434,118 +1639,41 @@ namespace Rebellion.Gameplay
             /// does during a planet-destroyer attack run.
             /// </summary>
             internal virtual bool IsOffField => false;
-            internal double WithdrawalDistance => _withdrawalDistance;
 
             /// <summary>
-            /// Updates this unit's target when scanning and queues available attacks.
+            /// Calculates sustained output against one opposing combatant.
             /// </summary>
-            /// <param name="targets">The surviving opposing units.</param>
-            /// <param name="scansForTarget">Whether the unit performs its periodic target scan.</param>
-            /// <param name="engagementDistance">The abstract distance between combat forces.</param>
-            /// <param name="pendingDamage">Damage grouped by tactical target.</param>
-            internal abstract void QueueAvailableAttacks(
-                IReadOnlyList<TacticalUnit> targets,
-                bool scansForTarget,
-                double engagementDistance,
-                IDictionary<TacticalUnit, PendingDamage> pendingDamage
-            );
-
-            /// <summary>
-            /// Adds attack damage to a tactical target.
-            /// </summary>
-            /// <param name="pendingDamage">Damage grouped by tactical target.</param>
-            /// <param name="target">The tactical target.</param>
-            /// <param name="damage">The positive damage to add.</param>
-            /// <param name="isIonDamage">Whether the damage comes from ion weapons.</param>
-            protected static void AddPendingDamage(
-                IDictionary<TacticalUnit, PendingDamage> pendingDamage,
-                TacticalUnit target,
-                double damage,
-                bool isIonDamage
-            )
-            {
-                if (!(damage > 0))
-                    return;
-
-                damage = Math.Max(damage, 1);
-
-                if (!pendingDamage.TryGetValue(target, out PendingDamage targetDamage))
-                {
-                    targetDamage = new PendingDamage();
-                    pendingDamage[target] = targetDamage;
-                }
-
-                targetDamage.Add(damage, isIonDamage);
-            }
-
-            /// <summary>
-            /// Returns the pairwise distance between this unit and a target.
-            /// </summary>
-            /// <param name="target">The opposing tactical unit.</param>
-            /// <param name="startingDistance">The configured initial separation.</param>
-            /// <returns>The remaining abstract distance between the units.</returns>
-            protected double GetDistanceTo(TacticalUnit target, double startingDistance)
-            {
-                return Math.Max(
-                    Math.Max(startingDistance, 0)
-                        - _approachDistance
-                        - target._approachDistance
-                        + _withdrawalDistance
-                        + target._withdrawalDistance,
-                    0
-                );
-            }
+            /// <param name="target">The opposing combatant.</param>
+            /// <returns>The damage applied per combat step.</returns>
+            internal abstract double GetDamageRate(TacticalUnit target);
 
             /// <summary>
             /// Calculates this unit's remaining tactical strength.
             /// </summary>
-            /// <param name="targetsFighters">Whether the opposing target is a fighter squadron.</param>
             /// <returns>The remaining tactical strength.</returns>
-            internal abstract double GetEffectiveness(bool targetsFighters);
+            internal abstract double GetEffectiveness();
 
             /// <summary>
-            /// Applies simultaneous tactical damage.
+            /// Applies the combined damage rate for this firing phase.
             /// </summary>
-            /// <param name="conventionalDamage">The non-negative hull-damaging attack strength.</param>
-            /// <param name="ionDamage">The non-negative shield and subsystem attack strength.</param>
-            /// <param name="config">The automatic combat parameters.</param>
+            /// <param name="damage">The incoming damage rate.</param>
             /// <param name="random">The combat random-number stream.</param>
-            internal abstract void ApplyDamage(
-                double conventionalDamage,
-                double ionDamage,
-                GameConfig.SpaceCombatConfig config,
-                IRandomNumberProvider random
-            );
+            internal abstract void ApplyDamage(double damage, IRandomNumberProvider random);
 
             /// <summary>
             /// Advances temporary damage and recharge state.
             /// </summary>
             /// <param name="config">The automatic combat parameters.</param>
-            /// <param name="random">The combat random-number stream.</param>
-            internal void AdvanceTacticalState(
-                GameConfig.SpaceCombatConfig config,
-                IRandomNumberProvider random
-            )
+            internal void AdvanceTacticalState(GameConfig.SpaceCombatConfig config)
             {
-                AdvanceUnitState(config, random);
-                if (IsWithdrawing)
-                {
-                    _withdrawalDistance += WithdrawalSpeed;
-                    return;
-                }
-
-                _approachDistance += ClosingSpeed;
+                AdvanceUnitState(config);
             }
 
             /// <summary>
             /// Advances unit-specific temporary damage and recharge state.
             /// </summary>
             /// <param name="config">The automatic combat parameters.</param>
-            /// <param name="random">The combat random-number stream.</param>
-            protected abstract void AdvanceUnitState(
-                GameConfig.SpaceCombatConfig config,
-                IRandomNumberProvider random
-            );
+            protected abstract void AdvanceUnitState(GameConfig.SpaceCombatConfig config);
 
             /// <summary>
             /// Destroys the tactical unit.
@@ -1556,9 +1684,20 @@ namespace Rebellion.Gameplay
             /// Creates tactical state using the configured maneuver floor.
             /// </summary>
             /// <param name="minimumManeuverRatio">The minimum maneuver value and multiplier.</param>
-            protected TacticalUnit(double minimumManeuverRatio)
+            /// <param name="hyperdriveSystems">The number of installed hyperdrive systems.</param>
+            protected TacticalUnit(double minimumManeuverRatio, int hyperdriveSystems)
             {
                 _minimumManeuverRatio = minimumManeuverRatio;
+                InstalledHyperdriveSystems = hyperdriveSystems;
+            }
+
+            /// <summary>
+            /// Clears escape flags when a previously recovered unit is destroyed aboard its carrier.
+            /// </summary>
+            protected void ClearWithdrawal()
+            {
+                HasWithdrawn = false;
+                IsWithdrawing = false;
             }
 
             /// <summary>
@@ -1582,6 +1721,61 @@ namespace Rebellion.Gameplay
             }
 
             /// <summary>
+            /// Depletes shields and hull and records the resulting system damage.
+            /// </summary>
+            /// <param name="hull">The remaining hull strength.</param>
+            /// <param name="shields">The remaining shields.</param>
+            /// <param name="damage">The incoming damage rate.</param>
+            /// <param name="random">The combat random-number stream.</param>
+            protected void ApplyDamageRate(
+                ref double hull,
+                ref double shields,
+                double damage,
+                IRandomNumberProvider random
+            )
+            {
+                if (hull <= 0)
+                    return;
+                double originalHull = hull;
+                double originalShields = shields;
+                shields = (float)(shields - damage);
+                if (originalShields > 0)
+                {
+                    float threshold = (float)Math.Max(100 / originalShields * damage, 1);
+                    if (random.NextInt(0, 100) <= threshold)
+                        DamageSystem(0);
+                }
+                if (shields >= 0)
+                    return;
+
+                hull = (float)Math.Max(hull - Math.Max(-shields, 1), 0);
+                shields = 0;
+                double liveScore =
+                    (hull - originalHull) * 100 / originalHull + random.NextInt(0, 100);
+                float score = (float)liveScore;
+                if (liveScore > 50 && score <= 65)
+                    DamageSystem(0);
+                else if (score > 65 && score <= 80)
+                    DamageSystem(1);
+                else if (score > 80 && score <= 90)
+                    DamageSystem(2);
+                else if (score > 90 && score <= 95)
+                    DamageSystem(3);
+                else if (score > 95 && score <= 100)
+                    DamageSystem(4);
+            }
+
+            /// <summary>
+            /// Records damage to one of the combatant's systems.
+            /// </summary>
+            /// <param name="system">The damaged system category.</param>
+            private void DamageSystem(int system)
+            {
+                int capacity = system == 4 ? InstalledHyperdriveSystems : 4;
+                _systemDamage[system] = Math.Min(_systemDamage[system] + 1, capacity);
+            }
+
+            /// <summary>
             /// Calculates the maneuver-rate adjustment used against fighter targets.
             /// </summary>
             /// <param name="target">The target unit.</param>
@@ -1592,7 +1786,7 @@ namespace Rebellion.Gameplay
                     return 1;
 
                 double targetRate = Math.Max(target.ManeuverRate, _minimumManeuverRatio);
-                return Math.Max(Math.Min(ManeuverRate / targetRate, 1), _minimumManeuverRatio);
+                return Math.Max((double)(float)ManeuverRate / targetRate, _minimumManeuverRatio);
             }
         }
 
@@ -1634,8 +1828,6 @@ namespace Rebellion.Gameplay
             internal bool AttackRunSucceeded { get; private set; }
             internal int WithdrawalProgress =>
                 IsWithdrawing ? _withdrawalIterations - _jumpIterationsRemaining : 0;
-            internal double Durability =>
-                Math.Max(Ship.CurrentHullStrength, 0) + Math.Max(Ship.MaxShieldStrength, 0);
 
             /// <summary>
             /// Creates tactical state for one planet destroyer.
@@ -1799,641 +1991,167 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Resolves the installed hyperdrive count independently of strategic travel speed.
+        /// </summary>
+        /// <param name="typeId">The unit type identifier.</param>
+        /// <param name="rating">The primary hyperdrive's travel rating.</param>
+        /// <param name="config">The content's hardware definitions.</param>
+        /// <returns>The installed system count.</returns>
+        private static int GetHyperdriveSystems(
+            string typeId,
+            int rating,
+            GameConfig.SpaceCombatConfig config
+        )
+        {
+            return typeId != null
+                && config.HyperdriveSystemCounts != null
+                && config.HyperdriveSystemCounts.TryGetValue(typeId, out int count)
+                    ? Math.Max(count, 0)
+                : rating > 0 ? 1
+                : 0;
+        }
+
+        /// <summary>
         /// Stores a capital ship's tactical hull, shield, and attack state.
         /// </summary>
         private sealed class CapitalShipState : TacticalUnit
         {
-            private static readonly PrimaryWeaponType[] _weaponTypes =
-            {
-                PrimaryWeaponType.Turbolaser,
-                PrimaryWeaponType.LaserCannon,
-                PrimaryWeaponType.IonCannon,
-            };
-
             internal readonly CapitalShip Ship;
             internal readonly int InitialHull;
-            private readonly bool[] _arcQueuedForRecharge = new bool[
-                CapitalShip.PrimaryWeaponArcs.Count
-            ];
-            private readonly TacticalUnit[,] _arcTargets = new TacticalUnit[
-                CapitalShip.PrimaryWeaponArcs.Count,
-                _weaponTypes.Length
-            ];
-            private readonly double[,] _arcTargetDamage = new double[
-                CapitalShip.PrimaryWeaponArcs.Count,
-                _weaponTypes.Length
-            ];
-            private readonly double[] _currentArcCharge = new double[
-                CapitalShip.PrimaryWeaponArcs.Count
-            ];
-            private readonly int[] _ionCannons;
-            private readonly int[] _laserCannons;
-            private readonly double _laserCannonCapitalDamageMultiplier;
-            private readonly double _turbolaserFighterDamageMultiplier;
-            private readonly double _commandBonus;
+            internal readonly List<StarfighterState> DockedFighters = new List<StarfighterState>();
+            private readonly SpaceCombatDamageCalculator _damage;
             private readonly double _maximumHull;
             private readonly double _maximumShields;
-            private readonly double _weaponDamagePerStrength;
-            private readonly double[] _maximumArcCharge = new double[
-                CapitalShip.PrimaryWeaponArcs.Count
-            ];
-            private readonly Queue<int> _rechargeQueue = new Queue<int>();
-            private readonly int[] _turbolasers;
-            private int _attackDelay;
-            private int _movementDelay;
+            private readonly CombatForce _force;
+            private readonly int _hostedUnitCount;
+            private double _hull;
+            private double _shields;
 
-            internal double CurrentHull { get; private set; }
-            internal double CurrentShields { get; private set; }
+            internal double CurrentHull => _hull;
+            internal override double HullStrength => _hull;
+            internal override double HullFraction => _hull / _maximumHull;
+            internal override double ShieldRechargeRate =>
+                Math.Max(
+                    (float)(Math.Max(Ship.ShieldRechargeRate, 0) * _hull / _maximumHull)
+                        - Math.Max(Ship.ShieldRechargeRate, 0) * 0.25 * ShieldDamage,
+                    0
+                );
+            internal override double ShieldRechargeRatio =>
+                Ship.ShieldRechargeRate > 0 ? ShieldRechargeRate / Ship.ShieldRechargeRate : 0;
+            internal override double WeaponRechargeRate =>
+                _damage.GetRechargeRate(HullFraction, WeaponDamage);
+            internal override bool HasLasers => _damage.HasLasers;
+            internal override bool HasWeapons => _damage.HasWeapons;
+            internal override double MaximumActiveRange => _damage.MaximumActiveRange;
+            internal override int HostedUnitCount => _hostedUnitCount;
+            internal double CurrentShields => _shields;
+            internal override double ShieldStrength => _shields;
             internal override ISceneNode Node => Ship;
-            internal override bool IsAlive => CurrentHull > 0;
-            internal override bool CanWithdrawIndependently => Ship.Hyperdrive > 0;
+            internal override bool IsAlive => _hull > 0;
+            internal override bool CanWithdrawIndependently =>
+                InstalledHyperdriveSystems > HyperdriveDamage && ClosingSpeed > 0;
             internal override bool IsStarfighter => false;
-            internal override double RemainingDurability => CurrentHull + CurrentShields;
-            internal override bool IsAttackDelayed => _attackDelay > 0;
-            internal override bool CanScanForTargets
-            {
-                get
-                {
-                    for (int arc = 0; arc < _currentArcCharge.Length; arc++)
-                    {
-                        if (
-                            _maximumArcCharge[arc] > 0
-                            && _currentArcCharge[arc] >= _maximumArcCharge[arc]
-                        )
-                            return true;
-                    }
-
-                    return false;
-                }
-            }
             internal override double ClosingSpeed =>
-                _movementDelay > 0 ? 0 : Math.Max(Ship.SublightSpeed, 0);
+                Math.Max(
+                    (_force.CapitalCommandBonus + Ship.SublightSpeed * (double)0.24f)
+                        * (1 - EngineDamage * 0.25),
+                    0
+                );
             internal override double ManeuverRate =>
-                _movementDelay > 0
-                    ? MinimumManeuverRatio
-                    : Math.Max(
-                        Ship.SublightSpeed + Ship.Maneuverability + _commandBonus,
-                        MinimumManeuverRatio
-                    );
+                EngineDamage >= 4
+                    ? 1
+                    : Math.Min(Ship.Maneuverability + _force.CapitalCommandBonus, 9);
 
             /// <summary>
-            /// Creates tactical state from a capital ship's current strategic state.
+            /// Captures a capital ship's combat state for one automatic battle.
             /// </summary>
-            /// <param name="ship">The capital ship entering combat.</param>
-            /// <param name="config">The automatic combat parameters.</param>
-            /// <param name="commandBonus">The Admiral's Leadership-derived tactical bonus.</param>
+            /// <param name="ship">The ship entering combat.</param>
+            /// <param name="config">The combat rules.</param>
+            /// <param name="force">The force providing live tactical command presence.</param>
             internal CapitalShipState(
                 CapitalShip ship,
                 GameConfig.SpaceCombatConfig config,
-                double commandBonus
+                CombatForce force
             )
-                : base(config.AutoResolveMinimumManeuverRatio)
+                : base(
+                    config.AutoResolveMinimumManeuverRatio,
+                    GetHyperdriveSystems(ship.TypeID, ship.Hyperdrive, config)
+                )
             {
                 Ship = ship;
                 InitialHull = Math.Max(ship.CurrentHullStrength, 0);
-                _commandBonus = Math.Max(commandBonus, 0);
+                _hull = InitialHull;
                 _maximumHull = Math.Max(ship.MaxHullStrength, 1);
                 _maximumShields = Math.Max(ship.MaxShieldStrength, 0);
-                _weaponDamagePerStrength = Math.Max(config.AutoResolveWeaponDamagePerStrength, 0);
-                _turbolasers = GetWeaponValues(ship, PrimaryWeaponType.Turbolaser);
-                _laserCannons = GetWeaponValues(ship, PrimaryWeaponType.LaserCannon);
-                _ionCannons = GetWeaponValues(ship, PrimaryWeaponType.IonCannon);
-                _laserCannonCapitalDamageMultiplier = Math.Max(
-                    config.LaserCannonCapitalDamageMultiplier,
-                    0
-                );
-                _turbolaserFighterDamageMultiplier = Math.Max(
-                    config.TurbolaserFighterDamageMultiplier,
-                    0
-                );
-                CurrentHull = InitialHull;
-                CurrentShields = _maximumShields;
-                for (int arc = 0; arc < _maximumArcCharge.Length; arc++)
-                {
-                    _maximumArcCharge[arc] = GetRawArcStrength(arc);
-                    _currentArcCharge[arc] = _maximumArcCharge[arc];
-                }
-            }
-
-            /// <summary>
-            /// Updates this capital ship's target and queues attacks from charged weapon arcs.
-            /// </summary>
-            /// <param name="targets">The surviving opposing units.</param>
-            /// <param name="scansForTarget">Whether the ship performs its periodic target scan.</param>
-            /// <param name="engagementDistance">The abstract distance between combat forces.</param>
-            /// <param name="pendingDamage">Damage grouped by tactical target.</param>
-            internal override void QueueAvailableAttacks(
-                IReadOnlyList<TacticalUnit> targets,
-                bool scansForTarget,
-                double engagementDistance,
-                IDictionary<TacticalUnit, PendingDamage> pendingDamage
-            )
-            {
-                if (scansForTarget)
-                    ScanForArcTargets(targets, engagementDistance);
-
-                double condition = CurrentHull / _maximumHull;
-                int firedArcMask = 0;
-                for (
-                    int firedArcCount = 0;
-                    firedArcCount < _currentArcCharge.Length;
-                    firedArcCount++
-                )
-                {
-                    double strongestDamage = 0;
-                    int selectedArc = -1;
-                    for (int arc = 0; arc < _currentArcCharge.Length; arc++)
-                    {
-                        if ((firedArcMask & (1 << arc)) != 0)
-                            continue;
-
-                        if (_currentArcCharge[arc] < _maximumArcCharge[arc])
-                            continue;
-
-                        double candidateDamage = GetQueuedArcDamage(
-                            arc,
-                            engagementDistance,
-                            condition
-                        );
-                        if (candidateDamage <= strongestDamage)
-                            continue;
-
-                        strongestDamage = candidateDamage;
-                        selectedArc = arc;
-                    }
-
-                    if (selectedArc < 0)
-                        break;
-
-                    firedArcMask |= 1 << selectedArc;
-                    QueueArcAttacks(selectedArc, engagementDistance, condition, pendingDamage);
-                }
-            }
-
-            /// <summary>
-            /// Updates every charged weapon lane with its strongest available target.
-            /// </summary>
-            /// <param name="targets">The surviving opposing units.</param>
-            /// <param name="engagementDistance">The abstract distance between combat forces.</param>
-            private void ScanForArcTargets(
-                IReadOnlyList<TacticalUnit> targets,
-                double engagementDistance
-            )
-            {
-                double condition = CurrentHull / _maximumHull;
-                for (int arc = 0; arc < _currentArcCharge.Length; arc++)
-                {
-                    if (_currentArcCharge[arc] < _maximumArcCharge[arc])
-                        continue;
-
-                    for (int weaponIndex = 0; weaponIndex < _weaponTypes.Length; weaponIndex++)
-                    {
-                        _arcTargets[arc, weaponIndex] = null;
-                        _arcTargetDamage[arc, weaponIndex] = 0;
-                    }
-                }
-
-                foreach (TacticalUnit candidate in targets)
-                {
-                    double engagementRange = GetDistanceTo(candidate, engagementDistance);
-                    double maneuverMultiplier = GetManeuverMultiplier(candidate);
-                    for (int arc = 0; arc < _currentArcCharge.Length; arc++)
-                    {
-                        if (_currentArcCharge[arc] < _maximumArcCharge[arc])
-                            continue;
-
-                        for (int weaponIndex = 0; weaponIndex < _weaponTypes.Length; weaponIndex++)
+                _shields = _maximumShields;
+                _force = force;
+                _hostedUnitCount = ship.GetChildren()
+                    .Count(child =>
+                        child switch
                         {
-                            PrimaryWeaponType weaponType = _weaponTypes[weaponIndex];
-                            double candidateDamage =
-                                GetWeaponStrength(
-                                    weaponType,
-                                    arc,
-                                    engagementRange,
-                                    requireRange: true
-                                )
-                                * GetTargetTypeMultiplier(weaponType, candidate.IsStarfighter)
-                                * maneuverMultiplier
-                                * condition
-                                * _weaponDamagePerStrength;
-                            if (candidateDamage <= _arcTargetDamage[arc, weaponIndex])
-                                continue;
-
-                            _arcTargetDamage[arc, weaponIndex] = candidateDamage;
-                            _arcTargets[arc, weaponIndex] = candidate;
+                            Officer officer => officer.Movement == null,
+                            Regiment regiment => regiment.Movement == null
+                                && regiment.ManufacturingStatus == ManufacturingStatus.Complete,
+                            SpecialForces forces => forces.Movement == null
+                                && forces.ManufacturingStatus == ManufacturingStatus.Complete,
+                            _ => false,
                         }
-                    }
-                }
-            }
-
-            /// <summary>
-            /// Returns the damage queued by all valid lanes on an arc.
-            /// </summary>
-            /// <param name="arc">The zero-based firing arc.</param>
-            /// <param name="startingDistance">The configured initial separation.</param>
-            /// <param name="condition">The ship's current hull condition.</param>
-            /// <returns>The arc's combined pending damage.</returns>
-            private double GetQueuedArcDamage(int arc, double startingDistance, double condition)
-            {
-                double damage = 0;
-                for (int weaponIndex = 0; weaponIndex < _weaponTypes.Length; weaponIndex++)
-                {
-                    TacticalUnit target = _arcTargets[arc, weaponIndex];
-                    if (target?.IsTargetable != true)
-                        continue;
-
-                    damage +=
-                        GetWeaponStrength(
-                            _weaponTypes[weaponIndex],
-                            arc,
-                            GetDistanceTo(target, startingDistance),
-                            requireRange: true
-                        )
-                        * GetTargetTypeMultiplier(_weaponTypes[weaponIndex], target.IsStarfighter)
-                        * GetManeuverMultiplier(target)
-                        * condition
-                        * _weaponDamagePerStrength;
-                }
-
-                return damage;
-            }
-
-            /// <summary>
-            /// Queues each valid lane on an arc against its independently selected target.
-            /// </summary>
-            /// <param name="arc">The zero-based firing arc.</param>
-            /// <param name="startingDistance">The configured initial separation.</param>
-            /// <param name="condition">The ship's current hull condition.</param>
-            /// <param name="pendingDamage">Damage grouped by tactical target.</param>
-            private void QueueArcAttacks(
-                int arc,
-                double startingDistance,
-                double condition,
-                IDictionary<TacticalUnit, PendingDamage> pendingDamage
-            )
-            {
-                double consumedCharge = 0;
-                for (int weaponIndex = 0; weaponIndex < _weaponTypes.Length; weaponIndex++)
-                {
-                    TacticalUnit target = _arcTargets[arc, weaponIndex];
-                    if (target?.IsTargetable != true)
-                        continue;
-
-                    int weaponStrength = GetWeaponStrength(
-                        _weaponTypes[weaponIndex],
-                        arc,
-                        GetDistanceTo(target, startingDistance),
-                        requireRange: true
                     );
-                    if (weaponStrength <= 0)
-                        continue;
-
-                    double damage =
-                        weaponStrength
-                        * GetTargetTypeMultiplier(_weaponTypes[weaponIndex], target.IsStarfighter)
-                        * GetManeuverMultiplier(target)
-                        * condition
-                        * _weaponDamagePerStrength;
-                    if (damage <= 0)
-                        continue;
-
-                    AddPendingDamage(
-                        pendingDamage,
-                        target,
-                        damage,
-                        _weaponTypes[weaponIndex] == PrimaryWeaponType.IonCannon
-                    );
-                    consumedCharge += weaponStrength;
-                }
-
-                if (consumedCharge > 0)
-                    DischargeArc(arc, consumedCharge);
+                _damage = new SpaceCombatDamageCalculator(ship, config);
             }
 
             /// <summary>
-            /// Calculates the capital ship's remaining tactical strength.
+            /// Calculates sustained output against one target.
             /// </summary>
-            /// <param name="targetsFighters">Whether the opposing target is a fighter squadron.</param>
-            /// <returns>The remaining tactical strength.</returns>
-            internal override double GetEffectiveness(bool targetsFighters)
+            /// <param name="target">The opposing combatant.</param>
+            /// <returns>The damage applied per step.</returns>
+            internal override double GetDamageRate(TacticalUnit target)
             {
-                double condition = CurrentHull / _maximumHull;
-                return GetStrongestArcStrength(targetsFighters)
-                    * condition
-                    * _weaponDamagePerStrength;
+                return _damage.GetDamageRate(
+                    _hull / _maximumHull,
+                    target.IsStarfighter,
+                    GetManeuverMultiplier(target),
+                    target.ShieldStrength > 0,
+                    WeaponDamage
+                );
             }
 
             /// <summary>
-            /// Applies simultaneous conventional and ion damage to the capital ship.
+            /// Calculates unopposed sustained output against shielded capital ships.
             /// </summary>
-            /// <param name="conventionalDamage">The non-negative hull-damaging attack strength.</param>
-            /// <param name="ionDamage">The non-negative shield and subsystem attack strength.</param>
-            /// <param name="config">The automatic combat parameters.</param>
+            /// <returns>The remaining combat strength.</returns>
+            internal override double GetEffectiveness()
+            {
+                return _damage.GetDamageRate(_hull / _maximumHull, false, 1, true, WeaponDamage);
+            }
+
+            /// <summary>
+            /// Applies incoming damage to the ship's shields and hull.
+            /// </summary>
+            /// <param name="damage">The combined damage rate.</param>
             /// <param name="random">The combat random-number stream.</param>
-            internal override void ApplyDamage(
-                double conventionalDamage,
-                double ionDamage,
-                GameConfig.SpaceCombatConfig config,
-                IRandomNumberProvider random
-            )
+            internal override void ApplyDamage(double damage, IRandomNumberProvider random)
             {
-                double hullDamage = ApplyShieldDamage(conventionalDamage);
-                CurrentHull = Math.Max(CurrentHull - hullDamage, 0);
-                if (!IsAlive)
-                    return;
-
-                double ionOverflowDamage = ApplyShieldDamage(ionDamage);
-                ApplyComponentDamage(ionOverflowDamage, config, random);
+                ApplyDamageRate(ref _hull, ref _shields, damage, random);
             }
 
             /// <summary>
-            /// Advances capital-ship component recovery and weapon recharge state.
+            /// Recharges the ship's shields at its remaining system capacity.
             /// </summary>
-            /// <param name="config">The automatic combat parameters.</param>
-            /// <param name="random">The combat random-number stream.</param>
-            protected override void AdvanceUnitState(
-                GameConfig.SpaceCombatConfig config,
-                IRandomNumberProvider random
-            )
+            /// <param name="config">The combat rules.</param>
+            protected override void AdvanceUnitState(GameConfig.SpaceCombatConfig config)
             {
-                int delayRecovery = Math.Max(config.AutoResolveComponentDelayRecovery, 1);
-                _attackDelay = Math.Max(_attackDelay - delayRecovery, 0);
-                _movementDelay = Math.Max(_movementDelay - delayRecovery, 0);
-                RechargeShields();
-                RechargeWeapons();
+                _shields = (float)Math.Min(_maximumShields, _shields + ShieldRechargeRate);
             }
 
             /// <summary>
-            /// Destroys the capital ship by removing its hull and shields.
+            /// Removes the ship's remaining durability.
             /// </summary>
             internal override void Destroy()
             {
-                CurrentHull = 0;
-                CurrentShields = 0;
-            }
-
-            /// <summary>
-            /// Consumes shield strength and returns damage that penetrated the shields.
-            /// </summary>
-            /// <param name="damage">The non-negative incoming damage.</param>
-            /// <returns>The damage remaining after the shields absorb what they can.</returns>
-            private double ApplyShieldDamage(double damage)
-            {
-                damage = Math.Max(damage, 0);
-                double shieldDamage = Math.Min(CurrentShields, damage);
-                CurrentShields -= shieldDamage;
-                return damage - shieldDamage;
-            }
-
-            /// <summary>
-            /// Applies temporary subsystem damage from ion overflow.
-            /// </summary>
-            /// <param name="ionOverflowDamage">Ion damage that penetrated the shields.</param>
-            /// <param name="config">The automatic combat parameters.</param>
-            /// <param name="random">The combat random-number stream.</param>
-            private void ApplyComponentDamage(
-                double ionOverflowDamage,
-                GameConfig.SpaceCombatConfig config,
-                IRandomNumberProvider random
-            )
-            {
-                double interval = Math.Max(
-                    config.AutoResolveComponentDamageInterval,
-                    double.Epsilon
-                );
-                int rollCount = (int)Math.Ceiling(ionOverflowDamage / interval);
-                int rollMaximum = Math.Max(config.AutoResolveComponentDamageRollMaximum, 1);
-                for (int rollIndex = 0; rollIndex < rollCount; rollIndex++)
-                {
-                    int roll = random.NextInt(1, rollMaximum + 1);
-                    if (roll == 1)
-                        _attackDelay += GetComponentDelay(config, random);
-                    else if (roll == 2)
-                        _movementDelay += GetComponentDelay(config, random);
-                    else
-                        ClearArc((roll - 3) / 2);
-                }
-            }
-
-            /// <summary>
-            /// Returns a random temporary component-delay duration.
-            /// </summary>
-            /// <param name="config">The automatic combat parameters.</param>
-            /// <param name="random">The combat random-number stream.</param>
-            /// <returns>The component delay.</returns>
-            private static int GetComponentDelay(
-                GameConfig.SpaceCombatConfig config,
-                IRandomNumberProvider random
-            )
-            {
-                int minimum = Math.Max(config.AutoResolveComponentDelayMinimum, 0);
-                int maximum = Math.Max(config.AutoResolveComponentDelayMaximum, minimum);
-                return random.NextInt(minimum, maximum + 1);
-            }
-
-            /// <summary>
-            /// Clears one damaged firing arc and queues it for recharge.
-            /// </summary>
-            /// <param name="arc">The zero-based firing arc.</param>
-            private void ClearArc(int arc)
-            {
-                if (arc < 0 || arc >= _currentArcCharge.Length)
-                    return;
-
-                _currentArcCharge[arc] = 0;
-                QueueArcForRecharge(arc);
-            }
-
-            /// <summary>
-            /// Consumes the charge used by an attack and queues the arc for recharge.
-            /// </summary>
-            /// <param name="arc">The zero-based firing arc.</param>
-            /// <param name="consumedCharge">The combined weapon strength fired from the arc.</param>
-            private void DischargeArc(int arc, double consumedCharge)
-            {
-                _currentArcCharge[arc] = Math.Max(_currentArcCharge[arc] - consumedCharge, 0);
-                QueueArcForRecharge(arc);
-            }
-
-            /// <summary>
-            /// Adds a depleted arc to the recharge queue once.
-            /// </summary>
-            /// <param name="arc">The zero-based firing arc.</param>
-            private void QueueArcForRecharge(int arc)
-            {
-                if (_arcQueuedForRecharge[arc] || _maximumArcCharge[arc] <= 0)
-                    return;
-
-                _arcQueuedForRecharge[arc] = true;
-                _rechargeQueue.Enqueue(arc);
-            }
-
-            /// <summary>
-            /// Recharges shields according to current hull condition.
-            /// </summary>
-            private void RechargeShields()
-            {
-                double condition = CurrentHull / _maximumHull;
-                CurrentShields = Math.Min(
-                    _maximumShields,
-                    CurrentShields + Math.Max(Ship.ShieldRechargeRate, 0) * condition
-                );
-            }
-
-            /// <summary>
-            /// Distributes the ship's recharge budget across depleted arcs in order.
-            /// </summary>
-            private void RechargeWeapons()
-            {
-                double condition = CurrentHull / _maximumHull;
-                double recharge = (Math.Max(Ship.WeaponRecharge, 0) + _commandBonus) * condition;
-                int queuedArcCount = _rechargeQueue.Count;
-                for (int arcIndex = 0; arcIndex < queuedArcCount && recharge > 0; arcIndex++)
-                {
-                    int arc = _rechargeQueue.Peek();
-                    double missingCharge = _maximumArcCharge[arc] - _currentArcCharge[arc];
-                    double restoredCharge = Math.Min(recharge, missingCharge);
-                    _currentArcCharge[arc] += restoredCharge;
-                    recharge -= restoredCharge;
-                    if (_currentArcCharge[arc] < _maximumArcCharge[arc])
-                        return;
-
-                    _rechargeQueue.Dequeue();
-                    _arcQueuedForRecharge[arc] = false;
-                }
-            }
-
-            /// <summary>
-            /// Returns the strongest usable primary-weapon arc at full charge.
-            /// </summary>
-            /// <param name="targetsFighters">Whether the opposing target is a fighter squadron.</param>
-            /// <returns>The strongest arc strength.</returns>
-            private double GetStrongestArcStrength(bool targetsFighters)
-            {
-                double strongestArc = 0;
-                for (int arc = 0; arc < _maximumArcCharge.Length; arc++)
-                    strongestArc = Math.Max(
-                        strongestArc,
-                        GetArcStrength(
-                            arc,
-                            targetsFighters,
-                            engagementDistance: 0,
-                            requireRange: true
-                        )
-                    );
-
-                return strongestArc;
-            }
-
-            /// <summary>
-            /// Returns one arc's usable primary-weapon strength.
-            /// </summary>
-            /// <param name="arc">The zero-based firing arc.</param>
-            /// <param name="targetsFighters">Whether the target is a fighter squadron.</param>
-            /// <param name="engagementDistance">The abstract distance between combat forces.</param>
-            /// <param name="requireRange">Whether weapons without a range are excluded.</param>
-            /// <returns>The arc strength.</returns>
-            private double GetArcStrength(
-                int arc,
-                bool targetsFighters,
-                double engagementDistance,
-                bool requireRange
-            )
-            {
-                double strength = 0;
-                foreach (PrimaryWeaponType weaponType in _weaponTypes)
-                {
-                    strength +=
-                        GetWeaponStrength(weaponType, arc, engagementDistance, requireRange)
-                        * GetTargetTypeMultiplier(weaponType, targetsFighters);
-                }
-                return strength;
-            }
-
-            /// <summary>
-            /// Returns one arc's raw weapon charge before target-type effectiveness is applied.
-            /// </summary>
-            /// <param name="arc">The zero-based firing arc.</param>
-            /// <returns>The arc's raw weapon charge.</returns>
-            private int GetRawArcStrength(int arc)
-            {
-                int strength = 0;
-                foreach (PrimaryWeaponType weaponType in _weaponTypes)
-                {
-                    strength += GetWeaponStrength(
-                        weaponType,
-                        arc,
-                        engagementDistance: 0,
-                        requireRange: false
-                    );
-                }
-                return strength;
-            }
-
-            /// <summary>
-            /// Returns a capital-ship weapon's effectiveness against the selected target type.
-            /// </summary>
-            /// <param name="type">The weapon type.</param>
-            /// <param name="targetsFighters">Whether the target is a fighter squadron.</param>
-            /// <returns>The target-specific damage multiplier.</returns>
-            private double GetTargetTypeMultiplier(PrimaryWeaponType type, bool targetsFighters)
-            {
-                return SpaceCombatStrengthCalculator.GetPrimaryWeaponTargetMultiplier(
-                    type,
-                    targetsFighters,
-                    _laserCannonCapitalDamageMultiplier,
-                    _turbolaserFighterDamageMultiplier
-                );
-            }
-
-            /// <summary>
-            /// Returns one weapon type's non-negative strength on an arc.
-            /// </summary>
-            /// <param name="type">The weapon type.</param>
-            /// <param name="arc">The zero-based firing arc.</param>
-            /// <param name="engagementDistance">The abstract distance between combat forces.</param>
-            /// <param name="requireRange">Whether a positive weapon range is required.</param>
-            /// <returns>The weapon strength.</returns>
-            private int GetWeaponStrength(
-                PrimaryWeaponType type,
-                int arc,
-                double engagementDistance,
-                bool requireRange
-            )
-            {
-                int[] values = type switch
-                {
-                    PrimaryWeaponType.Turbolaser => _turbolasers,
-                    PrimaryWeaponType.LaserCannon => _laserCannons,
-                    PrimaryWeaponType.IonCannon => _ionCannons,
-                    _ => null,
-                };
-                if (
-                    values == null
-                    || arc >= values.Length
-                    || (
-                        requireRange
-                        && (
-                            values.Length <= CapitalShip.PrimaryWeaponRangeIndex
-                            || values[CapitalShip.PrimaryWeaponRangeIndex] <= 0
-                            || values[CapitalShip.PrimaryWeaponRangeIndex] < engagementDistance
-                        )
-                    )
-                )
-                    return 0;
-
-                return Math.Max(values[arc], 0);
-            }
-
-            /// <summary>
-            /// Returns the configured values for one capital-ship weapon type.
-            /// </summary>
-            /// <param name="ship">The capital ship providing weapon values.</param>
-            /// <param name="type">The weapon type to retrieve.</param>
-            /// <returns>The configured weapon values, or null when absent.</returns>
-            private static int[] GetWeaponValues(CapitalShip ship, PrimaryWeaponType type)
-            {
-                return ship.PrimaryWeapons.TryGetValue(type, out int[] values) ? values : null;
+                ClearWithdrawal();
+                _hull = 0;
+                _shields = 0;
             }
         }
 
@@ -2444,71 +2162,78 @@ namespace Rebellion.Gameplay
         {
             internal readonly Starfighter Fighter;
             internal readonly int InitialSquadronSize;
-            private readonly double _hullStrengthPerFighter;
-            private readonly double _ionCannonFighterDamageMultiplier;
-            private readonly double _laserCannonCapitalDamageMultiplier;
+            private readonly SpaceCombatDamageCalculator _damage;
+            private readonly double _hullPerCraft;
+            private readonly float _shieldRechargePerCraft;
             private readonly double _commandBonus;
             private readonly double _attackRunSelectionThresholdMultiplier;
             private readonly double _attackRunTorpedoBudgetMultiplier;
-            private readonly double _maximumShields;
-            private readonly double _maximumTorpedoDamage;
-            private readonly double _maximumWeaponCharge;
-            private readonly double _shieldRechargeMultiplier;
-            private readonly double _weaponDamagePerStrength;
-            private readonly double[] _weaponTargetDamage = new double[3];
-            private readonly TacticalUnit[] _weaponTargets = new TacticalUnit[3];
-            private double _currentHull;
-            private double _currentShields;
-            private double _currentWeaponCharge;
-            private double _followUpEngagementDistance;
-            private bool _queuesTorpedoFollowUp;
-            private bool _scansForTorpedoTarget;
+            private double _hull;
+            private double _shields;
+            private double _shieldCapacity;
 
+            internal CapitalShipState OriginalCarrier { get; set; }
+            internal CapitalShipState DockedCarrier { get; set; }
+            internal override bool IsDocked => DockedCarrier != null;
+            internal override double HullStrength => _hull;
+            internal override double HullFraction =>
+                _hull / (_hullPerCraft * Math.Max(Fighter.MaxSquadronSize, 1));
+            internal override double ShieldRechargeRate =>
+                _hull / _hullPerCraft * _shieldRechargePerCraft;
+            internal override double ShieldRechargeRatio => ShieldRechargeRate > 0 ? 1 : 0;
+            internal override double WeaponRechargeRate => _damage.GetRechargeRate(HullFraction);
+            internal override bool HasLasers => _damage.HasLasers;
+            internal override bool HasWeapons => _damage.HasWeapons;
+            internal override double MaximumActiveRange => _damage.MaximumActiveRange;
             internal int CurrentSquadronSize =>
                 IsAlive
-                    ? Math.Min(
-                        InitialSquadronSize,
-                        (int)Math.Ceiling(_currentHull / _hullStrengthPerFighter)
-                    )
+                    ? Math.Min(InitialSquadronSize, Math.Max((int)(_hull / _hullPerCraft), 1))
                     : 0;
             internal override ISceneNode Node => Fighter;
-            internal override bool IsAlive => _currentHull > 0;
-            internal override bool CanWithdrawIndependently => Fighter.Hyperdrive > 0;
+            internal override bool IsAlive => _hull > 0;
+            internal override double ShieldStrength => _shields;
+            internal override bool CanWithdrawIndependently =>
+                InstalledHyperdriveSystems > HyperdriveDamage && ClosingSpeed > 0;
             internal override bool IsStarfighter => true;
-            internal override double RemainingDurability => _currentHull + _currentShields;
-            internal override bool CanScanForTargets =>
-                _maximumWeaponCharge > 0 && _currentWeaponCharge >= _maximumWeaponCharge;
-            internal override double ClosingSpeed => Math.Max(Fighter.SublightSpeed, 0);
-            internal override bool IsOffField => AttackRunTarget != null;
-            internal bool HasTorpedoes => Fighter.Torpedoes > 0;
-            internal int AttackRunTurnBudget =>
-                Fighter.SublightSpeed <= 0 ? 1 : Math.Min(Math.Max(Fighter.Agility, 0) + 1, 9);
-
-            /// <summary>
-            /// Gets the planet destroyer the squadron has been sent to attack, or null.
-            /// </summary>
-            internal PlanetDestroyerState AttackRunTarget { get; private set; }
-            internal override double ManeuverRate =>
+            internal override double ClosingSpeed =>
                 Math.Max(
-                    Fighter.SublightSpeed + Fighter.Agility + _commandBonus,
-                    MinimumManeuverRatio
+                    (Math.Clamp(_commandBonus + 1, 1, 9) + Fighter.SublightSpeed * (double)0.4f)
+                        * (1 - EngineDamage * 0.25),
+                    0
                 );
+            internal override double ManeuverRate =>
+                EngineDamage >= 4 ? 1 : Math.Min(Fighter.Agility + 1, 9);
+            internal override bool IsOffField => AttackRunTarget != null || IsDocked;
+            internal bool HasTorpedoes => Fighter.Torpedoes > 0;
+            internal int AttackRunTurnBudget => (int)ManeuverRate;
+            internal PlanetDestroyerState AttackRunTarget { get; private set; }
 
             /// <summary>
-            /// Creates tactical state from a fighter squadron's current strategic state.
+            /// Captures one squadron's combat state for an automatic battle.
             /// </summary>
-            /// <param name="fighter">The fighter squadron entering combat.</param>
-            /// <param name="config">The automatic combat parameters.</param>
-            /// <param name="commandBonus">The Commander's Combat-derived tactical bonus.</param>
+            /// <param name="fighter">The squadron entering combat.</param>
+            /// <param name="config">The combat rules.</param>
+            /// <param name="commandBonus">The Commander's attack-run bonus.</param>
             internal StarfighterState(
                 Starfighter fighter,
                 GameConfig.SpaceCombatConfig config,
                 double commandBonus
             )
-                : base(config.AutoResolveMinimumManeuverRatio)
+                : base(
+                    config.AutoResolveMinimumManeuverRatio,
+                    GetHyperdriveSystems(fighter.TypeID, fighter.Hyperdrive, config)
+                )
             {
                 Fighter = fighter;
                 InitialSquadronSize = Math.Max(fighter.CurrentSquadronSize, 0);
+                _hullPerCraft = (float)Math.Max(config.AutoResolveFighterHullPerCraft, 1);
+                _shieldRechargePerCraft = (float)
+                    Math.Max(config.AutoResolveFighterShieldRechargePerCraft, 0);
+                _hull = InitialSquadronSize * _hullPerCraft;
+                _shieldCapacity =
+                    (double)Math.Max(fighter.ShieldStrength, 0)
+                    * Math.Max(fighter.MaxSquadronSize, 0);
+                _shields = _shieldCapacity;
                 _commandBonus = Math.Max(commandBonus, 0);
                 _attackRunSelectionThresholdMultiplier = Math.Max(
                     config.AttackRunSelectionThresholdMultiplier,
@@ -2518,42 +2243,13 @@ namespace Rebellion.Gameplay
                     config.AttackRunTorpedoBudgetMultiplier,
                     0
                 );
-                _hullStrengthPerFighter = Math.Max(
-                    config.AutoResolveFighterHullPerCraft,
-                    double.Epsilon
-                );
-                _laserCannonCapitalDamageMultiplier = Math.Max(
-                    config.LaserCannonCapitalDamageMultiplier,
-                    0
-                );
-                _ionCannonFighterDamageMultiplier = Math.Max(
-                    config.FighterIonCannonFighterDamageMultiplier,
-                    0
-                );
-                _shieldRechargeMultiplier = Math.Max(
-                    config.AutoResolveFighterShieldRechargePerCraft,
-                    0
-                );
-                _weaponDamagePerStrength = Math.Max(config.AutoResolveWeaponDamagePerStrength, 0);
-                _currentHull = InitialSquadronSize * _hullStrengthPerFighter;
-                int maximumSquadronSize = Math.Max(fighter.MaxSquadronSize, 0);
-                _maximumShields = (double)Math.Max(fighter.ShieldStrength, 0) * maximumSquadronSize;
-                _currentShields = _maximumShields * GetRemainingSquadronStrength();
-                _maximumWeaponCharge =
-                    (double)ScaleWeaponStrength(fighter.LaserCannon, maximumSquadronSize)
-                    + ScaleWeaponStrength(fighter.IonCannon, maximumSquadronSize)
-                    + ScaleWeaponStrength(fighter.Torpedoes, maximumSquadronSize);
-                _maximumTorpedoDamage =
-                    (double)Math.Max(fighter.Torpedoes, 0)
-                    * Math.Max(fighter.MaxSquadronSize, 0)
-                    * Math.Max(config.AutoResolveTorpedoDamagePerStrength, 0);
-                _currentWeaponCharge = _maximumWeaponCharge;
+                _damage = new SpaceCombatDamageCalculator(fighter, config);
             }
 
             /// <summary>
-            /// Returns the attack-run selection threshold for the squadron's configured capacity.
+            /// Calculates this squadron's attack-run selection threshold.
             /// </summary>
-            /// <returns>The inclusive one-to-one-hundred selection threshold.</returns>
+            /// <returns>The inclusive one-to-one-hundred threshold.</returns>
             internal int GetAttackRunSelectionThreshold()
             {
                 double sideBudget = Math.Min(Math.Max(_commandBonus + 1, 1), 9);
@@ -2561,20 +2257,20 @@ namespace Rebellion.Gameplay
                     Math.Max(Fighter.Torpedoes, 0)
                     * Math.Max(Fighter.MaxSquadronSize, 0)
                     * _attackRunTorpedoBudgetMultiplier;
-                return (int)((torpedoBudget + sideBudget) * _attackRunSelectionThresholdMultiplier);
+                return (int)((sideBudget + torpedoBudget) * _attackRunSelectionThresholdMultiplier);
             }
 
             /// <summary>
-            /// Sends the squadron on an attack run against a planet destroyer.
+            /// Places this squadron on a planet-destroyer attack run.
             /// </summary>
-            /// <param name="planetDestroyer">The planet destroyer to attack.</param>
+            /// <param name="planetDestroyer">The attack-run target.</param>
             internal void BeginAttackRun(PlanetDestroyerState planetDestroyer)
             {
                 AttackRunTarget = planetDestroyer;
             }
 
             /// <summary>
-            /// Returns the squadron from its attack run to the tactical battle.
+            /// Returns this squadron to ordinary combat.
             /// </summary>
             internal void EndAttackRun()
             {
@@ -2582,407 +2278,62 @@ namespace Rebellion.Gameplay
             }
 
             /// <summary>
-            /// Updates this fighter squadron's target and queues an available attack.
+            /// Calculates sustained output against an opposing combatant.
             /// </summary>
-            /// <param name="targets">The surviving opposing units.</param>
-            /// <param name="scansForTarget">Whether the squadron performs its periodic target scan.</param>
-            /// <param name="engagementDistance">The abstract distance between combat forces.</param>
-            /// <param name="pendingDamage">Damage grouped by tactical target.</param>
-            internal override void QueueAvailableAttacks(
-                IReadOnlyList<TacticalUnit> targets,
-                bool scansForTarget,
-                double engagementDistance,
-                IDictionary<TacticalUnit, PendingDamage> pendingDamage
-            )
+            /// <param name="target">The opposing combatant.</param>
+            /// <returns>The damage applied per step.</returns>
+            internal override double GetDamageRate(TacticalUnit target)
             {
-                _queuesTorpedoFollowUp = false;
-                if (_currentWeaponCharge < _maximumWeaponCharge)
-                    return;
-
-                if (scansForTarget)
-                    ScanForWeaponTargets(targets, engagementDistance, scansTorpedoLane: false);
-
-                _queuesTorpedoFollowUp =
-                    GetWeaponStrength(2, engagementDistance, requireRange: true) > 0;
-                _scansForTorpedoTarget = scansForTarget;
-                _followUpEngagementDistance = engagementDistance;
-
-                double consumedCharge = 0;
-                for (int weaponIndex = 0; weaponIndex < 2; weaponIndex++)
-                {
-                    TacticalUnit target = _weaponTargets[weaponIndex];
-                    if (target?.IsTargetable != true)
-                        continue;
-
-                    int weaponStrength = GetWeaponStrength(
-                        weaponIndex,
-                        GetDistanceTo(target, engagementDistance),
-                        requireRange: true
-                    );
-                    double damage =
-                        GetEffectiveWeaponDamage(weaponStrength, weaponIndex, target.IsStarfighter)
-                        * GetManeuverMultiplier(target)
-                        * GetRemainingSquadronStrength();
-                    if (damage > 0)
-                    {
-                        AddPendingDamage(pendingDamage, target, damage, weaponIndex == 1);
-                        consumedCharge += weaponStrength;
-                    }
-                }
-
-                if (consumedCharge > 0)
-                    _currentWeaponCharge = Math.Max(_currentWeaponCharge - consumedCharge, 0);
-            }
-
-            /// <summary>
-            /// Queues torpedoes after conventional and ion damage has resolved against shields.
-            /// </summary>
-            /// <param name="targets">The opposing units available at the start of the firing phase.</param>
-            /// <param name="pendingDamage">Damage grouped by tactical target.</param>
-            internal void QueueAvailableTorpedoAttack(
-                IReadOnlyList<TacticalUnit> targets,
-                IDictionary<TacticalUnit, PendingDamage> pendingDamage
-            )
-            {
-                if (!_queuesTorpedoFollowUp)
-                    return;
-
-                _queuesTorpedoFollowUp = false;
-                if (_scansForTorpedoTarget)
-                    ScanForWeaponTargets(
-                        targets,
-                        _followUpEngagementDistance,
-                        scansTorpedoLane: true
-                    );
-
-                TacticalUnit target = _weaponTargets[2];
-                if (
-                    target?.IsTargetable != true
-                    || target is not CapitalShipState capitalShip
-                    || capitalShip.CurrentShields > 0
-                )
-                    return;
-
-                int weaponStrength = GetWeaponStrength(
-                    2,
-                    GetDistanceTo(target, _followUpEngagementDistance),
-                    requireRange: true
+                return _damage.GetDamageRate(
+                    HullFraction,
+                    target.IsStarfighter,
+                    GetManeuverMultiplier(target),
+                    target.ShieldStrength > 0
                 );
-                double damage =
-                    GetEffectiveWeaponDamage(weaponStrength, 2, targetsFighters: false)
-                    * GetManeuverMultiplier(target)
-                    * GetRemainingSquadronStrength();
-                if (damage <= 0)
-                    return;
-
-                AddPendingDamage(pendingDamage, target, damage, isIonDamage: false);
-                _currentWeaponCharge = Math.Max(_currentWeaponCharge - weaponStrength, 0);
             }
 
             /// <summary>
-            /// Updates each fighter weapon lane with its strongest available target.
+            /// Calculates unopposed sustained output against shielded capital ships.
             /// </summary>
-            /// <param name="targets">The surviving opposing units.</param>
-            /// <param name="engagementDistance">The abstract distance between combat forces.</param>
-            /// <param name="scansTorpedoLane">Whether to scan the torpedo lane instead of the conventional weapon lanes.</param>
-            private void ScanForWeaponTargets(
-                IReadOnlyList<TacticalUnit> targets,
-                double engagementDistance,
-                bool scansTorpedoLane
-            )
+            /// <returns>The remaining combat strength.</returns>
+            internal override double GetEffectiveness()
             {
-                int firstWeaponIndex = scansTorpedoLane ? 2 : 0;
-                int weaponIndexLimit = scansTorpedoLane ? 3 : 2;
-                for (
-                    int weaponIndex = firstWeaponIndex;
-                    weaponIndex < weaponIndexLimit;
-                    weaponIndex++
-                )
-                {
-                    _weaponTargets[weaponIndex] = null;
-                    _weaponTargetDamage[weaponIndex] = 0;
-                }
-
-                foreach (TacticalUnit candidate in targets)
-                {
-                    double engagementRange = GetDistanceTo(candidate, engagementDistance);
-                    double maneuverMultiplier = GetManeuverMultiplier(candidate);
-                    for (
-                        int weaponIndex = firstWeaponIndex;
-                        weaponIndex < weaponIndexLimit;
-                        weaponIndex++
-                    )
-                    {
-                        if (
-                            weaponIndex == 2
-                            && (
-                                candidate is not CapitalShipState capitalShip
-                                || capitalShip.CurrentShields > 0
-                            )
-                        )
-                            continue;
-
-                        int weaponStrength = GetWeaponStrength(
-                            weaponIndex,
-                            engagementRange,
-                            requireRange: true
-                        );
-                        double candidateDamage =
-                            GetEffectiveWeaponDamage(
-                                weaponStrength,
-                                weaponIndex,
-                                candidate.IsStarfighter
-                            )
-                            * maneuverMultiplier
-                            * GetRemainingSquadronStrength();
-                        if (candidateDamage <= _weaponTargetDamage[weaponIndex])
-                            continue;
-
-                        _weaponTargetDamage[weaponIndex] = candidateDamage;
-                        _weaponTargets[weaponIndex] = candidate;
-                    }
-                }
+                return _damage.GetDamageRate(HullFraction, false, 1, true);
             }
 
             /// <summary>
-            /// Calculates the fighter squadron's remaining tactical strength.
+            /// Applies incoming damage to squadron shields and craft.
             /// </summary>
-            /// <param name="targetsFighters">Whether the opposing target is a fighter squadron.</param>
-            /// <returns>The remaining tactical strength.</returns>
-            internal override double GetEffectiveness(bool targetsFighters)
-            {
-                double remainingStrength = GetRemainingSquadronStrength();
-                double effectiveness =
-                    GetCombinedWeaponStrength(
-                        targetsFighters,
-                        engagementDistance: 0,
-                        requireRange: true
-                    )
-                    * remainingStrength
-                    * _weaponDamagePerStrength;
-                if (!targetsFighters)
-                {
-                    effectiveness +=
-                        GetEffectiveWeaponDamage(
-                            GetWeaponStrength(2, engagementDistance: 0, requireRange: true),
-                            2,
-                            targetsFighters: false
-                        ) * remainingStrength;
-                }
-                return effectiveness;
-            }
-
-            /// <summary>
-            /// Applies simultaneous conventional and ion damage to the fighter squadron.
-            /// </summary>
-            /// <param name="conventionalDamage">The non-negative conventional attack strength.</param>
-            /// <param name="ionDamage">The non-negative ion attack strength.</param>
-            /// <param name="config">The automatic combat parameters.</param>
+            /// <param name="damage">The combined damage rate.</param>
             /// <param name="random">The combat random-number stream.</param>
-            internal override void ApplyDamage(
-                double conventionalDamage,
-                double ionDamage,
-                GameConfig.SpaceCombatConfig config,
-                IRandomNumberProvider random
-            )
+            internal override void ApplyDamage(double damage, IRandomNumberProvider random)
             {
-                double hullDamage = ApplyShieldDamage(conventionalDamage);
-                _currentHull = Math.Max(_currentHull - hullDamage, 0);
-                if (IsAlive)
-                    ApplyShieldDamage(ionDamage);
+                ApplyDamageRate(ref _hull, ref _shields, damage, random);
             }
 
             /// <summary>
-            /// Advances fighter weapon recharge state.
+            /// Adjusts surviving shield capacity and recharges the remaining craft.
             /// </summary>
-            /// <param name="config">The automatic combat parameters.</param>
-            /// <param name="random">The combat random-number stream.</param>
-            protected override void AdvanceUnitState(
-                GameConfig.SpaceCombatConfig config,
-                IRandomNumberProvider random
-            )
+            /// <param name="config">The combat rules.</param>
+            protected override void AdvanceUnitState(GameConfig.SpaceCombatConfig config)
             {
-                int survivingCraft = CurrentSquadronSize;
-                double recharge =
-                    survivingCraft * Math.Max(config.AutoResolveFighterWeaponRechargeMultiplier, 0);
-                _currentWeaponCharge = Math.Min(
-                    _maximumWeaponCharge,
-                    _currentWeaponCharge + recharge
-                );
-                double maximumShields = _maximumShields * GetRemainingSquadronStrength();
-                _currentShields = Math.Min(
-                    maximumShields,
-                    _currentShields + survivingCraft * _shieldRechargeMultiplier
-                );
+                double liveCapacity =
+                    _hull
+                    * _shieldCapacity
+                    / (_hullPerCraft * Math.Max(Fighter.MaxSquadronSize, 1));
+                _shieldCapacity = (float)liveCapacity;
+                _shields = (float)Math.Min(_shields, liveCapacity);
+                _shields = (float)Math.Min(_shieldCapacity, _shields + ShieldRechargeRate);
             }
 
             /// <summary>
-            /// Destroys the fighter squadron by removing its remaining durability.
+            /// Removes the squadron's remaining durability.
             /// </summary>
             internal override void Destroy()
             {
-                _currentHull = 0;
-                _currentShields = 0;
-            }
-
-            /// <summary>
-            /// Returns the durability-adjusted fraction of the full squadron that survives.
-            /// </summary>
-            /// <returns>The surviving fraction of the full squadron.</returns>
-            private double GetRemainingSquadronStrength()
-            {
-                double maximumSquadronSize = Math.Max(Fighter.MaxSquadronSize, 1);
-                return Math.Min(_currentHull / (_hullStrengthPerFighter * maximumSquadronSize), 1);
-            }
-
-            /// <summary>
-            /// Returns the squadron's usable weapon strength against a target type.
-            /// </summary>
-            /// <param name="targetsFighters">Whether the target is a fighter squadron.</param>
-            /// <param name="engagementDistance">The abstract distance between combat forces.</param>
-            /// <param name="requireRange">Whether a positive weapon range is required.</param>
-            /// <returns>The fighter's usable weapon strength.</returns>
-            private double GetCombinedWeaponStrength(
-                bool targetsFighters,
-                double engagementDistance,
-                bool requireRange
-            )
-            {
-                double strength =
-                    GetEffectiveWeaponStrength(
-                        GetWeaponStrength(0, engagementDistance, requireRange),
-                        0,
-                        targetsFighters
-                    )
-                    + GetEffectiveWeaponStrength(
-                        GetWeaponStrength(1, engagementDistance, requireRange),
-                        1,
-                        targetsFighters
-                    );
-                return strength;
-            }
-
-            /// <summary>
-            /// Applies command and target-type damage modifiers to a usable fighter weapon lane
-            /// without changing the weapon charge it consumes.
-            /// </summary>
-            /// <param name="weaponStrength">The usable raw weapon strength.</param>
-            /// <param name="weaponIndex">The zero-based weapon lane.</param>
-            /// <param name="targetsFighters">Whether the target is a fighter squadron.</param>
-            /// <returns>The command- and target-adjusted weapon strength.</returns>
-            private double GetEffectiveWeaponStrength(
-                int weaponStrength,
-                int weaponIndex,
-                bool targetsFighters
-            )
-            {
-                double multiplier =
-                    weaponIndex == 0 && !targetsFighters ? _laserCannonCapitalDamageMultiplier
-                    : weaponIndex == 1 && targetsFighters ? _ionCannonFighterDamageMultiplier
-                    : 1;
-                return weaponStrength > 0 ? (weaponStrength + _commandBonus) * multiplier : 0;
-            }
-
-            /// <summary>
-            /// Converts a usable fighter weapon lane into target-adjusted damage.
-            /// </summary>
-            /// <param name="weaponStrength">The usable raw weapon strength.</param>
-            /// <param name="weaponIndex">The zero-based weapon lane.</param>
-            /// <param name="targetsFighters">Whether the target is a fighter squadron.</param>
-            /// <returns>The damage produced by the weapon lane before maneuver adjustment.</returns>
-            private double GetEffectiveWeaponDamage(
-                int weaponStrength,
-                int weaponIndex,
-                bool targetsFighters
-            )
-            {
-                if (weaponIndex == 2)
-                    return targetsFighters || weaponStrength <= 0 ? 0 : _maximumTorpedoDamage;
-
-                return GetEffectiveWeaponStrength(weaponStrength, weaponIndex, targetsFighters)
-                    * _weaponDamagePerStrength;
-            }
-
-            /// <summary>
-            /// Returns one squadron weapon lane's usable strength.
-            /// </summary>
-            /// <param name="weaponIndex">The zero-based weapon lane.</param>
-            /// <param name="engagementDistance">The abstract distance to the target.</param>
-            /// <param name="requireRange">Whether a positive range is required.</param>
-            /// <returns>The usable weapon strength.</returns>
-            private int GetWeaponStrength(
-                int weaponIndex,
-                double engagementDistance,
-                bool requireRange
-            )
-            {
-                return weaponIndex switch
-                {
-                    0 => GetRangedWeaponStrength(
-                        ScaleWeaponStrength(Fighter.LaserCannon, Fighter.MaxSquadronSize),
-                        Fighter.LaserRange,
-                        engagementDistance,
-                        requireRange
-                    ),
-                    1 => GetRangedWeaponStrength(
-                        ScaleWeaponStrength(Fighter.IonCannon, Fighter.MaxSquadronSize),
-                        Fighter.IonRange,
-                        engagementDistance,
-                        requireRange
-                    ),
-                    2 => GetRangedWeaponStrength(
-                        ScaleWeaponStrength(Fighter.Torpedoes, Fighter.MaxSquadronSize),
-                        Fighter.TorpedoRange,
-                        engagementDistance,
-                        requireRange
-                    ),
-                    _ => 0,
-                };
-            }
-
-            /// <summary>
-            /// Returns a fighter weapon's non-negative usable strength.
-            /// </summary>
-            /// <param name="strength">The configured weapon strength.</param>
-            /// <param name="range">The configured weapon range.</param>
-            /// <param name="engagementDistance">The abstract distance between combat forces.</param>
-            /// <param name="requireRange">Whether a positive range is required.</param>
-            /// <returns>The usable weapon strength.</returns>
-            private static int GetRangedWeaponStrength(
-                int strength,
-                int range,
-                double engagementDistance,
-                bool requireRange
-            )
-            {
-                return requireRange && (range <= 0 || range < engagementDistance)
-                    ? 0
-                    : Math.Max(strength, 0);
-            }
-
-            /// <summary>
-            /// Consumes fighter shields and returns conventional damage that reaches the hull.
-            /// </summary>
-            /// <param name="damage">The non-negative incoming damage.</param>
-            /// <returns>The damage remaining after shield absorption.</returns>
-            private double ApplyShieldDamage(double damage)
-            {
-                damage = Math.Max(damage, 0);
-                double shieldDamage = Math.Min(_currentShields, damage);
-                _currentShields -= shieldDamage;
-                return damage - shieldDamage;
-            }
-
-            /// <summary>
-            /// Expands one craft's configured weapon count across a full squadron.
-            /// </summary>
-            /// <param name="weaponStrength">The weapon count carried by one craft.</param>
-            /// <param name="squadronSize">The full squadron size.</param>
-            /// <returns>The aggregate weapon count, clamped to a supported integer.</returns>
-            private static int ScaleWeaponStrength(int weaponStrength, int squadronSize)
-            {
-                long aggregate = (long)Math.Max(weaponStrength, 0) * Math.Max(squadronSize, 0);
-                return aggregate >= int.MaxValue ? int.MaxValue : (int)aggregate;
+                ClearWithdrawal();
+                _hull = 0;
+                _shields = 0;
             }
         }
     }

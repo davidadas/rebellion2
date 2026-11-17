@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Xml;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Gameplay
@@ -24,350 +26,800 @@ namespace Rebellion.Tests.Gameplay
             CollectionAssert.AreEqual(GetResolvedShipHulls(first), GetResolvedShipHulls(second));
         }
 
-        [Test]
-        public void Resolve_AdmiralLeadership_IncreasesCapitalShipManeuverability()
+        [TestCase(0)]
+        [TestCase(100)]
+        public void Resolve_AdmiralLeadership_DoesNotSupplyWeaponRecharge(int leadership)
         {
-            CapitalShip uncommandedShip = CreateShip("uncommanded", hull: 100, weaponStrength: 0);
-            CapitalShip commandedShip = CreateShip("commanded", hull: 100, weaponStrength: 0);
-            foreach (CapitalShip ship in new[] { uncommandedShip, commandedShip })
-            {
-                ship.SublightSpeed = 1;
-                ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 20;
-                ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 100;
-            }
-            Starfighter firstTarget = CreateFighter("first-target", 100, weaponStrength: 0);
-            Starfighter secondTarget = CreateFighter("second-target", 100, weaponStrength: 0);
-            firstTarget.ShieldStrength = 0;
-            secondTarget.ShieldStrength = 0;
-            firstTarget.SublightSpeed = 10;
-            secondTarget.SublightSpeed = 10;
+            CapitalShip attacker = CreateShip("attacker", 100, 20);
+            attacker.WeaponRecharge = 0;
+            CapitalShip target = CreatePassiveTarget("target", 100);
+
+            SpaceCombatResult result = ResolveSingleStep(
+                CreateConfig(),
+                new[] { attacker },
+                Array.Empty<Starfighter>(),
+                new[] { target },
+                Array.Empty<Starfighter>(),
+                attackerCommand: new SpaceCombatCommandModifiers(leadership, 0)
+            );
+
+            Assert.AreEqual(100, GetShipOutcome(result, target).HullAfter);
+        }
+
+        [TestCase(0, 10, false, 98)]
+        [TestCase(0, 10, true, 82)]
+        [TestCase(10, 10, true, 84)]
+        [TestCase(13, 10, true, 84)]
+        [TestCase(40, 10, true, 90)]
+        [TestCase(50, 10, true, 92)]
+        [TestCase(50, 10, false, 92)]
+        [TestCase(80, 10, true, 98)]
+        [TestCase(86, 10, true, 98)]
+        [TestCase(90, 10, true, 98)]
+        [TestCase(100, 10, true, 98)]
+        [TestCase(100, 25, true, 90)]
+        [TestCase(50, 0, true, 98)]
+        [TestCase(50, -1, true, 98)]
+        public void Resolve_AdmiralLeadership_UsesCapitalManeuverBudget(
+            int leadership,
+            int divisor,
+            bool bindAdmiral,
+            int expected
+        )
+        {
+            CapitalShip attacker = CreateShip("attacker", 100, 0);
+            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 8;
+            attacker.WeaponRecharge = 8;
+            Starfighter target = CreateFighter("target", 100, 0);
+            target.Agility = 3;
+            target.ShieldStrength = 0;
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 1;
-            config.AutoResolveMinimumManeuverRatio = 0.01;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveStartingDistance = 0;
+            config.AdmiralLeadershipDivisor = divisor;
             config.AutoResolveFighterHullPerCraft = 1;
 
-            SpaceCombatResult uncommanded = Resolve(
+            SpaceCombatResult result = ResolveSingleStep(
                 config,
-                new[] { uncommandedShip },
-                new List<Starfighter>(),
-                new List<CapitalShip>(),
-                new[] { firstTarget },
-                defenderCanWithdraw: true
-            );
-            SpaceCombatResult commanded = Resolve(
-                config,
-                new[] { commandedShip },
-                new List<Starfighter>(),
-                new List<CapitalShip>(),
-                new[] { secondTarget },
-                defenderCanWithdraw: true,
+                new[] { attacker },
+                Array.Empty<Starfighter>(),
+                Array.Empty<CapitalShip>(),
+                new[] { target },
                 attackerCommand: new SpaceCombatCommandModifiers(
-                    admiralLeadership: 100,
-                    commanderCombat: 0
+                    leadership,
+                    0,
+                    bindAdmiral ? attacker : null
                 )
             );
 
-            Assert.AreEqual(98, GetFighterOutcome(uncommanded, firstTarget).SquadronSizeAfter);
-            Assert.AreEqual(80, GetFighterOutcome(commanded, secondTarget).SquadronSizeAfter);
+            Assert.AreEqual(expected, GetFighterOutcome(result, target).SquadronSizeAfter);
         }
 
         [Test]
-        public void Resolve_AdmiralLeadership_ImprovesCapitalShipReactionRate()
+        public void Resolve_FractionalAdmiralManeuver_RoundsBeforeComparingTarget()
         {
-            CapitalShip uncommandedShip = CreateShip("uncommanded", hull: 100, weaponStrength: 2);
-            CapitalShip commandedShip = CreateShip("commanded", hull: 100, weaponStrength: 2);
-            uncommandedShip.WeaponRecharge = 0;
-            commandedShip.WeaponRecharge = 0;
-            CapitalShip firstTarget = CreatePassiveTarget("first-target", hull: 100);
-            CapitalShip secondTarget = CreatePassiveTarget("second-target", hull: 100);
+            CapitalShip attacker = CreateShip("attacker", 100, 0);
+            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 8;
+            attacker.WeaponRecharge = 80;
+            Starfighter target = CreateFighter("target", 12, 0);
+            target.Agility = 8;
+            target.ShieldStrength = 0;
+
+            SpaceCombatResult result = ResolveSingleStep(
+                CreateConfig(),
+                new[] { attacker },
+                Array.Empty<Starfighter>(),
+                Array.Empty<CapitalShip>(),
+                new[] { target },
+                attackerCommand: new SpaceCombatCommandModifiers(27, 0, attacker)
+            );
+
+            Assert.AreEqual(4, GetFighterOutcome(result, target).SquadronSizeAfter);
+        }
+
+        [TestCase(true, true, 90)]
+        [TestCase(true, false, 98)]
+        [TestCase(false, true, 98)]
+        public void Resolve_AdmiralCarrierAvailability_ControlsCapitalManeuverBonus(
+            bool carrierParticipates,
+            bool carrierSurvives,
+            int expectedCraft
+        )
+        {
+            CapitalShip flagship = CreatePassiveTarget("flagship", 100);
+            if (!carrierSurvives)
+                flagship.CurrentHullStrength = 0;
+            CapitalShip escort = CreateShip("escort", 100, 0);
+            escort.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 8;
+            escort.WeaponRecharge = 8;
+            Starfighter target = CreateFighter("target", 100, 0);
+            target.Agility = 3;
+            target.ShieldStrength = 0;
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AdmiralLeadershipDivisor = 50;
-            config.AutoResolveMaximumIterations = 2;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveStartingDistance = 0;
+            config.AdmiralLeadershipDivisor = 25;
+            config.AutoResolveFighterHullPerCraft = 1;
 
-            SpaceCombatResult uncommanded = Resolve(
+            SpaceCombatResult result = ResolveSingleStep(
                 config,
-                new[] { uncommandedShip },
-                new List<Starfighter>(),
-                new[] { firstTarget },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
-            );
-            SpaceCombatResult commanded = Resolve(
-                config,
-                new[] { commandedShip },
-                new List<Starfighter>(),
-                new[] { secondTarget },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true,
-                attackerCommand: new SpaceCombatCommandModifiers(
-                    admiralLeadership: 100,
-                    commanderCombat: 0
-                )
+                carrierParticipates ? new[] { flagship, escort } : new[] { escort },
+                Array.Empty<Starfighter>(),
+                Array.Empty<CapitalShip>(),
+                new[] { target },
+                attackerCommand: new SpaceCombatCommandModifiers(100, 0, flagship)
             );
 
-            Assert.AreEqual(98, GetShipOutcome(uncommanded, firstTarget).HullAfter);
-            Assert.AreEqual(96, GetShipOutcome(commanded, secondTarget).HullAfter);
+            Assert.AreEqual(expectedCraft, GetFighterOutcome(result, target).SquadronSizeAfter);
         }
 
-        [Test]
-        public void Resolve_CommanderCombat_IncreasesStarfighterEffectiveness()
+        [TestCase(0)]
+        [TestCase(100)]
+        public void Resolve_CommanderCombat_DoesNotMultiplySquadronFirepower(int combat)
         {
-            Starfighter uncommandedFighter = CreateFighter("uncommanded", 1, weaponStrength: 5);
-            Starfighter commandedFighter = CreateFighter("commanded", 1, weaponStrength: 5);
-            CapitalShip firstTarget = CreatePassiveTarget("first-target", hull: 100);
-            CapitalShip secondTarget = CreatePassiveTarget("second-target", hull: 100);
+            Starfighter attacker = CreateFighter("attacker", 12, 10);
+            CapitalShip target = CreatePassiveTarget("target", 100);
             GameConfig.SpaceCombatConfig config = CreateConfig();
             config.LaserCannonCapitalDamageMultiplier = 1;
-            config.CommanderCombatDivisor = 25;
-            config.AutoResolveMaximumIterations = 1;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveStartingDistance = 0;
+            config.AutoResolveFighterWeaponRechargeMultiplier = 1;
 
-            SpaceCombatResult uncommanded = Resolve(
+            SpaceCombatResult result = ResolveSingleStep(
                 config,
-                new List<CapitalShip>(),
-                new[] { uncommandedFighter },
-                new[] { firstTarget },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
-            );
-            SpaceCombatResult commanded = Resolve(
-                config,
-                new List<CapitalShip>(),
-                new[] { commandedFighter },
-                new[] { secondTarget },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true,
-                attackerCommand: new SpaceCombatCommandModifiers(
-                    admiralLeadership: 0,
-                    commanderCombat: 100
-                )
+                Array.Empty<CapitalShip>(),
+                new[] { attacker },
+                new[] { target },
+                Array.Empty<Starfighter>(),
+                attackerCommand: new SpaceCombatCommandModifiers(0, combat)
             );
 
-            Assert.AreEqual(95, GetShipOutcome(uncommanded, firstTarget).HullAfter);
-            Assert.AreEqual(91, GetShipOutcome(commanded, secondTarget).HullAfter);
+            Assert.AreEqual(88, GetShipOutcome(result, target).HullAfter);
+        }
+
+        [TestCase(0)]
+        [TestCase(100)]
+        public void Resolve_CommanderCombat_DoesNotChangeFighterTurnRate(int combat)
+        {
+            CapitalShip attacker = CreateShip("attacker", 100, 0);
+            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 8;
+            attacker.WeaponRecharge = 8;
+            Starfighter target = CreateFighter("target", 100, 0);
+            target.Agility = 3;
+            target.ShieldStrength = 0;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveFighterHullPerCraft = 1;
+
+            SpaceCombatResult result = ResolveSingleStep(
+                config,
+                new[] { attacker },
+                Array.Empty<Starfighter>(),
+                Array.Empty<CapitalShip>(),
+                new[] { target },
+                defenderCommand: new SpaceCombatCommandModifiers(0, combat)
+            );
+
+            Assert.AreEqual(98, GetFighterOutcome(result, target).SquadronSizeAfter);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Resolve_IdenticalWeaponArcs_DoNotMultiplySustainedOutput(bool everyArc)
+        {
+            CapitalShip attacker = CreateShip("attacker", 100, 100, everyArc);
+            attacker.WeaponRecharge = 20;
+            CapitalShip target = CreatePassiveTarget("target", 1000);
+
+            SpaceCombatResult result = ResolveSingleStep(
+                CreateConfig(),
+                new[] { attacker },
+                Array.Empty<Starfighter>(),
+                new[] { target },
+                Array.Empty<Starfighter>()
+            );
+
+            Assert.AreEqual(980, GetShipOutcome(result, target).HullAfter);
+        }
+
+        [TestCase(0.25, 95)]
+        [TestCase(1, 80)]
+        [TestCase(0, 100)]
+        [TestCase(-1, 100)]
+        public void Resolve_CapitalShipLaserCannonAgainstCapitalShip_UsesConfiguredMultiplier(
+            double multiplier,
+            int expected
+        )
+        {
+            CapitalShip attacker = CreateShip("attacker", 100, 0);
+            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 60;
+            attacker.WeaponRecharge = 20;
+            CapitalShip target = CreatePassiveTarget("target", 100);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.LaserCannonCapitalDamageMultiplier = multiplier;
+
+            SpaceCombatResult result = ResolveSingleStep(
+                config,
+                new[] { attacker },
+                Array.Empty<Starfighter>(),
+                new[] { target },
+                Array.Empty<Starfighter>()
+            );
+
+            Assert.AreEqual(expected, GetShipOutcome(result, target).HullAfter);
+        }
+
+        [TestCase(PrimaryWeaponType.LaserCannon, 8)]
+        [TestCase(PrimaryWeaponType.Turbolaser, 9)]
+        [TestCase(PrimaryWeaponType.IonCannon, 10)]
+        public void Resolve_CapitalShipAgainstFighters_UsesWeaponCategoryEffectiveness(
+            PrimaryWeaponType weapon,
+            int expected
+        )
+        {
+            CapitalShip attacker = CreateShip("attacker", 100, 0);
+            attacker.PrimaryWeapons[weapon][0] = 20;
+            attacker.WeaponRecharge = 2;
+            Starfighter target = CreateFighter("target", 10, 0);
+            target.ShieldStrength = 0;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.TurbolaserFighterDamageMultiplier = 0.5;
+            config.AutoResolveFighterHullPerCraft = 1;
+
+            SpaceCombatResult result = ResolveSingleStep(
+                config,
+                new[] { attacker },
+                Array.Empty<Starfighter>(),
+                Array.Empty<CapitalShip>(),
+                new[] { target }
+            );
+
+            Assert.AreEqual(expected, GetFighterOutcome(result, target).SquadronSizeAfter);
         }
 
         [Test]
-        public void Resolve_CommanderCombat_IncreasesStarfighterManeuverability()
+        public void Resolve_CapitalLaserFormationWithMixedTargets_PrefersFighterCandidates()
         {
-            CapitalShip firstAttacker = CreateShip("first-attacker", hull: 100, weaponStrength: 0);
-            CapitalShip secondAttacker = CreateShip(
-                "second-attacker",
-                hull: 100,
-                weaponStrength: 0
-            );
-            foreach (CapitalShip ship in new[] { firstAttacker, secondAttacker })
-            {
-                ship.SublightSpeed = 1;
-                ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 20;
-                ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 100;
-            }
-            Starfighter uncommandedFighter = CreateFighter("uncommanded", 100, weaponStrength: 0);
-            Starfighter commandedFighter = CreateFighter("commanded", 100, weaponStrength: 0);
-            uncommandedFighter.ShieldStrength = 0;
-            commandedFighter.ShieldStrength = 0;
-            uncommandedFighter.SublightSpeed = 10;
-            commandedFighter.SublightSpeed = 10;
+            CapitalShip attacker = CreateShip("attacker", 100, 0);
+            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 20;
+            attacker.WeaponRecharge = 8;
+            CapitalShip targetShip = CreatePassiveTarget("ship", 100);
+            Starfighter targetFighter = CreateFighter("fighter", 12, 0);
+            targetFighter.ShieldStrength = 0;
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 1;
-            config.AutoResolveMinimumManeuverRatio = 0.01;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveStartingDistance = 0;
             config.AutoResolveFighterHullPerCraft = 1;
+            config.LaserCannonCapitalDamageMultiplier = 0.1;
 
-            SpaceCombatResult uncommanded = Resolve(
+            SpaceCombatResult result = ResolveSingleStep(
                 config,
-                new[] { firstAttacker },
-                new List<Starfighter>(),
-                new List<CapitalShip>(),
-                new[] { uncommandedFighter },
-                defenderCanWithdraw: true
+                new[] { attacker },
+                Array.Empty<Starfighter>(),
+                new[] { targetShip },
+                new[] { targetFighter }
             );
-            SpaceCombatResult commanded = Resolve(
+
+            Assert.AreEqual(100, GetShipOutcome(result, targetShip).HullAfter);
+            Assert.AreEqual(4, GetFighterOutcome(result, targetFighter).SquadronSizeAfter);
+        }
+
+        [Test]
+        public void Resolve_LaserSquadronWithMixedTargets_PrefersFighterCandidates()
+        {
+            Starfighter attacker = CreateFighter("attacker", 12, 10);
+            CapitalShip targetShip = CreatePassiveTarget("ship", 100);
+            Starfighter targetFighter = CreateFighter("fighter", 12, 0);
+            targetFighter.Agility = 8;
+            targetFighter.ShieldStrength = 0;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveFighterHullPerCraft = 1;
+            config.AutoResolveFighterWeaponRechargeMultiplier = 1;
+            config.LaserCannonCapitalDamageMultiplier = 1;
+
+            SpaceCombatResult result = ResolveSingleStep(
                 config,
-                new[] { secondAttacker },
-                new List<Starfighter>(),
-                new List<CapitalShip>(),
-                new[] { commandedFighter },
-                defenderCanWithdraw: true,
-                defenderCommand: new SpaceCombatCommandModifiers(
-                    admiralLeadership: 0,
-                    commanderCombat: 100
-                )
+                Array.Empty<CapitalShip>(),
+                new[] { attacker },
+                new[] { targetShip },
+                new[] { targetFighter }
+            );
+
+            Assert.AreEqual(100, GetShipOutcome(result, targetShip).HullAfter);
+            Assert.AreEqual(10, GetFighterOutcome(result, targetFighter).SquadronSizeAfter);
+        }
+
+        [TestCase("officer")]
+        [TestCase("regiment")]
+        [TestCase("special-forces")]
+        public void Resolve_DirectUsableCargo_PrioritizesTheLaterOtherwiseIdenticalTarget(
+            string cargoKind
+        )
+        {
+            var battle = ResolveCargoPriorityBattle(ship =>
+            {
+                ISceneNode cargo = CreatePriorityCargo(cargoKind);
+                ship.AddChild(cargo);
+                cargo.SetParent(ship);
+            });
+
+            Assert.AreEqual(100, GetShipOutcome(battle.Result, battle.First).HullAfter);
+            Assert.AreEqual(90, GetShipOutcome(battle.Result, battle.Second).HullAfter);
+        }
+
+        [TestCase("officer", "in-transit")]
+        [TestCase("regiment", "in-transit")]
+        [TestCase("special-forces", "in-transit")]
+        [TestCase("regiment", "incomplete")]
+        [TestCase("special-forces", "incomplete")]
+        [TestCase("officer", "disabled")]
+        [TestCase("regiment", "disabled")]
+        [TestCase("special-forces", "disabled")]
+        public void Resolve_UnusableCargo_DoesNotChangeTargetPriority(
+            string cargoKind,
+            string cargoState
+        )
+        {
+            var battle = ResolveCargoPriorityBattle(ship =>
+            {
+                ISceneNode cargo = CreatePriorityCargo(cargoKind);
+                if (cargoState == "in-transit")
+                    ((IMovable)cargo).Movement = TestMovement.Create();
+                else if (cargoState == "incomplete")
+                    ((IManufacturable)cargo).ManufacturingStatus = ManufacturingStatus.Building;
+                else if (cargoState == "disabled")
+                    cargo.IsEnabled = false;
+
+                ship.AddChild(cargo);
+                cargo.SetParent(ship);
+            });
+
+            Assert.AreEqual(90, GetShipOutcome(battle.Result, battle.First).HullAfter);
+            Assert.AreEqual(100, GetShipOutcome(battle.Result, battle.Second).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_InjuredForeignCaptive_IsStillPriorityCargo()
+        {
+            var battle = ResolveCargoPriorityBattle(ship =>
+            {
+                Officer captive = new Officer
+                {
+                    InstanceID = "captive",
+                    OwnerInstanceID = "foreign-owner",
+                    InjuryPoints = 20,
+                    IsCaptured = true,
+                };
+                ship.AddChild(captive);
+                captive.SetParent(ship);
+            });
+
+            Assert.AreEqual(100, GetShipOutcome(battle.Result, battle.First).HullAfter);
+            Assert.AreEqual(90, GetShipOutcome(battle.Result, battle.Second).HullAfter);
+        }
+
+        [TestCase(0)]
+        [TestCase(100000)]
+        public void Resolve_WeaponRange_DoesNotGateSustainedFire(int range)
+        {
+            CapitalShip attacker = CreateShip("attacker", 100, 10);
+            attacker.PrimaryWeapons[PrimaryWeaponType.Turbolaser][4] = range;
+            CapitalShip target = CreatePassiveTarget("target", 100);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+
+            SpaceCombatResult result = ResolveSingleStep(
+                config,
+                new[] { attacker },
+                Array.Empty<Starfighter>(),
+                new[] { target },
+                Array.Empty<Starfighter>()
+            );
+
+            Assert.AreEqual(90, GetShipOutcome(result, target).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_RechargeLimitedBank_AppliesItsRateDuringTheFiringPhase()
+        {
+            CapitalShip attacker = CreateShip("attacker", 100, 100);
+            attacker.WeaponRecharge = 5;
+            CapitalShip target = CreatePassiveTarget("target", 100);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            SpaceCombatResult result = ResolveSingleStep(
+                config,
+                new[] { attacker },
+                Array.Empty<Starfighter>(),
+                new[] { target },
+                Array.Empty<Starfighter>()
+            );
+
+            Assert.AreEqual(1, result.IterationsCompleted);
+            Assert.AreEqual(95, GetShipOutcome(result, target).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_AdditionalFighterTypeWithSparseGroups_CompletesTheFiringPhase()
+        {
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.StarfighterGroups["test-faction"] = new List<string>
+            {
+                "first-type",
+                "second-type",
+                "third-type",
+                "fourth-type",
+            };
+            Starfighter[] fighters = Enumerable
+                .Range(0, 32)
+                .Select(index =>
+                {
+                    Starfighter fighter = CreateFighter("fighter-" + index, 12, 1);
+                    fighter.TypeID = "additional-type";
+                    fighter.OwnerInstanceID = "test-faction";
+                    return fighter;
+                })
+                .ToArray();
+            CapitalShip target = CreatePassiveTarget("target", 1000);
+
+            SpaceCombatResult result = ResolveSingleStep(
+                config,
+                Array.Empty<CapitalShip>(),
+                fighters,
+                new[] { target },
+                Array.Empty<Starfighter>(),
+                random: new FixedCombatRNG(50)
+            );
+
+            Assert.AreEqual(1, result.IterationsCompleted);
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.IsEmpty(result.FighterLosses);
+        }
+
+        [TestCase(3, 99)]
+        [TestCase(4, 98)]
+        public void Resolve_SmallGroupedAttacks_ApplyHullMinimumOncePerFormation(
+            int shipCount,
+            int expectedHull
+        )
+        {
+            CapitalShip[] attackers = Enumerable
+                .Range(0, shipCount)
+                .Select(index => CreateShip("attacker-" + index, 100, 1))
+                .ToArray();
+            foreach (CapitalShip ship in attackers)
+                ship.CurrentHullStrength = 1;
+            CapitalShip target = CreatePassiveTarget("target", 100);
+
+            SpaceCombatResult result = ResolveSingleStep(
+                CreateConfig(),
+                attackers,
+                Array.Empty<Starfighter>(),
+                new[] { target },
+                Array.Empty<Starfighter>(),
+                random: new FixedCombatRNG(50)
+            );
+
+            Assert.AreEqual(expectedHull, GetShipOutcome(result, target).HullAfter);
+            Assert.AreEqual(1, result.IterationsCompleted);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Resolve_InitiativeSideDestroysOpponent_PreventsReturnFire(
+            bool attackerHasInitiative
+        )
+        {
+            CapitalShip attacker = CreateShip("attacker", 100, 100);
+            CapitalShip defender = CreateShip("defender", 100, 100);
+
+            SpaceCombatResult result = Resolve(
+                CreateConfig(),
+                new[] { attacker },
+                Array.Empty<Starfighter>(),
+                new[] { defender },
+                Array.Empty<Starfighter>(),
+                random: new FixedCombatRNG(50),
+                attackerHasInitiative: attackerHasInitiative
             );
 
             Assert.AreEqual(
-                98,
-                GetFighterOutcome(uncommanded, uncommandedFighter).SquadronSizeAfter
+                attackerHasInitiative ? 100 : 0,
+                GetShipOutcome(result, attacker).HullAfter
             );
-            Assert.AreEqual(99, GetFighterOutcome(commanded, commandedFighter).SquadronSizeAfter);
+            Assert.AreEqual(
+                attackerHasInitiative ? 0 : 100,
+                GetShipOutcome(result, defender).HullAfter
+            );
+            Assert.AreEqual(
+                attackerHasInitiative ? CombatSide.Attacker : CombatSide.Defender,
+                result.Winner
+            );
+            Assert.AreEqual(1, result.IterationsCompleted);
         }
 
-        [Test]
-        public void Resolve_WeaponsAcrossSeveralArcs_UsesEveryReadyArc()
+        [TestCase(12, 88)]
+        [TestCase(6, 94)]
+        public void Resolve_ReducedSquadron_UsesSurvivingCraftOnce(int craft, int expected)
         {
-            CapitalShip singleArc = CreateShip("single-arc", hull: 100, weaponStrength: 1);
-            CapitalShip severalArcs = CreateShip(
-                "several-arcs",
-                hull: 100,
-                weaponStrength: 1,
-                armEveryArc: true
-            );
-            CapitalShip firstTarget = CreatePassiveTarget("first-target", hull: 100);
-            CapitalShip secondTarget = CreatePassiveTarget("second-target", hull: 100);
-
-            SpaceCombatResult first = Resolve(
-                new[] { singleArc },
-                new[] { firstTarget },
-                defenderCanWithdraw: true
-            );
-            SpaceCombatResult second = Resolve(
-                new[] { severalArcs },
-                new[] { secondTarget },
-                defenderCanWithdraw: true
-            );
-
-            Assert.Less(second.IterationsCompleted, first.IterationsCompleted);
-        }
-
-        [Test]
-        public void Resolve_CapitalShipLaserCannonAgainstCapitalShip_UsesConfiguredMultiplier()
-        {
-            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 0);
-            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 60;
-            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 100;
-            CapitalShip defender = CreatePassiveTarget("defender", hull: 100);
+            Starfighter attacker = CreateFighter("attacker", 12, 10);
+            attacker.CurrentSquadronSize = craft;
+            CapitalShip target = CreatePassiveTarget("target", 100);
             GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveFighterWeaponRechargeMultiplier = 1;
+            config.LaserCannonCapitalDamageMultiplier = 1;
+
+            SpaceCombatResult result = ResolveSingleStep(
+                config,
+                Array.Empty<CapitalShip>(),
+                new[] { attacker },
+                new[] { target },
+                Array.Empty<Starfighter>()
+            );
+
+            Assert.AreEqual(expected, GetShipOutcome(result, target).HullAfter);
+        }
+
+        [TestCase(0.25, 97)]
+        [TestCase(1, 88)]
+        [TestCase(0, 100)]
+        public void Resolve_FighterLaserAgainstCapitalShip_UsesConfiguredMultiplier(
+            double multiplier,
+            int expected
+        )
+        {
+            Starfighter attacker = CreateFighter("attacker", 12, 10);
+            CapitalShip target = CreatePassiveTarget("target", 100);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveFighterWeaponRechargeMultiplier = 1;
+            config.LaserCannonCapitalDamageMultiplier = multiplier;
+
+            SpaceCombatResult result = ResolveSingleStep(
+                config,
+                Array.Empty<CapitalShip>(),
+                new[] { attacker },
+                new[] { target },
+                Array.Empty<Starfighter>()
+            );
+
+            Assert.AreEqual(expected, GetShipOutcome(result, target).HullAfter);
+        }
+
+        [TestCase(0, 96)]
+        [TestCase(1, 98)]
+        public void Resolve_FighterTorpedoes_RequireExposedCapitalHull(int shields, int expected)
+        {
+            Starfighter attacker = CreateFighter("attacker", 12, 10);
+            attacker.Torpedoes = 2;
+            CapitalShip target = CreatePassiveTarget("target", 100);
+            target.MaxShieldStrength = shields;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveFighterWeaponRechargeMultiplier = 1;
+            config.AutoResolveTorpedoDamagePerStrength = 0.5;
             config.LaserCannonCapitalDamageMultiplier = 0.25;
-            config.AutoResolveMaximumIterations = 1;
-            config.AutoResolveTargetScanDivisor = 1;
+
+            SpaceCombatResult result = ResolveSingleStep(
+                config,
+                Array.Empty<CapitalShip>(),
+                new[] { attacker },
+                new[] { target },
+                Array.Empty<Starfighter>()
+            );
+
+            Assert.AreEqual(expected, GetShipOutcome(result, target).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_IonWeaponsWithoutShields_DamageCapitalHull()
+        {
+            Starfighter attacker = CreateFighter("attacker", 12, 0);
+            attacker.IonCannon = 10;
+            CapitalShip target = CreatePassiveTarget("target", 100);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveFighterWeaponRechargeMultiplier = 1;
+
+            SpaceCombatResult result = ResolveSingleStep(
+                config,
+                Array.Empty<CapitalShip>(),
+                new[] { attacker },
+                new[] { target },
+                Array.Empty<Starfighter>()
+            );
+
+            Assert.AreEqual(88, GetShipOutcome(result, target).HullAfter);
+        }
+
+        [TestCase(4, 99)]
+        [TestCase(5, 100)]
+        [TestCase(6, 100)]
+        public void Resolve_ShieldOverflow_RequiresPositiveOverflowForHullDamage(
+            int shields,
+            int expected
+        )
+        {
+            CapitalShip attacker = CreateShip("attacker", 100, 5);
+            CapitalShip target = CreatePassiveTarget("target", 100);
+            target.MaxShieldStrength = shields;
+
+            SpaceCombatResult result = ResolveSingleStep(
+                CreateConfig(),
+                new[] { attacker },
+                Array.Empty<Starfighter>(),
+                new[] { target },
+                Array.Empty<Starfighter>()
+            );
+
+            Assert.AreEqual(expected, GetShipOutcome(result, target).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_DamagedCapitalShip_ReducesSustainedOutput()
+        {
+            CapitalShip attacker = CreateShip("attacker", 100, 20);
+            attacker.CurrentHullStrength = 50;
+            CapitalShip target = CreatePassiveTarget("target", 100);
+
+            SpaceCombatResult result = ResolveSingleStep(
+                CreateConfig(),
+                new[] { attacker },
+                Array.Empty<Starfighter>(),
+                new[] { target },
+                Array.Empty<Starfighter>()
+            );
+
+            Assert.AreEqual(90, GetShipOutcome(result, target).HullAfter);
+        }
+
+        [TestCase(100, 6)]
+        [TestCase(0, 3)]
+        public void Resolve_ShieldSystemHits_ReduceRechargeUntilStrengthIsSuppressed(
+            int roll,
+            int expectedIterations
+        )
+        {
+            CapitalShip attacker = CreateShip("attacker", 100, 10);
+            attacker.MaxShieldStrength = 1000;
+            attacker.ShieldRechargeRate = 1000;
+            CapitalShip target = CreateShip("target", 100, 10);
+            target.MaxShieldStrength = 100;
+            target.ShieldRechargeRate = 20;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveStagnationIterations = 5;
 
             SpaceCombatResult result = Resolve(
                 config,
                 new[] { attacker },
-                new List<Starfighter>(),
+                Array.Empty<Starfighter>(),
+                new[] { target },
+                Array.Empty<Starfighter>(),
+                attackerCanWithdraw: true,
+                defenderCanWithdraw: true,
+                random: new FixedCombatRNG(roll)
+            );
+
+            Assert.AreEqual(expectedIterations, result.IterationsCompleted);
+            Assert.AreEqual(100, GetShipOutcome(result, target).HullAfter);
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+        }
+
+        [Test]
+        public void Resolve_WeaponSystemHits_StopFireWithoutDestroyingTheShip()
+        {
+            CapitalShip attacker = CreateShip("attacker", 100, 10);
+            attacker.MaxShieldStrength = 1000;
+            CapitalShip defender = CreateShip("defender", 1000, 10);
+            defender.ShieldRechargeRate = 100;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveStagnationIterations = 5;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new[] { attacker },
+                Array.Empty<Starfighter>(),
                 new[] { defender },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
+                Array.Empty<Starfighter>(),
+                defenderCanWithdraw: true,
+                random: new FixedCombatRNG(80),
+                attackerHasInitiative: true
             );
 
-            Assert.AreEqual(85, GetShipOutcome(result, defender).HullAfter);
+            Assert.AreEqual(4, result.IterationsCompleted);
+            Assert.AreEqual(100, GetShipOutcome(result, attacker).HullAfter);
+            Assert.AreEqual(960, GetShipOutcome(result, defender).HullAfter);
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
         }
 
-        [Test]
-        public void Resolve_CapitalShipLaserCannonAgainstStarfighters_DealsFullDamage()
+        [TestCase(120, 6)]
+        [TestCase(121, 5)]
+        public void Resolve_DamagedSquadron_StartsWithFullShieldsBeforeItsFirstRecovery(
+            int incomingDamage,
+            int expected
+        )
         {
-            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 0);
-            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 8;
-            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 100;
-            Starfighter defender = CreateFighter("defender", squadronSize: 2, weaponStrength: 0);
-            defender.ShieldStrength = 0;
+            CapitalShip attacker = CreateShip("attacker", 100, 10);
+            Starfighter target = CreateFighter("target", 12, 0);
+            target.CurrentSquadronSize = 6;
+            target.ShieldStrength = 10;
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 1;
-            config.AutoResolveTargetScanDivisor = 1;
+            config.AutoResolveWeaponDamagePerStrength = incomingDamage / 10.0;
+            config.AutoResolveFighterShieldRechargePerCraft = 0;
+
+            SpaceCombatResult result = ResolveSingleStep(
+                config,
+                new[] { attacker },
+                Array.Empty<Starfighter>(),
+                Array.Empty<CapitalShip>(),
+                new[] { target }
+            );
+
+            Assert.AreEqual(expected, GetFighterOutcome(result, target).SquadronSizeAfter);
+        }
+
+        [TestCase(4, 0)]
+        [TestCase(8, 1)]
+        public void Resolve_FighterHullPerCraft_ControlsDurability(int hullPerCraft, int expected)
+        {
+            CapitalShip attacker = CreateShip("attacker", 100, 8);
+            Starfighter target = CreateFighter("target", 2, 0);
+            target.ShieldStrength = 0;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveFighterHullPerCraft = hullPerCraft;
+
+            SpaceCombatResult result = ResolveSingleStep(
+                config,
+                new[] { attacker },
+                Array.Empty<Starfighter>(),
+                Array.Empty<CapitalShip>(),
+                new[] { target }
+            );
+
+            Assert.AreEqual(expected, GetFighterOutcome(result, target).SquadronSizeAfter);
+        }
+
+        [TestCase(0, 1)]
+        [TestCase(1, 2)]
+        public void Resolve_FighterShieldRechargePerCraft_PreservesCraftUntilForcedWithdrawal(
+            double recharge,
+            int expectedCraft
+        )
+        {
+            CapitalShip attacker = CreateShip("attacker", 100, 3);
+            attacker.MaxShieldStrength = 100;
+            attacker.ShieldRechargeRate = 100;
+            Starfighter target = CreateFighter("target", 2, 1);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveWeaponDamagePerStrength = 0.5;
+            config.AutoResolveFighterShieldRechargePerCraft = recharge;
+            config.AutoResolveStagnationIterations = 3;
 
             SpaceCombatResult result = Resolve(
                 config,
                 new[] { attacker },
-                new List<Starfighter>(),
-                new List<CapitalShip>(),
-                new[] { defender },
-                defenderCanWithdraw: true
+                Array.Empty<Starfighter>(),
+                Array.Empty<CapitalShip>(),
+                new[] { target },
+                defenderCanWithdraw: true,
+                random: new FixedCombatRNG(100),
+                attackerHasInitiative: true
             );
 
-            Assert.AreEqual(1, GetFighterOutcome(result, defender).SquadronSizeAfter);
+            Assert.AreEqual(4, result.IterationsCompleted);
+            Assert.AreEqual(expectedCraft, GetFighterOutcome(result, target).SquadronSizeAfter);
+            Assert.IsTrue(GetFighterOutcome(result, target).Withdrew);
         }
 
-        [Test]
-        public void Resolve_CapitalShipTurbolaserAgainstStarfighters_UsesConfiguredMultiplier()
+        [TestCase(12, 4, 11)]
+        [TestCase(1, 7.5, 1)]
+        public void Resolve_FractionalCraftLoss_TruncatesCountAndKeepsLastSurvivor(
+            int craft,
+            double damage,
+            int expected
+        )
         {
-            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 0);
-            attacker.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = 16;
-            attacker.PrimaryWeapons[PrimaryWeaponType.Turbolaser][4] = 100;
-            Starfighter defender = CreateFighter("defender", squadronSize: 2, weaponStrength: 0);
-            defender.ShieldStrength = 0;
+            CapitalShip attacker = CreateShip("attacker", 100, 10);
+            Starfighter target = CreateFighter("target", craft, 0);
+            target.ShieldStrength = 0;
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.TurbolaserFighterDamageMultiplier = 0.5;
-            config.AutoResolveMaximumIterations = 1;
-            config.AutoResolveTargetScanDivisor = 1;
+            config.AutoResolveWeaponDamagePerStrength = damage / 10;
 
-            SpaceCombatResult result = Resolve(
+            SpaceCombatResult result = ResolveSingleStep(
                 config,
                 new[] { attacker },
-                new List<Starfighter>(),
-                new List<CapitalShip>(),
-                new[] { defender },
-                defenderCanWithdraw: true
+                Array.Empty<Starfighter>(),
+                Array.Empty<CapitalShip>(),
+                new[] { target }
             );
 
-            Assert.AreEqual(1, GetFighterOutcome(result, defender).SquadronSizeAfter);
-        }
-
-        [Test]
-        public void Resolve_CapitalShipLaserCannonWithMixedTargets_SelectsHighestEffectiveDamageTarget()
-        {
-            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 0);
-            attacker.Maneuverability = 100;
-            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 48;
-            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 100;
-            CapitalShip defenderShip = CreatePassiveTarget("defender-ship", hull: 100);
-            Starfighter defenderFighter = CreateFighter(
-                "defender-fighter",
-                squadronSize: 12,
-                weaponStrength: 0
-            );
-            defenderFighter.Agility = 0;
-            defenderFighter.ShieldStrength = 0;
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.LaserCannonCapitalDamageMultiplier = 0.01;
-            config.AutoResolveMaximumIterations = 1;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveStartingDistance = 0;
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new[] { attacker },
-                new List<Starfighter>(),
-                new[] { defenderShip },
-                new[] { defenderFighter },
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(100, GetShipOutcome(result, defenderShip).HullAfter);
-            Assert.AreEqual(6, GetFighterOutcome(result, defenderFighter).SquadronSizeAfter);
-        }
-
-        [Test]
-        public void Resolve_ZeroIterationStalemate_UsesConfiguredCapitalTargetLaserEffectiveness()
-        {
-            CapitalShip laserShip = CreateShip("laser-ship", hull: 100, weaponStrength: 0);
-            laserShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 60;
-            laserShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 100;
-            CapitalShip turbolaserShip = CreateShip(
-                "turbolaser-ship",
-                hull: 100,
-                weaponStrength: 20
-            );
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.LaserCannonCapitalDamageMultiplier = 0.25;
-            config.AutoResolveMaximumIterations = 0;
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new[] { laserShip },
-                new List<Starfighter>(),
-                new[] { turbolaserShip },
-                new List<Starfighter>(),
-                attackerCanWithdraw: true
-            );
-
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
-            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.DefenderOutcome);
+            Assert.AreEqual(expected, GetFighterOutcome(result, target).SquadronSizeAfter);
         }
 
         [Test]
@@ -389,908 +841,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Resolve_WeaponOutsideItsConfiguredRange_DoesNotDamageTarget()
-        {
-            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 10);
-            attacker.PrimaryWeapons[PrimaryWeaponType.Turbolaser][4] = 0;
-            CapitalShip defender = CreatePassiveTarget("defender", hull: 100);
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 1;
-            config.AutoResolveTargetScanDivisor = 1;
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new[] { attacker },
-                new List<Starfighter>(),
-                new[] { defender },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(100, GetShipOutcome(result, defender).HullAfter);
-        }
-
-        [Test]
-        public void Resolve_LongRangeWeapons_InflictDamageBeforeShortRangeWeapons()
-        {
-            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 25);
-            attacker.PrimaryWeapons[PrimaryWeaponType.Turbolaser][4] = 75;
-            attacker.SublightSpeed = 5;
-            CapitalShip defender = CreateShip("defender", hull: 100, weaponStrength: 25);
-            defender.PrimaryWeapons[PrimaryWeaponType.Turbolaser][4] = 25;
-            defender.SublightSpeed = 5;
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveTargetScanDivisor = 1;
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new[] { attacker },
-                new List<Starfighter>(),
-                new[] { defender },
-                new List<Starfighter>()
-            );
-
-            Assert.Greater(
-                GetShipOutcome(result, attacker).HullAfter,
-                GetShipOutcome(result, defender).HullAfter
-            );
-        }
-
-        [Test]
-        public void Resolve_FastSquadronClosesRange_DoesNotMoveCapitalShipIntoRange()
-        {
-            CapitalShip attackerShip = CreateShip("attacker-ship", hull: 100, weaponStrength: 10);
-            attackerShip.SublightSpeed = 0;
-            attackerShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser][4] = 10;
-            Starfighter attackerFighter = CreateFighter(
-                "attacker-fighter",
-                squadronSize: 1,
-                weaponStrength: 0
-            );
-            attackerFighter.SublightSpeed = 100;
-            CapitalShip defender = CreatePassiveTarget("defender", hull: 100);
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 2;
-            config.AutoResolveTargetScanDivisor = 1;
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new[] { attackerShip },
-                new[] { attackerFighter },
-                new[] { defender },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(100, GetShipOutcome(result, defender).HullAfter);
-        }
-
-        [Test]
-        public void Resolve_ChargedCapitalShipArcs_ConsumeSharedRechargeBudget()
-        {
-            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 10);
-            attacker.WeaponRecharge = 1;
-            CapitalShip defender = CreatePassiveTarget("defender", hull: 1000);
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 2;
-            config.AutoResolveTargetScanDivisor = 1;
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new[] { attacker },
-                new List<Starfighter>(),
-                new[] { defender },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(990, GetShipOutcome(result, defender).HullAfter);
-        }
-
-        [Test]
-        public void Resolve_CapitalShipRetainsTargetBetweenScans_ContinuesFiring()
-        {
-            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 32);
-            Starfighter defender = CreateFighter("defender", squadronSize: 10, weaponStrength: 0);
-            defender.ShieldStrength = 0;
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 2;
-            SequenceRNG random = new SequenceRNG(new[] { 0, 1 });
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new[] { attacker },
-                new List<Starfighter>(),
-                new List<CapitalShip>(),
-                new[] { defender },
-                defenderCanWithdraw: true,
-                random: random
-            );
-
-            Assert.AreEqual(2, GetFighterOutcome(result, defender).SquadronSizeAfter);
-        }
-
-        /// <summary>
-        /// Verifies capital-target laser scaling without reducing the charge consumed by a shot.
-        /// </summary>
-        /// <param name="multiplier">The configured capital-target laser damage multiplier.</param>
-        /// <param name="iterations">The number of combat steps to resolve.</param>
-        /// <param name="expectedHull">The target's remaining hull.</param>
-        [TestCase(0.25, 1, 85)]
-        [TestCase(0.25, 2, 85)]
-        [TestCase(1, 1, 40)]
-        [TestCase(0, 1, 100)]
-        [TestCase(-1, 1, 100)]
-        public void Resolve_FighterLaserAgainstCapitalShip_UsesConfiguredMultiplier(
-            double multiplier,
-            int iterations,
-            int expectedHull
-        )
-        {
-            Starfighter attacker = CreateFighter("attacker", squadronSize: 1, weaponStrength: 60);
-            CapitalShip defender = CreatePassiveTarget("defender", hull: 100);
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.LaserCannonCapitalDamageMultiplier = multiplier;
-            config.AutoResolveMaximumIterations = iterations;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveStartingDistance = 0;
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new List<CapitalShip>(),
-                new[] { attacker },
-                new[] { defender },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(expectedHull, GetShipOutcome(result, defender).HullAfter);
-        }
-
-        /// <summary>
-        /// Verifies that target selection compares scaled capital damage with full fighter damage.
-        /// </summary>
-        [Test]
-        public void Resolve_FighterLaserWithMixedTargets_SelectsHighestEffectiveDamageTarget()
-        {
-            Starfighter attacker = CreateFighter("attacker", squadronSize: 1, weaponStrength: 60);
-            Starfighter defenderFighter = CreateFighter("defender-fighter", 12, weaponStrength: 0);
-            defenderFighter.ShieldStrength = 0;
-            CapitalShip defenderShip = CreatePassiveTarget("defender-ship", hull: 1000);
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.LaserCannonCapitalDamageMultiplier = 0.25;
-            config.AutoResolveMaximumIterations = 1;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveStartingDistance = 0;
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new List<CapitalShip>(),
-                new[] { attacker },
-                new[] { defenderShip },
-                new[] { defenderFighter },
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(1000, GetShipOutcome(result, defenderShip).HullAfter);
-            Assert.AreEqual(5, GetFighterOutcome(result, defenderFighter).SquadronSizeAfter);
-        }
-
-        /// <summary>
-        /// Verifies that a capital-target laser multiplier does not reduce torpedo damage.
-        /// </summary>
-        [Test]
-        public void Resolve_FighterTorpedoesAgainstCapitalShip_IgnoresLaserMultiplier()
-        {
-            Starfighter attacker = CreateFighter("attacker", squadronSize: 1, weaponStrength: 0);
-            attacker.Torpedoes = 60;
-            attacker.TorpedoRange = 100;
-            CapitalShip defender = CreatePassiveTarget("defender", hull: 100);
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.LaserCannonCapitalDamageMultiplier = 0;
-            config.AutoResolveMaximumIterations = 1;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveStartingDistance = 0;
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new List<CapitalShip>(),
-                new[] { attacker },
-                new[] { defender },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(40, GetShipOutcome(result, defender).HullAfter);
-        }
-
-        [Test]
-        public void Resolve_FighterTorpedoesAfterSamePhaseShieldDamage_DamageCapitalShipHull()
-        {
-            Starfighter torpedoAttacker = CreateFighter(
-                "torpedo-attacker",
-                squadronSize: 1,
-                weaponStrength: 0
-            );
-            torpedoAttacker.Torpedoes = 20;
-            torpedoAttacker.TorpedoRange = 100;
-            Starfighter shieldAttacker = CreateFighter(
-                "shield-attacker",
-                squadronSize: 1,
-                weaponStrength: 10
-            );
-            CapitalShip defender = CreatePassiveTarget("defender", hull: 100);
-            defender.MaxShieldStrength = 10;
-            defender.ShieldRechargeRate = 10;
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.LaserCannonCapitalDamageMultiplier = 1;
-            config.AutoResolveMaximumIterations = 1;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveStartingDistance = 0;
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new List<CapitalShip>(),
-                new[] { torpedoAttacker, shieldAttacker },
-                new[] { defender },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(80, GetShipOutcome(result, defender).HullAfter);
-        }
-
-        [Test]
-        public void Resolve_FighterTargetsCapitalShipWithStrongerAvailableAttack_DamagesCapitalShip()
-        {
-            Starfighter attacker = CreateFighter("attacker", squadronSize: 1, weaponStrength: 1);
-            attacker.IonCannon = 10;
-            attacker.IonRange = 100;
-            CapitalShip defenderShip = CreatePassiveTarget("defender-ship", hull: 1000);
-            Starfighter defenderFighter = CreateFighter(
-                "defender-fighter",
-                squadronSize: 1,
-                weaponStrength: 0
-            );
-            defenderFighter.ShieldStrength = 1000;
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.LaserCannonCapitalDamageMultiplier = 1;
-            config.AutoResolveMaximumIterations = 1;
-            config.AutoResolveTargetScanDivisor = 1;
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new List<CapitalShip>(),
-                new[] { attacker },
-                new[] { defenderShip },
-                new[] { defenderFighter },
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(999, GetShipOutcome(result, defenderShip).HullAfter);
-            Assert.AreEqual(1, GetFighterOutcome(result, defenderFighter).SquadronSizeAfter);
-        }
-
-        [Test]
-        public void Resolve_FighterWeaponCharge_MustRechargeBeforeFiringAgain()
-        {
-            Starfighter attacker = CreateFighter("attacker", squadronSize: 1, weaponStrength: 10);
-            attacker.ShieldStrength = 1;
-            CapitalShip defender = CreatePassiveTarget("defender", hull: 100);
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.LaserCannonCapitalDamageMultiplier = 1;
-            config.AutoResolveMaximumIterations = 2;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveStartingDistance = 0;
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new List<CapitalShip>(),
-                new[] { attacker },
-                new[] { defender },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(90, GetShipOutcome(result, defender).HullAfter);
-        }
-
-        [Test]
-        public void Resolve_UnshieldedFighterWeaponCharge_RechargesAndFiresAgain()
-        {
-            Starfighter attacker = CreateFighter("attacker", squadronSize: 1, weaponStrength: 10);
-            attacker.ShieldStrength = 0;
-            CapitalShip defender = CreatePassiveTarget("defender", hull: 100);
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.LaserCannonCapitalDamageMultiplier = 1;
-            config.AutoResolveMaximumIterations = 4;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveStartingDistance = 0;
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new List<CapitalShip>(),
-                new[] { attacker },
-                new[] { defender },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(80, GetShipOutcome(result, defender).HullAfter);
-        }
-
-        [Test]
-        public void Resolve_FighterWeaponCharge_WithDifferentShieldStrength_RechargesAtSameRate()
-        {
-            Starfighter unshieldedAttacker = CreateFighter(
-                "unshielded-attacker",
-                squadronSize: 1,
-                weaponStrength: 10
-            );
-            unshieldedAttacker.ShieldStrength = 0;
-            Starfighter shieldedAttacker = CreateFighter(
-                "shielded-attacker",
-                squadronSize: 1,
-                weaponStrength: 10
-            );
-            shieldedAttacker.ShieldStrength = 5;
-            CapitalShip firstDefender = CreatePassiveTarget("first-defender", hull: 100);
-            CapitalShip secondDefender = CreatePassiveTarget("second-defender", hull: 100);
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 4;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveStartingDistance = 0;
-
-            SpaceCombatResult unshieldedResult = Resolve(
-                config,
-                new List<CapitalShip>(),
-                new[] { unshieldedAttacker },
-                new[] { firstDefender },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
-            );
-            SpaceCombatResult shieldedResult = Resolve(
-                config,
-                new List<CapitalShip>(),
-                new[] { shieldedAttacker },
-                new[] { secondDefender },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(
-                GetShipOutcome(unshieldedResult, firstDefender).HullAfter,
-                GetShipOutcome(shieldedResult, secondDefender).HullAfter
-            );
-        }
-
-        [Test]
-        public void Resolve_FighterWeaponCharge_AfterSquadronLoss_RechargesAtReducedRate()
-        {
-            Starfighter attacker = CreateFighter("attacker", squadronSize: 12, weaponStrength: 10);
-            attacker.ShieldStrength = 0;
-            CapitalShip defender = CreateShip("defender", hull: 1000, weaponStrength: 6);
-            defender.WeaponRecharge = 0;
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.LaserCannonCapitalDamageMultiplier = 1;
-            config.AutoResolveMaximumIterations = 7;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveStartingDistance = 0;
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new List<CapitalShip>(),
-                new[] { attacker },
-                new[] { defender },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
-            );
-
-            Assert.Greater(GetShipOutcome(result, defender).HullAfter, 640);
-        }
-
-        [Test]
-        public void Resolve_FullFighterSquadronWeaponCharge_RechargesAggregateWeaponBank()
-        {
-            Starfighter attacker = CreateFighter("attacker", squadronSize: 12, weaponStrength: 10);
-            CapitalShip defender = CreatePassiveTarget("defender", hull: 1000);
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.LaserCannonCapitalDamageMultiplier = 1;
-            config.AutoResolveMaximumIterations = 7;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveStartingDistance = 0;
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new List<CapitalShip>(),
-                new[] { attacker },
-                new[] { defender },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(640, GetShipOutcome(result, defender).HullAfter);
-        }
-
-        [Test]
-        public void Resolve_FighterSquadronShieldPool_AbsorbsDamageBeforeCraftHull()
-        {
-            CapitalShip firstAttacker = CreateShip("first-attacker", hull: 100, weaponStrength: 8);
-            CapitalShip secondAttacker = CreateShip(
-                "second-attacker",
-                hull: 100,
-                weaponStrength: 8
-            );
-            Starfighter shielded = CreateFighter("shielded", squadronSize: 1, weaponStrength: 0);
-            Starfighter unshielded = CreateFighter(
-                "unshielded",
-                squadronSize: 1,
-                weaponStrength: 0
-            );
-            shielded.ShieldStrength = 8;
-            unshielded.ShieldStrength = 0;
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 1;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveStartingDistance = 0;
-
-            SpaceCombatResult shieldedResult = Resolve(
-                config,
-                new[] { firstAttacker },
-                new List<Starfighter>(),
-                new List<CapitalShip>(),
-                new[] { shielded },
-                defenderCanWithdraw: true
-            );
-            SpaceCombatResult unshieldedResult = Resolve(
-                config,
-                new[] { secondAttacker },
-                new List<Starfighter>(),
-                new List<CapitalShip>(),
-                new[] { unshielded },
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(1, GetFighterOutcome(shieldedResult, shielded).SquadronSizeAfter);
-            Assert.AreEqual(0, GetFighterOutcome(unshieldedResult, unshielded).SquadronSizeAfter);
-        }
-
-        [Test]
-        public void Resolve_FighterHullPerCraft_ControlsSquadronDurability()
-        {
-            CapitalShip firstAttacker = CreateShip("first-attacker", hull: 100, weaponStrength: 8);
-            CapitalShip secondAttacker = CreateShip(
-                "second-attacker",
-                hull: 100,
-                weaponStrength: 8
-            );
-            Starfighter firstDefender = CreateFighter(
-                "first-defender",
-                squadronSize: 1,
-                weaponStrength: 0
-            );
-            Starfighter secondDefender = CreateFighter(
-                "second-defender",
-                squadronSize: 1,
-                weaponStrength: 0
-            );
-            firstDefender.ShieldStrength = 0;
-            secondDefender.ShieldStrength = 0;
-            GameConfig.SpaceCombatConfig firstConfig = CreateConfig();
-            firstConfig.AutoResolveFighterHullPerCraft = 8;
-            firstConfig.AutoResolveMaximumIterations = 1;
-            firstConfig.AutoResolveTargetScanDivisor = 1;
-            firstConfig.AutoResolveStartingDistance = 0;
-            GameConfig.SpaceCombatConfig secondConfig = firstConfig.CreateCopy();
-            secondConfig.AutoResolveFighterHullPerCraft = 16;
-
-            SpaceCombatResult firstResult = Resolve(
-                firstConfig,
-                new[] { firstAttacker },
-                new List<Starfighter>(),
-                new List<CapitalShip>(),
-                new[] { firstDefender },
-                defenderCanWithdraw: true
-            );
-            SpaceCombatResult secondResult = Resolve(
-                secondConfig,
-                new[] { secondAttacker },
-                new List<Starfighter>(),
-                new List<CapitalShip>(),
-                new[] { secondDefender },
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(0, GetFighterOutcome(firstResult, firstDefender).SquadronSizeAfter);
-            Assert.AreEqual(1, GetFighterOutcome(secondResult, secondDefender).SquadronSizeAfter);
-        }
-
-        [Test]
-        public void Resolve_FighterShieldRechargePerCraft_ControlsShieldRecovery()
-        {
-            CapitalShip firstAttacker = CreateShip("first-attacker", hull: 100, weaponStrength: 3);
-            CapitalShip secondAttacker = CreateShip(
-                "second-attacker",
-                hull: 100,
-                weaponStrength: 3
-            );
-            Starfighter firstDefender = CreateFighter(
-                "first-defender",
-                squadronSize: 1,
-                weaponStrength: 0
-            );
-            Starfighter secondDefender = CreateFighter(
-                "second-defender",
-                squadronSize: 1,
-                weaponStrength: 0
-            );
-            firstDefender.ShieldStrength = 1;
-            secondDefender.ShieldStrength = 1;
-            GameConfig.SpaceCombatConfig firstConfig = CreateConfig();
-            firstConfig.AutoResolveFighterShieldRechargePerCraft = 0;
-            firstConfig.AutoResolveMaximumIterations = 3;
-            firstConfig.AutoResolveTargetScanDivisor = 1;
-            firstConfig.AutoResolveStartingDistance = 0;
-            GameConfig.SpaceCombatConfig secondConfig = firstConfig.CreateCopy();
-            secondConfig.AutoResolveFighterShieldRechargePerCraft = 1;
-
-            SpaceCombatResult firstResult = Resolve(
-                firstConfig,
-                new[] { firstAttacker },
-                new List<Starfighter>(),
-                new List<CapitalShip>(),
-                new[] { firstDefender },
-                defenderCanWithdraw: true
-            );
-            SpaceCombatResult secondResult = Resolve(
-                secondConfig,
-                new[] { secondAttacker },
-                new List<Starfighter>(),
-                new List<CapitalShip>(),
-                new[] { secondDefender },
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(0, GetFighterOutcome(firstResult, firstDefender).SquadronSizeAfter);
-            Assert.AreEqual(1, GetFighterOutcome(secondResult, secondDefender).SquadronSizeAfter);
-        }
-
-        [Test]
-        public void Resolve_IonDamageWithoutShields_DoesNotDamageCapitalShipHull()
-        {
-            Starfighter attacker = CreateFighter("attacker", squadronSize: 1, weaponStrength: 0);
-            attacker.IonCannon = 10;
-            attacker.IonRange = 100;
-            CapitalShip defender = CreatePassiveTarget("defender", hull: 1000);
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 1;
-            config.AutoResolveTargetScanDivisor = 1;
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new List<CapitalShip>(),
-                new[] { attacker },
-                new[] { defender },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true,
-                random: new ArcDamageRNG()
-            );
-
-            Assert.AreEqual(1000, GetShipOutcome(result, defender).HullAfter);
-        }
-
-        [Test]
-        public void Resolve_MixedDamageAgainstShieldedShips_PreservesFiringOrder()
-        {
-            CapitalShip conventionalAttacker = CreateShip(
-                "conventional-attacker",
-                hull: 100,
-                weaponStrength: 100
-            );
-            CapitalShip ionAttacker = CreateShip("ion-attacker", hull: 100, weaponStrength: 0);
-            ionAttacker.PrimaryWeapons[PrimaryWeaponType.IonCannon][0] = 100;
-            ionAttacker.PrimaryWeapons[PrimaryWeaponType.IonCannon][4] = 100;
-            CapitalShip conventionalFirstTarget = CreatePassiveTarget(
-                "conventional-first-target",
-                hull: 100
-            );
-            conventionalFirstTarget.MaxShieldStrength = 100;
-            CapitalShip ionFirstTarget = CreatePassiveTarget("ion-first-target", hull: 100);
-            ionFirstTarget.MaxShieldStrength = 100;
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 1;
-            config.AutoResolveTargetScanDivisor = 1;
-
-            SpaceCombatResult conventionalFirst = Resolve(
-                config,
-                new[] { conventionalAttacker, ionAttacker },
-                new List<Starfighter>(),
-                new[] { conventionalFirstTarget },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
-            );
-            SpaceCombatResult ionFirst = Resolve(
-                config,
-                new[] { ionAttacker, conventionalAttacker },
-                new List<Starfighter>(),
-                new[] { ionFirstTarget },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(
-                100,
-                GetShipOutcome(conventionalFirst, conventionalFirstTarget).HullAfter
-            );
-            Assert.AreEqual(0, GetShipOutcome(ionFirst, ionFirstTarget).HullAfter);
-        }
-
-        [Test]
-        public void Resolve_ConventionalHullDamage_DoesNotDisableCapitalShipWeapons()
-        {
-            Starfighter attacker = CreateFighter("attacker", squadronSize: 2, weaponStrength: 1);
-            attacker.ShieldStrength = 100;
-            CapitalShip defender = CreateShip("defender", hull: 1000, weaponStrength: 110);
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 3;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveComponentDamageInterval = 2;
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new List<CapitalShip>(),
-                new[] { attacker },
-                new[] { defender },
-                new List<Starfighter>(),
-                attackerCanWithdraw: true,
-                random: new AttackDelayRNG()
-            );
-
-            Assert.AreEqual(0, GetFighterOutcome(result, attacker).SquadronSizeAfter);
-        }
-
-        [Test]
-        public void Resolve_IonOverflowDamage_DelaysCapitalShipAttack()
-        {
-            Starfighter attacker = CreateFighter("attacker", squadronSize: 2, weaponStrength: 0);
-            attacker.IonCannon = 1;
-            attacker.IonRange = 100;
-            attacker.ShieldStrength = 100;
-            CapitalShip defender = CreateShip("defender", hull: 1000, weaponStrength: 110);
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 3;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveComponentDamageInterval = 2;
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new List<CapitalShip>(),
-                new[] { attacker },
-                new[] { defender },
-                new List<Starfighter>(),
-                attackerCanWithdraw: true,
-                random: new AttackDelayRNG()
-            );
-
-            Assert.AreEqual(2, GetFighterOutcome(result, attacker).SquadronSizeAfter);
-            Assert.AreEqual(1000, GetShipOutcome(result, defender).HullAfter);
-        }
-
-        [Test]
-        public void Resolve_SeparateWeaponLanes_TargetUnitsAtDifferentRanges()
-        {
-            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 1);
-            attacker.SublightSpeed = 0;
-            attacker.PrimaryWeapons[PrimaryWeaponType.Turbolaser][4] = 30;
-            attacker.PrimaryWeapons[PrimaryWeaponType.IonCannon][0] = 1;
-            attacker.PrimaryWeapons[PrimaryWeaponType.IonCannon][4] = 100;
-            CapitalShip defenderShip = CreatePassiveTarget("defender-ship", hull: 100);
-            Starfighter defenderFighter = CreateFighter(
-                "defender-fighter",
-                squadronSize: 2,
-                weaponStrength: 0
-            );
-            defenderFighter.ShieldStrength = 0;
-            defenderFighter.SublightSpeed = 50;
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 2;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveFighterHullPerCraft = 0.1;
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new[] { attacker },
-                new List<Starfighter>(),
-                new[] { defenderShip },
-                new[] { defenderFighter },
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(100, GetShipOutcome(result, defenderShip).HullAfter);
-            Assert.AreEqual(0, GetFighterOutcome(result, defenderFighter).SquadronSizeAfter);
-        }
-
-        [Test]
-        public void Resolve_IonOnlyCapitalShipAgainstFighters_DoesNotDamageFighters()
-        {
-            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 0);
-            attacker.PrimaryWeapons[PrimaryWeaponType.IonCannon][0] = 100;
-            attacker.PrimaryWeapons[PrimaryWeaponType.IonCannon][4] = 100;
-            Starfighter defender = CreateFighter("defender", squadronSize: 12, weaponStrength: 0);
-
-            SpaceCombatResult result = Resolve(
-                new[] { attacker },
-                new List<Starfighter>(),
-                new List<CapitalShip>(),
-                new[] { defender },
-                attackerCanWithdraw: true,
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(12, GetFighterOutcome(result, defender).SquadronSizeAfter);
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
-        }
-
-        [Test]
-        public void Resolve_MixedTargetTypes_DestroysWeakerForce()
-        {
-            CapitalShip attackerShip = CreatePassiveTarget("attacker-ship", hull: 10000);
-            Starfighter attackerFighter = CreateFighter(
-                "attacker-fighter",
-                squadronSize: 12,
-                weaponStrength: 100
-            );
-            attackerFighter.ShieldStrength = 1000;
-            CapitalShip defenderShip = CreateShip("defender-ship", hull: 100, weaponStrength: 0);
-            defenderShip.PrimaryWeapons[PrimaryWeaponType.IonCannon][0] = 100;
-            defenderShip.PrimaryWeapons[PrimaryWeaponType.IonCannon][4] = 100;
-            Starfighter defenderFighter = CreateFighter(
-                "defender-fighter",
-                squadronSize: 12,
-                weaponStrength: 10
-            );
-
-            SpaceCombatResult result = Resolve(
-                new[] { attackerShip },
-                new[] { attackerFighter },
-                new[] { defenderShip },
-                new[] { defenderFighter },
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
-            Assert.AreEqual(0, GetShipOutcome(result, defenderShip).HullAfter);
-        }
-
-        [Test]
-        public void Resolve_FighterWeaponStrength_ScalesFullSquadronWeaponBank()
-        {
-            Starfighter singleFighter = CreateFighter(
-                "single-fighter",
-                squadronSize: 1,
-                weaponStrength: 1
-            );
-            Starfighter fullSquadron = CreateFighter(
-                "full-squadron",
-                squadronSize: 12,
-                weaponStrength: 1
-            );
-            CapitalShip firstTarget = CreatePassiveTarget("first-target", hull: 100);
-            CapitalShip secondTarget = CreatePassiveTarget("second-target", hull: 100);
-
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 1;
-            config.AutoResolveTargetScanDivisor = 1;
-
-            SpaceCombatResult first = Resolve(
-                config,
-                new List<CapitalShip>(),
-                new[] { singleFighter },
-                new[] { firstTarget },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
-            );
-            SpaceCombatResult second = Resolve(
-                config,
-                new List<CapitalShip>(),
-                new[] { fullSquadron },
-                new[] { secondTarget },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(99, GetShipOutcome(first, firstTarget).HullAfter);
-            Assert.AreEqual(98, GetShipOutcome(second, secondTarget).HullAfter);
-        }
-
-        [Test]
-        public void Resolve_DamagedFighterSquadron_DealsProportionalAggregateDamage()
-        {
-            Starfighter attacker = CreateFighter("attacker", squadronSize: 12, weaponStrength: 12);
-            attacker.CurrentSquadronSize = 6;
-            CapitalShip defender = CreatePassiveTarget("defender", hull: 100);
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.LaserCannonCapitalDamageMultiplier = 1;
-            config.AutoResolveMaximumIterations = 1;
-            config.AutoResolveTargetScanDivisor = 1;
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new List<CapitalShip>(),
-                new[] { attacker },
-                new[] { defender },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(28, GetShipOutcome(result, defender).HullAfter);
-        }
-
-        [TestCase(12, 12, 5, 60, 12)]
-        [TestCase(12, 12, 5, 68, 11)]
-        [TestCase(12, 6, 5, 30, 6)]
-        [TestCase(12, 6, 5, 38, 5)]
-        [TestCase(1, 1, 5, 13, 0)]
-        [TestCase(12, 12, 0, 8, 11)]
-        public void Resolve_FighterShieldCapacity_ScalesWithSurvivingCraft(
-            int maximumCraft,
-            int survivingCraft,
-            int shieldsPerCraft,
-            int damage,
-            int expectedCraft
-        )
-        {
-            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: damage);
-            Starfighter defender = CreateFighter(
-                "defender",
-                squadronSize: maximumCraft,
-                weaponStrength: 0
-            );
-            defender.CurrentSquadronSize = survivingCraft;
-            defender.ShieldStrength = shieldsPerCraft;
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 1;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveStartingDistance = 0;
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new[] { attacker },
-                new List<Starfighter>(),
-                new List<CapitalShip>(),
-                new[] { defender },
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(expectedCraft, GetFighterOutcome(result, defender).SquadronSizeAfter);
-        }
-
-        [Test]
-        public void Resolve_FighterShieldRecovery_CapsCapacityToRemainingHull()
-        {
-            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 70);
-            Starfighter defender = CreateFighter("defender", squadronSize: 12, weaponStrength: 0);
-            defender.ShieldStrength = 5;
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 2;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveStartingDistance = 0;
-            config.AutoResolveFighterShieldRechargePerCraft = 10;
-
-            SpaceCombatResult result = Resolve(
-                config,
-                new[] { attacker },
-                new List<Starfighter>(),
-                new List<CapitalShip>(),
-                new[] { defender },
-                defenderCanWithdraw: true
-            );
-
-            Assert.AreEqual(9, GetFighterOutcome(result, defender).SquadronSizeAfter);
-        }
-
-        [Test]
         public void Resolve_DamagedCapitalShip_TakesLongerToDefeatEquivalentTarget()
         {
             CapitalShip undamaged = CreateShip("undamaged", hull: 100, weaponStrength: 10);
@@ -1299,16 +849,8 @@ namespace Rebellion.Tests.Gameplay
             CapitalShip firstTarget = CreatePassiveTarget("first-target", hull: 1000);
             CapitalShip secondTarget = CreatePassiveTarget("second-target", hull: 1000);
 
-            SpaceCombatResult first = Resolve(
-                new[] { undamaged },
-                new[] { firstTarget },
-                defenderCanWithdraw: true
-            );
-            SpaceCombatResult second = Resolve(
-                new[] { damaged },
-                new[] { secondTarget },
-                defenderCanWithdraw: true
-            );
+            SpaceCombatResult first = Resolve(new[] { undamaged }, new[] { firstTarget });
+            SpaceCombatResult second = Resolve(new[] { damaged }, new[] { secondTarget });
 
             Assert.Less(first.IterationsCompleted, second.IterationsCompleted);
         }
@@ -1320,17 +862,12 @@ namespace Rebellion.Tests.Gameplay
             attacker.CurrentHullStrength = 1;
             CapitalShip defender = CreatePassiveTarget("defender", hull: 100);
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 1;
-            config.AutoResolveStartingDistance = 0;
-            config.AutoResolveTargetScanDivisor = 1;
-
-            SpaceCombatResult result = Resolve(
+            SpaceCombatResult result = ResolveSingleStep(
                 config,
                 new[] { attacker },
                 new List<Starfighter>(),
                 new[] { defender },
-                new List<Starfighter>(),
-                defenderCanWithdraw: true
+                new List<Starfighter>()
             );
 
             Assert.AreEqual(99, GetShipOutcome(result, defender).HullAfter);
@@ -1345,9 +882,13 @@ namespace Rebellion.Tests.Gameplay
             defender.ShieldRechargeRate = 1;
 
             SpaceCombatResult result = Resolve(
+                CreateConfig(),
                 new[] { attacker },
+                Array.Empty<Starfighter>(),
                 new[] { defender },
-                defenderCanWithdraw: true
+                Array.Empty<Starfighter>(),
+                defenderCanWithdraw: true,
+                random: new FixedCombatRNG(100)
             );
 
             Assert.AreEqual(100, GetShipOutcome(result, defender).HullAfter);
@@ -1361,44 +902,136 @@ namespace Rebellion.Tests.Gameplay
             defender.MaxShieldStrength = 0;
             defender.ShieldRechargeRate = 100;
 
-            SpaceCombatResult result = Resolve(
+            SpaceCombatResult result = ResolveSingleStep(
+                CreateConfig(),
                 new[] { attacker },
+                Array.Empty<Starfighter>(),
                 new[] { defender },
-                defenderCanWithdraw: true
+                Array.Empty<Starfighter>()
             );
 
             Assert.Less(GetShipOutcome(result, defender).HullAfter, 100);
         }
 
         [Test]
-        public void Resolve_ShieldsDepleteBeyondStagnationWindow_ContinuesCombat()
+        public void Resolve_ShieldsDepleteWithoutEscape_ContinuesUntilHullIsDestroyed()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 10);
             CapitalShip defender = CreateShip("defender", hull: 100, weaponStrength: 0);
             defender.MaxShieldStrength = 500;
 
-            SpaceCombatResult result = Resolve(
-                new[] { attacker },
-                new[] { defender },
-                defenderCanWithdraw: true
-            );
+            SpaceCombatResult result = Resolve(new[] { attacker }, new[] { defender });
 
             Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
             Assert.AreEqual(0, GetShipOutcome(result, defender).HullAfter);
         }
 
+        [TestCase(false, 1)]
+        [TestCase(true, 4096)]
+        public void Resolve_LegacyIterationLimit_ContinuesBeyond4096Iterations(
+            bool reverseSides,
+            int legacyLimit
+        )
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 1);
+            attacker.MaxShieldStrength = 100;
+            attacker.ShieldRechargeRate = 100;
+            CapitalShip defender = CreateShip("defender", hull: 6000, weaponStrength: 1);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveStagnationIterations = 8000;
+            XmlDocument document = new XmlDocument();
+            document.LoadXml(SerializationHelper.Serialize(config));
+            XmlElement limit = document.CreateElement("AutoResolveMaximumIterations");
+            limit.InnerText = legacyLimit.ToString();
+            document.DocumentElement.AppendChild(limit);
+            config = SerializationHelper.Deserialize<GameConfig.SpaceCombatConfig>(
+                document.OuterXml
+            );
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new[] { reverseSides ? defender : attacker },
+                new List<Starfighter>(),
+                new[] { reverseSides ? attacker : defender },
+                new List<Starfighter>(),
+                random: new FixedCombatRNG(100)
+            );
+
+            Assert.Greater(result.IterationsCompleted, 4096);
+            Assert.AreEqual(0, GetShipOutcome(result, defender).HullAfter);
+            Assert.AreEqual(100, GetShipOutcome(result, attacker).HullAfter);
+            Assert.AreEqual(
+                reverseSides ? CombatSide.Defender : CombatSide.Attacker,
+                result.Winner
+            );
+        }
+
         [Test]
-        public void Resolve_IntactForceBelowOpposingStrengthThreshold_WithdrawsBeforeFiring()
+        public void Resolve_ShieldRechargeEqualToIncomingFire_SuppressesStrengthForWithdrawal()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 20);
+            CapitalShip defender = CreateShip("defender", hull: 100, weaponStrength: 20);
+            foreach (CapitalShip ship in new[] { attacker, defender })
+            {
+                ship.MaxShieldStrength = 100;
+                ship.ShieldRechargeRate = 10;
+                ship.WeaponRecharge = 10;
+            }
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveStagnationIterations = 5;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new[] { attacker },
+                new List<Starfighter>(),
+                new[] { defender },
+                new List<Starfighter>(),
+                attackerCanWithdraw: true,
+                defenderCanWithdraw: true,
+                random: new FixedCombatRNG(100)
+            );
+
+            Assert.AreEqual(1, result.IterationsCompleted);
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.DefenderOutcome);
+            Assert.AreEqual(100, GetShipOutcome(result, attacker).HullAfter);
+            Assert.AreEqual(100, GetShipOutcome(result, defender).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_UnarmedForcesWithEscape_WithdrawOnTheirFirstUpdate()
+        {
+            CapitalShip attacker = CreatePassiveTarget("attacker", hull: 100);
+            CapitalShip defender = CreatePassiveTarget("defender", hull: 100);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveStagnationIterations = 7;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new[] { attacker },
+                new List<Starfighter>(),
+                new[] { defender },
+                new List<Starfighter>(),
+                attackerCanWithdraw: true,
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(1, result.IterationsCompleted);
+            Assert.AreEqual(CombatSide.Draw, result.Winner);
+            Assert.AreEqual(100, GetShipOutcome(result, attacker).HullAfter);
+            Assert.AreEqual(100, GetShipOutcome(result, defender).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_IntactForceBelowOpposingStrengthThreshold_FiresBeforeWithdrawing()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 100);
+            attacker.ShieldRechargeRate = 1000;
             CapitalShip defender = CreateShip("defender", hull: 1000, weaponStrength: 32);
             defender.SublightSpeed = 10;
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 1;
-            config.AutoResolveRetreatStrengthRatio = 0.33;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveStartingDistance = 0;
-            config.AutoResolveWithdrawalDistance = 0;
+            config.AutoResolveStagnationIterations = 1;
+            config.AutoResolveRetreatStrengthRatio = 0.34;
 
             SpaceCombatResult result = Resolve(
                 config,
@@ -1407,11 +1040,12 @@ namespace Rebellion.Tests.Gameplay
                 new[] { defender },
                 new List<Starfighter>(),
                 defenderCanWithdraw: true,
-                random: new ArcDamageRNG()
+                random: new FixedCombatRNG(0)
             );
 
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
-            Assert.AreEqual(1000, GetShipOutcome(result, attacker).HullAfter);
+            Assert.AreEqual(968, GetShipOutcome(result, attacker).HullAfter);
+            Assert.AreEqual(1, result.IterationsCompleted);
         }
 
         [Test]
@@ -1421,11 +1055,8 @@ namespace Rebellion.Tests.Gameplay
             CapitalShip defender = CreateShip("defender", hull: 1000, weaponStrength: 33);
             defender.SublightSpeed = 10;
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveStagnationIterations = 1;
             config.AutoResolveRetreatStrengthRatio = 0.33;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveStartingDistance = 0;
-            config.AutoResolveWithdrawalDistance = 0;
 
             SpaceCombatResult result = Resolve(
                 config,
@@ -1434,7 +1065,7 @@ namespace Rebellion.Tests.Gameplay
                 new[] { defender },
                 new List<Starfighter>(),
                 defenderCanWithdraw: true,
-                random: new ArcDamageRNG()
+                random: new FixedCombatRNG(0)
             );
 
             Assert.Less(GetShipOutcome(result, attacker).HullAfter, 1000);
@@ -1447,10 +1078,8 @@ namespace Rebellion.Tests.Gameplay
             CapitalShip defender = CreatePassiveTarget("defender", hull: 1000);
             defender.SublightSpeed = 10;
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveStagnationIterations = 1;
             config.AutoResolveRetreatStrengthRatio = 0.33;
-            config.AutoResolveStartingDistance = 0;
-            config.AutoResolveWithdrawalDistance = 0;
 
             SpaceCombatResult result = Resolve(
                 config,
@@ -1472,11 +1101,8 @@ namespace Rebellion.Tests.Gameplay
             CapitalShip defender = CreateShip("defender", hull: 1000, weaponStrength: 1);
             defender.SublightSpeed = 10;
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveStagnationIterations = 1;
             config.AutoResolveRetreatStrengthRatio = 1.01;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveStartingDistance = 0;
-            config.AutoResolveWithdrawalDistance = 0;
 
             SpaceCombatResult result = Resolve(
                 config,
@@ -1485,7 +1111,7 @@ namespace Rebellion.Tests.Gameplay
                 new[] { defender },
                 new List<Starfighter>(),
                 defenderCanWithdraw: true,
-                random: new ArcDamageRNG()
+                random: new FixedCombatRNG(0)
             );
 
             Assert.IsFalse(GetShipOutcome(result, defender).Withdrew);
@@ -1507,11 +1133,8 @@ namespace Rebellion.Tests.Gameplay
             defender.WeaponRecharge = 60;
             defender.SublightSpeed = 10;
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveStagnationIterations = 1;
             config.AutoResolveRetreatStrengthRatio = 0.33;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveStartingDistance = 0;
-            config.AutoResolveWithdrawalDistance = 0;
 
             SpaceCombatResult result = Resolve(
                 config,
@@ -1520,11 +1143,11 @@ namespace Rebellion.Tests.Gameplay
                 new[] { defender },
                 new List<Starfighter>(),
                 defenderCanWithdraw: true,
-                random: new ArcDamageRNG()
+                random: new FixedCombatRNG(0)
             );
 
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
-            Assert.AreEqual(12, GetFighterOutcome(result, attackerFighter).SquadronSizeAfter);
+            Assert.AreEqual(6, GetFighterOutcome(result, attackerFighter).SquadronSizeAfter);
         }
 
         [TestCase(true, true)]
@@ -1539,7 +1162,6 @@ namespace Rebellion.Tests.Gameplay
             defender.SublightSpeed = 10;
             GameConfig.SpaceCombatConfig config = CreateConfig();
             config.AutoResolveRetreatStrengthRatio = 0.33;
-            config.AutoResolveTargetScanDivisor = 1;
 
             SpaceCombatResult result = Resolve(
                 config,
@@ -1548,7 +1170,7 @@ namespace Rebellion.Tests.Gameplay
                 new[] { defender },
                 new List<Starfighter>(),
                 defenderCanWithdraw: canWithdraw,
-                random: new ArcDamageRNG()
+                random: new FixedCombatRNG(0)
             );
 
             Assert.AreEqual(
@@ -1585,16 +1207,15 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Resolve_TorpedoOnlyFighterAboveOpposingStrengthThreshold_DoesNotWithdraw()
+        public void Resolve_TorpedoOnlyFighterWithoutPrimaryWeapons_WithdrawsBelowThreshold()
         {
             Starfighter attacker = CreateFighter("attacker", squadronSize: 1, weaponStrength: 0);
+            attacker.SublightSpeed = 10;
             attacker.Torpedoes = 60;
             attacker.TorpedoRange = 100;
             CapitalShip defender = CreateShip("defender", hull: 40, weaponStrength: 1);
             GameConfig.SpaceCombatConfig config = CreateConfig();
             config.AutoResolveRetreatStrengthRatio = 0.33;
-            config.AutoResolveTargetScanDivisor = 1;
-            config.AutoResolveStartingDistance = 0;
 
             SpaceCombatResult result = Resolve(
                 config,
@@ -1606,14 +1227,15 @@ namespace Rebellion.Tests.Gameplay
                 defenderCanWithdraw: false
             );
 
-            Assert.AreNotEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.DefenderOutcome);
         }
 
         [Test]
         public void Resolve_ThreeCapitalShipsWithdrawWithSlowNonHyperdriveShip_DoesNotDelayWithdrawal()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 10);
+            attacker.ShieldRechargeRate = 1000;
             CapitalShip firstWithdrawingShip = CreateShip(
                 "first-withdrawing-ship",
                 hull: 1000,
@@ -1631,10 +1253,7 @@ namespace Rebellion.Tests.Gameplay
             strandedShip.SublightSpeed = 1;
             GameConfig.SpaceCombatConfig config = CreateConfig();
             config.AutoResolveRetreatStrengthRatio = 1.01;
-            config.AutoResolveStartingDistance = 0;
-            config.AutoResolveWithdrawalDistance = 10;
-            config.AutoResolveTargetScanDivisor = 1;
-            SpaceCombatResult result = CreateResolver(config, new ArcDamageRNG())
+            SpaceCombatResult result = CreateResolver(config, new FixedCombatRNG(0))
                 .Resolve(
                     new[] { attacker },
                     new List<Starfighter>(),
@@ -1648,9 +1267,9 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsTrue(GetShipOutcome(result, secondWithdrawingShip).Withdrew);
             Assert.IsFalse(GetShipOutcome(result, strandedShip).Withdrew);
             Assert.AreEqual(0, GetShipOutcome(result, strandedShip).HullAfter);
-            Assert.AreEqual(1000, GetShipOutcome(result, attacker).HullAfter);
+            Assert.AreEqual(997, GetShipOutcome(result, attacker).HullAfter);
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
-            Assert.AreEqual(2, result.IterationsCompleted);
+            Assert.AreEqual(1, result.IterationsCompleted);
         }
 
         [Test]
@@ -1675,10 +1294,7 @@ namespace Rebellion.Tests.Gameplay
             fastFleetShip.AddChild(carriedFighter);
             GameConfig.SpaceCombatConfig config = CreateConfig();
             config.AutoResolveRetreatStrengthRatio = 1.01;
-            config.AutoResolveStartingDistance = 0;
-            config.AutoResolveWithdrawalDistance = 20;
-            config.AutoResolveTargetScanDivisor = 1;
-            SpaceCombatResult result = CreateResolver(config, new ArcDamageRNG())
+            SpaceCombatResult result = CreateResolver(config, new FixedCombatRNG(0))
                 .Resolve(
                     new[] { attacker },
                     new List<Starfighter>(),
@@ -1696,16 +1312,13 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Resolve_ForceBeginsWithdrawal_CannotBeTargeted()
+        public void Resolve_ForceWithdrawsAfterItsFiringPhase_LeavesBeforeTheNextIteration()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 5);
             CapitalShip defender = CreateShip("defender", hull: 100, weaponStrength: 1);
             defender.SublightSpeed = 10;
             GameConfig.SpaceCombatConfig config = CreateConfig();
             config.AutoResolveRetreatStrengthRatio = 1.01;
-            config.AutoResolveStartingDistance = 0;
-            config.AutoResolveWithdrawalDistance = 20;
-            config.AutoResolveTargetScanDivisor = 1;
 
             SpaceCombatResult result = Resolve(
                 config,
@@ -1714,26 +1327,27 @@ namespace Rebellion.Tests.Gameplay
                 new[] { defender },
                 new List<Starfighter>(),
                 defenderCanWithdraw: true,
-                random: new ArcDamageRNG()
+                random: new FixedCombatRNG(0),
+                attackerHasInitiative: true
             );
 
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
-            Assert.AreEqual(100, GetShipOutcome(result, defender).HullAfter);
+            Assert.AreEqual(95, GetShipOutcome(result, defender).HullAfter);
+            Assert.AreEqual(99, GetShipOutcome(result, attacker).HullAfter);
+            Assert.AreEqual(1, result.IterationsCompleted);
         }
 
         [Test]
-        public void Resolve_UnitsReachWithdrawalBoundaryAtDifferentTimes_CompletesEachUnitIndependently()
+        public void Resolve_ZeroSublightSpeed_RetainsCommandMobilityForWithdrawal()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 5);
-            CapitalShip fastDefender = CreateShip("fast-defender", hull: 100, weaponStrength: 1);
+            CapitalShip fastDefender = CreatePassiveTarget("fast-defender", hull: 100);
             fastDefender.SublightSpeed = 20;
-            CapitalShip slowDefender = CreateShip("slow-defender", hull: 100, weaponStrength: 1);
-            slowDefender.SublightSpeed = 10;
+            CapitalShip slowDefender = CreatePassiveTarget("slow-defender", hull: 100);
+            slowDefender.SublightSpeed = 0;
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveStagnationIterations = 1;
             config.AutoResolveRetreatStrengthRatio = 1.01;
-            config.AutoResolveStartingDistance = 0;
-            config.AutoResolveWithdrawalDistance = 20;
 
             SpaceCombatResult result = Resolve(
                 config,
@@ -1745,21 +1359,23 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.IsTrue(GetShipOutcome(result, fastDefender).Withdrew);
-            Assert.IsFalse(GetShipOutcome(result, slowDefender).Withdrew);
+            Assert.IsTrue(GetShipOutcome(result, slowDefender).Withdrew);
+            Assert.AreEqual(100, GetShipOutcome(result, slowDefender).HullAfter);
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(1, result.IterationsCompleted);
         }
 
         [Test]
-        public void Resolve_WithdrawalCannotAdvance_DoesNotWithdrawOpposingForce()
+        public void Resolve_NoHyperdrive_StrandsUnitWithoutWithdrawingOpposingForce()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 10);
+            attacker.ShieldRechargeRate = 100;
             CapitalShip defender = CreateShip("defender", hull: 100, weaponStrength: 1);
             defender.SublightSpeed = 0;
+            defender.Hyperdrive = 0;
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveMaximumIterations = 2;
             config.AutoResolveStagnationIterations = 2;
             config.AutoResolveRetreatStrengthRatio = 0.33;
-            config.AutoResolveStartingDistance = 0;
-            config.AutoResolveWithdrawalDistance = 20;
 
             SpaceCombatResult result = Resolve(
                 config,
@@ -1792,7 +1408,6 @@ namespace Rebellion.Tests.Gameplay
             fighter.SetParent(carrier);
             GameConfig.SpaceCombatConfig config = CreateConfig();
             config.AutoResolveRetreatStrengthRatio = 1.01;
-            config.AutoResolveStartingDistance = 0;
             SpaceCombatResult result = CreateResolver(config)
                 .Resolve(
                     new[] { attacker },
@@ -1841,10 +1456,7 @@ namespace Rebellion.Tests.Gameplay
             otherFleetCarrier.SetParent(recoveryFleet);
             GameConfig.SpaceCombatConfig config = CreateConfig();
             config.AutoResolveRetreatStrengthRatio = 1.01;
-            config.AutoResolveStartingDistance = 0;
-            config.AutoResolveWithdrawalDistance = 20;
-            config.AutoResolveTargetScanDivisor = 1;
-            SpaceCombatResult result = CreateResolver(config, new ArcDamageRNG())
+            SpaceCombatResult result = CreateResolver(config, new FixedCombatRNG(0))
                 .Resolve(
                     new[] { attacker },
                     new List<Starfighter>(),
@@ -1884,10 +1496,7 @@ namespace Rebellion.Tests.Gameplay
             fighter.SetParent(carrier);
             GameConfig.SpaceCombatConfig config = CreateConfig();
             config.AutoResolveRetreatStrengthRatio = 1.01;
-            config.AutoResolveStartingDistance = 0;
-            config.AutoResolveWithdrawalDistance = 20;
-            config.AutoResolveTargetScanDivisor = 1;
-            SpaceCombatResult result = CreateResolver(config, new ArcDamageRNG())
+            SpaceCombatResult result = CreateResolver(config, new FixedCombatRNG(0))
                 .Resolve(
                     new[] { attacker },
                     new List<Starfighter>(),
@@ -1903,7 +1512,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Resolve_TwoCarriersDestroyedWithNonHyperdriveFighters_DestroysFightersWithoutReturnFire()
+        public void Resolve_FightersWithDestroyedStrategicParents_FireBeforeRecoveryFails()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 100);
             attacker.WeaponRecharge = 100;
@@ -1940,10 +1549,7 @@ namespace Rebellion.Tests.Gameplay
             secondFighter.SetParent(secondCarrier);
             GameConfig.SpaceCombatConfig config = CreateConfig();
             config.AutoResolveRetreatStrengthRatio = 1.01;
-            config.AutoResolveStartingDistance = 0;
-            config.AutoResolveWithdrawalDistance = 10;
-            config.AutoResolveTargetScanDivisor = 1;
-            SpaceCombatResult result = CreateResolver(config, new ArcDamageRNG())
+            SpaceCombatResult result = CreateResolver(config, new FixedCombatRNG(0))
                 .Resolve(
                     new[] { attacker },
                     new List<Starfighter>(),
@@ -1959,11 +1565,11 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsFalse(GetFighterOutcome(result, secondFighter).Withdrew);
             Assert.AreEqual(0, GetFighterOutcome(result, firstFighter).SquadronSizeAfter);
             Assert.AreEqual(0, GetFighterOutcome(result, secondFighter).SquadronSizeAfter);
-            Assert.AreEqual(1000, GetShipOutcome(result, attacker).HullAfter);
+            Assert.Less(GetShipOutcome(result, attacker).HullAfter, 1000);
         }
 
         [Test]
-        public void Resolve_RecoveryCarrierBayOccupiedByInTransitFighter_DestroysNonHyperdriveFighter()
+        public void Resolve_RecoveryCarrierBayOccupiedByNonparticipatingFighter_UsesTacticalCapacity()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 10);
             CapitalShip destroyedCarrier = CreateShip(
@@ -2006,10 +1612,7 @@ namespace Rebellion.Tests.Gameplay
             inTransitFighter.SetParent(recoveryCarrier);
             GameConfig.SpaceCombatConfig config = CreateConfig();
             config.AutoResolveRetreatStrengthRatio = 1.01;
-            config.AutoResolveStartingDistance = 0;
-            config.AutoResolveWithdrawalDistance = 20;
-            config.AutoResolveTargetScanDivisor = 1;
-            SpaceCombatResult result = CreateResolver(config, new ArcDamageRNG())
+            SpaceCombatResult result = CreateResolver(config, new FixedCombatRNG(0))
                 .Resolve(
                     new[] { attacker },
                     new List<Starfighter>(),
@@ -2021,8 +1624,8 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(0, GetShipOutcome(result, destroyedCarrier).HullAfter);
             Assert.IsTrue(GetShipOutcome(result, recoveryCarrier).Withdrew);
-            Assert.IsFalse(GetFighterOutcome(result, strandedFighter).Withdrew);
-            Assert.AreEqual(0, GetFighterOutcome(result, strandedFighter).SquadronSizeAfter);
+            Assert.IsTrue(GetFighterOutcome(result, strandedFighter).Withdrew);
+            Assert.AreEqual(12, GetFighterOutcome(result, strandedFighter).SquadronSizeAfter);
         }
 
         [Test]
@@ -2057,10 +1660,7 @@ namespace Rebellion.Tests.Gameplay
             fighter.SetParent(destroyedCarrier);
             GameConfig.SpaceCombatConfig config = CreateConfig();
             config.AutoResolveRetreatStrengthRatio = 1.01;
-            config.AutoResolveStartingDistance = 0;
-            config.AutoResolveWithdrawalDistance = 20;
-            config.AutoResolveTargetScanDivisor = 1;
-            SpaceCombatResult result = CreateResolver(config, new ArcDamageRNG())
+            SpaceCombatResult result = CreateResolver(config, new FixedCombatRNG(0))
                 .Resolve(
                     new[] { attacker },
                     new List<Starfighter>(),
@@ -2122,10 +1722,7 @@ namespace Rebellion.Tests.Gameplay
             hyperdriveFighter.SetParent(recoveryCarrier);
             GameConfig.SpaceCombatConfig config = CreateConfig();
             config.AutoResolveRetreatStrengthRatio = 1.01;
-            config.AutoResolveStartingDistance = 0;
-            config.AutoResolveWithdrawalDistance = 20;
-            config.AutoResolveTargetScanDivisor = 1;
-            SpaceCombatResult result = CreateResolver(config, new ArcDamageRNG())
+            SpaceCombatResult result = CreateResolver(config, new FixedCombatRNG(0))
                 .Resolve(
                     new[] { attacker },
                     new List<Starfighter>(),
@@ -2168,9 +1765,7 @@ namespace Rebellion.Tests.Gameplay
             defender.Hyperdrive = 0;
             defender.WeaponRecharge = 0;
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveStartingDistance = 0;
             config.AutoResolveStagnationIterations = 2;
-            config.AutoResolveTargetScanDivisor = 1;
 
             SpaceCombatResult result = Resolve(
                 config,
@@ -2184,7 +1779,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
             Assert.AreEqual(0, GetShipOutcome(result, attacker).HullAfter);
             Assert.AreEqual(0, GetShipOutcome(result, defender).HullAfter);
-            Assert.AreEqual(3, result.IterationsCompleted);
+            Assert.AreEqual(2, result.IterationsCompleted);
         }
 
         [Test]
@@ -2213,7 +1808,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
             Assert.IsTrue(targets.All(target => GetShipOutcome(result, target).HullAfter == 0));
             Assert.IsFalse(result.ShipDamage.Any(damage => damage.Ship == planetDestroyer));
-            Assert.AreEqual(10, result.IterationsCompleted);
+            Assert.AreEqual(9, result.IterationsCompleted);
         }
 
         [Test]
@@ -2231,7 +1826,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(0, GetShipOutcome(result, firstTarget).HullAfter);
             Assert.AreEqual(0, GetShipOutcome(result, secondTarget).HullAfter);
-            Assert.AreEqual(2, result.IterationsCompleted);
+            Assert.AreEqual(1, result.IterationsCompleted);
         }
 
         [Test]
@@ -2258,7 +1853,7 @@ namespace Rebellion.Tests.Gameplay
                 result.ShipDamage.Single(damage => damage.Ship == planetDestroyer).HullAfter
             );
             Assert.IsFalse(result.FighterLosses.Any());
-            Assert.AreEqual(4, result.IterationsCompleted);
+            Assert.AreEqual(3, result.IterationsCompleted);
         }
 
         [Test]
@@ -2444,7 +2039,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsFalse(result.ShipDamage.Any(damage => damage.Ship == planetDestroyer));
             Assert.AreEqual(CombatSide.Defender, result.Winner);
             Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.AttackerOutcome);
-            Assert.AreEqual(121, result.IterationsCompleted);
+            Assert.AreEqual(120, result.IterationsCompleted);
         }
 
         [Test]
@@ -2495,7 +2090,7 @@ namespace Rebellion.Tests.Gameplay
                 result.ShipDamage.Single(damage => damage.Ship == planetDestroyer).HullAfter
             );
             Assert.AreEqual(CombatSide.Attacker, result.Winner);
-            Assert.AreEqual(121, result.IterationsCompleted);
+            Assert.AreEqual(120, result.IterationsCompleted);
         }
 
         [Test]
@@ -2567,7 +2162,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
             Assert.AreEqual(CombatSide.Attacker, result.Winner);
             Assert.IsTrue(result.WithdrawnUnits.Contains(planetDestroyer));
-            Assert.AreEqual(5, result.IterationsCompleted);
+            Assert.AreEqual(4, result.IterationsCompleted);
         }
 
         [Test]
@@ -2594,7 +2189,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
             Assert.IsTrue(GetShipOutcome(result, planetDestroyer).Withdrew);
             Assert.AreEqual(
-                5,
+                4,
                 result.IterationsCompleted,
                 "The planet destroyer withdrawal countdown must remain tactical progress."
             );
@@ -2604,7 +2199,6 @@ namespace Rebellion.Tests.Gameplay
         public void Resolve_SquadronsOnAttackRun_AreNotTargetedUntilRunCompletes()
         {
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveTargetScanDivisor = 1;
             CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
             CapitalShip picket = CreateShip("picket", hull: 1000, weaponStrength: 0);
             picket.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 500;
@@ -2624,7 +2218,10 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(0, GetFighterOutcome(result, torpedoFighter).SquadronSizeAfter);
             Assert.AreEqual(0, GetShipOutcome(result, planetDestroyer).HullAfter);
             Assert.AreEqual(CombatSide.Defender, result.Winner);
-            Assert.Greater(result.IterationsCompleted, 121);
+            Assert.AreEqual(
+                config.PlanetDestroyerAttackRunIterations + 1,
+                result.IterationsCompleted
+            );
         }
 
         [Test]
@@ -2672,7 +2269,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
             Assert.AreEqual(CombatSide.Attacker, result.Winner);
             Assert.IsFalse(result.WithdrawnUnits.Contains(planetDestroyer));
-            Assert.AreEqual(303, result.IterationsCompleted);
+            Assert.AreEqual(302, result.IterationsCompleted);
         }
 
         /// <summary>
@@ -2782,6 +2379,7 @@ namespace Rebellion.Tests.Gameplay
         /// <param name="random">The random.</param>
         /// <param name="attackerCommand">The attacker's tactical command modifiers.</param>
         /// <param name="defenderCommand">The defender's tactical command modifiers.</param>
+        /// <param name="attackerHasInitiative">Whether the attacker acts first.</param>
         /// <returns>The resolved value.</returns>
         private static SpaceCombatResult Resolve(
             GameConfig.SpaceCombatConfig config,
@@ -2793,7 +2391,8 @@ namespace Rebellion.Tests.Gameplay
             bool defenderCanWithdraw = false,
             IRandomNumberProvider random = null,
             SpaceCombatCommandModifiers attackerCommand = default,
-            SpaceCombatCommandModifiers defenderCommand = default
+            SpaceCombatCommandModifiers defenderCommand = default,
+            bool attackerHasInitiative = false
         )
         {
             return CreateResolver(config, random)
@@ -2805,7 +2404,8 @@ namespace Rebellion.Tests.Gameplay
                     attackerCanWithdraw,
                     defenderCanWithdraw,
                     attackerCommand,
-                    defenderCommand
+                    defenderCommand,
+                    attackerHasInitiative: attackerHasInitiative
                 );
         }
 
@@ -2821,24 +2421,15 @@ namespace Rebellion.Tests.Gameplay
                 CommanderCombatDivisor = 20,
                 LaserCannonCapitalDamageMultiplier = 1.0 / 6.0,
                 TurbolaserFighterDamageMultiplier = 1,
-                FighterIonCannonFighterDamageMultiplier = 0.5,
                 AutoResolveWeaponDamagePerStrength = 1,
+                AutoResolveCapitalWeaponRechargeMultiplier = 1,
                 AutoResolveTorpedoDamagePerStrength = 1,
                 AutoResolveFighterWeaponRechargeMultiplier = 3.751,
                 AutoResolveFighterShieldRechargePerCraft = 0.025,
                 AutoResolveFighterHullPerCraft = 8,
-                AutoResolveMaximumIterations = 4096,
                 AutoResolveStagnationIterations = 1200,
                 AutoResolveRetreatStrengthRatio = 0,
                 AutoResolveMinimumManeuverRatio = 0.1,
-                AutoResolveTargetScanDivisor = 3,
-                AutoResolveStartingDistance = 75,
-                AutoResolveWithdrawalDistance = 10,
-                AutoResolveComponentDamageInterval = 1,
-                AutoResolveComponentDamageRollMaximum = 10,
-                AutoResolveComponentDelayMinimum = 30,
-                AutoResolveComponentDelayMaximum = 50,
-                AutoResolveComponentDelayRecovery = 1,
                 AttackRunSelectionMaximumEvaluations = 1001,
                 AttackRunSelectionThresholdMultiplier = 0.5,
                 AttackRunTorpedoBudgetMultiplier = 0.53333336,
@@ -2970,6 +2561,62 @@ namespace Rebellion.Tests.Gameplay
         }
 
         /// <summary>
+        /// Creates a single firing phase against otherwise identical targets in stable order.
+        /// </summary>
+        /// <param name="configureCargo">Populates the later target before tactical state is captured.</param>
+        /// <returns>The battle result and its earlier and later targets.</returns>
+        private static (
+            SpaceCombatResult Result,
+            CapitalShip First,
+            CapitalShip Second
+        ) ResolveCargoPriorityBattle(Action<CapitalShip> configureCargo)
+        {
+            CapitalShip first = CreatePassiveTarget("target-1", 100);
+            CapitalShip second = CreatePassiveTarget("target-2", 100);
+            foreach (CapitalShip ship in new[] { first, second })
+            {
+                ship.OwnerInstanceID = "target-owner";
+                ship.RegimentCapacity = 1;
+            }
+            configureCargo(second);
+
+            SpaceCombatResult result = ResolveSingleStep(
+                CreateConfig(),
+                new[] { CreateShip("attacker", 100, 10) },
+                Array.Empty<Starfighter>(),
+                new[] { first, second },
+                Array.Empty<Starfighter>()
+            );
+            return (result, first, second);
+        }
+
+        /// <summary>
+        /// Creates one usable cargo unit with the synthetic target's owner.
+        /// </summary>
+        /// <param name="kind">The officer, regiment, or special-forces cargo category.</param>
+        /// <returns>The enabled and stationary cargo unit.</returns>
+        private static ISceneNode CreatePriorityCargo(string kind)
+        {
+            return kind switch
+            {
+                "officer" => new Officer { InstanceID = "cargo", OwnerInstanceID = "target-owner" },
+                "regiment" => new Regiment
+                {
+                    InstanceID = "cargo",
+                    OwnerInstanceID = "target-owner",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                "special-forces" => new SpecialForces
+                {
+                    InstanceID = "cargo",
+                    OwnerInstanceID = "target-owner",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+            };
+        }
+
+        /// <summary>
         /// Gets ship outcome.
         /// </summary>
         /// <param name="result">The result.</param>
@@ -3019,49 +2666,85 @@ namespace Rebellion.Tests.Gameplay
             return result.ShipDamage.Select(damage => damage.HullAfter);
         }
 
-        private sealed class ArcDamageRNG : IRandomNumberProvider
+        /// <summary>
+        /// Resolves one firing step against passive targets, preserving survivors at the stall.
+        /// </summary>
+        /// <param name="config">The combat rules.</param>
+        /// <param name="ships">The firing ships.</param>
+        /// <param name="fighters">The firing squadrons.</param>
+        /// <param name="targetShips">The passive ships.</param>
+        /// <param name="targetFighters">The passive squadrons.</param>
+        /// <param name="attackerCommand">The firing force's command ratings.</param>
+        /// <param name="defenderCommand">The receiving force's command ratings.</param>
+        /// <param name="random">Optional rolls that isolate the behavior under test.</param>
+        /// <returns>The resolved step.</returns>
+        private static SpaceCombatResult ResolveSingleStep(
+            GameConfig.SpaceCombatConfig config,
+            IReadOnlyList<CapitalShip> ships,
+            IReadOnlyList<Starfighter> fighters,
+            IReadOnlyList<CapitalShip> targetShips,
+            IReadOnlyList<Starfighter> targetFighters,
+            SpaceCombatCommandModifiers attackerCommand = default,
+            SpaceCombatCommandModifiers defenderCommand = default,
+            IRandomNumberProvider random = null
+        )
         {
-            /// <summary>
-            /// Executes next double.
-            /// </summary>
-            /// <returns>The result of next double.</returns>
-            public double NextDouble()
+            config.AutoResolveStagnationIterations = 1;
+            foreach (CapitalShip target in targetShips)
             {
-                return 0;
+                target.TypeID = "single-step-ship-" + target.InstanceID;
+                config.HyperdriveSystemCounts[target.TypeID] = 2;
             }
-
-            /// <summary>
-            /// Executes next int.
-            /// </summary>
-            /// <param name="min">The min.</param>
-            /// <param name="max">The max.</param>
-            /// <returns>The result of next int.</returns>
-            public int NextInt(int min, int max)
+            foreach (Starfighter target in targetFighters)
             {
-                return min == 1 && max == 11 ? 3 : min;
+                target.TypeID = "single-step-fighter-" + target.InstanceID;
+                config.HyperdriveSystemCounts[target.TypeID] = 2;
             }
+            return Resolve(
+                config,
+                ships,
+                fighters,
+                targetShips,
+                targetFighters,
+                defenderCanWithdraw: true,
+                random: random ?? new FixedCombatRNG(100),
+                attackerCommand: attackerCommand,
+                defenderCommand: defenderCommand,
+                attackerHasInitiative: true
+            );
         }
 
-        private sealed class AttackDelayRNG : IRandomNumberProvider
+        private sealed class FixedCombatRNG : IRandomNumberProvider
         {
+            private readonly int _roll;
+
             /// <summary>
-            /// Executes next double.
+            /// Uses one reproducible combat roll to isolate a damage rule.
             /// </summary>
-            /// <returns>The result of next double.</returns>
+            /// <param name="roll">The roll to return within the requested range.</param>
+            internal FixedCombatRNG(int roll)
+            {
+                _roll = roll;
+            }
+
+            /// <summary>
+            /// Supplies a reproducible fractional roll.
+            /// </summary>
+            /// <returns>A zero fractional roll.</returns>
             public double NextDouble()
             {
                 return 0;
             }
 
             /// <summary>
-            /// Executes next int.
+            /// Supplies the fixed roll within the requested bounds.
             /// </summary>
-            /// <param name="min">The min.</param>
-            /// <param name="max">The max.</param>
-            /// <returns>The result of next int.</returns>
+            /// <param name="min">The inclusive lower bound.</param>
+            /// <param name="max">The exclusive upper bound.</param>
+            /// <returns>The clamped fixed roll.</returns>
             public int NextInt(int min, int max)
             {
-                return min == 1 && max == 11 ? 1 : min;
+                return Math.Clamp(_roll, min, max - 1);
             }
         }
     }
