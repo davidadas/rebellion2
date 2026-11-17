@@ -47,6 +47,8 @@ namespace Rebellion.Game.Galaxy
     /// </summary>
     public class Planet : ContainerNode, IEncyclopediaSource
     {
+        private GameRoot _blockadeGame;
+
         /// <summary>
         /// Reports completed support changes to the session's notification observer.
         /// </summary>
@@ -128,6 +130,18 @@ namespace Rebellion.Game.Galaxy
 
         [PersistableMember(Name = "Starfighters")]
         private List<Starfighter> _starfighters = new List<Starfighter>();
+
+        /// <summary>
+        /// Gets the direct fleet collection for indexed runtime orbital queries without copying it.
+        /// The view includes disabled children and must not be retained across scene mutations.
+        /// </summary>
+        internal IReadOnlyList<Fleet> DirectOrbitalFleets => _fleets;
+
+        /// <summary>
+        /// Gets the direct fighter collection for indexed runtime orbital queries without copying it.
+        /// The view includes disabled children and must not be retained across scene mutations.
+        /// </summary>
+        internal IReadOnlyList<Starfighter> DirectOrbitalStarfighters => _starfighters;
 
         [PersistableMember(Name = "Missions")]
         private List<Mission> _missions = new List<Mission>();
@@ -248,16 +262,25 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
+        /// Binds authoritative orbital queries while this exact planet is registered in a game.
+        /// Detached copies retain no live game reference.
+        /// </summary>
+        /// <param name="game">The owning live game, or null when the planet is unregistered.</param>
+        internal void BindBlockadeGame(GameRoot game) => _blockadeGame = game;
+
+        /// <summary>
         /// Checks if the planet is blockaded.
-        /// An owned planet is blockaded when a stationary hostile fleet has an operational
-        /// capital ship and no equivalent defending fleet is present. A neutral planet is
-        /// blockaded by any such fleet in orbit only while it has a civilian population.
+        /// In a configured two-faction campaign, ready orbital presence from both factions
+        /// prevents a blockade. Other faction domains retain fleet-based ownership rules.
+        /// A neutral planet can be blockaded only while it has a civilian population.
         /// </summary>
         /// <returns>True if the planet is blockaded, false otherwise.</returns>
         public bool IsBlockaded()
         {
             if (IsDestroyed || (!IsColonized && string.IsNullOrEmpty(OwnerInstanceID)))
                 return false;
+            if (_blockadeGame?.TryCalculateSpaceCombatBlockade(this, out bool blockaded) == true)
+                return blockaded;
             IReadOnlyList<Fleet> fleets = GetChildren<Fleet>();
             bool hasHostile = fleets.Any(f =>
                 f.Movement == null

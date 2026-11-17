@@ -42,6 +42,7 @@ namespace Rebellion.Game
         private GalaxyMap _galaxy;
         private readonly SpaceCombatEntryTracker _spaceCombatEntries = new();
         private readonly SpaceCombatMilitaryRoster _spaceCombatMilitaryRoster = new();
+        private TacticalCombatDefinition _spaceCombatDefinition;
 
         /// <summary>
         /// Reports an officer whose retained discovery state has just become enabled.
@@ -301,8 +302,33 @@ namespace Rebellion.Game
         /// Binds authored combat faction indexes without changing retained planet entry values.
         /// </summary>
         /// <param name="definition">The active content pack's combat definitions.</param>
-        internal void ConfigureSpaceCombatEntries(TacticalCombatDefinition definition) =>
+        internal void ConfigureSpaceCombatEntries(TacticalCombatDefinition definition)
+        {
             _spaceCombatEntries.Configure(definition.Factions);
+            _spaceCombatDefinition = definition;
+        }
+
+        /// <summary>
+        /// Evaluates a registered planet using the current two-faction orbital rules when applicable.
+        /// </summary>
+        /// <param name="planet">The authoritative planet registered in this game.</param>
+        /// <param name="blockaded">The current blockade state when the faction domain is supported.</param>
+        /// <returns>Whether the current campaign and definitions identify the exact faction pair.</returns>
+        internal bool TryCalculateSpaceCombatBlockade(Planet planet, out bool blockaded) =>
+            SpaceCombatBlockadeRules.TryCalculate(
+                this,
+                _spaceCombatDefinition,
+                planet,
+                out blockaded
+            );
+
+        /// <summary>
+        /// Checks the readiness index for an active fleet opposing a registered planet's owner.
+        /// </summary>
+        /// <param name="planet">The registered planet whose current fleets are inspected.</param>
+        /// <returns>Whether a ready opposing fleet is present.</returns>
+        internal bool HasReadyOpposingFleet(Planet planet) =>
+            _spaceCombatEntries.HasReadyOpposingFleet(planet);
 
         /// <summary>
         /// Captures both requested factions' current direct orbital presence at one live planet.
@@ -1149,6 +1175,8 @@ namespace Rebellion.Game
             if (node is Officer registeredOfficer)
                 registeredOfficer.ReconcileForceDiscoveryState();
             _spaceCombatEntries.Register(node);
+            if (node is Planet planet)
+                planet.BindBlockadeGame(this);
         }
 
         /// <summary>
@@ -1157,6 +1185,8 @@ namespace Rebellion.Game
         /// <param name="node">The scene node to deregister.</param>
         public void RemoveSceneNodeByInstanceID(ISceneNode node)
         {
+            if (node is Planet planet)
+                planet.BindBlockadeGame(null);
             _spaceCombatEntries.Unregister(node);
             NodesByInstanceID.Remove(node.InstanceID);
             _spaceCombatMilitaryRoster.Unregister(node.InstanceID);
@@ -1198,6 +1228,7 @@ namespace Rebellion.Game
         /// </summary>
         public void RebuildSceneState()
         {
+            ClearBlockadeBindings();
             _spaceCombatEntries.Clear();
             foreach (Officer officer in _registeredOfficers)
                 officer.UnbindForceRuntime();
@@ -1217,12 +1248,23 @@ namespace Rebellion.Game
         /// <returns>The result of initialize galaxy.</returns>
         private GalaxyMap InitializeGalaxy(GalaxyMap galaxy)
         {
+            ClearBlockadeBindings();
             NodesByInstanceID.Clear();
             _spaceCombatMilitaryRoster.Clear();
             foreach (Faction faction in _factions)
                 faction.ClearOwnedUnits();
             InitializeSceneRoot(galaxy);
             return galaxy;
+        }
+
+        /// <summary>
+        /// Releases authoritative blockade ownership before replacing the registered scene graph.
+        /// </summary>
+        private void ClearBlockadeBindings()
+        {
+            foreach (ISceneNode node in NodesByInstanceID.Values)
+                if (node is Planet planet)
+                    planet.BindBlockadeGame(null);
         }
 
         /// <summary>
