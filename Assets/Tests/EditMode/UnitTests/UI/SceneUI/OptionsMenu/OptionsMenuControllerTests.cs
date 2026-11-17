@@ -46,6 +46,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             _saveCompletion = null;
             _loadCompletion = null;
             _saveRequests = 0;
+            _loadResult = false;
+            _menuOpenWhenLoadCalled = false;
+            _loadedFileName = null;
             DestroyAudioManagers();
             GameLaunchContext.Reset(TestContent.Pack);
             _saveDirectoryPath = Path.Combine(
@@ -878,7 +881,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void HandleLoadRequested_SelectedSaveAfterOverwrite_LoadsThroughHostAndClosesWindow()
+        public void HandleLoadRequested_SelectedSaveAfterOverwrite_WaitsForConfirmation()
         {
             GameRoot game = CreateGame();
             _bootstrap.GetGameSessionManager().StartGame(game);
@@ -899,6 +902,36 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             GetField<Button>(confirmation, "confirmButton").onClick.Invoke();
             GetField<Button>(saveList, "_loadButton").onClick.Invoke();
 
+            Assert.IsTrue(confirmation.gameObject.activeSelf);
+            Assert.AreEqual(
+                "Load game? Any unsaved progress will be lost.",
+                confirmation.GetComponentInChildren<TextMeshProUGUI>().text
+            );
+            Assert.IsNull(_loadedFileName);
+            Assert.IsTrue(_controller.IsOpen);
+        }
+
+        [Test]
+        public void HandleConfirmAccepted_LoadSave_LoadsThroughHostAndClosesWindow()
+        {
+            GameRoot game = CreateGame();
+            _bootstrap.GetGameSessionManager().StartGame(game);
+            _saveGameManager.SaveGameData(game, "existing_save", "Existing Save");
+            _loadResult = true;
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
+            OptionsSaveListView saveList = GetField<OptionsSaveListView>(view, "_saveListView");
+
+            view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "SlotRow1")
+                .onClick.Invoke();
+            _controller.RenderWindows();
+            GetField<Button>(saveList, "_loadButton").onClick.Invoke();
+            ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
+                view,
+                "_confirmDialog"
+            );
+            GetField<Button>(confirmation, "confirmButton").onClick.Invoke();
+
             Assert.AreEqual("existing_save", _loadedFileName);
             Assert.IsTrue(_menuOpenWhenLoadCalled);
             Assert.IsFalse(_controller.IsOpen);
@@ -906,6 +939,54 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 "Existing Save",
                 _saveGameManager.GetSavedGames().Single().Metadata.SaveDisplayName
             );
+        }
+
+        [Test]
+        public void HandleConfirmDeclined_LoadSave_LeavesCurrentGameAndWindowOpen()
+        {
+            GameRoot game = CreateGame();
+            _bootstrap.GetGameSessionManager().StartGame(game);
+            _saveGameManager.SaveGameData(game, "existing_save", "Existing Save");
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
+            OptionsSaveListView saveList = GetField<OptionsSaveListView>(view, "_saveListView");
+
+            view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "SlotRow1")
+                .onClick.Invoke();
+            _controller.RenderWindows();
+            GetField<Button>(saveList, "_loadButton").onClick.Invoke();
+            ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
+                view,
+                "_confirmDialog"
+            );
+            GetField<Button>(confirmation, "cancelButton").onClick.Invoke();
+
+            Assert.IsNull(_loadedFileName);
+            Assert.IsTrue(_controller.IsOpen);
+            Assert.IsFalse(confirmation.gameObject.activeSelf);
+        }
+
+        [Test]
+        public void HandleLoadRequested_NoActiveGame_LoadsImmediatelyWithoutConfirmation()
+        {
+            _saveGameManager.SaveGameData(CreateGame(), "existing_save", "Existing Save");
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
+            OptionsSaveListView saveList = GetField<OptionsSaveListView>(view, "_saveListView");
+
+            view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "SlotRow0")
+                .onClick.Invoke();
+            _controller.RenderWindows();
+            GetField<Button>(saveList, "_loadButton").onClick.Invoke();
+            ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
+                view,
+                "_confirmDialog"
+            );
+
+            Assert.IsFalse(confirmation.gameObject.activeSelf);
+            Assert.AreEqual("existing_save", _loadedFileName);
+            Assert.IsTrue(_menuOpenWhenLoadCalled);
+            Assert.IsTrue(_controller.IsOpen);
         }
 
         [TestCase(false)]
@@ -1030,6 +1111,11 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             OptionsSaveListView saveList = GetField<OptionsSaveListView>(view, "_saveListView");
 
             GetField<Button>(saveList, "_loadButton").onClick.Invoke();
+            ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
+                view,
+                "_confirmDialog"
+            );
+            GetField<Button>(confirmation, "confirmButton").onClick.Invoke();
 
             Assert.IsTrue(_controller.IsOpen);
             Assert.IsTrue(_menuOpenWhenLoadCalled);
@@ -1057,6 +1143,11 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             OptionsSaveListView saveList = GetField<OptionsSaveListView>(view, "_saveListView");
             Button load = GetField<Button>(saveList, "_loadButton");
             load.onClick.Invoke();
+            ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
+                view,
+                "_confirmDialog"
+            );
+            GetField<Button>(confirmation, "confirmButton").onClick.Invoke();
 
             _loadCompletion.SetCanceled();
             await Task.Yield();
@@ -1065,6 +1156,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreSame(view, GetOpenView());
             _loadCompletion = new TaskCompletionSource<bool>();
             load.onClick.Invoke();
+            GetField<Button>(confirmation, "confirmButton").onClick.Invoke();
             _loadCompletion.SetResult(true);
             await _loadCompletion.Task;
             await Task.Yield();

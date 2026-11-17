@@ -980,6 +980,57 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
+        public void CanExecute_WithDetachedFleetAfterSelection_ReturnsFalse()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "shipyard-world",
+                empire.InstanceID
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            game.AttachNode(fleet, planet);
+            CapitalShip template = AITestSceneBuilder.CreateCapitalShip(
+                "capital-template",
+                empire.InstanceID
+            );
+            template.ManufacturingFactionInstanceIDs.Add(empire.InstanceID);
+            AIProductionDemand demand = new AIProductionDemand(
+                "capital-demand",
+                AIProductionDemandKind.FleetCapitalShip,
+                ManufacturingType.Ship,
+                BuildingType.None,
+                fleet,
+                1,
+                baseDemandPercent: 100
+            );
+            AIManufactureProposal proposal = new AIManufactureProposal(
+                demand,
+                planet,
+                new Technology(template),
+                distributesDemand: true
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            Assert.IsTrue(proposal.CanSelect(context));
+            game.DetachNode(fleet);
+
+            bool canExecute = proposal.CanExecute(context);
+            proposal.Execute(context);
+
+            Assert.IsFalse(canExecute);
+            Assert.IsFalse(planet.GetManufacturingQueue().ContainsKey(ManufacturingType.Ship));
+        }
+
+        [Test]
         public void Execute_WithFleetSeedDemandBeyondMinimum_CreatesBattleFleetAndQueuesCapitalShip()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

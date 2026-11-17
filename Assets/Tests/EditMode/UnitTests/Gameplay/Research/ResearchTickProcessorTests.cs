@@ -180,8 +180,22 @@ namespace Rebellion.Tests.Gameplay
             );
         }
 
-        [Test]
-        public void ProcessTick_OuterRimFacility_DoesNotAddCapacity()
+        [TestCase(ResearchDiscipline.ShipDesign, BuildingType.Shipyard, ManufacturingType.Ship)]
+        [TestCase(
+            ResearchDiscipline.FacilityDesign,
+            BuildingType.ConstructionFacility,
+            ManufacturingType.Building
+        )]
+        [TestCase(
+            ResearchDiscipline.TroopTraining,
+            BuildingType.TrainingFacility,
+            ManufacturingType.Troop
+        )]
+        public void ProcessTick_OuterRimCompletedFacility_AddsResearchCapacity(
+            ResearchDiscipline discipline,
+            BuildingType buildingType,
+            ManufacturingType productionType
+        )
         {
             PlanetSector outerRimSector = new PlanetSector
             {
@@ -198,15 +212,20 @@ namespace Rebellion.Tests.Gameplay
                 EnergyCapacity = 20,
             };
             _game.AttachNode(outerRimPlanet, outerRimSector);
-            _game.AttachNode(CreateShipyard("SY-OUTER"), outerRimPlanet);
+            Building facility = new Building
+            {
+                InstanceID = "FACILITY-OUTER",
+                OwnerInstanceID = _faction.InstanceID,
+                BuildingType = buildingType,
+                ProductionType = productionType,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(facility, outerRimPlanet);
             _game.CurrentTick = 30;
 
             _system.ProcessTick(_game);
 
-            Assert.AreEqual(
-                0,
-                _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign)
-            );
+            Assert.AreEqual(1, _faction.GetResearchCapacityRemaining(discipline));
         }
 
         [Test]
