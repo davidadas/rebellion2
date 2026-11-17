@@ -652,6 +652,229 @@ namespace Rebellion.Tests.Gameplay
             );
         }
 
+        [Test]
+        public void Publish_PendingSourceFacts_SettleBeforeAfterReactionCallbacks()
+        {
+            GameResultBus bus = new();
+            List<GameResult> pending = new();
+            List<string> calls = new();
+            MissionCompletedResult mission = new();
+            PlanetUprisingStartedResult uprising = new();
+            bus.Subscribe<PlanetGarrisonChangedResult>(_ => pending.Add(mission));
+            bus.Subscribe<MissionCompletedResult>(_ =>
+            {
+                calls.Add("mission");
+                pending.Add(uprising);
+            });
+            bus.Subscribe<PlanetUprisingStartedResult>(_ => calls.Add("uprising"));
+            bus.SubscribeAfterReactions<PlanetGarrisonChangedResult>(_ => calls.Add("after"));
+            bus.ObserveAll(_ => calls.Add("observer"));
+            using IDisposable scope = bus.UsePendingResultSource(() => TakePending(pending));
+
+            List<GameResult> results = bus.Publish(new PlanetGarrisonChangedResult());
+
+            CollectionAssert.AreEqual(new[] { "mission", "uprising", "after", "observer" }, calls);
+            Assert.AreSame(mission, results[1]);
+            Assert.AreSame(uprising, results[2]);
+        }
+
+        [Test]
+        public void Publish_AfterReactionCallbacks_FinishBeforePendingSourceFollowUps()
+        {
+            GameResultBus bus = new();
+            List<GameResult> pending = new();
+            List<string> calls = new();
+            bus.SubscribeAfterReactions<PlanetGarrisonChangedResult>(_ =>
+            {
+                calls.Add("first");
+                pending.Add(new MissionCompletedResult());
+            });
+            bus.SubscribeAfterReactions<PlanetGarrisonChangedResult>(_ => calls.Add("second"));
+            bus.Subscribe<MissionCompletedResult>(_ => calls.Add("follow-up"));
+            using IDisposable scope = bus.UsePendingResultSource(() => TakePending(pending));
+
+            bus.Publish(new PlanetGarrisonChangedResult());
+
+            CollectionAssert.AreEqual(new[] { "first", "second", "follow-up" }, calls);
+        }
+
+        [Test]
+        public void Publish_PendingSourceWithoutInitialFacts_DeliversCollectedFacts()
+        {
+            GameResultBus bus = new();
+            MissionCompletedResult mission = new();
+            List<GameResult> pending = new() { null, mission };
+            using IDisposable scope = bus.UsePendingResultSource(() => TakePending(pending));
+
+            List<GameResult> results = bus.Publish(Array.Empty<GameResult>());
+
+            CollectionAssert.AreEqual(new[] { mission }, results);
+        }
+
+        [Test]
+        public void UsePendingResultSource_DisposedScope_DetachesOnlyItsProvider()
+        {
+            GameResultBus bus = new();
+            int removedCalls = 0;
+            MissionCompletedResult mission = new();
+            List<GameResult> pending = new() { mission };
+            IDisposable removed = bus.UsePendingResultSource(() =>
+            {
+                removedCalls++;
+                return null;
+            });
+            using IDisposable retained = bus.UsePendingResultSource(() => TakePending(pending));
+            removed.Dispose();
+            removed.Dispose();
+
+            List<GameResult> results = bus.Publish(Array.Empty<GameResult>());
+
+            Assert.AreEqual(0, removedCalls);
+            CollectionAssert.AreEqual(new[] { mission }, results);
+        }
+
+        [Test]
+        public void Publish_PendingSourceDisposedDuringCollection_SkipsDetachedProvider()
+        {
+            GameResultBus bus = new();
+            int removedCalls = 0;
+            IDisposable removed = null;
+            using IDisposable retained = bus.UsePendingResultSource(() =>
+            {
+                removed.Dispose();
+                return null;
+            });
+            removed = bus.UsePendingResultSource(() =>
+            {
+                removedCalls++;
+                return null;
+            });
+
+            bus.Publish(new PlanetGarrisonChangedResult());
+
+            Assert.AreEqual(0, removedCalls);
+        }
+
+        [Test]
+        public void Publish_PendingSourceRegistersAnotherSource_SettlesItBeforeAfterReactions()
+        {
+            GameResultBus bus = new();
+            List<string> calls = new();
+            List<GameResult> pending = new() { new MissionCompletedResult() };
+            IDisposable added = null;
+            using IDisposable initial = bus.UsePendingResultSource(() =>
+            {
+                added ??= bus.UsePendingResultSource(() => TakePending(pending));
+                return null;
+            });
+            bus.Subscribe<MissionCompletedResult>(_ => calls.Add("mission"));
+            bus.SubscribeAfterReactions<PlanetGarrisonChangedResult>(_ => calls.Add("after"));
+            try
+            {
+                bus.Publish(new PlanetGarrisonChangedResult());
+            }
+            finally
+            {
+                added?.Dispose();
+            }
+
+            CollectionAssert.AreEqual(new[] { "mission", "after" }, calls);
+        }
+
+        [Test]
+        public void Publish_PendingSourcePublishesNestedFact_DeliversItAfterProviderReturns()
+        {
+            GameResultBus bus = new();
+            List<string> calls = new();
+            bool published = false;
+            bus.Subscribe<MissionCompletedResult>(_ => calls.Add("mission"));
+            using IDisposable scope = bus.UsePendingResultSource(() =>
+            {
+                if (published)
+                    return null;
+                published = true;
+                calls.Add("source");
+                Assert.IsEmpty(bus.Publish(new MissionCompletedResult()));
+                calls.Add("returned");
+                return null;
+            });
+
+            bus.Publish(new PlanetGarrisonChangedResult());
+
+            CollectionAssert.AreEqual(new[] { "source", "returned", "mission" }, calls);
+        }
+
+        [Test]
+        public void Publish_PendingSourceThrows_DiscardsQueuedFactsAndResetsDelivery()
+        {
+            GameResultBus bus = new();
+            InvalidOperationException expected = new("source failed");
+            int completed = 0;
+            bus.SubscribeAfterReactions<PlanetGarrisonChangedResult>(_ => completed++);
+            using (
+                bus.UsePendingResultSource(() =>
+                {
+                    bus.Publish(new PlanetUprisingStartedResult());
+                    throw expected;
+                })
+            )
+            {
+                InvalidOperationException actual = Assert.Throws<InvalidOperationException>(() =>
+                    bus.Publish(new PlanetGarrisonChangedResult())
+                );
+                Assert.AreSame(expected, actual);
+            }
+            MissionCompletedResult next = new();
+
+            List<GameResult> results = bus.Publish(next);
+
+            Assert.AreEqual(0, completed);
+            Assert.IsFalse(bus.IsPublishing);
+            CollectionAssert.AreEqual(new[] { next }, results);
+        }
+
+        [Test]
+        public void Publish_ObserverQueuesPendingFacts_CompletesNewRoundWithoutRedelivery()
+        {
+            GameResultBus bus = new();
+            List<GameResult> pending = new();
+            MissionCompletedResult mission = new();
+            int originalCompletions = 0;
+            int followUpCompletions = 0;
+            bus.SubscribeAfterReactions<PlanetGarrisonChangedResult>(_ => originalCompletions++);
+            bus.SubscribeAfterReactions<MissionCompletedResult>(_ => followUpCompletions++);
+            bus.Observe<PlanetGarrisonChangedResult>(_ => pending.Add(mission));
+            using IDisposable scope = bus.UsePendingResultSource(() => TakePending(pending));
+
+            List<GameResult> results = bus.Publish(new PlanetGarrisonChangedResult());
+
+            Assert.AreEqual(1, originalCompletions);
+            Assert.AreEqual(1, followUpCompletions);
+            Assert.AreSame(mission, results[1]);
+        }
+
+        [Test]
+        public void UsePendingResultSource_NullProvider_RejectsRegistration()
+        {
+            GameResultBus bus = new();
+
+            Assert.Throws<ArgumentNullException>(() => bus.UsePendingResultSource(null));
+        }
+
+        /// <summary>
+        /// Returns and clears a fixture's command-owned pending facts.
+        /// </summary>
+        /// <param name="pending">The fixture's queued facts.</param>
+        /// <returns>The completed facts, or an empty collection after the fixture is drained.</returns>
+        private static IReadOnlyList<GameResult> TakePending(List<GameResult> pending)
+        {
+            if (pending.Count == 0)
+                return Array.Empty<GameResult>();
+            List<GameResult> results = new(pending);
+            pending.Clear();
+            return results;
+        }
+
         /// <summary>
         /// Produces an input batch that fails after yielding its first fact.
         /// </summary>

@@ -14,6 +14,7 @@ namespace Rebellion.Gameplay
         private readonly List<Subscription> _afterReactions = new();
         private readonly List<Subscription> _observers = new();
         private readonly List<GameResult> _pendingResults = new();
+        private PendingResultSource[] _pendingSources = Array.Empty<PendingResultSource>();
         private bool _isPublishing;
 
         /// <summary>
@@ -84,6 +85,27 @@ namespace Rebellion.Gameplay
             {
                 Publish(subscriber(results));
             });
+        }
+
+        /// <summary>
+        /// Includes an operation's command-owned facts in ordinary reaction delivery until disposed.
+        /// Sources run when ordinary waves settle, before after-reaction callbacks and observers.
+        /// Each source must return and clear its pending facts, returning null or an empty list
+        /// when no work remains. Registration snapshots change only when scopes open or close.
+        /// </summary>
+        /// <param name="source">The operation-owned provider of completed pending facts.</param>
+        /// <returns>A scope that stops collecting from this provider when disposed.</returns>
+        public IDisposable UsePendingResultSource(Func<IReadOnlyList<GameResult>> source)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            PendingResultSource registration = new(this, source);
+            PendingResultSource[] updated = new PendingResultSource[_pendingSources.Length + 1];
+            Array.Copy(_pendingSources, updated, _pendingSources.Length);
+            updated[updated.Length - 1] = registration;
+            _pendingSources = updated;
+            return registration;
         }
 
         /// <summary>
@@ -158,6 +180,9 @@ namespace Rebellion.Gameplay
                                 subscriber.Deliver(currentResults);
                         }
 
+                        if (CollectPendingResultSources())
+                            continue;
+
                         if (
                             _afterReactions.Count == 0
                             || completedReactionCount == settledResults.Count
@@ -179,7 +204,7 @@ namespace Rebellion.Gameplay
                     resolvedResults.AddRange(settledResults);
                     foreach (Subscription observer in _observers.ToArray())
                         observer.Deliver(settledResults);
-                } while (_pendingResults.Count > 0);
+                } while (_pendingResults.Count > 0 || CollectPendingResultSources());
 
                 return resolvedResults;
             }
@@ -188,6 +213,38 @@ namespace Rebellion.Gameplay
                 _pendingResults.Clear();
                 _isPublishing = false;
             }
+        }
+
+        /// <summary>
+        /// Collects operation-owned facts without recursively delivering another result wave.
+        /// </summary>
+        /// <returns>Whether facts or registration changes require another ordinary settlement pass.</returns>
+        private bool CollectPendingResultSources()
+        {
+            PendingResultSource[] sources = _pendingSources;
+            foreach (PendingResultSource source in sources)
+                source.Collect(_pendingResults);
+            return _pendingResults.Count > 0 || !ReferenceEquals(sources, _pendingSources);
+        }
+
+        /// <summary>
+        /// Removes a disposed source while retaining the other operation scopes in order.
+        /// </summary>
+        /// <param name="source">The registration being detached.</param>
+        private void RemovePendingResultSource(PendingResultSource source)
+        {
+            int index = Array.IndexOf(_pendingSources, source);
+            if (index < 0)
+                return;
+            if (_pendingSources.Length == 1)
+            {
+                _pendingSources = Array.Empty<PendingResultSource>();
+                return;
+            }
+            PendingResultSource[] updated = new PendingResultSource[_pendingSources.Length - 1];
+            Array.Copy(_pendingSources, 0, updated, 0, index);
+            Array.Copy(_pendingSources, index + 1, updated, index, updated.Length - index);
+            _pendingSources = updated;
         }
 
         /// <summary>
@@ -262,6 +319,57 @@ namespace Rebellion.Gameplay
 
                 _isDisposed = true;
                 _subscriptions.Remove(this);
+            }
+        }
+
+        /// <summary>
+        /// Owns a pending-fact provider for one explicitly scoped operation.
+        /// </summary>
+        private sealed class PendingResultSource : IDisposable
+        {
+            private readonly GameResultBus _owner;
+            private readonly Func<IReadOnlyList<GameResult>> _source;
+            private bool _isDisposed;
+
+            /// <summary>
+            /// Creates one operation-owned registration.
+            /// </summary>
+            /// <param name="owner">The bus that owns this registration.</param>
+            /// <param name="source">The provider returning completed pending facts.</param>
+            internal PendingResultSource(
+                GameResultBus owner,
+                Func<IReadOnlyList<GameResult>> source
+            )
+            {
+                _owner = owner;
+                _source = source;
+            }
+
+            /// <summary>
+            /// Appends completed facts unless the operation has detached its source.
+            /// </summary>
+            /// <param name="pending">The next ordinary reaction wave.</param>
+            internal void Collect(List<GameResult> pending)
+            {
+                if (_isDisposed)
+                    return;
+                IReadOnlyList<GameResult> results = _source();
+                if (results == null)
+                    return;
+                for (int index = 0; index < results.Count; index++)
+                    if (results[index] != null)
+                        pending.Add(results[index]);
+            }
+
+            /// <summary>
+            /// Detaches this source; repeated disposal leaves the remaining scopes unchanged.
+            /// </summary>
+            public void Dispose()
+            {
+                if (_isDisposed)
+                    return;
+                _isDisposed = true;
+                _owner.RemovePendingResultSource(this);
             }
         }
     }
