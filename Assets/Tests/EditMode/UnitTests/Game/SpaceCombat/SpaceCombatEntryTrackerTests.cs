@@ -416,6 +416,159 @@ namespace Rebellion.Tests.Game.SpaceCombat
             Assert.AreEqual(2, _destination.SpaceCombatEntryFaction);
         }
 
+        [Test]
+        public void CaptureSpaceCombatPresence_NestedUpdates_ReadsReadinessWithoutCommittingEntryHistory()
+        {
+            Fleet fleet = AddFleet();
+            _origin.SpaceCombatEntryFaction = 2;
+            using (_game.BeginSceneUpdate())
+            {
+                CapitalShip ship = AddCapital(fleet);
+                Assert.AreEqual(
+                    (true, false),
+                    _game.CaptureSpaceCombatPresence(_origin, "alpha", "beta")
+                );
+                Assert.AreEqual(2, _origin.SpaceCombatEntryFaction);
+                using (_game.BeginSceneUpdate())
+                {
+                    ship.Movement = new MovementState();
+                    Assert.AreEqual(
+                        (false, false),
+                        _game.CaptureSpaceCombatPresence(_origin, "alpha", "beta")
+                    );
+                    ship.Movement = null;
+                    fleet.Movement = new MovementState();
+                    Assert.AreEqual(
+                        (false, false),
+                        _game.CaptureSpaceCombatPresence(_origin, "alpha", "beta")
+                    );
+                    fleet.Movement = null;
+                    Assert.AreEqual(
+                        (true, false),
+                        _game.CaptureSpaceCombatPresence(_origin, "alpha", "beta")
+                    );
+                    Assert.AreEqual(2, _origin.SpaceCombatEntryFaction);
+                }
+                Assert.AreEqual(2, _origin.SpaceCombatEntryFaction);
+            }
+            Assert.AreEqual(1, _origin.SpaceCombatEntryFaction);
+        }
+
+        [TestCase(ManufacturingStatus.Complete, true, true, true)]
+        [TestCase(ManufacturingStatus.Building, true, true, false)]
+        [TestCase(ManufacturingStatus.Delivering, true, true, false)]
+        [TestCase(ManufacturingStatus.Complete, false, true, false)]
+        [TestCase(ManufacturingStatus.Complete, true, false, false)]
+        public void CaptureSpaceCombatPresence_CapitalAvailability_ReadsImmediateContribution(
+            ManufacturingStatus status,
+            bool enabled,
+            bool sameOwner,
+            bool expected
+        )
+        {
+            Fleet fleet = AddFleet();
+            CapitalShip ship = AddCapital(fleet);
+            using (_game.BeginSceneUpdate())
+            {
+                ship.ManufacturingStatus = status;
+                ship.IsEnabled = enabled;
+                if (!sameOwner)
+                    _game.ChangeOwnership(ship, "beta");
+
+                Assert.AreEqual(
+                    (expected, false),
+                    _game.CaptureSpaceCombatPresence(_origin, "alpha", "beta")
+                );
+            }
+        }
+
+        [Test]
+        public void CaptureSpaceCombatPresence_FleetDisabledDuringUpdate_ExcludesReadyChildren()
+        {
+            Fleet fleet = AddFleet();
+            AddCapital(fleet);
+            using (_game.BeginSceneUpdate())
+            {
+                fleet.IsEnabled = false;
+
+                Assert.AreEqual(
+                    (false, false),
+                    _game.CaptureSpaceCombatPresence(_origin, "alpha", "beta")
+                );
+            }
+        }
+
+        [Test]
+        public void CaptureSpaceCombatPresence_FighterDockedDuringUpdate_ReadsCurrentDirectContainment()
+        {
+            Fleet fleet = AddFleet("beta");
+            CapitalShip carrier = AddCapital(fleet);
+            fleet.Movement = new MovementState();
+            Starfighter fighter = CreateFighter();
+            _game.AttachNode(fighter, _origin);
+            using (_game.BeginSceneUpdate())
+            {
+                _game.MoveNode(fighter, carrier);
+                Assert.AreEqual(
+                    (false, false),
+                    _game.CaptureSpaceCombatPresence(_origin, "alpha", "beta")
+                );
+                _game.MoveNode(fighter, _origin);
+                Assert.AreEqual(
+                    (true, false),
+                    _game.CaptureSpaceCombatPresence(_origin, "alpha", "beta")
+                );
+            }
+        }
+
+        [Test]
+        public void CaptureSpaceCombatPresence_FighterOwnerChangesDuringUpdate_ReadsCurrentOwner()
+        {
+            Starfighter fighter = CreateFighter();
+            _game.AttachNode(fighter, _origin);
+            using (_game.BeginSceneUpdate())
+            {
+                _game.ChangeOwnership(fighter, "beta");
+
+                Assert.AreEqual(
+                    (false, true),
+                    _game.CaptureSpaceCombatPresence(_origin, "alpha", "beta")
+                );
+            }
+        }
+
+        [Test]
+        public void CaptureSpaceCombatPresence_LastCapitalDeletedDuringUpdate_RemovesCurrentPresence()
+        {
+            CapitalShip ship = AddCapital(AddFleet());
+            using (_game.BeginSceneUpdate())
+            {
+                _game.DeleteNode(ship);
+
+                Assert.AreEqual(
+                    (false, false),
+                    _game.CaptureSpaceCombatPresence(_origin, "alpha", "beta")
+                );
+            }
+        }
+
+        [Test]
+        public void CaptureSpaceCombatPresence_CapitalTransferredDuringUpdate_UpdatesBothFleetContributions()
+        {
+            CapitalShip ship = AddCapital(AddFleet());
+            Fleet destination = AddFleet("beta");
+            using (_game.BeginSceneUpdate())
+            {
+                _game.ChangeOwnership(ship, "beta");
+                _game.MoveNode(ship, destination);
+
+                Assert.AreEqual(
+                    (false, true),
+                    _game.CaptureSpaceCombatPresence(_origin, "alpha", "beta")
+                );
+            }
+        }
+
         /// <summary>
         /// Creates an attached empty fleet owned by the requested faction.
         /// </summary>

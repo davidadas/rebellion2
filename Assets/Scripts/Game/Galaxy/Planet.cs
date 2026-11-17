@@ -57,6 +57,17 @@ namespace Rebellion.Game.Galaxy
 
         // Planet Properties.
         public bool IsColonized { get; set; }
+
+        [PersistableMember(Name = nameof(IsSectorSupportEligible))]
+        private bool? _isSectorSupportEligible;
+
+        /// <summary>
+        /// Gets the retained eligibility for sector support changes. Population and support
+        /// thresholds are evaluated separately. Null means the saved state is unknown.
+        /// </summary>
+        [PersistableIgnore]
+        public bool? IsSectorSupportEligible => _isSectorSupportEligible;
+
         public int PlanetDataId { get; set; }
 
         /// <summary>
@@ -173,6 +184,7 @@ namespace Rebellion.Game.Galaxy
             base.CopyStateTo(destination);
             Planet copy = (Planet)destination;
             copy.IsColonized = IsColonized;
+            copy._isSectorSupportEligible = _isSectorSupportEligible;
             copy.PlanetDataId = PlanetDataId;
             copy.SpaceCombatEntryFaction = SpaceCombatEntryFaction;
             copy.NumRawResourceNodes = NumRawResourceNodes;
@@ -239,12 +251,12 @@ namespace Rebellion.Game.Galaxy
         /// Checks if the planet is blockaded.
         /// An owned planet is blockaded when a stationary hostile fleet has an operational
         /// capital ship and no equivalent defending fleet is present. A neutral planet is
-        /// blockaded by any such fleet in orbit.
+        /// blockaded by any such fleet in orbit only while it has a civilian population.
         /// </summary>
         /// <returns>True if the planet is blockaded, false otherwise.</returns>
         public bool IsBlockaded()
         {
-            if (IsDestroyed)
+            if (IsDestroyed || (!IsColonized && string.IsNullOrEmpty(OwnerInstanceID)))
                 return false;
             IReadOnlyList<Fleet> fleets = GetChildren<Fleet>();
             bool hasHostile = fleets.Any(f =>
@@ -314,6 +326,23 @@ namespace Rebellion.Game.Galaxy
         {
             IsInUprising = false;
             ResetUprisingTimers();
+        }
+
+        /// <summary>
+        /// Initializes retained sector support eligibility for a newly generated planet.
+        /// </summary>
+        /// <param name="isEligible">The eligibility selected by the generated sector type.</param>
+        internal void InitializeSectorSupportEligibility(bool isEligible) =>
+            _isSectorSupportEligible = isEligible;
+
+        /// <summary>
+        /// Retains eligibility after an actual authoritative population or ownership transition
+        /// leaves this planet populated and controlled by a faction.
+        /// </summary>
+        internal void UpdateSectorSupportEligibilityAfterTransition()
+        {
+            if (IsColonized && !string.IsNullOrEmpty(OwnerInstanceID))
+                _isSectorSupportEligible = true;
         }
 
         /// <summary>
@@ -569,8 +598,7 @@ namespace Rebellion.Game.Galaxy
             SupportChange direction = shift > 0 ? SupportChange.Increase : SupportChange.Decrease;
             if (
                 faction.Settings.SupportResistance == direction
-                && GetParentOfType<PlanetSector>()?.GetSectorSuppressionDivisor(faction.InstanceID)
-                    > 1
+                && GetParentOfType<PlanetSector>()?.GetSectorSuppressionDivisor() > 1
                 && game.Config.SupportShift.WeakSupportPenaltyDivisor > 1
             )
                 shift /= game.Config.SupportShift.WeakSupportPenaltyDivisor;

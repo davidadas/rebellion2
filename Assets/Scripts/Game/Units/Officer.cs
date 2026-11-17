@@ -297,6 +297,13 @@ namespace Rebellion.Game.Units
         public bool IsRecruitable { get; set; }
         public List<string> RecruitingFactionInstanceIDs { get; set; }
 
+        /// <summary>
+        /// Gets or sets the authored allegiance used by battle loyalty changes, or null when unspecified.
+        /// The active content catalog restores this definition value after loading a campaign.
+        /// </summary>
+        [PersistableIgnore]
+        public OfficerLoyaltyAllegiance? LoyaltyAllegiance { get; set; }
+
         public bool IsCaptured
         {
             get => _isCaptured;
@@ -620,6 +627,59 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
+        /// Applies a battle loyalty change relative to the officer's authored allegiance.
+        /// The stored base is read as a signed 16-bit value; negation and addition retain their
+        /// low 32 bits before the result is clamped from zero through one hundred.
+        /// </summary>
+        /// <param name="adjustment">The signed change relative to the favored allegiance.</param>
+        /// <param name="favoredAllegiance">The first or second faction favored by the change.</param>
+        /// <returns>True when the stored loyalty changed; otherwise false.</returns>
+        /// <exception cref="InvalidOperationException">
+        /// A mutable officer receiving a nonzero change has no supported authored allegiance.
+        /// </exception>
+        public bool TryAdjustBattleLoyalty(
+            int adjustment,
+            OfficerLoyaltyAllegiance favoredAllegiance
+        )
+        {
+            if (
+                favoredAllegiance
+                    is not (
+                        OfficerLoyaltyAllegiance.FirstFaction
+                        or OfficerLoyaltyAllegiance.SecondFaction
+                    )
+                || !CanBetray
+                || adjustment == 0
+            )
+                return false;
+
+            if (
+                LoyaltyAllegiance
+                is not (
+                    OfficerLoyaltyAllegiance.None
+                    or OfficerLoyaltyAllegiance.FirstFaction
+                    or OfficerLoyaltyAllegiance.SecondFaction
+                )
+            )
+                throw new InvalidOperationException(
+                    "Battle loyalty changes require a supported authored allegiance."
+                );
+
+            int officerAdjustment =
+                LoyaltyAllegiance == favoredAllegiance ? adjustment : unchecked(-adjustment);
+            int adjustedLoyalty = Math.Clamp(
+                unchecked((short)_loyalty + officerAdjustment),
+                0,
+                100
+            );
+            if (adjustedLoyalty == _loyalty)
+                return false;
+
+            _loyalty = adjustedLoyalty;
+            return true;
+        }
+
+        /// <summary>
         /// Creates an officer for copying, retaining default state for derived factory callers.
         /// </summary>
         /// <returns>The created node copy.</returns>
@@ -644,6 +704,7 @@ namespace Rebellion.Game.Units
             copy.RosterOrder = RosterOrder;
             copy.IsRecruitable = IsRecruitable;
             copy.RecruitingFactionInstanceIDs = new List<string>(RecruitingFactionInstanceIDs);
+            copy.LoyaltyAllegiance = LoyaltyAllegiance;
             copy.IsCaptured = IsCaptured;
             copy.CaptorInstanceID = CaptorInstanceID;
             copy.CanEscape = CanEscape;
@@ -705,6 +766,17 @@ namespace Rebellion.Game.Units
         {
             _traitDefinitions =
                 traitDefinitions ?? throw new ArgumentNullException(nameof(traitDefinitions));
+        }
+
+        /// <summary>
+        /// Restores the content catalog's allegiance and loyalty protection for this officer.
+        /// </summary>
+        /// <param name="allegiance">The authored allegiance, or null when it is unspecified.</param>
+        /// <param name="canBetray">Whether the authored loyalty can change.</param>
+        internal void BindLoyaltyDefinition(OfficerLoyaltyAllegiance? allegiance, bool canBetray)
+        {
+            LoyaltyAllegiance = allegiance;
+            _canBetray = canBetray;
         }
 
         /// <summary>

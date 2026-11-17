@@ -11,6 +11,7 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Gameplay.Scripting;
 using Rebellion.Multiplayer;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Multiplayer
@@ -70,7 +71,7 @@ namespace Rebellion.Tests.Multiplayer
             string hostFaction
         )
         {
-            using PeerPair peers = new(hostFaction);
+            using PeerPair peers = new(hostFaction, carriedRegiments: true);
             peers.StartDay();
             peers.Begin(MultiplayerRole.Guest, false);
             TacticalCombatSession host = peers.HostDriver.Session;
@@ -157,6 +158,7 @@ namespace Rebellion.Tests.Multiplayer
             Assert.IsTrue(peers.HostDriver.CompletionReady);
             Assert.IsTrue(peers.GuestDriver.CompletionReady);
             peers.AssertResultsEqual();
+            peers.AssertAcceptedLosses();
             Assert.AreEqual(1, peers.HostResults);
             Assert.AreEqual(1, peers.GuestResults);
             Assert.AreEqual(1, peers.HostTicks);
@@ -174,6 +176,8 @@ namespace Rebellion.Tests.Multiplayer
             Assert.AreEqual(1, peers.GuestResults);
             Assert.AreEqual(1, peers.GuestTicks);
             Assert.AreEqual(1, peers.GuestResumptions);
+            peers.AssertAcceptedLosses();
+            peers.AssertSharedCampaign();
         }
 
         [Test]
@@ -322,11 +326,22 @@ namespace Rebellion.Tests.Multiplayer
             /// <param name="hostFaction">The faction controlled by the authoritative host.</param>
             /// <param name="encounterCount">The number of independent contested systems to create.</param>
             /// <param name="station">Whether to include a defending battle station.</param>
-            public PeerPair(string hostFaction, int encounterCount = 1, bool station = false)
+            /// <param name="carriedRegiments">Whether each carrier holds a complete stationary regiment.</param>
+            public PeerPair(
+                string hostFaction,
+                int encounterCount = 1,
+                bool station = false,
+                bool carriedRegiments = false
+            )
             {
                 _hostFaction = hostFaction;
                 _guestFaction = hostFaction == "FNALL1" ? "FNEMP1" : "FNALL1";
-                GameRoot source = CreateSource(hostFaction, encounterCount, station);
+                GameRoot source = CreateSource(
+                    hostFaction,
+                    encounterCount,
+                    station,
+                    carriedRegiments
+                );
                 MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(source);
                 GameRoot hostGame = MultiplayerSnapshotCodec.Restore(
                     snapshot.Payload,
@@ -677,6 +692,67 @@ namespace Rebellion.Tests.Multiplayer
             }
 
             /// <summary>
+            /// Requires independent imports to retain whole destroyed-unit values after graph removal and replay.
+            /// </summary>
+            public void AssertAcceptedLosses()
+            {
+                SpaceCombatResult host = HostDriver.CommittedResult;
+                SpaceCombatResult guest = GuestDriver.CommittedResult;
+                ISceneNode[] hostDestroyed = host
+                    .Events.OfType<GameObjectDestroyedResult>()
+                    .Select(result => result.DestroyedObject)
+                    .OfType<ISceneNode>()
+                    .ToArray();
+                ISceneNode[] guestDestroyed = guest
+                    .Events.OfType<GameObjectDestroyedResult>()
+                    .Select(result => result.DestroyedObject)
+                    .OfType<ISceneNode>()
+                    .ToArray();
+                Assert.IsTrue(hostDestroyed.OfType<CapitalShip>().Any());
+                Assert.IsTrue(hostDestroyed.OfType<Starfighter>().Any());
+                Assert.IsTrue(hostDestroyed.OfType<Regiment>().Any());
+                CollectionAssert.AreEquivalent(
+                    hostDestroyed.Select(unit => unit.InstanceID),
+                    guestDestroyed.Select(unit => unit.InstanceID)
+                );
+                foreach (ISceneNode destroyed in hostDestroyed)
+                {
+                    ISceneNode guestUnit = guestDestroyed.Single(unit =>
+                        unit.InstanceID == destroyed.InstanceID
+                    );
+                    Assert.AreNotSame(destroyed, guestUnit);
+                    Assert.IsNull(
+                        HostSimulation.Game.GetSceneNodeByInstanceID<ISceneNode>(
+                            destroyed.InstanceID
+                        )
+                    );
+                    Assert.IsNull(
+                        GuestSimulation.Game.GetSceneNodeByInstanceID<ISceneNode>(
+                            destroyed.InstanceID
+                        )
+                    );
+                }
+                foreach (string faction in new[] { _hostFaction, _guestFaction })
+                {
+                    int expected = hostDestroyed
+                        .Where(unit => unit.OwnerInstanceID == faction)
+                        .Sum(unit =>
+                            unit switch
+                            {
+                                CapitalShip ship => ship.UprisingDefense,
+                                Starfighter fighter => fighter.UprisingDefense,
+                                Regiment regiment => regiment.UprisingDefense,
+                                _ => throw new InvalidOperationException(
+                                    "Unexpected carried unit."
+                                ),
+                            }
+                        );
+                    Assert.AreEqual(expected, host.AcceptedLosses.GetLostValue(faction));
+                    Assert.AreEqual(expected, guest.AcceptedLosses.GetLostValue(faction));
+                }
+            }
+
+            /// <summary>
             /// Requires both production replay owners to retain the same final campaign graph.
             /// </summary>
             public void AssertSharedCampaign()
@@ -782,11 +858,13 @@ namespace Rebellion.Tests.Multiplayer
             /// <param name="hostFaction">The faction controlled by the authoritative host.</param>
             /// <param name="encounterCount">The number of independent contested systems to create.</param>
             /// <param name="station">Whether to include a defending battle station.</param>
+            /// <param name="carriedRegiments">Whether each carrier holds a complete stationary regiment.</param>
             /// <returns>The campaign graph shared by both participants at admission.</returns>
             private static GameRoot CreateSource(
                 string hostFaction,
                 int encounterCount,
-                bool station
+                bool station,
+                bool carriedRegiments
             )
             {
                 GameRoot game = TestGame.Create(
@@ -872,6 +950,15 @@ namespace Rebellion.Tests.Multiplayer
                             );
                             fighter.InstanceID = fleet.InstanceID + "-fighter-" + squadron;
                             game.AttachNode(fighter, carrier);
+                        }
+                        if (carriedRegiments)
+                        {
+                            Regiment regiment = units.Create<Regiment>(
+                                id == "FNEMP1" ? "REEM001" : "REAL001",
+                                id
+                            );
+                            regiment.InstanceID = fleet.InstanceID + "-regiment";
+                            game.AttachNode(regiment, carrier);
                         }
                         if (station && id == "FNEMP1")
                         {

@@ -41,6 +41,7 @@ namespace Rebellion.Game
         // Scene graph.
         private GalaxyMap _galaxy;
         private readonly SpaceCombatEntryTracker _spaceCombatEntries = new();
+        private readonly SpaceCombatMilitaryRoster _spaceCombatMilitaryRoster = new();
 
         /// <summary>
         /// Reports an officer whose retained discovery state has just become enabled.
@@ -302,6 +303,51 @@ namespace Rebellion.Game
         /// <param name="definition">The active content pack's combat definitions.</param>
         internal void ConfigureSpaceCombatEntries(TacticalCombatDefinition definition) =>
             _spaceCombatEntries.Configure(definition.Factions);
+
+        /// <summary>
+        /// Captures both requested factions' current direct orbital presence at one live planet.
+        /// This reads current readiness during open scene updates without changing entry history.
+        /// </summary>
+        /// <param name="planet">The exact planet instance registered in this game.</param>
+        /// <param name="firstOwnerInstanceId">The first nonempty, non-neutral faction identity.</param>
+        /// <param name="secondOwnerInstanceId">The distinct second nonempty faction identity.</param>
+        /// <returns>Whether each faction currently has a ready direct fleet or fighter.</returns>
+        internal (bool FirstSide, bool SecondSide) CaptureSpaceCombatPresence(
+            Planet planet,
+            string firstOwnerInstanceId,
+            string secondOwnerInstanceId
+        )
+        {
+            if (planet == null)
+                throw new ArgumentNullException(nameof(planet));
+            if (
+                string.IsNullOrEmpty(planet.InstanceID)
+                || !NodesByInstanceID.TryGetValue(planet.InstanceID, out ISceneNode registered)
+                || !ReferenceEquals(registered, planet)
+            )
+                throw new ArgumentException(
+                    "The planet must be registered in this game.",
+                    nameof(planet)
+                );
+            if (string.IsNullOrEmpty(firstOwnerInstanceId))
+                throw new ArgumentException(
+                    "A faction identity is required.",
+                    nameof(firstOwnerInstanceId)
+                );
+            if (
+                string.IsNullOrEmpty(secondOwnerInstanceId)
+                || secondOwnerInstanceId == firstOwnerInstanceId
+            )
+                throw new ArgumentException(
+                    "A distinct second faction identity is required.",
+                    nameof(secondOwnerInstanceId)
+                );
+            return _spaceCombatEntries.CapturePresence(
+                planet,
+                firstOwnerInstanceId,
+                secondOwnerInstanceId
+            );
+        }
 
         /// <summary>
         /// Commits combat presence after related containment and transit changes are complete.
@@ -588,7 +634,8 @@ namespace Rebellion.Game
 
         /// <summary>
         /// Transfers or releases a registered node between faction ownership indexes without
-        /// changing its parent, descendants, retained state, or remembered parent.
+        /// changing its parent, descendants, or remembered parent. An actual populated-planet
+        /// acquisition retains its eligibility for sector support changes.
         /// </summary>
         /// <param name="node">The node whose owner changes.</param>
         /// <param name="ownerInstanceId">
@@ -603,14 +650,33 @@ namespace Rebellion.Game
             if (ownerInstanceId != null)
                 GetFactionByOwnerInstanceID(ownerInstanceId);
 
+            bool ownerChanged = node.GetOwnerInstanceID() != ownerInstanceId;
             DeregsiterOwnedUnit(node);
             node.SetOwnerInstanceID(ownerInstanceId);
+            if (ownerChanged && node is Planet controlledPlanet)
+                controlledPlanet.UpdateSectorSupportEligibilityAfterTransition();
             RegisterOwnedUnit(node);
             if (UnitPresenceChanged != null)
             {
                 Planet planet = GetContainingPlanet(node);
                 UnitPresenceChanged(node, planet, planet);
             }
+        }
+
+        /// <summary>
+        /// Populates an uncolonized planet, establishes its owner's support, and retains any
+        /// sector support eligibility earned by the completed population transition.
+        /// </summary>
+        /// <param name="planet">The planet receiving a completed settlement.</param>
+        internal void ColonizePlanet(Planet planet)
+        {
+            if (planet.IsColonized)
+                return;
+
+            planet.IsColonized = true;
+            planet.PopularSupport.Clear();
+            planet.SetFullPopularSupport(planet.OwnerInstanceID);
+            planet.UpdateSectorSupportEligibilityAfterTransition();
         }
 
         /// <summary>
@@ -961,6 +1027,17 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Captures both requested owners' current full military values without scene traversal or allocation.
+        /// </summary>
+        /// <param name="firstOwnerInstanceId">The first owner identity, or null for neutral ownership.</param>
+        /// <param name="secondOwnerInstanceId">The second owner identity, or null for neutral ownership.</param>
+        /// <returns>The current completed and delivering military values in the requested owner order.</returns>
+        internal (int FirstSide, int SecondSide) CaptureSpaceCombatMilitaryValues(
+            string firstOwnerInstanceId,
+            string secondOwnerInstanceId
+        ) => _spaceCombatMilitaryRoster.CaptureValues(firstOwnerInstanceId, secondOwnerInstanceId);
+
+        /// <summary>
         /// Registers a unit to the faction that owns the unit.
         /// </summary>
         /// <param name="node">The unit to register.</param>
@@ -1051,6 +1128,7 @@ namespace Rebellion.Game
             try
             {
                 NodesByInstanceID.Add(node.InstanceID, node);
+                _spaceCombatMilitaryRoster.Register(node);
                 if (node is Officer officer)
                 {
                     _registeredOfficers.Add(officer);
@@ -1081,6 +1159,7 @@ namespace Rebellion.Game
         {
             _spaceCombatEntries.Unregister(node);
             NodesByInstanceID.Remove(node.InstanceID);
+            _spaceCombatMilitaryRoster.Unregister(node.InstanceID);
             if (node is Officer officer)
             {
                 officer.UnbindForceRuntime();
@@ -1123,6 +1202,7 @@ namespace Rebellion.Game
             foreach (Officer officer in _registeredOfficers)
                 officer.UnbindForceRuntime();
             NodesByInstanceID.Clear();
+            _spaceCombatMilitaryRoster.Clear();
             _registeredOfficers.Clear();
             foreach (Faction faction in _factions)
                 faction.ClearOwnedUnits();
@@ -1138,6 +1218,7 @@ namespace Rebellion.Game
         private GalaxyMap InitializeGalaxy(GalaxyMap galaxy)
         {
             NodesByInstanceID.Clear();
+            _spaceCombatMilitaryRoster.Clear();
             foreach (Faction faction in _factions)
                 faction.ClearOwnedUnits();
             InitializeSceneRoot(galaxy);

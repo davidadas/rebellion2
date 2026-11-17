@@ -1745,9 +1745,7 @@ namespace Rebellion.Gameplay
                 && !arrivalPlanet.IsColonized
             )
             {
-                arrivalPlanet.IsColonized = true;
-                arrivalPlanet.PopularSupport.Clear();
-                arrivalPlanet.SetFullPopularSupport(arrivalPlanet.OwnerInstanceID);
+                _game.ColonizePlanet(arrivalPlanet);
             }
 
             string arrivingOwner = MovementQueries.GetMovementControlOwner(movable);

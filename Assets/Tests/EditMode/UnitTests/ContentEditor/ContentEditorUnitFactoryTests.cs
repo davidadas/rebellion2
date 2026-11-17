@@ -12,6 +12,18 @@ namespace Rebellion.Tests.ContentEditor
     [TestFixture]
     public sealed class ContentEditorUnitFactoryTests
     {
+        [Test]
+        public void Create_Officer_LeavesLoyaltyAllegianceUnspecified()
+        {
+            XElement definition = ContentEditorUnitFactory.Create("Officer");
+            using StringReader text = new StringReader(definition.ToString());
+            Officer officer = (Officer)new GameSerializer(typeof(Officer)).Deserialize(text);
+
+            Assert.IsNull(definition.Element("LoyaltyAllegiance"));
+            Assert.IsNull(officer.LoyaltyAllegiance);
+            Assert.IsTrue(officer.CanBetray);
+        }
+
         [TestCase("Officer", typeof(Officer))]
         [TestCase("SpecialForce", typeof(SpecialForces))]
         [TestCase("Regiment", typeof(Regiment))]

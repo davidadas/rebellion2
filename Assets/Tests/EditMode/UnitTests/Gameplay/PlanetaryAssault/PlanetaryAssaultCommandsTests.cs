@@ -32,6 +32,40 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void TryExecute_OperationalDefendingFleet_ReturnsNullWithoutMutatingOrPublishing()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
+            Fleet attacker = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+            Regiment attackingRegiment = attacker
+                .GetChildren<CapitalShip>()[0]
+                .GetChildren<Regiment>()[0];
+            Fleet defender = AddAssaultFleet(game, planet, "alliance", regimentCount: 0);
+            Regiment defendingRegiment = AddDefender(game, planet, "defender");
+            int energyBefore = planet.EnergyCapacity;
+            PlanetaryAssaultCommands commands = MakePlanetaryAssault(game, new ThrowingRNG());
+            int publications = 0;
+            commands.ResultsProduced += _ => publications++;
+
+            PlanetaryAssaultResult result = commands.TryExecute(new[] { attacker }, planet);
+
+            Assert.IsNull(result);
+            Assert.AreEqual(0, publications);
+            Assert.AreEqual("alliance", planet.OwnerInstanceID);
+            Assert.AreEqual(energyBefore, planet.EnergyCapacity);
+            Assert.AreSame(
+                attackingRegiment,
+                game.GetSceneNodeByInstanceID<Regiment>(attackingRegiment.InstanceID)
+            );
+            Assert.AreSame(
+                defendingRegiment,
+                game.GetSceneNodeByInstanceID<Regiment>(defendingRegiment.InstanceID)
+            );
+            Assert.IsFalse(attacker.IsInCombat);
+            Assert.IsFalse(defender.IsInCombat);
+        }
+
+        [Test]
         public void TryExecute_InTransitDefendingFleet_OmitsFleetUnitsFromResult()
         {
             GameRoot game = CreateGame();
@@ -382,6 +416,8 @@ namespace Rebellion.Tests.Gameplay
             AddDefender(game, planet, "defender");
             Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
             Fleet defenderFleet = AddAssaultFleet(game, planet, "alliance", regimentCount: 0);
+            defenderFleet.GetChildren<CapitalShip>()[0].ManufacturingStatus =
+                ManufacturingStatus.Building;
 
             Assert.Throws<InvalidOperationException>(() =>
                 MakePlanetaryAssault(game, new ThrowingRNG())

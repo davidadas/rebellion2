@@ -267,7 +267,7 @@ namespace Rebellion.Gameplay
                     $"Faction '{controller.InstanceID}' BattleLossLoyaltyDivisor must be greater than zero."
                 );
 
-            int shift = (opponentLoss - controllerLoss) / divisor + opponentLoss / divisor;
+            int shift = CombatLoyaltyCalculator.Calculate(controllerLoss, opponentLoss, divisor);
             _commands.ApplyGlobalLoyaltyShift(controller, shift);
         }
     }

@@ -6,8 +6,10 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.GameEvents;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
+using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
@@ -428,6 +430,321 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsTrue(_tick.IsSettled);
         }
 
+        [Test]
+        public void ProcessTick_AutomaticEncounters_SettlesEachBeforeResolvingNext()
+        {
+            AssertAutomaticEncounterSettlement(reconcileLoadedState: false);
+        }
+
+        [Test]
+        public void ReconcileLoadedState_AutomaticEncounters_SettlesEachBeforeResolvingNext()
+        {
+            AssertAutomaticEncounterSettlement(reconcileLoadedState: true);
+        }
+
+        [Test]
+        public void ReconcileLoadedState_OrdinaryReactionQueuesManufacturing_SettlesBeforeCombatResult()
+        {
+            CreateAutomaticCombatScenario(1);
+            Building existingOrder = CreateManufacturingScenario();
+            ManufacturingCommands manufacturing = _session.GetService<ManufacturingCommands>();
+            _session.Results.Publish(manufacturing.TakePendingResults());
+            Planet producer = existingOrder.GetParentOfType<Planet>();
+            Building order = new()
+            {
+                InstanceID = "AFTERMATH_ORDER",
+                OwnerInstanceID = existingOrder.OwnerInstanceID,
+                BuildingType = BuildingType.Mine,
+                ConstructionCost = 100,
+            };
+            bool queued = false;
+            bool created = false;
+            bool combatObserved = false;
+            using IDisposable ordinary = _session.Results.Subscribe<GameObjectDestroyedResult>(_ =>
+            {
+                if (!queued)
+                {
+                    queued = manufacturing.Enqueue(producer, order, producer);
+                    Assert.IsTrue(queued);
+                }
+            });
+            using IDisposable creation = _session.Results.Subscribe<GameObjectCreatedResult>(
+                results =>
+                    created |= results.Any(result => ReferenceEquals(result.GameObject, order))
+            );
+            using IDisposable observation =
+                _session.Results.SubscribeAfterReactions<SpaceCombatResult>(_ =>
+                {
+                    combatObserved = true;
+                    Assert.IsTrue(created);
+                    Assert.IsFalse(manufacturing.HasPendingResults);
+                });
+
+            _tick.ReconcileLoadedState();
+
+            Assert.IsTrue(combatObserved);
+        }
+
+        [Test]
+        public void ReconcileLoadedState_CombatEventPlacesOfficer_SettlesCommandFactsBeforeAfterReactions()
+        {
+            CreateAutomaticCombatScenario(1);
+            PlanetSector sector = _game.Galaxy.GetChildren<PlanetSector>().Single();
+            Planet origin = new()
+            {
+                InstanceID = "COMMAND_ORIGIN",
+                OwnerInstanceID = "FNALL1",
+                IsColonized = true,
+            };
+            Planet destination = new()
+            {
+                InstanceID = "COMMAND_DESTINATION",
+                OwnerInstanceID = "FNALL1",
+                IsColonized = true,
+            };
+            _game.AttachNode(origin, sector);
+            _game.AttachNode(destination, sector);
+            Officer officer = EntityFactory.CreateOfficer("COMMANDING_OFFICER", "FNALL1");
+            officer.CurrentRank = OfficerRank.Commander;
+            _game.AttachNode(officer, origin);
+            _session.GameEventCommands.InstallDefinitions(
+                new[]
+                {
+                    new GameEvent
+                    {
+                        InstanceID = "PLACE_AFTER_COMBAT",
+                        MaximumActivations = 1,
+                        Triggers = new List<GameTrigger> { new SpaceCombatCompletedTrigger() },
+                        Actions = new List<GameAction>
+                        {
+                            new PlaceUnitsAction
+                            {
+                                UnitInstanceID = officer.InstanceID,
+                                DestinationInstanceID = destination.InstanceID,
+                            },
+                        },
+                    },
+                }
+            );
+            bool commandObserved = false;
+            bool combatObserved = false;
+            using IDisposable command = _session.Results.Subscribe<CommandKindChangedResult>(
+                results => commandObserved |= results.Any(result => result.Officer == officer)
+            );
+            using IDisposable combat = _session.Results.SubscribeAfterReactions<SpaceCombatResult>(
+                _ =>
+                {
+                    combatObserved = true;
+                    Assert.IsTrue(commandObserved);
+                    Assert.AreSame(destination, officer.GetParent());
+                    Assert.AreEqual(OfficerRank.None, officer.CurrentRank);
+                    Assert.IsFalse(_session.GetService<MovementCommands>().HasPendingResults);
+                }
+            );
+
+            _tick.ReconcileLoadedState();
+
+            Assert.IsTrue(combatObserved);
+        }
+
+        [Test]
+        public void ReconcileLoadedState_CombatReactionMovesUnrelatedFleet_DefersItsBlockade()
+        {
+            CreateAutomaticCombatScenario(1);
+            PlanetSector sector = _game.Galaxy.GetChildren<PlanetSector>().Single();
+            Planet origin = new()
+            {
+                InstanceID = "UNRELATED_ORIGIN",
+                OwnerInstanceID = "FNALL1",
+                IsColonized = true,
+            };
+            Planet destination = new()
+            {
+                InstanceID = "UNRELATED_DESTINATION",
+                OwnerInstanceID = "FNEMP1",
+                IsColonized = true,
+                PositionX = 10,
+            };
+            _game.AttachNode(origin, sector);
+            _game.AttachNode(destination, sector);
+            Fleet fleet = AttachOperationalFleet(origin, "FNEMP1", "UNRELATED_FLEET");
+            Assert.IsTrue(origin.IsBlockaded());
+            MovementCommands movement = _session.GetService<MovementCommands>();
+            List<BlockadeChangedResult> blockades = new();
+            bool departureObserved = false;
+            bool combatObserved = false;
+            using IDisposable reaction = _session.Results.Subscribe<SpaceCombatResult>(_ =>
+                movement.RequestMove(fleet, destination)
+            );
+            using IDisposable departure = _session.Results.Subscribe<GameObjectEnrouteActiveResult>(
+                _ => departureObserved = true
+            );
+            using IDisposable blockade = _session.Results.Subscribe<BlockadeChangedResult>(
+                results => blockades.AddRange(results.Where(result => result.Planet == origin))
+            );
+            using IDisposable combat = _session.Results.SubscribeAfterReactions<SpaceCombatResult>(
+                _ =>
+                {
+                    combatObserved = true;
+                    Assert.IsTrue(departureObserved);
+                    Assert.IsFalse(movement.HasPendingResults);
+                    Assert.IsEmpty(blockades);
+                }
+            );
+
+            _tick.ReconcileLoadedState();
+
+            Assert.IsTrue(combatObserved);
+            Assert.AreEqual(1, blockades.Count);
+            Assert.IsFalse(blockades[0].Blockaded);
+        }
+
+        [Test]
+        public void ReconcileLoadedState_CombatBlockadeReactionQueuesMovement_SettlesBeforeAfterReactions()
+        {
+            CreateTacticalCombatScenario("FNEMP1", 1);
+            _game.SetFactionController("FNEMP1", "PLAYER", PlayerControllerType.AI);
+            PlanetSector sector = _game.Galaxy.GetChildren<PlanetSector>().Single();
+            Planet origin = new()
+            {
+                InstanceID = "FOLLOW_UP_ORIGIN",
+                OwnerInstanceID = "FNEMP1",
+                IsColonized = true,
+                PositionX = 10,
+            };
+            Planet destination = new()
+            {
+                InstanceID = "FOLLOW_UP_DESTINATION",
+                OwnerInstanceID = "FNEMP1",
+                IsColonized = true,
+                PositionX = 20,
+            };
+            _game.AttachNode(origin, sector);
+            _game.AttachNode(destination, sector);
+            Officer officer = EntityFactory.CreateOfficer("FOLLOW_UP_OFFICER", "FNEMP1");
+            officer.CurrentRank = OfficerRank.Commander;
+            _game.AttachNode(officer, origin);
+            Fleet winner = _game.GetSceneNodeByInstanceID<Fleet>("TACTICAL_0_FNEMP1");
+            MovementCommands movement = _session.GetService<MovementCommands>();
+            bool blockadeEnded = false;
+            bool commandObserved = false;
+            bool combatObserved = false;
+            using IDisposable reaction = _session.Results.Subscribe<SpaceCombatResult>(_ =>
+                movement.RequestMove(winner, origin)
+            );
+            using IDisposable blockade = _session.Results.Subscribe<BlockadeChangedResult>(
+                results =>
+                {
+                    if (
+                        results.Any(result =>
+                            !result.Blockaded && result.Planet.InstanceID == "TACTICAL_PLANET_0"
+                        )
+                    )
+                    {
+                        blockadeEnded = true;
+                        movement.RequestMove(officer, destination);
+                    }
+                }
+            );
+            using IDisposable command = _session.Results.Subscribe<CommandKindChangedResult>(
+                results => commandObserved |= results.Any(result => result.Officer == officer)
+            );
+            using IDisposable combat = _session.Results.SubscribeAfterReactions<SpaceCombatResult>(
+                _ =>
+                {
+                    combatObserved = true;
+                    Assert.IsTrue(blockadeEnded);
+                    Assert.IsTrue(commandObserved);
+                    Assert.IsFalse(movement.HasPendingResults);
+                }
+            );
+
+            _tick.ReconcileLoadedState();
+
+            Assert.IsTrue(combatObserved);
+        }
+
+        [Test]
+        public void ResolveCombatRetreat_WithdrawalFacts_SettleBeforeCombatResult()
+        {
+            CreateRetreatCombatScenario();
+            MovementCommands movement = _session.GetService<MovementCommands>();
+            bool departureObserved = false;
+            bool combatObserved = false;
+            using IDisposable departure = _session.Results.Subscribe<GameObjectEnrouteActiveResult>(
+                _ => departureObserved = true
+            );
+            using IDisposable observation =
+                _session.Results.SubscribeAfterReactions<SpaceCombatResult>(_ =>
+                {
+                    combatObserved = true;
+                    Assert.IsTrue(departureObserved);
+                    Assert.IsFalse(movement.HasPendingResults);
+                });
+
+            SpaceCombatResult result = _tick.ResolveCombatRetreat("FNALL1");
+
+            Assert.IsNotNull(result);
+            Assert.IsTrue(combatObserved);
+        }
+
+        [Test]
+        public void ResolveCombatRetreat_FinalBlockade_SettlesBeforeCombatResult()
+        {
+            CreateRetreatCombatScenario();
+            List<BlockadeChangedResult> blockades = new();
+            bool combatObserved = false;
+            using IDisposable blockade = _session.Results.Subscribe<BlockadeChangedResult>(
+                results => blockades.AddRange(results)
+            );
+            using IDisposable observation =
+                _session.Results.SubscribeAfterReactions<SpaceCombatResult>(results =>
+                {
+                    combatObserved = true;
+                    Assert.AreEqual(1, blockades.Count);
+                    Assert.AreSame(results.Single().Planet, blockades[0].Planet);
+                    Assert.IsTrue(blockades[0].Blockaded);
+                });
+
+            SpaceCombatResult result = _tick.ResolveCombatRetreat("FNALL1");
+
+            Assert.IsNotNull(result);
+            Assert.IsTrue(combatObserved);
+            Assert.AreEqual(1, blockades.Count);
+        }
+
+        [Test]
+        public void CompleteTacticalCombat_AutomaticEncounters_SettleEachBeforeResolvingNext()
+        {
+            SpaceCombatCommands commands = CreateTacticalCombatScenario("FNALL1", 3);
+            _tick.ReconcileLoadedState();
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+            CompleteTacticalEncounter(battle);
+            _game.SetFactionController("FNALL1", "PLAYER", PlayerControllerType.AI);
+            int observed = 0;
+            HashSet<Planet> completed = new();
+            using IDisposable observation = _session.Results.Observe<SpaceCombatResult>(results =>
+            {
+                foreach (SpaceCombatResult result in results)
+                {
+                    completed.Add(result.Planet);
+                    if (++observed == 2)
+                    {
+                        Planet next = _game
+                            .GetSceneNodesByType<Planet>()
+                            .Single(planet => !completed.Contains(planet));
+                        Assert.AreEqual(2, next.GetChildren<Fleet>().Count);
+                        Assert.IsTrue(next.GetChildren<Fleet>().All(fleet => !fleet.IsInCombat));
+                    }
+                }
+            });
+
+            _tick.CompleteTacticalCombat(battle);
+
+            Assert.AreEqual(3, observed);
+            Assert.IsTrue(_tick.IsSettled);
+        }
+
         [TestCase("FNEMP1", 1)]
         [TestCase("FNEMP1", 2)]
         [TestCase("FNALL1", 1)]
@@ -624,6 +941,38 @@ namespace Rebellion.Tests.Gameplay
         }
 
         /// <summary>
+        /// Verifies each automatic encounter is delivered while the next remains untouched.
+        /// </summary>
+        /// <param name="reconcileLoadedState">Whether to scan loaded positions without advancing the tick.</param>
+        private void AssertAutomaticEncounterSettlement(bool reconcileLoadedState)
+        {
+            CreateAutomaticCombatScenario(2);
+            int observed = 0;
+            using IDisposable observation = _session.Results.Observe<SpaceCombatResult>(results =>
+            {
+                foreach (SpaceCombatResult result in results)
+                {
+                    if (observed++ == 0)
+                    {
+                        Planet next = _game
+                            .GetSceneNodesByType<Planet>()
+                            .Single(planet => planet != result.Planet);
+                        Assert.AreEqual(2, next.GetChildren<Fleet>().Count);
+                        Assert.IsTrue(next.GetChildren<Fleet>().All(fleet => !fleet.IsInCombat));
+                    }
+                }
+            });
+
+            if (reconcileLoadedState)
+                _tick.ReconcileLoadedState();
+            else
+                _tick.ProcessTick();
+
+            Assert.AreEqual(2, observed);
+            Assert.AreEqual(reconcileLoadedState ? 40 : 41, _game.CurrentTick);
+        }
+
+        /// <summary>
         /// Creates pending manual encounters for one human faction without advancing campaign time.
         /// </summary>
         /// <param name="playerFactionId">The faction taking manual command.</param>
@@ -702,6 +1051,36 @@ namespace Rebellion.Tests.Gameplay
             _session = TestContent.CreateGameSession(_game);
             _tick = CreateTickProcessor();
             return _session.GetService<SpaceCombatCommands>();
+        }
+
+        /// <summary>
+        /// Creates contested planets whose encounters do not require a player decision.
+        /// </summary>
+        /// <param name="encounterCount">The number of independent encounters.</param>
+        private void CreateAutomaticCombatScenario(int encounterCount)
+        {
+            CreateTacticalCombatScenario("FNALL1", encounterCount);
+            _game.SetFactionController("FNALL1", "PLAYER", PlayerControllerType.AI);
+        }
+
+        /// <summary>
+        /// Suspends a defended planet's encounter with a friendly withdrawal destination available.
+        /// </summary>
+        private void CreateRetreatCombatScenario()
+        {
+            CreateTacticalCombatScenario("FNALL1", 1);
+            PlanetSector sector = _game.Galaxy.GetChildren<PlanetSector>().Single();
+            _game.AttachNode(
+                new Planet
+                {
+                    InstanceID = "RETREAT_DESTINATION",
+                    OwnerInstanceID = "FNALL1",
+                    IsColonized = true,
+                    PositionX = 10,
+                },
+                sector
+            );
+            _tick.ReconcileLoadedState();
         }
 
         /// <summary>

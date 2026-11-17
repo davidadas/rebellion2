@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
@@ -52,6 +53,113 @@ namespace Rebellion.Tests.Multiplayer
             Assert.AreEqual(
                 MultiplayerStateFingerprint.ComputeSimulation(_source),
                 MultiplayerStateFingerprint.ComputeSimulation(_restored)
+            );
+        }
+
+        [TestCase(null, OfficerLoyaltyAllegiance.None)]
+        [TestCase(OfficerLoyaltyAllegiance.None, OfficerLoyaltyAllegiance.FirstFaction)]
+        [TestCase(OfficerLoyaltyAllegiance.FirstFaction, OfficerLoyaltyAllegiance.SecondFaction)]
+        public void ComputeSimulation_OfficerAllegianceDiffers_DetectsDefinitionChange(
+            OfficerLoyaltyAllegiance? first,
+            OfficerLoyaltyAllegiance? second
+        )
+        {
+            Assert.IsTrue(
+                _source
+                    .ExecuteCommandAsync(() =>
+                    {
+                        AttachOfficer(_source.Game, first);
+                        return true;
+                    })
+                    .Result
+            );
+            Assert.IsTrue(
+                _restored
+                    .ExecuteCommandAsync(() =>
+                    {
+                        AttachOfficer(_restored.Game, second);
+                        return true;
+                    })
+                    .Result
+            );
+
+            Assert.AreNotEqual(
+                MultiplayerStateFingerprint.ComputeSimulation(_source),
+                MultiplayerStateFingerprint.ComputeSimulation(_restored)
+            );
+        }
+
+        [Test]
+        public void Compute_OfficerAllegianceChanges_KeepsPersistedMemberSelection()
+        {
+            Officer officer = new()
+            {
+                InstanceID = "officer",
+                LoyaltyAllegiance = OfficerLoyaltyAllegiance.FirstFaction,
+            };
+            string fingerprint = MultiplayerStateFingerprint.Compute(officer);
+            string xml = SerializationHelper.Serialize(officer);
+
+            officer.LoyaltyAllegiance = OfficerLoyaltyAllegiance.SecondFaction;
+
+            Assert.AreEqual(fingerprint, MultiplayerStateFingerprint.Compute(officer));
+            Assert.AreEqual(xml, SerializationHelper.Serialize(officer));
+        }
+
+        [Test]
+        public void VerifyLoadedGame_OfficerAllegianceReboundFromCatalog_PreservesContinuation()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Summary.Seed = 123;
+            game.GetFactions().Add(new Faction { InstanceID = "owner" });
+            game.SetFactionController("owner", "participant", PlayerControllerType.Human);
+            AttachOfficer(game, null);
+            Officer definition = new()
+            {
+                TypeID = "authored-officer",
+                LoyaltyAllegiance = OfficerLoyaltyAllegiance.SecondFaction,
+            };
+            using GameSession source = new(
+                game,
+                TestGameData.Create(game.Config, officers: new[] { definition })
+            );
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(source);
+            source.ReplaceGame(MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash));
+            using GameSession restored = new(
+                MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash),
+                TestGameData.Create(
+                    game.Config,
+                    officers: new[] { (Officer)definition.CreateCopy() }
+                )
+            );
+
+            Assert.AreEqual(
+                OfficerLoyaltyAllegiance.SecondFaction,
+                restored.Game.GetSceneNodeByInstanceID<Officer>("loyalty-officer").LoyaltyAllegiance
+            );
+            Assert.AreEqual(
+                MultiplayerStateFingerprint.ComputeSimulation(source),
+                MultiplayerStateFingerprint.VerifyLoadedGame(
+                    restored,
+                    MultiplayerStateFingerprint.ComputeSimulation(source)
+                )
+            );
+        }
+
+        [TestCase(null, false)]
+        [TestCase(null, true)]
+        [TestCase(false, true)]
+        public void Compute_PlanetSectorSupportEligibility_DetectsChangedRetainedState(
+            bool? firstState,
+            bool? secondState
+        )
+        {
+            Planet first = CreatePlanetWithSectorSupportEligibility(firstState);
+            Planet second = CreatePlanetWithSectorSupportEligibility(secondState);
+
+            Assert.AreNotEqual(
+                MultiplayerStateFingerprint.Compute(first),
+                MultiplayerStateFingerprint.Compute(second)
             );
         }
 
@@ -280,6 +388,50 @@ namespace Rebellion.Tests.Multiplayer
             state.Pending = after;
 
             Assert.AreNotEqual(fingerprint, MultiplayerStateFingerprint.Compute(state));
+        }
+
+        /// <summary>
+        /// Attaches one identified officer beneath an owned planet without changing the random stream.
+        /// </summary>
+        /// <param name="game">The authoritative graph receiving the officer.</param>
+        /// <param name="allegiance">The current authored allegiance, or null when unspecified.</param>
+        private static void AttachOfficer(GameRoot game, OfficerLoyaltyAllegiance? allegiance)
+        {
+            PlanetSector sector = new() { InstanceID = "loyalty-sector" };
+            Planet planet = new()
+            {
+                InstanceID = "loyalty-planet",
+                OwnerInstanceID = "owner",
+                IsColonized = true,
+            };
+            planet.SetFullPopularSupport("owner");
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
+            game.AttachNode(
+                new Officer
+                {
+                    InstanceID = "loyalty-officer",
+                    TypeID = "authored-officer",
+                    OwnerInstanceID = "owner",
+                    LoyaltyAllegiance = allegiance,
+                },
+                planet
+            );
+        }
+
+        /// <summary>
+        /// Restores a planet whose only selected difference is retained sector support eligibility.
+        /// </summary>
+        /// <param name="state">The retained eligibility, or null for a save without that field.</param>
+        /// <returns>The independently restored planet.</returns>
+        private static Planet CreatePlanetWithSectorSupportEligibility(bool? state)
+        {
+            string element = state.HasValue
+                ? "<IsSectorSupportEligible>"
+                    + state.Value.ToString().ToLowerInvariant()
+                    + "</IsSectorSupportEligible>"
+                : string.Empty;
+            return SerializationHelper.Deserialize<Planet>("<Planet>" + element + "</Planet>");
         }
 
         /// <summary>

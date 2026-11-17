@@ -30,6 +30,65 @@ namespace Rebellion.Tests.Game.Galaxy
             };
         }
 
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void IsSectorSupportEligible_SerializedPlanet_RetainsRawState(bool? eligibility)
+        {
+            Planet planet = CreatePlanetWithSectorSupportEligibility(eligibility);
+
+            string xml = SerializationHelper.Serialize(planet);
+            Planet restored = SerializationHelper.Deserialize<Planet>(xml);
+
+            Assert.AreEqual(eligibility, restored.IsSectorSupportEligible);
+            if (!eligibility.HasValue)
+                StringAssert.DoesNotContain("<IsSectorSupportEligible>", xml);
+        }
+
+        [TestCase(null)]
+        [TestCase("FNALL1")]
+        public void IsSectorSupportEligible_OlderPlanetWithoutState_RemainsUnknown(string owner)
+        {
+            Planet planet = SerializationHelper.Deserialize<Planet>(
+                $"<Planet><OwnerInstanceID>{owner}</OwnerInstanceID><IsColonized>true</IsColonized></Planet>"
+            );
+
+            Assert.IsNull(planet.IsSectorSupportEligible);
+        }
+
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void CreateCopy_PopulatedOwnedPlanet_RetainsRawSectorSupportEligibility(
+            bool? eligibility
+        )
+        {
+            Planet planet = CreatePlanetWithSectorSupportEligibility(eligibility);
+            planet.OwnerInstanceID = "FNALL1";
+            planet.IsColonized = true;
+
+            Planet copy = (Planet)planet.CreateCopy();
+
+            Assert.AreEqual(eligibility, copy.IsSectorSupportEligible);
+        }
+
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void SetOwnerInstanceID_DetachedProjection_PreservesSectorSupportEligibility(
+            bool? eligibility
+        )
+        {
+            Planet planet = CreatePlanetWithSectorSupportEligibility(eligibility);
+            Planet view = (Planet)planet.CreateCopy();
+
+            view.SetOwnerInstanceID("FNALL1");
+            view.IsColonized = true;
+
+            Assert.AreEqual(eligibility, view.IsSectorSupportEligible);
+            Assert.AreEqual(eligibility, planet.IsSectorSupportEligible);
+        }
+
         [TestCase(0)]
         [TestCase(1)]
         [TestCase(2)]
@@ -1122,6 +1181,41 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsTrue(_planet.IsBlockaded());
         }
 
+        [TestCase(null)]
+        [TestCase("")]
+        public void IsBlockaded_UncolonizedNeutralPlanet_ReturnsFalse(string owner)
+        {
+            _planet.OwnerInstanceID = owner;
+            _planet.IsColonized = false;
+            _planet.AddChild(CreateOperationalFleet("FNALL1"));
+
+            Assert.IsFalse(_planet.IsBlockaded());
+            Assert.IsFalse(_planet.IsBlockadedFor("ENEMY"));
+        }
+
+        [Test]
+        public void IsBlockaded_UncolonizedOwnedPlanetWithHostileFleet_ReturnsTrue()
+        {
+            _planet.IsColonized = false;
+            _planet.AddChild(CreateOperationalFleet("ENEMY"));
+
+            Assert.IsTrue(_planet.IsBlockaded());
+        }
+
+        [Test]
+        public void IsBlockaded_NeutralPlanetPopulationChanges_UsesCurrentPopulation()
+        {
+            _planet.OwnerInstanceID = null;
+            _planet.IsColonized = false;
+            _planet.AddChild(CreateOperationalFleet("FNALL1"));
+
+            Assert.IsFalse(_planet.IsBlockaded());
+            _planet.IsColonized = true;
+            Assert.IsTrue(_planet.IsBlockaded());
+            _planet.IsColonized = false;
+            Assert.IsFalse(_planet.IsBlockaded());
+        }
+
         [Test]
         public void IsBlockadedFor_NeutralPlanetBlockadingFaction_ReturnsFalse()
         {
@@ -1461,6 +1555,19 @@ namespace Rebellion.Tests.Game.Galaxy
             double distance = _planet.GetRawDistanceTo(targetPlanet);
 
             Assert.AreEqual(5, distance);
+        }
+
+        /// <summary>
+        /// Restores a planet carrying a raw nullable sector support eligibility value.
+        /// </summary>
+        /// <param name="eligibility">The retained value, or null for an older record.</param>
+        /// <returns>The restored planet.</returns>
+        private static Planet CreatePlanetWithSectorSupportEligibility(bool? eligibility)
+        {
+            string state = eligibility.HasValue
+                ? $"<IsSectorSupportEligible>{eligibility.Value.ToString().ToLowerInvariant()}</IsSectorSupportEligible>"
+                : "";
+            return SerializationHelper.Deserialize<Planet>($"<Planet>{state}</Planet>");
         }
 
         /// <summary>

@@ -162,6 +162,46 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void OpenActive_OfficerLoyaltyAllegiances_LoadsEveryCanonicalDefinition()
+        {
+            Officer[] officers = TestContent.Pack.GameData.Officers;
+
+            Assert.AreEqual(60, officers.Length);
+            Assert.AreEqual(
+                30,
+                officers.Count(officer =>
+                    officer.LoyaltyAllegiance == OfficerLoyaltyAllegiance.FirstFaction
+                )
+            );
+            Assert.AreEqual(
+                30,
+                officers.Count(officer =>
+                    officer.LoyaltyAllegiance == OfficerLoyaltyAllegiance.SecondFaction
+                )
+            );
+            Assert.AreEqual(9, officers.Count(officer => !officer.CanBetray));
+        }
+
+        [TestCase("MON_MOTHMA", OfficerLoyaltyAllegiance.FirstFaction)]
+        [TestCase("LEIA_ORGANA", OfficerLoyaltyAllegiance.FirstFaction)]
+        [TestCase("LUKE_SKYWALKER", OfficerLoyaltyAllegiance.FirstFaction)]
+        [TestCase("HAN_SOLO", OfficerLoyaltyAllegiance.FirstFaction)]
+        [TestCase("EMPEROR_PALPATINE", OfficerLoyaltyAllegiance.SecondFaction)]
+        [TestCase("DARTH_VADER", OfficerLoyaltyAllegiance.SecondFaction)]
+        public void OpenActive_ProtectedMainOfficer_LoadsExplicitLoyaltyAllegiance(
+            string instanceID,
+            OfficerLoyaltyAllegiance expected
+        )
+        {
+            Officer officer = TestContent.Pack.GameData.Officers.Single(candidate =>
+                candidate.InstanceID == instanceID
+            );
+
+            Assert.IsFalse(officer.CanBetray);
+            Assert.AreEqual(expected, officer.LoyaltyAllegiance);
+        }
+
+        [Test]
         public void OpenActive_OfficerTraits_LoadDefinitionsAndAuthoredAssignments()
         {
             OfficerTraitDefinition smuggler = TestContent.Pack.GameData.OfficerTraits.Single(
@@ -812,6 +852,148 @@ namespace Rebellion.Tests.Content
                 "<GameConfig Inherit='true'><DifficultyModifiers Remove='true'/></GameConfig>"
             );
             Assert.IsEmpty(config.DifficultyModifiers);
+        }
+
+        [Test]
+        public void LoadGameConfig_BattleSupportEntryLeafOverride_PreservesOtherContextsAndValues()
+        {
+            GameConfig config = LoadApplicationGameConfig(
+                "<GameConfig Inherit='true'><SupportShift><BattleSupport><Profiles><Entry>"
+                    + "<Key>FirstFactionEasy</Key><Value><SpaceCombatSupportProfile><FirstSide>"
+                    + "<LeadingGapScale>321</LeadingGapScale></FirstSide></SpaceCombatSupportProfile>"
+                    + "</Value></Entry></Profiles></BattleSupport></SupportShift></GameConfig>"
+            );
+
+            var profiles = config.SupportShift.BattleSupport.Profiles;
+            Assert.AreEqual(7, profiles.Count);
+            Assert.AreEqual(
+                321,
+                profiles[SpaceCombatSupportContext.FirstFactionEasy].FirstSide.LeadingGapScale
+            );
+            Assert.AreEqual(
+                200,
+                profiles[SpaceCombatSupportContext.FirstFactionEasy].SecondSide.LeadingGapScale
+            );
+            Assert.AreEqual(
+                400,
+                profiles[SpaceCombatSupportContext.FirstFactionMedium].FirstSide.LeadingGapScale
+            );
+            Assert.AreEqual(10, profiles[SpaceCombatSupportContext.FirstFactionEasy].Divisor);
+            Assert.AreEqual(
+                0,
+                profiles[SpaceCombatSupportContext.FirstFactionEasy].FirstSide.TrailingFlat
+            );
+        }
+
+        [TestCase("Divisor")]
+        [TestCase("FirstSide.LeadingFlat")]
+        [TestCase("SecondSide.SupportThreshold")]
+        public void LoadGameConfig_RemovedRequiredBattleSupportInput_RejectsMergedDocument(
+            string member
+        )
+        {
+            XElement profile = new("SpaceCombatSupportProfile");
+            XElement target = profile;
+            foreach (string name in member.Split('.'))
+            {
+                XElement child = new(name);
+                target.Add(child);
+                target = child;
+            }
+            target.SetAttributeValue("Remove", true);
+            XElement overlay = new(
+                "GameConfig",
+                new XAttribute("Inherit", true),
+                new XElement(
+                    "SupportShift",
+                    new XElement(
+                        "BattleSupport",
+                        new XElement(
+                            "Profiles",
+                            new XElement(
+                                "Entry",
+                                new XElement("Key", "FirstFactionEasy"),
+                                new XElement("Value", profile)
+                            )
+                        )
+                    )
+                )
+            );
+
+            Assert.Throws<XmlSchemaValidationException>(() =>
+                LoadApplicationGameConfig(overlay.ToString())
+            );
+        }
+
+        [TestCase("0")]
+        [TestCase("Unknown")]
+        public void LoadGameConfig_UnsupportedBattleSupportContext_RejectsMergedDocument(
+            string context
+        )
+        {
+            string application = Path.Combine(TestContent.Pack.ContentRootPath, "Application");
+            XElement defaults = XElement.Load(Path.Combine(application, "Rules", "game.xml"));
+            defaults
+                .Element("SupportShift")
+                .Element("BattleSupport")
+                .Element("Profiles")
+                .Elements("Entry")
+                .First()
+                .Element("Key")
+                .Value = context;
+
+            Assert.Throws<XmlSchemaValidationException>(() =>
+                LoadGameConfigFromFixture(
+                    defaults.ToString(),
+                    null,
+                    File.ReadAllText(Path.Combine(application, "Schemas", "game-config.xsd"))
+                )
+            );
+        }
+
+        [Test]
+        public void LoadGameConfig_DuplicateBattleSupportContext_RejectsDocument()
+        {
+            string application = Path.Combine(TestContent.Pack.ContentRootPath, "Application");
+            XElement defaults = XElement.Load(Path.Combine(application, "Rules", "game.xml"));
+            XElement[] entries = defaults
+                .Element("SupportShift")
+                .Element("BattleSupport")
+                .Element("Profiles")
+                .Elements("Entry")
+                .ToArray();
+            entries[1].Element("Key").Value = entries[0].Element("Key").Value;
+
+            Assert.Throws<XmlSchemaValidationException>(() =>
+                LoadGameConfigFromFixture(
+                    defaults.ToString(),
+                    null,
+                    File.ReadAllText(Path.Combine(application, "Schemas", "game-config.xsd"))
+                )
+            );
+        }
+
+        [Test]
+        public void LoadGameConfig_ZeroBattleSupportDivisor_RejectsMergedDocument()
+        {
+            Assert.Throws<XmlSchemaValidationException>(() =>
+                LoadApplicationGameConfig(
+                    "<GameConfig Inherit='true'><SupportShift><BattleSupport><Profiles><Entry>"
+                        + "<Key>FirstFactionEasy</Key><Value><SpaceCombatSupportProfile><Divisor>0</Divisor>"
+                        + "</SpaceCombatSupportProfile></Value></Entry></Profiles></BattleSupport></SupportShift></GameConfig>"
+                )
+            );
+        }
+
+        [Test]
+        public void LoadGameConfig_RemovedBattleSupportProfile_RejectsMergedDocument()
+        {
+            Assert.Throws<XmlSchemaValidationException>(() =>
+                LoadApplicationGameConfig(
+                    "<GameConfig Inherit='true'><SupportShift><BattleSupport><Profiles><Entry Remove='true'>"
+                        + "<Key>FirstFactionEasy</Key></Entry></Profiles></BattleSupport></SupportShift></GameConfig>"
+                )
+            );
         }
 
         /// <summary>

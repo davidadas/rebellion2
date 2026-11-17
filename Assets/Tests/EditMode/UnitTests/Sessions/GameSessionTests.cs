@@ -1558,6 +1558,115 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(60, officer.GetEffectiveRating(SkillRating.Leadership));
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Constructor_SavedOfficerWithStaleProtection_RestoresAuthoredLoyaltyRules(
+            bool canBetray
+        )
+        {
+            Officer template = EntityFactory.CreateOfficer(
+                "definition",
+                "authored-owner",
+                canBetray: canBetray,
+                loyalty: 99
+            );
+            template.TypeID = "officer-type";
+            template.LoyaltyAllegiance = OfficerLoyaltyAllegiance.FirstFaction;
+            Officer officer = EntityFactory.CreateOfficer(
+                "saved",
+                _faction.InstanceID,
+                canBetray: !canBetray,
+                loyalty: 37
+            );
+            officer.TypeID = template.TypeID;
+            officer.LoyaltyAllegiance = OfficerLoyaltyAllegiance.SecondFaction;
+            officer = SerializationHelper.Deserialize<Officer>(
+                SerializationHelper.Serialize(officer)
+            );
+            Assert.IsNull(officer.LoyaltyAllegiance);
+            _game.AttachNode(officer, _planet);
+            _session.Dispose();
+
+            _session = new GameSession(
+                _game,
+                TestGameData.Create(_game.Config, officers: new[] { template })
+            );
+
+            Assert.AreEqual(OfficerLoyaltyAllegiance.FirstFaction, officer.LoyaltyAllegiance);
+            Assert.AreEqual(canBetray, officer.CanBetray);
+            Assert.AreEqual(37, officer.Loyalty);
+            Assert.AreEqual(_faction.InstanceID, officer.OwnerInstanceID);
+        }
+
+        [Test]
+        public void Constructor_UnrecruitedOfficer_RestoresAuthoredLoyaltyRules()
+        {
+            Officer template = EntityFactory.CreateOfficer(
+                "definition",
+                "authored-owner",
+                canBetray: false
+            );
+            template.TypeID = "officer-type";
+            template.LoyaltyAllegiance = OfficerLoyaltyAllegiance.SecondFaction;
+            Officer officer = EntityFactory.CreateOfficer(
+                "unrecruited",
+                _faction.InstanceID,
+                canBetray: true
+            );
+            officer.TypeID = template.TypeID;
+            _game.GetUnrecruitedOfficers().Add(officer);
+            _session.Dispose();
+
+            _session = new GameSession(
+                _game,
+                TestGameData.Create(_game.Config, officers: new[] { template })
+            );
+            _game.RemoveUnrecruitedOfficer(officer);
+            _game.AttachNode(officer, _planet);
+
+            Assert.AreEqual(OfficerLoyaltyAllegiance.SecondFaction, officer.LoyaltyAllegiance);
+            Assert.IsFalse(officer.CanBetray);
+        }
+
+        [Test]
+        public void Constructor_RememberedOfficer_RestoresAuthoredLoyaltyRules()
+        {
+            Officer template = EntityFactory.CreateOfficer(
+                "definition",
+                "authored-owner",
+                canBetray: false
+            );
+            template.TypeID = "officer-type";
+            template.LoyaltyAllegiance = OfficerLoyaltyAllegiance.FirstFaction;
+            Officer remembered = EntityFactory.CreateOfficer(
+                "remembered",
+                "opponent",
+                canBetray: true,
+                loyalty: 37
+            );
+            remembered.TypeID = template.TypeID;
+            PlanetSector sector = _planet.GetParentOfType<PlanetSector>();
+            PlanetSnapshot snapshot = new PlanetSnapshot
+            {
+                OwnerInstanceID = "opponent",
+                IsColonized = true,
+            };
+            snapshot.Officers.Add(remembered);
+            _faction.Fog.Snapshots[sector.InstanceID] = new PlanetSectorSnapshot();
+            _faction.Fog.Snapshots[sector.InstanceID].Planets["remembered-planet"] = snapshot;
+            _session.Dispose();
+
+            _session = new GameSession(
+                _game,
+                TestGameData.Create(_game.Config, officers: new[] { template })
+            );
+
+            Assert.AreEqual(OfficerLoyaltyAllegiance.FirstFaction, remembered.LoyaltyAllegiance);
+            Assert.IsFalse(remembered.CanBetray);
+            Assert.AreEqual(37, remembered.Loyalty);
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Officer>(remembered.InstanceID));
+        }
+
         [TestCase("OFAL003", true)]
         [TestCase("OFAL002", false)]
         public void Constructor_SavedOfficerWithStaleForceRules_BindsAuthoredRules(

@@ -87,7 +87,7 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="fleets">The fleets attempting the assault.</param>
         /// <param name="planet">The planet being assaulted.</param>
-        /// <returns>True when every fleet is stationary, colocated, and owned by one faction.</returns>
+        /// <returns>True when every fleet is stationary, colocated, and owned by one faction at a blockaded planet.</returns>
         internal static bool CanAssault(IReadOnlyList<Fleet> fleets, Planet planet)
         {
             if (
@@ -105,7 +105,8 @@ namespace Rebellion.Gameplay
                     && fleet.Movement == null
                     && !fleet.IsInCombat
                     && fleet.GetParent() == planet
-                );
+                )
+                && planet.IsBlockaded();
         }
     }
 }

@@ -10,6 +10,61 @@ namespace Rebellion.Tests.Content
     [TestFixture]
     public sealed class GameDataCatalogTests
     {
+        [TestCase(null, false)]
+        [TestCase(OfficerLoyaltyAllegiance.None, true)]
+        [TestCase(OfficerLoyaltyAllegiance.FirstFaction, false)]
+        [TestCase(OfficerLoyaltyAllegiance.SecondFaction, true)]
+        public void BindOfficerDefinitions_MatchingTemplate_RestoresLoyaltyRules(
+            OfficerLoyaltyAllegiance? allegiance,
+            bool canBetray
+        )
+        {
+            Officer template = EntityFactory.CreateOfficer(
+                "definition",
+                "authored-owner",
+                canBetray: canBetray,
+                loyalty: 99
+            );
+            template.TypeID = "officer-type";
+            template.LoyaltyAllegiance = allegiance;
+            Officer officer = EntityFactory.CreateOfficer(
+                "runtime",
+                "different-owner",
+                canBetray: !canBetray,
+                loyalty: 37
+            );
+            officer.TypeID = template.TypeID;
+            officer.LoyaltyAllegiance = OfficerLoyaltyAllegiance.SecondFaction;
+            GameDataCatalog catalog = TestGameData.Create(officers: new[] { template });
+
+            catalog.BindOfficerDefinitions(new[] { officer });
+
+            Assert.AreEqual(allegiance, officer.LoyaltyAllegiance);
+            Assert.AreEqual(canBetray, officer.CanBetray);
+            Assert.AreEqual(37, officer.Loyalty);
+            Assert.AreEqual("different-owner", officer.OwnerInstanceID);
+        }
+
+        [Test]
+        public void BindOfficerDefinitions_MissingTemplate_PreservesUnspecifiedAllegiance()
+        {
+            Officer officer = EntityFactory.CreateOfficer(
+                "runtime",
+                "owner",
+                canBetray: true,
+                loyalty: 37
+            );
+            officer.TypeID = "missing-definition";
+            officer.RecruitingFactionInstanceIDs.Add("owner");
+            GameDataCatalog catalog = TestGameData.Create();
+
+            catalog.BindOfficerDefinitions(new[] { officer });
+
+            Assert.IsNull(officer.LoyaltyAllegiance);
+            Assert.IsTrue(officer.CanBetray);
+            Assert.AreEqual(37, officer.Loyalty);
+        }
+
         [TestCase(BuildingType.None, ManufacturingType.None)]
         [TestCase(BuildingType.Mine, ManufacturingType.None)]
         [TestCase(BuildingType.Refinery, ManufacturingType.None)]
