@@ -57,10 +57,15 @@ public static class TacticalCombatPrefabBuilder
         );
         panel.enabled = false;
         diagram.enabled = false;
+        RectTransform previewBackdropRect = CreateRect("Object preview backdrop", panel.transform);
+        UILayout.SetSourceRect(previewBackdropRect, 5, 4, 139, 73);
+        Image previewBackdrop = previewBackdropRect.gameObject.AddComponent<Image>();
+        previewBackdrop.color = new Color(0.015f, 0.06f, 0.025f, 1);
+        previewBackdrop.raycastTarget = false;
         RawImage objectPreview = CreateImage(
             "Object preview",
             panel.transform,
-            new RectInt(26, 17, 96, 39)
+            TacticalCombatHudLayout.ObjectPreview
         );
         RawImage fighterPreview = CreateImage(
             "Fighter preview",
@@ -78,7 +83,7 @@ public static class TacticalCombatPrefabBuilder
         TextMeshProUGUI assignment = CreateInspectionLabel(
             "Assignment",
             panel.transform,
-            new RectInt(26, 52, 97, 9)
+            new RectInt(13, 66, 123, 9)
         );
         TextMeshProUGUI orders = CreateInspectionLabel(
             "Orders",
@@ -131,6 +136,7 @@ public static class TacticalCombatPrefabBuilder
         Assign(view, "_panelImage", panel);
         Assign(view, "_diagram", diagram);
         Assign(view, "_objectPreview", objectPreview);
+        Assign(view, "_objectPreviewBackdrop", previewBackdrop);
         Assign(view, "_fighterPreview", fighterPreview);
         Assign(view, "_assignment", assignment);
         Assign(view, "_orders", orders);

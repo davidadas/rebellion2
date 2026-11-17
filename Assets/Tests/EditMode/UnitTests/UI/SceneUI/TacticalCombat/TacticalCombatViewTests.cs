@@ -94,6 +94,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         [TestCase(KeyCode.Alpha1)]
         [TestCase(KeyCode.Alpha8)]
         [TestCase(KeyCode.Tab)]
+        [TestCase(KeyCode.A)]
+        [TestCase(KeyCode.D)]
+        [TestCase(KeyCode.W)]
+        [TestCase(KeyCode.S)]
+        [TestCase(KeyCode.Escape)]
         public void HandleKeyboardEvent_RepeatedNativePresses_PreservesEveryPressAndTheRelease(
             KeyCode nativeKey
         )
@@ -147,7 +152,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 calls++;
                 return true;
             };
-            Event key = new() { type = EventType.KeyDown, keyCode = KeyCode.A };
+            Event key = new() { type = EventType.KeyDown, keyCode = KeyCode.H };
 
             Assert.IsFalse(view.HandleKeyboardEvent(key));
 

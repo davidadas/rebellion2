@@ -35,6 +35,7 @@ public sealed class TacticalCombatController : IDisposable
     private bool _stationControlsVisible;
     private bool _applicationMenuOpen;
     private bool _inspectionKeyHeld;
+    private bool _escapeKeyHeld;
     private float _hudRefresh;
     private readonly TacticalCombatInspection _inspection;
     private readonly TacticalCombatRenderSettings _videoSettings;
@@ -161,7 +162,7 @@ public sealed class TacticalCombatController : IDisposable
             _session.ConfigureClockedAdvance(() => unchecked((uint)clock.ElapsedMilliseconds));
             _session.BeginArrival(_view.Renderer);
         }
-        CaptureInspectionKeyState();
+        CaptureHeldKeys();
         _ready = true;
         RefreshHud();
         RefreshControls();
@@ -216,15 +217,18 @@ public sealed class TacticalCombatController : IDisposable
                 if (TryCameraControl(definition.Control, out _))
                     _view.ApplyFrameKeyboardActivation(definition.Control, false);
         if (!open)
-            CaptureInspectionKeyState();
+            CaptureHeldKeys();
         RefreshControls();
     }
 
     /// <summary>
-    /// Captures an already-held inspection key when battle input resumes after loading or a modal surface.
+    /// Captures held keys when battle input resumes so the same press cannot reopen or traverse a panel.
     /// </summary>
-    private void CaptureInspectionKeyState() =>
+    private void CaptureHeldKeys()
+    {
         _inspectionKeyHeld = Keyboard.current?.tabKey.isPressed == true;
+        _escapeKeyHeld = Keyboard.current?.escapeKey.isPressed == true;
+    }
 
     /// <summary>
     /// Routes native camera and direct-command transitions while preserving their distinct release semantics.
@@ -236,6 +240,8 @@ public sealed class TacticalCombatController : IDisposable
     {
         if (key == KeyCode.Tab && !pressed)
             _inspectionKeyHeld = false;
+        if (key == KeyCode.Escape && !pressed)
+            _escapeKeyHeld = false;
         if (
             !_ready
             || _disposed
@@ -245,6 +251,15 @@ public sealed class TacticalCombatController : IDisposable
             || _session.PendingAttackRunMovie != null
         )
             return false;
+        if (key == KeyCode.Escape)
+        {
+            if (pressed && !_escapeKeyHeld)
+            {
+                _escapeKeyHeld = true;
+                MenuControlRequested?.Invoke(TacticalCombatControl.OpenOptions);
+            }
+            return true;
+        }
         if (TacticalCombatKeyboard.TryGetCameraControl(key, out TacticalCombatControl control))
         {
             _view.ApplyFrameKeyboardActivation(control, pressed);
@@ -808,7 +823,7 @@ public sealed class TacticalCombatController : IDisposable
         _view.gameObject.SetActive(active);
         if (active)
         {
-            CaptureInspectionKeyState();
+            CaptureHeldKeys();
             _session.Audio.SetPlaybackAvailable(true);
         }
     }

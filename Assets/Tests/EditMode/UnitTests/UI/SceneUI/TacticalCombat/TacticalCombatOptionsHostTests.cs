@@ -88,14 +88,20 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         }
 
         [UnityTest]
-        public IEnumerator Open_BattleView_HidesItsCanvas()
+        public IEnumerator Open_BattleView_KeepsPausedBattleVisibleBelowModalCanvas()
         {
             Canvas canvas = _view.Viewport.GetComponentInParent<Canvas>();
 
             _host.Open();
             yield return null;
 
-            Assert.IsFalse(canvas.enabled);
+            Assert.IsTrue(canvas.enabled);
+            Assert.IsTrue(_session.IsPaused);
+            Assert.IsTrue(_options.IsOpen);
+            Canvas overlay = _view.transform.Find("Combat application menu").GetComponent<Canvas>();
+            Assert.Greater(overlay.sortingOrder, canvas.sortingOrder);
+            Assert.IsTrue(overlay.gameObject.activeInHierarchy);
+            Assert.IsTrue(overlay.GetComponentInChildren<UnityEngine.UI.Image>().raycastTarget);
         }
 
         [UnityTest]

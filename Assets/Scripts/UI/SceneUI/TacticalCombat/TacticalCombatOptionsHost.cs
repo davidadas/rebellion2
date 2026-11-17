@@ -4,19 +4,17 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Owns application Options above an isolated battle while retaining the battle's pause state.
+/// Owns application Options over the visible, paused battle while isolating menu input.
 /// </summary>
 public sealed class TacticalCombatOptionsHost : IDisposable
 {
     private readonly TacticalCombatController _combat;
     private readonly TacticalCombatSession _session;
-    private readonly Canvas _battleCanvas;
     private readonly GameObject _root;
     private readonly UIWindowManager _windows;
     private readonly IOptionsMenuPresenter _options;
     private bool _dirty;
     private bool _presenting;
-    private bool _battleWasVisible;
     private bool _disposed;
 
     /// <summary>
@@ -29,7 +27,7 @@ public sealed class TacticalCombatOptionsHost : IDisposable
     /// </summary>
     /// <param name="combat">The battle's input owner.</param>
     /// <param name="session">The encounter whose pause state is retained.</param>
-    /// <param name="view">The battle view hidden while Options is open.</param>
+    /// <param name="view">The battle view retained beneath the Options overlay.</param>
     /// <param name="sourceDesktop">The application's authored window desktop.</param>
     /// <param name="contentAssets">The content source for the Options window.</param>
     /// <param name="createOptions">Creates the application menu against this host's desktop and invalidation callback.</param>
@@ -55,7 +53,7 @@ public sealed class TacticalCombatOptionsHost : IDisposable
             throw new MissingReferenceException(
                 "The application window desktop has no canvas scaler."
             );
-        _battleCanvas = view.Viewport.GetComponentInParent<Canvas>();
+        Canvas battleCanvas = view.Viewport.GetComponentInParent<Canvas>();
         _root = new GameObject(
             "Combat application menu",
             typeof(RectTransform),
@@ -68,7 +66,7 @@ public sealed class TacticalCombatOptionsHost : IDisposable
         {
             Canvas canvas = _root.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = _battleCanvas.sortingOrder + 1;
+            canvas.sortingOrder = battleCanvas.sortingOrder + 1;
             CanvasScaler scaler = _root.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = sourceScaler.uiScaleMode;
             scaler.referenceResolution = sourceScaler.referenceResolution;
@@ -129,14 +127,12 @@ public sealed class TacticalCombatOptionsHost : IDisposable
             return;
         if (!_presenting)
         {
-            _battleWasVisible = _battleCanvas.enabled;
             _presenting = true;
             VisibilityChanged?.Invoke(true);
         }
         if (!_session.IsPaused)
             _session.IsPaused = true;
         _combat.SetApplicationMenuOpen(true);
-        _battleCanvas.enabled = false;
         _root.SetActive(true);
         try
         {
@@ -195,7 +191,7 @@ public sealed class TacticalCombatOptionsHost : IDisposable
     }
 
     /// <summary>
-    /// Re-shows the retained battle without changing its pause state.
+    /// Releases menu input ownership while retaining the visible battle and its pause state.
     /// </summary>
     private void RestoreBattle()
     {
@@ -203,8 +199,6 @@ public sealed class TacticalCombatOptionsHost : IDisposable
             return;
         _presenting = false;
         _root.SetActive(false);
-        if (_battleCanvas != null)
-            _battleCanvas.enabled = _battleWasVisible;
         _combat.SetApplicationMenuOpen(false);
         VisibilityChanged?.Invoke(false);
     }

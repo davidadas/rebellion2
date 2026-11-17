@@ -1174,6 +1174,159 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         }
 
         [UnityTest]
+        public IEnumerator SetInspection_CapitalPreview_EnlargesVisibleHullWithoutOverlappingStatus()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
+            yield return PrepareController(encounter, pack);
+            TacticalCombatUnit unit = encounter.Units.First(item =>
+                !item.IsFighter && !item.IsBattleStation
+            );
+            view.SetPanel(TacticalCombatHudPanel.SingleObject);
+            view.SetInspection(unit, new TacticalCombatInspection(encounter).ReadUnit(unit));
+            Transform panel = view.transform.Find("Canvas/Frame/Right panel");
+            RawImage preview = panel.Find("Object preview").GetComponent<RawImage>();
+            RectInt bounds = assets.GetTextureContentBounds((Texture2D)preview.texture);
+            RectInt displayed = UILayout.GetSourceRect(preview.rectTransform);
+            RectInt assignment = UILayout.GetSourceRect((RectTransform)panel.Find("Assignment"));
+            RectInt hull = UILayout.GetSourceRect((RectTransform)panel.Find("Hull"));
+
+            Assert.Greater(displayed.width, bounds.width);
+            Assert.Greater(displayed.height, bounds.height);
+            Assert.LessOrEqual(displayed.yMax, assignment.yMin);
+            Assert.LessOrEqual(assignment.yMax, hull.yMin);
+            Assert.That(
+                (float)displayed.width / displayed.height,
+                Is.EqualTo((float)bounds.width / bounds.height).Within(0.05f)
+            );
+            Assert.AreEqual((float)bounds.width / preview.texture.width, preview.uvRect.width);
+            Assert.AreEqual((float)bounds.height / preview.texture.height, preview.uvRect.height);
+            Assert.IsTrue(panel.Find("Object preview backdrop").gameObject.activeInHierarchy);
+            view.SetPanel(TacticalCombatHudPanel.ObjectGroup);
+            RectInt name = UILayout.GetSourceRect((RectTransform)panel.Find("Name"));
+            Assert.GreaterOrEqual(displayed.yMin, name.yMax);
+            foreach (TacticalCombatHudControl control in TacticalCombatHudLayout.Controls)
+                if (
+                    control.Panel
+                        is TacticalCombatHudPanel.SingleObject
+                            or TacticalCombatHudPanel.ObjectGroup
+                    && control.Control
+                        is TacticalCombatControl.PreviousObject
+                            or TacticalCombatControl.NextObject
+                )
+                    Assert.IsFalse(displayed.Overlaps(control.Bounds), control.Control.ToString());
+            view.SetPanel(TacticalCombatHudPanel.FighterGroup);
+            Assert.IsFalse(panel.Find("Object preview backdrop").gameObject.activeInHierarchy);
+        }
+
+        [UnityTest]
+        public IEnumerator HandleKeyboardEvent_Wasd_RotatesAndTiltsBattleCamera()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            yield return PrepareController(CreateEncounter(pack.GameData), pack);
+            foreach (KeyCode key in new[] { KeyCode.W, KeyCode.S, KeyCode.A, KeyCode.D })
+            {
+                Quaternion before = view.Renderer.Camera.transform.rotation;
+                Assert.IsTrue(
+                    view.HandleKeyboardEvent(new Event { type = EventType.KeyDown, keyCode = key })
+                );
+                Assert.IsTrue(
+                    view.HandleKeyboardEvent(new Event { type = EventType.KeyUp, keyCode = key })
+                );
+                Assert.Greater(
+                    Quaternion.Angle(before, view.Renderer.Camera.transform.rotation),
+                    1,
+                    key.ToString()
+                );
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator HandleKeyboardEvent_EscapeAndShiftEscape_RequestsMenuOncePerPress()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            yield return PrepareController(CreateEncounter(pack.GameData), pack);
+            int requests = 0;
+            controller.MenuControlRequested += control =>
+            {
+                Assert.AreEqual(TacticalCombatControl.OpenOptions, control);
+                requests++;
+            };
+            foreach (
+                EventModifiers modifiers in new[] { EventModifiers.None, EventModifiers.Shift }
+            )
+            {
+                int before = requests;
+                for (int repeat = 0; repeat < 3; repeat++)
+                    Assert.IsTrue(
+                        view.HandleKeyboardEvent(
+                            new Event
+                            {
+                                type = EventType.KeyDown,
+                                keyCode = KeyCode.Escape,
+                                modifiers = modifiers,
+                            }
+                        )
+                    );
+                Assert.AreEqual(before + 1, requests);
+                Assert.IsTrue(
+                    view.HandleKeyboardEvent(
+                        new Event
+                        {
+                            type = EventType.KeyUp,
+                            keyCode = KeyCode.Escape,
+                            modifiers = modifiers,
+                        }
+                    )
+                );
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator HandleKeyboardEvent_EscapeHeldAcrossMenuClose_WaitsForRelease()
+        {
+            InputTestFixture input = new();
+            input.Setup();
+            try
+            {
+                Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+                ContentPack pack = ContentPackLoader.OpenActive();
+                yield return PrepareController(CreateEncounter(pack.GameData), pack);
+                int requests = 0;
+                controller.MenuControlRequested += _ => requests++;
+                controller.SetApplicationMenuOpen(true);
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Escape));
+                InputSystem.Update();
+                controller.SetApplicationMenuOpen(false);
+
+                Assert.IsTrue(
+                    view.HandleKeyboardEvent(
+                        new Event { type = EventType.KeyDown, keyCode = KeyCode.Escape }
+                    )
+                );
+                Assert.Zero(requests);
+
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                InputSystem.Update();
+                Assert.IsTrue(
+                    view.HandleKeyboardEvent(
+                        new Event { type = EventType.KeyUp, keyCode = KeyCode.Escape }
+                    )
+                );
+                Assert.IsTrue(
+                    view.HandleKeyboardEvent(
+                        new Event { type = EventType.KeyDown, keyCode = KeyCode.Escape }
+                    )
+                );
+                Assert.AreEqual(1, requests);
+            }
+            finally
+            {
+                input.TearDown();
+            }
+        }
+
+        [UnityTest]
         public IEnumerator HandleKeyboardEvent_ApplicationMenuOpen_BlocksNativeCameraUntilInputOwnershipReturns()
         {
             ContentPack pack = ContentPackLoader.OpenActive();

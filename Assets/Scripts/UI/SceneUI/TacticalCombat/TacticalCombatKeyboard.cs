@@ -39,10 +39,13 @@ public static class TacticalCombatKeyboard
                 TacticalCombatControl.CameraZoomIn,
             KeyCode.PageDown or KeyCode.Keypad3 or KeyCode.KeypadMinus =>
                 TacticalCombatControl.CameraZoomOut,
-            KeyCode.LeftArrow or KeyCode.Keypad4 => TacticalCombatControl.CameraRotateLeft,
-            KeyCode.RightArrow or KeyCode.Keypad6 => TacticalCombatControl.CameraRotateRight,
-            KeyCode.UpArrow or KeyCode.Keypad8 => TacticalCombatControl.CameraTiltUp,
-            KeyCode.DownArrow or KeyCode.Keypad2 => TacticalCombatControl.CameraTiltDown,
+            KeyCode.A or KeyCode.LeftArrow or KeyCode.Keypad4 =>
+                TacticalCombatControl.CameraRotateLeft,
+            KeyCode.D or KeyCode.RightArrow or KeyCode.Keypad6 =>
+                TacticalCombatControl.CameraRotateRight,
+            KeyCode.W or KeyCode.UpArrow or KeyCode.Keypad8 => TacticalCombatControl.CameraTiltUp,
+            KeyCode.S or KeyCode.DownArrow or KeyCode.Keypad2 =>
+                TacticalCombatControl.CameraTiltDown,
             KeyCode.Home or KeyCode.Keypad7 => TacticalCombatControl.SaveCamera,
             KeyCode.End or KeyCode.Keypad1 => TacticalCombatControl.RestoreCamera,
             _ => TacticalCombatControl.FocusCamera,
@@ -55,12 +58,16 @@ public static class TacticalCombatKeyboard
                 or KeyCode.Keypad3
                 or KeyCode.KeypadMinus
                 or KeyCode.LeftArrow
+                or KeyCode.A
                 or KeyCode.Keypad4
                 or KeyCode.RightArrow
+                or KeyCode.D
                 or KeyCode.Keypad6
                 or KeyCode.UpArrow
+                or KeyCode.W
                 or KeyCode.Keypad8
                 or KeyCode.DownArrow
+                or KeyCode.S
                 or KeyCode.Keypad2
                 or KeyCode.Home
                 or KeyCode.Keypad7
@@ -122,10 +129,10 @@ public static class TacticalCombatKeyboard
         {
             Key.PageUp or Key.Numpad9 or Key.NumpadPlus => TacticalCombatCameraCommand.ZoomIn,
             Key.PageDown or Key.Numpad3 or Key.NumpadMinus => TacticalCombatCameraCommand.ZoomOut,
-            Key.LeftArrow or Key.Numpad4 => TacticalCombatCameraCommand.RotateLeft,
-            Key.RightArrow or Key.Numpad6 => TacticalCombatCameraCommand.RotateRight,
-            Key.UpArrow or Key.Numpad8 => TacticalCombatCameraCommand.TiltUp,
-            Key.DownArrow or Key.Numpad2 => TacticalCombatCameraCommand.TiltDown,
+            Key.A or Key.LeftArrow or Key.Numpad4 => TacticalCombatCameraCommand.RotateLeft,
+            Key.D or Key.RightArrow or Key.Numpad6 => TacticalCombatCameraCommand.RotateRight,
+            Key.W or Key.UpArrow or Key.Numpad8 => TacticalCombatCameraCommand.TiltUp,
+            Key.S or Key.DownArrow or Key.Numpad2 => TacticalCombatCameraCommand.TiltDown,
             Key.Home or Key.Numpad7 => TacticalCombatCameraCommand.Save,
             Key.End or Key.Numpad1 => TacticalCombatCameraCommand.Restore,
             Key.Enter or Key.NumpadEnter or Key.NumpadPeriod => TacticalCombatCameraCommand.Focus,
@@ -139,12 +146,16 @@ public static class TacticalCombatKeyboard
                 or Key.Numpad3
                 or Key.NumpadMinus
                 or Key.LeftArrow
+                or Key.A
                 or Key.Numpad4
                 or Key.RightArrow
+                or Key.D
                 or Key.Numpad6
                 or Key.UpArrow
+                or Key.W
                 or Key.Numpad8
                 or Key.DownArrow
+                or Key.S
                 or Key.Numpad2
                 or Key.Home
                 or Key.Numpad7

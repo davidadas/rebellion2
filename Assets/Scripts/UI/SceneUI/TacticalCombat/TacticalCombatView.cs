@@ -138,6 +138,9 @@ public sealed class TacticalCombatView : MonoBehaviour, IPointerDownHandler
     private RawImage _objectPreview;
 
     [SerializeField]
+    private Image _objectPreviewBackdrop;
+
+    [SerializeField]
     private RawImage _fighterPreview;
     private TacticalCombatHudPanel _panel;
 
@@ -358,7 +361,7 @@ public sealed class TacticalCombatView : MonoBehaviour, IPointerDownHandler
             key.type == EventType.KeyDown
             && TacticalCombatKeyboard.TryGetCameraCategory(key.keyCode, out _);
         bool direct =
-            key.keyCode is KeyCode.Space or KeyCode.Tab
+            key.keyCode is KeyCode.Space or KeyCode.Tab or KeyCode.Escape
             || TacticalCombatKeyboard.TryGetObjectCategoryControl(key.keyCode, out _);
         if (
             (!camera && !category && !direct)
@@ -465,6 +468,7 @@ public sealed class TacticalCombatView : MonoBehaviour, IPointerDownHandler
                 : TextAlignmentOptions.TopLeft;
         bool capital =
             panel is TacticalCombatHudPanel.SingleObject or TacticalCombatHudPanel.ObjectGroup;
+        _objectPreviewBackdrop.gameObject.SetActive(capital);
         _assignment.gameObject.SetActive(capital);
         _orders.gameObject.SetActive(inspection);
         _tactics.gameObject.SetActive(inspection);
@@ -544,8 +548,7 @@ public sealed class TacticalCombatView : MonoBehaviour, IPointerDownHandler
         if (_assets != null)
         {
             Texture2D image = Texture("unit-preview-" + data.PreviewIndex.Value);
-            _objectPreview.enabled = true;
-            UILayout.SetImage(_objectPreview, image, 26, 17);
+            SetObjectPreview(image);
             SetSystemIcon(0, "shield", data.Shields);
             SetSystemIcon(1, "weapon", data.Weapons);
             SetSystemIcon(2, "tractor", data.Tractor);
@@ -556,6 +559,38 @@ public sealed class TacticalCombatView : MonoBehaviour, IPointerDownHandler
         _shieldBar.rectTransform.anchorMax = new Vector2(
             (float)unit.Systems.GetShieldFraction(),
             1
+        );
+    }
+
+    /// <summary>
+    /// Fits the visible ship pixels into the enlarged capital preview without stretching or cropping its hull.
+    /// </summary>
+    /// <param name="image">The addressed capital-ship portrait.</param>
+    private void SetObjectPreview(Texture2D image)
+    {
+        UILayout.SetImageTexture(_objectPreview, image);
+        if (image == null)
+            return;
+        RectInt bounds = _assets.GetTextureContentBounds(image);
+        RectInt slot = TacticalCombatHudLayout.ObjectPreview;
+        float scale = Mathf.Min(
+            (float)slot.width / bounds.width,
+            (float)slot.height / bounds.height
+        );
+        int width = Mathf.RoundToInt(bounds.width * scale);
+        int height = Mathf.RoundToInt(bounds.height * scale);
+        _objectPreview.uvRect = new Rect(
+            (float)bounds.x / image.width,
+            (float)bounds.y / image.height,
+            (float)bounds.width / image.width,
+            (float)bounds.height / image.height
+        );
+        UILayout.SetSourceRect(
+            _objectPreview.rectTransform,
+            slot.x + (slot.width - width) / 2,
+            slot.y + (slot.height - height) / 2,
+            width,
+            height
         );
     }
 

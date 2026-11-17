@@ -71,6 +71,7 @@ public static class TacticalCombatHudLayout
 {
     public static readonly RectInt Viewport = new(17, 30, 439, 437);
     public static readonly RectInt RightPanel = new(482, 28, 149, 236);
+    public static readonly RectInt ObjectPreview = new(6, 21, 137, 43);
     public static IReadOnlyList<TacticalCombatHudControl> Controls { get; } =
         System.Array.AsReadOnly(
             new TacticalCombatHudControl[]
@@ -368,41 +369,41 @@ public static class TacticalCombatHudLayout
                 new(
                     TacticalCombatControl.PreviousObject,
                     TacticalCombatHudPanel.SingleObject,
-                    new RectInt(7, 10, 11, 53),
+                    new RectInt(7, 5, 11, 13),
                     "previous-object",
                     "Previous capital ship",
                     0,
-                    null,
+                    "<",
                     false
                 ),
                 new(
                     TacticalCombatControl.NextObject,
                     TacticalCombatHudPanel.SingleObject,
-                    new RectInt(132, 10, 11, 53),
+                    new RectInt(132, 5, 11, 13),
                     "next-object",
                     "Next capital ship",
                     0,
-                    null,
+                    ">",
                     false
                 ),
                 new(
                     TacticalCombatControl.PreviousObject,
                     TacticalCombatHudPanel.ObjectGroup,
-                    new RectInt(7, 10, 11, 53),
+                    new RectInt(7, 5, 11, 13),
                     "previous-object",
                     "Previous capital ship in task force",
                     0,
-                    null,
+                    "<",
                     false
                 ),
                 new(
                     TacticalCombatControl.NextObject,
                     TacticalCombatHudPanel.ObjectGroup,
-                    new RectInt(132, 10, 11, 53),
+                    new RectInt(132, 5, 11, 13),
                     "next-object",
                     "Next capital ship in task force",
                     0,
-                    null,
+                    ">",
                     false
                 ),
                 new(
