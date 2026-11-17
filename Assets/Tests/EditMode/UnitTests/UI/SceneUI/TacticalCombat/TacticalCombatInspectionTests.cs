@@ -120,6 +120,21 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         }
 
         [Test]
+        public void ReadUnit_FighterLosesHalfHull_UsesPreviousWeaponRechargeSample()
+        {
+            TacticalCombatUnit unit = Fighter("fighter", 1, 29, 12, 12);
+            TacticalCombatSession session = Encounter(unit);
+            unit.Systems.GetWeaponRecharge();
+            unit.Systems.ApplyHullLoss(48);
+
+            TacticalCombatInspectionData data = new TacticalCombatInspection(session).ReadUnit(
+                unit
+            );
+
+            Assert.AreEqual(2, data.Weapons);
+        }
+
+        [Test]
         public void ReadFighters_MixedTypesAndZeroHull_CountsRequestedTypeAndEveryAppliedMember()
         {
             TacticalCombatUnit laterType = Fighter("later", 1, 31, 12, 8);

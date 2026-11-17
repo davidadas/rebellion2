@@ -268,13 +268,37 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void GetWeaponRechargeRatio_FighterSample_UsesUpdatedStoredRateWithoutRoundingNumerator()
+        public void GetWeaponRechargeRatio_FirstFighterRead_UsesStoredRateBeforeRefreshingSample()
         {
             TacticalCombatSystems systems = new(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
 
             double ratio = systems.GetWeaponRechargeRatio();
 
-            Assert.AreEqual(0x3fefffffe9402186L, BitConverter.DoubleToInt64Bits(ratio));
+            Assert.AreEqual(180.0479965209961d, ratio);
+        }
+
+        [Test]
+        public void GetWeaponRechargeRatio_FighterLosesHalfHull_UsesPreviousRechargeSample()
+        {
+            TacticalCombatSystems systems = new(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
+            systems.GetWeaponRecharge();
+            systems.ApplyHullLoss(48);
+
+            double ratio = systems.GetWeaponRechargeRatio();
+
+            Assert.AreEqual(0x3fdfffffe9402186L, BitConverter.DoubleToInt64Bits(ratio));
+        }
+
+        [Test]
+        public void GetWeaponRechargeRatio_DestroyedFighter_ReturnsZeroOnFirstRead()
+        {
+            TacticalCombatSystems systems = new(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
+            systems.GetWeaponRecharge();
+            systems.ApplyHullLoss(96);
+
+            double ratio = systems.GetWeaponRechargeRatio();
+
+            Assert.AreEqual(0, ratio);
         }
 
         [Test]
