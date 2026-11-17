@@ -76,7 +76,7 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Refreshes discipline research capacity from completed facilities on owned core sectors
+        /// Refreshes discipline research capacity from completed facilities on owned planets
         /// and immediately applies any resulting single-step order advances.
         /// </summary>
         /// <param name="game">The game state being advanced.</param>
@@ -88,17 +88,11 @@ namespace Rebellion.Gameplay
             List<GameResult> results
         )
         {
-            List<Planet> corePlanets = faction
-                .GetOwnedUnitsByType<Planet>()
-                .Where(planet =>
-                    planet.GetParent() is PlanetSector sector
-                    && sector.GetSectorType() == PlanetSectorType.Core
-                )
-                .ToList();
+            List<Planet> planets = faction.GetOwnedUnitsByType<Planet>();
 
             foreach (ResearchDiscipline discipline in _researchDisciplines)
             {
-                int capacityDelta = CountCompleteFacilities(corePlanets, discipline);
+                int capacityDelta = CountCompleteFacilities(planets, discipline);
 
                 Technology unlocked = faction.ApplyResearchProgress(discipline, capacityDelta);
                 if (unlocked == null)
