@@ -10,6 +10,45 @@ namespace Rebellion.Tests.ContentEditor
     public sealed class ContentPackEditorRecordTests
     {
         [Test]
+        public void GetFields_StarfighterFormationMetadata_UsesTypedOptionalControls()
+        {
+            var record = Create(
+                "<Starfighters><Starfighter><TypeID>TEST</TypeID></Starfighter></Starfighters>"
+            ).Records[0];
+            var fields = ContentEditorInspectorLayout.GetFields(record);
+            var roles = fields.Single(field => field.MemberName == "Roles");
+            var priority = fields.Single(field => field.MemberName == "FormationPriority");
+
+            Assert.IsTrue(roles.IsList);
+            CollectionAssert.Contains(roles.Choices, "HeavyAssault");
+            CollectionAssert.Contains(roles.Choices, "Multirole");
+            Assert.IsTrue(priority.IsNumber);
+            Assert.AreEqual(string.Empty, priority.Value);
+            Assert.IsNull(record.Element.Element("FormationPriority"));
+            Assert.IsNull(record.Element.Element("Roles"));
+            Assert.IsFalse(record.Catalog.Document.IsDirty);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void GetField_OptionalFormationPriority_CanReturnToAutomatic(bool authored)
+        {
+            var record = Create(
+                "<Starfighters><Starfighter><TypeID>TEST</TypeID>"
+                    + (authored ? "<FormationPriority>2</FormationPriority>" : string.Empty)
+                    + "</Starfighter></Starfighters>"
+            ).Records[0];
+            var field = record.GetField("FormationPriority");
+
+            field.SetValue("7");
+            Assert.AreEqual("7", record.Element.Element("FormationPriority").Value);
+            field.SetValue(string.Empty);
+
+            Assert.IsNull(record.Element.Element("FormationPriority"));
+            Assert.AreEqual(string.Empty, field.Value);
+        }
+
+        [Test]
         public void GetFields_AbsentOptionalMembers_ExposesTypedFieldsWithoutChangingTheDocument()
         {
             var record = CreateGenerationRecord(

@@ -10,6 +10,79 @@ namespace Rebellion.Tests.Game.Units
     {
         private Starfighter _starfighter;
 
+        [Test]
+        public void CreateCopy_WithFormationMetadata_CopiesIndependentRolesAndPriority()
+        {
+            Starfighter source = new Starfighter
+            {
+                Roles = new List<StarfighterRole>
+                {
+                    StarfighterRole.Bomber,
+                    StarfighterRole.HeavyAssault,
+                },
+                FormationPriority = 7,
+            };
+
+            Starfighter copy = (Starfighter)source.CreateCopy();
+
+            CollectionAssert.AreEqual(source.GetRoles(), copy.GetRoles());
+            Assert.AreEqual(7, copy.FormationPriority);
+            copy.Roles.Clear();
+            copy.FormationPriority = null;
+            Assert.IsTrue(source.HasRole(StarfighterRole.HeavyAssault));
+            Assert.AreEqual(7, source.FormationPriority);
+        }
+
+        [TestCase(null)]
+        [TestCase(3)]
+        public void Serialize_FormationMetadata_RetainsRolesAndOptionalPriority(int? priority)
+        {
+            Starfighter source = new Starfighter
+            {
+                Roles = new List<StarfighterRole> { StarfighterRole.Multirole },
+                FormationPriority = priority,
+            };
+
+            Starfighter loaded = SerializationHelper.Deserialize<Starfighter>(
+                SerializationHelper.Serialize(source)
+            );
+
+            CollectionAssert.AreEqual(source.GetRoles(), loaded.GetRoles());
+            Assert.AreEqual(priority, loaded.FormationPriority);
+        }
+
+        [Test]
+        public void Deserialize_OmittedFormationMetadata_UsesAutomaticOrdering()
+        {
+            Starfighter fighter = SerializationHelper.Deserialize<Starfighter>("<Starfighter/>");
+
+            Assert.IsEmpty(fighter.GetRoles());
+            Assert.IsNull(fighter.FormationPriority);
+            Assert.AreEqual(int.MaxValue, fighter.GetFormationPriority());
+        }
+
+        [TestCase(null, 1)]
+        [TestCase(8, 8)]
+        public void GetFormationPriority_MultipleRoles_HonorsAnExplicitOverride(
+            int? priority,
+            int expected
+        )
+        {
+            Starfighter fighter = new Starfighter
+            {
+                Roles = new List<StarfighterRole>
+                {
+                    StarfighterRole.HeavyAssault,
+                    StarfighterRole.Interceptor,
+                },
+                FormationPriority = priority,
+            };
+
+            Assert.AreEqual(expected, fighter.GetFormationPriority());
+            fighter.Roles.Reverse();
+            Assert.AreEqual(expected, fighter.GetFormationPriority());
+        }
+
         /// <summary>
         /// Sets up.
         /// </summary>
