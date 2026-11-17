@@ -903,8 +903,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             GetField<Button>(saveList, "_loadButton").onClick.Invoke();
 
             Assert.IsTrue(confirmation.gameObject.activeSelf);
-            StringAssert.Contains(
-                "Load \"Existing Save\"? Unsaved progress will be lost.",
+            Assert.AreEqual(
+                "Load game? Any unsaved progress will be lost.",
                 confirmation.GetComponentInChildren<TextMeshProUGUI>().text
             );
             Assert.IsNull(_loadedFileName);
@@ -967,7 +967,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void HandleLoadRequested_NoActiveGame_ConfirmsSelectedSaveWithoutProgressWarning()
+        public void HandleLoadRequested_NoActiveGame_LoadsImmediatelyWithoutConfirmation()
         {
             _saveGameManager.SaveGameData(CreateGame(), "existing_save", "Existing Save");
             OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
@@ -982,11 +982,11 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 view,
                 "_confirmDialog"
             );
-            string message = confirmation.GetComponentInChildren<TextMeshProUGUI>().text;
 
-            StringAssert.Contains("Load \"Existing Save\"?", message);
-            StringAssert.DoesNotContain("Unsaved progress", message);
-            Assert.IsNull(_loadedFileName);
+            Assert.IsFalse(confirmation.gameObject.activeSelf);
+            Assert.AreEqual("existing_save", _loadedFileName);
+            Assert.IsTrue(_menuOpenWhenLoadCalled);
+            Assert.IsTrue(_controller.IsOpen);
         }
 
         [TestCase(false)]

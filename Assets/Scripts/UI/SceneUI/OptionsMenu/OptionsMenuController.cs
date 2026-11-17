@@ -755,18 +755,21 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
-    /// Requests confirmation before replacing the current campaign with the selected save.
+    /// Loads the selected save after protecting any active campaign from accidental replacement.
     /// </summary>
     private void HandleLoadRequested()
     {
         if (_persistencePending || !IsSelectedExistingSave())
             return;
 
-        OptionsSaveSlot slot = _saveSlots[_selectedSlot];
-        string message = HasActiveGame()
-            ? $"Load \"{slot.Name}\"? Unsaved progress will be lost."
-            : $"Load \"{slot.Name}\"?";
-        RequestConfirm(message, () => LoadSave(slot.FileName));
+        string fileName = _saveSlots[_selectedSlot].FileName;
+        if (!HasActiveGame())
+        {
+            LoadSave(fileName);
+            return;
+        }
+
+        RequestConfirm("Load game? Any unsaved progress will be lost.", () => LoadSave(fileName));
     }
 
     /// <summary>
