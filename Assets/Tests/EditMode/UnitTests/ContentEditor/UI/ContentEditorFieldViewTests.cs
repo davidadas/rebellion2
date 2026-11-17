@@ -68,7 +68,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         public void Render_LoyaltyAllegianceDropdown_CanReturnToUnspecified()
         {
             ContentPackEditorField field = officer.GetField("LoyaltyAllegiance");
-            control.Submitted += (edited, values) => project.SetFieldValues(edited, values);
+            control.Submitted += (edited, values) => project.SetField(edited, values.Single());
             control.Render(ContentPackEditorProjector.BuildField(project, field), null, null, null);
             TMP_Dropdown dropdown = control.GetComponentInChildren<TMP_Dropdown>();
 
