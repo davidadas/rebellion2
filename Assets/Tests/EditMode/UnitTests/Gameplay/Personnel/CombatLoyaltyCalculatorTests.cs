@@ -14,6 +14,8 @@ namespace Rebellion.Tests.Gameplay
         [TestCase(0, -15, 10, -2)]
         [TestCase(-101, 99, 10, 29)]
         [TestCase(40, 80, -80, -1)]
+        [TestCase(0, int.MinValue + 1, -1, -2)]
+        [TestCase(int.MinValue, int.MinValue, int.MinValue, 1)]
         public void Calculate_FractionalLossWeights_TruncatesEachDivisionTowardZero(
             int favoredLoss,
             int opposingLoss,
@@ -49,11 +51,16 @@ namespace Rebellion.Tests.Gameplay
             Assert.Throws<DivideByZeroException>(() => CombatLoyaltyCalculator.Calculate(0, 0, 0));
         }
 
-        [Test]
-        public void Calculate_UnrepresentableQuotient_PropagatesDivisionFault()
+        [TestCase(int.MinValue, 0)]
+        [TestCase(0, int.MinValue)]
+        [TestCase(int.MinValue, int.MinValue)]
+        public void Calculate_UnrepresentableQuotient_PropagatesDivisionFault(
+            int favoredLoss,
+            int opposingLoss
+        )
         {
             Assert.Throws<OverflowException>(() =>
-                CombatLoyaltyCalculator.Calculate(int.MinValue, 0, -1)
+                CombatLoyaltyCalculator.Calculate(favoredLoss, opposingLoss, -1)
             );
         }
     }
