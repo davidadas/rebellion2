@@ -93,7 +93,6 @@ namespace Rebellion.Gameplay
 
         private readonly Func<IEnumerable<GameResult>, bool, List<GameResult>> _processResults;
         private readonly Action<List<GameResult>> _processMessages;
-        private readonly List<BlockadeChangedResult> _deferredBlockadeResults = new();
         private readonly List<GameResult> _deferredMessageResults = new();
         private AIDirector _aiDirector;
         private ITickProcessor _captive;
@@ -216,7 +215,6 @@ namespace Rebellion.Gameplay
         /// </summary>
         internal void Reset()
         {
-            _deferredBlockadeResults.Clear();
             _deferredMessageResults.Clear();
             _tickState = TickExecutionState.Idle;
         }
@@ -367,7 +365,6 @@ namespace Rebellion.Gameplay
                     yield return ai.Current;
             }
             ProcessResults(aiResults);
-            ProcessDeferredBlockadeResults();
 
             ProcessResults(_planetaryControl.ProcessTick(_game));
             ProcessResults(_uprising.ProcessTick(_game));
@@ -838,8 +835,7 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Publishes net blockade changes after waypoint continuation and defers transient starts
-        /// until strategic processing has completed.
+        /// Publishes net blockade changes after waypoint continuation.
         /// </summary>
         /// <param name="blockadeTransitions">The blockade facts produced during movement and combat.</param>
         /// <returns>The immediately settled blockade results and their reactions.</returns>
@@ -863,36 +859,10 @@ namespace Rebellion.Gameplay
                         result.Blockaded == isBlockaded
                     );
                     immediateResults.Add(finalTransition);
-                    continue;
-                }
-
-                if (!wasBlockaded)
-                {
-                    BlockadeChangedResult transientStart = orderedTransitions.FirstOrDefault(
-                        result => result.Blockaded
-                    );
-                    if (transientStart != null)
-                        _deferredBlockadeResults.Add(transientStart);
                 }
             }
 
             return ProcessResults(immediateResults, processMessages: false);
-        }
-
-        /// <summary>
-        /// Publishes transient blockade-start facts after AI planning, when their live blockade is
-        /// already gone and cannot trigger movement reactions.
-        /// </summary>
-        private void ProcessDeferredBlockadeResults()
-        {
-            if (_deferredBlockadeResults.Count == 0)
-                return;
-
-            List<BlockadeChangedResult> results = new List<BlockadeChangedResult>(
-                _deferredBlockadeResults
-            );
-            _deferredBlockadeResults.Clear();
-            ProcessResults(results);
         }
 
         /// <summary>
