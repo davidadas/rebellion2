@@ -1181,6 +1181,41 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsTrue(_planet.IsBlockaded());
         }
 
+        [TestCase(null)]
+        [TestCase("")]
+        public void IsBlockaded_UncolonizedNeutralPlanet_ReturnsFalse(string owner)
+        {
+            _planet.OwnerInstanceID = owner;
+            _planet.IsColonized = false;
+            _planet.AddChild(CreateOperationalFleet("FNALL1"));
+
+            Assert.IsFalse(_planet.IsBlockaded());
+            Assert.IsFalse(_planet.IsBlockadedFor("ENEMY"));
+        }
+
+        [Test]
+        public void IsBlockaded_UncolonizedOwnedPlanetWithHostileFleet_ReturnsTrue()
+        {
+            _planet.IsColonized = false;
+            _planet.AddChild(CreateOperationalFleet("ENEMY"));
+
+            Assert.IsTrue(_planet.IsBlockaded());
+        }
+
+        [Test]
+        public void IsBlockaded_NeutralPlanetPopulationChanges_UsesCurrentPopulation()
+        {
+            _planet.OwnerInstanceID = null;
+            _planet.IsColonized = false;
+            _planet.AddChild(CreateOperationalFleet("FNALL1"));
+
+            Assert.IsFalse(_planet.IsBlockaded());
+            _planet.IsColonized = true;
+            Assert.IsTrue(_planet.IsBlockaded());
+            _planet.IsColonized = false;
+            Assert.IsFalse(_planet.IsBlockaded());
+        }
+
         [Test]
         public void IsBlockadedFor_NeutralPlanetBlockadingFaction_ReturnsFalse()
         {

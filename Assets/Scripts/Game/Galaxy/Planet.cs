@@ -251,12 +251,12 @@ namespace Rebellion.Game.Galaxy
         /// Checks if the planet is blockaded.
         /// An owned planet is blockaded when a stationary hostile fleet has an operational
         /// capital ship and no equivalent defending fleet is present. A neutral planet is
-        /// blockaded by any such fleet in orbit.
+        /// blockaded by any such fleet in orbit only while it has a civilian population.
         /// </summary>
         /// <returns>True if the planet is blockaded, false otherwise.</returns>
         public bool IsBlockaded()
         {
-            if (IsDestroyed)
+            if (IsDestroyed || (!IsColonized && string.IsNullOrEmpty(OwnerInstanceID)))
                 return false;
             IReadOnlyList<Fleet> fleets = GetChildren<Fleet>();
             bool hasHostile = fleets.Any(f =>

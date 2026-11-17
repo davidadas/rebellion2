@@ -153,6 +153,21 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsTrue(new PlanetaryAssaultQueries(game).CanExecute(new[] { attacker }, planet));
         }
 
+        [TestCase(false, false)]
+        [TestCase(true, true)]
+        public void CanExecute_NeutralTarget_RequiresPopulation(bool populated, bool expected)
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", owner: null);
+            planet.IsColonized = populated;
+            Fleet attacker = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+
+            Assert.AreEqual(
+                expected,
+                new PlanetaryAssaultQueries(game).CanExecute(new[] { attacker }, planet)
+            );
+        }
+
         [Test]
         public void CanExecute_DefenderStartsAndCancelsMovement_UsesCurrentBlockadeState()
         {
