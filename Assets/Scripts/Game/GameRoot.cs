@@ -41,6 +41,7 @@ namespace Rebellion.Game
         // Scene graph.
         private GalaxyMap _galaxy;
         private readonly SpaceCombatEntryTracker _spaceCombatEntries = new();
+        private readonly SpaceCombatMilitaryRoster _spaceCombatMilitaryRoster = new();
 
         /// <summary>
         /// Reports an officer whose retained discovery state has just become enabled.
@@ -981,6 +982,17 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Captures both requested owners' current full military values without scene traversal or allocation.
+        /// </summary>
+        /// <param name="firstOwnerInstanceId">The first owner identity, or null for neutral ownership.</param>
+        /// <param name="secondOwnerInstanceId">The second owner identity, or null for neutral ownership.</param>
+        /// <returns>The current completed and delivering military values in the requested owner order.</returns>
+        internal (int FirstSide, int SecondSide) CaptureSpaceCombatMilitaryValues(
+            string firstOwnerInstanceId,
+            string secondOwnerInstanceId
+        ) => _spaceCombatMilitaryRoster.CaptureValues(firstOwnerInstanceId, secondOwnerInstanceId);
+
+        /// <summary>
         /// Registers a unit to the faction that owns the unit.
         /// </summary>
         /// <param name="node">The unit to register.</param>
@@ -1071,6 +1083,7 @@ namespace Rebellion.Game
             try
             {
                 NodesByInstanceID.Add(node.InstanceID, node);
+                _spaceCombatMilitaryRoster.Register(node);
                 if (node is Officer officer)
                 {
                     _registeredOfficers.Add(officer);
@@ -1101,6 +1114,7 @@ namespace Rebellion.Game
         {
             _spaceCombatEntries.Unregister(node);
             NodesByInstanceID.Remove(node.InstanceID);
+            _spaceCombatMilitaryRoster.Unregister(node.InstanceID);
             if (node is Officer officer)
             {
                 officer.UnbindForceRuntime();
@@ -1143,6 +1157,7 @@ namespace Rebellion.Game
             foreach (Officer officer in _registeredOfficers)
                 officer.UnbindForceRuntime();
             NodesByInstanceID.Clear();
+            _spaceCombatMilitaryRoster.Clear();
             _registeredOfficers.Clear();
             foreach (Faction faction in _factions)
                 faction.ClearOwnedUnits();
@@ -1158,6 +1173,7 @@ namespace Rebellion.Game
         private GalaxyMap InitializeGalaxy(GalaxyMap galaxy)
         {
             NodesByInstanceID.Clear();
+            _spaceCombatMilitaryRoster.Clear();
             foreach (Faction faction in _factions)
                 faction.ClearOwnedUnits();
             InitializeSceneRoot(galaxy);
