@@ -445,6 +445,27 @@ namespace Rebellion.Tests.Gameplay
             Assert.That(target.Systems.Hull, Is.LessThan(1000));
         }
 
+        [Test]
+        public void Advance_InitialWeaponOnlyDamage_DoesNotApplyUnadmittedRepairs()
+        {
+            CapitalShip ship = CreateShip("a", 1000, 0);
+            ship.SystemDamage.Weapons = 4;
+            ship.DamageControl = 100;
+            TacticalCombatSession session = CreateSession(ship, CreateShip("b", 1000, 0));
+            TacticalCombatUnit target = session.GetUnit("a");
+            int repairs = 0;
+            session.SystemChanged += (unit, change) =>
+            {
+                if (ReferenceEquals(unit, target) && change.IsRepair)
+                    repairs++;
+            };
+
+            AdvanceSeconds(session, 60);
+
+            Assert.AreEqual(0, repairs);
+            Assert.AreEqual(4, target.Systems.GetDamage(TacticalShipSystem.Weapons));
+        }
+
         [TestCase(TacticalCombatUnitStatus.Active)]
         [TestCase(TacticalCombatUnitStatus.EnteringHyperspace)]
         [TestCase(TacticalCombatUnitStatus.Destroyed)]
