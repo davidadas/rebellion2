@@ -401,14 +401,19 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
-        public void ApplyResearchProgress_MeetsDifficulty_ReturnsUnlockedTechnology()
+        public void ApplyResearchProgress_MeetsDifficulty_ReturnsUnlockedAdvancement()
         {
             SetupShipCatalog(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
 
-            Technology unlocked = _faction.ApplyResearchProgress(ResearchDiscipline.ShipDesign, 12);
+            IReadOnlyList<ResearchAdvancement> advancements = _faction.ApplyResearchProgress(
+                ResearchDiscipline.ShipDesign,
+                12
+            );
 
-            Assert.IsNotNull(unlocked, "Apply should return the technology that was unlocked");
-            Assert.AreEqual("Frigate", unlocked.GetReference().DisplayName);
+            Assert.AreEqual(1, advancements.Count);
+            Assert.AreEqual("Frigate", advancements[0].Technology.GetReference().DisplayName);
+            Assert.AreEqual(1, advancements[0].Order);
+            Assert.AreEqual(0, advancements[0].CapacityRemaining);
             Assert.AreEqual(1, _faction.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign));
             Assert.AreEqual(
                 0,
@@ -418,29 +423,44 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
-        public void ApplyResearchProgress_ExcessCapacity_AdvancesOnceAndCarriesRemainder()
+        public void ApplyResearchProgress_ExcessCapacity_AdvancesEveryAffordableOrder()
         {
             SetupShipCatalog(("Dreadnaught", 0, 0), ("Frigate", 1, 12), ("Cruiser", 2, 24));
 
-            Technology unlocked = _faction.ApplyResearchProgress(ResearchDiscipline.ShipDesign, 40);
+            IReadOnlyList<ResearchAdvancement> advancements = _faction.ApplyResearchProgress(
+                ResearchDiscipline.ShipDesign,
+                40
+            );
 
-            Assert.AreEqual("Frigate", unlocked.GetReference().DisplayName);
-            Assert.AreEqual(1, _faction.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign));
+            CollectionAssert.AreEqual(
+                new[] { "Frigate", "Cruiser" },
+                advancements.Select(advancement =>
+                    advancement.Technology.GetReference().DisplayName
+                )
+            );
+            CollectionAssert.AreEqual(
+                new[] { 28, 4 },
+                advancements.Select(advancement => advancement.CapacityRemaining)
+            );
+            Assert.AreEqual(2, _faction.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign));
             Assert.AreEqual(
-                28,
+                4,
                 _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign),
-                "One call should advance only one order and carry the remainder"
+                "Capacity left after every affordable order should carry forward"
             );
         }
 
         [Test]
-        public void ApplyResearchProgress_BelowDifficulty_ReturnsNullAndAccumulates()
+        public void ApplyResearchProgress_BelowDifficulty_ReturnsNoAdvancementsAndAccumulates()
         {
             SetupShipCatalog(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
 
-            Technology unlocked = _faction.ApplyResearchProgress(ResearchDiscipline.ShipDesign, 5);
+            IReadOnlyList<ResearchAdvancement> advancements = _faction.ApplyResearchProgress(
+                ResearchDiscipline.ShipDesign,
+                5
+            );
 
-            Assert.IsNull(unlocked, "Below-difficulty progress should not unlock anything");
+            Assert.IsEmpty(advancements, "Below-difficulty progress should not unlock anything");
             Assert.AreEqual(0, _faction.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign));
             Assert.AreEqual(
                 5,
@@ -449,17 +469,17 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
-        public void ApplyResearchProgress_AllUnlocked_ReturnsNull()
+        public void ApplyResearchProgress_AllUnlocked_ReturnsNoAdvancements()
         {
             SetupShipCatalog(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
             _faction.SetHighestUnlockedOrder(ResearchDiscipline.ShipDesign, 1);
 
-            Technology unlocked = _faction.ApplyResearchProgress(
+            IReadOnlyList<ResearchAdvancement> advancements = _faction.ApplyResearchProgress(
                 ResearchDiscipline.ShipDesign,
                 9999
             );
 
-            Assert.IsNull(unlocked, "Exhausted disciplines should never unlock anything");
+            Assert.IsEmpty(advancements, "Exhausted disciplines should never unlock anything");
             Assert.AreEqual(1, _faction.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign));
         }
 
@@ -495,12 +515,16 @@ namespace Rebellion.Tests.Game.Factions
                     $"No researchable {discipline} technologies for {alliance.InstanceID}"
                 );
 
-            Technology unlocked = alliance.ApplyResearchProgress(
+            IReadOnlyList<ResearchAdvancement> advancements = alliance.ApplyResearchProgress(
                 discipline,
                 target.GetResearchDifficulty()
             );
 
-            Assert.AreEqual(target.GetResearchOrder(), unlocked.GetResearchOrder());
+            Assert.AreEqual(1, advancements.Count);
+            Assert.AreEqual(
+                target.GetResearchOrder(),
+                advancements[0].Technology.GetResearchOrder()
+            );
             Assert.AreEqual(
                 target.GetResearchOrder(),
                 alliance.GetHighestUnlockedOrder(discipline)

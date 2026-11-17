@@ -972,28 +972,44 @@ namespace Rebellion.Game.Factions
         }
 
         /// <summary>
-        /// Adds research progress to a discipline and advances the order if the new
-        /// capacity covers the next entry's cost.
+        /// Adds research progress to a discipline and advances through every order
+        /// covered by the resulting capacity.
         /// </summary>
         /// <param name="discipline">The discipline to update.</param>
         /// <param name="amount">The progress amount to add (may be negative).</param>
-        /// <returns>The technology unlocked by this call, or null if no advance occurred.</returns>
-        public Technology ApplyResearchProgress(ResearchDiscipline discipline, int amount)
+        /// <returns>The ordered research advancements completed by this call.</returns>
+        public IReadOnlyList<ResearchAdvancement> ApplyResearchProgress(
+            ResearchDiscipline discipline,
+            int amount
+        )
         {
             ResearchDisciplineState state = ResearchState.Disciplines[discipline];
             state.CapacityRemaining += amount;
+            List<ResearchAdvancement> advancements = new List<ResearchAdvancement>();
 
-            ResearchCatalogEntry nextEntry = GetNextResearchEntry(discipline);
-            if (nextEntry == null)
-                return null;
+            while (true)
+            {
+                ResearchCatalogEntry nextEntry = GetNextResearchEntry(discipline);
+                if (nextEntry == null)
+                    break;
 
-            int scaledDifficulty = nextEntry.Difficulty * ResearchState.CostScalePercent / 100;
-            if (state.CapacityRemaining < scaledDifficulty)
-                return null;
+                int scaledDifficulty = nextEntry.Difficulty * ResearchState.CostScalePercent / 100;
+                if (state.CapacityRemaining < scaledDifficulty)
+                    break;
 
-            state.CurrentOrder = nextEntry.Order;
-            state.CapacityRemaining -= scaledDifficulty;
-            return nextEntry.Technology;
+                state.CurrentOrder = nextEntry.Order;
+                state.CapacityRemaining -= scaledDifficulty;
+                advancements.Add(
+                    new ResearchAdvancement
+                    {
+                        Order = state.CurrentOrder,
+                        CapacityRemaining = state.CapacityRemaining,
+                        Technology = nextEntry.Technology,
+                    }
+                );
+            }
+
+            return advancements;
         }
 
         /// <summary>
