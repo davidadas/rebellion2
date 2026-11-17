@@ -10,6 +10,26 @@ namespace Rebellion.Tests.ContentEditor
     public sealed class ContentPackEditorFieldTests
     {
         [Test]
+        public void SetValue_BattleSupportProfile_UsesNullableNumericType()
+        {
+            ContentPackEditorCatalog catalog = Create(
+                "<GameConfig><SupportShift><BattleSupport><Profiles><Entry><Key>FirstFactionEasy</Key>"
+                    + "<Value><SpaceCombatSupportProfile><FirstSide><LeadingGapScale>400</LeadingGapScale>"
+                    + "</FirstSide></SpaceCombatSupportProfile></Value></Entry></Profiles></BattleSupport>"
+                    + "</SupportShift></GameConfig>"
+            );
+            var fields = catalog.Records.Single().GetFields();
+            ContentPackEditorField gap = fields.Single(field =>
+                field.XmlElement.Name == "LeadingGapScale"
+            );
+
+            Assert.IsTrue(gap.IsNumber);
+            Assert.Throws<ArgumentException>(() => gap.SetValue("not a number"));
+            gap.SetValue("123");
+            Assert.AreEqual("123", gap.Value);
+        }
+
+        [Test]
         public void SetValue_InvalidNumber_DoesNotChangeWorkingDocument()
         {
             ContentPackEditorCatalog catalog = Create(

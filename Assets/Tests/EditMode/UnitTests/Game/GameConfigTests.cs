@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.FogOfWar;
+using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Game
@@ -8,6 +9,58 @@ namespace Rebellion.Tests.Game
     [TestFixture]
     public class GameConfigTests
     {
+        [TestCase(SpaceCombatSupportContext.FirstFactionEasy, 400, 200)]
+        [TestCase(SpaceCombatSupportContext.FirstFactionMedium, 400, 150)]
+        [TestCase(SpaceCombatSupportContext.FirstFactionHard, 400, 100)]
+        [TestCase(SpaceCombatSupportContext.SecondFactionEasy, 200, 400)]
+        [TestCase(SpaceCombatSupportContext.SecondFactionMedium, 150, 400)]
+        [TestCase(SpaceCombatSupportContext.SecondFactionHard, 100, 400)]
+        [TestCase(SpaceCombatSupportContext.Multiplayer, 400, 400)]
+        public void BattleSupport_AuthoredContext_RetainsCompleteSideParameters(
+            SpaceCombatSupportContext context,
+            int firstGapScale,
+            int secondGapScale
+        )
+        {
+            SpaceCombatSupportConfig config = TestContent
+                .Data
+                .GameConfig
+                .SupportShift
+                .BattleSupport;
+            SpaceCombatSupportProfile profile = config.Profiles[context];
+
+            Assert.AreEqual(7, config.Profiles.Count);
+            Assert.AreEqual(10, profile.Divisor);
+            Assert.AreEqual(firstGapScale, profile.FirstSide.LeadingGapScale);
+            Assert.AreEqual(secondGapScale, profile.SecondSide.LeadingGapScale);
+            foreach (
+                SpaceCombatSupportSideConfig side in new[] { profile.FirstSide, profile.SecondSide }
+            )
+            {
+                Assert.AreEqual(100, side.LeadingFlat);
+                Assert.AreEqual(0, side.TrailingFlat);
+                Assert.AreEqual(100, side.TrailingGapScale);
+                Assert.AreEqual(20, side.MagnitudeCap);
+                Assert.AreEqual(101u, side.SupportThreshold);
+            }
+        }
+
+        [Test]
+        public void CreateCopy_EditingBattleSupportProfile_DoesNotChangeSource()
+        {
+            GameConfig source = TestContent.Data.GameConfig.CreateCopy();
+            string before = SerializationHelper.Serialize(source);
+
+            GameConfig copy = source.CreateCopy();
+            copy.SupportShift
+                .BattleSupport
+                .Profiles[SpaceCombatSupportContext.FirstFactionEasy]
+                .FirstSide
+                .LeadingGapScale = 999;
+
+            Assert.AreEqual(before, SerializationHelper.Serialize(source));
+        }
+
         [Test]
         public void CreateCopy_ConfiguredRules_PreservesAllValues()
         {
