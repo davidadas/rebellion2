@@ -5082,6 +5082,112 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(expected, battle.GetSide(battle.PlayerSide).RetreatStrengthRatio);
         }
 
+        [Test]
+        public void CompleteTacticalCombat_PartiallyDamagedShip_DoesNotRecordAWholeUnitLoss()
+        {
+            (_, SpaceCombatCommands commands, CapitalShip attacker) = CreateTacticalEncounter();
+            attacker.UprisingDefense = 23;
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+            battle.GetUnit(attacker.InstanceID).Systems.ApplyHullLoss(100);
+            Assert.IsTrue(battle.RequestImmediateResult());
+            battle.Advance(0);
+
+            SpaceCombatResult result = commands
+                .CompleteTacticalCombat(battle)
+                .OfType<SpaceCombatResult>()
+                .Single();
+
+            Assert.AreEqual(0, result.AcceptedLosses.GetLostValue(attacker.OwnerInstanceID));
+        }
+
+        [Test]
+        public void CompleteTacticalCombat_ImmediateContinuation_AccumulatesAcceptedLossesFromBothPhases()
+        {
+            (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
+                CreateTacticalEncounter();
+            Planet planet = attacker.GetParentOfType<Planet>();
+            CapitalShip first = planet
+                .GetChildren<CapitalShip>(recursive: true)
+                .Single(ship => ship.OwnerInstanceID != attacker.OwnerInstanceID);
+            first.UprisingDefense = 17;
+            CapitalShip second = (CapitalShip)first.CreateCopy();
+            second.InstanceID = "continuation-loss-defender";
+            second.UprisingDefense = 19;
+            game.AttachNode(second, first.GetParent());
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+            TacticalCombatUnit casualty = battle.GetUnit(first.InstanceID);
+            casualty.Systems.Destroy();
+            casualty.Status = TacticalCombatUnitStatus.Destroyed;
+            Assert.IsTrue(battle.RequestImmediateResult());
+            battle.Advance(0);
+
+            SpaceCombatResult result = commands
+                .CompleteTacticalCombat(battle)
+                .OfType<SpaceCombatResult>()
+                .Single();
+
+            Assert.AreEqual(36, result.AcceptedLosses.GetLostValue(first.OwnerInstanceID));
+        }
+
+        [Test]
+        public void ResolvePendingRetreat_DestroyedCarrier_RecordsAcceptedShipFighterAndRegimentValues()
+        {
+            GameRoot game = CreateGame();
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
+            (Planet combatPlanet, _) = CreatePlanet(game, "loss-ledger-combat");
+            CreatePlanet(game, "loss-ledger-home", owner: "empire");
+            CreatePlanet(game, "loss-ledger-opponent-home", owner: "alliance");
+            Fleet fleet = CreateFleet(game, "loss-ledger-fleet", "empire", combatPlanet, 2, 100, 1);
+            IReadOnlyList<CapitalShip> ships = fleet.GetChildren<CapitalShip>();
+            CapitalShip carrier = ships[0];
+            carrier.Hyperdrive = 0;
+            carrier.RegimentCapacity = 4;
+            carrier.StarfighterCapacity = 1;
+            carrier.UprisingDefense = 7;
+            ships[1].Hyperdrive = 1;
+            ships[1].StarfighterCapacity = 0;
+            game.AttachNode(
+                new Starfighter
+                {
+                    InstanceID = "loss-ledger-fighter",
+                    OwnerInstanceID = "empire",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    Hyperdrive = 0,
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                    UprisingDefense = 13,
+                },
+                carrier
+            );
+            for (int index = 0; index < 4; index++)
+                game.AttachNode(
+                    new Regiment
+                    {
+                        InstanceID = $"loss-ledger-regiment-{index}",
+                        OwnerInstanceID = "empire",
+                        UprisingDefense = index == 0 ? 17 : 100,
+                        ManufacturingStatus = index switch
+                        {
+                            1 => ManufacturingStatus.Building,
+                            2 => ManufacturingStatus.Delivering,
+                            _ => ManufacturingStatus.Complete,
+                        },
+                        Movement = index >= 2 ? new MovementState() : null,
+                    },
+                    carrier
+                );
+            CreateFleet(game, "loss-ledger-opponent", "alliance", combatPlanet, 1, 1000, 100);
+            SpaceCombatCommands commands = MakeSpaceCombat(game);
+            new SpaceCombatTickProcessor(commands).ProcessTick(game);
+
+            SpaceCombatResult result = commands
+                .ResolvePendingRetreat("empire")
+                .OfType<SpaceCombatResult>()
+                .Single();
+
+            Assert.AreEqual(37, result.AcceptedLosses.GetLostValue("empire"));
+        }
+
         /// <summary>
         /// Configures a runtime capital ship for an authored tactical deployment.
         /// </summary>
