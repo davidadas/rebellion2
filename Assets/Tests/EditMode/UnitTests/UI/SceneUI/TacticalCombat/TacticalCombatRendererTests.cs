@@ -2168,6 +2168,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             preparation.GetAwaiter().GetResult();
         }
 
+        /// <summary>
+        /// Retains one playback owner for each passive encounter used by the rendering fixture.
+        /// </summary>
+        /// <param name="session">The encounter whose validated projections are observed.</param>
+        /// <returns>The fixture-owned timeline, or null for an authoritative encounter.</returns>
         private TacticalCombatReplicaPlayback GetReplicaPlayback(TacticalCombatSession session)
         {
             if (!session.IsReplica)
