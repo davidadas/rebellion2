@@ -120,7 +120,7 @@ namespace Rebellion.Game.SpaceCombat
                 foreach (CapitalShip ship in fleet.GetChildren<CapitalShip>(includeDisabled: true))
                 {
                     _capitalParents[ship] = fleet;
-                    if (Qualifies(ship, fleet))
+                    if (SpaceCombatReadiness.IsCapitalReady(ship, fleet))
                         presence.Capitals.Add(ship);
                 }
                 Schedule(fleet);
@@ -172,7 +172,7 @@ namespace Rebellion.Game.SpaceCombat
                     foreach (
                         CapitalShip ship in fleet.GetChildren<CapitalShip>(includeDisabled: true)
                     )
-                        if (Qualifies(ship, fleet))
+                        if (SpaceCombatReadiness.IsCapitalReady(ship, fleet))
                             presence.Capitals.Add(ship);
                 }
                 Schedule(node);
@@ -202,25 +202,13 @@ namespace Rebellion.Game.SpaceCombat
             }
             if (current != null && _presence.TryGetValue(current, out Presence presence))
             {
-                bool changed = Qualifies(ship, current)
+                bool changed = SpaceCombatReadiness.IsCapitalReady(ship, current)
                     ? presence.Capitals.Add(ship)
                     : presence.Capitals.Remove(ship);
                 if (changed)
                     Schedule(current);
             }
         }
-
-        /// <summary>
-        /// Tests the direct ship state required to activate its same-owner fleet.
-        /// </summary>
-        /// <param name="ship">The fleet's direct child.</param>
-        /// <param name="fleet">The containing fleet.</param>
-        /// <returns>Whether this child contributes orbital presence.</returns>
-        private static bool Qualifies(CapitalShip ship, Fleet fleet) =>
-            ship.IsEnabled
-            && ship.ManufacturingStatus == ManufacturingStatus.Complete
-            && ship.Movement == null
-            && ship.OwnerInstanceID == fleet.OwnerInstanceID;
 
         /// <summary>
         /// Retains the first affected-unit order while coalescing repeated changes.

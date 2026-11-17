@@ -1,6 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -42,6 +45,56 @@ namespace Rebellion.Tests.Game.Units
                 StarfighterCapacity = 8,
                 RegimentCapacity = 4,
             };
+        }
+
+        [TestCase(ManufacturingStatus.Building, false, true, 0)]
+        [TestCase(ManufacturingStatus.Delivering, false, true, 0)]
+        [TestCase(ManufacturingStatus.Complete, true, true, 0)]
+        [TestCase(ManufacturingStatus.Complete, false, false, 0)]
+        [TestCase(ManufacturingStatus.Complete, false, true, 1)]
+        public void GetOperationalCapitalShipCount_DirectShipReadiness_UsesCompletionTransitAndActiveState(
+            ManufacturingStatus status,
+            bool moving,
+            bool enabled,
+            int expected
+        )
+        {
+            _capitalShip1.ManufacturingStatus = status;
+            _capitalShip1.Movement = moving ? new MovementState() : null;
+            _capitalShip1.IsEnabled = enabled;
+            _fleet.AddChild(_capitalShip1);
+
+            Assert.AreEqual(expected, _fleet.GetOperationalCapitalShipCount());
+        }
+
+        [Test]
+        public void GetOperationalCapitalShipCount_FleetOwnershipChanges_RequiresMatchingShipOwner()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.GetFactions().Add(new Faction { InstanceID = "FACTION1" });
+            game.GetFactions().Add(new Faction { InstanceID = "FACTION2" });
+            PlanetSector sector = new() { InstanceID = "sector" };
+            game.AttachNode(sector, game.Galaxy);
+            Planet planet = new()
+            {
+                InstanceID = "planet",
+                OwnerInstanceID = "FACTION1",
+                IsColonized = true,
+            };
+            game.AttachNode(planet, sector);
+            game.AttachNode(_fleet, planet);
+            _capitalShip1.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(_capitalShip1, _fleet);
+
+            game.ChangeOwnership(_fleet, "FACTION2");
+
+            Assert.AreEqual(0, _fleet.GetOperationalCapitalShipCount());
+            Assert.IsFalse(planet.IsBlockaded());
+
+            game.ChangeOwnership(_capitalShip1, "FACTION2");
+
+            Assert.AreEqual(1, _fleet.GetOperationalCapitalShipCount());
+            Assert.IsTrue(planet.IsBlockaded());
         }
 
         [Test]
