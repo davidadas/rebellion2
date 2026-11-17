@@ -307,16 +307,15 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Compares live weapon recharge with the stored rate captured before the getter updates it.
+        /// Compares live weapon recharge with its stored rate after the getter updates its sample.
         /// </summary>
         /// <returns>The recharge ratio, or zero when the stored rate is zero or unordered.</returns>
         public double GetWeaponRechargeRatio()
         {
-            float denominator = _weaponRecharge;
-            if (denominator == 0 || float.IsNaN(denominator))
+            if (_weaponRecharge == 0 || float.IsNaN(_weaponRecharge))
                 return 0;
             double recharge = GetWeaponRecharge();
-            return recharge / denominator;
+            return recharge / _weaponRecharge;
         }
 
         /// <summary>

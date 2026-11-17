@@ -120,7 +120,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         }
 
         [Test]
-        public void ReadUnit_FighterLosesHalfHull_UsesPreviousWeaponRechargeSample()
+        public void ReadUnit_FighterLosesHalfHull_UsesUpdatedWeaponRechargeSample()
         {
             TacticalCombatUnit unit = Fighter("fighter", 1, 29, 12, 12);
             TacticalCombatSession session = Encounter(unit);
@@ -131,7 +131,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 unit
             );
 
-            Assert.AreEqual(2, data.Weapons);
+            Assert.AreEqual(4, data.Weapons);
         }
 
         [Test]

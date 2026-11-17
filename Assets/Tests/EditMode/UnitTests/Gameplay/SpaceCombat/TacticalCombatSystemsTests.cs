@@ -268,17 +268,17 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void GetWeaponRechargeRatio_FirstFighterRead_UsesStoredRateBeforeRefreshingSample()
+        public void GetWeaponRechargeRatio_FighterSample_UsesUpdatedStoredRateWithoutRoundingNumerator()
         {
             TacticalCombatSystems systems = new(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
 
             double ratio = systems.GetWeaponRechargeRatio();
 
-            Assert.AreEqual(180.0479965209961d, ratio);
+            Assert.AreEqual(0x3fefffffe9402186L, BitConverter.DoubleToInt64Bits(ratio));
         }
 
         [Test]
-        public void GetWeaponRechargeRatio_FighterLosesHalfHull_UsesPreviousRechargeSample()
+        public void GetWeaponRechargeRatio_FighterLosesHalfHull_UsesUpdatedRechargeSample()
         {
             TacticalCombatSystems systems = new(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
             systems.GetWeaponRecharge();
@@ -286,19 +286,21 @@ namespace Rebellion.Tests.Gameplay
 
             double ratio = systems.GetWeaponRechargeRatio();
 
-            Assert.AreEqual(0x3fdfffffe9402186L, BitConverter.DoubleToInt64Bits(ratio));
+            Assert.AreEqual(0x3fefffffe9402186L, BitConverter.DoubleToInt64Bits(ratio));
         }
 
         [Test]
-        public void GetWeaponRechargeRatio_DestroyedFighter_ReturnsZeroOnFirstRead()
+        public void GetWeaponRechargeRatio_DestroyedFighter_UpdatesSampleBeforeDivisionThenStopsAtZero()
         {
             TacticalCombatSystems systems = new(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
             systems.GetWeaponRecharge();
             systems.ApplyHullLoss(96);
 
-            double ratio = systems.GetWeaponRechargeRatio();
+            double first = systems.GetWeaponRechargeRatio();
+            double second = systems.GetWeaponRechargeRatio();
 
-            Assert.AreEqual(0, ratio);
+            Assert.IsTrue(double.IsNaN(first));
+            Assert.AreEqual(0, second);
         }
 
         [Test]
