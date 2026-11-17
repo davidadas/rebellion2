@@ -1830,7 +1830,7 @@ namespace Rebellion.Gameplay
             private readonly int[] _laserCannons;
             private readonly double _laserCannonCapitalDamageMultiplier;
             private readonly double _turbolaserFighterDamageMultiplier;
-            private readonly double _commandBonus;
+            private readonly double _commandTacticalBonus;
             private readonly double _maximumHull;
             private readonly double _maximumShields;
             private readonly double _weaponDamagePerStrength;
@@ -1876,7 +1876,7 @@ namespace Rebellion.Gameplay
                     : Math.Max(
                         Math.Max(Ship.SublightSpeed * (1 - Ship.SystemDamage.Engines * 0.25), 0)
                             + Ship.Maneuverability
-                            + _commandBonus,
+                            + _commandTacticalBonus,
                         MinimumManeuverRatio
                     );
 
@@ -1885,17 +1885,19 @@ namespace Rebellion.Gameplay
             /// </summary>
             /// <param name="ship">The capital ship entering combat.</param>
             /// <param name="config">The automatic combat parameters.</param>
-            /// <param name="commandBonus">The Admiral's Leadership-derived tactical bonus.</param>
+            /// <param name="commandTacticalBonus">
+            /// The Admiral's Leadership-derived tactical movement bonus.
+            /// </param>
             internal CapitalShipState(
                 CapitalShip ship,
                 GameConfig.SpaceCombatConfig config,
-                double commandBonus
+                double commandTacticalBonus
             )
                 : base(config.AutoResolveMinimumManeuverRatio)
             {
                 Ship = ship;
                 InitialHull = Math.Max(ship.CurrentHullStrength, 0);
-                _commandBonus = Math.Max(commandBonus, 0);
+                _commandTacticalBonus = Math.Max(commandTacticalBonus, 0);
                 _maximumHull = Math.Max(ship.MaxHullStrength, 1);
                 _maximumShields = Math.Max(ship.MaxShieldStrength, 0);
                 _weaponDamagePerStrength = Math.Max(config.AutoResolveWeaponDamagePerStrength, 0);
@@ -2296,7 +2298,7 @@ namespace Rebellion.Gameplay
             {
                 double condition = CurrentHull / _maximumHull;
                 double recharge = Math.Max(
-                    (Math.Max(Ship.WeaponRecharge, 0) + _commandBonus) * condition
+                    Math.Max(Ship.WeaponRecharge, 0) * condition
                         - Ship.WeaponRecharge * Ship.SystemDamage.Weapons * 0.25,
                     0
                 );
@@ -2460,7 +2462,7 @@ namespace Rebellion.Gameplay
             private readonly double _hullStrengthPerFighter;
             private readonly double _ionCannonFighterDamageMultiplier;
             private readonly double _laserCannonCapitalDamageMultiplier;
-            private readonly double _commandBonus;
+            private readonly double _commandTacticalBonus;
             private readonly double _attackRunSelectionThresholdMultiplier;
             private readonly double _attackRunTorpedoBudgetMultiplier;
             private readonly double _maximumShields;
@@ -2503,7 +2505,7 @@ namespace Rebellion.Gameplay
             internal PlanetDestroyerState AttackRunTarget { get; private set; }
             internal override double ManeuverRate =>
                 Math.Max(
-                    Fighter.SublightSpeed + Fighter.Agility + _commandBonus,
+                    Fighter.SublightSpeed + Fighter.Agility + _commandTacticalBonus,
                     MinimumManeuverRatio
                 );
 
@@ -2512,17 +2514,19 @@ namespace Rebellion.Gameplay
             /// </summary>
             /// <param name="fighter">The fighter squadron entering combat.</param>
             /// <param name="config">The automatic combat parameters.</param>
-            /// <param name="commandBonus">The Commander's Combat-derived tactical bonus.</param>
+            /// <param name="commandTacticalBonus">
+            /// The Commander's Combat-derived tactical movement bonus.
+            /// </param>
             internal StarfighterState(
                 Starfighter fighter,
                 GameConfig.SpaceCombatConfig config,
-                double commandBonus
+                double commandTacticalBonus
             )
                 : base(config.AutoResolveMinimumManeuverRatio)
             {
                 Fighter = fighter;
                 InitialSquadronSize = Math.Max(fighter.CurrentSquadronSize, 0);
-                _commandBonus = Math.Max(commandBonus, 0);
+                _commandTacticalBonus = Math.Max(commandTacticalBonus, 0);
                 _attackRunSelectionThresholdMultiplier = Math.Max(
                     config.AttackRunSelectionThresholdMultiplier,
                     0
@@ -2569,7 +2573,7 @@ namespace Rebellion.Gameplay
             /// <returns>The inclusive one-to-one-hundred selection threshold.</returns>
             internal int GetAttackRunSelectionThreshold()
             {
-                double sideBudget = Math.Min(Math.Max(_commandBonus + 1, 1), 9);
+                double sideBudget = Math.Min(Math.Max(_commandTacticalBonus + 1, 1), 9);
                 double torpedoBudget =
                     Math.Max(Fighter.Torpedoes, 0)
                     * Math.Max(Fighter.MaxSquadronSize, 0)
@@ -2876,13 +2880,13 @@ namespace Rebellion.Gameplay
             }
 
             /// <summary>
-            /// Applies command and target-type damage modifiers to a usable fighter weapon lane
-            /// without changing the weapon charge it consumes.
+            /// Applies the target-type damage modifier to a usable fighter weapon lane without
+            /// changing the weapon charge it consumes.
             /// </summary>
             /// <param name="weaponStrength">The usable raw weapon strength.</param>
             /// <param name="weaponIndex">The zero-based weapon lane.</param>
             /// <param name="targetsFighters">Whether the target is a fighter squadron.</param>
-            /// <returns>The command- and target-adjusted weapon strength.</returns>
+            /// <returns>The target-adjusted weapon strength.</returns>
             private double GetEffectiveWeaponStrength(
                 int weaponStrength,
                 int weaponIndex,
@@ -2893,7 +2897,7 @@ namespace Rebellion.Gameplay
                     weaponIndex == 0 && !targetsFighters ? _laserCannonCapitalDamageMultiplier
                     : weaponIndex == 1 && targetsFighters ? _ionCannonFighterDamageMultiplier
                     : 1;
-                return weaponStrength > 0 ? (weaponStrength + _commandBonus) * multiplier : 0;
+                return weaponStrength > 0 ? weaponStrength * multiplier : 0;
             }
 
             /// <summary>

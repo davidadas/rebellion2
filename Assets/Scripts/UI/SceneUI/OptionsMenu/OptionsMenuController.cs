@@ -764,14 +764,29 @@ public sealed class OptionsMenuController : ICancelable, IOptionsMenuPresenter
     }
 
     /// <summary>
-    /// Closes the overlay after the selected save's persistence owner acknowledges loading.
+    /// Loads the selected save after protecting any active campaign from accidental replacement.
     /// </summary>
-    private async void HandleLoadRequested()
+    private void HandleLoadRequested()
     {
         if (!_allowSaveLoad || _persistencePending || !IsSelectedExistingSave())
             return;
 
         string fileName = _saveSlots[_selectedSlot].FileName;
+        if (!HasActiveGame())
+        {
+            LoadSave(fileName);
+            return;
+        }
+
+        RequestConfirm("Load game? Any unsaved progress will be lost.", () => LoadSave(fileName));
+    }
+
+    /// <summary>
+    /// Closes the overlay after the selected save's persistence owner acknowledges loading.
+    /// </summary>
+    /// <param name="fileName">The selected save identifier.</param>
+    private async void LoadSave(string fileName)
+    {
         UIWindow requestedWindow = _window;
         _persistencePending = true;
         try

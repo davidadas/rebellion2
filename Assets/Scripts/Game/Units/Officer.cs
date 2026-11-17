@@ -769,15 +769,17 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Restores the content catalog's allegiance and loyalty protection for this officer.
+        /// Restores the content catalog's rule governing loyalty changes and betrayal.
+        /// </summary>
+        /// <param name="canBetray">Whether the authored officer permits loyalty changes.</param>
+        internal void BindLoyaltyProtection(bool canBetray) => _canBetray = canBetray;
+
+        /// <summary>
+        /// Restores the content catalog's allegiance for battle loyalty changes.
         /// </summary>
         /// <param name="allegiance">The authored allegiance, or null when it is unspecified.</param>
-        /// <param name="canBetray">Whether the authored loyalty can change.</param>
-        internal void BindLoyaltyDefinition(OfficerLoyaltyAllegiance? allegiance, bool canBetray)
-        {
+        internal void BindLoyaltyAllegiance(OfficerLoyaltyAllegiance? allegiance) =>
             LoyaltyAllegiance = allegiance;
-            _canBetray = canBetray;
-        }
 
         /// <summary>
         /// Connects Force discovery and healing to the rules injected into the owning game.

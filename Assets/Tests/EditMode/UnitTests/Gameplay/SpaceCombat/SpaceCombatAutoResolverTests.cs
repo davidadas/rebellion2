@@ -74,7 +74,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Resolve_AdmiralLeadership_ImprovesCapitalShipReactionRate()
+        public void Resolve_AdmiralLeadership_DoesNotIncreaseCapitalShipWeaponRecharge()
         {
             CapitalShip uncommandedShip = CreateShip("uncommanded", hull: 100, weaponStrength: 2);
             CapitalShip commandedShip = CreateShip("commanded", hull: 100, weaponStrength: 2);
@@ -110,11 +110,11 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.AreEqual(98, GetShipOutcome(uncommanded, firstTarget).HullAfter);
-            Assert.AreEqual(96, GetShipOutcome(commanded, secondTarget).HullAfter);
+            Assert.AreEqual(98, GetShipOutcome(commanded, secondTarget).HullAfter);
         }
 
         [Test]
-        public void Resolve_CommanderCombat_IncreasesStarfighterEffectiveness()
+        public void Resolve_CommanderCombat_DoesNotIncreaseStarfighterWeaponDamage()
         {
             Starfighter uncommandedFighter = CreateFighter("uncommanded", 1, weaponStrength: 5);
             Starfighter commandedFighter = CreateFighter("commanded", 1, weaponStrength: 5);
@@ -149,7 +149,7 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.AreEqual(95, GetShipOutcome(uncommanded, firstTarget).HullAfter);
-            Assert.AreEqual(91, GetShipOutcome(commanded, secondTarget).HullAfter);
+            Assert.AreEqual(95, GetShipOutcome(commanded, secondTarget).HullAfter);
         }
 
         [Test]

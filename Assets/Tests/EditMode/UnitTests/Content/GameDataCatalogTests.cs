@@ -65,6 +65,57 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(37, officer.Loyalty);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void BindOfficerDefinitions_MatchingTemplate_RestoresAuthoredProtection(
+            bool canBetray
+        )
+        {
+            Officer template = EntityFactory.CreateOfficer(
+                "definition",
+                "authored-owner",
+                canBetray: canBetray,
+                loyalty: 99
+            );
+            template.TypeID = "officer-type";
+            Officer officer = EntityFactory.CreateOfficer(
+                "runtime",
+                "different-owner",
+                canBetray: !canBetray,
+                loyalty: 37
+            );
+            officer.TypeID = template.TypeID;
+            GameDataCatalog catalog = TestGameData.Create(officers: new[] { template });
+
+            catalog.BindOfficerDefinitions(new[] { officer });
+
+            Assert.AreEqual(canBetray, officer.CanBetray);
+            Assert.AreEqual(37, officer.Loyalty);
+            Assert.AreEqual("different-owner", officer.OwnerInstanceID);
+            Assert.AreEqual(canBetray, officer.TryAdjustLoyalty(5));
+            Assert.AreEqual(canBetray ? 42 : 37, officer.Loyalty);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void BindOfficerDefinitions_MissingTemplate_PreservesSavedProtection(bool canBetray)
+        {
+            Officer officer = EntityFactory.CreateOfficer(
+                "runtime",
+                "owner",
+                canBetray: canBetray,
+                loyalty: 37
+            );
+            officer.TypeID = "missing-definition";
+            GameDataCatalog catalog = TestGameData.Create();
+
+            catalog.BindOfficerDefinitions(new[] { officer });
+
+            Assert.AreEqual(canBetray, officer.CanBetray);
+            Assert.AreEqual(37, officer.Loyalty);
+            Assert.AreEqual("owner", officer.OwnerInstanceID);
+        }
+
         [TestCase(BuildingType.None, ManufacturingType.None)]
         [TestCase(BuildingType.Mine, ManufacturingType.None)]
         [TestCase(BuildingType.Refinery, ManufacturingType.None)]

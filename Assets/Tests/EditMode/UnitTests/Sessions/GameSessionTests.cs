@@ -1560,7 +1560,7 @@ namespace Rebellion.Tests.Gameplay
 
         [TestCase(false)]
         [TestCase(true)]
-        public void Constructor_SavedOfficerWithStaleProtection_RestoresAuthoredLoyaltyRules(
+        public void Constructor_SavedOfficerWithStaleProtection_RestoresAuthoredProtection(
             bool canBetray
         )
         {
@@ -1596,10 +1596,12 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(canBetray, officer.CanBetray);
             Assert.AreEqual(37, officer.Loyalty);
             Assert.AreEqual(_faction.InstanceID, officer.OwnerInstanceID);
+            Assert.AreEqual(canBetray, officer.TryAdjustLoyalty(5));
+            Assert.AreEqual(canBetray ? 42 : 37, officer.Loyalty);
         }
 
         [Test]
-        public void Constructor_UnrecruitedOfficer_RestoresAuthoredLoyaltyRules()
+        public void Constructor_UnrecruitedOfficer_RestoresAuthoredProtection()
         {
             Officer template = EntityFactory.CreateOfficer(
                 "definition",
@@ -1629,7 +1631,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Constructor_RememberedOfficer_RestoresAuthoredLoyaltyRules()
+        public void Constructor_RememberedOfficer_RestoresAuthoredProtection()
         {
             Officer template = EntityFactory.CreateOfficer(
                 "definition",
