@@ -64,8 +64,24 @@ namespace Rebellion.Tests.Multiplayer
             OfficerLoyaltyAllegiance? second
         )
         {
-            AttachOfficer(_source.Game, first);
-            AttachOfficer(_restored.Game, second);
+            Assert.IsTrue(
+                _source
+                    .ExecuteCommandAsync(() =>
+                    {
+                        AttachOfficer(_source.Game, first);
+                        return true;
+                    })
+                    .Result
+            );
+            Assert.IsTrue(
+                _restored
+                    .ExecuteCommandAsync(() =>
+                    {
+                        AttachOfficer(_restored.Game, second);
+                        return true;
+                    })
+                    .Result
+            );
 
             Assert.AreNotEqual(
                 MultiplayerStateFingerprint.ComputeSimulation(_source),
