@@ -227,10 +227,10 @@ namespace Rebellion.Gameplay
                 _componentDamage[(int)TacticalShipSystem.Hyperdrive] = (uint)(
                     initialDamage.PrimaryHyperdrive + initialDamage.BackupHyperdrive
                 );
+                // Existing weapon damage does not seed repair work; later weapon hits add events.
                 _damageEventCount =
                     _componentDamage[(int)TacticalShipSystem.Engines]
                     + _componentDamage[(int)TacticalShipSystem.Shields]
-                    + _componentDamage[(int)TacticalShipSystem.Weapons]
                     + _componentDamage[(int)TacticalShipSystem.Hyperdrive]
                     + _componentDamage[(int)TacticalShipSystem.TractorBeam];
             }

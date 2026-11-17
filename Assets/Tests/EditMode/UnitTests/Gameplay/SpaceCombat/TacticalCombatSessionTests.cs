@@ -445,6 +445,27 @@ namespace Rebellion.Tests.Gameplay
             Assert.That(target.Systems.Hull, Is.LessThan(1000));
         }
 
+        [Test]
+        public void Advance_InitialWeaponOnlyDamage_DoesNotApplyUnadmittedRepairs()
+        {
+            CapitalShip ship = CreateShip("a", 1000, 0);
+            ship.SystemDamage.Weapons = 4;
+            ship.DamageControl = 100;
+            TacticalCombatSession session = CreateSession(ship, CreateShip("b", 1000, 0));
+            TacticalCombatUnit target = session.GetUnit("a");
+            int repairs = 0;
+            session.SystemChanged += (unit, change) =>
+            {
+                if (ReferenceEquals(unit, target) && change.IsRepair)
+                    repairs++;
+            };
+
+            AdvanceSeconds(session, 60);
+
+            Assert.AreEqual(0, repairs);
+            Assert.AreEqual(4, target.Systems.GetDamage(TacticalShipSystem.Weapons));
+        }
+
         [TestCase(TacticalCombatUnitStatus.Active)]
         [TestCase(TacticalCombatUnitStatus.EnteringHyperspace)]
         [TestCase(TacticalCombatUnitStatus.Destroyed)]
@@ -486,7 +507,7 @@ namespace Rebellion.Tests.Gameplay
         {
             TacticalCombatSession session = CreateSession(
                 CreateShip("a", 1000, 0),
-                CreateShip("b", 1000, 0)
+                CreateShip("b", 1000, 1)
             );
             TacticalCombatUnit target = session.GetUnit("b");
             target.Systems.ApplyDisruption(11, 17);
@@ -2910,20 +2931,20 @@ namespace Rebellion.Tests.Gameplay
         }
 
         /// <summary>
-        /// Advances until a battery discharges while its animation command remains queued.
+        /// Advances until a battery spends its captured charge while its animation command remains queued.
         /// </summary>
         /// <param name="session">The encounter with one armed firing unit.</param>
         private static void WaitForQueuedDischarge(TacticalCombatSession session)
         {
             TacticalCombatUnit unit = session.GetUnit("a");
+            float[] initialCharge = new float[4];
+            for (int arc = 0; arc < 4; arc++)
+                initialCharge[arc] = unit.Weapons.GetCharge((TacticalWeaponArc)arc);
             for (int frame = 0; frame < 1200; frame++)
             {
                 session.Advance(1000f / 60);
                 for (int arc = 0; arc < 4; arc++)
-                    if (
-                        unit.Weapons.GetCharge((TacticalWeaponArc)arc)
-                        < unit.Weapons.GetMaximumCharge((TacticalWeaponArc)arc)
-                    )
+                    if (unit.Weapons.GetCharge((TacticalWeaponArc)arc) < initialCharge[arc])
                         return;
             }
             Assert.Fail("The designated battery did not queue a discharge.");

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
+using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Util.Random;
 
@@ -275,6 +276,32 @@ namespace Rebellion.Tests.Gameplay
             double ratio = systems.GetWeaponRechargeRatio();
 
             Assert.AreEqual(0x3fefffffe9402186L, BitConverter.DoubleToInt64Bits(ratio));
+        }
+
+        [Test]
+        public void GetWeaponRechargeRatio_FighterLosesHalfHull_UsesUpdatedRechargeSample()
+        {
+            TacticalCombatSystems systems = new(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
+            systems.GetWeaponRecharge();
+            systems.ApplyHullLoss(48);
+
+            double ratio = systems.GetWeaponRechargeRatio();
+
+            Assert.AreEqual(0x3fefffffe9402186L, BitConverter.DoubleToInt64Bits(ratio));
+        }
+
+        [Test]
+        public void GetWeaponRechargeRatio_DestroyedFighter_UpdatesSampleBeforeDivisionThenStopsAtZero()
+        {
+            TacticalCombatSystems systems = new(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
+            systems.GetWeaponRecharge();
+            systems.ApplyHullLoss(96);
+
+            double first = systems.GetWeaponRechargeRatio();
+            double second = systems.GetWeaponRechargeRatio();
+
+            Assert.IsTrue(double.IsNaN(first));
+            Assert.AreEqual(0, second);
         }
 
         [Test]
@@ -731,21 +758,28 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Advance_InitialWeaponOnlyDamage_RepairsDisabledWeaponsWithoutAnotherHit()
+        public void Advance_InitialWeaponOnlyDamage_DoesNotRequestRepairsOrConsumeRandomDraws()
         {
-            TacticalCombatSystems systems = new(
-                false,
-                100,
-                100,
-                0,
-                10,
-                0,
-                0,
-                0,
-                0,
-                1,
-                100,
-                new Rebellion.Game.Units.CapitalShipSystemDamage { Weapons = 4 }
+            TacticalCombatSystems systems = CreateSystems(
+                initialDamage: new CapitalShipSystemDamage { Weapons = 4 }
+            );
+            List<TacticalSystemEvent> events = new();
+            systems.SystemEventRequested += events.Add;
+            SequenceRandom random = new(1, 1, 1, 1);
+
+            systems.Advance(50, random);
+            systems.Advance(50000, random);
+
+            Assert.IsEmpty(events);
+            Assert.IsEmpty(random.Requests);
+            Assert.AreEqual(4, systems.GetDamage(TacticalShipSystem.Weapons));
+        }
+
+        [Test]
+        public void Advance_InitialMixedDamage_StopsAfterCountedDamageIsRepaired()
+        {
+            TacticalCombatSystems systems = CreateSystems(
+                initialDamage: new CapitalShipSystemDamage { Engines = 1, Weapons = 2 }
             );
             List<TacticalSystemEvent> events = new();
             systems.SystemEventRequested += change =>
@@ -753,23 +787,41 @@ namespace Rebellion.Tests.Gameplay
                 events.Add(change);
                 systems.ApplyComponentEvent(change.System, change.IsRepair);
             };
-            Assert.AreEqual(0, systems.GetWeaponRecharge());
+            SequenceRandom random = new(1, 1, 1, 1);
 
-            systems.Advance(50, new SequenceRandom(1, 1));
+            systems.Advance(50, random);
+            systems.Advance(50000, random);
 
-            Assert.AreEqual(3, systems.GetDamage(TacticalShipSystem.Weapons));
-            Assert.Greater(systems.GetWeaponRecharge(), 0);
-            for (int remaining = 2; remaining >= 0; remaining--)
-            {
-                systems.Advance(50000, new SequenceRandom(1, 1));
-                Assert.AreEqual(remaining, systems.GetDamage(TacticalShipSystem.Weapons));
-            }
-            Assert.AreEqual(4, events.Count);
-            Assert.IsTrue(
-                events.TrueForAll(change =>
-                    change.IsRepair && change.System == TacticalShipSystem.Weapons
-                )
+            Assert.AreEqual(1, events.Count);
+            Assert.AreEqual(TacticalShipSystem.Engines, events[0].System);
+            Assert.AreEqual(0, systems.GetDamage(TacticalShipSystem.Engines));
+            Assert.AreEqual(2, systems.GetDamage(TacticalShipSystem.Weapons));
+            CollectionAssert.AreEqual(new[] { (1, 101) }, random.Requests);
+        }
+
+        [Test]
+        public void Advance_SaturatedWeaponHit_AdmitsOneRepairForNewDamageEvent()
+        {
+            TacticalCombatSystems systems = CreateSystems(
+                initialDamage: new CapitalShipSystemDamage { Weapons = 4 }
             );
+            List<TacticalSystemEvent> events = new();
+            systems.SystemEventRequested += change =>
+            {
+                events.Add(change);
+                systems.ApplyComponentEvent(change.System, change.IsRepair);
+            };
+            systems.ApplyComponentEvent(TacticalShipSystem.Weapons, false);
+            SequenceRandom random = new(1, 1, 1, 1);
+
+            systems.Advance(50, random);
+            systems.Advance(50000, random);
+
+            Assert.AreEqual(1, events.Count);
+            Assert.IsTrue(events[0].IsRepair);
+            Assert.AreEqual(TacticalShipSystem.Weapons, events[0].System);
+            Assert.AreEqual(3, systems.GetDamage(TacticalShipSystem.Weapons));
+            CollectionAssert.AreEqual(new[] { (1, 101) }, random.Requests);
         }
 
         [Test]
@@ -923,8 +975,12 @@ namespace Rebellion.Tests.Gameplay
         /// Creates a capital ship with an installed hyperdrive and repair crew.
         /// </summary>
         /// <param name="currentHull">The hull strength at entry.</param>
+        /// <param name="initialDamage">The component damage captured before the encounter.</param>
         /// <returns>The captured tactical systems.</returns>
-        private static TacticalCombatSystems CreateSystems(float currentHull = 1000)
+        private static TacticalCombatSystems CreateSystems(
+            float currentHull = 1000,
+            CapitalShipSystemDamage initialDamage = null
+        )
         {
             return new TacticalCombatSystems(
                 false,
@@ -937,7 +993,8 @@ namespace Rebellion.Tests.Gameplay
                 2,
                 2,
                 1,
-                100
+                100,
+                initialDamage
             );
         }
 

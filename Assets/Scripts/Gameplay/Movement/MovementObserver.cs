@@ -271,6 +271,7 @@ namespace Rebellion.Gameplay
                 ?? previousFleet?.GetLastParent() as Planet;
             IEnumerable<IMovable> occupants = removedShip
                 .GetChildren<Officer>(includeDisabled: true)
+                .Where(officer => !officer.IsKilled)
                 .Cast<IMovable>();
             if (recoverStarfighters)
             {

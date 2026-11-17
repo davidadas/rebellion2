@@ -106,6 +106,71 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ApplyNetworkState_AuthoritativeComponentRepair_UpdatesOpposingReplicaWithoutLocalRepair()
+        {
+            TacticalCombatSession authority = CreateSession(
+                CombatSide.Attacker,
+                new SystemRandomProvider(12),
+                defenderDamageControl: 100
+            );
+            authority.ConfigureNetworkAuthority();
+            SystemRandomProvider replicaRandom = new(12);
+            TacticalCombatSession replica = CreateSession(
+                CombatSide.Defender,
+                replicaRandom,
+                defenderDamageControl: 100
+            );
+            replica.ConfigureNetworkReplica();
+            TacticalCombatUnit source = authority.GetUnit("alliance");
+            TacticalCombatUnit projected = replica.GetUnit("alliance");
+            int requests = 0;
+            int applications = 0;
+            int localRequests = 0;
+            int localApplications = 0;
+            source.Systems.SystemEventRequested += change =>
+            {
+                if (change.IsRepair)
+                    requests++;
+            };
+            authority.SystemChanged += (unit, change) =>
+            {
+                if (ReferenceEquals(unit, source) && change.IsRepair)
+                    applications++;
+            };
+            projected.Systems.SystemEventRequested += _ => localRequests++;
+            replica.SystemChanged += (_, _) => localApplications++;
+            source.Systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+            source.Systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+            TacticalCombatNetworkFrame damaged = authority.CaptureNetworkFrame(1);
+            ApplyCapturedProjection(replica, damaged);
+            long localDraws = replicaRandom.CallCount;
+            Assert.AreEqual(2, projected.Systems.GetDamage(TacticalShipSystem.Engines));
+
+            source.Systems.Advance(1, new SystemRandomProvider(12));
+
+            Assert.AreEqual(1, requests);
+            Assert.AreEqual(0, applications);
+            Assert.AreEqual(2, source.Systems.GetDamage(TacticalShipSystem.Engines));
+            for (int frame = 0; frame < 6 * 60 && !authority.IsComplete; frame++)
+                authority.Advance(1000f / 60);
+            Assert.AreEqual(1, applications);
+            Assert.AreEqual(1, source.Systems.GetDamage(TacticalShipSystem.Engines));
+            ApplyCapturedProjection(replica, authority.CaptureNetworkFrame(2));
+
+            Assert.AreEqual(1, projected.Systems.GetDamage(TacticalShipSystem.Engines));
+            Assert.AreEqual(localDraws, replicaRandom.CallCount);
+            Assert.AreEqual(0, localRequests);
+            Assert.AreEqual(0, localApplications);
+            Assert.Throws<ArgumentException>(() => replica.ApplyNetworkState(damaged));
+            Assert.AreEqual(1, projected.Systems.GetDamage(TacticalShipSystem.Engines));
+            ApplyCapturedProjection(replica, authority.CaptureNetworkFrame(3));
+            Assert.AreEqual(1, projected.Systems.GetDamage(TacticalShipSystem.Engines));
+            Assert.AreEqual(localDraws, replicaRandom.CallCount);
+            Assert.AreEqual(0, localRequests);
+            Assert.AreEqual(0, localApplications);
+        }
+
+        [Test]
         public void ApplyNetworkState_JsonRoundTrip_NormalizesAbsentOptionalIdentitiesAndRejectsInvalidReferences()
         {
             TacticalCombatSession authority = CreateAuthority();
@@ -785,11 +850,13 @@ namespace Rebellion.Tests.Gameplay
         /// <param name="player">The faction whose selection is presented locally.</param>
         /// <param name="random">The encounter's local random stream.</param>
         /// <param name="additionalDefender">Whether to include another own-faction inspection choice.</param>
+        /// <param name="defenderDamageControl">The defender's component repair chance out of 100.</param>
         /// <returns>The captured encounter.</returns>
         private static TacticalCombatSession CreateSession(
             CombatSide player,
             IRandomNumberProvider random,
-            bool additionalDefender = false
+            bool additionalDefender = false,
+            int defenderDamageControl = 0
         )
         {
             TacticalCombatUnit empire = CreateUnit(
@@ -802,7 +869,8 @@ namespace Rebellion.Tests.Gameplay
                 "alliance",
                 CombatSide.Defender,
                 1,
-                Vector3.UnitZ
+                Vector3.UnitZ,
+                defenderDamageControl
             );
             empire.Position = new Vector3(0, 0, 10);
             alliance.Position = new Vector3(0, 0, -10);
@@ -866,12 +934,14 @@ namespace Rebellion.Tests.Gameplay
         /// <param name="side">The encounter faction.</param>
         /// <param name="index">The stable tactical registration identity.</param>
         /// <param name="heading">The deployment heading.</param>
+        /// <param name="damageControl">The participant's component repair chance out of 100.</param>
         /// <returns>The captured armed participant.</returns>
         private static TacticalCombatUnit CreateUnit(
             string id,
             CombatSide side,
             int index,
-            Vector3 heading
+            Vector3 heading,
+            int damageControl = 0
         )
         {
             CapitalShip ship = new()
@@ -883,6 +953,7 @@ namespace Rebellion.Tests.Gameplay
                 Hyperdrive = 1,
                 SublightSpeed = 4,
                 WeaponRecharge = 10,
+                DamageControl = damageControl,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 20, 20, 20, 20, 100 };

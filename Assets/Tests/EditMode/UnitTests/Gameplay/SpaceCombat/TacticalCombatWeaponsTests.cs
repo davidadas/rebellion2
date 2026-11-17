@@ -30,7 +30,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Advance_LiveFighterRecharge_RequiresTheCompleteBatteryCapacity()
+        public void Advance_LiveFighterRecharge_RestoresInitialDischargeBeforeReachingCapacity()
         {
             TacticalCombatWeapons weapons = new(
                 new int[,]
@@ -51,11 +51,11 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.That(
                 weapons.GetCharge(TacticalWeaponArc.Forward),
-                Is.EqualTo(2 + systems.GetWeaponRecharge()).Within(0.000001)
+                Is.EqualTo(-10 + systems.GetWeaponRecharge()).Within(0.000001)
             );
             Assert.IsFalse(weapons.IsReady(TacticalWeaponArc.Forward));
 
-            weapons.Advance(5, systems.GetWeaponRecharge());
+            weapons.Advance(9, systems.GetWeaponRecharge());
 
             Assert.AreEqual(12, weapons.GetCharge(TacticalWeaponArc.Forward));
             Assert.AreEqual(12, weapons.GetMaximumCharge(TacticalWeaponArc.Forward));
@@ -149,7 +149,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Advance_SeveralQueuedBatteries_SharesOneBudgetInDischargeOrder()
+        public void Advance_PartialRecharge_RetainsBudgetForSubsequentBatteries()
         {
             TacticalCombatWeapons weapons = CreateDirectionalWeapons();
             weapons.ClearBattery(TacticalWeaponArc.Port);
@@ -163,19 +163,19 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsTrue(weapons.IsReady(TacticalWeaponArc.Port));
             Assert.AreEqual(5, weapons.GetCharge(TacticalWeaponArc.Forward));
             Assert.IsFalse(weapons.IsReady(TacticalWeaponArc.Forward));
-            Assert.AreEqual(0, weapons.GetCharge(TacticalWeaponArc.Starboard));
-            Assert.AreEqual(0, weapons.GetCharge(TacticalWeaponArc.Aft));
+            Assert.AreEqual(5, weapons.GetCharge(TacticalWeaponArc.Starboard));
+            Assert.AreEqual(5, weapons.GetCharge(TacticalWeaponArc.Aft));
 
             weapons.Advance(1, 30);
 
             Assert.AreEqual(10, weapons.GetCharge(TacticalWeaponArc.Forward));
             Assert.AreEqual(20, weapons.GetCharge(TacticalWeaponArc.Starboard));
-            Assert.AreEqual(5, weapons.GetCharge(TacticalWeaponArc.Aft));
+            Assert.AreEqual(15, weapons.GetCharge(TacticalWeaponArc.Aft));
             Assert.IsFalse(weapons.IsReady(TacticalWeaponArc.Aft));
         }
 
         [Test]
-        public void Advance_CompletedAdjacentBatteries_PreservesNextDischargeOrder()
+        public void Advance_CompletedAdjacentBatteries_RetainsTheirNextDischargePositions()
         {
             TacticalCombatWeapons weapons = CreateDirectionalWeapons();
             for (int arc = 0; arc < 4; arc++)
@@ -186,10 +186,10 @@ namespace Rebellion.Tests.Gameplay
             weapons.Discharge(TacticalWeaponArc.Forward, TacticalWeaponType.LaserCannon);
             weapons.Discharge(TacticalWeaponArc.Starboard, TacticalWeaponType.LaserCannon);
 
-            weapons.Advance(1, 5);
+            weapons.Advance(1, 25);
 
             Assert.AreEqual(5, weapons.GetCharge(TacticalWeaponArc.Forward));
-            Assert.AreEqual(0, weapons.GetCharge(TacticalWeaponArc.Starboard));
+            Assert.AreEqual(20, weapons.GetCharge(TacticalWeaponArc.Starboard));
         }
 
         [Test]
@@ -203,18 +203,22 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsFalse(weapons.IsReady(TacticalWeaponArc.Forward));
         }
 
-        [Test]
-        public void Constructor_EmptyCapitalBattery_PreservesDefaultReadiness()
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Constructor_EmptyBattery_StartsUnready(bool isFighter)
         {
-            TacticalCombatWeapons weapons = CreateWeapons();
+            TacticalCombatWeapons weapons = new(new int[4, 3], new float[3], 0, isFighter);
 
-            Assert.IsTrue(weapons.IsReady(TacticalWeaponArc.Aft));
-            Assert.AreEqual(0, weapons.GetCharge(TacticalWeaponArc.Aft));
-            Assert.AreEqual(0, weapons.GetMaximumCharge(TacticalWeaponArc.Aft));
+            for (int arc = 0; arc < 4; arc++)
+            {
+                Assert.IsFalse(weapons.IsReady((TacticalWeaponArc)arc));
+                Assert.AreEqual(0, weapons.GetCharge((TacticalWeaponArc)arc));
+                Assert.AreEqual(0, weapons.GetMaximumCharge((TacticalWeaponArc)arc));
+            }
         }
 
         [Test]
-        public void Constructor_FighterBattery_StartsReadyWithFullRechargeCapacity()
+        public void Constructor_FighterBattery_StartsReadyWithoutStoredCharge()
         {
             TacticalCombatWeapons weapons = new(
                 new[,]
@@ -230,9 +234,40 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.IsTrue(weapons.IsReady(TacticalWeaponArc.Forward));
-            Assert.IsTrue(weapons.IsReady(TacticalWeaponArc.Aft));
-            Assert.AreEqual(4, weapons.GetCharge(TacticalWeaponArc.Forward));
+            Assert.AreEqual(0, weapons.GetCharge(TacticalWeaponArc.Forward));
             Assert.AreEqual(4, weapons.GetMaximumCharge(TacticalWeaponArc.Forward));
+        }
+
+        [Test]
+        public void Discharge_InitialFighterBattery_RetainsNegativeChargeUntilRecharged()
+        {
+            TacticalCombatWeapons weapons = new(
+                new[,]
+                {
+                    { 3, 1, 0 },
+                    { 0, 0, 0 },
+                    { 0, 0, 0 },
+                    { 0, 0, 0 },
+                },
+                new float[] { 10, 10, 0 },
+                0,
+                true
+            );
+
+            weapons.Discharge(TacticalWeaponArc.Forward, TacticalWeaponType.LaserCannon);
+
+            Assert.AreEqual(-3, weapons.GetCharge(TacticalWeaponArc.Forward));
+            Assert.IsFalse(weapons.IsReady(TacticalWeaponArc.Forward));
+
+            weapons.Advance(1, 2);
+
+            Assert.AreEqual(-1, weapons.GetCharge(TacticalWeaponArc.Forward));
+            Assert.IsFalse(weapons.IsReady(TacticalWeaponArc.Forward));
+
+            weapons.Advance(1, 5);
+
+            Assert.AreEqual(4, weapons.GetCharge(TacticalWeaponArc.Forward));
+            Assert.IsTrue(weapons.IsReady(TacticalWeaponArc.Forward));
         }
 
         [Test]
