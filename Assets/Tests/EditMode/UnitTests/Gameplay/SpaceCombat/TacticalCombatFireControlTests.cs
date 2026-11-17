@@ -251,16 +251,20 @@ namespace Rebellion.Tests.Gameplay
             fireControl.ShotRequested += shots.Add;
             FixedRandomProvider random = new(new[] { 0d });
             float capacity = source.Weapons.GetMaximumCharge(TacticalWeaponArc.Forward);
+            float rechargeNeeded = isFighter ? capacity * 2 : capacity;
             fireControl.AcquireTargets(source, group, index, random);
             Assert.AreEqual(1, shots.Count);
 
-            source.Weapons.Advance(1, capacity / 2);
+            source.Weapons.Advance(1, rechargeNeeded / 2);
             fireControl.AcquireTargets(source, group, index, random);
 
             Assert.AreEqual(1, shots.Count);
-            Assert.AreEqual(capacity / 2, source.Weapons.GetCharge(TacticalWeaponArc.Forward));
+            Assert.AreEqual(
+                isFighter ? 0 : capacity / 2,
+                source.Weapons.GetCharge(TacticalWeaponArc.Forward)
+            );
 
-            source.Weapons.Advance(1, capacity / 2);
+            source.Weapons.Advance(1, rechargeNeeded / 2);
             fireControl.AcquireTargets(source, group, index, random);
 
             Assert.AreEqual(2, shots.Count);

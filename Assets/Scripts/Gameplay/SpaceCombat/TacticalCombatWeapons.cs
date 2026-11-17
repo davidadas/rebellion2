@@ -23,7 +23,7 @@ namespace Rebellion.Gameplay
         /// <param name="batteryStrengths">The four-by-three battery strength matrix.</param>
         /// <param name="weaponRanges">The laser, ion, and turbolaser ranges.</param>
         /// <param name="weaponDamage">The initial weapon-system damage level.</param>
-        /// <param name="isFighter">Whether to initialize shared squadron battery state.</param>
+        /// <param name="isFighter">Whether fighter batteries retain zero initial stored charge.</param>
         public TacticalCombatWeapons(
             int[,] batteryStrengths,
             float[] weaponRanges,
@@ -52,9 +52,9 @@ namespace Rebellion.Gameplay
                 float total = (float)(
                     (double)_strengths[arc, 0] + _strengths[arc, 1] + _strengths[arc, 2]
                 );
-                _charge[arc] = total;
+                _charge[arc] = !isFighter && total > 0 ? total : 0;
                 _maximumCharge[arc] = total;
-                _ready[arc] = 1;
+                _ready[arc] = total > 0 ? 1u : 0u;
                 _rechargeOrder[arc] = -1;
                 if (isFighter || total <= 0)
                     continue;
@@ -230,7 +230,7 @@ namespace Rebellion.Gameplay
                 if (double.IsNaN(remaining) || available < remaining)
                 {
                     _charge[arc] = (float)(available + _charge[arc]);
-                    available = 0;
+                    // Partial fills retain the remaining budget for subsequent batteries.
                 }
                 else
                 {
@@ -240,15 +240,17 @@ namespace Rebellion.Gameplay
                 }
             }
 
-            int pending = 0;
             for (int order = 0; order < _rechargeCount; order++)
             {
                 if (_ready[_rechargeOrder[order]] != 1)
-                    _rechargeOrder[pending++] = _rechargeOrder[order];
+                    continue;
+                for (int shift = order; shift < 3; shift++)
+                    _rechargeOrder[shift] = _rechargeOrder[shift + 1];
+                if (_rechargeCount == 4)
+                    _rechargeOrder[3] = 0;
+                _rechargeCount--;
+                // The shifted entry is revisited during the next recharge pass.
             }
-            for (int order = pending; order < _rechargeCount; order++)
-                _rechargeOrder[order] = -1;
-            _rechargeCount = pending;
         }
 
         /// <summary>
