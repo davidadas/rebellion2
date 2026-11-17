@@ -3355,7 +3355,7 @@ namespace Rebellion.Tests.Gameplay
                 .TakePendingResults()
                 .OfType<PlanetOwnershipChangedResult>()
                 .Single();
-            CollectionAssert.Contains(ownershipChange.BlockadedFactionInstanceIDs, "rebels");
+            CollectionAssert.IsEmpty(ownershipChange.BlockadedFactionInstanceIDs);
         }
 
         [Test]
