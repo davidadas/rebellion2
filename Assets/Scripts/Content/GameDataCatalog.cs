@@ -248,6 +248,7 @@ public sealed class GameDataCatalog
                 && templatesByTypeID.TryGetValue(officer.TypeID, out Officer template)
             )
             {
+                officer.BindLoyaltyProtection(template.CanBetray);
                 officer.RosterOrder = template.RosterOrder;
                 officer.JediProbability = template.JediProbability;
                 officer.JediLevel = template.JediLevel;

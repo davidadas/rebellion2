@@ -708,6 +708,12 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
+        /// Restores the content catalog's rule governing loyalty changes and betrayal.
+        /// </summary>
+        /// <param name="canBetray">Whether the authored officer permits loyalty changes.</param>
+        internal void BindLoyaltyProtection(bool canBetray) => _canBetray = canBetray;
+
+        /// <summary>
         /// Connects Force discovery and healing to the rules injected into the owning game.
         /// Binding does not change the officer's saved Force values.
         /// </summary>
