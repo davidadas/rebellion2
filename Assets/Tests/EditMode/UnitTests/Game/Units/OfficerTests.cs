@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Xml.Linq;
 using NUnit.Framework;
@@ -974,6 +975,164 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(officer.IsCaptured);
         }
 
+        [TestCase(OfficerLoyaltyAllegiance.FirstFaction, OfficerLoyaltyAllegiance.FirstFaction, 85)]
+        [TestCase(
+            OfficerLoyaltyAllegiance.SecondFaction,
+            OfficerLoyaltyAllegiance.FirstFaction,
+            65
+        )]
+        [TestCase(OfficerLoyaltyAllegiance.None, OfficerLoyaltyAllegiance.FirstFaction, 65)]
+        [TestCase(
+            OfficerLoyaltyAllegiance.FirstFaction,
+            OfficerLoyaltyAllegiance.SecondFaction,
+            65
+        )]
+        [TestCase(
+            OfficerLoyaltyAllegiance.SecondFaction,
+            OfficerLoyaltyAllegiance.SecondFaction,
+            85
+        )]
+        [TestCase(OfficerLoyaltyAllegiance.None, OfficerLoyaltyAllegiance.SecondFaction, 65)]
+        public void TryAdjustBattleLoyalty_AuthoredAllegiance_ChoosesRelativeDirection(
+            OfficerLoyaltyAllegiance allegiance,
+            OfficerLoyaltyAllegiance favored,
+            int expected
+        )
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(75, allegiance);
+
+            Assert.IsTrue(officer.TryAdjustBattleLoyalty(10, favored));
+            Assert.AreEqual(expected, officer.Loyalty);
+        }
+
+        [Test]
+        public void TryAdjustBattleLoyalty_ChangedCurrentOwner_PreservesAuthoredDirection()
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(75, OfficerLoyaltyAllegiance.FirstFaction);
+            officer.OwnerInstanceID = "current-opposing-owner";
+            officer.RecruitingFactionInstanceIDs = new List<string> { "current-opposing-owner" };
+
+            Assert.IsTrue(
+                officer.TryAdjustBattleLoyalty(10, OfficerLoyaltyAllegiance.FirstFaction)
+            );
+            Assert.AreEqual(85, officer.Loyalty);
+        }
+
+        [TestCase(null)]
+        [TestCase(OfficerLoyaltyAllegiance.None)]
+        [TestCase((OfficerLoyaltyAllegiance)3)]
+        public void TryAdjustBattleLoyalty_ProtectedOfficer_DoesNotRequireAllegianceOrChangeLoyalty(
+            OfficerLoyaltyAllegiance? allegiance
+        )
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(75, allegiance, canBetray: false);
+
+            Assert.IsFalse(
+                officer.TryAdjustBattleLoyalty(int.MaxValue, OfficerLoyaltyAllegiance.FirstFaction)
+            );
+            Assert.AreEqual(75, officer.Loyalty);
+        }
+
+        [TestCase(null)]
+        [TestCase((OfficerLoyaltyAllegiance)3)]
+        public void TryAdjustBattleLoyalty_MissingOrUnsupportedAuthoredAllegiance_RejectsChange(
+            OfficerLoyaltyAllegiance? allegiance
+        )
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(75, allegiance);
+
+            Assert.Throws<InvalidOperationException>(() =>
+                officer.TryAdjustBattleLoyalty(10, OfficerLoyaltyAllegiance.FirstFaction)
+            );
+            Assert.AreEqual(75, officer.Loyalty);
+        }
+
+        [Test]
+        public void TryAdjustBattleLoyalty_ZeroChange_DoesNotRequireAllegianceOrChangeLoyalty()
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(75, null);
+
+            Assert.IsFalse(
+                officer.TryAdjustBattleLoyalty(0, OfficerLoyaltyAllegiance.FirstFaction)
+            );
+            Assert.AreEqual(75, officer.Loyalty);
+        }
+
+        [TestCase(OfficerLoyaltyAllegiance.None)]
+        [TestCase((OfficerLoyaltyAllegiance)3)]
+        [TestCase((OfficerLoyaltyAllegiance)(-1))]
+        public void TryAdjustBattleLoyalty_InvalidFavoredAllegiance_DoesNotRequireDefinitionOrChangeLoyalty(
+            OfficerLoyaltyAllegiance favored
+        )
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(75, null);
+
+            Assert.IsFalse(officer.TryAdjustBattleLoyalty(10, favored));
+            Assert.AreEqual(75, officer.Loyalty);
+        }
+
+        [TestCase(75, 10, 85, true)]
+        [TestCase(75, -10, 65, true)]
+        [TestCase(75, 1000, 100, true)]
+        [TestCase(75, -1000, 0, true)]
+        [TestCase(0, -1, 0, false)]
+        [TestCase(100, 1, 100, false)]
+        [TestCase(75, int.MaxValue, 0, true)]
+        [TestCase(75, int.MinValue, 0, true)]
+        public void TryAdjustBattleLoyalty_SignedAdjustment_WrapsBeforeClampingAndReportsStoredChange(
+            int initial,
+            int adjustment,
+            int expected,
+            bool changed
+        )
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(
+                initial,
+                OfficerLoyaltyAllegiance.FirstFaction
+            );
+
+            Assert.AreEqual(
+                changed,
+                officer.TryAdjustBattleLoyalty(adjustment, OfficerLoyaltyAllegiance.FirstFaction)
+            );
+            Assert.AreEqual(expected, officer.Loyalty);
+        }
+
+        [Test]
+        public void TryAdjustBattleLoyalty_OpposingMinimumChange_RetainsLow32Negation()
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(
+                75,
+                OfficerLoyaltyAllegiance.SecondFaction
+            );
+
+            Assert.IsTrue(
+                officer.TryAdjustBattleLoyalty(int.MinValue, OfficerLoyaltyAllegiance.FirstFaction)
+            );
+            Assert.AreEqual(0, officer.Loyalty);
+        }
+
+        [TestCase(32768, 1, 0)]
+        [TestCase(65535, 2, 1)]
+        [TestCase(65536, 1, 1)]
+        [TestCase(-32769, -1, 100)]
+        public void TryAdjustBattleLoyalty_SerializedBase_ReadsSigned16BitsBeforeAddition(
+            int initial,
+            int adjustment,
+            int expected
+        )
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(
+                initial,
+                OfficerLoyaltyAllegiance.FirstFaction
+            );
+
+            Assert.IsTrue(
+                officer.TryAdjustBattleLoyalty(adjustment, OfficerLoyaltyAllegiance.FirstFaction)
+            );
+            Assert.AreEqual(expected, officer.Loyalty);
+        }
+
         [Test]
         public void TryAdjustLoyalty_BetrayableOfficer_ChangesAndClampsLoyalty()
         {
@@ -1068,6 +1227,30 @@ namespace Rebellion.Tests.Game.Units
             };
             game.AddSceneNodeByInstanceID(officer);
             return (game, officer);
+        }
+
+        /// <summary>
+        /// Deserializes stored loyalty and protection while supplying explicit authored allegiance.
+        /// </summary>
+        /// <param name="loyalty">The stored loyalty bits to deserialize.</param>
+        /// <param name="allegiance">The authored allegiance, or null when unspecified.</param>
+        /// <param name="canBetray">Whether the authored protection permits loyalty changes.</param>
+        /// <returns>The officer with the requested stored state.</returns>
+        private static Officer CreateBattleLoyaltyOfficer(
+            int loyalty,
+            OfficerLoyaltyAllegiance? allegiance,
+            bool canBetray = true
+        )
+        {
+            Officer officer = SerializationHelper.Deserialize<Officer>(
+                new XElement(
+                    "Officer",
+                    new XElement("CanBetray", canBetray),
+                    new XElement("Loyalty", loyalty)
+                ).ToString()
+            );
+            officer.LoyaltyAllegiance = allegiance;
+            return officer;
         }
 
         /// <summary>
