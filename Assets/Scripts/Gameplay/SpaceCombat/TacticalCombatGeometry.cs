@@ -1,6 +1,5 @@
 using System;
 using System.Numerics;
-using Rebellion.Util.Mathematics;
 
 namespace Rebellion.Gameplay
 {
@@ -131,7 +130,7 @@ namespace Rebellion.Gameplay
             if (angle == 0 || float.IsNaN(angle))
                 return heading;
 
-            return NativeVectorMath.Turn(
+            return TacticalCombatNativeMath.Turn(
                 heading,
                 targetHeading,
                 turnRate,
@@ -289,7 +288,7 @@ namespace Rebellion.Gameplay
         /// <returns>The vector's length.</returns>
         public static float GetLength(Vector3 vector)
         {
-            return ExtendedVectorLength.Measure(vector.X, vector.Y, vector.Z);
+            return TacticalCombatVectorLength.Measure(vector.X, vector.Y, vector.Z);
         }
     }
 }

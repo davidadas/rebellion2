@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using Rebellion.Util.Mathematics;
 
 namespace Rebellion.Gameplay
 {
@@ -101,7 +100,10 @@ namespace Rebellion.Gameplay
                 return;
             _currentCount++;
             _maximumCount = Math.Max(_maximumCount, _currentCount);
-            _spacingFloor = NativeVectorMath.UpdateSpacing(_spacingFloor, unit.CollisionRadius);
+            _spacingFloor = TacticalCombatNativeMath.UpdateSpacing(
+                _spacingFloor,
+                unit.CollisionRadius
+            );
             if (_currentCount == 1)
                 Position = unit.Position;
             _members.Add(unit, new Member { Offset = ComputeOffset(unit) });
@@ -145,7 +147,10 @@ namespace Rebellion.Gameplay
                 TacticalCombatUnit unit = _memberOrder[index];
                 _currentCount++;
                 _maximumCount = _currentCount;
-                _spacingFloor = NativeVectorMath.UpdateSpacing(_spacingFloor, unit.CollisionRadius);
+                _spacingFloor = TacticalCombatNativeMath.UpdateSpacing(
+                    _spacingFloor,
+                    unit.CollisionRadius
+                );
                 _members[unit] = new Member { Offset = ComputeOffset(unit) };
             }
             if (_memberOrder.Count > 0)
@@ -250,7 +255,7 @@ namespace Rebellion.Gameplay
                 return Vector3.Zero;
             if (Kind != TacticalCombatFormationKind.Direct && member.HasRecovery)
                 return member.Recovery;
-            return NativeVectorMath.MemberTarget(
+            return TacticalCombatNativeMath.MemberTarget(
                 Position,
                 member.Offset,
                 unit.Position,
@@ -316,7 +321,7 @@ namespace Rebellion.Gameplay
                 targetHeading.Y = 0;
                 if (IsZeroOrUnordered(targetHeading))
                     targetHeading = _memberOrder.Count > 0 ? _initialHeading : Vector3.UnitZ;
-                targetHeading = NativeVectorMath.NormalizeDirection(targetHeading);
+                targetHeading = TacticalCombatNativeMath.NormalizeDirection(targetHeading);
             }
             else if (
                 (targetHeading.X == 0 || float.IsNaN(targetHeading.X))
@@ -376,20 +381,20 @@ namespace Rebellion.Gameplay
         private Vector3 ComputeOffset(TacticalCombatUnit unit)
         {
             if (Kind == TacticalCombatFormationKind.Surround)
-                return NativeVectorMath.SurroundOffset(
+                return TacticalCombatNativeMath.SurroundOffset(
                     (uint)_currentCount,
                     ref _surroundScale,
                     12.5f
                 );
             return Kind == TacticalCombatFormationKind.Line
-                ? NativeVectorMath.LineOffset(
+                ? TacticalCombatNativeMath.LineOffset(
                     (uint)_currentCount,
                     (uint)_maximumCount,
                     unit.CollisionRadius,
                     _spacingFloor,
                     Heading
                 )
-                : NativeVectorMath.DirectOffset((uint)_currentCount, Heading);
+                : TacticalCombatNativeMath.DirectOffset((uint)_currentCount, Heading);
         }
 
         /// <summary>
@@ -420,7 +425,7 @@ namespace Rebellion.Gameplay
                 if (member.HasRecovery)
                     _rotationBuffer[count++] = member.Recovery;
             }
-            NativeVectorMath.RotateOffsets(_rotationBuffer, count, angle);
+            TacticalCombatNativeMath.RotateOffsets(_rotationBuffer, count, angle);
             count = 0;
             for (int index = 0; index < _memberOrder.Count; index++)
             {

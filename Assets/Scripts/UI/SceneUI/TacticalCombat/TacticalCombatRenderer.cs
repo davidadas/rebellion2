@@ -26,6 +26,7 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
     private readonly HashSet<TacticalCombatUnit> _whiteBoxes = new();
     private readonly bool[] _factionHighlight = new bool[2];
     private TacticalCombatSession _session;
+    private TacticalCombatReplicaPlayback _replicaPlayback;
     private readonly TacticalCombatMeshPicker _picker = new();
     private readonly List<ContentModelInstance> _instances = new();
     private readonly Dictionary<Texture2D, Material> _fighterMaterials = new();
@@ -50,7 +51,7 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
     public Camera Camera => _battleCamera;
     public RenderTexture Target => _renderTarget;
     public bool IsPresentingArrival { get; private set; }
-    public event Action<bool> ArrivalStrobeChanged;
+    public event Action<bool> ArrivalPresentationChanged;
 
     /// <summary>
     /// Loads required content into an isolated scene without advancing battle time.
@@ -60,20 +61,23 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
     /// <param name="assets">The active pack's addressed textures.</param>
     /// <param name="cancellationToken">The owning screen's cancellation token.</param>
     /// <param name="videoSettings">The encounter's video settings, or null to use their authored defaults for isolated presentation.</param>
+    /// <param name="replicaPlayback">The connection-owned replica timeline, or null for an authoritative encounter.</param>
     /// <returns>The asynchronous presentation preparation.</returns>
     public Task PrepareAsync(
         TacticalCombatSession session,
         ContentModelCache models,
         ContentAssets assets,
         CancellationToken cancellationToken,
-        UserVideoSettings videoSettings = null
+        UserVideoSettings videoSettings = null,
+        TacticalCombatReplicaPlayback replicaPlayback = null
     ) =>
         PrepareAsync(
             session,
             models,
             assets,
             cancellationToken,
-            new TacticalCombatRenderSettings(videoSettings ?? new UserVideoSettings())
+            new TacticalCombatRenderSettings(videoSettings ?? new UserVideoSettings()),
+            replicaPlayback
         );
 
     /// <summary>
@@ -84,18 +88,29 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
     /// <param name="assets">The active pack's addressed textures.</param>
     /// <param name="cancellationToken">The owning screen's cancellation token.</param>
     /// <param name="videoSettings">The encounter's captured video options.</param>
+    /// <param name="replicaPlayback">The connection-owned replica timeline, or null for an authoritative encounter.</param>
     /// <returns>The asynchronous presentation preparation.</returns>
     public async Task PrepareAsync(
         TacticalCombatSession session,
         ContentModelCache models,
         ContentAssets assets,
         CancellationToken cancellationToken,
-        TacticalCombatRenderSettings videoSettings
+        TacticalCombatRenderSettings videoSettings,
+        TacticalCombatReplicaPlayback replicaPlayback = null
     )
     {
         if (_battleCamera == null || _modelRoot == null || _fighterShader == null)
             throw new MissingReferenceException($"{name} is missing battle rendering references.");
+        if (
+            session.IsReplica != (replicaPlayback != null)
+            || replicaPlayback != null && !ReferenceEquals(replicaPlayback.Session, session)
+        )
+            throw new ArgumentException(
+                "The renderer requires the active encounter's replica playback owner.",
+                nameof(replicaPlayback)
+            );
         _session = session;
+        _replicaPlayback = replicaPlayback;
         _showPyro = videoSettings.ShowPyro;
         _highDetail = videoSettings.HighDetail;
         _sceneryRandom =
@@ -531,10 +546,10 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
     }
 
     /// <summary>
-    /// Retains arrival transforms until the final snap and projects its pause-control state.
+    /// Retains arrival transforms until the final snap and announces presentation ownership.
     /// </summary>
     /// <param name="active">Whether arrival presentation owns the affected transforms.</param>
-    public void SetPauseStrobe(bool active)
+    public void SetArrivalActive(bool active)
     {
         IsPresentingArrival = active;
         if (!active)
@@ -544,7 +559,7 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
                 visual.ArrivalDirection = null;
                 visual.ArrivalVisible = false;
             }
-        ArrivalStrobeChanged?.Invoke(active);
+        ArrivalPresentationChanged?.Invoke(active);
     }
 
     /// <summary>
@@ -600,7 +615,8 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
         TacticalCombatUnitStatus status = unit.Status;
         bool isAlive = unit.Systems.IsAlive;
         if (
-            _session.TryGetNetworkPresentationLifecycle(
+            _replicaPlayback != null
+            && _replicaPlayback.TryGetLifecycle(
                 unit.InstanceID,
                 out TacticalCombatUnitStatus presentationStatus,
                 out bool presentationAlive
@@ -668,7 +684,8 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
         float hyperspaceMilliseconds = visual.Unit.HyperspaceMilliseconds;
         TacticalCombatUnitStatus status = visual.Unit.Status;
         if (
-            _session.TryGetNetworkPresentationPose(
+            _replicaPlayback != null
+            && _replicaPlayback.TryGetPose(
                 visual.Unit.InstanceID,
                 out Vector3N presentationPosition,
                 out Vector3N presentationHeading,

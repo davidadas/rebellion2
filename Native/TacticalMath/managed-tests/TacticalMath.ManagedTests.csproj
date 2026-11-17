@@ -8,8 +8,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../../Assets/Scripts/Gameplay/SpaceCombat/TacticalCombatGeometry.cs" />
-    <Compile Include="../../../Assets/Scripts/Util/Mathematics/ExtendedVectorLength.cs" />
-    <Compile Include="../../../Assets/Scripts/Util/Mathematics/NativeVectorMath.cs" />
+    <Compile Include="../../../Assets/Scripts/Gameplay/SpaceCombat/Mathematics/TacticalCombatVectorLength.cs" />
+    <Compile Include="../../../Assets/Scripts/Gameplay/SpaceCombat/Mathematics/TacticalCombatNativeMath.cs" />
     <Compile Include="../../../Assets/Tests/EditMode/UnitTests/Gameplay/SpaceCombat/TacticalCombatGeometryTests.cs" />
     <PackageReference Include="NUnit" Version="3.14.0" />
     <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />

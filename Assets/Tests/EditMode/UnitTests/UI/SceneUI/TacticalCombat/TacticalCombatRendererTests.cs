@@ -28,6 +28,10 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         private TacticalCombatView view;
         private ContentAssets assets;
         private ContentModelCache models;
+        private readonly Dictionary<
+            TacticalCombatSession,
+            TacticalCombatReplicaPlayback
+        > playbacks = new();
         private float _audioVolume;
         private bool _audioVolumeCaptured;
 
@@ -55,6 +59,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         public IEnumerator TearDown()
         {
             controller?.Dispose();
+            foreach (TacticalCombatReplicaPlayback playback in playbacks.Values)
+                playback.Dispose();
+            playbacks.Clear();
             if (controller == null && view != null)
                 Object.Destroy(view.gameObject);
             yield return null;
@@ -300,7 +307,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 ApplyCapturedProjection(guest, first);
                 ApplyCapturedProjection(guest, second);
                 yield return PrepareRenderer(guest, pack);
-                guest.AdvanceNetworkPresentation(50);
+                GetReplicaPlayback(guest).Advance(50);
 
                 view.Renderer.RenderUnits();
 
@@ -319,11 +326,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                     root.localPosition
                 );
                 Assert.IsTrue(
-                    guest.TryGetNetworkPresentationPose(
-                        target.InstanceID,
-                        out _,
-                        out Vector3N heading
-                    )
+                    GetReplicaPlayback(guest)
+                        .TryGetPose(target.InstanceID, out _, out Vector3N heading)
                 );
                 Assert.That(
                     Vector3.Dot(root.forward, new Vector3(-heading.X, -heading.Y, -heading.Z)),
@@ -386,7 +390,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 ApplyCapturedProjection(guest, first);
                 ApplyCapturedProjection(guest, second);
                 yield return PrepareRenderer(guest, pack);
-                guest.AdvanceNetworkPresentation(50);
+                GetReplicaPlayback(guest).Advance(50);
 
                 view.Renderer.RenderUnits();
 
@@ -444,6 +448,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 );
                 departure.Status = TacticalCombatUnitStatus.EnteringHyperspace;
                 departure.HyperspaceMilliseconds = 1200;
+                GetReplicaPlayback(guest);
                 guest.ApplyNetworkState(first);
                 guest.ApplyNetworkState(death);
                 yield return PrepareRenderer(guest, pack);
@@ -456,7 +461,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 Assert.IsFalse(guest.GetUnit("ALCS008").Systems.IsAlive);
                 Assert.IsFalse(guest.GetUnit("fighter").Systems.IsAlive);
 
-                guest.AdvanceNetworkPresentation(99);
+                GetReplicaPlayback(guest).Advance(99);
                 view.Renderer.RenderUnits();
 
                 Assert.IsTrue(capital.gameObject.activeSelf);
@@ -471,7 +476,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                         .Any(item => item.name == "Impact" && item.enabled)
                 );
 
-                guest.AdvanceNetworkPresentation(1);
+                GetReplicaPlayback(guest).Advance(1);
                 guest.ApplyNetworkEffects(
                     new[]
                     {
@@ -514,7 +519,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                     view.Renderer.AdvanceEffects(0);
                 view.Renderer.RenderUnits();
                 Assert.IsFalse(capital.gameObject.activeSelf);
-                guest.AdvanceNetworkPresentation(100);
+                GetReplicaPlayback(guest).Advance(100);
                 view.Renderer.RenderUnits();
                 Assert.IsFalse(
                     capital.gameObject.activeSelf,
@@ -547,7 +552,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 .Renderer.GetComponentsInChildren<Transform>(true)
                 .Single(item => item.name == unit.InstanceID);
             ITacticalCombatArrivalPresentation presentation = view.Renderer;
-            presentation.SetPauseStrobe(true);
+            presentation.SetArrivalActive(true);
             presentation.Reset(unit.Index);
             presentation.SetTransform(
                 unit.Index,
@@ -565,7 +570,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         }
 
         [UnityTest]
-        public IEnumerator SetPauseStrobe_CompletedArrival_ReleasesTransformsToSimulation()
+        public IEnumerator SetArrivalActive_CompletedArrival_ReleasesTransformsToSimulation()
         {
             ContentPack pack = ContentPackLoader.OpenActive();
             TacticalCombatSession encounter = CreateEncounter(pack.GameData);
@@ -577,9 +582,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 .Renderer.GetComponentsInChildren<Transform>(true)
                 .Single(item => item.name == unit.InstanceID);
             List<bool> strobes = new();
-            view.Renderer.ArrivalStrobeChanged += strobes.Add;
+            view.Renderer.ArrivalPresentationChanged += strobes.Add;
             ITacticalCombatArrivalPresentation presentation = view.Renderer;
-            presentation.SetPauseStrobe(true);
+            presentation.SetArrivalActive(true);
             presentation.Reset(unit.Index);
             presentation.SetTransform(
                 unit.Index,
@@ -587,7 +592,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 new System.Numerics.Vector4(1, 0, 0, -1)
             );
 
-            presentation.SetPauseStrobe(false);
+            presentation.SetArrivalActive(false);
             unit.Position = new Vector3N(9, 2, 18);
             view.Renderer.RenderUnits();
 
@@ -884,7 +889,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 !item.IsFighter && !item.IsBattleStation
             );
             Vector3N before = unit.Position;
-            view.Renderer.SetPauseStrobe(true);
+            view.Renderer.SetArrivalActive(true);
             view.Renderer.Reset(unit.Index);
             view.Renderer.SetTransform(
                 unit.Index,
@@ -2062,6 +2067,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         private sealed class PresentationDriver : ITacticalCombatPresentationDriver
         {
             public TacticalCombatSession Session { get; }
+            public TacticalCombatReplicaPlayback ReplicaPlayback { get; }
             public bool IsAuthoritative => false;
             public bool CompletionReady { get; set; }
             public SpaceCombatResult CommittedResult => null;
@@ -2074,7 +2080,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             /// Binds the encounter whose presentation calls are recorded.
             /// </summary>
             /// <param name="session">The controller's encounter.</param>
-            public PresentationDriver(TacticalCombatSession session) => Session = session;
+            public PresentationDriver(TacticalCombatSession session)
+            {
+                Session = session;
+                if (session.IsReplica)
+                    ReplicaPlayback = new TacticalCombatReplicaPlayback(session);
+            }
 
             /// <summary>
             /// Records the loaded arrival presentation supplied by the controller.
@@ -2101,7 +2112,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             /// <summary>
             /// Counts releases of the controller-owned driver.
             /// </summary>
-            public void Dispose() => DisposeCount++;
+            public void Dispose()
+            {
+                DisposeCount++;
+                ReplicaPlayback?.Dispose();
+            }
         }
 
         /// <summary>
@@ -2109,11 +2124,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         /// </summary>
         /// <param name="session">The passive encounter receiving the projection.</param>
         /// <param name="frame">The captured state and its separately delivered effects.</param>
-        private static void ApplyCapturedProjection(
+        private void ApplyCapturedProjection(
             TacticalCombatSession session,
             TacticalCombatNetworkFrame frame
         )
         {
+            GetReplicaPlayback(session);
             TacticalCombatNetworkEffect[] effects = frame.Effects;
             frame.Effects = System.Array.Empty<TacticalCombatNetworkEffect>();
             session.ApplyNetworkState(frame);
@@ -2144,11 +2160,24 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 models,
                 assets,
                 CancellationToken.None,
-                videoSettings
+                videoSettings,
+                GetReplicaPlayback(encounter)
             );
             while (!preparation.IsCompleted)
                 yield return null;
             preparation.GetAwaiter().GetResult();
+        }
+
+        private TacticalCombatReplicaPlayback GetReplicaPlayback(TacticalCombatSession session)
+        {
+            if (!session.IsReplica)
+                return null;
+            if (!playbacks.TryGetValue(session, out TacticalCombatReplicaPlayback playback))
+            {
+                playback = new TacticalCombatReplicaPlayback(session);
+                playbacks.Add(session, playback);
+            }
+            return playback;
         }
 
         /// <summary>

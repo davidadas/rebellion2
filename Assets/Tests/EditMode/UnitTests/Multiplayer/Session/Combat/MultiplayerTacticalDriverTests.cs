@@ -943,7 +943,7 @@ namespace Rebellion.Tests.Multiplayer
             /// Accepts pause presentation changes without requiring a renderer.
             /// </summary>
             /// <param name="active">Whether the pause strobe is active.</param>
-            public void SetPauseStrobe(bool active) { }
+            public void SetArrivalActive(bool active) { }
 
             /// <summary>
             /// Accepts a unit presentation reset without requiring a renderer.

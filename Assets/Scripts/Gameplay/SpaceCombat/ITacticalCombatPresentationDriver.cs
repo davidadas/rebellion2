@@ -9,6 +9,7 @@ namespace Rebellion.Gameplay
     public interface ITacticalCombatPresentationDriver : IDisposable
     {
         TacticalCombatSession Session { get; }
+        TacticalCombatReplicaPlayback ReplicaPlayback { get; }
         bool IsAuthoritative { get; }
         bool CompletionReady { get; }
         SpaceCombatResult CommittedResult { get; }

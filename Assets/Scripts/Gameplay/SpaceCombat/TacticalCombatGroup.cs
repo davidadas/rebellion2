@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Rebellion.Game.Results;
-using Rebellion.Util.Mathematics;
 
 namespace Rebellion.Gameplay
 {
@@ -634,7 +633,7 @@ namespace Rebellion.Gameplay
                         ?? TacticalWeaponArc.Forward
                     );
                     Vector3 delta = target.Position - unit.Position;
-                    heading = NativeVectorMath.RotateBatteryDirection(delta, (uint)arc);
+                    heading = TacticalCombatNativeMath.RotateBatteryDirection(delta, (uint)arc);
                 }
                 else
                     heading = unit.Heading;

@@ -11,10 +11,11 @@ using Rebellion.Util.Random;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
-    public sealed class TacticalCombatSessionPresentationTests
+    public sealed class TacticalCombatReplicaPlaybackTests
     {
         private TacticalCombatSession authority;
         private TacticalCombatSession replica;
+        private TacticalCombatReplicaPlayback playback;
         private SystemRandomProvider replicaRandom;
 
         /// <summary>
@@ -28,6 +29,7 @@ namespace Rebellion.Tests.Gameplay
             replica = CreateSession(CombatSide.Defender, replicaRandom);
             authority.ConfigureNetworkAuthority();
             replica.ConfigureNetworkReplica();
+            playback = new TacticalCombatReplicaPlayback(replica);
         }
 
         /// <summary>
@@ -36,6 +38,7 @@ namespace Rebellion.Tests.Gameplay
         [TearDown]
         public void TearDown()
         {
+            playback.Dispose();
             authority.Selection.Dispose();
             authority.Audio.Dispose();
             replica.Selection.Dispose();
@@ -43,7 +46,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void AdvanceNetworkPresentation_Replica_InterpolatesWithoutChangingRawStateOrRandom()
+        public void Advance_Replica_InterpolatesWithoutChangingRawStateOrRandom()
         {
             replica.ApplyNetworkState(Frame(1, 0, Vector3.Zero, Vector3.UnitZ));
             replica.ApplyNetworkState(Frame(2, 100, new Vector3(10, 20, 30), Vector3.UnitX));
@@ -52,15 +55,9 @@ namespace Rebellion.Tests.Gameplay
             int systemTime = replica.SystemTime;
             long randomCalls = replicaRandom.CallCount;
 
-            replica.AdvanceNetworkPresentation(50);
+            playback.Advance(50);
 
-            Assert.IsTrue(
-                replica.TryGetNetworkPresentationPose(
-                    "empire",
-                    out Vector3 position,
-                    out Vector3 heading
-                )
-            );
+            Assert.IsTrue(playback.TryGetPose("empire", out Vector3 position, out Vector3 heading));
             Assert.AreEqual(new Vector3(5, 10, 15), position);
             Assert.That(heading.Length(), Is.EqualTo(1).Within(.00001f));
             Assert.AreEqual(new Vector3(10, 20, 30), unit.Position);
@@ -71,7 +68,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void AdvanceNetworkPresentation_PausedCompleteFrame_DrainsFinalPoseWithoutAdvancingCombat()
+        public void Advance_PausedCompleteFrame_DrainsFinalPoseWithoutAdvancingCombat()
         {
             replica.ApplyNetworkState(Frame(1, 0, Vector3.Zero, Vector3.UnitZ));
             TacticalCombatNetworkFrame terminal = Frame(2, 100, Vector3.UnitX * 10, Vector3.UnitZ);
@@ -80,18 +77,14 @@ namespace Rebellion.Tests.Gameplay
             replica.ApplyNetworkState(terminal);
             long randomCalls = replicaRandom.CallCount;
 
-            replica.AdvanceNetworkPresentation(50);
-            Assert.IsTrue(
-                replica.TryGetNetworkPresentationPose("empire", out Vector3 middle, out _)
-            );
+            playback.Advance(50);
+            Assert.IsTrue(playback.TryGetPose("empire", out Vector3 middle, out _));
             Assert.AreEqual(5, middle.X);
-            replica.AdvanceNetworkPresentation(50);
+            playback.Advance(50);
 
-            Assert.IsTrue(
-                replica.TryGetNetworkPresentationPose("empire", out Vector3 final, out _)
-            );
+            Assert.IsTrue(playback.TryGetPose("empire", out Vector3 final, out _));
             Assert.AreEqual(10, final.X);
-            Assert.AreEqual(100, replica.NetworkPresentationTimestampMilliseconds);
+            Assert.AreEqual(100, playback.TimestampMilliseconds);
             Assert.IsTrue(replica.IsComplete);
             Assert.IsTrue(replica.IsPaused);
             Assert.AreEqual(3, replica.SystemTime);
@@ -99,7 +92,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void AdvanceNetworkPresentation_ReplicaDeparture_InterpolatesTimerWithoutChangingParticipant()
+        public void Advance_ReplicaDeparture_InterpolatesTimerWithoutChangingParticipant()
         {
             TacticalCombatNetworkFrame first = Frame(1, 0, Vector3.Zero, Vector3.UnitZ);
             TacticalCombatNetworkFrame second = Frame(2, 100, Vector3.Zero, Vector3.UnitZ);
@@ -115,17 +108,15 @@ namespace Rebellion.Tests.Gameplay
             replica.ApplyNetworkState(first);
             replica.ApplyNetworkState(second);
 
-            replica.AdvanceNetworkPresentation(50);
+            playback.Advance(50);
 
-            Assert.IsTrue(
-                replica.TryGetNetworkPresentationPose("empire", out _, out _, out float timer)
-            );
+            Assert.IsTrue(playback.TryGetPose("empire", out _, out _, out float timer));
             Assert.AreEqual(150, timer);
             Assert.AreEqual(200, replica.GetUnit("empire").HyperspaceMilliseconds);
         }
 
         [Test]
-        public void AdvanceNetworkPresentation_DestroyedParticipant_RetainsPriorLifecycleUntilDeathTimestamp()
+        public void Advance_DestroyedParticipant_RetainsPriorLifecycleUntilDeathTimestamp()
         {
             replica.ApplyNetworkState(Frame(1, 0, Vector3.Zero, Vector3.UnitZ));
             TacticalCombatNetworkFrame death = Frame(2, 100, Vector3.UnitX * 10, Vector3.UnitZ);
@@ -140,10 +131,10 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(TacticalCombatUnitStatus.Destroyed, raw.Status);
             long randomCalls = replicaRandom.CallCount;
 
-            replica.AdvanceNetworkPresentation(99);
+            playback.Advance(99);
 
             Assert.IsTrue(
-                replica.TryGetNetworkPresentationLifecycle(
+                playback.TryGetLifecycle(
                     "empire",
                     out TacticalCombatUnitStatus before,
                     out bool alive
@@ -152,9 +143,9 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(TacticalCombatUnitStatus.Active, before);
             Assert.IsTrue(alive);
             Assert.IsFalse(raw.Systems.IsAlive);
-            replica.AdvanceNetworkPresentation(1);
+            playback.Advance(1);
             Assert.IsTrue(
-                replica.TryGetNetworkPresentationLifecycle(
+                playback.TryGetLifecycle(
                     "empire",
                     out TacticalCombatUnitStatus after,
                     out bool dead
@@ -162,16 +153,14 @@ namespace Rebellion.Tests.Gameplay
             );
             Assert.AreEqual(TacticalCombatUnitStatus.Destroyed, after);
             Assert.IsFalse(dead);
-            replica.AdvanceNetworkPresentation(100);
-            Assert.IsTrue(
-                replica.TryGetNetworkPresentationLifecycle("empire", out _, out bool remainsAlive)
-            );
+            playback.Advance(100);
+            Assert.IsTrue(playback.TryGetLifecycle("empire", out _, out bool remainsAlive));
             Assert.IsFalse(remainsAlive);
             Assert.AreEqual(randomCalls, replicaRandom.CallCount);
         }
 
         [Test]
-        public void AdvanceNetworkPresentation_EnteringHyperspace_ChangesDepartureBranchAtSampledTimestamp()
+        public void Advance_EnteringHyperspace_ChangesDepartureBranchAtSampledTimestamp()
         {
             replica.ApplyNetworkState(Frame(1, 0, Vector3.Zero, Vector3.UnitZ));
             TacticalCombatNetworkFrame departure = Frame(2, 100, Vector3.UnitX * 10, Vector3.UnitZ);
@@ -182,10 +171,10 @@ namespace Rebellion.Tests.Gameplay
             state.HyperspaceMilliseconds = 1200;
             replica.ApplyNetworkState(departure);
 
-            replica.AdvanceNetworkPresentation(99);
+            playback.Advance(99);
 
             Assert.IsTrue(
-                replica.TryGetNetworkPresentationPose(
+                playback.TryGetPose(
                     "empire",
                     out Vector3 position,
                     out _,
@@ -197,9 +186,9 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(TacticalCombatUnitStatus.Active, before);
             Assert.AreEqual(0, beforeTimer);
             Assert.AreEqual(Vector3.Zero, position);
-            replica.AdvanceNetworkPresentation(1);
+            playback.Advance(1);
             Assert.IsTrue(
-                replica.TryGetNetworkPresentationPose(
+                playback.TryGetPose(
                     "empire",
                     out _,
                     out _,
@@ -213,15 +202,30 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void AdvanceNetworkPresentation_Authority_DoesNotCreatePresentationState()
+        public void Constructor_Authority_RejectsWithoutChangingCombatState()
         {
             Vector3 position = authority.GetUnit("empire").Position;
 
-            authority.AdvanceNetworkPresentation(100);
+            Assert.Throws<InvalidOperationException>(() =>
+                new TacticalCombatReplicaPlayback(authority)
+            );
 
-            Assert.IsFalse(authority.TryGetNetworkPresentationPose("empire", out _, out _));
             Assert.AreEqual(position, authority.GetUnit("empire").Position);
-            Assert.AreEqual(0, authority.NetworkPresentationTimestampMilliseconds);
+        }
+
+        [Test]
+        public void Dispose_LaterProjection_LeavesDisplayedPoseFrozen()
+        {
+            replica.ApplyNetworkState(Frame(1, 0, Vector3.Zero, Vector3.UnitZ));
+            playback.Dispose();
+
+            replica.ApplyNetworkState(Frame(2, 100, Vector3.UnitX * 10, Vector3.UnitZ));
+            playback.Advance(100);
+
+            Assert.IsTrue(playback.TryGetPose("empire", out Vector3 position, out _));
+            Assert.AreEqual(Vector3.Zero, position);
+            Assert.AreEqual(0, playback.TimestampMilliseconds);
+            Assert.AreEqual(Vector3.UnitX * 10, replica.GetUnit("empire").Position);
         }
 
         [TestCase(true)]
@@ -246,7 +250,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(Vector3.Zero, replica.GetUnit("empire").Position);
             Assert.IsFalse(replica.GetSide(CombatSide.Attacker).IsWithdrawing);
             Assert.AreEqual(randomCalls, replicaRandom.CallCount);
-            Assert.IsTrue(replica.TryGetNetworkPresentationPose("empire", out Vector3 pose, out _));
+            Assert.IsTrue(playback.TryGetPose("empire", out Vector3 pose, out _));
             Assert.AreEqual(Vector3.Zero, pose);
             replica.ApplyNetworkState(Frame(3, 100, Vector3.UnitX * 10, Vector3.UnitZ));
         }

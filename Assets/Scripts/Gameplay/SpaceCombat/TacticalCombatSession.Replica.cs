@@ -10,6 +10,11 @@ namespace Rebellion.Gameplay
         private TacticalCombatMovieRequest _unannouncedNetworkMovie;
 
         /// <summary>
+        /// Announces a validated replica projection before participant state changes.
+        /// </summary>
+        internal event Action<TacticalCombatNetworkFrame> NetworkStateApplying;
+
+        /// <summary>
         /// Restores replaceable authority state while retaining movie announcements for reliable effects.
         /// </summary>
         /// <param name="frame">The complete state without presentation effects.</param>
@@ -25,7 +30,7 @@ namespace Rebellion.Gameplay
                     "Only a combat replica can receive an authoritative projection."
                 );
             ValidateNetworkFrame(frame);
-            CaptureNetworkPresentation(frame);
+            NetworkStateApplying?.Invoke(frame);
             bool completed = IsComplete;
             bool withdrew = _networkCommandsSuspended[(int)PlayerSide];
             int?[] oldCategories = _objectGroups

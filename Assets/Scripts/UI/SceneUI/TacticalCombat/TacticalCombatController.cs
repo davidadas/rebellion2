@@ -82,7 +82,7 @@ public sealed class TacticalCombatController : IDisposable
         _hud.ReplaceContext(session.Selection.Kind);
         view.PointerPressed += HandlePointerDown;
         view.KeyboardRequested += HandleKeyboardEvent;
-        view.Renderer.ArrivalStrobeChanged += HandleArrivalStrobe;
+        view.Renderer.ArrivalPresentationChanged += HandleArrivalStrobe;
         session.ShotFired += HandleShot;
         session.Audio.Playback = PlayNotification;
         session.ImpactApplied += HandleImpact;
@@ -139,7 +139,14 @@ public sealed class TacticalCombatController : IDisposable
                 "Tactical combat HUD requires a definition for the player's faction."
             );
         _view.PrepareArtwork(_session.Definition, faction, assets);
-        await _view.Renderer.PrepareAsync(_session, models, assets, _lifetime, _videoSettings);
+        await _view.Renderer.PrepareAsync(
+            _session,
+            models,
+            assets,
+            _lifetime,
+            _videoSettings,
+            _driver?.ReplicaPlayback
+        );
         _lifetime.ThrowIfCancellationRequested();
         if (
             _videoSettings.ShowStarfield
@@ -874,7 +881,7 @@ public sealed class TacticalCombatController : IDisposable
         _session.UnitWithdrawn -= HandleStationDeparture;
         _view.PointerPressed -= HandlePointerDown;
         _view.KeyboardRequested -= HandleKeyboardEvent;
-        _view.Renderer.ArrivalStrobeChanged -= HandleArrivalStrobe;
+        _view.Renderer.ArrivalPresentationChanged -= HandleArrivalStrobe;
         _session.ShotFired -= HandleShot;
         _session.Audio.Playback = null;
         _session.Selection.Dispose();

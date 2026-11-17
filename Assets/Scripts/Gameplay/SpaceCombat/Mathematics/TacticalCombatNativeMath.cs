@@ -2,19 +2,19 @@ using System;
 using System.Numerics;
 using System.Runtime.InteropServices;
 
-namespace Rebellion.Util.Mathematics
+namespace Rebellion.Gameplay
 {
     /// <summary>
     /// Executes complete vector operations using the target's native retained arithmetic.
     /// </summary>
-    internal static class NativeVectorMath
+    internal static class TacticalCombatNativeMath
     {
         internal static readonly uint SignificandBits;
 
         /// <summary>
         /// Checks the library ABI and records the target arithmetic capability.
         /// </summary>
-        static NativeVectorMath()
+        static TacticalCombatNativeMath()
         {
             if (GetAbi() != 1 || GetVectorSize() != Marshal.SizeOf<Vector3>())
                 throw new PlatformNotSupportedException(

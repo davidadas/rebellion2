@@ -11,10 +11,10 @@ namespace Rebellion.Gameplay
     public interface ITacticalCombatArrivalPresentation
     {
         /// <summary>
-        /// Changes the run/pause control's arrival strobe.
+        /// Changes whether arrival presentation owns the affected member transforms.
         /// </summary>
         /// <param name="active">Whether arrival is being presented.</param>
-        void SetPauseStrobe(bool active);
+        void SetArrivalActive(bool active);
 
         /// <summary>
         /// Resets a unit's presentation effect before its first arrival transform.
@@ -141,7 +141,7 @@ namespace Rebellion.Gameplay
             float delta = (float)((double)elapsedMilliseconds * (double)0.4f);
             if (delta > 200)
                 delta = 200;
-            _presentation.SetPauseStrobe(true);
+            _presentation.SetArrivalActive(true);
             if (!_initialized)
                 Initialize();
 
@@ -166,7 +166,7 @@ namespace Rebellion.Gameplay
                         Present(member, member.Position);
                 }
                 IsComplete = true;
-                _presentation.SetPauseStrobe(false);
+                _presentation.SetArrivalActive(false);
             }
             return IsComplete;
         }

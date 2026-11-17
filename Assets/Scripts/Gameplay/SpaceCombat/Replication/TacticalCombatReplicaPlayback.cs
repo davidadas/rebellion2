@@ -4,20 +4,36 @@ using System.Numerics;
 
 namespace Rebellion.Gameplay
 {
-    public sealed partial class TacticalCombatSession
+    /// <summary>
+    /// Owns a replica's delayed display timeline independently of authoritative battle state.
+    /// </summary>
+    public sealed class TacticalCombatReplicaPlayback : IDisposable
     {
         private TacticalCombatPresentationBuffer _networkPresentation;
+        private bool _disposed;
 
-        public double NetworkPresentationTimestampMilliseconds =>
-            _networkPresentation?.TimestampMilliseconds ?? 0;
+        public TacticalCombatSession Session { get; }
+        public double TimestampMilliseconds => _networkPresentation?.TimestampMilliseconds ?? 0;
+
+        /// <summary>
+        /// Observes validated replica projections before they update participant state.
+        /// </summary>
+        /// <param name="session">The passive encounter whose display timeline is owned.</param>
+        public TacticalCombatReplicaPlayback(TacticalCombatSession session)
+        {
+            Session = session ?? throw new ArgumentNullException(nameof(session));
+            if (!session.IsReplica)
+                throw new InvalidOperationException("Only a combat replica has delayed playback.");
+            session.NetworkStateApplying += CaptureNetworkPresentation;
+        }
 
         /// <summary>
         /// Advances a passive view's delayed poses without advancing combat, outcomes, or random state.
         /// </summary>
         /// <param name="elapsedMilliseconds">The elapsed local view time.</param>
-        public void AdvanceNetworkPresentation(float elapsedMilliseconds)
+        public void Advance(float elapsedMilliseconds)
         {
-            if (_networkReplica)
+            if (!_disposed)
                 _networkPresentation?.Advance(elapsedMilliseconds);
         }
 
@@ -28,11 +44,8 @@ namespace Rebellion.Gameplay
         /// <param name="position">The delayed canonical position.</param>
         /// <param name="heading">The delayed heading.</param>
         /// <returns>Whether this passive view has a captured pose for the participant.</returns>
-        public bool TryGetNetworkPresentationPose(
-            string unitID,
-            out Vector3 position,
-            out Vector3 heading
-        ) => TryGetNetworkPresentationPose(unitID, out position, out heading, out _);
+        public bool TryGetPose(string unitID, out Vector3 position, out Vector3 heading) =>
+            TryGetPose(unitID, out position, out heading, out _);
 
         /// <summary>
         /// Samples a replica's pose and continuous departure time for its local rendering transform.
@@ -42,20 +55,13 @@ namespace Rebellion.Gameplay
         /// <param name="heading">The delayed heading.</param>
         /// <param name="hyperspaceMilliseconds">The delayed departure animation time.</param>
         /// <returns>Whether this passive view has a captured pose for the participant.</returns>
-        public bool TryGetNetworkPresentationPose(
+        public bool TryGetPose(
             string unitID,
             out Vector3 position,
             out Vector3 heading,
             out float hyperspaceMilliseconds
         ) =>
-            TryGetNetworkPresentationPose(
-                unitID,
-                out position,
-                out heading,
-                out hyperspaceMilliseconds,
-                out _,
-                out _
-            );
+            TryGetPose(unitID, out position, out heading, out hyperspaceMilliseconds, out _, out _);
 
         /// <summary>
         /// Samples motion and visibility at the same delayed timestamp as reliable presentation effects.
@@ -67,7 +73,7 @@ namespace Rebellion.Gameplay
         /// <param name="status">The lifecycle at the sampled timestamp.</param>
         /// <param name="isAlive">Whether the hull was alive at the sampled timestamp.</param>
         /// <returns>Whether this passive view has a captured pose for the participant.</returns>
-        public bool TryGetNetworkPresentationPose(
+        public bool TryGetPose(
             string unitID,
             out Vector3 position,
             out Vector3 heading,
@@ -82,8 +88,7 @@ namespace Rebellion.Gameplay
             status = default;
             isAlive = false;
             if (
-                !_networkReplica
-                || _networkPresentation == null
+                _networkPresentation == null
                 || !_networkPresentation.TryGetPose(
                     unitID,
                     out TacticalCombatPresentationBuffer.Pose pose
@@ -105,11 +110,22 @@ namespace Rebellion.Gameplay
         /// <param name="status">The lifecycle at the sampled timestamp.</param>
         /// <param name="isAlive">Whether the hull was alive at the sampled timestamp.</param>
         /// <returns>Whether this passive view has a captured lifecycle for the participant.</returns>
-        public bool TryGetNetworkPresentationLifecycle(
+        public bool TryGetLifecycle(
             string unitID,
             out TacticalCombatUnitStatus status,
             out bool isAlive
-        ) => TryGetNetworkPresentationPose(unitID, out _, out _, out _, out status, out isAlive);
+        ) => TryGetPose(unitID, out _, out _, out _, out status, out isAlive);
+
+        /// <summary>
+        /// Stops observing projections while retaining the last displayed pose for departing readers.
+        /// </summary>
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+            _disposed = true;
+            Session.NetworkStateApplying -= CaptureNetworkPresentation;
+        }
 
         /// <summary>
         /// Captures validated pose data before the incoming frame changes any authoritative replica state.

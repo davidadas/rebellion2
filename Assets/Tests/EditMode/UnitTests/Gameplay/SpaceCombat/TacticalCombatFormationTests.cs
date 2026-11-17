@@ -4,7 +4,6 @@ using NUnit.Framework;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
-using Rebellion.Util.Mathematics;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -68,7 +67,7 @@ namespace Rebellion.Tests.Gameplay
             Vector3 movement = formation.GetMemberMovement(unit);
 
             Assert.AreEqual(
-                NativeVectorMath.SignificandBits == 53
+                TacticalCombatNativeMath.SignificandBits == 53
                     ? Vector3.Zero
                     : new Vector3(2, 0, 9.313225746154785e-10f),
                 movement
@@ -117,7 +116,7 @@ namespace Rebellion.Tests.Gameplay
                 formation.Heading
             );
             Assert.AreEqual(unchecked((int)0xc13f9f06), BitConverter.SingleToInt32Bits(movement.X));
-            if (NativeVectorMath.SignificandBits == 64)
+            if (TacticalCombatNativeMath.SignificandBits == 64)
                 Assert.AreEqual(
                     unchecked((int)0xbf40e0b5),
                     BitConverter.SingleToInt32Bits(movement.Z)

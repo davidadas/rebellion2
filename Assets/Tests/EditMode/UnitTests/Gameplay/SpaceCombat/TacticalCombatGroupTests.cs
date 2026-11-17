@@ -3,7 +3,6 @@ using NUnit.Framework;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
-using Rebellion.Util.Mathematics;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -167,7 +166,7 @@ namespace Rebellion.Tests.Gameplay
 
             Vector3 heading = group.GetMemberHeading(member);
 
-            if (NativeVectorMath.SignificandBits == 64)
+            if (TacticalCombatNativeMath.SignificandBits == 64)
                 Assert.AreEqual(
                     unchecked((int)0xa89c9435),
                     System.BitConverter.SingleToInt32Bits(heading.X)

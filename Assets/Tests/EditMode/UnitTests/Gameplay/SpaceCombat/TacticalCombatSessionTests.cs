@@ -3307,7 +3307,7 @@ namespace Rebellion.Tests.Gameplay
             /// Records the requested arrival indicator state.
             /// </summary>
             /// <param name="active">Whether the indicator is active.</param>
-            public void SetPauseStrobe(bool active) => Strobe = active;
+            public void SetArrivalActive(bool active) => Strobe = active;
 
             /// <summary>
             /// Records each unit whose arrival presentation is reset.

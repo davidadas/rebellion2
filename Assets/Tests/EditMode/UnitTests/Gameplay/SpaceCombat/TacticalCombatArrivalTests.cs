@@ -387,7 +387,7 @@ namespace Rebellion.Tests.Gameplay
             /// Records the observable control strobe.
             /// </summary>
             /// <param name="active">Whether the strobe is active.</param>
-            public void SetPauseStrobe(bool active) => Events.Add($"strobe:{active}");
+            public void SetArrivalActive(bool active) => Events.Add($"strobe:{active}");
 
             /// <summary>
             /// Records effect reset ordering.

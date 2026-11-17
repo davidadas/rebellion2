@@ -626,7 +626,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
             );
             bool authoritativeState =
                 !session.IsReplica
-                || session.TryGetNetworkPresentationPose(session.Units[0].InstanceID, out _, out _);
+                || _driver.ReplicaPlayback.TryGetPose(session.Units[0].InstanceID, out _, out _);
             if (!authoritativeState)
                 return;
             _report.authoritativeStateObserved = true;
@@ -1442,7 +1442,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
             /// Receives the arrival pause strobe without drawing UI.
             /// </summary>
             /// <param name="active">Whether the strobe is active.</param>
-            public void SetPauseStrobe(bool active) { }
+            public void SetArrivalActive(bool active) { }
 
             /// <summary>
             /// Receives a unit presentation reset without drawing UI.

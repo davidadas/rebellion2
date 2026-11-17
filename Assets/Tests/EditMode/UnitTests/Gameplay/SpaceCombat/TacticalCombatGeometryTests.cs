@@ -2,7 +2,6 @@ using System;
 using System.Numerics;
 using NUnit.Framework;
 using Rebellion.Gameplay;
-using Rebellion.Util.Mathematics;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -41,7 +40,7 @@ namespace Rebellion.Tests.Gameplay
             );
 
             float expectedAngle =
-                NativeVectorMath.SignificandBits == 53 ? -0.32724923f : -0.32724926f;
+                TacticalCombatNativeMath.SignificandBits == 53 ? -0.32724923f : -0.32724926f;
             Assert.AreEqual(expectedAngle, angle);
             Assert.That(result.X, Is.EqualTo(0.89830834f).Within(0.0000001f));
             Assert.That(result.Z, Is.EqualTo(0.43936566f).Within(0.0000001f));
@@ -156,7 +155,7 @@ namespace Rebellion.Tests.Gameplay
                 new Vector3(0.9999999403953552f, 0.00048828125f, z)
             );
 
-            if (NativeVectorMath.SignificandBits == 53)
+            if (TacticalCombatNativeMath.SignificandBits == 53)
                 expectedBits = 0x3f800000;
             Assert.AreEqual(expectedBits, System.BitConverter.SingleToInt32Bits(length));
         }
@@ -178,7 +177,7 @@ namespace Rebellion.Tests.Gameplay
             float length = TacticalCombatGeometry.GetLength(FromBits(x, y, z));
 
             Assert.IsTrue(float.IsNaN(length));
-            if (NativeVectorMath.SignificandBits == 64)
+            if (TacticalCombatNativeMath.SignificandBits == 64)
                 Assert.AreEqual(
                     expected,
                     unchecked((uint)System.BitConverter.SingleToInt32Bits(length))
@@ -199,7 +198,7 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.IsTrue(float.IsNaN(length));
-            if (NativeVectorMath.SignificandBits == 64)
+            if (TacticalCombatNativeMath.SignificandBits == 64)
                 Assert.AreEqual(
                     expected,
                     unchecked((uint)System.BitConverter.SingleToInt32Bits(length))
@@ -218,7 +217,7 @@ namespace Rebellion.Tests.Gameplay
             float length = TacticalCombatGeometry.GetLength(FromBits(x, y, 0x7f800000));
 
             Assert.IsTrue(float.IsNaN(length));
-            if (NativeVectorMath.SignificandBits == 64)
+            if (TacticalCombatNativeMath.SignificandBits == 64)
                 Assert.AreEqual(
                     expected,
                     unchecked((uint)System.BitConverter.SingleToInt32Bits(length))
@@ -236,7 +235,7 @@ namespace Rebellion.Tests.Gameplay
             float length = TacticalCombatGeometry.GetLength(FromBits(x, y, 0x3f800000));
 
             Assert.IsTrue(float.IsNaN(length));
-            if (NativeVectorMath.SignificandBits == 64)
+            if (TacticalCombatNativeMath.SignificandBits == 64)
                 Assert.AreEqual(
                     expected,
                     unchecked((uint)System.BitConverter.SingleToInt32Bits(length))
@@ -251,7 +250,7 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.IsTrue(float.IsNaN(length));
-            if (NativeVectorMath.SignificandBits == 64)
+            if (TacticalCombatNativeMath.SignificandBits == 64)
                 Assert.AreEqual(
                     0x7fc00002u,
                     unchecked((uint)System.BitConverter.SingleToInt32Bits(length))
@@ -264,7 +263,7 @@ namespace Rebellion.Tests.Gameplay
         public void GetLength_NonfiniteInputs_UsesTargetNativeEncoding(uint x, uint y, uint z)
         {
             Vector3 input = FromBits(x, y, z);
-            float expected = NativeVectorMath.Measure(input.X, input.Y, input.Z);
+            float expected = TacticalCombatNativeMath.Measure(input.X, input.Y, input.Z);
 
             float result = TacticalCombatGeometry.GetLength(input);
 

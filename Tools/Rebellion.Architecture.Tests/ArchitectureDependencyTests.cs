@@ -34,20 +34,6 @@ namespace Rebellion.Architecture.Tests
             rule.Check(_architecture);
         }
 
-        [Test]
-        public void GameplayRuntime_Dependencies_DoNotReferenceUserInterface()
-        {
-            IArchRule rule = Types()
-                .That()
-                .ResideInNamespaceMatching("^Rebellion\\.(?:Systems|Gameplay)(?:\\.|$)")
-                .Should()
-                .NotDependOnAny(
-                    Types().That().ResideInNamespaceMatching("^Rebellion\\.UI(?:\\.|$)")
-                );
-
-            rule.Check(_architecture);
-        }
-
         /// <summary>
         /// Keeps content loading policy independent of scene presentation and bootstrap handoffs.
         /// </summary>

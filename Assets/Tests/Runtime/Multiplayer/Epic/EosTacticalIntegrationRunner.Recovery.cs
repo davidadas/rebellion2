@@ -259,7 +259,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
             if (
                 session.IsArriving
                 || session.IsReplica
-                    && !session.TryGetNetworkPresentationPose(
+                    && !_driver.ReplicaPlayback.TryGetPose(
                         session.Units[0].InstanceID,
                         out _,
                         out _

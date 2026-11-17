@@ -1,15 +1,16 @@
 using System;
 using System.Runtime.CompilerServices;
 
-namespace Rebellion.Util.Mathematics
+namespace Rebellion.Gameplay
 {
     /// <summary>
     /// Measures plain vector lengths using the target's native arithmetic at ambiguous float boundaries.
     /// </summary>
-    internal static class ExtendedVectorLength
+    internal static class TacticalCombatVectorLength
     {
         private static readonly bool _hasBoundedNativePrecision =
-            NativeVectorMath.SignificandBits == 53 || NativeVectorMath.SignificandBits == 64;
+            TacticalCombatNativeMath.SignificandBits == 53
+            || TacticalCombatNativeMath.SignificandBits == 64;
 
         /// <summary>
         /// Measures a vector with native retained sums and one final float store.
@@ -34,14 +35,14 @@ namespace Rebellion.Util.Mathematics
                 || RequiresNativeInput(y)
                 || RequiresNativeInput(z)
             )
-                return NativeVectorMath.Measure(x, y, z);
+                return TacticalCombatNativeMath.Measure(x, y, z);
             double length = Math.Sqrt((double)x * x + ((double)y * y + (double)z * z));
             if (!(length > 0))
-                return NativeVectorMath.Measure(x, y, z);
+                return TacticalCombatNativeMath.Measure(x, y, z);
             long bits = BitConverter.DoubleToInt64Bits(length);
             float lower = (float)BitConverter.Int64BitsToDouble(bits - 4);
             float upper = (float)BitConverter.Int64BitsToDouble(bits + 4);
-            return lower == upper ? lower : NativeVectorMath.Measure(x, y, z);
+            return lower == upper ? lower : TacticalCombatNativeMath.Measure(x, y, z);
         }
 
         /// <summary>

@@ -34,6 +34,7 @@ namespace Rebellion.Multiplayer
         private uint _previousProviderTime;
         private double _providerMilliseconds;
         public TacticalCombatSession Session { get; }
+        public TacticalCombatReplicaPlayback ReplicaPlayback { get; }
         public bool IsAuthoritative => _role == MultiplayerRole.Host;
         public SpaceCombatResult CommittedResult { get; private set; }
         public event Action<SpaceCombatResult> CompletedBattle;
@@ -98,8 +99,10 @@ namespace Rebellion.Multiplayer
                 Session.CompleteNetworkMovie,
                 send,
                 ReadNetworkMilliseconds,
-                () => Session.NetworkPresentationTimestampMilliseconds
+                () => ReplicaPlayback?.TimestampMilliseconds ?? 0
             );
+            if (Session.IsReplica)
+                ReplicaPlayback = new TacticalCombatReplicaPlayback(Session);
             _protocol.Faulted += _turns.ReportFailure;
             Session.NetworkCommandRequested += HandleCommand;
             _turns.ActionApplied += HandleAppliedAction;
@@ -149,7 +152,7 @@ namespace Rebellion.Multiplayer
             if (!_prepared)
                 return;
             if (!IsAuthoritative)
-                Session.AdvanceNetworkPresentation(elapsedSeconds * 1000);
+                ReplicaPlayback.Advance(elapsedSeconds * 1000);
             if (!_ready)
             {
                 if (!Session.AdvanceNetworkArrival(elapsedSeconds * 1000))
@@ -254,6 +257,7 @@ namespace Rebellion.Multiplayer
             _turns.ActionAcknowledged -= HandleAcknowledgedAction;
             _protocol.Faulted -= _turns.ReportFailure;
             _protocol.Dispose();
+            ReplicaPlayback?.Dispose();
         }
 
         /// <summary>
