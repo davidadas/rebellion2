@@ -54,6 +54,10 @@ Officers are unique authored characters. Add each officer as an `Officer` entry 
 | `Loyalty` | Starting loyalty used by betrayal and allegiance mechanics. |
 | `CanBetray` | Permits mission betrayal and global loyalty changes after battle losses. |
 
+`CanBetray` belongs to the officer definition. Loading a campaign restores it from the active
+content catalog by `TypeID`, preserving the saved loyalty score and current owner. An officer
+without a matching template retains its saved protection value. The save field remains compatible.
+
 The four entries in `Ratings` are the officer's base `Diplomacy`, `Espionage`, `Combat`, and
 `Leadership` ratings. `ShipResearch`, `TroopResearch`, and `FacilityResearch` are stored separately
 but participate in research missions as officer ratings.
