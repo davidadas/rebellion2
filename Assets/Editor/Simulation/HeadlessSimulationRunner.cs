@@ -24,6 +24,7 @@ public static partial class HeadlessSimulationRunner
     private const string _outputPathFlag = "-simOut";
     private const string _seedFlag = "-simSeed";
     private const string _difficultyFlag = "-simDifficulty";
+    private const string _deterministicIdentifiersFlag = "-simDeterministicIds";
     private const string _logDirectory = "/tmp/rebellion2-sim-logs";
     private const string _defaultSimulationSaveFileName = "headless-simulation";
     private const string _savedSimulationPlayerId = "PLAYER1";
@@ -58,6 +59,7 @@ public static partial class HeadlessSimulationRunner
     /// <param name="playerFactionId">The optional player-faction override for the saved game.</param>
     /// <param name="difficulty">The game difficulty applied to the simulation.</param>
     /// <param name="inputSaveFileName">The optional save file to continue.</param>
+    /// <param name="deterministicIdentifiers">Whether accepted runtime entities use the game's reproducible identifier sequence.</param>
     /// <returns>The completed simulation result.</returns>
     public static SimulationRunResult RunPersistentSimulation(
         int tickCount,
@@ -67,7 +69,8 @@ public static partial class HeadlessSimulationRunner
         string saveDisplayName = null,
         string playerFactionId = null,
         GameDifficulty difficulty = GameDifficulty.Medium,
-        string inputSaveFileName = null
+        string inputSaveFileName = null,
+        bool deterministicIdentifiers = false
     )
     {
         return RunSimulation(
@@ -81,6 +84,7 @@ public static partial class HeadlessSimulationRunner
                 PlayerFactionId = playerFactionId,
                 Difficulty = difficulty,
                 InputSaveFileName = inputSaveFileName,
+                DeterministicIdentifiers = deterministicIdentifiers,
             }
         );
     }
@@ -125,6 +129,8 @@ public static partial class HeadlessSimulationRunner
             GameRoot game = string.IsNullOrWhiteSpace(options.InputSaveFileName)
                 ? CreateGameBuilder(summary, contentPack.GameData, options.Seed).BuildGame()
                 : SaveGameManager.Instance.LoadGameData(options.InputSaveFileName);
+            if (options.DeterministicIdentifiers)
+                game.UseDeterministicRuntimeIdentifiers = true;
             summary = game.Summary;
             foreach (Faction faction in game.GetFactions())
             {
@@ -276,6 +282,19 @@ public static partial class HeadlessSimulationRunner
                 logPath,
                 $"[HeadlessSim] ai-faction-turn median={GetPercentileMilliseconds(aiFactionTurnSamples, 50):F3}ms p90={GetPercentileMilliseconds(aiFactionTurnSamples, 90):F3}ms p99={GetPercentileMilliseconds(aiFactionTurnSamples, 99):F3}ms max={GetPercentileMilliseconds(aiFactionTurnSamples, 100):F3}ms"
             );
+            foreach (
+                IGrouping<
+                    string,
+                    (long Elapsed, string FactionId, int Tick)
+                > factionTurns in slowAiFactionTurns.GroupBy(sample => sample.FactionId)
+            )
+            {
+                List<long> samples = factionTurns.Select(sample => sample.Elapsed).ToList();
+                LogToFile(
+                    logPath,
+                    $"[HeadlessSim] ai-faction faction={factionTurns.Key} samples={samples.Count} median={GetPercentileMilliseconds(samples, 50):F3}ms p90={GetPercentileMilliseconds(samples, 90):F3}ms p99={GetPercentileMilliseconds(samples, 99):F3}ms max={GetPercentileMilliseconds(samples, 100):F3}ms"
+                );
+            }
             foreach (KeyValuePair<string, List<long>> phase in aiFactionStepSamples)
             {
                 LogToFile(

@@ -106,7 +106,7 @@ namespace Rebellion.AI.Phases
                 return selectedProposals;
 
             AIFleetSelector fleetSelector = new AIFleetSelector(selectionState);
-            AIMissionSelector missionSelector = new AIMissionSelector(selectionState);
+            AIMissionSelector missionSelector = new AIMissionSelector(selectionState, context);
             float minimumSelectableScore = GetMinimumSelectableScore(context);
             LinkedList<AIProposal> pending = new(
                 productionSelector.OrderInfrastructureProduction(

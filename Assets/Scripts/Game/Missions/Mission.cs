@@ -82,6 +82,7 @@ namespace Rebellion.Game.Missions
             private readonly Planet _planet;
             private Dictionary<string, int> _garrisonCounts;
             private string[] _garrisonOwners;
+            private int _uprisingSuppression;
             private Dictionary<(string OwnerId, int Shift), Planet> _supportProjections;
             private IReadOnlyList<Mission> _activeMissions;
             private Dictionary<Mission, int> _leadership;
@@ -119,6 +120,16 @@ namespace Rebellion.Game.Missions
             {
                 EnsureGarrisonCounts();
                 return _garrisonOwners;
+            }
+
+            /// <summary>
+            /// Returns uprising suppression from the observed garrison used for mission odds.
+            /// </summary>
+            /// <returns>The cached suppression from stationary, completed regiments.</returns>
+            public int GetUprisingSuppression()
+            {
+                EnsureGarrisonCounts();
+                return _uprisingSuppression;
             }
 
             /// <summary>
@@ -227,6 +238,8 @@ namespace Rebellion.Game.Missions
                         continue;
                     _garrisonCounts.TryGetValue(owner, out int count);
                     _garrisonCounts[owner] = count + 1;
+                    if (regiment.SuppressesUprisings(_game.Config.Uprising))
+                        _uprisingSuppression++;
                 }
                 _garrisonOwners = _garrisonCounts.Keys.ToArray();
             }
@@ -280,6 +293,10 @@ namespace Rebellion.Game.Missions
         // Mission progress.
         public int MaxProgress { get; set; }
         public int CurrentProgress { get; set; }
+
+        /// <summary>
+        /// Whether the arrival encounter has cleared. This remains set between repeated attempts.
+        /// </summary>
         public bool DetectionResolved { get; set; }
         public bool PreObjectiveEncounterResolved { get; set; }
 
@@ -705,12 +722,19 @@ namespace Rebellion.Game.Missions
             MissionEvaluationContext context
         )
         {
-            IEnumerable<double> probabilities = (
-                participants ?? Enumerable.Empty<IMissionParticipant>()
+            double failureProbability = 1d;
+            foreach (
+                IMissionParticipant participant in participants
+                    ?? Enumerable.Empty<IMissionParticipant>()
             )
-                .Where(participant => participant != null)
-                .Select(participant => GetAgentProbability(participant, context));
-            return CombineSuccessProbabilities(probabilities);
+            {
+                if (participant == null)
+                    continue;
+                double probability =
+                    Math.Clamp(GetAgentProbability(participant, context), 0, 100) / 100d;
+                failureProbability *= 1d - probability;
+            }
+            return (1d - failureProbability) * 100d;
         }
 
         /// <summary>
@@ -720,9 +744,9 @@ namespace Rebellion.Game.Missions
         /// <returns>The combined percentage probability.</returns>
         protected static double CombineSuccessProbabilities(IEnumerable<double> probabilities)
         {
-            double failureProbability = (probabilities ?? Enumerable.Empty<double>())
-                .Select(probability => Math.Clamp(probability, 0, 100) / 100d)
-                .Aggregate(1d, (combined, probability) => combined * (1d - probability));
+            double failureProbability = 1d;
+            foreach (double probability in probabilities ?? Enumerable.Empty<double>())
+                failureProbability *= 1d - Math.Clamp(probability, 0, 100) / 100d;
             return (1d - failureProbability) * 100d;
         }
 
@@ -818,10 +842,16 @@ namespace Rebellion.Game.Missions
         )
         {
             SuccessfulParticipantInstanceID = null;
+            Planet planet = GetMissionPlanet(new MissionEvaluationContext(game));
+            MissionEvaluationContext context = new MissionEvaluationContext(
+                game,
+                planet,
+                state: new MissionEvaluationState(game, planet)
+            );
             List<(Officer Participant, double Probability)> officerAttempts = GetMainParticipants()
                 .OfType<Officer>()
                 .Select(officer =>
-                    (Participant: officer, Probability: GetAgentProbability(officer, game))
+                    (Participant: officer, Probability: GetAgentProbability(officer, context))
                 )
                 .OrderBy(attempt => attempt.Probability)
                 .ThenBy(attempt => attempt.Participant.InstanceID, StringComparer.Ordinal)
@@ -843,7 +873,7 @@ namespace Rebellion.Game.Missions
                     .OrderBy(participant => participant.InstanceID, StringComparer.Ordinal)
             )
             {
-                if (!RollParticipantSuccess(specialForces, provider, game))
+                if (!RollProbability(provider, GetAgentProbability(specialForces, context)))
                     continue;
 
                 SuccessfulParticipantInstanceID = specialForces.InstanceID;

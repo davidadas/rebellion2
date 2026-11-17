@@ -5,6 +5,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Missions;
@@ -24,6 +25,255 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class MissionCommandsTests
     {
+        [TestCase(true)]
+        [TestCase(false)]
+        public void InitiateMission_DepartureFoiled_RevealsOnlyLocalTarget(bool localTarget)
+        {
+            var (game, planet, officer, movement) = BuildScene(factionOwnsPlanet: true);
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+            (_, CapitalShip transport) = AddMissionReturnFleet(
+                game,
+                planet,
+                "local-transport",
+                "empire"
+            );
+            game.MoveNode(officer, transport);
+            Planet target = localTarget
+                ? planet
+                : new Planet { InstanceID = "remote-target", IsColonized = true };
+            if (!localTarget)
+                game.AttachNode(target, planet.GetParent());
+            target.OwnerInstanceID = "rebels";
+            target.PopularSupport["rebels"] = 70;
+            target.AddVisitor("empire");
+            officer.MissionReturnParentInstanceID = null;
+            officer.MissionReturnLocationInstanceID = localTarget ? null : target.InstanceID;
+            Fleet fleet = EntityFactory.CreateFleet("local-detectors", "rebels");
+            game.AttachNode(fleet, planet);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "local-carrier",
+                OwnerInstanceID = "rebels",
+                StarfighterCapacity = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(ship, fleet);
+            game.AttachNode(
+                new Starfighter
+                {
+                    InstanceID = "local-detector",
+                    OwnerInstanceID = "rebels",
+                    DetectionRating = 100,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                ship
+            );
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 0 } });
+            DisableCaptureEvasionInjury(game);
+            MissionCommands commands = TestSystems.CreateMissionCommands(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+            List<GameResult> results = new();
+            commands.ResultsProduced += results.AddRange;
+
+            Assert.That(
+                commands.InitiateMission(
+                    CreateContext(InciteUprisingMission.MissionTypeID, officer, target)
+                ),
+                Is.True
+            );
+
+            Assert.That(
+                results.OfType<MissionCompletedResult>().Single().Outcome,
+                Is.EqualTo(MissionOutcome.Foiled)
+            );
+            Faction faction = game.GetFactionByOwnerInstanceID("empire");
+            if (localTarget)
+                Assert.That(
+                    faction.Fog.Snapshots["sector1"].Planets[target.InstanceID].PopularSupport[
+                        "rebels"
+                    ],
+                    Is.EqualTo(70)
+                );
+            else
+                Assert.That(
+                    faction.Fog.Snapshots.Values.SelectMany(sector => sector.Planets.Keys),
+                    Does.Not.Contain(target.InstanceID)
+                );
+        }
+
+        [Test]
+        public void ProcessTick_LastLocalOfficerDiesBeforeArrival_RefreshesControlIntelligence()
+        {
+            var (game, _, mission, commands) = BuildConcurrentMissionsScene();
+            Planet target = mission.GetParentOfType<Planet>();
+            Officer officer = (Officer)mission.GetMainParticipants().Single();
+            officer.MissionReturnLocationInstanceID = target.InstanceID;
+            game.MoveNode(officer, mission);
+            officer.IsKilled = true;
+            officer.IsEnabled = false;
+
+            commands.ProcessMissionTick(game);
+
+            Assert.That(mission.GetParent(), Is.Null);
+            Faction faction = game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID);
+            Assert.That(
+                faction.Fog.Snapshots["sector1"].Planets[target.InstanceID].PopularSupport[
+                    "rebels"
+                ],
+                Is.EqualTo(target.PopularSupport["rebels"])
+            );
+        }
+
+        [Test]
+        public void AbortMission_UnstartedMissionWithStaleReturnLocation_DoesNotRevealTarget()
+        {
+            var (game, _, mission, commands) = BuildConcurrentMissionsScene();
+            Planet target = mission.GetParentOfType<Planet>();
+            Officer officer = (Officer)mission.GetMainParticipants().Single();
+            officer.MissionReturnParentInstanceID = "empire_planet";
+            officer.MissionReturnLocationInstanceID = target.InstanceID;
+            mission.HasInitiated = false;
+
+            Assert.That(commands.AbortMission(mission.InstanceID), Is.True);
+
+            Faction faction = game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID);
+            Assert.That(
+                faction.Fog.Snapshots.Values.SelectMany(sector => sector.Planets.Keys),
+                Does.Not.Contain(target.InstanceID)
+            );
+        }
+
+        [Test]
+        public void ProcessTick_FailedInciteAttempt_RefreshesTargetControlIntelligence()
+        {
+            var (game, _, mission, commands) = BuildConcurrentMissionsScene(ownerSupport: 80);
+            Planet target = mission.GetParentOfType<Planet>();
+            Faction faction = game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID);
+            FogOfWarRecorder recorder = new();
+            target.PopularSupport["rebels"] = 40;
+            recorder.RecordIntelligenceSnapshot(
+                faction,
+                target,
+                target.GetParentOfType<PlanetSector>(),
+                1,
+                PlanetIntelligenceCategory.PlanetControl
+            );
+            target.PopularSupport["rebels"] = 80;
+            target.BeginUprising();
+            game.Config.ProbabilityTables.Mission.InciteUprising.Clear();
+            game.Config.ProbabilityTables.Mission.InciteUprising.Add(-200, 0);
+            game.CurrentTick = 2;
+
+            commands.ProcessMissionTick(game);
+
+            PlanetSnapshot snapshot = faction.Fog.Snapshots["sector1"].Planets[target.InstanceID];
+            Assert.That(snapshot.PopularSupport["rebels"], Is.EqualTo(80));
+            Assert.That(snapshot.IsInUprising, Is.True);
+        }
+
+        [Test]
+        public void ProcessTick_DiplomacyTargetChangesSidesDuringTravel_DoesNotRevealDestination()
+        {
+            var (game, mission, _, commands) = BuildConcurrentMissionsScene();
+            Planet target = mission.GetParentOfType<Planet>();
+            Faction faction = game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID);
+            Officer officer = (Officer)mission.GetMainParticipants().Single();
+            Planet origin = new Planet
+            {
+                InstanceID = "origin",
+                OwnerInstanceID = faction.InstanceID,
+                IsColonized = true,
+            };
+            game.AttachNode(origin, target.GetParent());
+            game.MoveNode(officer, mission);
+            officer.MissionReturnParentInstanceID = origin.InstanceID;
+            officer.MissionReturnLocationInstanceID = origin.InstanceID;
+            officer.Movement = TestMovement.Create(
+                transitTicks: 10,
+                previousLocationInstanceID: origin.InstanceID,
+                destinationPlanetInstanceID: target.InstanceID
+            );
+            target.OwnerInstanceID = "empire";
+
+            commands.ProcessMissionTick(game);
+
+            Assert.That(
+                faction.Fog.Snapshots.Values.SelectMany(sector => sector.Planets.Keys),
+                Does.Not.Contain(target.InstanceID)
+            );
+        }
+
+        [Test]
+        public void AbortMission_RepeatingMissionBeforeNextProgress_RefreshesControlIntelligence()
+        {
+            var (game, _, mission, commands) = BuildConcurrentMissionsScene(ownerSupport: 80);
+            Planet target = mission.GetParentOfType<Planet>();
+            Faction faction = game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID);
+            Officer officer = (Officer)mission.GetMainParticipants().Single();
+            officer.MissionReturnLocationInstanceID = "empire_planet";
+            officer.MissionReturnParentInstanceID = "empire_planet";
+            game.MoveNode(officer, mission);
+            game.Config.ProbabilityTables.Mission.InciteUprising.Clear();
+            game.Config.ProbabilityTables.Mission.InciteUprising.Add(-200, 0);
+            commands.ProcessMissionTick(game);
+            Assert.That(mission.CurrentProgress, Is.Zero);
+            target.PopularSupport["rebels"] = 70;
+
+            Assert.That(commands.AbortMission(mission.InstanceID), Is.True);
+
+            Assert.That(
+                faction.Fog.Snapshots["sector1"].Planets[target.InstanceID].PopularSupport[
+                    "rebels"
+                ],
+                Is.EqualTo(70)
+            );
+        }
+
+        [Test]
+        public void AbortMission_TravellingParticipants_DoesNotRevealDestination()
+        {
+            var (game, _, mission, commands) = BuildConcurrentMissionsScene();
+            Planet target = mission.GetParentOfType<Planet>();
+            Faction faction = game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID);
+            Officer officer = (Officer)mission.GetMainParticipants().Single();
+            game.MoveNode(officer, mission);
+            officer.Movement = TestMovement.Create(
+                transitTicks: 10,
+                previousLocationInstanceID: "empire_planet",
+                destinationPlanetInstanceID: target.InstanceID
+            );
+
+            Assert.That(commands.AbortMission(mission.InstanceID), Is.True);
+
+            Assert.That(
+                faction.Fog.Snapshots.Values.SelectMany(sector => sector.Planets.Keys),
+                Does.Not.Contain(target.InstanceID)
+            );
+        }
+
+        [Test]
+        public void AbortMission_LocalParticipants_RefreshesControlIntelligence()
+        {
+            var (game, _, mission, commands) = BuildConcurrentMissionsScene();
+            Planet target = mission.GetParentOfType<Planet>();
+            Faction faction = game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID);
+            Officer officer = (Officer)mission.GetMainParticipants().Single();
+            officer.MissionReturnLocationInstanceID = target.InstanceID;
+            game.MoveNode(officer, mission);
+
+            Assert.That(commands.AbortMission(mission.InstanceID), Is.True);
+
+            PlanetSnapshot snapshot = faction.Fog.Snapshots["sector1"].Planets[target.InstanceID];
+            Assert.That(
+                snapshot.PopularSupport["rebels"],
+                Is.EqualTo(target.PopularSupport["rebels"])
+            );
+        }
+
         [TestCase(false, false)]
         [TestCase(false, true)]
         [TestCase(true, false)]
@@ -6468,6 +6718,7 @@ namespace Rebellion.Tests.Gameplay
             game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { 0, 0 } };
             game.Config.Uprising.PrimaryConsequenceTable.Clear();
             game.Config.Uprising.SecondaryConsequenceTable.Clear();
+            game.Config.Uprising.IncidentIntelligence.Clear();
             if (inciteFirst)
             {
                 game.AttachNode(inciteMission, rebelsPlanet);

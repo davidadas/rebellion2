@@ -68,16 +68,20 @@ namespace Rebellion.Tests.Multiplayer
             Assert.IsFalse(peers.Guest.BlocksGameplay);
         }
 
-        [TestCase(false)]
-        [TestCase(true)]
-        public async Task RequestAsync_ManualSave_WaitsForBothDurableParticipantCopiesAsync(
-            bool guestRequest
+        [TestCase(false, false)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(true, true)]
+        public async Task RequestAsync_Save_WaitsForBothDurableParticipantCopiesAsync(
+            bool guestRequest,
+            bool quick
         )
         {
             using PeerPair peers = new();
             peers.GuestWriteGate = new TaskCompletionSource<bool>();
+            string fileName = quick ? SaveGameManager.QuickSaveFileName : "save_20261027_010203";
             Task<bool> request = (guestRequest ? peers.Guest : peers.Host).RequestAsync(
-                "save_20261027_010203",
+                fileName,
                 "Checkpoint",
                 false
             );
@@ -89,6 +93,9 @@ namespace Rebellion.Tests.Multiplayer
             Assert.IsFalse(request.IsCompleted);
             Assert.IsTrue(peers.Host.BlocksGameplay);
             Assert.IsTrue(peers.Guest.BlocksGameplay);
+            SaveGameKind kind = quick ? SaveGameKind.Quick : SaveGameKind.Manual;
+            Assert.AreEqual(kind, peers.Host.ActiveSaveKind);
+            Assert.AreEqual(kind, peers.Guest.ActiveSaveKind);
             peers.GuestWriteGate.SetResult(true);
             await peers.GuestWriteGate.Task;
             await Task.Yield();
@@ -99,15 +106,17 @@ namespace Rebellion.Tests.Multiplayer
             Assert.AreEqual(1, peers.GuestFiles.Count);
             Assert.IsFalse(peers.Host.BlocksGameplay);
             Assert.IsFalse(peers.Guest.BlocksGameplay);
+            Assert.IsNull(peers.Host.ActiveSaveKind);
+            Assert.IsNull(peers.Guest.ActiveSaveKind);
             string hostName = SaveGameManager.GetMultiplayerSaveFileName(
                 peers.HostMetadata.CampaignID,
                 true,
-                "save_20261027_010203"
+                fileName
             );
             string guestName = SaveGameManager.GetMultiplayerSaveFileName(
                 peers.HostMetadata.CampaignID,
                 false,
-                "save_20261027_010203"
+                fileName
             );
             CollectionAssert.AreEqual(peers.HostFiles[hostName], peers.GuestFiles[guestName]);
             Assert.AreEqual(peers.HostMetadata.SaveID, peers.GuestMetadata.SaveID);
@@ -206,6 +215,35 @@ namespace Rebellion.Tests.Multiplayer
         }
 
         [Test]
+        public void IsAutosavePending_HostScheduled_ClearsWhenCheckpointCompletes()
+        {
+            using PeerPair peers = new();
+
+            peers.Guest.RequestAutosave();
+            peers.Host.RequestAutosave();
+
+            Assert.IsFalse(peers.Guest.IsAutosavePending);
+            Assert.IsTrue(peers.Host.IsAutosavePending);
+            Assert.IsNull(peers.Guest.ActiveSaveKind);
+            Assert.AreEqual(SaveGameKind.Automatic, peers.Host.ActiveSaveKind);
+            peers.Flush();
+            Assert.IsFalse(peers.Host.IsAutosavePending);
+            Assert.IsNull(peers.Host.ActiveSaveKind);
+        }
+
+        [Test]
+        public void IsAutosavePending_HostCheckpointFails_ClearsPendingState()
+        {
+            using PeerPair peers = new();
+            peers.Host.RequestAutosave();
+
+            peers.Host.ReportFailure(new IOException("Host disk is unavailable."));
+
+            Assert.IsFalse(peers.Host.IsAutosavePending);
+            Assert.IsNull(peers.Host.ActiveSaveKind);
+        }
+
+        [Test]
         public void RequestAutosave_LoadWaitingForDay_PreservesOutgoingCheckpointBeforeTransfer()
         {
             using PeerPair peers = new();
@@ -244,6 +282,8 @@ namespace Rebellion.Tests.Multiplayer
             Assert.AreEqual(1, peers.GuestTransfers);
             Assert.IsTrue(peers.Host.IsTransferringScene);
             Assert.IsTrue(peers.Guest.IsTransferringScene);
+            Assert.IsNull(peers.Host.ActiveSaveKind);
+            Assert.IsNull(peers.Guest.ActiveSaveKind);
             Assert.IsFalse(request.IsCompleted);
             peers.Guest.NotifySynchronized();
             Assert.IsFalse(request.IsCompleted);

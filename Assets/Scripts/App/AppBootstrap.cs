@@ -219,7 +219,8 @@ public sealed class AppBootstrap : MonoBehaviour
         _sessionManager = new GameSessionManager(
             _contentPack,
             getGameplaySettings: () => _userSettingsManager.Settings.Gameplay,
-            analyticsSink: _analyticsManager
+            analyticsSink: _analyticsManager,
+            presentSaveIndicator: PresentSaveIndicatorAsync
         );
         _sessionManager.PersistenceFailed += HandlePersistenceFailure;
         if (inputController == null)
@@ -227,6 +228,15 @@ public sealed class AppBootstrap : MonoBehaviour
 
         inputController?.Initialize(inputManager, _cancelStack, _sessionManager, LoadSaveAsync);
         LoadingScreenController.Prepare(this);
+    }
+
+    /// <summary>
+    /// Allows the strategy HUD to draw its save indicator before local snapshot capture begins.
+    /// </summary>
+    /// <returns>A task completed on the next frame, or cancelled when the application is destroyed.</returns>
+    private async Task PresentSaveIndicatorAsync()
+    {
+        await Awaitable.NextFrameAsync(destroyCancellationToken);
     }
 
     /// <summary>

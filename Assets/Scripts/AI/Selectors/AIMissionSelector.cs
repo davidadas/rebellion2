@@ -18,14 +18,32 @@ namespace Rebellion.AI.Selectors
         private const int _maximumDecoysPerMission = 2;
         private readonly AISelectionState _state;
         private readonly Dictionary<Officer, Planet> _diplomacyCommitments = new();
+        private readonly List<IMissionParticipant> _decoys = new();
+        private readonly AIMissionProposalScorer _scorer = new();
+        private readonly AITurnContext _selectionContext;
+        private readonly Dictionary<
+            (string MissionType, Planet Target, bool OfficerLed),
+            IReadOnlyList<IMissionParticipant>
+        > _compatibleParticipants;
+        private readonly Dictionary<
+            (IReadOnlyList<IMissionParticipant> Participants, long TravelTicks),
+            IMissionParticipant
+        > _preferredDecoys;
 
         /// <summary>
         /// Creates a mission selector using shared typed reservation state.
         /// </summary>
         /// <param name="state">Shared selection reservation state.</param>
-        internal AIMissionSelector(AISelectionState state)
+        /// <param name="selectionContext">Optional unchanged selection scope; reservations remain live.</param>
+        internal AIMissionSelector(AISelectionState state, AITurnContext selectionContext = null)
         {
             _state = state;
+            _selectionContext = selectionContext;
+            if (selectionContext != null)
+            {
+                _compatibleParticipants = new();
+                _preferredDecoys = new();
+            }
         }
 
         /// <summary>
@@ -58,7 +76,7 @@ namespace Rebellion.AI.Selectors
                 );
                 if (!_state.CanReserve(GetReservations(resolved)) || !resolved.CanExecute(context))
                     return false;
-                resolved.SetScore(new AIMissionProposalScorer().Score(context, resolved));
+                resolved.SetScore(_scorer.Score(context, resolved));
                 return true;
             }
             if (
@@ -72,38 +90,16 @@ namespace Rebellion.AI.Selectors
                 return false;
 
             bool officerLed = proposal.Participant is Officer;
-            List<IMissionParticipant> candidates = context
-                .Assessment.AvailableMissionParticipants.Where(participant =>
-                    !proposal.Participants.Contains(participant)
-                    && (
-                        participant is not Officer officer
-                        || context.Assessment.CanAssignOfficerToPlanet(
-                            officer,
-                            proposal.TargetPlanet
-                        )
-                    )
-                    && (
-                        officerLed
-                            ? IsAvailableDecoy(context, participant)
-                            : participant is SpecialForces
-                    )
-                    && (
-                        participant is not SpecialForces
-                        || participant.CanPerformMission(proposal.MissionTypeID)
-                            && context.CanAssignManufacturingInterceptor(
-                                (SpecialForces)participant,
-                                proposal.MissionTypeID,
-                                proposal.TargetPlanet
-                            )
-                    )
-                    && _state.CanReserve(GetParticipantReservations(new[] { participant }))
-                )
-                .ToList();
-            Dictionary<IMissionParticipant, Planet> origins = candidates.ToDictionary(
-                participant => participant,
-                participant => participant.GetParentOfType<Planet>()
+            IReadOnlyList<IMissionParticipant> compatible = GetCompatibleParticipants(
+                context,
+                proposal
             );
-            List<IMissionParticipant> decoys = proposal.DecoyParticipants.ToList();
+            IReadOnlyDictionary<IMissionParticipant, Planet> origins = context
+                .Assessment
+                .MissionParticipantOrigins;
+            List<IMissionParticipant> decoys = _decoys;
+            decoys.Clear();
+            decoys.AddRange(proposal.DecoyParticipants);
             int maximumDecoys = officerLed ? _maximumDecoysPerMission : 1;
             long teamTravelTicks = proposal.EstimateOutboundTravelTicks(context);
             while (decoys.Count < maximumDecoys)
@@ -111,14 +107,14 @@ namespace Rebellion.AI.Selectors
                 IMissionParticipant decoy = SelectDecoy(
                     context,
                     proposal,
-                    candidates,
+                    decoys,
                     origins,
-                    teamTravelTicks
+                    teamTravelTicks,
+                    compatible
                 );
                 if (decoy == null)
                     break;
                 decoys.Add(decoy);
-                candidates.Remove(decoy);
                 teamTravelTicks = Math.Max(
                     teamTravelTicks,
                     context.MovementQueries.CalculateTransitTicks(
@@ -145,8 +141,75 @@ namespace Rebellion.AI.Selectors
             if (!resolved.CanExecute(context))
                 return false;
 
-            resolved.SetScore(new AIMissionProposalScorer().Score(context, resolved));
+            resolved.SetScore(_scorer.Score(context, resolved));
             return true;
+        }
+
+        /// <summary>
+        /// Captures fixed role and target eligibility while leaving claims and team exclusions to each resolution.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="proposal">The mission whose compatible personnel are required.</param>
+        /// <returns>Compatible personnel in their assessment order.</returns>
+        private IReadOnlyList<IMissionParticipant> GetCompatibleParticipants(
+            AITurnContext context,
+            AIMissionProposal proposal
+        )
+        {
+            bool officerLed = proposal.Participant is Officer;
+            var key = (proposal.MissionTypeID, proposal.TargetPlanet, officerLed);
+            bool scoped = _selectionContext != null && ReferenceEquals(_selectionContext, context);
+            if (scoped && _compatibleParticipants.TryGetValue(key, out var cached))
+                return cached;
+            List<IMissionParticipant> compatible = new();
+            foreach (
+                IMissionParticipant participant in context.Assessment.AvailableMissionParticipants
+            )
+            {
+                if (
+                    participant is Officer officer
+                        && !context.Assessment.CanAssignOfficerToPlanet(
+                            officer,
+                            proposal.TargetPlanet
+                        )
+                    || (
+                        officerLed
+                            ? !IsAvailableDecoy(context, participant)
+                            : participant is not SpecialForces
+                    )
+                    || participant is SpecialForces unit
+                        && (
+                            !unit.CanPerformMission(proposal.MissionTypeID)
+                            || !context.CanAssignManufacturingInterceptor(
+                                unit,
+                                proposal.MissionTypeID,
+                                proposal.TargetPlanet
+                            )
+                        )
+                )
+                    continue;
+                compatible.Add(participant);
+            }
+            if (scoped)
+                _compatibleParticipants.Add(key, compatible);
+            return compatible;
+        }
+
+        /// <summary>
+        /// Checks the live mission and transfer claims for one compatible participant.
+        /// </summary>
+        /// <param name="participant">The personnel whose claims are checked.</param>
+        /// <returns>True when neither assignment resource has been reserved.</returns>
+        private bool CanReserveParticipant(IMissionParticipant participant)
+        {
+            string id = participant.InstanceID;
+            return string.IsNullOrEmpty(id)
+                || _state.CanReserve(
+                    new AISelectionReservation(AISelectionReservationKind.MissionActor, id)
+                )
+                    && _state.CanReserve(
+                        new AISelectionReservation(AISelectionReservationKind.UnitTransfer, id)
+                    );
         }
 
         /// <summary>
@@ -500,11 +563,66 @@ namespace Rebellion.AI.Selectors
         /// </summary>
         /// <param name="context">The current faction turn.</param>
         /// <param name="mission">The selected mission requiring a decoy.</param>
-        /// <param name="decoys">Unclaimed decoys available during this turn.</param>
+        /// <param name="decoys">The decoys already assigned to this team.</param>
         /// <param name="origins">Cached origin planets for the available decoys.</param>
         /// <param name="teamTravelTicks">The outbound duration already needed by the team.</param>
+        /// <param name="compatible">The fixed compatible pool before reservations and team exclusions.</param>
         /// <returns>The preferred decoy, or null when no compatible unit is available.</returns>
-        private static IMissionParticipant SelectDecoy(
+        private IMissionParticipant SelectDecoy(
+            AITurnContext context,
+            AIMissionProposal mission,
+            IReadOnlyList<IMissionParticipant> decoys,
+            IReadOnlyDictionary<IMissionParticipant, Planet> origins,
+            long teamTravelTicks,
+            IReadOnlyList<IMissionParticipant> compatible
+        )
+        {
+            if (_selectionContext != null && ReferenceEquals(_selectionContext, context))
+            {
+                var key = (compatible, teamTravelTicks);
+                if (
+                    !_preferredDecoys.TryGetValue(key, out IMissionParticipant preferred)
+                    || preferred != null && !CanReserveParticipant(preferred)
+                )
+                {
+                    preferred = FindPreferredDecoy(
+                        context,
+                        mission,
+                        compatible.Where(CanReserveParticipant),
+                        origins,
+                        teamTravelTicks
+                    );
+                    _preferredDecoys[key] = preferred;
+                }
+                if (
+                    preferred == null
+                    || !mission.Participants.Contains(preferred) && !decoys.Contains(preferred)
+                )
+                    return preferred;
+            }
+            return FindPreferredDecoy(
+                context,
+                mission,
+                compatible.Where(participant =>
+                    !mission.Participants.Contains(participant)
+                    && !decoys.Contains(participant)
+                    && CanReserveParticipant(participant)
+                ),
+                origins,
+                teamTravelTicks
+            );
+        }
+
+        /// <summary>
+        /// Finds the highest-ranked compatible decoy using skill, travel, and stable identity ties.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="mission">The mission requiring protection.</param>
+        /// <param name="decoys">The ordered candidate pool.</param>
+        /// <param name="origins">The candidates' captured origin planets.</param>
+        /// <param name="teamTravelTicks">The duration already required by the primary team.</param>
+        /// <returns>The preferred decoy, or null when none is eligible.</returns>
+        private static IMissionParticipant FindPreferredDecoy(
             AITurnContext context,
             AIMissionProposal mission,
             IEnumerable<IMissionParticipant> decoys,
@@ -513,6 +631,7 @@ namespace Rebellion.AI.Selectors
         )
         {
             IMissionParticipant selected = null;
+            double? selectedPriority = null;
             foreach (IMissionParticipant candidate in decoys)
             {
                 if (
@@ -521,68 +640,56 @@ namespace Rebellion.AI.Selectors
                 )
                     continue;
 
-                if (
-                    selected == null
-                    || IsPreferred(context, candidate, selected, mission, origins, teamTravelTicks)
-                )
+                bool candidateIsSpecialForces = candidate is SpecialForces;
+                if (selected == null || candidateIsSpecialForces && selected is not SpecialForces)
+                {
                     selected = candidate;
+                    selectedPriority = null;
+                    continue;
+                }
+                if (candidateIsSpecialForces != (selected is SpecialForces))
+                    continue;
+
+                double candidatePriority = AIMissionProposalScorer.GetParticipantPriority(
+                    context,
+                    candidate,
+                    mission.TargetPlanet,
+                    candidate.GetEffectiveRating(SkillRating.Espionage),
+                    teamTravelTicks
+                );
+                selectedPriority ??= AIMissionProposalScorer.GetParticipantPriority(
+                    context,
+                    selected,
+                    mission.TargetPlanet,
+                    selected.GetEffectiveRating(SkillRating.Espionage),
+                    teamTravelTicks
+                );
+                int ratingComparison = candidatePriority.CompareTo(selectedPriority.Value);
+                if (ratingComparison < 0)
+                    continue;
+
+                if (ratingComparison == 0)
+                {
+                    double candidateDistance = origins[candidate]
+                        .GetRawDistanceTo(mission.TargetPlanet);
+                    double selectedDistance = origins[selected]
+                        .GetRawDistanceTo(mission.TargetPlanet);
+                    int distanceComparison = candidateDistance.CompareTo(selectedDistance);
+                    if (
+                        distanceComparison > 0
+                        || distanceComparison == 0
+                            && string.Compare(
+                                candidate.InstanceID,
+                                selected.InstanceID,
+                                StringComparison.Ordinal
+                            ) >= 0
+                    )
+                        continue;
+                }
+                selected = candidate;
+                selectedPriority = candidatePriority;
             }
-
             return selected;
-        }
-
-        /// <summary>
-        /// Returns whether one compatible decoy is preferable to the current selection.
-        /// </summary>
-        /// <param name="context">The current faction turn.</param>
-        /// <param name="candidate">The candidate decoy.</param>
-        /// <param name="selected">The currently preferred decoy.</param>
-        /// <param name="mission">The mission requiring a decoy.</param>
-        /// <param name="origins">Cached origin planets for the available decoys.</param>
-        /// <param name="teamTravelTicks">The outbound duration already needed by the team.</param>
-        /// <returns>True when the candidate should replace the current selection.</returns>
-        private static bool IsPreferred(
-            AITurnContext context,
-            IMissionParticipant candidate,
-            IMissionParticipant selected,
-            AIMissionProposal mission,
-            IReadOnlyDictionary<IMissionParticipant, Planet> origins,
-            long teamTravelTicks
-        )
-        {
-            bool candidateIsSpecialForces = candidate is SpecialForces;
-            bool selectedIsSpecialForces = selected is SpecialForces;
-            if (candidateIsSpecialForces != selectedIsSpecialForces)
-                return candidateIsSpecialForces;
-
-            double candidatePriority = AIMissionProposalScorer.GetParticipantPriority(
-                context,
-                candidate,
-                mission.TargetPlanet,
-                candidate.GetEffectiveRating(SkillRating.Espionage),
-                teamTravelTicks
-            );
-            double selectedPriority = AIMissionProposalScorer.GetParticipantPriority(
-                context,
-                selected,
-                mission.TargetPlanet,
-                selected.GetEffectiveRating(SkillRating.Espionage),
-                teamTravelTicks
-            );
-            int ratingComparison = candidatePriority.CompareTo(selectedPriority);
-            if (ratingComparison != 0)
-                return ratingComparison > 0;
-
-            double candidateDistance = origins[candidate].GetRawDistanceTo(mission.TargetPlanet);
-            double selectedDistance = origins[selected].GetRawDistanceTo(mission.TargetPlanet);
-            int distanceComparison = candidateDistance.CompareTo(selectedDistance);
-            return distanceComparison != 0
-                ? distanceComparison < 0
-                : string.Compare(
-                    candidate.InstanceID,
-                    selected.InstanceID,
-                    StringComparison.Ordinal
-                ) < 0;
         }
     }
 }

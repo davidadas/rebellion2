@@ -846,6 +846,98 @@ namespace Rebellion.Tests.Managers
             CollectionAssert.IsEmpty(Directory.GetFiles(_saveDirectoryPath, "*.tmp"));
         }
 
+        [TestCase(true, 100, 100, true)]
+        [TestCase(true, 100, 200, true)]
+        [TestCase(true, 100, 150, false)]
+        [TestCase(true, 100, 0, false)]
+        [TestCase(true, 0, 100, false)]
+        [TestCase(false, 100, 100, false)]
+        public void IsAutosaveDue_CadenceAndTick_MatchesConfiguredInterval(
+            bool enabled,
+            int interval,
+            int tick,
+            bool expected
+        )
+        {
+            GameRoot game = new GameRoot { CurrentTick = tick };
+            UserGameplaySettings settings = new UserGameplaySettings
+            {
+                AutosaveEnabled = enabled,
+                AutosaveIntervalTicks = interval,
+            };
+
+            Assert.AreEqual(expected, SaveGameManager.IsAutosaveDue(game, settings));
+        }
+
+        [Test]
+        public void IsAutosaveDue_MissingGameOrSettings_ReturnsFalse()
+        {
+            Assert.IsFalse(SaveGameManager.IsAutosaveDue(null, new UserGameplaySettings()));
+            Assert.IsFalse(SaveGameManager.IsAutosaveDue(new GameRoot { CurrentTick = 100 }, null));
+        }
+
+        [Test]
+        public async Task ProcessAutosaveTickAsync_ExceedsRetention_PrunesOldestRestorePointsAsync()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary() };
+            UserGameplaySettings settings = new UserGameplaySettings();
+            settings.SetAutosavesToKeep(2);
+            for (int tick = 100; tick <= 300; tick += 100)
+            {
+                game.CurrentTick = tick;
+                Assert.IsTrue(await _saveGameManager.ProcessAutosaveTickAsync(game, settings));
+            }
+
+            string campaignPrefix = SaveGameManager.AutosaveFilePrefix + game.Metadata.CampaignID;
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    _saveGameManager.GetSaveFilePath(campaignPrefix + "_0000000200"),
+                    _saveGameManager.GetSaveFilePath(campaignPrefix + "_0000000300"),
+                },
+                Directory.GetFiles(_saveDirectoryPath, "*.sav")
+            );
+        }
+
+        [Test]
+        public async Task ProcessAutosaveTickAsync_NotDue_WritesNothingAsync()
+        {
+            GameRoot game = new GameRoot { CurrentTick = 99 };
+
+            bool saved = await _saveGameManager.ProcessAutosaveTickAsync(
+                game,
+                new UserGameplaySettings()
+            );
+
+            Assert.IsFalse(saved);
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [Test]
+        public async Task ProcessAutosaveTickAsync_PublicationFails_ReturnsFalseWithoutPruningAsync()
+        {
+            GameRoot game = new GameRoot { CurrentTick = 100 };
+            UserGameplaySettings settings = new UserGameplaySettings();
+            settings.SetAutosavesToKeep(1);
+            Assert.IsTrue(await _saveGameManager.ProcessAutosaveTickAsync(game, settings));
+            string[] previousFiles = Directory.GetFiles(_saveDirectoryPath, "*.sav");
+            game.CurrentTick = 200;
+            Directory.CreateDirectory(
+                _saveGameManager.GetSaveFilePath(
+                    SaveGameManager.AutosaveFilePrefix + game.Metadata.CampaignID + "_0000000200"
+                )
+            );
+
+            bool saved = await _saveGameManager.ProcessAutosaveTickAsync(game, settings);
+
+            Assert.IsFalse(saved);
+            CollectionAssert.AreEquivalent(
+                previousFiles,
+                Directory.GetFiles(_saveDirectoryPath, "*.sav")
+            );
+            CollectionAssert.IsEmpty(Directory.GetFiles(_saveDirectoryPath, "*.tmp"));
+        }
+
         [Test]
         public void SaveGameData_CustomDisplayName_StoresDisplayName()
         {

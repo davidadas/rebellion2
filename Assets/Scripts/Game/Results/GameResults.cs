@@ -32,6 +32,7 @@ namespace Rebellion.Game.Results
         NoResearchFacilities,
         ResearchProgress,
         ResearchBreakthrough,
+        UprisingProgress,
     }
 
     public enum ForceEventType
@@ -148,6 +149,18 @@ namespace Rebellion.Game.Results
     {
         public Planet Planet { get; set; }
         public Faction Faction { get; set; }
+    }
+
+    /// <summary>
+    /// An uprising incident supplied a faction with information about its location.
+    /// The recorded information precedes any losses or support changes from the incident.
+    /// </summary>
+    public class PlanetUprisingIncidentResult : GameResult
+    {
+        public Planet Planet { get; set; }
+        public Faction Faction { get; set; }
+        public Faction Recipient { get; set; }
+        public PlanetIntelligenceCategory Intelligence { get; set; }
     }
 
     /// <summary>

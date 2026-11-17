@@ -25,24 +25,38 @@ namespace Rebellion.AI.Selectors
         /// <returns>True when none has already been reserved.</returns>
         internal bool CanReserve(IEnumerable<AISelectionReservation> reservations)
         {
-            return reservations?.Any(reservation =>
-                {
-                    if (reservation.Kind == AISelectionReservationKind.FleetOrderContinuation)
-                        return _reservations.Contains(
-                            new AISelectionReservation(
-                                AISelectionReservationKind.FleetOrder,
-                                reservation.PrimaryId
-                            )
-                        );
-                    return _reservations.Contains(reservation)
-                        || reservation.Kind == AISelectionReservationKind.FleetOrder
-                            && _reservations.Contains(
-                                new AISelectionReservation(
-                                    AISelectionReservationKind.FleetOrderContinuation,
-                                    reservation.PrimaryId
-                                )
-                            );
-                }) != true;
+            if (reservations == null)
+                return true;
+            foreach (AISelectionReservation reservation in reservations)
+                if (!CanReserve(reservation))
+                    return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Checks one resource without allocating a temporary reservation collection.
+        /// </summary>
+        /// <param name="reservation">The resource requested by a proposal.</param>
+        /// <returns>True when the resource has no conflicting reservation.</returns>
+        internal bool CanReserve(AISelectionReservation reservation)
+        {
+            if (reservation.Kind == AISelectionReservationKind.FleetOrderContinuation)
+                return !_reservations.Contains(
+                    new AISelectionReservation(
+                        AISelectionReservationKind.FleetOrder,
+                        reservation.PrimaryId
+                    )
+                );
+            return !_reservations.Contains(reservation)
+                && (
+                    reservation.Kind != AISelectionReservationKind.FleetOrder
+                    || !_reservations.Contains(
+                        new AISelectionReservation(
+                            AISelectionReservationKind.FleetOrderContinuation,
+                            reservation.PrimaryId
+                        )
+                    )
+                );
         }
 
         /// <summary>

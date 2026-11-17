@@ -27,6 +27,12 @@ public sealed class StrategyHudView : MonoBehaviour
     private TextMeshProUGUI tickTextField;
 
     [SerializeField]
+    private SpriteSheetAnimationView saveMedallion;
+
+    [SerializeField]
+    private TextMeshProUGUI saveLabel;
+
+    [SerializeField]
     private TextMeshProUGUI rawMaterialsTextField;
 
     [SerializeField]
@@ -167,6 +173,10 @@ public sealed class StrategyHudView : MonoBehaviour
         VerifyReferences();
         SetBackground(data.BackgroundTexture);
         SetCounter(tickTextField, data.TickCounter);
+        bool saving = !string.IsNullOrEmpty(data.SaveIndicatorText);
+        saveLabel.text = data.SaveIndicatorText;
+        saveLabel.enabled = saving;
+        saveMedallion.Render(data.SaveIndicatorAnimation, saving);
         SetCounter(rawMaterialsTextField, data.RawMaterialsCounter);
         SetCounter(refinedMaterialsTextField, data.RefinedMaterialsCounter);
         SetCounter(maintenanceTextField, data.MaintenanceCounter);
@@ -745,6 +755,8 @@ public sealed class StrategyHudView : MonoBehaviour
             throw new MissingReferenceException($"{name}/BackgroundImage is missing.");
         if (tickTextField == null)
             throw new MissingReferenceException($"{name}/TickTextField is missing.");
+        if (saveMedallion == null || saveLabel == null)
+            throw new MissingReferenceException($"{name}/SaveIndicator is missing.");
         if (rawMaterialsTextField == null)
             throw new MissingReferenceException($"{name}/RawMaterialsTextField is missing.");
         if (refinedMaterialsTextField == null)

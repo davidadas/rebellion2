@@ -98,5 +98,20 @@ namespace Rebellion.Game.Units
         {
             return Movement == null;
         }
+
+        /// <summary>
+        /// Checks whether this regiment contributes to uprising suppression at its location.
+        /// </summary>
+        /// <param name="config">Regiment types and their required controlling factions.</param>
+        /// <returns>True for a stationary, completed regiment with a matching type and owner.</returns>
+        internal bool SuppressesUprisings(GameConfig.UprisingConfig config)
+        {
+            return ManufacturingStatus == ManufacturingStatus.Complete
+                && Movement == null
+                && !string.IsNullOrEmpty(TypeID)
+                && !string.IsNullOrEmpty(OwnerInstanceID)
+                && config.SuppressionRegiments.TryGetValue(TypeID, out string owner)
+                && OwnerInstanceID == owner;
+        }
     }
 }

@@ -10,6 +10,8 @@ public class FactionTheme
 {
     public string FactionInstanceID { get; set; }
 
+    public SpriteSheetAnimationTheme SaveIndicatorAnimation { get; set; }
+
     public string FactionPrimaryColorHex { get; set; }
 
     public BattleParticipantTheme BattleParticipant { get; set; }

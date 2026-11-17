@@ -270,6 +270,7 @@ namespace Rebellion.Tests.Multiplayer
         {
             internal MultiplayerDisconnectedSaves LocalSaves;
             public bool CanRequestSave => LocalSaves?.CanRequestSave == true;
+            public SaveGameKind? ActiveSaveKind => null;
 
             /// <summary>
             /// Retains the fixture's configured participants.

@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using Rebellion.Game;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Game.Units
@@ -63,6 +64,31 @@ namespace Rebellion.Tests.Game.Units
             bool isMovable = _regiment.IsMovable();
 
             Assert.IsTrue(isMovable, "Regiment should be movable when idle");
+        }
+
+        [TestCase("guard", "owner", ManufacturingStatus.Complete, false, true)]
+        [TestCase("other", "owner", ManufacturingStatus.Complete, false, false)]
+        [TestCase("guard", "captor", ManufacturingStatus.Complete, false, false)]
+        [TestCase("guard", null, ManufacturingStatus.Complete, false, false)]
+        [TestCase(null, "owner", ManufacturingStatus.Complete, false, false)]
+        [TestCase("guard", "owner", ManufacturingStatus.Building, false, false)]
+        [TestCase("guard", "owner", ManufacturingStatus.Complete, true, false)]
+        public void SuppressesUprisings_RegimentState_RequiresConfiguredStationaryGarrison(
+            string type,
+            string owner,
+            ManufacturingStatus status,
+            bool moving,
+            bool expected
+        )
+        {
+            GameConfig.UprisingConfig config = new();
+            config.SuppressionRegiments.Add("guard", "owner");
+            _regiment.TypeID = type;
+            _regiment.OwnerInstanceID = owner;
+            _regiment.ManufacturingStatus = status;
+            _regiment.Movement = moving ? TestMovement.Create() : null;
+
+            Assert.AreEqual(expected, _regiment.SuppressesUprisings(config));
         }
 
         [Test]

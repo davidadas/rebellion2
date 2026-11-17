@@ -607,6 +607,23 @@ namespace Rebellion.Game.Galaxy
             int? popularSupport = null
         )
         {
+            int garrison = GetNormalGarrisonRequirement(faction, config, popularSupport);
+            return IsInUprising ? garrison * config.UprisingMultiplier : garrison;
+        }
+
+        /// <summary>
+        /// Calculates the garrison needed after an uprising is subdued.
+        /// </summary>
+        /// <param name="faction">The controlling faction.</param>
+        /// <param name="config">The garrison rules.</param>
+        /// <param name="popularSupport">The assumed support, or null to use current support.</param>
+        /// <returns>The required regiments without the uprising multiplier.</returns>
+        internal int GetNormalGarrisonRequirement(
+            Faction faction,
+            GameConfig.GarrisonConfig config,
+            int? popularSupport = null
+        )
+        {
             if (!IsPopulated())
                 return 0;
 
@@ -617,9 +634,23 @@ namespace Rebellion.Game.Galaxy
                 Math.Ceiling((config.SupportThreshold - support) / (double)config.GarrisonDivisor);
             PlanetSector sector = GetParentOfType<PlanetSector>();
             garrison /= sector?.GetSectorSuppressionDivisor(faction.InstanceID) ?? 1;
-            if (IsInUprising)
-                garrison *= config.UprisingMultiplier;
             return garrison;
+        }
+
+        /// <summary>
+        /// Counts stationary, completed regiments that suppress uprisings.
+        /// </summary>
+        /// <param name="config">The uprising rules.</param>
+        /// <returns>The suppression contributed by the garrison.</returns>
+        internal int GetUprisingSuppression(GameConfig.UprisingConfig config)
+        {
+            int suppression = 0;
+            foreach (Regiment regiment in _regiments)
+            {
+                if (regiment.SuppressesUprisings(config))
+                    suppression++;
+            }
+            return suppression;
         }
 
         /// <summary>
@@ -630,13 +661,15 @@ namespace Rebellion.Game.Galaxy
         /// <param name="support">The controlling faction's support before the incident.</param>
         /// <param name="troops">The controlling faction's active regiment count.</param>
         /// <param name="missionAdjustment">The signed adjustment from active mission teams.</param>
+        /// <param name="suppression">The garrison's uprising suppression.</param>
         /// <returns>The incident score before dice are added.</returns>
         internal long GetUprisingIncidentBaseScore(
             Faction faction,
             GameConfig.GarrisonConfig config,
             int support,
             int troops,
-            int missionAdjustment
+            int missionAdjustment,
+            int suppression
         )
         {
             int threshold =
@@ -647,11 +680,12 @@ namespace Rebellion.Game.Galaxy
                             (config.SupportThreshold - support) / (double)config.GarrisonDivisor
                         );
             int multiplier =
-                GetParentOfType<PlanetSector>()?.SectorType == PlanetSectorType.Core
-                && faction.Settings.UprisingResistance > 1
+                faction.Settings.UprisingResistance > 1
+                && GetParentOfType<PlanetSector>()?.GetSectorSuppressionDivisor(faction.InstanceID)
+                    > 1
                     ? faction.Settings.UprisingResistance
                     : 1;
-            return (long)threshold - (long)multiplier * troops + missionAdjustment;
+            return (long)threshold - (long)multiplier * troops + missionAdjustment - suppression;
         }
 
         /// <summary>

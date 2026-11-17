@@ -35,6 +35,11 @@ namespace Rebellion.Multiplayer
                     && Failure == null;
 
         /// <summary>
+        /// Gets the participant's pending save kind from its shared checkpoint protocol.
+        /// </summary>
+        public SaveGameKind? ActiveSaveKind => _saveProtocol?.ActiveSaveKind;
+
+        /// <summary>
         /// Preserves this participant's live presentation before notifying the scene of a replacement.
         /// </summary>
         /// <param name="game">The configured incoming graph with authenticated participant ownership.</param>
@@ -128,10 +133,7 @@ namespace Rebellion.Multiplayer
                 || !_synchronizationReady
                 || _turnProtocol?.HasDeclaredVictory == true
                 || _saveProtocol == null
-                || settings?.AutosaveEnabled != true
-                || settings.AutosaveIntervalTicks <= 0
-                || _sessionManager.GetActiveGame().CurrentTick <= 0
-                || _sessionManager.GetActiveGame().CurrentTick % settings.AutosaveIntervalTicks != 0
+                || !SaveGameManager.IsAutosaveDue(_sessionManager.GetActiveGame(), settings)
             )
                 return;
             _hostAutosaveSettings = new UserGameplaySettings
@@ -363,24 +365,15 @@ namespace Rebellion.Multiplayer
                 );
                 publication = runtime.SaveGameLocallyAsync(fileName, command.displayName);
             }
-            byte[] metadataPayload = MultiplayerSnapshotCodec.Serialize(
-                typeof(GameMetadata),
-                current.Metadata
+            return await MultiplayerSaveCheckpointPublication.CompleteHostSaveAsync(
+                command,
+                current.Metadata,
+                publication,
+                () =>
+                    ReferenceEquals(_sessionManager, runtime)
+                    && ReferenceEquals(_saveProtocol, owner),
+                cancellationToken
             );
-            if (!await publication)
-                throw new InvalidOperationException(
-                    command.automatic
-                        ? "The scheduled automatic checkpoint was not written."
-                        : "The host checkpoint was not at a writable boundary."
-                );
-            cancellationToken.ThrowIfCancellationRequested();
-            if (
-                !ReferenceEquals(_sessionManager, runtime) || !ReferenceEquals(_saveProtocol, owner)
-            )
-                throw new OperationCanceledException(
-                    "The outgoing connection no longer owns this checkpoint."
-                );
-            return new MultiplayerSaveCheckpoint { Command = command, Payload = metadataPayload };
         }
 
         /// <summary>

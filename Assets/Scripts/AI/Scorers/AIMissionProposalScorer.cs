@@ -15,6 +15,23 @@ namespace Rebellion.AI.Scorers
     /// </summary>
     public sealed class AIMissionProposalScorer : IAIProposalScorer
     {
+        private AITurnContext _planningContext;
+        private Dictionary<
+            Planet,
+            (double Need, double Preparation, double BlockedAttack)
+        > _intelligencePriorities;
+
+        /// <summary>
+        /// Starts read-only candidate planning with reusable target intelligence priorities.
+        /// </summary>
+        /// <param name="context">The faction turn before selection or execution changes its state.</param>
+        internal void BeginPlanning(AITurnContext context)
+        {
+            _planningContext = context;
+            _intelligencePriorities ??= new();
+            _intelligencePriorities.Clear();
+        }
+
         /// <summary>
         /// Returns whether this scorer can score the proposal.
         /// </summary>
@@ -394,18 +411,13 @@ namespace Rebellion.AI.Scorers
                 isSabotage ? proposal.TargetPlanet : null,
                 isSabotage ? proposal.SelectedTarget as IManufacturable : null
             );
+            var intelligence = GetIntelligencePriorities(context, proposal);
+            score.Add(intelligence.Need * intelligenceSuccess, utility.IntelAge);
             score.Add(
-                GetIntelligenceNeed(context, proposal) * intelligenceSuccess,
-                utility.IntelAge
-            );
-            score.Add(
-                GetAttackPreparationIntelPriority(context, proposal) * intelligenceSuccess,
+                intelligence.Preparation * intelligenceSuccess,
                 utility.AttackPreparationIntel
             );
-            score.Add(
-                GetBlockedAttackIntelPriority(context, proposal) * intelligenceSuccess,
-                utility.BlockedAttackIntel
-            );
+            score.Add(intelligence.BlockedAttack * intelligenceSuccess, utility.BlockedAttackIntel);
             score.Add(
                 AIUtility.Fulfillment(
                     proposal.MissionTypeID == MissionTypeIDs.JediTraining
@@ -417,6 +429,34 @@ namespace Rebellion.AI.Scorers
             );
 
             return score;
+        }
+
+        /// <summary>
+        /// Resolves target-only intelligence utility once during each read-only planning scope.
+        /// Scorers outside that scope continue to assess current inputs on every call.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="proposal">The mission whose target priorities are required.</param>
+        /// <returns>The independent intelligence considerations before mission-probability weighting.</returns>
+        private (double Need, double Preparation, double BlockedAttack) GetIntelligencePriorities(
+            AITurnContext context,
+            AIMissionProposal proposal
+        )
+        {
+            if (proposal.MissionTypeID != MissionTypeIDs.Espionage)
+                return default;
+            bool reuse =
+                ReferenceEquals(_planningContext, context) && proposal.TargetPlanet != null;
+            if (reuse && _intelligencePriorities.TryGetValue(proposal.TargetPlanet, out var cached))
+                return cached;
+            var priorities = (
+                GetIntelligenceNeed(context, proposal),
+                GetAttackPreparationIntelPriority(context, proposal),
+                GetBlockedAttackIntelPriority(context, proposal)
+            );
+            if (reuse)
+                _intelligencePriorities.Add(proposal.TargetPlanet, priorities);
+            return priorities;
         }
 
         /// <summary>

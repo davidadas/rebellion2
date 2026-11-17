@@ -22,9 +22,18 @@ namespace Rebellion.Util.Random
         /// </summary>
         /// <param name="value">The lookup value.</param>
         /// <returns>The matching table result.</returns>
-        public int Lookup(int value)
+        public int Lookup(int value) => Lookup(_table, value);
+
+        /// <summary>
+        /// Looks up a threshold result without constructing a table wrapper.
+        /// Values below the first threshold use its result; an empty table returns zero.
+        /// </summary>
+        /// <param name="table">The threshold entries.</param>
+        /// <param name="value">The lookup value.</param>
+        /// <returns>The matching table result.</returns>
+        internal static int Lookup(Dictionary<int, int> table, int value)
         {
-            if (_table.Count == 0)
+            if (table.Count == 0)
                 return 0;
 
             int lowestThreshold = int.MaxValue;
@@ -32,7 +41,7 @@ namespace Rebellion.Util.Random
             int matchingThreshold = int.MinValue;
             int matchingResult = 0;
             bool foundMatch = false;
-            foreach (KeyValuePair<int, int> entry in _table)
+            foreach (KeyValuePair<int, int> entry in table)
             {
                 if (entry.Key <= lowestThreshold)
                 {

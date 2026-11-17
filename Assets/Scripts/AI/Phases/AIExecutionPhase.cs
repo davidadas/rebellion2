@@ -42,6 +42,7 @@ namespace Rebellion.AI.Phases
             if (context?.SelectedProposals == null)
                 yield break;
 
+            context.Assessment?.BeginExecution();
             using IDisposable resultObservation = _results?.ObserveAll(_ =>
             {
                 context.InvalidateManufacturingBudget();

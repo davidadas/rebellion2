@@ -74,15 +74,34 @@ public sealed class MenuChatPanelView : MonoBehaviour
     }
 
     /// <summary>
-    /// Reflows plain text and reveals the newest conversation line through the shared scroll control.
+    /// Reflows plain text while following the bottom or preserving the player's reading position.
     /// </summary>
     /// <param name="text">The already formatted conversation transcript.</param>
     public void SetTranscript(string text)
     {
-        transcript.text = text;
-        float height = Mathf.Max(scrollArea.ViewportRoot.rect.height, transcript.preferredHeight);
+        bool followBottom = scrollArea.IsAtBottom;
+        transcript.text = text ?? string.Empty;
+        float height = Mathf.Max(
+            scrollArea.ViewportHeight,
+            transcript
+                .GetPreferredValues(
+                    transcript.text,
+                    transcript.rectTransform.rect.width,
+                    Mathf.Infinity
+                )
+                .y
+        );
         transcript.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, height);
-        scrollArea.SetContentHeight(height, 24, false);
-        scrollArea.RevealContentRect(Mathf.Max(0, height - 24), 24);
+        scrollArea.SetContentHeight(height, 24, false, preserveScrollOffset: true);
+        if (followBottom)
+            ScrollToBottom();
+    }
+
+    /// <summary>
+    /// Reveals the newest message and cancels queued scrolling after a local send.
+    /// </summary>
+    public void ScrollToBottom()
+    {
+        scrollArea.VerticalNormalizedPosition = 0f;
     }
 }

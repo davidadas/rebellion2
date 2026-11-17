@@ -285,24 +285,6 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ResolveInterruption_WhenPlanetChangedSides_RevealsPlanetToMissionOwner()
-        {
-            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: null);
-            Mission mission = CreateAndAttachMission(game, planet);
-            planet.OwnerInstanceID = "rebels";
-            game.CurrentTick = 42;
-
-            IntelligenceRevealedResult revealed = mission
-                .ResolveInterruption(game, new FixedRNG(0.0))
-                .OfType<IntelligenceRevealedResult>()
-                .Single();
-
-            Assert.AreEqual("empire", revealed.Recipient.InstanceID);
-            Assert.AreEqual(planet, revealed.Observations.Single());
-            Assert.AreEqual(42, revealed.Tick);
-        }
-
-        [Test]
         public void GetAbortReason_WhenPlanetTakenByMissionFaction_ReturnsNull()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 70, planetOwner: null);

@@ -193,6 +193,100 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
+        public void ShowProgress_Message_UsesSingleCancelControl()
+        {
+            RawImage background = _view
+                .transform.Find("DialogSurface/BackgroundImage")
+                .GetComponent<RawImage>();
+            Button primary = _view
+                .transform.Find("DialogSurface/ConfirmButtonImage")
+                .GetComponent<Button>();
+            Button secondary = _view
+                .transform.Find("DialogSurface/CancelButtonImage")
+                .GetComponent<Button>();
+            Texture cancelTexture = secondary.GetComponent<RawImage>().texture;
+            _view.ShowAcknowledgment("Notice");
+            Texture singleActionBackground = background.texture;
+
+            _view.ShowProgress("Waiting for the other player...");
+
+            Assert.AreSame(singleActionBackground, background.texture);
+            Assert.IsTrue(primary.gameObject.activeSelf);
+            Assert.IsFalse(secondary.gameObject.activeSelf);
+            Assert.AreSame(cancelTexture, primary.GetComponent<RawImage>().texture);
+            Assert.AreEqual(
+                new Vector2(290f, -284f),
+                ((RectTransform)primary.transform).anchoredPosition
+            );
+        }
+
+        [Test]
+        public void ShowProgress_PrimaryButtonClick_CancelsWithoutConfirming()
+        {
+            int canceled = 0;
+            int confirmed = 0;
+            _view.Canceled += () => canceled++;
+            _view.Confirmed += () => confirmed++;
+            _view.ShowProgress("Reconnecting...");
+
+            _view
+                .transform.Find("DialogSurface/ConfirmButtonImage")
+                .GetComponent<Button>()
+                .onClick.Invoke();
+
+            Assert.AreEqual(1, canceled);
+            Assert.AreEqual(0, confirmed);
+            Assert.IsFalse(_view.gameObject.activeSelf);
+        }
+
+        [Test]
+        public void TryCancel_ProgressMode_CancelsPendingOperation()
+        {
+            int canceled = 0;
+            _view.Canceled += () => canceled++;
+            _view.ShowProgress("Reconnecting...");
+
+            Assert.IsTrue(_view.TryCancel());
+
+            Assert.AreEqual(1, canceled);
+            Assert.IsFalse(_view.gameObject.activeSelf);
+        }
+
+        [Test]
+        public void ShowProgress_VisibleProgressUpdate_PreservesCurrentSelection()
+        {
+            _view.ShowProgress("Reconnecting...");
+            _eventSystem.SetSelectedGameObject(_rootObject);
+
+            _view.ShowProgress("Waiting for the other player...");
+
+            Assert.AreSame(_rootObject, _eventSystem.currentSelectedGameObject);
+        }
+
+        [Test]
+        public void ShowAcknowledgment_AfterProgress_RestoresConfirmActionAndArtwork()
+        {
+            int confirmed = 0;
+            int canceled = 0;
+            _view.Confirmed += () => confirmed++;
+            _view.Canceled += () => canceled++;
+            _view.ShowAcknowledgment("Notice");
+            RawImage primary = _view
+                .transform.Find("DialogSurface/ConfirmButtonImage")
+                .GetComponent<RawImage>();
+            Texture confirmTexture = primary.texture;
+            _view.ShowProgress("Reconnecting...");
+
+            _view.ShowAcknowledgment("Unable to reconnect.");
+            primary.GetComponent<Button>().onClick.Invoke();
+
+            Assert.AreSame(confirmTexture, primary.texture);
+            Assert.AreEqual(1, confirmed);
+            Assert.AreEqual(0, canceled);
+            Assert.IsTrue(_view.gameObject.activeSelf);
+        }
+
+        [Test]
         public void Hide_VisibleDialog_HidesWithoutResponse()
         {
             int responseCount = 0;

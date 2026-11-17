@@ -25,6 +25,35 @@ namespace Rebellion.Tests.AI.Phases
     public class AIExecutionPhaseTests
     {
         [Test]
+        public void ExecuteIncrementally_FleetChangesBetweenProposals_ReadsCurrentStrength()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "planet", empire.InstanceID);
+            Fleet fleet = new() { InstanceID = "fleet", OwnerInstanceID = empire.InstanceID };
+            CapitalShip ship = AITestSceneBuilder.CreateCapitalShip("ship", empire.InstanceID);
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            context.Assessment.BeginPlanning();
+            int before = context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet);
+            context.SetSelectedProposals(new[] { new TestAIProposal(), new TestAIProposal() });
+            using IEnumerator<object> execution = new AIExecutionPhase()
+                .ExecuteIncrementally(context)
+                .GetEnumerator();
+
+            Assert.IsTrue(execution.MoveNext());
+            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] *= 2;
+
+            Assert.Greater(
+                context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet),
+                before
+            );
+            Assert.IsTrue(execution.MoveNext());
+            Assert.IsFalse(execution.MoveNext());
+        }
+
+        [Test]
         public void Execute_BombardmentDonorOvercomesShields_LoadsItAndEnablesLaunch()
         {
             AITurnContext context = AITestSceneBuilder.CreateBombardmentDonorContext(

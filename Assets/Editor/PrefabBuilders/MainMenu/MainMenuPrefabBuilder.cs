@@ -827,10 +827,15 @@ public static class MainMenuPrefabBuilder
         );
         FillParent(modalLayer.GetComponent<RectTransform>());
         overlay.SetActive(false);
-        CommonUIPrefabBuilder.CreateMultiplayerSessionEndNotice(
+        ConfirmationDialogView confirmation = CommonUIPrefabBuilder.CreateSceneConfirmationLayer(
             parent,
             overlay.GetComponent<UIWindowManager>(),
             true
+        );
+        AssignReference(
+            parent.root.GetComponentInChildren<MainMenuController>(true),
+            "_confirmationTemplate",
+            confirmation
         );
     }
 

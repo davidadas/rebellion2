@@ -3,6 +3,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
@@ -53,7 +54,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void TryCreate_PlanetAlreadyInUprising_ReturnsNull()
+        public void TryCreate_PlanetAlreadyInUprising_ReturnsMission()
         {
             (
                 GameRoot game,
@@ -64,13 +65,56 @@ namespace Rebellion.Tests.Game.Missions
             ) = MissionSceneBuilder.Build();
             enemyPlanet.BeginUprising();
 
-            Assert.IsNull(
+            Assert.IsNotNull(
                 CreateInciteUprisingMission(
                     "empire",
                     enemyPlanet,
                     new List<IMissionParticipant> { officer },
                     new List<IMissionParticipant>()
                 )
+            );
+        }
+
+        [Test]
+        public void TryCreate_UncolonizedEnemyPlanet_ReturnsNull()
+        {
+            var (_, _, planet, officer, _) = MissionSceneBuilder.Build();
+            planet.IsColonized = false;
+
+            Assert.IsNull(
+                CreateInciteUprisingMission(
+                    "empire",
+                    planet,
+                    new List<IMissionParticipant> { officer },
+                    new List<IMissionParticipant>()
+                )
+            );
+        }
+
+        [TestCase("empire", true)]
+        [TestCase(null, true)]
+        [TestCase("empire", false)]
+        [TestCase(null, false)]
+        public void GetAbortReason_TargetNoLongerEnemy_ReturnsTargetChangedSides(
+            string owner,
+            bool populated
+        )
+        {
+            var (game, _, planet, officer, _) = MissionSceneBuilder.Build();
+            Mission mission = CreateInciteUprisingMission(
+                "empire",
+                planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, planet);
+            mission.Initiate(1);
+            planet.OwnerInstanceID = owner;
+            planet.IsColonized = populated;
+
+            Assert.AreEqual(
+                MissionCompletionReason.TargetChangedSides,
+                mission.GetAbortReason(game)
             );
         }
 
@@ -336,6 +380,67 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void GetObjectiveSuccessProbability_SecondaryLossWithZeroPrimary_CompletesMission()
+        {
+            GameConfig config = CreateCompletionConfig();
+            config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int> { { 0, 0 } };
+            config.Uprising.SecondaryConsequenceTable = new Dictionary<int, int> { { 0, 2 } };
+            var (game, planet, mission) = BuildCompletionScene(config, 1, 20);
+
+            Assert.AreEqual(
+                100,
+                mission.GetObjectiveSuccessProbability(mission.GetMainParticipants(), game, planet)
+            );
+            CreateCompletionResolver(game, new QueueRNG(0))
+                .TryExecuteMission(mission, out List<GameResult> results);
+            Assert.AreEqual(
+                MissionOutcome.Success,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+        }
+
+        [Test]
+        public void GetObjectiveSuccessProbability_ScoreBelowFirstThreshold_UsesFirstConsequence()
+        {
+            GameConfig config = CreateCompletionConfig();
+            config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int>
+            {
+                { int.MaxValue, 2 },
+            };
+            config.Uprising.SecondaryConsequenceTable.Clear();
+            var (game, planet, mission) = BuildCompletionScene(config, 1, 20);
+
+            Assert.AreEqual(
+                100,
+                mission.GetObjectiveSuccessProbability(mission.GetMainParticipants(), game, planet)
+            );
+            CreateCompletionResolver(game, new QueueRNG(0))
+                .TryExecuteMission(mission, out List<GameResult> results);
+            Assert.AreEqual(
+                MissionOutcome.Success,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+        }
+
+        [TestCase(false, MissionCompletionReason.Failure)]
+        [TestCase(true, MissionCompletionReason.UprisingProgress)]
+        public void TryExecuteMission_IncompleteObjective_ReportsCapturedUprisingState(
+            bool uprising,
+            MissionCompletionReason reason
+        )
+        {
+            var (game, planet, mission) = BuildCompletionScene(CreateCompletionConfig(), 6, 80);
+            if (uprising)
+                planet.BeginUprising();
+            CreateCompletionResolver(game, new QueueRNG(0))
+                .TryExecuteMission(mission, out List<GameResult> results);
+            MissionCompletedResult report = results.OfType<MissionCompletedResult>().Single();
+
+            Assert.AreEqual(MissionOutcome.Failed, report.Outcome);
+            Assert.AreEqual(reason, report.CompletionReason);
+        }
+
+        [Test]
         public void GetObjectiveSuccessProbability_ObservedSnapshot_DoesNotMutateSupportGarrisonOrTimers()
         {
             (GameRoot game, Planet planet, Mission mission) = BuildCompletionScene(
@@ -363,7 +468,11 @@ namespace Rebellion.Tests.Game.Missions
             config.Uprising.DiceAddend = 0;
             config.Uprising.MissionLeadershipDivisor = 10;
             config.Uprising.InciteMissionSupportShift = -10;
-            config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int> { { 10, 2 } };
+            config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int>
+            {
+                { int.MinValue, 0 },
+                { 10, 2 },
+            };
             config.Uprising.SecondaryConsequenceTable.Clear();
             config.AI.Garrison.SupportThreshold = 60;
             config.SupportShift.OwnershipTransferThreshold = 60;
@@ -484,16 +593,73 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(75, probability, 0.000001);
         }
 
+        [TestCase(false, false, false, 100)]
+        [TestCase(true, false, false, 100)]
+        [TestCase(false, true, false, 25)]
+        [TestCase(true, true, false, 25)]
+        [TestCase(false, false, true, 100)]
+        [TestCase(true, false, true, 100)]
+        [TestCase(false, true, true, 25)]
+        [TestCase(true, true, true, 25)]
+        public void GetObjectiveSuccessProbability_SectorSuppression_MatchesIncidentOdds(
+            bool core,
+            bool suppressionPresent,
+            bool useFactionView,
+            double expected
+        )
+        {
+            GameConfig config = CreateLeadershipConfig(8);
+            config.Uprising.SecondaryConsequenceTable = new Dictionary<int, int>(
+                config.Uprising.PrimaryConsequenceTable
+            );
+            var (game, planet, mission) = BuildCompletionScene(config, 2, 60, core: core);
+            if (suppressionPresent)
+                AddSuppressionSource(game, planet);
+            Planet observed = planet;
+            if (useFactionView)
+            {
+                Faction observer = game.GetFactionByOwnerInstanceID("rebels");
+                new FogOfWarRecorder().RecordPlanetSnapshot(
+                    observer,
+                    planet,
+                    planet.GetParentOfType<PlanetSector>(),
+                    game.CurrentTick
+                );
+                observed = new FogOfWarQueries(game)
+                    .BuildFactionView(observer)
+                    .GetChildren<PlanetSector>()
+                    .Single()
+                    .GetChildren<Planet>()
+                    .Single(candidate => candidate.InstanceID == planet.InstanceID);
+            }
+
+            double probability = mission.GetObjectiveSuccessProbability(
+                mission.GetMainParticipants(),
+                game,
+                observed
+            );
+
+            Assert.AreEqual(expected, probability, 0.000001);
+        }
+
         [Test]
-        public void GetObjectiveSuccessProbability_ExtremeCoreResistance_MatchesResolvedFailure()
+        public void GetObjectiveSuccessProbability_ExtremeSectorResistance_MatchesResolvedFailure()
         {
             GameConfig config = CreateCompletionConfig();
             config.Uprising.DiceRange = 1;
             config.Uprising.DiceAddend = 0;
             config.Uprising.MissionLeadershipDivisor = 10;
             config.Uprising.InciteMissionSupportShift = -10;
-            config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int> { { 10, 2 } };
-            config.Uprising.SecondaryConsequenceTable = new Dictionary<int, int> { { 10, 2 } };
+            config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int>
+            {
+                { int.MinValue, 0 },
+                { 10, 2 },
+            };
+            config.Uprising.SecondaryConsequenceTable = new Dictionary<int, int>
+            {
+                { int.MinValue, 0 },
+                { 10, 2 },
+            };
             config.AI.Garrison.SupportThreshold = 60;
             config.SupportShift.OwnershipTransferThreshold = 60;
             (GameRoot game, Planet planet, Mission mission) = BuildCompletionScene(
@@ -503,6 +669,7 @@ namespace Rebellion.Tests.Game.Missions
                 core: true
             );
             game.GetFactionByOwnerInstanceID("empire").Settings.UprisingResistance = int.MaxValue;
+            AddSuppressionSource(game, planet);
 
             double probability = mission.GetObjectiveSuccessProbability(
                 mission.GetMainParticipants(),
@@ -516,6 +683,34 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(
                 MissionOutcome.Failed,
                 results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+        }
+
+        [Test]
+        public void GetObjectiveSuccessProbability_SuppressingGarrison_ReducesParticipantScore()
+        {
+            GameConfig config = CreateCompletionConfig();
+            config.Uprising.SuppressionRegiments.Add("guard", "empire");
+            config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int> { { 0, 2 } };
+            config.Uprising.SecondaryConsequenceTable = new Dictionary<int, int> { { 0, 2 } };
+            config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
+            {
+                { 58, 0 },
+                { 60, 100 },
+            };
+            var (game, planet, mission) = BuildCompletionScene(config, 2, 40);
+            foreach (Regiment regiment in planet.GetAllRegiments())
+                regiment.TypeID = "guard";
+
+            Assert.Zero(
+                mission.GetObjectiveSuccessProbability(mission.GetMainParticipants(), game, planet)
+            );
+            Assert.IsFalse(
+                mission.RollParticipantSuccess(
+                    mission.GetMainParticipants()[0],
+                    new FixedRNG(0),
+                    game
+                )
             );
         }
 
@@ -576,6 +771,7 @@ namespace Rebellion.Tests.Game.Missions
             config.Uprising.InciteMissionSupportShift = -10;
             config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int>
             {
+                { int.MinValue, 0 },
                 { destructionThreshold, 2 },
             };
             config.Uprising.SecondaryConsequenceTable.Clear();
@@ -665,6 +861,29 @@ namespace Rebellion.Tests.Game.Missions
                 game.AttachNode(decoy, mission);
             mission.Initiate(1);
             return (game, planet, mission);
+        }
+
+        /// <summary>
+        /// Deploys a suppression source elsewhere in the destination's sector.
+        /// </summary>
+        /// <param name="game">The owning scene.</param>
+        /// <param name="planet">The mission destination.</param>
+        private static void AddSuppressionSource(GameRoot game, Planet planet)
+        {
+            Planet sourcePlanet = new Planet { InstanceID = "source-planet" };
+            game.AttachNode(sourcePlanet, planet.GetParent());
+            Fleet fleet = EntityFactory.CreateFleet("suppression-fleet", planet.OwnerInstanceID);
+            game.AttachNode(fleet, sourcePlanet);
+            game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = "suppression-ship",
+                    OwnerInstanceID = planet.OwnerInstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    SectorSuppression = 2,
+                },
+                fleet
+            );
         }
 
         /// <summary>
