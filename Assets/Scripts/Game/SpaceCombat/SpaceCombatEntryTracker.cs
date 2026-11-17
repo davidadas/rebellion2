@@ -102,30 +102,68 @@ namespace Rebellion.Game.SpaceCombat
         {
             bool first = false;
             bool second = false;
-            foreach (ISceneNode child in planet.GetChildren(includeDisabled: true))
+            IReadOnlyList<Fleet> fleets = planet.DirectOrbitalFleets;
+            for (int index = 0; index < fleets.Count; index++)
             {
+                Fleet fleet = fleets[index];
                 if (
-                    child is not BaseSceneNode node
-                    || !node.IsEnabled
-                    || !_presence.TryGetValue(node, out Presence presence)
+                    !fleet.IsEnabled
+                    || fleet.Movement != null
+                    || fleet.OwnerInstanceID == null
+                    || !_presence.TryGetValue(fleet, out Presence presence)
+                    || presence.Capitals.Count == 0
                 )
                     continue;
-
-                bool ready = child switch
-                {
-                    Fleet fleet => fleet.Movement == null && presence.Capitals.Count != 0,
-                    Starfighter fighter => fighter.ManufacturingStatus
-                        == ManufacturingStatus.Complete
-                        && fighter.Movement == null,
-                    _ => false,
-                };
-                if (!ready || child.OwnerInstanceID == null)
+                first |= fleet.OwnerInstanceID == firstOwnerInstanceId;
+                second |= fleet.OwnerInstanceID == secondOwnerInstanceId;
+                if (first && second)
+                    return (first, second);
+            }
+            IReadOnlyList<Starfighter> fighters = planet.DirectOrbitalStarfighters;
+            for (int index = 0; index < fighters.Count; index++)
+            {
+                Starfighter fighter = fighters[index];
+                if (
+                    !fighter.IsEnabled
+                    || fighter.ManufacturingStatus != ManufacturingStatus.Complete
+                    || fighter.Movement != null
+                    || fighter.OwnerInstanceID == null
+                    || !_presence.ContainsKey(fighter)
+                )
                     continue;
-
-                first |= child.OwnerInstanceID == firstOwnerInstanceId;
-                second |= child.OwnerInstanceID == secondOwnerInstanceId;
+                first |= fighter.OwnerInstanceID == firstOwnerInstanceId;
+                second |= fighter.OwnerInstanceID == secondOwnerInstanceId;
+                if (first && second)
+                    return (first, second);
             }
             return (first, second);
+        }
+
+        /// <summary>
+        /// Checks ready opposing fleets using current capital contributions and active ancestor state.
+        /// </summary>
+        /// <param name="planet">The registered planet whose direct fleets are inspected.</param>
+        /// <returns>Whether an active ready fleet opposes the planet's current owner.</returns>
+        internal bool HasReadyOpposingFleet(Planet planet)
+        {
+            IReadOnlyList<Fleet> fleets = planet.DirectOrbitalFleets;
+            for (int index = 0; index < fleets.Count; index++)
+            {
+                Fleet fleet = fleets[index];
+                if (
+                    fleet.OwnerInstanceID != planet.OwnerInstanceID
+                    && !(
+                        string.IsNullOrEmpty(fleet.OwnerInstanceID)
+                        && string.IsNullOrEmpty(planet.OwnerInstanceID)
+                    )
+                    && fleet.Movement == null
+                    && fleet.IsActive()
+                    && _presence.TryGetValue(fleet, out Presence presence)
+                    && presence.Capitals.Count != 0
+                )
+                    return true;
+            }
+            return false;
         }
 
         /// <summary>

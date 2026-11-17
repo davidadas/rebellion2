@@ -323,9 +323,11 @@ namespace Rebellion.Gameplay
                 && MovementQueries.IsBlockedFromDestinationByBlockade(unit, destinationPlanet)
             )
             {
+                bool? wasBlockaded = CaptureBlockadeState(unit, origin);
                 MoveNode(unit, origin, _pendingResults);
                 unit.Movement = null;
                 CompleteManufacturingDelivery(unit);
+                AddBlockadeChangedResult(origin, wasBlockaded, _pendingResults);
                 return;
             }
 
@@ -2401,7 +2403,7 @@ namespace Rebellion.Gameplay
         /// <returns>The current blockade state, or null when the unit cannot affect it.</returns>
         private static bool? CaptureBlockadeState(IMovable unit, Planet planet)
         {
-            return unit is Fleet or CapitalShip ? planet?.IsBlockaded() : null;
+            return unit is Fleet or CapitalShip or Starfighter ? planet?.IsBlockaded() : null;
         }
 
         /// <summary>
