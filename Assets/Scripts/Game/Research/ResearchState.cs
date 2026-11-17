@@ -120,4 +120,25 @@ namespace Rebellion.Game.Research
         /// </summary>
         public int Difficulty { get; set; }
     }
+
+    /// <summary>
+    /// Describes one research order advanced while applying accumulated capacity.
+    /// </summary>
+    public sealed class ResearchAdvancement
+    {
+        /// <summary>
+        /// Research order reached by this advancement.
+        /// </summary>
+        public int Order { get; set; }
+
+        /// <summary>
+        /// Research capacity remaining after this advancement was paid for.
+        /// </summary>
+        public int CapacityRemaining { get; set; }
+
+        /// <summary>
+        /// Representative technology unlocked by this research order.
+        /// </summary>
+        public Technology Technology { get; set; }
+    }
 }

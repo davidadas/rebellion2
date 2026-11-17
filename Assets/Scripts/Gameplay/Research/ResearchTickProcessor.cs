@@ -77,7 +77,7 @@ namespace Rebellion.Gameplay
 
         /// <summary>
         /// Refreshes discipline research capacity from completed facilities on owned planets
-        /// and immediately applies any resulting single-step order advances.
+        /// and immediately applies every resulting order advance.
         /// </summary>
         /// <param name="game">The game state being advanced.</param>
         /// <param name="faction">The faction to accumulate research capacity for.</param>
@@ -94,21 +94,27 @@ namespace Rebellion.Gameplay
             {
                 int capacityDelta = CountCompleteFacilities(planets, discipline);
 
-                Technology unlocked = faction.ApplyResearchProgress(discipline, capacityDelta);
-                if (unlocked == null)
+                IReadOnlyList<ResearchAdvancement> advancements = faction.ApplyResearchProgress(
+                    discipline,
+                    capacityDelta
+                );
+                if (advancements.Count == 0)
                     continue;
 
-                results.Add(
-                    new ResearchOrderedResult
-                    {
-                        Tick = game.CurrentTick,
-                        Faction = faction,
-                        Discipline = discipline,
-                        ResearchOrder = faction.GetHighestUnlockedOrder(discipline),
-                        Capacity = faction.GetResearchCapacityRemaining(discipline),
-                        Technology = unlocked,
-                    }
-                );
+                foreach (ResearchAdvancement advancement in advancements)
+                {
+                    results.Add(
+                        new ResearchOrderedResult
+                        {
+                            Tick = game.CurrentTick,
+                            Faction = faction,
+                            Discipline = discipline,
+                            ResearchOrder = advancement.Order,
+                            Capacity = advancement.CapacityRemaining,
+                            Technology = advancement.Technology,
+                        }
+                    );
+                }
                 if (faction.IsResearchExhausted(discipline))
                 {
                     results.Add(

@@ -167,6 +167,36 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void ResolveObjective_RewardFundsMultipleOrders_EmitsEveryAdvancement()
+        {
+            _game.Config.Research.BaseResearchPoints = 5;
+            _game.Config.Research.ResearchDiceRange = 0;
+            SetupShipResearchCatalog(("Dreadnaught", 0, 0), ("Frigate", 1, 2), ("Cruiser", 2, 3));
+            Officer officer = CreateOfficer(shipSkill: 100);
+            Mission mission = CreateMission(officer);
+
+            List<GameResult> results = mission.ResolveObjective(_game, new FixedRNG(0.0));
+
+            List<ResearchOrderedResult> advancements = results
+                .OfType<ResearchOrderedResult>()
+                .ToList();
+            CollectionAssert.AreEqual(
+                new[] { 1, 2 },
+                advancements.Select(advancement => advancement.ResearchOrder)
+            );
+            CollectionAssert.AreEqual(
+                new[] { 3, 0 },
+                advancements.Select(advancement => advancement.Capacity)
+            );
+            Assert.AreEqual(2, _faction.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign));
+            Assert.AreEqual(1, results.OfType<ResearchExhaustedResult>().Count());
+            Assert.AreEqual(
+                MissionCompletionReason.ResearchBreakthrough,
+                results.OfType<MissionCompletedResult>().Single().CompletionReason
+            );
+        }
+
+        [Test]
         public void ResolveObjective_Success_IncrementsMatchingResearchSkill()
         {
             Officer officer = CreateOfficer(shipSkill: 50);
@@ -467,6 +497,29 @@ namespace Rebellion.Tests.Game.Missions
                 ResearchDiscipline.FacilityDesign,
                 ((ResearchMission)deserialized).Discipline
             );
+        }
+
+        /// <summary>
+        /// Sets up the faction's ship research catalog.
+        /// </summary>
+        /// <param name="technologies">The technologies to include by name, order, and difficulty.</param>
+        private void SetupShipResearchCatalog(
+            params (string name, int order, int difficulty)[] technologies
+        )
+        {
+            IManufacturable[] templates = technologies
+                .Select(technology =>
+                    (IManufacturable)
+                        new CapitalShip
+                        {
+                            DisplayName = technology.name,
+                            ResearchOrder = technology.order,
+                            ResearchDifficulty = technology.difficulty,
+                            ManufacturingFactionInstanceIDs = new List<string> { "empire" },
+                        }
+                )
+                .ToArray();
+            _faction.RebuildResearchCatalog(templates);
         }
 
         /// <summary>

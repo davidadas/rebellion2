@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 
@@ -245,6 +246,36 @@ namespace Rebellion.Tests.Gameplay
                 _faction.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign),
                 "Repeated pulses of +1 capacity should reach Frigate's difficulty of 12"
             );
+        }
+
+        [Test]
+        public void ProcessTick_OnePulseFundsMultipleOrders_EmitsEveryAdvancement()
+        {
+            SetupShipResearchCatalog(("Dreadnaught", 0, 0), ("Frigate", 1, 12), ("Cruiser", 2, 24));
+            _faction.ResearchState.Disciplines[ResearchDiscipline.ShipDesign].CapacityRemaining =
+                35;
+            _game.AttachNode(CreateShipyard("SY1"), _planet);
+            _game.CurrentTick = 30;
+
+            IReadOnlyList<GameResult> results = _system.ProcessTick(_game);
+
+            List<ResearchOrderedResult> advancements = results
+                .OfType<ResearchOrderedResult>()
+                .ToList();
+            CollectionAssert.AreEqual(
+                new[] { 1, 2 },
+                advancements.Select(advancement => advancement.ResearchOrder)
+            );
+            CollectionAssert.AreEqual(
+                new[] { 24, 0 },
+                advancements.Select(advancement => advancement.Capacity)
+            );
+            Assert.AreEqual(2, _faction.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign));
+            Assert.AreEqual(
+                0,
+                _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign)
+            );
+            Assert.AreEqual(1, results.OfType<ResearchExhaustedResult>().Count());
         }
 
         [Test]
