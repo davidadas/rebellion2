@@ -10,6 +10,85 @@ namespace Rebellion.Tests.ContentEditor
     public sealed class ContentPackEditorFieldTests
     {
         [Test]
+        public void GetField_MissingLoyaltyAllegiance_PreservesUnsetValueWithoutEditing()
+        {
+            ContentPackEditorCatalog catalog = Create(
+                "<Officers><Officer><TypeID>OF1</TypeID></Officer></Officers>"
+            );
+
+            ContentPackEditorField field = catalog.Records.Single().GetField("LoyaltyAllegiance");
+
+            Assert.AreEqual(string.Empty, field.Value);
+            Assert.IsNull(catalog.Records.Single().Element.Element("LoyaltyAllegiance"));
+            Assert.IsFalse(catalog.Document.IsDirty);
+        }
+
+        [Test]
+        public void SetValue_ExplicitUnalignedLoyaltyAllegiance_WritesNone()
+        {
+            ContentPackEditorCatalog catalog = Create(
+                "<Officers><Officer><TypeID>OF1</TypeID></Officer></Officers>"
+            );
+            ContentPackEditorField field = catalog.Records.Single().GetField("LoyaltyAllegiance");
+
+            field.SetValue("None");
+
+            Assert.AreEqual(
+                "None",
+                catalog.Records.Single().Element.Element("LoyaltyAllegiance").Value
+            );
+            Assert.IsTrue(catalog.Document.IsDirty);
+        }
+
+        [Test]
+        public void SetValue_EmptyLoyaltyAllegiance_PreservesUnspecifiedValue()
+        {
+            ContentPackEditorCatalog catalog = Create(
+                "<Officers><Officer><TypeID>OF1</TypeID><LoyaltyAllegiance>None</LoyaltyAllegiance></Officer></Officers>"
+            );
+            ContentPackEditorField field = catalog.Records.Single().GetField("LoyaltyAllegiance");
+
+            field.SetValue(string.Empty);
+
+            Assert.AreEqual(string.Empty, field.Value);
+            Assert.Contains(string.Empty, field.Choices.ToArray());
+            Assert.IsNull(
+                SerializationHelper
+                    .Deserialize<Rebellion.Game.Units.Officer>(
+                        catalog.Records.Single().Element.ToString()
+                    )
+                    .LoyaltyAllegiance
+            );
+        }
+
+        [Test]
+        public void ValidateValues_UnspecifiedLoyaltyAllegiance_AcceptsEmptyValue()
+        {
+            ContentPackEditorCatalog catalog = Create(
+                "<Officers><Officer><TypeID>OF1</TypeID><LoyaltyAllegiance>None</LoyaltyAllegiance></Officer></Officers>"
+            );
+            ContentPackEditorField field = catalog.Records.Single().GetField("LoyaltyAllegiance");
+
+            Assert.DoesNotThrow(() => field.ValidateValues(new[] { string.Empty }));
+            Assert.AreEqual("None", field.Value);
+            Assert.IsFalse(catalog.Document.IsDirty);
+        }
+
+        [TestCase("UnknownFaction")]
+        [TestCase("999")]
+        public void SetValue_UnsupportedLoyaltyAllegiance_RejectsValue(string value)
+        {
+            ContentPackEditorCatalog catalog = Create(
+                "<Officers><Officer><TypeID>OF1</TypeID><LoyaltyAllegiance>FirstFaction</LoyaltyAllegiance></Officer></Officers>"
+            );
+            ContentPackEditorField field = catalog.Records.Single().GetField("LoyaltyAllegiance");
+
+            Assert.Throws<ArgumentException>(() => field.SetValue(value));
+            Assert.AreEqual("FirstFaction", field.Value);
+            Assert.IsFalse(catalog.Document.IsDirty);
+        }
+
+        [Test]
         public void SetValue_BattleSupportProfile_UsesNullableNumericType()
         {
             ContentPackEditorCatalog catalog = Create(

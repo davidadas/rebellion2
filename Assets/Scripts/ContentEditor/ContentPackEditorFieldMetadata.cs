@@ -200,6 +200,8 @@ internal static class ContentPackEditorFieldMetadata
         ["Traits"] =
             "Starting traits assigned to this officer. Definitions are edited under Officer traits.",
         ["CanBetray"] = "Allows this officer's loyalty checks to betray a mission.",
+        ["LoyaltyAllegiance"] =
+            "Chooses the faction favored by battle loyalty changes. None reverses either faction's change. An empty value is unspecified.",
         ["Loyalty"] =
             "The officer's loyalty rating. Lower loyalty increases the risk of mission betrayal.",
         ["IsRecruitable"] = "Whether this officer can become available through recruitment.",

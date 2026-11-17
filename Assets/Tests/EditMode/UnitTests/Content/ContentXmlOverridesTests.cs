@@ -31,6 +31,48 @@ namespace Rebellion.Tests.Content
                 Directory.Delete(folder, true);
         }
 
+        [TestCase("None", Rebellion.Game.Units.OfficerLoyaltyAllegiance.None)]
+        [TestCase("SecondFaction", Rebellion.Game.Units.OfficerLoyaltyAllegiance.SecondFaction)]
+        public void Merge_OfficerLoyaltyOverride_PreservesInheritedProtection(
+            string value,
+            Rebellion.Game.Units.OfficerLoyaltyAllegiance expected
+        )
+        {
+            const string baseline =
+                "<Officers><Officer><TypeID>OFFICER</TypeID><CanBetray>false</CanBetray><LoyaltyAllegiance>FirstFaction</LoyaltyAllegiance></Officer></Officers>";
+            string overlay =
+                "<Officers Inherit='true'><Officer><TypeID>OFFICER</TypeID><LoyaltyAllegiance>"
+                + value
+                + "</LoyaltyAllegiance></Officer></Officers>";
+
+            XElement merged = XElement.Parse(ContentXmlOverrides.Merge(baseline, overlay));
+            Rebellion.Game.Units.Officer officer =
+                SerializationHelper.Deserialize<Rebellion.Game.Units.Officer>(
+                    merged.Element("Officer").ToString()
+                );
+
+            Assert.AreEqual(expected, officer.LoyaltyAllegiance);
+            Assert.IsFalse(officer.CanBetray);
+        }
+
+        [Test]
+        public void Merge_UnspecifiedOfficerLoyaltyOverride_DoesNotSelectNone()
+        {
+            const string baseline =
+                "<Officers><Officer><TypeID>OFFICER</TypeID><CanBetray>true</CanBetray><LoyaltyAllegiance>FirstFaction</LoyaltyAllegiance></Officer></Officers>";
+            const string overlay =
+                "<Officers Inherit='true'><Officer><TypeID>OFFICER</TypeID><LoyaltyAllegiance /></Officer></Officers>";
+
+            XElement merged = XElement.Parse(ContentXmlOverrides.Merge(baseline, overlay));
+            Rebellion.Game.Units.Officer officer =
+                SerializationHelper.Deserialize<Rebellion.Game.Units.Officer>(
+                    merged.Element("Officer").ToString()
+                );
+
+            Assert.IsNull(officer.LoyaltyAllegiance);
+            Assert.IsTrue(officer.CanBetray);
+        }
+
         [Test]
         public void Merge_OneFactionSetting_PreservesOtherSettingsAndFactions()
         {

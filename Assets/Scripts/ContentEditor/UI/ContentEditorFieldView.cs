@@ -490,7 +490,8 @@ public sealed class ContentEditorFieldView : MonoBehaviour
                 choiceDropdown.AddOptions(
                     choiceValues
                         .Select(choice =>
-                            referenceLabels == null ? ContentPackEditorField.FormatName(choice)
+                            field.IsNullableEnum && choice.Length == 0 ? "Unspecified"
+                            : referenceLabels == null ? ContentPackEditorField.FormatName(choice)
                             : referenceLabels.TryGetValue(choice, out string caption) ? caption
                             : "Missing: " + choice
                         )

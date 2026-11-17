@@ -253,8 +253,9 @@ public sealed class ContentPackEditorRecord
                 throw new InvalidOperationException(
                     "This record has no editable member named " + memberName + "."
                 );
+            bool isNullableEnum = Nullable.GetUnderlyingType(type)?.IsEnum == true;
             type = Nullable.GetUnderlyingType(type) ?? type;
-            if (TypeHelper.IsScalar(type) && type != typeof(string))
+            if (!isNullableEnum && TypeHelper.IsScalar(type) && type != typeof(string))
                 element.Value =
                     Kind == "Trait" && memberName == "PersonnelTravelTimePercent"
                         ? new OfficerTraitDefinition().PersonnelTravelTimePercent.ToString(

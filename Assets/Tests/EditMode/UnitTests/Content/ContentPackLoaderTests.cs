@@ -162,6 +162,46 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void OpenActive_OfficerLoyaltyAllegiances_LoadsEveryCanonicalDefinition()
+        {
+            Officer[] officers = TestContent.Pack.GameData.Officers;
+
+            Assert.AreEqual(60, officers.Length);
+            Assert.AreEqual(
+                30,
+                officers.Count(officer =>
+                    officer.LoyaltyAllegiance == OfficerLoyaltyAllegiance.FirstFaction
+                )
+            );
+            Assert.AreEqual(
+                30,
+                officers.Count(officer =>
+                    officer.LoyaltyAllegiance == OfficerLoyaltyAllegiance.SecondFaction
+                )
+            );
+            Assert.AreEqual(9, officers.Count(officer => !officer.CanBetray));
+        }
+
+        [TestCase("MON_MOTHMA", OfficerLoyaltyAllegiance.FirstFaction)]
+        [TestCase("LEIA_ORGANA", OfficerLoyaltyAllegiance.FirstFaction)]
+        [TestCase("LUKE_SKYWALKER", OfficerLoyaltyAllegiance.FirstFaction)]
+        [TestCase("HAN_SOLO", OfficerLoyaltyAllegiance.FirstFaction)]
+        [TestCase("EMPEROR_PALPATINE", OfficerLoyaltyAllegiance.SecondFaction)]
+        [TestCase("DARTH_VADER", OfficerLoyaltyAllegiance.SecondFaction)]
+        public void OpenActive_ProtectedMainOfficer_LoadsExplicitLoyaltyAllegiance(
+            string instanceID,
+            OfficerLoyaltyAllegiance expected
+        )
+        {
+            Officer officer = TestContent.Pack.GameData.Officers.Single(candidate =>
+                candidate.InstanceID == instanceID
+            );
+
+            Assert.IsFalse(officer.CanBetray);
+            Assert.AreEqual(expected, officer.LoyaltyAllegiance);
+        }
+
+        [Test]
         public void OpenActive_OfficerTraits_LoadDefinitionsAndAuthoredAssignments()
         {
             OfficerTraitDefinition smuggler = TestContent.Pack.GameData.OfficerTraits.Single(

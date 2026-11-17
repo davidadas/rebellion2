@@ -13,6 +13,56 @@ namespace Rebellion.Tests.Game.Units
     [TestFixture]
     public class OfficerTests
     {
+        [TestCase("None", OfficerLoyaltyAllegiance.None)]
+        [TestCase("FirstFaction", OfficerLoyaltyAllegiance.FirstFaction)]
+        [TestCase("SecondFaction", OfficerLoyaltyAllegiance.SecondFaction)]
+        public void Deserialize_AuthoredLoyaltyAllegiance_ReadsExplicitValue(
+            string value,
+            OfficerLoyaltyAllegiance expected
+        )
+        {
+            Officer officer = SerializationHelper.Deserialize<Officer>(
+                $"<Officer><LoyaltyAllegiance>{value}</LoyaltyAllegiance></Officer>"
+            );
+
+            Assert.AreEqual(expected, officer.LoyaltyAllegiance);
+        }
+
+        [TestCase("<Officer />")]
+        [TestCase("<Officer><LoyaltyAllegiance /></Officer>")]
+        [TestCase("<Officer><LoyaltyAllegiance></LoyaltyAllegiance></Officer>")]
+        public void Deserialize_UnspecifiedLoyaltyAllegiance_RemainsNull(string xml)
+        {
+            Officer officer = SerializationHelper.Deserialize<Officer>(xml);
+
+            Assert.IsNull(officer.LoyaltyAllegiance);
+        }
+
+        [Test]
+        public void Serialize_AuthoredLoyaltyAllegiance_OmitsDefinitionValue()
+        {
+            Officer officer = new Officer { LoyaltyAllegiance = OfficerLoyaltyAllegiance.None };
+
+            string xml = SerializationHelper.Serialize(officer);
+
+            StringAssert.DoesNotContain("LoyaltyAllegiance", xml);
+        }
+
+        [TestCase(null)]
+        [TestCase(OfficerLoyaltyAllegiance.None)]
+        [TestCase(OfficerLoyaltyAllegiance.FirstFaction)]
+        [TestCase(OfficerLoyaltyAllegiance.SecondFaction)]
+        public void CreateCopy_LoyaltyAllegiance_PreservesNullableDefinitionValue(
+            OfficerLoyaltyAllegiance? allegiance
+        )
+        {
+            Officer officer = new Officer { LoyaltyAllegiance = allegiance };
+
+            Officer copy = (Officer)officer.CreateCopy();
+
+            Assert.AreEqual(allegiance, copy.LoyaltyAllegiance);
+        }
+
         [TestCase(79, false)]
         [TestCase(80, true)]
         [TestCase(81, true)]

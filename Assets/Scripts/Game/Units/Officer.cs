@@ -297,6 +297,13 @@ namespace Rebellion.Game.Units
         public bool IsRecruitable { get; set; }
         public List<string> RecruitingFactionInstanceIDs { get; set; }
 
+        /// <summary>
+        /// Gets or sets the authored allegiance used by battle loyalty changes, or null when unspecified.
+        /// The active content catalog restores this definition value after loading a campaign.
+        /// </summary>
+        [PersistableIgnore]
+        public OfficerLoyaltyAllegiance? LoyaltyAllegiance { get; set; }
+
         public bool IsCaptured
         {
             get => _isCaptured;
@@ -644,6 +651,7 @@ namespace Rebellion.Game.Units
             copy.RosterOrder = RosterOrder;
             copy.IsRecruitable = IsRecruitable;
             copy.RecruitingFactionInstanceIDs = new List<string>(RecruitingFactionInstanceIDs);
+            copy.LoyaltyAllegiance = LoyaltyAllegiance;
             copy.IsCaptured = IsCaptured;
             copy.CaptorInstanceID = CaptorInstanceID;
             copy.CanEscape = CanEscape;
@@ -705,6 +713,17 @@ namespace Rebellion.Game.Units
         {
             _traitDefinitions =
                 traitDefinitions ?? throw new ArgumentNullException(nameof(traitDefinitions));
+        }
+
+        /// <summary>
+        /// Restores the content catalog's allegiance and loyalty protection for this officer.
+        /// </summary>
+        /// <param name="allegiance">The authored allegiance, or null when it is unspecified.</param>
+        /// <param name="canBetray">Whether the authored loyalty can change.</param>
+        internal void BindLoyaltyDefinition(OfficerLoyaltyAllegiance? allegiance, bool canBetray)
+        {
+            LoyaltyAllegiance = allegiance;
+            _canBetray = canBetray;
         }
 
         /// <summary>
