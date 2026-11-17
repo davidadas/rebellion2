@@ -281,6 +281,64 @@ namespace Rebellion.Tests.Gameplay
             );
         }
 
+        [TestCase(true, 1)]
+        [TestCase(false, 1)]
+        [TestCase(false, 0.5)]
+        public void GetDamageRate_ZeroLaserCapitalEffectiveness_RequiresAWeightedPrimaryBank(
+            bool hasShields,
+            double hullFraction
+        )
+        {
+            Starfighter fighter = CreateFighter(12);
+            fighter.Torpedoes = 2;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.LaserCannonCapitalDamageMultiplier = 0;
+            config.AutoResolveTorpedoDamagePerStrength = 0.5;
+            SpaceCombatDamageCalculator calculator = new SpaceCombatDamageCalculator(
+                fighter,
+                config
+            );
+
+            Assert.AreEqual(0, calculator.GetDamageRate(hullFraction, false, 1, hasShields), 1e-6);
+        }
+
+        [Test]
+        public void GetDamageRate_ZeroPrimaryDamageScale_CannotSustainTorpedoDamage()
+        {
+            Starfighter fighter = CreateFighter(12);
+            fighter.Torpedoes = 2;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveWeaponDamagePerStrength = 0;
+            config.AutoResolveTorpedoDamagePerStrength = 0.5;
+            SpaceCombatDamageCalculator calculator = new SpaceCombatDamageCalculator(
+                fighter,
+                config
+            );
+
+            Assert.AreEqual(0, calculator.GetDamageRate(1, false, 1, false));
+        }
+
+        [TestCase(true, 2)]
+        [TestCase(false, 3)]
+        public void GetDamageRate_ZeroLaserCapitalEffectiveness_IonBankCanStillSupportTorpedoes(
+            bool hasShields,
+            double expected
+        )
+        {
+            Starfighter fighter = CreateFighter(12);
+            fighter.IonCannon = 2;
+            fighter.Torpedoes = 2;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.LaserCannonCapitalDamageMultiplier = 0;
+            config.AutoResolveTorpedoDamagePerStrength = 0.5;
+            SpaceCombatDamageCalculator calculator = new SpaceCombatDamageCalculator(
+                fighter,
+                config
+            );
+
+            Assert.AreEqual(expected, calculator.GetDamageRate(1, false, 1, hasShields), 1e-6);
+        }
+
         [Test]
         public void GetDamageRate_FighterWeaponDamage_DoesNotReduceCraftRecharge()
         {
@@ -314,9 +372,11 @@ namespace Rebellion.Tests.Gameplay
             Starfighter fighter = CreateFighter(12);
             fighter.LaserCannon = 0;
             fighter.Torpedoes = 20;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveTorpedoDamagePerStrength = 0.5;
             SpaceCombatDamageCalculator calculator = new SpaceCombatDamageCalculator(
                 fighter,
-                CreateConfig()
+                config
             );
 
             Assert.AreEqual(0, calculator.GetDamageRate(1, false, 1, false));
