@@ -305,6 +305,51 @@ namespace Rebellion.Game
             _spaceCombatEntries.Configure(definition.Factions);
 
         /// <summary>
+        /// Captures both requested factions' current direct orbital presence at one live planet.
+        /// This reads current readiness during open scene updates without changing entry history.
+        /// </summary>
+        /// <param name="planet">The exact planet instance registered in this game.</param>
+        /// <param name="firstOwnerInstanceId">The first nonempty, non-neutral faction identity.</param>
+        /// <param name="secondOwnerInstanceId">The distinct second nonempty faction identity.</param>
+        /// <returns>Whether each faction currently has a ready direct fleet or fighter.</returns>
+        internal (bool FirstSide, bool SecondSide) CaptureSpaceCombatPresence(
+            Planet planet,
+            string firstOwnerInstanceId,
+            string secondOwnerInstanceId
+        )
+        {
+            if (planet == null)
+                throw new ArgumentNullException(nameof(planet));
+            if (
+                string.IsNullOrEmpty(planet.InstanceID)
+                || !NodesByInstanceID.TryGetValue(planet.InstanceID, out ISceneNode registered)
+                || !ReferenceEquals(registered, planet)
+            )
+                throw new ArgumentException(
+                    "The planet must be registered in this game.",
+                    nameof(planet)
+                );
+            if (string.IsNullOrEmpty(firstOwnerInstanceId))
+                throw new ArgumentException(
+                    "A faction identity is required.",
+                    nameof(firstOwnerInstanceId)
+                );
+            if (
+                string.IsNullOrEmpty(secondOwnerInstanceId)
+                || secondOwnerInstanceId == firstOwnerInstanceId
+            )
+                throw new ArgumentException(
+                    "A distinct second faction identity is required.",
+                    nameof(secondOwnerInstanceId)
+                );
+            return _spaceCombatEntries.CapturePresence(
+                planet,
+                firstOwnerInstanceId,
+                secondOwnerInstanceId
+            );
+        }
+
+        /// <summary>
         /// Commits combat presence after related containment and transit changes are complete.
         /// </summary>
         /// <returns>A scope that commits the final state of this scene update.</returns>

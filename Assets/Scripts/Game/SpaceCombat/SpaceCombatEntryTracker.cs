@@ -87,6 +87,48 @@ namespace Rebellion.Game.SpaceCombat
         }
 
         /// <summary>
+        /// Captures current direct orbital presence without committing pending entry changes.
+        /// Fleet capital readiness is maintained immediately, including inside nested updates.
+        /// </summary>
+        /// <param name="planet">The authoritative planet whose direct children are inspected.</param>
+        /// <param name="firstOwnerInstanceId">The first non-neutral faction identity.</param>
+        /// <param name="secondOwnerInstanceId">The distinct second non-neutral faction identity.</param>
+        /// <returns>Whether each requested faction currently has a ready fleet or direct fighter.</returns>
+        internal (bool FirstSide, bool SecondSide) CapturePresence(
+            Planet planet,
+            string firstOwnerInstanceId,
+            string secondOwnerInstanceId
+        )
+        {
+            bool first = false;
+            bool second = false;
+            foreach (ISceneNode child in planet.GetChildren(includeDisabled: true))
+            {
+                if (
+                    child is not BaseSceneNode node
+                    || !node.IsEnabled
+                    || !_presence.TryGetValue(node, out Presence presence)
+                )
+                    continue;
+
+                bool ready = child switch
+                {
+                    Fleet fleet => fleet.Movement == null && presence.Capitals.Count != 0,
+                    Starfighter fighter => fighter.ManufacturingStatus
+                        == ManufacturingStatus.Complete
+                        && fighter.Movement == null,
+                    _ => false,
+                };
+                if (!ready || child.OwnerInstanceID == null)
+                    continue;
+
+                first |= child.OwnerInstanceID == firstOwnerInstanceId;
+                second |= child.OwnerInstanceID == secondOwnerInstanceId;
+            }
+            return (first, second);
+        }
+
+        /// <summary>
         /// Detaches runtime observers before rebuilding the scene registry.
         /// </summary>
         internal void Clear()
