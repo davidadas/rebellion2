@@ -8,6 +8,7 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
 using Rebellion.Tactical;
+using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Multiplayer
@@ -329,7 +330,8 @@ namespace Rebellion.Tests.Multiplayer
                 ),
                 player,
                 100,
-                random
+                random,
+                TacticalCombatAudio.Create
             );
         }
 

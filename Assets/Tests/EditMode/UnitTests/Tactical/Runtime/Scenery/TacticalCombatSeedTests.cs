@@ -1,8 +1,9 @@
 using System;
 using NUnit.Framework;
 using Rebellion.Game.SpaceCombat;
+using Rebellion.Tactical.Runtime;
 
-namespace Rebellion.Tests.Game.SpaceCombat
+namespace Rebellion.Tests.Tactical.Runtime
 {
     [TestFixture]
     public sealed class TacticalCombatSeedTests

@@ -8,6 +8,7 @@ using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
+using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Tactical
@@ -1128,7 +1129,8 @@ namespace Rebellion.Tests.Tactical
                 ),
                 factionOneSide,
                 100,
-                new SystemRandomProvider(42)
+                new SystemRandomProvider(42),
+                TacticalCombatAudio.Create
             );
 
             TacticalCombatGroup requested = session.CreateGroup(new[] { selected });
@@ -3071,7 +3073,8 @@ namespace Rebellion.Tests.Tactical
                 CreateSide(CombatSide.Defender, fighterFaction, -Vector3.UnitZ),
                 CombatSide.Defender,
                 100,
-                new SystemRandomProvider(42)
+                new SystemRandomProvider(42),
+                TacticalCombatAudio.Create
             );
         }
 
@@ -3145,6 +3148,7 @@ namespace Rebellion.Tests.Tactical
                 CombatSide.Defender,
                 100,
                 new SystemRandomProvider(42),
+                TacticalCombatAudio.Create,
                 presentationClock: () => 0
             );
         }
@@ -3339,6 +3343,7 @@ namespace Rebellion.Tests.Tactical
                 player,
                 100,
                 new SystemRandomProvider(42),
+                TacticalCombatAudio.Create,
                 definition,
                 presentationClock: () => 0,
                 personnelHostInstanceIDs: personnelHostInstanceIDs,
@@ -3409,6 +3414,7 @@ namespace Rebellion.Tests.Tactical
                 player,
                 100,
                 new SystemRandomProvider(42),
+                TacticalCombatAudio.Create,
                 definition
             );
         }
@@ -3606,6 +3612,7 @@ namespace Rebellion.Tests.Tactical
                 player,
                 100,
                 new SystemRandomProvider(42),
+                TacticalCombatAudio.Create,
                 definition
             );
             session.SetOrder(group, TacticalCombatOrder.AttackBattleStation);

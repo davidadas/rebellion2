@@ -5,6 +5,7 @@ using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
+using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
@@ -307,7 +308,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 new(CombatSide.Defender, 1, -Vector3.UnitZ, true, 0, 0, null, null, 0, 0, false),
                 CombatSide.Attacker,
                 100,
-                new SystemRandomProvider(1)
+                new SystemRandomProvider(1),
+                TacticalCombatAudio.Create
             );
     }
 }

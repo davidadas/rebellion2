@@ -1,6 +1,6 @@
 {
     "name": "Rebellion.Tactical.Core",
-    "rootNamespace": "Rebellion.Tactical.Core",
+    "rootNamespace": "Rebellion.Tactical",
     "references": [
         "Rebellion.Combat.Contracts",
         "Rebellion.Tactical.Contracts",

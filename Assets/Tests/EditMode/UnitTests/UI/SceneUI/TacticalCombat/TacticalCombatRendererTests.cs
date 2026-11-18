@@ -11,6 +11,8 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
 using Rebellion.Tactical;
+using Rebellion.Tactical.Runtime;
+using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Random;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -2397,6 +2399,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 CombatSide.Attacker,
                 100,
                 random,
+                TacticalCombatAudio.Create,
                 catalog.TacticalCombat,
                 catalog.TacticalCombat.Environments[1],
                 new TacticalCombatSceneryRandom(random, () => 1),
@@ -2489,6 +2492,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 playerSide,
                 100,
                 random,
+                TacticalCombatAudio.Create,
                 catalog.TacticalCombat,
                 catalog.TacticalCombat.Environments[1],
                 new TacticalCombatSceneryRandom(random, () => 1),

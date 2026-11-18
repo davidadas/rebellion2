@@ -19,7 +19,8 @@
         "Rebellion.Util",
         "Rebellion.Combat.Contracts",
         "Rebellion.Tactical.Contracts",
-        "Rebellion.Tactical.Core"
+        "Rebellion.Tactical.Core",
+        "Rebellion.Tactical.Runtime"
     ],
     "overrideReferences": true,
     "precompiledReferences": [

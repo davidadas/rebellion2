@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
+using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Random;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -59,7 +60,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 CreateSide(CombatSide.Defender),
                 CombatSide.Attacker,
                 100,
-                new SystemRandomProvider(42)
+                new SystemRandomProvider(42),
+                TacticalCombatAudio.Create
             );
             _combat = new TacticalCombatController(_session, _view, _ => { }, default);
             _options = new TestOptions();

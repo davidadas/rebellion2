@@ -10,6 +10,8 @@ using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Tactical;
+using Rebellion.Tactical.Runtime;
+using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Gameplay
@@ -381,6 +383,7 @@ namespace Rebellion.Gameplay
                 playerSide,
                 depth,
                 random,
+                TacticalCombatAudio.Create,
                 _definition,
                 _definition.Environments.FirstOrDefault(environment =>
                     environment.PlanetIconPath == planet.PlanetIconPath

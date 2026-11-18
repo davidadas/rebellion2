@@ -6,6 +6,7 @@ using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
+using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Tactical
@@ -95,6 +96,7 @@ namespace Rebellion.Tests.Tactical
                 CombatSide.Attacker,
                 100,
                 new SystemRandomProvider(42),
+                TacticalCombatAudio.Create,
                 new TacticalCombatDefinition
                 {
                     AttackRunSuccessMoviePath = "Pack/Videos/success",

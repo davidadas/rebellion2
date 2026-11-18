@@ -6,6 +6,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
+using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Random;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -123,6 +124,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 CombatSide.Attacker,
                 100,
                 new LinearCongruentialRandomProvider(42),
+                TacticalCombatAudio.Create,
                 new TacticalCombatDefinition
                 {
                     Sounds = new()

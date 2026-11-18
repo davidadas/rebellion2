@@ -84,7 +84,7 @@ namespace Rebellion.Tactical
         public CombatSide PlayerSide { get; }
         public float BattleDepth { get; }
         public TacticalCombatNavigation Navigation { get; }
-        public TacticalCombatAudio Audio { get; }
+        public ITacticalCombatAudio Audio { get; }
         public TacticalCombatSelection Selection { get; }
         public int SystemTime =>
             _networkReplica ? _networkSystemTime
@@ -109,7 +109,7 @@ namespace Rebellion.Tactical
             }
         }
         public TacticalCombatMovieRequest PendingAttackRunMovie { get; private set; }
-        public TacticalCombatSceneryRandom SceneryRandom { get; }
+        public ITacticalCombatSceneryRandom SceneryRandom { get; }
         public TacticalCombatBattleStation BattleStation { get; }
         public TacticalCombatDefinition Definition { get; }
         public TacticalCombatEnvironmentDefinition Environment { get; }
@@ -170,6 +170,7 @@ namespace Rebellion.Tactical
         /// <param name="playerSide">The side controlled by the player.</param>
         /// <param name="battleDepth">The deployment span used by movement and withdrawal.</param>
         /// <param name="random">The encounter's random-number stream.</param>
+        /// <param name="createAudio">Creates notification scheduling with this encounter's stream and pause state.</param>
         /// <param name="definition">The shared tactical presentation definitions.</param>
         /// <param name="environment">The planet-specific tactical scenery and texture palette.</param>
         /// <param name="sceneryRandom">The encounter-owned scenery stream, when presentation is available.</param>
@@ -184,9 +185,10 @@ namespace Rebellion.Tactical
             CombatSide playerSide,
             float battleDepth,
             IRandomNumberProvider random,
+            TacticalCombatAudioFactory createAudio,
             TacticalCombatDefinition definition = null,
             TacticalCombatEnvironmentDefinition environment = null,
-            TacticalCombatSceneryRandom sceneryRandom = null,
+            ITacticalCombatSceneryRandom sceneryRandom = null,
             Func<uint> presentationClock = null,
             IReadOnlyList<string> personnelHostInstanceIDs = null,
             CombatSide? enteringSide = null
@@ -215,14 +217,13 @@ namespace Rebellion.Tactical
             string playerFactionID = definition
                 ?.Factions.Find(faction => faction.FactionIndex == GetSide(playerSide).FactionIndex)
                 ?.FactionInstanceID;
-            Audio = new TacticalCombatAudio(
-                definition?.Sounds ?? new List<TacticalCombatSoundDefinition>(),
-                random,
-                definition?.Notifications,
-                playerFactionID,
-                () => IsPaused,
-                presentationClock
-            );
+            if (createAudio == null)
+                throw new ArgumentNullException(nameof(createAudio));
+            Audio =
+                createAudio(definition, random, playerFactionID, () => IsPaused, presentationClock)
+                ?? throw new InvalidOperationException(
+                    "The encounter requires a notification service."
+                );
             Units = this._units.AsReadOnly();
             Groups = this._groups.AsReadOnly();
             if (personnelHostInstanceIDs != null)

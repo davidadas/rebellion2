@@ -2,12 +2,12 @@ using System;
 using System.Numerics;
 using Rebellion.Util.Random;
 
-namespace Rebellion.Tactical
+namespace Rebellion.Tactical.Runtime
 {
     /// <summary>
     /// Owns scenery's bounded sequence and its lazy initialization of the shared battle stream.
     /// </summary>
-    public sealed class TacticalCombatSceneryRandom
+    public sealed class TacticalCombatSceneryRandom : ITacticalCombatSceneryRandom
     {
         private const int _seedSampleBits = 15;
         private readonly LinearCongruentialRandomProvider _sharedRandom;

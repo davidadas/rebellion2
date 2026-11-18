@@ -1,10 +1,11 @@
 using NUnit.Framework;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
+using Rebellion.Tactical.Runtime;
 using Rebellion.Util.Random;
 using Vector3 = System.Numerics.Vector3;
 
-namespace Rebellion.Tests.Tactical
+namespace Rebellion.Tests.Tactical.Runtime
 {
     [TestFixture]
     public sealed class TacticalCombatSceneryRandomTests

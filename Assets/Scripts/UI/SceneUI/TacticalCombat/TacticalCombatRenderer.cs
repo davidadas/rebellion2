@@ -47,7 +47,7 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
     private readonly Dictionary<string, Texture2D> _environmentTextures = new(
         StringComparer.Ordinal
     );
-    private TacticalCombatSceneryRandom _sceneryRandom;
+    private ITacticalCombatSceneryRandom _sceneryRandom;
     private TacticalCombatCameraState _cameraState;
     private float _field => _cameraState.Field;
     private float _distance;

@@ -8,6 +8,8 @@ using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
+using Rebellion.Tactical.Runtime.Audio;
+using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Random;
 using JsonUtility = global::UnityEngine.JsonUtility;
 
@@ -812,7 +814,8 @@ namespace Rebellion.Tests.Tactical
                 ),
                 player,
                 100,
-                new SystemRandomProvider(42)
+                new SystemRandomProvider(42),
+                TacticalCombatAudio.Create
             );
         }
 
@@ -931,7 +934,8 @@ namespace Rebellion.Tests.Tactical
                 ),
                 player,
                 100,
-                random
+                random,
+                TacticalCombatAudio.Create
             );
         }
 

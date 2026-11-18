@@ -19,6 +19,8 @@ The first enforced boundaries are now present:
 - `Rebellion.Tactical.Contracts` owns tactical content and detached outcomes.
 - `Rebellion.Tactical.Core` owns the encounter model and execution, with engine references disabled.
   It references the contracts and utilities, not `GameAssembly`.
+- `Rebellion.Tactical.Runtime` implements notification scheduling and scenery initialization through
+  core-owned interfaces. It also compiles without engine or campaign references.
 
 `TacticalCombatUnitCapture` reads campaign hardware and planetary facilities before constructing
 participants. The battle retains values and identifiers. `SpaceCombatCommands` retains campaign
@@ -41,9 +43,18 @@ The combat content branch incorporates the campaign updates required by the merg
 checked-in media revision identifies that combined content; local staged content must match it.
 Missing authored recharge parameters are not replaced with code defaults.
 
-The notification queue, mandatory targeting assessment, and replication admission still need further
-separation within the mode. Their inclusion in an engine-independent assembly does not establish
-that their ownership is finished.
+Notification composition is explicit: callers supply the audio factory, and the encounter passes
+its existing random stream, faction, live pause callback, and presentation clock. Queue refresh
+points remain unchanged. Scenery uses its supplied interface and retains lazy clock acquisition,
+reseed timing, and draw order in the runtime implementation. The renderer reads that interface.
+
+Six further active-audio battle comparisons retain identical frames, encoded network payloads,
+random draw counts, and outcomes after runtime extraction. The focused Unity verification passes
+888 cases, with formatting, compilation, lint, analyzer, and architecture checks passing as well.
+
+Mandatory targeting assessment and replication admission still need further separation within the
+mode. Their inclusion in an engine-independent assembly does not establish that their ownership is
+finished.
 
 ## Mode ownership
 

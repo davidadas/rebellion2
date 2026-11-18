@@ -6,6 +6,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
+using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Tactical
@@ -80,7 +81,8 @@ namespace Rebellion.Tests.Tactical
                 CreateSide(CombatSide.Defender),
                 CombatSide.Attacker,
                 80,
-                new LinearCongruentialRandomProvider(42)
+                new LinearCongruentialRandomProvider(42),
+                TacticalCombatAudio.Create
             );
             session.SetOrder(group, TacticalCombatOrder.LeftHook);
             for (

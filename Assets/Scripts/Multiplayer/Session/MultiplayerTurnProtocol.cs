@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Gameplay;
 using Rebellion.PlayerRequests;
+using Rebellion.Tactical.Runtime;
 using UnityEngine;
 
 namespace Rebellion.Multiplayer

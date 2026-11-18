@@ -9,6 +9,7 @@ using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Tactical;
+using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
@@ -66,6 +67,10 @@ namespace Rebellion.Architecture.Tests
             Assert.That(references, Does.Not.Contain(typeof(GameRoot).Assembly.GetName().Name));
             Assert.That(
                 references,
+                Does.Not.Contain(typeof(TacticalCombatAudio).Assembly.GetName().Name)
+            );
+            Assert.That(
+                references,
                 Does.Not.Contain(typeof(ContentPackEditorProject).Assembly.GetName().Name)
             );
             Assert.That(
@@ -95,6 +100,29 @@ namespace Rebellion.Architecture.Tests
             Assert.That(
                 references,
                 Does.Not.Contain(typeof(TacticalCombatSession).Assembly.GetName().Name)
+            );
+        }
+
+        [Test]
+        public void TacticalRuntime_Compilation_IsSeparateFromBattleAndApplication()
+        {
+            var runtime = typeof(TacticalCombatAudio).Assembly;
+            Assert.That(runtime, Is.Not.EqualTo(typeof(GameRoot).Assembly));
+            Assert.That(runtime, Is.Not.EqualTo(typeof(TacticalCombatSession).Assembly));
+        }
+
+        [Test]
+        public void TacticalRuntime_References_ExcludeCampaignAndEngine()
+        {
+            string[] references = typeof(TacticalCombatAudio)
+                .Assembly.GetReferencedAssemblies()
+                .Select(reference => reference.Name)
+                .ToArray();
+
+            Assert.That(references, Does.Not.Contain(typeof(GameRoot).Assembly.GetName().Name));
+            Assert.That(
+                references.Any(name => name.StartsWith("Unity", StringComparison.Ordinal)),
+                Is.False
             );
         }
 

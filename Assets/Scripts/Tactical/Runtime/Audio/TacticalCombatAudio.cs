@@ -6,24 +6,49 @@ using Rebellion.Game.SpaceCombat;
 using Rebellion.Util.Random;
 using Stopwatch = global::System.Diagnostics.Stopwatch;
 
-namespace Rebellion.Tactical
+namespace Rebellion.Tactical.Runtime.Audio
 {
     /// <summary>
     /// Routes typed combat sounds and authored notifications through the encounter's shared scheduler.
     /// Playback handles remain owned by that scheduler instead of a separate duration-based sound queue.
     /// </summary>
-    public sealed class TacticalCombatAudio : IDisposable
+    public sealed class TacticalCombatAudio : ITacticalCombatAudio
     {
         private readonly HashSet<int> _authoredMessages;
         private bool _playbackAvailable = true;
         public event Action<int, bool> NotificationRequested;
-        public TacticalCombatNotifications Notifications { get; }
+        public ITacticalCombatNotificationQueue Notifications { get; }
         public IReadOnlyList<TacticalCombatSoundClip> Clips { get; }
         public Func<
             TacticalCombatSoundClip,
             bool,
             ITacticalCombatNotificationPlayback
         > Playback { get; set; }
+
+        /// <summary>
+        /// Composes notification scheduling from the battle's explicitly supplied stream and live clocks.
+        /// </summary>
+        /// <param name="definition">The authored sound and notification banks.</param>
+        /// <param name="random">The shared encounter stream.</param>
+        /// <param name="factionInstanceID">The selected spoken notification faction.</param>
+        /// <param name="isPaused">The live encounter pause state.</param>
+        /// <param name="clock">The optional controlled presentation clock.</param>
+        /// <returns>The owned notification service.</returns>
+        public static ITacticalCombatAudio Create(
+            TacticalCombatDefinition definition,
+            IRandomNumberProvider random,
+            string factionInstanceID,
+            Func<bool> isPaused,
+            Func<uint> clock
+        ) =>
+            new TacticalCombatAudio(
+                definition?.Sounds ?? new List<TacticalCombatSoundDefinition>(),
+                random,
+                definition?.Notifications,
+                factionInstanceID,
+                isPaused,
+                clock
+            );
 
         /// <summary>
         /// Captures sound and selected-faction notification banks on the shared battle random stream.

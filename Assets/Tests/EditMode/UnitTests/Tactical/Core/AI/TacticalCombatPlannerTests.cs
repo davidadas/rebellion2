@@ -8,6 +8,7 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using Rebellion.Tactical.AI;
+using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Random;
 using BitConverter = global::System.BitConverter;
 
@@ -626,7 +627,8 @@ namespace Rebellion.Tests.Tactical.AI
                 defender,
                 CombatSide.Attacker,
                 100,
-                new LinearCongruentialRandomProvider(42)
+                new LinearCongruentialRandomProvider(42),
+                TacticalCombatAudio.Create
             );
         }
 
@@ -681,7 +683,8 @@ namespace Rebellion.Tests.Tactical.AI
                 defender,
                 CombatSide.Attacker,
                 100,
-                new LinearCongruentialRandomProvider(42)
+                new LinearCongruentialRandomProvider(42),
+                TacticalCombatAudio.Create
             );
         }
 

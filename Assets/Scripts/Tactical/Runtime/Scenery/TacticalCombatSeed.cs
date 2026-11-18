@@ -1,6 +1,6 @@
 using System;
 
-namespace Rebellion.Game.SpaceCombat
+namespace Rebellion.Tactical.Runtime
 {
     /// <summary>
     /// Converts a captured local calendar clock into the encounter initialization seed.

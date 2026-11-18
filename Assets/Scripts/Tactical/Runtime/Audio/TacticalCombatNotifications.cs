@@ -4,27 +4,14 @@ using System.IO;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Util.Random;
 
-namespace Rebellion.Tactical
+namespace Rebellion.Tactical.Runtime.Audio
 {
-    /// <summary>
-    /// Exposes the actual activity and cancellation of one owned notification playback.
-    /// </summary>
-    public interface ITacticalCombatNotificationPlayback
-    {
-        bool IsPlaying { get; }
-
-        /// <summary>
-        /// Stops this playback without stopping other application audio.
-        /// </summary>
-        void Stop();
-    }
-
     /// <summary>
     /// Schedules tactical effects and spoken notifications in their shared ordered queue.
     /// Variant selection uses the battle stream before each capacity check; playback activity,
     /// pending lifetimes, and simulation pause are resolved through their owning boundaries.
     /// </summary>
-    public sealed class TacticalCombatNotifications : IDisposable
+    public sealed class TacticalCombatNotifications : ITacticalCombatNotificationQueue
     {
         private const int _messageCount = 317;
         private const int _maximumVariantCount = 4;

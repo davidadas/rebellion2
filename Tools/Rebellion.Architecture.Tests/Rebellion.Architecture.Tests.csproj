@@ -20,6 +20,7 @@
     <ProjectReference Include="../../Rebellion.Combat.Contracts.csproj" />
     <ProjectReference Include="../../Rebellion.Tactical.Contracts.csproj" />
     <ProjectReference Include="../../Rebellion.Tactical.Core.csproj" />
+    <ProjectReference Include="../../Rebellion.Tactical.Runtime.csproj" />
     <ProjectReference Include="../../Rebellion.InputActions.csproj" />
   </ItemGroup>
   <ItemGroup Condition="'$(UnityCompiledAssembliesPath)' != ''">
@@ -40,6 +41,9 @@
     </Reference>
     <Reference Include="Rebellion.Tactical.Core">
       <HintPath>$(UnityCompiledAssembliesPath)/Rebellion.Tactical.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Rebellion.Tactical.Runtime">
+      <HintPath>$(UnityCompiledAssembliesPath)/Rebellion.Tactical.Runtime.dll</HintPath>
     </Reference>
     <Reference Include="Rebellion.InputActions">
       <HintPath>$(UnityCompiledAssembliesPath)/Rebellion.InputActions.dll</HintPath>
