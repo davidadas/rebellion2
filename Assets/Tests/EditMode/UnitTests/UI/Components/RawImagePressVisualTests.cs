@@ -150,5 +150,28 @@ namespace Rebellion.Tests.UI.Components
 
             Assert.AreSame(_normalTexture, _image.texture);
         }
+
+        [Test]
+        public void OnDrag_AfterPointerDown_PreservesPressedTexture()
+        {
+            _visual.SetInteractiveTextures(_normalTexture, _pressedTexture);
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+            _visual.OnPointerDown(eventData);
+
+            _visual.OnDrag(eventData);
+
+            Assert.AreSame(_pressedTexture, _image.texture);
+        }
+
+        [Test]
+        public void DragHandler_InteractiveControl_ResolvesToControl()
+        {
+            GameObject dragHandler = ExecuteEvents.GetEventHandler<IDragHandler>(_control);
+
+            Assert.AreSame(_control, dragHandler);
+        }
     }
 }

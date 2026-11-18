@@ -201,6 +201,54 @@ namespace Rebellion.Tests.UI.Input
         }
 
         [UnityTest]
+        public IEnumerator Process_PressedMessageButtonMovesWithinBounds_PreservesClick()
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/Prefabs/UI/StrategyView/MessagesWindow.prefab"
+            );
+            GameObject panel = Object.Instantiate(
+                prefab.GetComponentInChildren<MessagesIndexPanelView>(true).gameObject,
+                _root.transform
+            );
+            UILayout.SetSourcePosition((RectTransform)panel.transform, 10, 10);
+            panel.SetActive(true);
+            ContentBindings.Apply(panel, _assets);
+            MessagesIndexPanelView view = panel.GetComponent<MessagesIndexPanelView>();
+            view.Initialize(() => true, panel.transform);
+            Texture texture = _assets.GetTexture(
+                "Application/Strategy/UI/Windows/ui_strategyview_messages_window_select_all_button_up"
+            );
+            view.Render(
+                new MessagesIndexPanelRenderData(
+                    MessagesTab.All,
+                    "Messages",
+                    MessagesTabCatalog
+                        .OrderedTabs.Select(tab => new MessagesTabRenderData(tab, texture, texture))
+                        .ToArray(),
+                    Array.Empty<MessageWindowRowRenderData>()
+                )
+            );
+            int clicks = 0;
+            view.SelectAllRequested += () => clicks++;
+            Button select = FindButton(panel, "SelectAllButtonImage");
+            QueuedMouseTestPointer parentDrag = _root.AddComponent<QueuedMouseTestPointer>();
+            _events.pixelDragThreshold = 1;
+            yield return null;
+            AssertHit(select);
+            Vector2 heldPosition = Position(select) + Vector2.right * 2;
+
+            QueueMouse(Position(select), true);
+            ProcessFrame();
+            QueueMouse(heldPosition, true);
+            ProcessFrame();
+            QueueMouse(heldPosition, false);
+            ProcessFrame();
+
+            Assert.AreEqual(1, clicks);
+            Assert.AreEqual(0, parentDrag.Drags);
+        }
+
+        [UnityTest]
         public IEnumerator Process_OrdinaryClick_InvokesButtonOnce()
         {
             Button button = CreateButton("Button", 30);
