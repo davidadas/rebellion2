@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -13,6 +14,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
+using UnityEngine.TestTools;
 using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
@@ -30,6 +32,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         private SaveGameManager _saveGameManager;
         private string _saveDirectoryPath;
         private int _dirtyCount;
+        private bool _failNextDirty;
         private bool _loadResult;
         private bool _menuOpenWhenLoadCalled;
         private string _loadedFileName;
@@ -45,6 +48,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         [SetUp]
         public void SetUp()
         {
+            _failNextDirty = false;
             _saveCompletion = null;
             _loadCompletion = null;
             _saveRequests = 0;
@@ -101,6 +105,29 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             if (Directory.Exists(_testPackDirectoryPath))
                 Directory.Delete(_testPackDirectoryPath, true);
             GameLaunchContext.Reset(TestContent.Pack);
+        }
+
+        [Test]
+        public void RenderWindows_FailedRebind_ShowsRecoveryMessageAndAllowsRetry()
+        {
+            OptionsMenuView view = CreateFailedRebindView();
+            TextMeshProUGUI error = view.GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(text => text.name == "SettingsStatusTextField");
+
+            Assert.AreEqual(
+                "Couldn't change this shortcut. Your previous bindings were restored. Try again.",
+                error.text
+            );
+            Assert.Greater(error.color.r, error.color.g);
+            Assert.IsFalse(_bootstrap.GetInputManager().AreApplicationShortcutsSuppressed);
+            Button badge = GetRebindBadge(view, "Increase Game Speed");
+            badge.onClick.Invoke();
+            _controller.RenderWindows();
+            Assert.IsTrue(
+                view.GetComponentsInChildren<TextMeshProUGUI>(true).Any(text => text.text == "...")
+            );
+            Assert.IsTrue(_controller.TryCancel());
+            Assert.IsTrue(_controller.IsOpen);
         }
 
         [TestCase(true)]
@@ -1618,7 +1645,15 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     _loadedFileName = fileName;
                     return _loadCompletion?.Task ?? Task.FromResult(_loadResult);
                 },
-                () => _dirtyCount++,
+                () =>
+                {
+                    _dirtyCount++;
+                    if (_failNextDirty)
+                    {
+                        _failNextDirty = false;
+                        throw new InvalidOperationException("Injected menu refresh failure.");
+                    }
+                },
                 _saveGameManager,
                 showModsTab,
                 getSavedGames
@@ -1723,6 +1758,36 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     + "<DisplayName>Second Duplicate</DisplayName></ContentPack>"
             );
             return new[] { firstDirectory, secondDirectory };
+        }
+
+        /// <summary>
+        /// Fails one real rebind startup through the controller's injected refresh callback.
+        /// </summary>
+        /// <returns>The settings view after recovery has rendered.</returns>
+        private OptionsMenuView CreateFailedRebindView()
+        {
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.Controls);
+            _failNextDirty = true;
+            LogAssert.Expect(LogType.Error, new Regex("Shortcut rebinding failed:"));
+            GetRebindBadge(view, "Increase Game Speed").onClick.Invoke();
+            InputSystem.Update();
+            _controller.RenderWindows();
+            return view;
+        }
+
+        /// <summary>
+        /// Finds one action's editable primary shortcut in the rendered controls table.
+        /// </summary>
+        /// <param name="view">The rendered options view.</param>
+        /// <param name="action">The action caption.</param>
+        /// <returns>The primary binding button.</returns>
+        private static Button GetRebindBadge(OptionsMenuView view, string action)
+        {
+            TextMeshProUGUI label = view.GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(text => text.text == action);
+            string row = label.name.Substring("BindingAction".Length);
+            return view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "BindingPrimaryBadge" + row);
         }
 
         /// <summary>

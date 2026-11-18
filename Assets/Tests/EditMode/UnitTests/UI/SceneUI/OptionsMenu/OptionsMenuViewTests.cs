@@ -576,6 +576,37 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void Render_ControlsStatusMessage_KeepsViewportAboveMessage()
+        {
+            OptionsBindingRow[] bindings = Enumerable
+                .Range(0, 24)
+                .Select(index => new OptionsBindingRow($"Action {index}", "A"))
+                .ToArray();
+            _view.Render(
+                CreateRenderDataForTab(
+                    OptionsMenuTab.Controls,
+                    bindings: bindings,
+                    statusMessage: "Couldn't change this shortcut. Your previous bindings were restored. Try again.",
+                    statusIsError: true
+                )
+            );
+            RectTransform viewport = _root
+                .GetComponentsInChildren<ScrollAreaView>(true)
+                .Single(area => area.name == "ControlsScrollArea")
+                .ViewportRoot;
+            RectTransform status = _root
+                .GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(field => field.name == "SettingsStatusTextField")
+                .rectTransform;
+            Vector3[] viewportCorners = new Vector3[4];
+            Vector3[] statusCorners = new Vector3[4];
+            viewport.GetWorldCorners(viewportCorners);
+            status.GetWorldCorners(statusCorners);
+
+            Assert.GreaterOrEqual(viewportCorners[0].y, statusCorners[1].y);
+        }
+
+        [Test]
         public void ControlsPage_Entered_ScrollsToTopOnce()
         {
             OptionsBindingRow[] bindings = Enumerable
