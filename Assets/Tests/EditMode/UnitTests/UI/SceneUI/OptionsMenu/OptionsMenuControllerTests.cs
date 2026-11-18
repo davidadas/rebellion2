@@ -11,6 +11,8 @@ using Rebellion.Game.Galaxy;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
@@ -99,6 +101,70 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             if (Directory.Exists(_testPackDirectoryPath))
                 Directory.Delete(_testPackDirectoryPath, true);
             GameLaunchContext.Reset(TestContent.Pack);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void RenderWindows_RebindConflict_RefreshesCaptionAndAllowsNextRebind(bool accept)
+        {
+            InputTestFixture fixture = new();
+            fixture.Setup();
+            Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+            try
+            {
+                InputAction oldAction = _bootstrap
+                    .GetInputManager()
+                    .Asset.FindAction("Strategy/ShowTroopers", true);
+                oldAction.ApplyBindingOverride(0, "<Keyboard>/t");
+                OptionsMenuView view = OpenAndRender(OptionsMenuTab.Controls);
+                TextMeshProUGUI label = view.GetComponentsInChildren<TextMeshProUGUI>(true)
+                    .Single(text => text.text == "Increase Game Speed");
+                string row = label.name.Substring("BindingAction".Length);
+                Button badge = view.GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "BindingPrimaryBadge" + row);
+                badge.onClick.Invoke();
+                _controller.RenderWindows();
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.T));
+                InputSystem.Update();
+                fixture.currentTime += 0.1;
+                InputSystem.Update();
+                ConfirmationDialogView confirmation =
+                    view.GetComponentInChildren<ConfirmationDialogView>(true);
+
+                _controller.RenderWindows();
+
+                Assert.IsTrue(confirmation.gameObject.activeSelf);
+                Assert.AreEqual(
+                    "T",
+                    view.GetComponentsInChildren<TextMeshProUGUI>(true)
+                        .Single(text => text.name == "BindingPrimaryKey" + row)
+                        .text
+                );
+                confirmation
+                    .GetComponentsInChildren<Button>(true)
+                    .Single(button =>
+                        button.name == (accept ? "ConfirmButtonImage" : "CancelButtonImage")
+                    )
+                    .onClick.Invoke();
+                Assert.IsFalse(confirmation.gameObject.activeSelf);
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                InputSystem.Update();
+                badge.onClick.Invoke();
+                _controller.RenderWindows();
+                Assert.AreEqual(
+                    "...",
+                    view.GetComponentsInChildren<TextMeshProUGUI>(true)
+                        .Single(text => text.name == "BindingPrimaryKey" + row)
+                        .text
+                );
+                Assert.IsTrue(_controller.TryCancel());
+                Assert.IsTrue(_controller.IsOpen);
+            }
+            finally
+            {
+                _controller.Close();
+                fixture.TearDown();
+            }
         }
 
         [Test]

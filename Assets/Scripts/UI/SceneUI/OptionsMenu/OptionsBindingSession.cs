@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Controls;
+using UnityEngine.InputSystem.LowLevel;
 
 /// <summary>
 /// Manages the controls list and input rebinding against authored binding slots.
@@ -27,6 +28,7 @@ internal sealed class OptionsBindingSession : IDisposable
     private readonly InputManager _inputManager;
     private readonly List<OptionsBindingRow> _rows = new List<OptionsBindingRow>();
     private readonly List<BindingTarget> _targets = new List<BindingTarget>();
+    private readonly Dictionary<InputControl, string> _candidateModifiers = new();
     private InputActionRebindingExtensions.RebindingOperation _operation;
     private InputAction _listeningAction;
     private string[] _previousActionOverrides;
@@ -230,6 +232,8 @@ internal sealed class OptionsBindingSession : IDisposable
     /// </summary>
     public void Dispose()
     {
+        InputSystem.onEvent -= CaptureCandidateModifiers;
+        _candidateModifiers.Clear();
         _operation?.Dispose();
         _operation = null;
         _listeningAction?.Dispose();
@@ -249,6 +253,7 @@ internal sealed class OptionsBindingSession : IDisposable
     private void StartRebind(InputAction action, BindingSlot slot)
     {
         _rebindApplied = false;
+        _candidateModifiers.Clear();
         _listeningAction = new InputAction(type: InputActionType.Value);
 
         InputActionRebindingExtensions.RebindingOperation candidate = _listeningAction
@@ -273,6 +278,24 @@ internal sealed class OptionsBindingSession : IDisposable
             .OnCancel(_ => FinishRebind(action, slot, false))
             .OnComplete(_ => FinishRebind(action, slot, true))
             .Start();
+
+        // Observe each event after Unity has added its candidates, before capture settles.
+        InputSystem.onEvent += CaptureCandidateModifiers;
+    }
+
+    /// <summary>
+    /// Remembers the modifier held when each control first becomes a rebind candidate.
+    /// </summary>
+    /// <param name="eventPtr">The input event that supplied the candidates.</param>
+    /// <param name="device">The device supplying the event.</param>
+    private void CaptureCandidateModifiers(InputEventPtr eventPtr, InputDevice device)
+    {
+        if (_operation == null || !eventPtr.IsA<StateEvent>() && !eventPtr.IsA<DeltaStateEvent>())
+            return;
+
+        string modifier = GetPressedModifierPath(device as Keyboard ?? Keyboard.current, eventPtr);
+        foreach (InputControl control in _operation.candidates)
+            _candidateModifiers.TryAdd(control, modifier);
     }
 
     /// <summary>
@@ -302,7 +325,9 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <param name="path">The path.</param>
     private void ApplyRebindPath(InputAction action, BindingSlot slot, string path)
     {
-        string modifierPath = IsModifierAction(action.name) ? null : GetPressedModifierPath();
+        string modifierPath = null;
+        if (!IsModifierAction(action.name))
+            _candidateModifiers.TryGetValue(_operation.selectedControl, out modifierPath);
         if (string.IsNullOrEmpty(modifierPath))
         {
             action.ApplyBindingOverride(slot.PlainIndex, path);
@@ -325,6 +350,8 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <param name="completed">Whether completed.</param>
     private void FinishRebind(InputAction action, BindingSlot slot, bool completed)
     {
+        InputSystem.onEvent -= CaptureCandidateModifiers;
+        _candidateModifiers.Clear();
         _operation?.Dispose();
         _operation = null;
         _listeningAction?.Dispose();
@@ -349,6 +376,8 @@ internal sealed class OptionsBindingSession : IDisposable
             _conflictOldAction = other;
             _conflictOldIndex = otherIndex;
             _conflictNewAction = action;
+            Rebuild();
+            PresentationChanged?.Invoke();
             ConflictRequested?.Invoke(
                 $"That input is already bound to \"{GetActionLabel(other.name)}\". Move it here and clear the old binding?"
             );
@@ -595,38 +624,66 @@ internal sealed class OptionsBindingSession : IDisposable
     }
 
     /// <summary>
-    /// Returns the single held keyboard modifier path, or null when none or several are held.
+    /// Returns the single modifier held in a candidate's event, or null when none or several are held.
     /// </summary>
+    /// <param name="keyboard">The candidate's keyboard or the active keyboard for another device.</param>
+    /// <param name="eventPtr">The candidate's state event.</param>
     /// <returns>The requested pressed modifier path.</returns>
-    private static string GetPressedModifierPath()
+    private static string GetPressedModifierPath(Keyboard keyboard, InputEventPtr eventPtr)
     {
-        Keyboard keyboard = Keyboard.current;
         if (keyboard == null)
             return null;
 
         string result = null;
         int count = 0;
-        if (keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed)
+        if (
+            IsModifierPressed(keyboard.leftCtrlKey, eventPtr)
+            || IsModifierPressed(keyboard.rightCtrlKey, eventPtr)
+        )
         {
             result = "<Keyboard>/ctrl";
             count++;
         }
-        if (keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed)
+        if (
+            IsModifierPressed(keyboard.leftShiftKey, eventPtr)
+            || IsModifierPressed(keyboard.rightShiftKey, eventPtr)
+        )
         {
             result = "<Keyboard>/shift";
             count++;
         }
-        if (keyboard.leftAltKey.isPressed || keyboard.rightAltKey.isPressed)
+        if (
+            IsModifierPressed(keyboard.leftAltKey, eventPtr)
+            || IsModifierPressed(keyboard.rightAltKey, eventPtr)
+        )
         {
             result = "<Keyboard>/alt";
             count++;
         }
-        if (keyboard.leftMetaKey.isPressed || keyboard.rightMetaKey.isPressed)
+        if (
+            IsModifierPressed(keyboard.leftMetaKey, eventPtr)
+            || IsModifierPressed(keyboard.rightMetaKey, eventPtr)
+        )
         {
             result = "<Keyboard>/leftMeta";
             count++;
         }
         return count == 1 ? result : null;
+    }
+
+    /// <summary>
+    /// Reads a modifier from its event, retaining held state when that event omits the control.
+    /// </summary>
+    /// <param name="control">The modifier key.</param>
+    /// <param name="eventPtr">The candidate's state event.</param>
+    /// <returns>Whether the modifier was held for the candidate.</returns>
+    private static bool IsModifierPressed(ButtonControl control, InputEventPtr eventPtr)
+    {
+        return
+            eventPtr.deviceId == control.device.deviceId
+            && control.ReadValueFromEvent(eventPtr, out float value)
+            ? value >= control.pressPointOrDefault
+            : control.isPressed;
     }
 
     /// <summary>
@@ -725,7 +782,8 @@ internal sealed class OptionsBindingSession : IDisposable
         return ShortenKey(
             InputControlPath.ToHumanReadableString(
                 path,
-                InputControlPath.HumanReadableStringOptions.OmitDevice
+                InputControlPath.HumanReadableStringOptions.OmitDevice,
+                control: Keyboard.current
             )
         );
     }

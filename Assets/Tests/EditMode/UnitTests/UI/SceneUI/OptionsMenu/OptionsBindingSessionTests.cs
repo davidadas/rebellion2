@@ -1,8 +1,10 @@
+using System;
 using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
+using Object = UnityEngine.Object;
 
 namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 {
@@ -29,6 +31,326 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         public void TearDown()
         {
             Object.DestroyImmediate(_root);
+        }
+
+        [TestCase(Key.Minus, "[")]
+        [TestCase(Key.Equals, "]")]
+        [TestCase(Key.RightBracket, "=")]
+        [TestCase(Key.Quote, "-")]
+        [TestCase(Key.T, "y")]
+        public void Rebuild_DvorakKeyboard_ShowsActiveKeyName(Key key, string displayName)
+        {
+            WithKeyboard(
+                (session, manager, keyboard, fixture) =>
+                {
+                    fixture.SetKeyInfo(key, displayName);
+                    InputAction action = manager.Asset.FindAction("Strategy/ShowTroopers", true);
+                    action.ApplyBindingOverride(
+                        FindBinding(action, "Primary"),
+                        "<Keyboard>/" + keyboard[key].name
+                    );
+
+                    session.Rebuild();
+
+                    Assert.AreEqual(
+                        displayName.ToUpperInvariant(),
+                        session.Rows.Single(row => row.Action == "Show Troopers").Primary
+                    );
+                }
+            );
+        }
+
+        [Test]
+        public void Rebuild_DvorakChord_ShowsActiveKeyName()
+        {
+            WithKeyboard(
+                (session, _, _, fixture) =>
+                {
+                    fixture.SetKeyInfo(Key.Equals, "]");
+
+                    session.Rebuild();
+
+                    string modifier =
+                        Application.platform == RuntimePlatform.OSXEditor ? "CMD" : "CTRL";
+                    Assert.AreEqual(
+                        modifier + "+]",
+                        session.Rows.Single(row => row.Action == "Increase Game Speed").Primary
+                    );
+                }
+            );
+        }
+
+        [TestCase(Key.LeftShift, "<Keyboard>/shift")]
+        [TestCase(Key.RightShift, "<Keyboard>/shift")]
+        [TestCase(Key.LeftCtrl, "<Keyboard>/ctrl")]
+        [TestCase(Key.RightCtrl, "<Keyboard>/ctrl")]
+        [TestCase(Key.LeftAlt, "<Keyboard>/alt")]
+        [TestCase(Key.RightAlt, "<Keyboard>/alt")]
+        [TestCase(Key.LeftMeta, "<Keyboard>/leftMeta")]
+        [TestCase(Key.RightMeta, "<Keyboard>/leftMeta")]
+        public void BeginRebind_ReleasedModifier_PreservesCapturedChord(
+            Key modifier,
+            string expectedPath
+        )
+        {
+            WithKeyboard(
+                (session, manager, keyboard, fixture) =>
+                {
+                    session.Rebuild();
+                    session.BeginRebind(FindRow(session, "Increase Game Speed"), false);
+                    InputSystem.QueueStateEvent(
+                        keyboard,
+                        new KeyboardState(modifier, Key.RightBracket)
+                    );
+                    InputSystem.Update();
+                    fixture.currentTime += 0.01;
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                    InputSystem.Update();
+
+                    FinishCapture(fixture);
+
+                    InputAction action = manager.Asset.FindAction(
+                        "Strategy/IncreaseGameSpeed",
+                        true
+                    );
+                    Assert.AreEqual(
+                        expectedPath + "+<Keyboard>/rightBracket",
+                        OptionsBindingSession.GetBindingSignature(
+                            action,
+                            FindBinding(action, "PrimaryChord")
+                        )
+                    );
+                }
+            );
+        }
+
+        [Test]
+        public void BeginRebind_PressAndReleaseInOneUpdate_PreservesCapturedChord()
+        {
+            WithKeyboard(
+                (session, manager, keyboard, fixture) =>
+                {
+                    session.Rebuild();
+                    session.BeginRebind(FindRow(session, "Increase Game Speed"), false);
+                    InputSystem.QueueStateEvent(
+                        keyboard,
+                        new KeyboardState(Key.LeftShift, Key.RightBracket)
+                    );
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                    InputSystem.Update();
+
+                    FinishCapture(fixture);
+
+                    InputAction action = manager.Asset.FindAction(
+                        "Strategy/IncreaseGameSpeed",
+                        true
+                    );
+                    Assert.AreEqual(
+                        "<Keyboard>/shift+<Keyboard>/rightBracket",
+                        OptionsBindingSession.GetBindingSignature(
+                            action,
+                            FindBinding(action, "PrimaryChord")
+                        )
+                    );
+                }
+            );
+        }
+
+        [Test]
+        public void BeginRebind_ModifierPressedAfterKey_KeepsPlainBinding()
+        {
+            WithKeyboard(
+                (session, manager, keyboard, fixture) =>
+                {
+                    session.Rebuild();
+                    session.BeginRebind(FindRow(session, "Increase Game Speed"), false);
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.RightBracket));
+                    InputSystem.Update();
+                    fixture.currentTime += 0.01;
+                    InputSystem.QueueStateEvent(
+                        keyboard,
+                        new KeyboardState(Key.RightBracket, Key.LeftShift)
+                    );
+                    InputSystem.Update();
+
+                    FinishCapture(fixture);
+
+                    InputAction action = manager.Asset.FindAction(
+                        "Strategy/IncreaseGameSpeed",
+                        true
+                    );
+                    Assert.AreEqual(
+                        "<Keyboard>/rightBracket",
+                        action.bindings[FindBinding(action, "Primary")].effectivePath
+                    );
+                }
+            );
+        }
+
+        [Test]
+        public void BeginRebind_SecondCandidateWithoutModifier_KeepsFirstCandidateChord()
+        {
+            WithKeyboard(
+                (session, manager, keyboard, fixture) =>
+                {
+                    session.Rebuild();
+                    session.BeginRebind(FindRow(session, "Increase Game Speed"), false);
+                    InputSystem.QueueStateEvent(
+                        keyboard,
+                        new KeyboardState(Key.LeftShift, Key.RightBracket)
+                    );
+                    InputSystem.Update();
+                    fixture.currentTime += 0.01;
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.LeftBracket));
+                    InputSystem.Update();
+
+                    FinishCapture(fixture);
+
+                    InputAction action = manager.Asset.FindAction(
+                        "Strategy/IncreaseGameSpeed",
+                        true
+                    );
+                    Assert.AreEqual(
+                        "<Keyboard>/shift+<Keyboard>/rightBracket",
+                        OptionsBindingSession.GetBindingSignature(
+                            action,
+                            FindBinding(action, "PrimaryChord")
+                        )
+                    );
+                }
+            );
+        }
+
+        [Test]
+        public void BeginRebind_DeltaMouseEvent_UsesHeldModifier()
+        {
+            WithKeyboard(
+                (session, manager, keyboard, fixture) =>
+                {
+                    Mouse mouse = InputSystem.AddDevice<Mouse>();
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.LeftShift));
+                    InputSystem.Update();
+                    session.Rebuild();
+                    session.BeginRebind(FindRow(session, "Increase Game Speed"), true);
+                    InputSystem.QueueDeltaStateEvent(mouse.scroll, Vector2.up);
+                    InputSystem.Update();
+                    fixture.currentTime += 0.01;
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                    InputSystem.Update();
+
+                    FinishCapture(fixture);
+
+                    InputAction action = manager.Asset.FindAction(
+                        "Strategy/IncreaseGameSpeed",
+                        true
+                    );
+                    Assert.AreEqual(
+                        "<Keyboard>/shift+<Mouse>/scroll/up",
+                        OptionsBindingSession.GetBindingSignature(
+                            action,
+                            FindBinding(action, "SecondaryChord")
+                        )
+                    );
+                }
+            );
+        }
+
+        [Test]
+        public void BeginRebind_ModifiedMouseWheel_PreservesReleasedModifier()
+        {
+            WithKeyboard(
+                (session, manager, keyboard, fixture) =>
+                {
+                    Mouse mouse = InputSystem.AddDevice<Mouse>();
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.LeftShift));
+                    InputSystem.Update();
+                    session.Rebuild();
+                    session.BeginRebind(FindRow(session, "Increase Game Speed"), true);
+                    InputSystem.QueueStateEvent(mouse, new MouseState { scroll = Vector2.up });
+                    InputSystem.Update();
+                    fixture.currentTime += 0.01;
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                    InputSystem.Update();
+
+                    FinishCapture(fixture);
+
+                    InputAction action = manager.Asset.FindAction(
+                        "Strategy/IncreaseGameSpeed",
+                        true
+                    );
+                    Assert.AreEqual(
+                        "<Keyboard>/shift+<Mouse>/scroll/up",
+                        OptionsBindingSession.GetBindingSignature(
+                            action,
+                            FindBinding(action, "SecondaryChord")
+                        )
+                    );
+                }
+            );
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ResolveConflict_DuplicateBinding_AllowsSubsequentRebind(bool accept)
+        {
+            WithKeyboard(
+                (session, manager, keyboard, fixture) =>
+                {
+                    session.Rebuild();
+                    int row = FindRow(session, "Increase Game Speed");
+                    InputAction action = manager.Asset.FindAction(
+                        "Strategy/IncreaseGameSpeed",
+                        true
+                    );
+                    InputAction oldAction = manager.Asset.FindAction("Strategy/ShowTroopers", true);
+                    oldAction.ApplyBindingOverride(
+                        FindBinding(oldAction, "Primary"),
+                        "<Keyboard>/t"
+                    );
+                    string oldPath = oldAction
+                        .bindings[FindBinding(oldAction, "Primary")]
+                        .effectivePath;
+                    int presentationChanges = 0;
+                    session.PresentationChanged += () => presentationChanges++;
+                    session.BeginRebind(row, false);
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.T));
+                    InputSystem.Update();
+                    FinishCapture(fixture);
+
+                    Assert.IsTrue(session.HasPendingConflict);
+                    Assert.AreEqual(-1, session.ListeningRow);
+                    Assert.AreEqual(
+                        2,
+                        presentationChanges,
+                        "Capture completion must refresh the listening indicator before the conflict is resolved."
+                    );
+
+                    session.ResolveConflict(accept);
+
+                    Assert.IsFalse(session.HasPendingConflict);
+                    if (accept)
+                    {
+                        Assert.AreEqual(
+                            oldPath,
+                            action.bindings[FindBinding(action, "Primary")].effectivePath
+                        );
+                        Assert.AreEqual(
+                            string.Empty,
+                            oldAction.bindings[FindBinding(oldAction, "Primary")].effectivePath
+                        );
+                    }
+                    else
+                        Assert.AreEqual(
+                            oldPath,
+                            oldAction.bindings[FindBinding(oldAction, "Primary")].effectivePath
+                        );
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                    InputSystem.Update();
+                    session.BeginRebind(row, true);
+                    Assert.AreEqual(row, session.ListeningRow);
+                    session.CancelRebind();
+                }
+            );
         }
 
         [Test]
@@ -499,6 +821,55 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 Object.DestroyImmediate(inputRoot);
                 inputFixture.TearDown();
             }
+        }
+
+        /// <summary>
+        /// Runs one capture scenario with an isolated keyboard and input asset.
+        /// </summary>
+        /// <param name="exercise">The scenario to exercise.</param>
+        private static void WithKeyboard(
+            Action<OptionsBindingSession, InputManager, Keyboard, InputTestFixture> exercise
+        )
+        {
+            InputTestFixture fixture = new();
+            fixture.Setup();
+            GameObject root = new("IsolatedInputManager");
+            InputManager manager = root.AddComponent<InputManager>();
+            Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+            try
+            {
+                using OptionsBindingSession session = new(manager);
+                exercise(session, manager, keyboard, fixture);
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+                fixture.TearDown();
+            }
+        }
+
+        /// <summary>
+        /// Advances past Unity's interactive-rebind candidate settling interval.
+        /// </summary>
+        /// <param name="fixture">The isolated input clock.</param>
+        private static void FinishCapture(InputTestFixture fixture)
+        {
+            fixture.currentTime += 0.1;
+            InputSystem.Update();
+        }
+
+        /// <summary>
+        /// Finds one visible binding row by its action caption.
+        /// </summary>
+        /// <param name="session">The binding session.</param>
+        /// <param name="caption">The action caption.</param>
+        /// <returns>The matching row index.</returns>
+        private static int FindRow(OptionsBindingSession session, string caption)
+        {
+            return session
+                .Rows.Select((row, index) => (row, index))
+                .Single(item => item.row.Action == caption)
+                .index;
         }
 
         private sealed class CountingCancelable : ICancelable
