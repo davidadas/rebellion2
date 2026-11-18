@@ -125,8 +125,9 @@ internal static class ContentPackEditorFieldSchema
             when (exception is FormatException or OverflowException or ArgumentException)
         {
             throw new ArgumentException(
-                type.IsEnum ? "Choose a listed value." : "Enter a valid value.",
-                nameof(value),
+                type.IsEnum
+                    ? $"'{value}' is not an available option. Choose a value from the list."
+                    : $"'{value}' is not a valid value.",
                 exception
             );
         }

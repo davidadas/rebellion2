@@ -24,7 +24,30 @@ namespace Rebellion.Tests.ContentEditor
             ArgumentException error = await ExpectFailureAsync<ArgumentException>(() =>
                 ContentEditorPackValidator.ValidateAsync(project)
             );
-            Assert.AreEqual("Choose a listed faction.", error.Message);
+            ContentPackEditorRecord record = Records(project).Single(item => item.ID == "one");
+            ContentPackEditorField field = record.GetField("RecruitingFactionInstanceIDs");
+            StringAssert.Contains(record.Catalog.Document.Address, error.Message);
+            StringAssert.Contains(record.ID, error.Message);
+            StringAssert.Contains(field.Caption, error.Message);
+            StringAssert.Contains("Choose a listed faction.", error.Message);
+            StringAssert.DoesNotContain("Parameter name", error.Message);
+        }
+
+        [Test]
+        public async Task ValidateAsync_InvalidSavedEnum_ReportsFieldAndValueAsync()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorRecord record = Records(project).First(item => item.Kind == "Officer");
+            RewriteField(project, record, "CurrentRank", "UnknownRank");
+            ContentPackEditorStorage.Save(project);
+
+            Exception error = await GetValidationErrorAsync(project);
+
+            StringAssert.Contains(record.Catalog.Document.Address, error.Message);
+            StringAssert.Contains(record.ID, error.Message);
+            StringAssert.Contains("Current rank", error.Message);
+            StringAssert.Contains("'UnknownRank' is not an available option", error.Message);
+            StringAssert.DoesNotContain("Parameter name", error.Message);
         }
 
         [Test]
@@ -422,6 +445,20 @@ namespace Rebellion.Tests.ContentEditor
             ContentPackEditorRecord record,
             string member,
             int value
+        ) => RewriteField(project, record, member, value.ToString(CultureInfo.InvariantCulture));
+
+        /// <summary>
+        /// Writes a raw scalar to exercise validation of saved XML independently of form guards.
+        /// </summary>
+        /// <param name="project">The independent editable project.</param>
+        /// <param name="record">The owning definition.</param>
+        /// <param name="member">The serialized member to replace.</param>
+        /// <param name="value">The authored value.</param>
+        private static void RewriteField(
+            ContentPackEditorProject project,
+            ContentPackEditorRecord record,
+            string member,
+            string value
         )
         {
             XDocument xml = XDocument.Parse(record.Catalog.Document.Text);

@@ -472,6 +472,21 @@ internal static class ContentEditorPackValidator
                 .SelectMany(record => new[] { record }.Concat(record.Planets))
         )
         foreach (ContentPackEditorField field in record.GetFields())
-            project.ValidateFieldValues(field, field.Values, resolver, factions, traits);
+        {
+            try
+            {
+                project.ValidateFieldValues(field, field.Values, resolver, factions, traits);
+            }
+            catch (ArgumentException exception)
+            {
+                string detail = exception.Message.Split('\n')[0];
+                throw new ArgumentException(
+                    detail.StartsWith(field.Document.Address + ":", StringComparison.Ordinal)
+                        ? detail
+                        : $"{field.Document.Address}: {record.ID} / {field.Caption}: {detail}",
+                    exception
+                );
+            }
+        }
     }
 }

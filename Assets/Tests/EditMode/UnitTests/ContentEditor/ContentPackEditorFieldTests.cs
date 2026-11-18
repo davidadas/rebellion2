@@ -147,8 +147,16 @@ namespace Rebellion.Tests.ContentEditor
             );
             ContentPackEditorField field = catalog.Records[0].GetField("CurrentRank");
 
-            Assert.Throws<ArgumentException>(() => field.SetValue("UnknownRank"));
-            Assert.Throws<ArgumentException>(() => field.SetValue("999"));
+            ArgumentException unknown = Assert.Throws<ArgumentException>(() =>
+                field.SetValue("UnknownRank")
+            );
+            ArgumentException numeric = Assert.Throws<ArgumentException>(() =>
+                field.SetValue("999")
+            );
+            StringAssert.Contains("'UnknownRank' is not an available option", unknown.Message);
+            StringAssert.DoesNotContain("Parameter name", unknown.Message);
+            StringAssert.Contains("'999' is not an available option", numeric.Message);
+            StringAssert.DoesNotContain("Parameter name", numeric.Message);
             Assert.AreEqual("None", field.Value);
             field.SetValue("Admiral");
             Assert.AreEqual("Admiral", field.Value);
