@@ -71,8 +71,103 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     Assert.AreEqual(-1, session.ListeningRow);
                     Assert.IsFalse(session.HasPendingConflict);
                     Assert.IsFalse(manager.AreApplicationShortcutsSuppressed);
+                    Assert.IsFalse(manager.RequiresInputRestart);
                     StringAssert.Contains("restored", error);
                     session.BeginRebind(row, false);
+                    Assert.AreEqual(row, session.ListeningRow);
+                    session.CancelRebind();
+                }
+            );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void BeginRebind_PresentationFailureAfterCapture_RestoresBindingsWithoutRestart(
+            bool conflict
+        )
+        {
+            WithKeyboard(
+                (session, manager, keyboard, fixture) =>
+                {
+                    InputAction oldAction = manager.Asset.FindAction("Strategy/ShowTroopers", true);
+                    oldAction.ApplyBindingOverride(
+                        FindBinding(oldAction, "Primary"),
+                        "<Keyboard>/t"
+                    );
+                    string original = manager.SaveBindingOverrides();
+                    session.Rebuild();
+                    int row = FindRow(session, "Increase Game Speed");
+                    Action fail = () =>
+                    {
+                        if (session.ListeningRow < 0)
+                            throw new InvalidOperationException(
+                                "Injected capture presentation failure."
+                            );
+                    };
+                    session.PresentationChanged += fail;
+                    ExpectRebindFailure();
+                    session.BeginRebind(row, false);
+                    InputSystem.QueueStateEvent(
+                        keyboard,
+                        new KeyboardState(conflict ? Key.T : Key.RightBracket)
+                    );
+                    InputSystem.Update();
+
+                    FinishCapture(fixture);
+                    InputSystem.Update();
+
+                    Assert.IsFalse(manager.RequiresInputRestart);
+                    Assert.IsFalse(manager.AreApplicationShortcutsSuppressed);
+                    Assert.IsFalse(session.HasPendingConflict);
+                    Assert.AreEqual(original, manager.SaveBindingOverrides());
+                    session.PresentationChanged -= fail;
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                    InputSystem.Update();
+                    session.BeginRebind(row, true);
+                    Assert.AreEqual(row, session.ListeningRow);
+                    session.CancelRebind();
+                }
+            );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ResolveConflict_PresentationFailure_RestoresBindingsWithoutRestart(bool accept)
+        {
+            WithKeyboard(
+                (session, manager, keyboard, fixture) =>
+                {
+                    InputAction oldAction = manager.Asset.FindAction("Strategy/ShowTroopers", true);
+                    oldAction.ApplyBindingOverride(
+                        FindBinding(oldAction, "Primary"),
+                        "<Keyboard>/t"
+                    );
+                    string original = manager.SaveBindingOverrides();
+                    session.Rebuild();
+                    int row = FindRow(session, "Increase Game Speed");
+                    session.BeginRebind(row, false);
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.T));
+                    InputSystem.Update();
+                    FinishCapture(fixture);
+                    InputSystem.Update();
+                    Assert.IsTrue(session.HasPendingConflict);
+                    Action fail = () =>
+                        throw new InvalidOperationException(
+                            "Injected conflict presentation failure."
+                        );
+                    session.PresentationChanged += fail;
+                    ExpectRebindFailure();
+
+                    Assert.DoesNotThrow(() => session.ResolveConflict(accept));
+
+                    Assert.IsFalse(manager.RequiresInputRestart);
+                    Assert.IsFalse(manager.AreApplicationShortcutsSuppressed);
+                    Assert.IsFalse(session.HasPendingConflict);
+                    Assert.AreEqual(original, manager.SaveBindingOverrides());
+                    session.PresentationChanged -= fail;
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                    InputSystem.Update();
+                    session.BeginRebind(row, true);
                     Assert.AreEqual(row, session.ListeningRow);
                     session.CancelRebind();
                 }

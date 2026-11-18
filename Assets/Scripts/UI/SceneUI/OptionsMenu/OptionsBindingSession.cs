@@ -505,6 +505,7 @@ internal sealed class OptionsBindingSession : IDisposable
         restored &= TryRecover(Rebuild, failures);
         if (!restored)
             _inputManager.RequireInputRestart();
+        // Notification errors must not change whether the binding state was restored.
         TryRecover(() => PresentationChanged?.Invoke(), failures);
         Exception failure = failures.Count == 1 ? exception : new AggregateException(failures);
         GameLogger.Log($"Shortcut rebinding failed: {failure}", GameLogger.LogLevel.Error);
