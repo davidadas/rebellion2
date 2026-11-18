@@ -6,6 +6,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Tactical;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
@@ -475,26 +476,30 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         private static TacticalCombatSession CreateSession(bool reserveFighter = false)
         {
             TacticalCombatUnit fighter = new(
-                new Starfighter
-                {
-                    InstanceID = "fighter",
-                    MaxSquadronSize = 12,
-                    CurrentSquadronSize = 12,
-                    Agility = 20,
-                    Torpedoes = 100,
-                },
+                TacticalCombatUnitCapture.Capture(
+                    new Starfighter
+                    {
+                        InstanceID = "fighter",
+                        MaxSquadronSize = 12,
+                        CurrentSquadronSize = 12,
+                        Agility = 20,
+                        Torpedoes = 100,
+                    }
+                ),
                 CombatSide.Attacker,
                 1
             );
             TacticalCombatUnit station = new(
-                new CapitalShip
-                {
-                    InstanceID = "station",
-                    CanDestroyPlanets = true,
-                    ManufacturingStatus = ManufacturingStatus.Complete,
-                    MaxHullStrength = 1000,
-                    CurrentHullStrength = 1000,
-                },
+                TacticalCombatUnitCapture.Capture(
+                    new CapitalShip
+                    {
+                        InstanceID = "station",
+                        CanDestroyPlanets = true,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                        MaxHullStrength = 1000,
+                        CurrentHullStrength = 1000,
+                    }
+                ),
                 CombatSide.Defender,
                 1000001
             );
@@ -504,14 +509,16 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             if (reserveFighter)
             {
                 TacticalCombatUnit reserve = new(
-                    new Starfighter
-                    {
-                        InstanceID = "reserve",
-                        MaxSquadronSize = 12,
-                        CurrentSquadronSize = 12,
-                        Agility = 20,
-                        Torpedoes = 100,
-                    },
+                    TacticalCombatUnitCapture.Capture(
+                        new Starfighter
+                        {
+                            InstanceID = "reserve",
+                            MaxSquadronSize = 12,
+                            CurrentSquadronSize = 12,
+                            Agility = 20,
+                            Torpedoes = 100,
+                        }
+                    ),
                     CombatSide.Attacker,
                     2
                 );

@@ -12,6 +12,7 @@ using Rebellion.Gameplay;
 using Rebellion.Gameplay.Scripting;
 using Rebellion.Multiplayer;
 using Rebellion.SceneGraph;
+using Rebellion.Tactical;
 using Rebellion.Util.Random;
 using Encoding = global::System.Text.Encoding;
 using JsonUtility = global::UnityEngine.JsonUtility;
@@ -458,9 +459,15 @@ namespace Rebellion.Tests.Multiplayer
                     _entry.Add(
                         unit.InstanceID,
                         (
-                            unit.Source is CapitalShip ship ? ship.CurrentHullStrength : 0,
-                            unit.Source is Starfighter fighter ? fighter.CurrentSquadronSize : 0,
-                            unit.Source.ParentInstanceID
+                            HostSimulation.Game.NodesByInstanceID[unit.InstanceID]
+                                is CapitalShip ship
+                                ? ship.CurrentHullStrength
+                                : 0,
+                            HostSimulation.Game.NodesByInstanceID[unit.InstanceID]
+                                is Starfighter fighter
+                                ? fighter.CurrentSquadronSize
+                                : 0,
+                            HostSimulation.Game.NodesByInstanceID[unit.InstanceID].ParentInstanceID
                         )
                     );
             }

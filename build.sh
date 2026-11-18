@@ -186,6 +186,22 @@ do_lint() {
             -maxcpucount:1 \
             -verbosity:normal \
             "${extra_args[@]}"
+        if [ -f Rebellion.Util.csproj ]; then
+            dotnet build Rebellion.Util.csproj \
+                --no-dependencies \
+                -maxcpucount:1 \
+                -verbosity:normal \
+                "${extra_args[@]}"
+        fi
+        for assembly in Rebellion.Combat.Contracts Rebellion.Tactical.Contracts Rebellion.Tactical.Core; do
+            if [ -f "$assembly.csproj" ]; then
+                dotnet build "$assembly.csproj" \
+                    --no-dependencies \
+                    -maxcpucount:1 \
+                    -verbosity:normal \
+                    "${extra_args[@]}"
+            fi
+        done
         dotnet build GameAssembly.csproj \
             --no-dependencies \
             -maxcpucount:1 \

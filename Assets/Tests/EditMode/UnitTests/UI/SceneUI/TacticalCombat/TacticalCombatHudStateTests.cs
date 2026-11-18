@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using Rebellion.Gameplay;
+using Rebellion.Tactical;
 
 namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
 {

@@ -6,6 +6,7 @@ using ArchUnitNET.NUnit;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Multiplayer;
+using Rebellion.Util.Random;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
 
 namespace Rebellion.Architecture.Tests
@@ -16,9 +17,8 @@ namespace Rebellion.Architecture.Tests
         private const string _runtimePattern = "^Rebellion\\.(?:Systems|Gameplay)(?:\\.|$)";
         private const string _presentationPattern =
             "^(?:Rebellion\\.(?:UI|Multiplayer)(?:\\..*)?|[^.<][^.]*)$";
-        private static readonly ArchUnitNET.Domain.Architecture _architecture = new ArchLoader()
-            .LoadAssemblies(typeof(GameRoot).Assembly, typeof(ContentPackEditorProject).Assembly)
-            .Build();
+        private static readonly ArchUnitNET.Domain.Architecture _architecture =
+            ProductionArchitecture.Load();
 
         [Test]
         public void GameplayRuntime_Dependencies_ExcludePresentationTransportAndUnqualifiedServices()

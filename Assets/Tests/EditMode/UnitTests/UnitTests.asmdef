@@ -15,7 +15,11 @@
         "Unity.RenderPipelines.HighDefinition.Runtime",
         "Unity.Services.Core",
         "UnityEditor.TestRunner",
-        "UnityEngine.TestRunner"
+        "UnityEngine.TestRunner",
+        "Rebellion.Util",
+        "Rebellion.Combat.Contracts",
+        "Rebellion.Tactical.Contracts",
+        "Rebellion.Tactical.Core"
     ],
     "overrideReferences": true,
     "precompiledReferences": [

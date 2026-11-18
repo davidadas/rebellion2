@@ -4,7 +4,8 @@
     "references": [
         "GameAssembly",
         "Unity.TextMeshPro",
-        "UnityEngine.UI"
+        "UnityEngine.UI",
+        "Rebellion.Util"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

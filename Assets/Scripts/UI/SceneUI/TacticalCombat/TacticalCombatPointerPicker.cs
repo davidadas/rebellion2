@@ -1,5 +1,5 @@
 using System;
-using Rebellion.Gameplay;
+using Rebellion.Tactical;
 using UnityEngine;
 using Vector3N = System.Numerics.Vector3;
 

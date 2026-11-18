@@ -7,9 +7,11 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
+using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
+using Rebellion.Tactical;
 using Rebellion.Util.Random;
 using SystemRandomProvider = global::Rebellion.Util.Random.SystemRandomProvider;
 using Vector3 = global::System.Numerics.Vector3;
@@ -4765,7 +4767,10 @@ namespace Rebellion.Tests.Gameplay
             unit.Systems.ApplyHullLoss(8);
             Assert.IsTrue(battle.RequestImmediateResult());
             battle.Advance(0);
-            Assert.AreSame(carrier, battle.CreateResult().FighterRecovery.Single().Carrier);
+            Assert.AreEqual(
+                carrier.InstanceID,
+                battle.CaptureOutcome().Fighters.Single().CarrierID
+            );
 
             SpaceCombatResult combat = commands
                 .CompleteTacticalCombat(battle)
@@ -4990,13 +4995,13 @@ namespace Rebellion.Tests.Gameplay
             for (int frame = 0; frame < 12000 && !battle.IsComplete; frame++)
                 battle.Advance(50);
             Assert.IsTrue(battle.IsComplete);
-            SpaceCombatResult pending = battle.CreateResult();
-            Assert.AreSame(
-                second,
-                pending.FighterRecovery.Single(item => item.Fighter == fighters[0]).Carrier
+            TacticalCombatOutcome pending = battle.CaptureOutcome();
+            Assert.AreEqual(
+                second.InstanceID,
+                pending.Fighters.Single(item => item.UnitID == fighters[0].InstanceID).CarrierID
             );
             Assert.IsNull(
-                pending.FighterRecovery.Single(item => item.Fighter == fighters[1]).Carrier
+                pending.Fighters.Single(item => item.UnitID == fighters[1].InstanceID).CarrierID
             );
 
             commands.CompleteTacticalCombat(battle);
@@ -5062,9 +5067,18 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(forward, docked.Heading.Z);
             Assert.AreSame(battle.GetGroup(docked), battle.GetGroup(independent));
             Assert.AreSame(battle.GetGroup(docked), battle.GetGroup(planetary));
-            Assert.AreSame(carrier, docked.Source.GetParent());
-            Assert.AreSame(carrier, independent.Source.GetParent());
-            Assert.AreSame(planet, planetary.Source.GetParent());
+            Assert.AreSame(
+                carrier,
+                game.GetSceneNodeByInstanceID<Starfighter>(docked.InstanceID).GetParent()
+            );
+            Assert.AreSame(
+                carrier,
+                game.GetSceneNodeByInstanceID<Starfighter>(independent.InstanceID).GetParent()
+            );
+            Assert.AreSame(
+                planet,
+                game.GetSceneNodeByInstanceID<Starfighter>(planetary.InstanceID).GetParent()
+            );
         }
 
         [Test]
@@ -5382,15 +5396,7 @@ namespace Rebellion.Tests.Gameplay
             game.Random = new SystemRandomProvider(42);
             game.SetFactionController("FNEMP1", "player1", PlayerControllerType.Human);
             (Planet planet, _) = CreatePlanet(game, "tactical-planet");
-            Fleet player = CreateFleet(
-                game,
-                "tactical-attacker",
-                "FNEMP1",
-                planet,
-                1,
-                1000,
-                100000
-            );
+            Fleet player = CreateFleet(game, "tactical-attacker", "FNEMP1", planet, 1, 1000, 1000);
             Fleet enemy = CreateFleet(game, "tactical-defender", "FNALL1", planet, 1, 10, 0);
             CapitalShip attacker = player.GetChildren<CapitalShip>()[0];
             attacker.TypeID = "CSEM006";

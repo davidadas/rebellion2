@@ -2,6 +2,7 @@ using NUnit.Framework;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Tactical;
 using UnityEngine;
 
 namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
@@ -167,12 +168,14 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         private TacticalCombatUnit AddUnit(string id, float depth, int currentHull = 100)
         {
             TacticalCombatUnit unit = new(
-                new CapitalShip
-                {
-                    InstanceID = id,
-                    MaxHullStrength = 100,
-                    CurrentHullStrength = currentHull,
-                },
+                TacticalCombatUnitCapture.Capture(
+                    new CapitalShip
+                    {
+                        InstanceID = id,
+                        MaxHullStrength = 100,
+                        CurrentHullStrength = currentHull,
+                    }
+                ),
                 CombatSide.Attacker,
                 root.transform.childCount
             );

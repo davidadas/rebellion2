@@ -7,6 +7,7 @@ using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
+using Rebellion.Tactical;
 using UnityEngine;
 using Encoding = global::System.Text.Encoding;
 

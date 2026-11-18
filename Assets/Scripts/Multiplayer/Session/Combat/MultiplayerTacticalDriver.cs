@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
+using Rebellion.Tactical;
 
 namespace Rebellion.Multiplayer
 {

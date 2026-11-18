@@ -4,6 +4,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Tactical;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
@@ -239,7 +240,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             };
             ship.AssignName(name);
             return new(
-                ship,
+                TacticalCombatUnitCapture.Capture(ship),
                 side,
                 index,
                 new TacticalCombatUnitDefinition { PresentationIndex = 1 }
@@ -263,12 +264,14 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             int current
         ) =>
             new(
-                new Starfighter
-                {
-                    InstanceID = id,
-                    MaxSquadronSize = maximum,
-                    CurrentSquadronSize = current,
-                },
+                TacticalCombatUnitCapture.Capture(
+                    new Starfighter
+                    {
+                        InstanceID = id,
+                        MaxSquadronSize = maximum,
+                        CurrentSquadronSize = current,
+                    }
+                ),
                 CombatSide.Attacker,
                 index,
                 new TacticalCombatUnitDefinition { PresentationIndex = type }

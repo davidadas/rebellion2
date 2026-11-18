@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Rebellion.Game.SpaceCombat;
-using Rebellion.Gameplay;
+using Rebellion.Tactical;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;

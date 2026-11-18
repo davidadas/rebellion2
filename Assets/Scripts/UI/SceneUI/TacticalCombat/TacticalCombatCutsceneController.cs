@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using Rebellion.Gameplay;
+using Rebellion.Tactical;
 
 /// <summary>
 /// Owns battle-station movies, their presentation visibility, and completion acknowledgements.

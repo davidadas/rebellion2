@@ -9,6 +9,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Tactical;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Gameplay
@@ -237,7 +238,7 @@ namespace Rebellion.Gameplay
                 foreach (CapitalShip ship in ships)
                 {
                     TacticalCombatUnit unit = new(
-                        ship,
+                        TacticalCombatUnitCapture.Capture(ship),
                         (CombatSide)side,
                         ++counters[side],
                         RequireDefinition(ship.TypeID)
@@ -259,7 +260,7 @@ namespace Rebellion.Gameplay
                             sidesByOwner
                         );
                         TacticalCombatUnit unit = new(
-                            fighter,
+                            TacticalCombatUnitCapture.Capture(fighter),
                             (CombatSide)fighterSide,
                             ++counters[fighterSide],
                             RequireDefinition(fighter.TypeID)
@@ -288,7 +289,7 @@ namespace Rebellion.Gameplay
             {
                 int side = GetRegistrationSide(fighter.OwnerInstanceID, sidesByOwner);
                 TacticalCombatUnit unit = new(
-                    fighter,
+                    TacticalCombatUnitCapture.Capture(fighter),
                     (CombatSide)side,
                     ++counters[side],
                     RequireDefinition(fighter.TypeID)
@@ -299,7 +300,7 @@ namespace Rebellion.Gameplay
             if (constructionIndex != 0)
             {
                 TacticalCombatUnit station = new(
-                    construction,
+                    TacticalCombatUnitCapture.Capture(construction),
                     (CombatSide)constructionSide,
                     constructionIndex,
                     RequireDefinition(construction.TypeID)

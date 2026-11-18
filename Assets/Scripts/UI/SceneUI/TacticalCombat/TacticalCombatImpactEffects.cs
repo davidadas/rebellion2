@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Rebellion.Game.SpaceCombat;
-using Rebellion.Gameplay;
+using Rebellion.Tactical;
 using UnityEngine;
 using ShadowCastingMode = global::UnityEngine.Rendering.ShadowCastingMode;
 

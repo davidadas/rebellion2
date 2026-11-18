@@ -1,4 +1,4 @@
-using Rebellion.Gameplay;
+using Rebellion.Tactical;
 
 /// <summary>
 /// Owns right-panel selection and uncommitted order-editor widget state.

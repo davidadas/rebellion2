@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Gameplay;
+using Rebellion.Tactical;
 using Rebellion.Util.Random;
 using UnityEditor;
 using UnityEditor.SceneManagement;

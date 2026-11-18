@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Rebellion.Gameplay;
+using Rebellion.Tactical;
 using UnityEngine;
 using ShadowCastingMode = global::UnityEngine.Rendering.ShadowCastingMode;
 

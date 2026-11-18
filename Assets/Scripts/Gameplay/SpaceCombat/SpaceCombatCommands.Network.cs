@@ -5,6 +5,7 @@ using System.Linq;
 using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
+using Rebellion.Tactical;
 
 namespace Rebellion.Gameplay
 {
@@ -34,8 +35,10 @@ namespace Rebellion.Gameplay
                 StringComparer.Ordinal
             );
             if (
-                outcome.Ships.Length != units.Values.Count(unit => unit.Source is CapitalShip)
-                || outcome.Fighters.Length != units.Values.Count(unit => unit.Source is Starfighter)
+                outcome.Ships.Length
+                    != units.Values.Count(unit => _tacticalSources[unit.InstanceID] is CapitalShip)
+                || outcome.Fighters.Length
+                    != units.Values.Count(unit => _tacticalSources[unit.InstanceID] is Starfighter)
             )
                 throw new InvalidDataException(
                     "The tactical outcome does not cover the captured roster."
@@ -55,7 +58,7 @@ namespace Rebellion.Gameplay
                     shipOutcome == null
                     || string.IsNullOrEmpty(shipOutcome.UnitID)
                     || !units.TryGetValue(shipOutcome.UnitID, out TacticalCombatUnit unit)
-                    || unit.Source is not CapitalShip ship
+                    || _tacticalSources[unit.InstanceID] is not CapitalShip ship
                     || !imported.Add(shipOutcome.UnitID)
                     || shipOutcome.Hull < 0
                     || shipOutcome.Hull > Math.Max(1, (int)unit.Systems.MaximumHull)
@@ -81,7 +84,7 @@ namespace Rebellion.Gameplay
                     fighterOutcome == null
                     || string.IsNullOrEmpty(fighterOutcome.UnitID)
                     || !units.TryGetValue(fighterOutcome.UnitID, out TacticalCombatUnit unit)
-                    || unit.Source is not Starfighter fighter
+                    || _tacticalSources[unit.InstanceID] is not Starfighter fighter
                     || !imported.Add(fighterOutcome.UnitID)
                     || fighterOutcome.SquadronSize < 0
                     || fighterOutcome.SquadronSize > Math.Max(1, fighter.MaxSquadronSize)
@@ -92,7 +95,7 @@ namespace Rebellion.Gameplay
                 {
                     if (
                         !units.TryGetValue(fighterOutcome.CarrierID, out TacticalCombatUnit host)
-                        || host.Source is not CapitalShip ship
+                        || _tacticalSources[host.InstanceID] is not CapitalShip ship
                         || host.Side != unit.Side
                     )
                         throw new InvalidDataException("A tactical recovery host is invalid.");

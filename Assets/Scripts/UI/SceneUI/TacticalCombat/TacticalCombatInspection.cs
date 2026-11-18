@@ -1,6 +1,6 @@
 using System;
 using System.Globalization;
-using Rebellion.Gameplay;
+using Rebellion.Tactical;
 
 /// <summary>
 /// Formats the selected participant's requested orders, applied group routing, and system condition.

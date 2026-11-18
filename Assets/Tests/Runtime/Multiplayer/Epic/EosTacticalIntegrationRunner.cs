@@ -11,6 +11,7 @@ using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
+using Rebellion.Tactical;
 using UnityEngine;
 using EOSManager = PlayEveryWare.EpicOnlineServices.EOSManager;
 using NetworkConnectionType = Epic.OnlineServices.P2P.NetworkConnectionType;
@@ -563,7 +564,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
                 );
                 _report.fighterCraft = session
                     .Units.Where(unit => unit.IsFighter)
-                    .Sum(unit => ((Starfighter)unit.Source).CurrentSquadronSize);
+                    .Sum(unit => unit.InitialSquadronSize);
                 _report.battleID = _runtime
                     .GetActiveGameSession()
                     .GetService<SpaceCombatCommands>()

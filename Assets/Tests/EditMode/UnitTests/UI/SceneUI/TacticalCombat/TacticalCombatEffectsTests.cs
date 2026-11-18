@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Tactical;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -207,22 +208,26 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         private static TacticalCombatShot CreateShot(TacticalWeaponType weapon)
         {
             TacticalCombatUnit source = new(
-                new CapitalShip
-                {
-                    InstanceID = "source",
-                    MaxHullStrength = 100,
-                    CurrentHullStrength = 100,
-                },
+                TacticalCombatUnitCapture.Capture(
+                    new CapitalShip
+                    {
+                        InstanceID = "source",
+                        MaxHullStrength = 100,
+                        CurrentHullStrength = 100,
+                    }
+                ),
                 CombatSide.Attacker,
                 1
             );
             TacticalCombatUnit target = new(
-                new CapitalShip
-                {
-                    InstanceID = "target",
-                    MaxHullStrength = 100,
-                    CurrentHullStrength = 100,
-                },
+                TacticalCombatUnitCapture.Capture(
+                    new CapitalShip
+                    {
+                        InstanceID = "target",
+                        MaxHullStrength = 100,
+                        CurrentHullStrength = 100,
+                    }
+                ),
                 CombatSide.Defender,
                 1000001
             )

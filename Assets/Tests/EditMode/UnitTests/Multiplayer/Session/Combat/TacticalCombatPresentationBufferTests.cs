@@ -4,6 +4,7 @@ using System.Numerics;
 using NUnit.Framework;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
+using Rebellion.Tactical;
 using Pose = Rebellion.Multiplayer.TacticalCombatPresentationBuffer.Pose;
 
 namespace Rebellion.Tests.Multiplayer

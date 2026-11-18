@@ -15,6 +15,7 @@ using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.PlayerRequests;
+using Rebellion.Tactical;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 

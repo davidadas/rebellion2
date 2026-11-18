@@ -16,6 +16,8 @@ public static class SimulationBuildIdentityInputs
     private static readonly string[] _dependencyInputs =
     {
         "Assets/Scripts/GameAssembly.asmdef",
+        "Assets/Input/InputActions.asmdef",
+        "Assets/Input/PlayerInputActions.cs",
         "Packages/manifest.json",
         "Packages/packages-lock.json",
         "ProjectSettings/ProjectVersion.txt",
@@ -26,23 +28,37 @@ public static class SimulationBuildIdentityInputs
     /// <summary>
     /// Hashes normalized source and dependency inputs independently of checkout root and line endings.
     /// </summary>
+    /// <param name="projectDirectory">The project root containing the source and dependency inputs.</param>
     /// <returns>The compiled source-input digest.</returns>
-    public static string ComputeIdentity()
+    public static string ComputeIdentity(string projectDirectory)
     {
         using MemoryStream bytes = new();
         foreach (
             string input in Directory
-                .GetFiles(SourceRoot, "*.cs", SearchOption.AllDirectories)
-                .Select(path => path.Replace('\\', '/'))
-                .Where(path => path != _legacyGeneratedPath)
+                .GetFiles(
+                    Path.Combine(projectDirectory, SourceRoot),
+                    "*",
+                    SearchOption.AllDirectories
+                )
+                .Select(path => Path.GetRelativePath(projectDirectory, path).Replace('\\', '/'))
+                .Where(path =>
+                    path != _legacyGeneratedPath
+                    && (
+                        path.EndsWith(".cs", StringComparison.Ordinal)
+                        || path.EndsWith(".asmdef", StringComparison.Ordinal)
+                    )
+                )
                 .Concat(_dependencyInputs)
+                .Distinct(StringComparer.Ordinal)
                 .OrderBy(path => path, StringComparer.Ordinal)
         )
         {
             byte[] part = Encoding.UTF8.GetBytes(
                 input
                     + "\0"
-                    + File.ReadAllText(input).Replace("\r\n", "\n").Replace('\r', '\n')
+                    + File.ReadAllText(Path.Combine(projectDirectory, input))
+                        .Replace("\r\n", "\n")
+                        .Replace('\r', '\n')
                     + "\0"
             );
             bytes.Write(part, 0, part.Length);

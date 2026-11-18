@@ -4,7 +4,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Text;
 using Rebellion.Game.Results;
-using Rebellion.Gameplay;
+using Rebellion.Tactical;
 
 namespace Rebellion.Multiplayer
 {

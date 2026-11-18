@@ -13,6 +13,7 @@ using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
+using Rebellion.Tactical;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -629,6 +630,7 @@ namespace Rebellion.Tests.Gameplay
             officer.CurrentRank = OfficerRank.Commander;
             _game.AttachNode(officer, origin);
             Fleet winner = _game.GetSceneNodeByInstanceID<Fleet>("TACTICAL_0_FNEMP1");
+            ConfigureDecisiveAutomaticFire(winner.GetChildren<CapitalShip>().Single());
             MovementCommands movement = _session.GetService<MovementCommands>();
             bool blockadeEnded = false;
             bool commandObserved = false;
@@ -834,16 +836,16 @@ namespace Rebellion.Tests.Gameplay
             _tick.ReconcileLoadedState();
             TacticalCombatSession battle = commands.BeginTacticalCombat();
             CapitalShip[] ships = battle
-                .Units.Select(unit => unit.Source)
+                .Units.Select(unit => _game.NodesByInstanceID[unit.InstanceID])
                 .OfType<CapitalShip>()
                 .ToArray();
             Starfighter[] fighters = battle
-                .Units.Select(unit => unit.Source)
+                .Units.Select(unit => _game.NodesByInstanceID[unit.InstanceID])
                 .OfType<Starfighter>()
                 .ToArray();
             Dictionary<ISceneNode, ISceneNode> parents = battle.Units.ToDictionary(
-                unit => unit.Source,
-                unit => unit.Source.GetParent()
+                unit => _game.NodesByInstanceID[unit.InstanceID],
+                unit => _game.NodesByInstanceID[unit.InstanceID].GetParent()
             );
             Dictionary<TacticalCombatUnit, int> shots = battle.Units.ToDictionary(
                 unit => unit,
@@ -1065,6 +1067,26 @@ namespace Rebellion.Tests.Gameplay
         {
             CreateTacticalCombatScenario("FNALL1", encounterCount);
             _game.SetFactionController("FNALL1", "PLAYER", PlayerControllerType.AI);
+            foreach (CapitalShip ship in _game.GetSceneNodesByType<CapitalShip>())
+                if (ship.OwnerInstanceID == "FNALL1")
+                    ConfigureDecisiveAutomaticFire(ship);
+        }
+
+        /// <summary>
+        /// Gives the intended winner enough sustained fire to settle the scheduling fixture in one phase.
+        /// </summary>
+        /// <param name="ship">The ship whose victory drives the ordering assertion.</param>
+        private static void ConfigureDecisiveAutomaticFire(CapitalShip ship)
+        {
+            ship.WeaponRecharge = 1000;
+            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[]
+            {
+                1000,
+                1000,
+                1000,
+                1000,
+                100,
+            };
         }
 
         /// <summary>

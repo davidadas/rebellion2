@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using Rebellion.Gameplay;
+using Rebellion.Tactical;
 
 namespace Rebellion.Multiplayer
 {

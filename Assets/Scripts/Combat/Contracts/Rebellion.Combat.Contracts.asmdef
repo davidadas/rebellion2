@@ -1,0 +1,16 @@
+{
+    "name": "Rebellion.Combat.Contracts",
+    "rootNamespace": "Rebellion.Combat.Contracts",
+    "references": [
+        "Rebellion.Util"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

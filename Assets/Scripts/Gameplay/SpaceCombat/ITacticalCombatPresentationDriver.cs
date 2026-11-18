@@ -1,5 +1,6 @@
 using System;
 using Rebellion.Game.Results;
+using Rebellion.Tactical;
 
 namespace Rebellion.Gameplay
 {

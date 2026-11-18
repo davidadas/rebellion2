@@ -55,21 +55,6 @@ namespace Rebellion.Game.Results
         Detection,
     }
 
-    public enum CombatSide
-    {
-        Attacker,
-        Defender,
-        Draw,
-    }
-
-    public enum SpaceCombatSideOutcome
-    {
-        Unknown,
-        Active,
-        Destroyed,
-        Withdrawn,
-    }
-
     public enum PlanetOwnershipChangeReason
     {
         None,

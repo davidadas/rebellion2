@@ -6,6 +6,7 @@ using NUnit.Framework;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
+using Rebellion.Tactical;
 using Encoding = global::System.Text.Encoding;
 
 namespace Rebellion.Tests.Multiplayer

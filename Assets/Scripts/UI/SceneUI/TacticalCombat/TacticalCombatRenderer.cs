@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Rebellion.Gameplay;
+using Rebellion.Tactical;
 using UnityEngine;
 using ShadowCastingMode = global::UnityEngine.Rendering.ShadowCastingMode;
 using TacticalCombatEffectDefinition = global::Rebellion.Game.SpaceCombat.TacticalCombatEffectDefinition;

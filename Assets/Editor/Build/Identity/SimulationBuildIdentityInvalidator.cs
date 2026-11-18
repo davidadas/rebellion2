@@ -92,7 +92,9 @@ internal sealed class SimulationBuildIdentityInvalidator : IPreprocessBuildWithR
             .Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
             .FirstOrDefault(attribute => attribute.Key == SimulationBuildIdentityInputs.MetadataKey)
             ?.Value;
-        if (actual == SimulationBuildIdentityInputs.ComputeIdentity())
+        if (
+            actual == SimulationBuildIdentityInputs.ComputeIdentity(Directory.GetCurrentDirectory())
+        )
             return false;
         _compilationRequested = true;
         CompilationPipeline.RequestScriptCompilation(

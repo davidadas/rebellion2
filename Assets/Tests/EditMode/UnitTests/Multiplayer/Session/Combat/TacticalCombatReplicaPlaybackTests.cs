@@ -7,6 +7,7 @@ using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
+using Rebellion.Tactical;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Multiplayer
@@ -341,16 +342,18 @@ namespace Rebellion.Tests.Multiplayer
         /// <returns>The captured capital ship.</returns>
         private static TacticalCombatUnit CreateUnit(string id, CombatSide side, int index) =>
             new(
-                new CapitalShip
-                {
-                    InstanceID = id,
-                    OwnerInstanceID = side == CombatSide.Attacker ? "FNEMP1" : "FNALL1",
-                    MaxHullStrength = 1000,
-                    CurrentHullStrength = 1000,
-                    ManufacturingStatus = ManufacturingStatus.Complete,
-                    Hyperdrive = 1,
-                    SublightSpeed = 4,
-                },
+                TacticalCombatUnitCapture.Capture(
+                    new CapitalShip
+                    {
+                        InstanceID = id,
+                        OwnerInstanceID = side == CombatSide.Attacker ? "FNEMP1" : "FNALL1",
+                        MaxHullStrength = 1000,
+                        CurrentHullStrength = 1000,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                        Hyperdrive = 1,
+                        SublightSpeed = 4,
+                    }
+                ),
                 side,
                 index,
                 new TacticalCombatUnitDefinition { PresentationIndex = 1 }

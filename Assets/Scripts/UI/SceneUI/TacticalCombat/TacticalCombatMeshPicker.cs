@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Rebellion.Gameplay;
+using Rebellion.Tactical;
 using UnityEngine;
 
 /// <summary>

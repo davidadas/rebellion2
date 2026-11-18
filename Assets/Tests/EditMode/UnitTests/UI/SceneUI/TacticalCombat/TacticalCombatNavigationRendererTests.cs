@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Tactical;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -100,12 +101,14 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         public void UpdateSelection_RequestedRoute_HighlightsSelectedNavigationPoint()
         {
             TacticalCombatUnit unit = new(
-                new CapitalShip
-                {
-                    InstanceID = "ship",
-                    MaxHullStrength = 100,
-                    CurrentHullStrength = 100,
-                },
+                TacticalCombatUnitCapture.Capture(
+                    new CapitalShip
+                    {
+                        InstanceID = "ship",
+                        MaxHullStrength = 100,
+                        CurrentHullStrength = 100,
+                    }
+                ),
                 CombatSide.Attacker,
                 1
             );

@@ -8,6 +8,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
+using Rebellion.Tactical;
 using JsonUtility = UnityEngine.JsonUtility;
 
 namespace Rebellion.Tests.MultiplayerIntegration

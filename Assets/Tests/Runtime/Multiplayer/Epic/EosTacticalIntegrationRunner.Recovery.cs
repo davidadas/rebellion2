@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
+using Rebellion.Tactical;
 using UnityEngine;
 
 namespace Rebellion.Tests.MultiplayerIntegration

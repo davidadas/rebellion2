@@ -15,6 +15,7 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
 using Rebellion.SceneGraph;
+using Rebellion.Tactical;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;

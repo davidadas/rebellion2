@@ -4,7 +4,11 @@
     "references": [
         "GameAssembly",
         "com.Epic.OnlineServices",
-        "com.playeveryware.eos.core"
+        "com.playeveryware.eos.core",
+        "Rebellion.Util",
+        "Rebellion.Combat.Contracts",
+        "Rebellion.Tactical.Contracts",
+        "Rebellion.Tactical.Core"
     ],
     "includePlatforms": [
         "Editor",

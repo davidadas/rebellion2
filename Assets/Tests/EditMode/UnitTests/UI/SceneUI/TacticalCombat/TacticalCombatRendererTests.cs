@@ -10,6 +10,7 @@ using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
+using Rebellion.Tactical;
 using Rebellion.Util.Random;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -2371,7 +2372,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 );
                 units.Add(
                     new TacticalCombatUnit(
-                        ship,
+                        TacticalCombatUnitCapture.Capture(ship),
                         side,
                         units.Count + 1,
                         catalog.TacticalCombat.Units.Single(item => item.UnitTypeID == ship.TypeID)
@@ -2437,7 +2438,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                         ? CombatSide.Attacker
                         : CombatSide.Defender;
                 units.Add(
-                    new TacticalCombatUnit(ship, side, units.Count + 1, definitions[type])
+                    new TacticalCombatUnit(
+                        TacticalCombatUnitCapture.Capture(ship),
+                        side,
+                        units.Count + 1,
+                        definitions[type]
+                    )
                     {
                         Position = new Vector3N(
                             type == "ALCS008" ? -12 : 12,
@@ -2454,7 +2460,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             fighter.CurrentSquadronSize = fighter.MaxSquadronSize;
             units.Add(
                 new TacticalCombatUnit(
-                    fighter,
+                    TacticalCombatUnitCapture.Capture(fighter),
                     CombatSide.Attacker,
                     units.Count + 1,
                     definitions[fighter.TypeID]

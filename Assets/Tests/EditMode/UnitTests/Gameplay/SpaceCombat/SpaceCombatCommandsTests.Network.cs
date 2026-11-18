@@ -7,6 +7,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Tactical;
 using Planet = global::Rebellion.Game.Galaxy.Planet;
 
 namespace Rebellion.Tests.Gameplay
@@ -83,7 +84,7 @@ namespace Rebellion.Tests.Gameplay
             bool manualFirst
         )
         {
-            (_, SpaceCombatCommands commands, _) = CreateNetworkEncounter();
+            (GameRoot game, SpaceCombatCommands commands, _) = CreateNetworkEncounter();
             string automaticFaction = manualFaction == "FNEMP1" ? "FNALL1" : "FNEMP1";
             if (manualFirst)
             {
@@ -116,7 +117,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsNotNull(battle);
             foreach (TacticalCombatUnit unit in battle.Units)
             {
-                CapitalShip ship = (CapitalShip)unit.Source;
+                CapitalShip ship = game.GetSceneNodeByInstanceID<CapitalShip>(unit.InstanceID);
                 Assert.AreEqual(
                     ship.OwnerInstanceID == automaticFaction,
                     battle.GetSide(unit.Side).IsAutomated
@@ -146,7 +147,7 @@ namespace Rebellion.Tests.Gameplay
                 CreateNetworkEncounter();
             TacticalCombatSession battle = AdmitNetworkBattle(commands);
             battle.GetUnit(attacker.InstanceID).Systems.ApplyHullLoss(100);
-            TacticalCombatOutcome outcome = FinishNetworkBattle(battle);
+            TacticalCombatOutcome outcome = FinishNetworkBattle(game, battle);
             Assert.AreEqual(1000, attacker.CurrentHullStrength);
 
             Assert.IsTrue(
@@ -201,7 +202,7 @@ namespace Rebellion.Tests.Gameplay
                 "SFEM01"
             );
             TacticalCombatSession battle = AdmitNetworkBattle(commands);
-            TacticalCombatOutcome outcome = FinishNetworkBattle(battle);
+            TacticalCombatOutcome outcome = FinishNetworkBattle(game, battle);
             string battleID = _networkBattleID;
             switch (invalidField)
             {
@@ -232,7 +233,8 @@ namespace Rebellion.Tests.Gameplay
                 case "carrier":
                     outcome.Fighters[0].CarrierID = battle
                         .Units.Single(unit =>
-                            unit.Source is CapitalShip ship && ship.OwnerInstanceID == "FNALL1"
+                            game.NodesByInstanceID[unit.InstanceID] is CapitalShip ship
+                            && ship.OwnerInstanceID == "FNALL1"
                         )
                         .InstanceID;
                     break;
@@ -299,15 +301,21 @@ namespace Rebellion.Tests.Gameplay
         /// <summary>
         /// Runs actual weapon and terminal phases before capturing the authoritative outcome.
         /// </summary>
+        /// <param name="game">The campaign containing the admitted participants.</param>
         /// <param name="battle">The admitted authoritative encounter.</param>
         /// <returns>The completed encounter's detached outcome.</returns>
-        private static TacticalCombatOutcome FinishNetworkBattle(TacticalCombatSession battle)
+        private static TacticalCombatOutcome FinishNetworkBattle(
+            GameRoot game,
+            TacticalCombatSession battle
+        )
         {
             TacticalCombatUnit target = battle.Units.Single(unit =>
-                unit.Source is CapitalShip ship && ship.OwnerInstanceID == "FNALL1"
+                game.NodesByInstanceID[unit.InstanceID] is CapitalShip ship
+                && ship.OwnerInstanceID == "FNALL1"
             );
             TacticalCombatUnit attacker = battle.Units.Single(unit =>
-                unit.Source is CapitalShip ship && ship.OwnerInstanceID == "FNEMP1"
+                game.NodesByInstanceID[unit.InstanceID] is CapitalShip ship
+                && ship.OwnerInstanceID == "FNEMP1"
             );
             battle.SetTarget(battle.GetRequestedGroup(attacker), target);
             for (int frame = 0; frame < 12000 && !battle.IsComplete; frame++)
