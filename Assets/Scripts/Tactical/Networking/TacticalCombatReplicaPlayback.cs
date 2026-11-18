@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using Rebellion.Multiplayer;
-using Rebellion.Tactical;
 using Rebellion.Tactical.Runtime.Presentation;
 
 namespace Rebellion.Tactical.Networking

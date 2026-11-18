@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Multiplayer;
-using Rebellion.Tactical;
 using UnityEngine;
 
 namespace Rebellion.Tactical.Networking

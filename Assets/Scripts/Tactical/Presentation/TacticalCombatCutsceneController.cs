@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using Rebellion.Tactical;
 
 namespace Rebellion.Tactical.Presentation
 {

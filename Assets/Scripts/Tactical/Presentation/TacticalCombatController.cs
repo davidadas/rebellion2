@@ -5,8 +5,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Rebellion.Game.SpaceCombat;
-using Rebellion.Gameplay;
-using Rebellion.Tactical;
 using Rebellion.Tactical.Integration.Campaign;
 using UnityEngine;
 using UnityEngine.EventSystems;

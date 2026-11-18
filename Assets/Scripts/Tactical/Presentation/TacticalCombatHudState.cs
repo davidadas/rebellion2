@@ -1,5 +1,3 @@
-using Rebellion.Tactical;
-
 namespace Rebellion.Tactical.Presentation
 {
     /// <summary>

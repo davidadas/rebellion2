@@ -5,7 +5,6 @@ using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
-using Rebellion.Tactical;
 using Rebellion.Tactical.Integration.Campaign;
 
 namespace Rebellion.Tactical.Networking

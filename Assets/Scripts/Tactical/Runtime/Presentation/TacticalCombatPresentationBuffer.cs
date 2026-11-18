@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using Rebellion.Tactical;
 
 namespace Rebellion.Tactical.Runtime.Presentation
 {

@@ -5,7 +5,6 @@ using System.IO.Compression;
 using System.Text;
 using Rebellion.Game.Results;
 using Rebellion.Multiplayer;
-using Rebellion.Tactical;
 
 namespace Rebellion.Tactical.Networking
 {

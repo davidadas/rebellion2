@@ -1,7 +1,6 @@
 using System;
 using System.Numerics;
 using NUnit.Framework;
-using Rebellion.Gameplay;
 using Rebellion.Tactical;
 
 namespace Rebellion.Tests.Tactical

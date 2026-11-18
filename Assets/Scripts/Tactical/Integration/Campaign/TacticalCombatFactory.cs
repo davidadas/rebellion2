@@ -10,7 +10,6 @@ using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
-using Rebellion.Tactical;
 using Rebellion.Tactical.Runtime;
 using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Random;

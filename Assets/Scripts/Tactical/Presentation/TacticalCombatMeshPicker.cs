@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Rebellion.Tactical;
 using UnityEngine;
 
 namespace Rebellion.Tactical.Presentation

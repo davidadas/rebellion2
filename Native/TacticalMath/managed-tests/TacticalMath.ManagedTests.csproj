@@ -7,10 +7,10 @@
     <NativeRoot Condition="'$(NativeRoot)' == ''">../../../Assets/Plugins/TacticalMath</NativeRoot>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../../../Assets/Scripts/Gameplay/SpaceCombat/TacticalCombatGeometry.cs" />
-    <Compile Include="../../../Assets/Scripts/Gameplay/SpaceCombat/Mathematics/TacticalCombatVectorLength.cs" />
-    <Compile Include="../../../Assets/Scripts/Gameplay/SpaceCombat/Mathematics/TacticalCombatNativeMath.cs" />
-    <Compile Include="../../../Assets/Tests/EditMode/UnitTests/Gameplay/SpaceCombat/TacticalCombatGeometryTests.cs" />
+    <Compile Include="../../../Assets/Scripts/Tactical/Core/TacticalCombatGeometry.cs" />
+    <Compile Include="../../../Assets/Scripts/Tactical/Core/Mathematics/TacticalCombatVectorLength.cs" />
+    <Compile Include="../../../Assets/Scripts/Tactical/Core/Mathematics/TacticalCombatNativeMath.cs" />
+    <Compile Include="../../../Assets/Tests/EditMode/UnitTests/Tactical/Core/TacticalCombatGeometryTests.cs" />
     <PackageReference Include="NUnit" Version="3.14.0" />
     <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />

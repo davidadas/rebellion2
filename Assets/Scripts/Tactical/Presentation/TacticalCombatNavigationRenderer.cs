@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Rebellion.Tactical;
 using UnityEngine;
 using ShadowCastingMode = global::UnityEngine.Rendering.ShadowCastingMode;
 using Vector3N = System.Numerics.Vector3;

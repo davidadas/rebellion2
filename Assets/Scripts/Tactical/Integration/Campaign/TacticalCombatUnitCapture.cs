@@ -3,7 +3,6 @@ using System.Linq;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
-using Rebellion.Tactical;
 
 namespace Rebellion.Tactical.Integration.Campaign
 {
