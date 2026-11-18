@@ -161,44 +161,24 @@ namespace Rebellion.Tests.Content
             Assert.IsTrue(turbolasers.All(building => !building.IsDetectionBlocker));
         }
 
-        [Test]
-        public void OpenActive_OfficerLoyaltyAllegiances_LoadsEveryCanonicalDefinition()
-        {
-            Officer[] officers = TestContent.Pack.GameData.Officers;
-
-            Assert.AreEqual(60, officers.Length);
-            Assert.AreEqual(
-                30,
-                officers.Count(officer =>
-                    officer.LoyaltyAllegiance == OfficerLoyaltyAllegiance.FirstFaction
-                )
-            );
-            Assert.AreEqual(
-                30,
-                officers.Count(officer =>
-                    officer.LoyaltyAllegiance == OfficerLoyaltyAllegiance.SecondFaction
-                )
-            );
-            Assert.AreEqual(9, officers.Count(officer => !officer.CanBetray));
-        }
-
-        [TestCase("MON_MOTHMA", OfficerLoyaltyAllegiance.FirstFaction)]
-        [TestCase("LEIA_ORGANA", OfficerLoyaltyAllegiance.FirstFaction)]
-        [TestCase("LUKE_SKYWALKER", OfficerLoyaltyAllegiance.FirstFaction)]
-        [TestCase("HAN_SOLO", OfficerLoyaltyAllegiance.FirstFaction)]
-        [TestCase("EMPEROR_PALPATINE", OfficerLoyaltyAllegiance.SecondFaction)]
-        [TestCase("DARTH_VADER", OfficerLoyaltyAllegiance.SecondFaction)]
-        public void OpenActive_ProtectedMainOfficer_LoadsExplicitLoyaltyAllegiance(
-            string instanceID,
-            OfficerLoyaltyAllegiance expected
+        [TestCase("MON_MOTHMA", "FNALL1")]
+        [TestCase("LEIA_ORGANA", "FNALL1")]
+        [TestCase("LUKE_SKYWALKER", "FNALL1")]
+        [TestCase("HAN_SOLO", "FNALL1")]
+        [TestCase("EMPEROR_PALPATINE", "FNEMP1")]
+        [TestCase("DARTH_VADER", "FNEMP1")]
+        public void OpenActive_ProtectedMainOfficer_RetainsFactionFlagsWithoutBecomingRecruitable(
+            string officerID,
+            string factionID
         )
         {
-            Officer officer = TestContent.Pack.GameData.Officers.Single(candidate =>
-                candidate.InstanceID == instanceID
+            Officer officer = TestContent.Pack.GameData.Officers.Single(item =>
+                item.InstanceID == officerID
             );
 
+            Assert.IsFalse(officer.IsRecruitable);
             Assert.IsFalse(officer.CanBetray);
-            Assert.AreEqual(expected, officer.LoyaltyAllegiance);
+            CollectionAssert.AreEqual(new[] { factionID }, officer.RecruitingFactionInstanceIDs);
         }
 
         [Test]

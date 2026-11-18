@@ -88,6 +88,18 @@ roster at its result boundary. Local completion retains its result conversions. 
 retains stricter input validation before campaign mutation. Automatic resolution keeps its existing
 implementation; shared handoff changes must preserve both completion paths.
 
+`SpaceCombatObserver` applies manual battle aftermath after ordinary campaign reactions settle.
+It reads accepted destruction from the encounter ledger using each retained unit's current owner
+and value, and reads the current global military roster for force weighting. Loyalty reads the existing recruitment-faction
+flags, so a change of current owner does not change allegiance. Sector support requests use the saved
+launch profile, retained planet eligibility, population, and counterpart support threshold; the
+existing planetary-control pipeline applies support and ownership reactions. Automatic results
+retain their existing aftermath path.
+
+Manual battle entry checks required support configuration and retained planet history before
+deployment. Missing history remains explicit and is rejected without selecting an eligibility
+value. Neither rendering nor transport chooses campaign consequences.
+
 ## Assessment and external services
 
 Mandatory target assessment is independent of whether a faction is automated. Player attack orders

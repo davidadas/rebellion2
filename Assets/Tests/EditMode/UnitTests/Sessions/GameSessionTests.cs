@@ -1571,7 +1571,6 @@ namespace Rebellion.Tests.Gameplay
                 loyalty: 99
             );
             template.TypeID = "officer-type";
-            template.LoyaltyAllegiance = OfficerLoyaltyAllegiance.FirstFaction;
             Officer officer = EntityFactory.CreateOfficer(
                 "saved",
                 _faction.InstanceID,
@@ -1579,11 +1578,9 @@ namespace Rebellion.Tests.Gameplay
                 loyalty: 37
             );
             officer.TypeID = template.TypeID;
-            officer.LoyaltyAllegiance = OfficerLoyaltyAllegiance.SecondFaction;
             officer = SerializationHelper.Deserialize<Officer>(
                 SerializationHelper.Serialize(officer)
             );
-            Assert.IsNull(officer.LoyaltyAllegiance);
             _game.AttachNode(officer, _planet);
             _session.Dispose();
 
@@ -1592,7 +1589,6 @@ namespace Rebellion.Tests.Gameplay
                 TestGameData.Create(_game.Config, officers: new[] { template })
             );
 
-            Assert.AreEqual(OfficerLoyaltyAllegiance.FirstFaction, officer.LoyaltyAllegiance);
             Assert.AreEqual(canBetray, officer.CanBetray);
             Assert.AreEqual(37, officer.Loyalty);
             Assert.AreEqual(_faction.InstanceID, officer.OwnerInstanceID);
@@ -1609,7 +1605,6 @@ namespace Rebellion.Tests.Gameplay
                 canBetray: false
             );
             template.TypeID = "officer-type";
-            template.LoyaltyAllegiance = OfficerLoyaltyAllegiance.SecondFaction;
             Officer officer = EntityFactory.CreateOfficer(
                 "unrecruited",
                 _faction.InstanceID,
@@ -1626,7 +1621,6 @@ namespace Rebellion.Tests.Gameplay
             _game.RemoveUnrecruitedOfficer(officer);
             _game.AttachNode(officer, _planet);
 
-            Assert.AreEqual(OfficerLoyaltyAllegiance.SecondFaction, officer.LoyaltyAllegiance);
             Assert.IsFalse(officer.CanBetray);
         }
 
@@ -1639,7 +1633,6 @@ namespace Rebellion.Tests.Gameplay
                 canBetray: false
             );
             template.TypeID = "officer-type";
-            template.LoyaltyAllegiance = OfficerLoyaltyAllegiance.FirstFaction;
             Officer remembered = EntityFactory.CreateOfficer(
                 "remembered",
                 "opponent",
@@ -1663,7 +1656,6 @@ namespace Rebellion.Tests.Gameplay
                 TestGameData.Create(_game.Config, officers: new[] { template })
             );
 
-            Assert.AreEqual(OfficerLoyaltyAllegiance.FirstFaction, remembered.LoyaltyAllegiance);
             Assert.IsFalse(remembered.CanBetray);
             Assert.AreEqual(37, remembered.Loyalty);
             Assert.IsNull(_game.GetSceneNodeByInstanceID<Officer>(remembered.InstanceID));

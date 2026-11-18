@@ -2,7 +2,6 @@ using System;
 using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
-using Rebellion.Tactical;
 using Rebellion.Tactical.Integration.Campaign;
 using Rebellion.Tactical.Networking;
 
@@ -18,26 +17,6 @@ namespace Rebellion.Multiplayer
         public ITacticalCombatPresentationDriver ActiveTacticalCombatDriver => _tacticalDriver;
         public event Action<ITacticalCombatPresentationDriver> TacticalCombatAvailable;
         public event Action<SpaceCombatResult> CompletedBattle;
-
-        /// <summary>
-        /// Returns the driver already admitted by the ordered begin request for this exact encounter.
-        /// </summary>
-        /// <param name="session">The encounter whose local view is opening.</param>
-        /// <returns>The connection-owned shared presentation driver.</returns>
-        public ITacticalCombatPresentationDriver GetTacticalCombatDriver(
-            TacticalCombatSession session
-        )
-        {
-            if (
-                !_synchronizationReady
-                || _tacticalDriver == null
-                || !ReferenceEquals(_tacticalDriver.Session, session)
-            )
-                throw new InvalidOperationException(
-                    "The shared battle presentation is unavailable."
-                );
-            return _tacticalDriver;
-        }
 
         /// <summary>
         /// Creates both local drivers only after the ordered campaign begin request has executed.

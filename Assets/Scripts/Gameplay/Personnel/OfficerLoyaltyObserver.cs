@@ -68,6 +68,8 @@ namespace Rebellion.Gameplay
         {
             foreach (SpaceCombatResult result in results ?? Array.Empty<SpaceCombatResult>())
             {
+                if (result?.IsTacticalCombat == true)
+                    continue;
                 if (!TryGetExclusiveSpaceController(result, out string controllerId))
                     continue;
 

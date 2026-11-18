@@ -3,8 +3,6 @@ using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 using NUnit.Framework;
-using Officer = global::Rebellion.Game.Units.Officer;
-using OfficerLoyaltyAllegiance = global::Rebellion.Game.Units.OfficerLoyaltyAllegiance;
 
 namespace Rebellion.Tests.Content
 {
@@ -31,46 +29,6 @@ namespace Rebellion.Tests.Content
         {
             if (Directory.Exists(folder))
                 Directory.Delete(folder, true);
-        }
-
-        [TestCase("None", OfficerLoyaltyAllegiance.None)]
-        [TestCase("SecondFaction", OfficerLoyaltyAllegiance.SecondFaction)]
-        public void Merge_OfficerLoyaltyOverride_PreservesInheritedProtection(
-            string value,
-            OfficerLoyaltyAllegiance expected
-        )
-        {
-            const string baseline =
-                "<Officers><Officer><TypeID>OFFICER</TypeID><CanBetray>false</CanBetray><LoyaltyAllegiance>FirstFaction</LoyaltyAllegiance></Officer></Officers>";
-            string overlay =
-                "<Officers Inherit='true'><Officer><TypeID>OFFICER</TypeID><LoyaltyAllegiance>"
-                + value
-                + "</LoyaltyAllegiance></Officer></Officers>";
-
-            XElement merged = XElement.Parse(ContentXmlOverrides.Merge(baseline, overlay));
-            Officer officer = SerializationHelper.Deserialize<Officer>(
-                merged.Element("Officer").ToString()
-            );
-
-            Assert.AreEqual(expected, officer.LoyaltyAllegiance);
-            Assert.IsFalse(officer.CanBetray);
-        }
-
-        [Test]
-        public void Merge_UnspecifiedOfficerLoyaltyOverride_DoesNotSelectNone()
-        {
-            const string baseline =
-                "<Officers><Officer><TypeID>OFFICER</TypeID><CanBetray>true</CanBetray><LoyaltyAllegiance>FirstFaction</LoyaltyAllegiance></Officer></Officers>";
-            const string overlay =
-                "<Officers Inherit='true'><Officer><TypeID>OFFICER</TypeID><LoyaltyAllegiance /></Officer></Officers>";
-
-            XElement merged = XElement.Parse(ContentXmlOverrides.Merge(baseline, overlay));
-            Officer officer = SerializationHelper.Deserialize<Officer>(
-                merged.Element("Officer").ToString()
-            );
-
-            Assert.IsNull(officer.LoyaltyAllegiance);
-            Assert.IsTrue(officer.CanBetray);
         }
 
         [Test]

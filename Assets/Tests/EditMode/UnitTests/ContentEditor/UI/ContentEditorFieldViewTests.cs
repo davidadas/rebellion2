@@ -51,35 +51,6 @@ namespace Rebellion.Tests.ContentEditor.UI
                 Object.DestroyImmediate(canvas);
         }
 
-        [Test]
-        public void Render_UnspecifiedLoyaltyAllegiance_SelectsUnspecifiedWithoutEditing()
-        {
-            ContentPackEditorField field = officer.GetField("LoyaltyAllegiance");
-
-            control.Render(ContentPackEditorProjector.BuildField(project, field), null, null, null);
-
-            TMP_Dropdown dropdown = control.GetComponentInChildren<TMP_Dropdown>();
-            Assert.AreEqual("Unspecified", dropdown.options[dropdown.value].text);
-            Assert.AreEqual(string.Empty, field.Value);
-            Assert.IsNull(officer.Element.Element("LoyaltyAllegiance"));
-        }
-
-        [Test]
-        public void Render_LoyaltyAllegianceDropdown_CanReturnToUnspecified()
-        {
-            ContentPackEditorField field = officer.GetField("LoyaltyAllegiance");
-            control.Submitted += (edited, values) => project.SetField(edited, values.Single());
-            control.Render(ContentPackEditorProjector.BuildField(project, field), null, null, null);
-            TMP_Dropdown dropdown = control.GetComponentInChildren<TMP_Dropdown>();
-
-            dropdown.value = dropdown.options.FindIndex(option => option.text == "None");
-            Assert.AreEqual("None", field.Value);
-            dropdown.value = dropdown.options.FindIndex(option => option.text == "Unspecified");
-
-            Assert.AreEqual(string.Empty, field.Value);
-            Assert.AreEqual("Unspecified", dropdown.options[dropdown.value].text);
-        }
-
         [TestCase("Officers", "RecruitingFactionInstanceIDs")]
         [TestCase("Starfighters", "ManufacturingFactionInstanceIDs")]
         [TestCase("Capital ships", "ManufacturingFactionInstanceIDs")]

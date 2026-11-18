@@ -313,6 +313,59 @@ namespace Rebellion.Tests.PlayerRequests
             Assert.AreEqual(1, published.OfType<SpaceCombatResult>().Count());
         }
 
+        [TestCase("support", false)]
+        [TestCase("history", false)]
+        [TestCase("loyalty", false)]
+        [TestCase("support", true)]
+        [TestCase("history", true)]
+        [TestCase("loyalty", true)]
+        public void Execute_ManualBattleWithIncompleteAftermath_RejectsWithoutChangingDecision(
+            string missing,
+            bool otherResponseRecorded
+        )
+        {
+            (SpaceCombatCommands combat, PendingCombatResult pending, _, _) =
+                PrepareTacticalRequestEncounter();
+            string actor = _opponentID;
+            if (otherResponseRecorded)
+            {
+                Assert.IsTrue(
+                    _executor.Execute(_opponentID, CreateTacticalBeginRequest(pending)).Accepted
+                );
+                actor = _ownerID;
+            }
+            switch (missing)
+            {
+                case "support":
+                    _game.Config.SupportShift.BattleSupport = null;
+                    break;
+                case "history":
+                    _game.AttachNode(
+                        new Planet { InstanceID = "missing-history", IsColonized = true },
+                        _origin.GetParentOfType<PlanetSector>()
+                    );
+                    break;
+                case "loyalty":
+                    _actor.Settings.BattleLossLoyaltyDivisor = 0;
+                    break;
+            }
+            Assert.IsTrue(combat.TryGetPendingCombat(out PendingCombatResult before));
+            string state = CaptureTacticalCampaignState();
+
+            PlayerRequestOutcome outcome = _executor.Execute(
+                actor,
+                CreateTacticalBeginRequest(pending)
+            );
+
+            Assert.IsFalse(outcome.Accepted);
+            Assert.IsNotEmpty(outcome.RejectionReason);
+            Assert.AreEqual(state, CaptureTacticalCampaignState());
+            Assert.IsNull(combat.ActiveTacticalCombat);
+            Assert.IsTrue(combat.TryGetPendingCombat(out PendingCombatResult after));
+            Assert.AreEqual(before.AttackerRetreatResponse, after.AttackerRetreatResponse);
+            Assert.AreEqual(before.DefenderRetreatResponse, after.DefenderRetreatResponse);
+        }
+
         /// <summary>
         /// Creates a pending authored encounter for the canonical admitted host and guest factions.
         /// </summary>
@@ -346,6 +399,12 @@ namespace Rebellion.Tests.PlayerRequests
             _origin = CreatePlanet("shared-combat", _opponentID, sector, 0);
             _destination = CreatePlanet("host-home", _opponentID, sector, 100);
             _opponentPlanet = CreatePlanet("guest-home", _ownerID, sector, 200);
+            foreach (Planet planet in sector.GetChildren<Planet>())
+                planet.InitializeSectorSupportEligibility(true);
+            foreach (Faction faction in _game.GetFactions())
+                faction.Settings.BattleLossLoyaltyDivisor = TestContent
+                    .Data.Factions.Single(definition => definition.InstanceID == faction.InstanceID)
+                    .Settings.BattleLossLoyaltyDivisor;
             CreateFleet("shared-host", _opponentID, _origin, out CapitalShip host);
             CreateFleet("shared-guest", _ownerID, _origin, out CapitalShip guest);
             host.TypeID = "CSEM006";

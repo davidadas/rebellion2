@@ -4627,6 +4627,7 @@ namespace Rebellion.Tests.Gameplay
             );
             IReadOnlyList<GameResult> results = commands.CompleteTacticalCombat(battle);
             SpaceCombatResult combat = results.OfType<SpaceCombatResult>().Single();
+            Assert.IsTrue(combat.IsTacticalCombat);
             Assert.IsFalse(commands.HasPendingDecision);
             Assert.IsFalse(attacker.GetParentOfType<Fleet>().IsInCombat);
             Assert.AreEqual(1, attacker.SystemDamage.Weapons);
@@ -4653,6 +4654,7 @@ namespace Rebellion.Tests.Gameplay
             List<GameResult> results = commands.CompleteTacticalCombat(battle);
 
             SpaceCombatResult combat = results.OfType<SpaceCombatResult>().Single();
+            Assert.IsTrue(combat.IsTacticalCombat);
             ShipDamageResult damage = combat.ShipDamage.Single(item => item.Ship == attacker);
             Assert.AreEqual(battle.PlayerSide, combat.Winner);
             Assert.AreEqual(1000, damage.HullBefore);

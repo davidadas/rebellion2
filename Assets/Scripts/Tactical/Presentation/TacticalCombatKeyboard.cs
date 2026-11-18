@@ -122,56 +122,5 @@ namespace Rebellion.Tactical.Presentation
                     || panel == TacticalCombatHudPanel.ObjectGroup && keyDown
                 );
         }
-
-        /// <summary>
-        /// Resolves one camera shortcut while leaving contextual battle commands to their selection owner.
-        /// </summary>
-        /// <param name="key">The pressed keyboard key.</param>
-        /// <param name="command">Receives the camera operation.</param>
-        /// <returns>Whether the key addresses a primary-camera control.</returns>
-        public static bool TryGetCameraCommand(Key key, out TacticalCombatCameraCommand command)
-        {
-            command = key switch
-            {
-                Key.PageUp or Key.Numpad9 or Key.NumpadPlus => TacticalCombatCameraCommand.ZoomIn,
-                Key.PageDown or Key.Numpad3 or Key.NumpadMinus =>
-                    TacticalCombatCameraCommand.ZoomOut,
-                Key.A or Key.LeftArrow or Key.Numpad4 => TacticalCombatCameraCommand.RotateLeft,
-                Key.D or Key.RightArrow or Key.Numpad6 => TacticalCombatCameraCommand.RotateRight,
-                Key.W or Key.UpArrow or Key.Numpad8 => TacticalCombatCameraCommand.TiltUp,
-                Key.S or Key.DownArrow or Key.Numpad2 => TacticalCombatCameraCommand.TiltDown,
-                Key.Home or Key.Numpad7 => TacticalCombatCameraCommand.Save,
-                Key.End or Key.Numpad1 => TacticalCombatCameraCommand.Restore,
-                Key.Enter or Key.NumpadEnter or Key.NumpadPeriod =>
-                    TacticalCombatCameraCommand.Focus,
-                _ => default,
-            };
-            return key
-                is Key.PageUp
-                    or Key.Numpad9
-                    or Key.NumpadPlus
-                    or Key.PageDown
-                    or Key.Numpad3
-                    or Key.NumpadMinus
-                    or Key.LeftArrow
-                    or Key.A
-                    or Key.Numpad4
-                    or Key.RightArrow
-                    or Key.D
-                    or Key.Numpad6
-                    or Key.UpArrow
-                    or Key.W
-                    or Key.Numpad8
-                    or Key.DownArrow
-                    or Key.S
-                    or Key.Numpad2
-                    or Key.Home
-                    or Key.Numpad7
-                    or Key.End
-                    or Key.Numpad1
-                    or Key.Enter
-                    or Key.NumpadEnter
-                    or Key.NumpadPeriod;
-        }
     }
 }

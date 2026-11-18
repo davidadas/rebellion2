@@ -798,6 +798,11 @@ namespace Rebellion.Game.Results
     public class SpaceCombatResult : GameResult
     {
         /// <summary>
+        /// Gets whether this encounter imported a manually played battle, including any continuation.
+        /// </summary>
+        internal bool IsTacticalCombat { get; set; }
+
+        /// <summary>
         /// Gets or sets the runtime losses retained across this encounter's resolution phases.
         /// </summary>
         internal SpaceCombatLossLedger AcceptedLosses { get; set; } = new();

@@ -69,7 +69,6 @@ internal static class ContentEditorInspectorLayout
                 "IsMain",
                 "IsRecruitable",
                 "CanBetray",
-                "LoyaltyAllegiance",
                 "Loyalty",
                 "LoyaltyVariance",
                 "DiplomacyVariance",

@@ -7,7 +7,6 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Rebellion.Game;
-using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
@@ -93,7 +92,7 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Verifies shared player details and content-bound officer allegiance alongside durable
+        /// Verifies shared player details alongside durable
         /// model state, excluding the UI state explicitly owned by an individual participant.
         /// </summary>
         /// <param name="type">The model type being inspected.</param>
@@ -101,17 +100,6 @@ namespace Rebellion.Multiplayer
         private static TypePlan CreateSimulationPlan(Type type)
         {
             TypePlan plan = CreatePlan(type);
-            if (typeof(Officer).IsAssignableFrom(type))
-                return new TypePlan(
-                    type,
-                    plan.Scalar,
-                    plan.Code,
-                    plan.Members.Append(
-                            typeof(Officer).GetProperty(nameof(Officer.LoyaltyAllegiance))
-                        )
-                        .ToArray(),
-                    plan.InlineCollection
-                );
             return type == typeof(Player)
                 ? new TypePlan(
                     type,

@@ -273,7 +273,6 @@ public sealed class GameDataCatalog
             )
             {
                 officer.BindLoyaltyProtection(template.CanBetray);
-                officer.BindLoyaltyAllegiance(template.LoyaltyAllegiance);
                 officer.RosterOrder = template.RosterOrder;
                 officer.JediProbability = template.JediProbability;
                 officer.JediLevel = template.JediLevel;

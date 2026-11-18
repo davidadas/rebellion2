@@ -46,6 +46,7 @@ namespace Rebellion.Gameplay
         private readonly SpaceCombatWithdrawalResolver _withdrawalResolver;
         private SpaceCombatDecision _pendingDecision;
         private readonly TacticalCombatFactory _tacticalFactory;
+        private readonly SpaceCombatObserver _combatObserver;
         private TacticalCombatSession _tacticalCombat;
         private Dictionary<string, ISceneNode> _tacticalSources;
         private string _tacticalBattleID;
@@ -86,6 +87,7 @@ namespace Rebellion.Gameplay
                     "Tactical deployment is unavailable for this encounter."
                 );
             Planet planet = _queries.ResolveCombatPlanet(_pendingDecision);
+            _combatObserver?.ValidateBattle(planet);
             _tacticalAttackingUnits = CaptureCombatUnits(
                 _queries.GetFleets(_pendingDecision.AttackerFleetInstanceIDs),
                 planet,
@@ -131,6 +133,7 @@ namespace Rebellion.Gameplay
                 throw new InvalidOperationException("The encounter cannot enter tactical combat.");
 
             Planet planet = _queries.ResolveCombatPlanet(_pendingDecision);
+            _combatObserver?.ValidateBattle(planet);
             _tacticalAttackingUnits = CaptureCombatUnits(
                 _queries.GetFleets(_pendingDecision.AttackerFleetInstanceIDs),
                 planet,
@@ -336,6 +339,7 @@ namespace Rebellion.Gameplay
                 );
             CombatUnitSnapshot.RecordOutcomes(result.AttackingUnits, damaged, destroyed);
             CombatUnitSnapshot.RecordOutcomes(result.DefendingUnits, damaged, destroyed);
+            result.IsTacticalCombat = true;
             ClearCombatFlags(decision);
             _pendingDecision = null;
             _tacticalCombat = null;
@@ -474,17 +478,20 @@ namespace Rebellion.Gameplay
         /// <param name="blockadeTransitionResolver">Resolves blockade changes after combat mutations.</param>
         /// <param name="tacticalFactory">Captures interactive deployment from the selected content.</param>
         /// <param name="starfighterTypes">The available fighter designs used to build combat formations.</param>
+        /// <param name="combatObserver">The session's manual battle aftermath owner.</param>
         public SpaceCombatCommands(
             GameRoot game,
             MovementCommands movement,
             SpaceCombatQueries queries,
             BlockadeTransitionResolver blockadeTransitionResolver = null,
             TacticalCombatFactory tacticalFactory = null,
-            IReadOnlyList<Starfighter> starfighterTypes = null
+            IReadOnlyList<Starfighter> starfighterTypes = null,
+            SpaceCombatObserver combatObserver = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _tacticalFactory = tacticalFactory;
+            _combatObserver = combatObserver;
             _movement = movement ?? throw new ArgumentNullException(nameof(movement));
             _autoResolver = new SpaceCombatAutoResolver(
                 game.Config.Combat.SpaceCombat,

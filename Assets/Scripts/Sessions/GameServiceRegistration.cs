@@ -28,6 +28,7 @@ namespace Rebellion.Gameplay
             typeof(PlanetaryControlObserver),
             typeof(UprisingObserver),
             typeof(OfficerLoyaltyObserver),
+            typeof(SpaceCombatObserver),
             typeof(FogOfWarObserver),
             typeof(ManufacturingObserver),
             typeof(AdvisorAutomationObserver),
@@ -148,7 +149,8 @@ namespace Rebellion.Gameplay
                 locator.GetService<SpaceCombatQueries>(),
                 locator.GetService<BlockadeTransitionResolver>(),
                 locator.GetService<TacticalCombatFactory>(),
-                locator.GetService<GameDataCatalog>().Starfighters
+                locator.GetService<GameDataCatalog>().Starfighters,
+                locator.GetService<SpaceCombatObserver>()
             ));
             services.AddSingleton<BombardmentQueries>();
             services.AddSingleton<BombardmentCommands>();

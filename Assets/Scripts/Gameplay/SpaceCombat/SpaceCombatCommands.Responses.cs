@@ -142,6 +142,14 @@ namespace Rebellion.Gameplay
                     && factionID != _pendingDecision.DefenderOwnerInstanceID
             )
                 return false;
+            try
+            {
+                _combatObserver?.ValidateBattle(_queries.ResolveCombatPlanet(_pendingDecision));
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
+            }
             SpaceCombatDecision decision = _pendingDecision;
             if (
                 string.IsNullOrEmpty(decision.TacticalBattleID)

@@ -62,11 +62,6 @@ namespace Rebellion.Multiplayer
         public bool HasDeclaredVictory => _victoryDeclared;
 
         /// <summary>
-        /// Gets whether an applied host action still awaits its ordered peer receipt.
-        /// </summary>
-        public bool HasUnacknowledgedActions => _awaitingReceipts.Count != 0;
-
-        /// <summary>
         /// Gets whether ordered entry traffic is waiting for the campaign's writable command boundary.
         /// </summary>
         public bool HasQueuedTacticalEntry =>

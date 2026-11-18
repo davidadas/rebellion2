@@ -95,7 +95,7 @@ namespace Rebellion.Game.SpaceCombat
         /// <param name="firstFactionID">The faction bound to index zero.</param>
         /// <param name="secondFactionID">The faction bound to index one.</param>
         /// <returns>True when both indices have distinct, unambiguous faction identities.</returns>
-        private static bool TryResolveFactionIDs(
+        internal static bool TryResolveFactionIDs(
             TacticalCombatDefinition definition,
             out string firstFactionID,
             out string secondFactionID

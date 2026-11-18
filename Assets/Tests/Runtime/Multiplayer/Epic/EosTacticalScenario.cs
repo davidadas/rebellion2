@@ -33,13 +33,13 @@ namespace Rebellion.Tests.MultiplayerIntegration
             Planet planet = new()
             {
                 InstanceID = PlanetID,
-                OwnerInstanceID = "FNALL1",
                 IsColonized = true,
                 PositionX = 15,
                 PositionY = 15,
             };
             planet.SetPopularSupport("FNALL1", 100);
             game.AttachNode(planet, sector);
+            game.ChangeOwnership(planet, "FNALL1");
             var data = content.GameData;
             UnitFactory factory = new(
                 data.Buildings,

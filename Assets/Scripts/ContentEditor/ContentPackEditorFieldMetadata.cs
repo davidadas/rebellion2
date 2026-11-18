@@ -182,7 +182,8 @@ internal static class ContentPackEditorFieldMetadata
             "Checked missions can be performed by this special forces unit.",
         ["GarrisonTroopTypeID"] =
             "The regiment type used when this faction creates automatic garrisons.",
-        ["RecruitingFactionInstanceIDs"] = "Factions allowed to recruit this officer.",
+        ["RecruitingFactionInstanceIDs"] =
+            "Factions allowed to recruit this officer. Battle loyalty favors a combatant only when its flag is set and the opposing flag is clear.",
         ["ManufacturingFactionInstanceIDs"] = "Factions allowed to build this unit or facility.",
         ["AllowedRanks"] = "Command assignments this officer is eligible to hold.",
         ["NamePoolID"] =
@@ -200,8 +201,6 @@ internal static class ContentPackEditorFieldMetadata
         ["Traits"] =
             "Starting traits assigned to this officer. Definitions are edited under Officer traits.",
         ["CanBetray"] = "Allows this officer's loyalty checks to betray a mission.",
-        ["LoyaltyAllegiance"] =
-            "Chooses the faction favored by battle loyalty changes. None reverses either faction's change. An empty value is unspecified.",
         ["Loyalty"] =
             "The officer's loyalty rating. Lower loyalty increases the risk of mission betrayal.",
         ["IsRecruitable"] = "Whether this officer can become available through recruitment.",
