@@ -6,6 +6,8 @@ using NUnit.Framework;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
+using Encoding = global::System.Text.Encoding;
+using JsonUtility = global::UnityEngine.JsonUtility;
 
 namespace Rebellion.Tests.Multiplayer
 {
@@ -18,10 +20,7 @@ namespace Rebellion.Tests.Multiplayer
             TacticalCombatNetworkFrame decoded = MultiplayerTacticalFrameCodec.Decode(
                 MultiplayerTacticalFrameCodec.Encode(original)
             );
-            Assert.That(
-                UnityEngine.JsonUtility.ToJson(decoded),
-                Is.EqualTo(UnityEngine.JsonUtility.ToJson(original))
-            );
+            Assert.That(JsonUtility.ToJson(decoded), Is.EqualTo(JsonUtility.ToJson(original)));
             Assert.That(decoded.TimestampMilliseconds, Is.EqualTo(original.TimestampMilliseconds));
             Assert.That(
                 decoded.Units[0].ComponentDamage,
@@ -99,8 +98,8 @@ namespace Rebellion.Tests.Multiplayer
             Assert.That(decoded.Length, Is.EqualTo(effects.Length));
             for (int index = 0; index < effects.Length; index++)
                 Assert.That(
-                    UnityEngine.JsonUtility.ToJson(decoded[index]),
-                    Is.EqualTo(UnityEngine.JsonUtility.ToJson(effects[index]))
+                    JsonUtility.ToJson(decoded[index]),
+                    Is.EqualTo(JsonUtility.ToJson(effects[index]))
                 );
         }
 
@@ -177,7 +176,7 @@ namespace Rebellion.Tests.Multiplayer
         )
         {
             using MemoryStream raw = new();
-            using (BinaryWriter writer = new(raw, System.Text.Encoding.UTF8, true))
+            using (BinaryWriter writer = new(raw, Encoding.UTF8, true))
             {
                 writer.Write(invalidCount ? int.MaxValue : 1);
                 if (!invalidCount)

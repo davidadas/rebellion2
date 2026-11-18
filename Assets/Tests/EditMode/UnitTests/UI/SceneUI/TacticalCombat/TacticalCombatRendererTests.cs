@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,6 +9,8 @@ using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Multiplayer;
+using Rebellion.Util.Random;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -16,6 +19,10 @@ using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
+using Array = global::System.Array;
+using GraphicsDeviceType = global::UnityEngine.Rendering.GraphicsDeviceType;
+using Object = global::UnityEngine.Object;
+using TextMeshProUGUI = global::TMPro.TextMeshProUGUI;
 using Vector3N = System.Numerics.Vector3;
 
 namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
@@ -42,7 +49,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         [UnitySetUp]
         public IEnumerator SetUp()
         {
-            if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null)
+            if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
                 Assert.Ignore("Tactical render targets require a graphics device.");
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             yield return new EnterPlayMode();
@@ -427,7 +434,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             TacticalCombatSession guest = CreateEncounter(pack.GameData);
             host.ConfigureNetworkAuthority();
             guest.ConfigureNetworkReplica();
-            System.Action<TacticalCombatUnit> destruction = null;
+            Action<TacticalCombatUnit> destruction = null;
             try
             {
                 TacticalCombatNetworkFrame first = host.CaptureNetworkFrame(1);
@@ -658,7 +665,10 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         {
             ContentPack pack = ContentPackLoader.OpenActive();
             TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-            TacticalCombatSceneryRandom expectedRandom = new(new TacticalCombatRandom(42), () => 1);
+            TacticalCombatSceneryRandom expectedRandom = new(
+                new FifteenBitRandomProvider(42),
+                () => 1
+            );
             Vector3N expectedStation = expectedRandom.NextPosition(100, -2, 0.2f);
 
             yield return PrepareRenderer(
@@ -779,9 +789,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 new Vector3(unit.Position.X, unit.Position.Y, unit.Position.Z),
                 root.localPosition
             );
-            UnityEngine.UI.Image pause = view
-                .transform.Find("Canvas/Frame/Pause")
-                .GetComponent<UnityEngine.UI.Image>();
+            Image pause = view.transform.Find("Canvas/Frame/Pause").GetComponent<Image>();
             Assert.AreSame(
                 assets.GetSprite(
                     encounter.Definition.HudImages.Single(item => item.Key == "pause-down").Path
@@ -1739,7 +1747,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                         Assert.AreSame(groups[slot], encounter.Selection.Group);
                         string name = groups[slot].RequestedMembers[0].DisplayName;
                         Assert.IsTrue(
-                            view.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true)
+                            view.GetComponentsInChildren<TextMeshProUGUI>(true)
                                 .Any(label =>
                                     label.gameObject.activeInHierarchy && label.text == name
                                 )
@@ -2192,7 +2200,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             TacticalCombatSession encounter,
             ContentPack pack,
             ITacticalCombatPresentationDriver driver = null,
-            System.Action<TacticalCombatSession> complete = null
+            Action<TacticalCombatSession> complete = null
         )
         {
             assets = new ContentAssets(pack.FileResolver);
@@ -2221,6 +2229,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         {
             public TacticalCombatSession Session { get; }
             public TacticalCombatReplicaPlayback ReplicaPlayback { get; }
+            ITacticalCombatPresentationTimeline ITacticalCombatPresentationDriver.ReplicaPlayback =>
+                ReplicaPlayback;
             public bool IsAuthoritative => false;
             public bool CompletionReady { get; set; }
             public SpaceCombatResult CommittedResult => null;
@@ -2284,7 +2294,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         {
             GetReplicaPlayback(session);
             TacticalCombatNetworkEffect[] effects = frame.Effects;
-            frame.Effects = System.Array.Empty<TacticalCombatNetworkEffect>();
+            frame.Effects = Array.Empty<TacticalCombatNetworkEffect>();
             session.ApplyNetworkState(frame);
             session.ApplyNetworkEffects(effects);
         }
@@ -2373,7 +2383,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                     }
                 );
             }
-            TacticalCombatRandom random = new(42);
+            FifteenBitRandomProvider random = new(42);
             return new TacticalCombatSession(
                 units,
                 units.ConvertAll(unit => new TacticalCombatGroup(
@@ -2464,7 +2474,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             foreach (TacticalCombatGroup group in groups)
                 if (group.IsFighterGroup)
                     group.FighterCategory = fighterCategory;
-            TacticalCombatRandom random = new(42);
+            FifteenBitRandomProvider random = new(42);
             return new TacticalCombatSession(
                 units,
                 groups,

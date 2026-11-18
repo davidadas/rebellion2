@@ -16,6 +16,8 @@ using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
+using XDocument = global::System.Xml.Linq.XDocument;
+using XElement = global::System.Xml.Linq.XElement;
 
 namespace Rebellion.Tests.Game
 {
@@ -367,10 +369,8 @@ namespace Rebellion.Tests.Game
             game.GenerateRuntimeIdentifier();
             game.GenerateRuntimeIdentifier();
 
-            System.Xml.Linq.XElement document = System.Xml.Linq.XElement.Parse(
-                SerializationHelper.Serialize(game)
-            );
-            System.Xml.Linq.XElement counter = document.Element(nameof(GameRoot.IDCounter));
+            XElement document = XElement.Parse(SerializationHelper.Serialize(game));
+            XElement counter = document.Element(nameof(GameRoot.IDCounter));
             Assert.That(counter, Is.Not.Null);
             Assert.That(document.Element("RuntimeIdentifierIndex"), Is.Null);
             if (legacyName)
@@ -392,7 +392,7 @@ namespace Rebellion.Tests.Game
             GameRoot restored = SerializationHelper.Deserialize<GameRoot>(xml);
 
             Assert.That(restored.Summary.Seed, Is.EqualTo(456));
-            Assert.That(System.Xml.Linq.XElement.Parse(xml).Element("RandomSeed"), Is.Null);
+            Assert.That(XElement.Parse(xml).Element("RandomSeed"), Is.Null);
             Assert.That(((SystemRandomProvider)restored.Random).Seed, Is.EqualTo(456));
             Assert.That(restored.RandomIndex, Is.EqualTo(game.RandomIndex));
             Assert.That(
@@ -535,9 +535,7 @@ namespace Rebellion.Tests.Game
                 },
                 _planet
             );
-            System.Xml.Linq.XDocument document = System.Xml.Linq.XDocument.Parse(
-                SerializationHelper.Serialize(_game)
-            );
+            XDocument document = XDocument.Parse(SerializationHelper.Serialize(_game));
             Assert.AreEqual(
                 1,
                 document

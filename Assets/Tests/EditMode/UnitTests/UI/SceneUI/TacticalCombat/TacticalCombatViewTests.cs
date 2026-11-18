@@ -3,6 +3,8 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using FontStyles = global::TMPro.FontStyles;
+using TextMeshProUGUI = global::TMPro.TextMeshProUGUI;
 
 namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
 {
@@ -75,9 +77,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             string[] rows = { "Name", "Assignment", "Orders", "Tactics", "Fighter counts" };
             foreach (string row in rows)
             {
-                TMPro.TextMeshProUGUI label = panel.Find(row).GetComponent<TMPro.TextMeshProUGUI>();
+                TextMeshProUGUI label = panel.Find(row).GetComponent<TextMeshProUGUI>();
                 Assert.AreEqual(12, label.fontSize);
-                Assert.AreEqual(TMPro.FontStyles.Normal, label.fontStyle);
+                Assert.AreEqual(FontStyles.Normal, label.fontStyle);
                 Assert.IsNotNull(label.GetComponent<RectMask2D>());
             }
             for (int index = 0; index < 5; index++)

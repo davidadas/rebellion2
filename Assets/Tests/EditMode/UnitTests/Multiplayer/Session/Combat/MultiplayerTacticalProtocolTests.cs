@@ -8,6 +8,7 @@ using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
 using UnityEngine;
+using Encoding = global::System.Text.Encoding;
 
 namespace Rebellion.Tests.Multiplayer
 {
@@ -153,7 +154,7 @@ namespace Rebellion.Tests.Multiplayer
                 new MultiplayerPacket(
                     request.Type,
                     request.Metadata,
-                    System.Text.Encoding.UTF8.GetBytes(
+                    Encoding.UTF8.GetBytes(
                         JsonUtility.ToJson(
                             new TacticalCombatNetworkCommand
                             {

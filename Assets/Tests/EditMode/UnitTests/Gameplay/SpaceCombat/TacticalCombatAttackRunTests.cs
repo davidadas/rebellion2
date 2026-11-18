@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using NUnit.Framework;
@@ -295,7 +296,7 @@ namespace Rebellion.Tests.Gameplay
         {
             private readonly Queue<int> _values;
             public int DrawCount { get; private set; }
-            public System.Action<int, int> BeforeDraw { get; set; }
+            public Action<int, int> BeforeDraw { get; set; }
 
             /// <summary>
             /// Captures the exact ordered draws used by a selection fixture.

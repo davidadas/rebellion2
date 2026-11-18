@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using ShadowCastingMode = global::UnityEngine.Rendering.ShadowCastingMode;
 
 /// <summary>
 /// Owns the battle frame's paired blue wireframe boundary resources.
@@ -129,7 +130,7 @@ internal sealed class TacticalCombatHolocube : IDisposable
             boundary.GetComponent<MeshFilter>().sharedMesh = mesh;
             MeshRenderer renderer = boundary.GetComponent<MeshRenderer>();
             renderer.sharedMaterial = _material;
-            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
             renderer.receiveShadows = false;
             renderer.enabled = visible;
         }

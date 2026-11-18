@@ -157,7 +157,7 @@ namespace Rebellion.Tests.Gameplay
 
             if (TacticalCombatNativeMath.SignificandBits == 53)
                 expectedBits = 0x3f800000;
-            Assert.AreEqual(expectedBits, System.BitConverter.SingleToInt32Bits(length));
+            Assert.AreEqual(expectedBits, BitConverter.SingleToInt32Bits(length));
         }
 
         [TestCase(0x92bda158u, 0xfff134d7u, 0x7fbb4c4au, 0x7ffb4c4au)]
@@ -178,10 +178,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.IsTrue(float.IsNaN(length));
             if (TacticalCombatNativeMath.SignificandBits == 64)
-                Assert.AreEqual(
-                    expected,
-                    unchecked((uint)System.BitConverter.SingleToInt32Bits(length))
-                );
+                Assert.AreEqual(expected, unchecked((uint)BitConverter.SingleToInt32Bits(length)));
         }
 
         [TestCase(0x7fc12345u, 0x7fc12345u)]
@@ -199,10 +196,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.IsTrue(float.IsNaN(length));
             if (TacticalCombatNativeMath.SignificandBits == 64)
-                Assert.AreEqual(
-                    expected,
-                    unchecked((uint)System.BitConverter.SingleToInt32Bits(length))
-                );
+                Assert.AreEqual(expected, unchecked((uint)BitConverter.SingleToInt32Bits(length)));
         }
 
         [TestCase(0x7f812345u, 0x7fc00001u, 0x7fc12345u)]
@@ -218,10 +212,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.IsTrue(float.IsNaN(length));
             if (TacticalCombatNativeMath.SignificandBits == 64)
-                Assert.AreEqual(
-                    expected,
-                    unchecked((uint)System.BitConverter.SingleToInt32Bits(length))
-                );
+                Assert.AreEqual(expected, unchecked((uint)BitConverter.SingleToInt32Bits(length)));
         }
 
         [TestCase(0x7fc12345u, 0x7f812345u, 0x7fc12345u)]
@@ -236,10 +227,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.IsTrue(float.IsNaN(length));
             if (TacticalCombatNativeMath.SignificandBits == 64)
-                Assert.AreEqual(
-                    expected,
-                    unchecked((uint)System.BitConverter.SingleToInt32Bits(length))
-                );
+                Assert.AreEqual(expected, unchecked((uint)BitConverter.SingleToInt32Bits(length)));
         }
 
         [Test]
@@ -253,7 +241,7 @@ namespace Rebellion.Tests.Gameplay
             if (TacticalCombatNativeMath.SignificandBits == 64)
                 Assert.AreEqual(
                     0x7fc00002u,
-                    unchecked((uint)System.BitConverter.SingleToInt32Bits(length))
+                    unchecked((uint)BitConverter.SingleToInt32Bits(length))
                 );
         }
 
@@ -280,7 +268,7 @@ namespace Rebellion.Tests.Gameplay
                 new Vector3(float.Epsilon, float.Epsilon, float.Epsilon)
             );
 
-            Assert.AreEqual(2, System.BitConverter.SingleToInt32Bits(length));
+            Assert.AreEqual(2, BitConverter.SingleToInt32Bits(length));
         }
 
         [Test]
@@ -308,7 +296,7 @@ namespace Rebellion.Tests.Gameplay
                 new Vector3(0, -9.094947017729282e-13f, 0)
             );
 
-            Assert.AreEqual(0x3f800001, System.BitConverter.SingleToInt32Bits(distance));
+            Assert.AreEqual(0x3f800001, BitConverter.SingleToInt32Bits(distance));
         }
 
         [Test]
@@ -351,9 +339,9 @@ namespace Rebellion.Tests.Gameplay
         /// <returns>The vector with the supplied component encodings.</returns>
         private static Vector3 FromBits(uint x, uint y, uint z) =>
             new(
-                System.BitConverter.Int32BitsToSingle(unchecked((int)x)),
-                System.BitConverter.Int32BitsToSingle(unchecked((int)y)),
-                System.BitConverter.Int32BitsToSingle(unchecked((int)z))
+                BitConverter.Int32BitsToSingle(unchecked((int)x)),
+                BitConverter.Int32BitsToSingle(unchecked((int)y)),
+                BitConverter.Int32BitsToSingle(unchecked((int)z))
             );
     }
 }

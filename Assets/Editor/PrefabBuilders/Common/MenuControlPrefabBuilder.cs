@@ -1130,7 +1130,7 @@ public static class MenuControlPrefabBuilder
             ContentPressVisualBinding pressBinding =
                 image.gameObject.AddComponent<ContentPressVisualBinding>();
             pressBinding.SetAddresses(textureBinding.Address, null);
-            UnityEngine.Object.DestroyImmediate(textureBinding);
+            Object.DestroyImmediate(textureBinding);
         }
         return button;
     }
@@ -1141,7 +1141,7 @@ public static class MenuControlPrefabBuilder
     /// <param name="target">The component containing the serialized field.</param>
     /// <param name="propertyName">The serialized field name.</param>
     /// <param name="value">The string to assign.</param>
-    internal static void AssignString(UnityEngine.Object target, string propertyName, string value)
+    internal static void AssignString(Object target, string propertyName, string value)
     {
         SerializedObject serializedObject = new SerializedObject(target);
         FindRequiredProperty(target, serializedObject, propertyName).stringValue = value;

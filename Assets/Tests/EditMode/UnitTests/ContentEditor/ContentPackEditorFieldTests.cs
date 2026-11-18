@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 using NUnit.Framework;
+using Officer = global::Rebellion.Game.Units.Officer;
 
 namespace Rebellion.Tests.ContentEditor
 {
@@ -54,9 +55,7 @@ namespace Rebellion.Tests.ContentEditor
             Assert.Contains(string.Empty, field.Choices.ToArray());
             Assert.IsNull(
                 SerializationHelper
-                    .Deserialize<Rebellion.Game.Units.Officer>(
-                        catalog.Records.Single().Element.ToString()
-                    )
+                    .Deserialize<Officer>(catalog.Records.Single().Element.ToString())
                     .LoyaltyAllegiance
             );
         }

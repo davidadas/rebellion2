@@ -15,6 +15,7 @@ using Rebellion.Game.Messages;
 using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
 using Rebellion.Util.Serialization;
+using Thread = global::System.Threading.Thread;
 
 namespace Rebellion.Tests.Managers
 {
@@ -2403,11 +2404,11 @@ namespace Rebellion.Tests.Managers
         public async Task SaveGameDataAsync_SavingListenerUpdatesModel_CapturesOnCallingThreadAsync()
         {
             GameRoot game = new GameRoot();
-            int caller = System.Threading.Thread.CurrentThread.ManagedThreadId;
+            int caller = Thread.CurrentThread.ManagedThreadId;
             int callbackThread = 0;
             _saveGameManager.Saving += () =>
             {
-                callbackThread = System.Threading.Thread.CurrentThread.ManagedThreadId;
+                callbackThread = Thread.CurrentThread.ManagedThreadId;
                 game.CurrentTick = 42;
             };
 

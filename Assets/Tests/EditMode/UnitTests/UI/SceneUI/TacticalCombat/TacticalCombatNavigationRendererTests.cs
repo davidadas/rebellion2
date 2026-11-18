@@ -7,6 +7,7 @@ using Rebellion.Gameplay;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.TestTools;
+using Array = global::System.Array;
 using Vector3N = System.Numerics.Vector3;
 
 namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
@@ -115,7 +116,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 .GetComponentsInChildren<MeshRenderer>(true)
                 .Single(renderer => renderer.transform.localPosition == Vector3.zero);
             Assert.AreEqual(Color.magenta, center.sharedMaterial.color);
-            _subject.UpdateSelection(System.Array.Empty<TacticalCombatGroup>());
+            _subject.UpdateSelection(Array.Empty<TacticalCombatGroup>());
             Assert.AreEqual(Color.red, center.sharedMaterial.color);
         }
     }

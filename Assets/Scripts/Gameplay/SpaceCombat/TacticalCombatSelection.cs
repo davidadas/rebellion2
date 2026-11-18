@@ -73,18 +73,11 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="session">The encounter whose command and audio boundaries are used.</param>
         /// <param name="side">The faction owning this independent selection, or the local view's side.</param>
-        public TacticalCombatSelection(
-            TacticalCombatSession session,
-            Rebellion.Game.Results.CombatSide? side = null
-        )
+        public TacticalCombatSelection(TacticalCombatSession session, CombatSide? side = null)
         {
             _session = session ?? throw new ArgumentNullException(nameof(session));
             _side = side ?? session.PlayerSide;
-            if (
-                _side
-                is not Rebellion.Game.Results.CombatSide.Attacker
-                    and not Rebellion.Game.Results.CombatSide.Defender
-            )
+            if (_side is not CombatSide.Attacker and not CombatSide.Defender)
                 throw new ArgumentOutOfRangeException(nameof(side));
             Members = _members.AsReadOnly();
             Highlights = _highlights.AsReadOnly();

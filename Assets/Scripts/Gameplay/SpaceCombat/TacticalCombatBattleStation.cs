@@ -1,4 +1,5 @@
 using System;
+using CapitalShip = global::Rebellion.Game.Units.CapitalShip;
 
 namespace Rebellion.Gameplay
 {
@@ -46,7 +47,7 @@ namespace Rebellion.Gameplay
                 throw new ArgumentException("A battle station unit is required.", nameof(unit));
             HasPlanetaryProtection = hasPlanetaryProtection;
             IsConstructionComplete = unit.Status != TacticalCombatUnitStatus.UnderConstruction;
-            MaximumHull = ((Rebellion.Game.Units.CapitalShip)unit.Source).MaxHullStrength;
+            MaximumHull = ((CapitalShip)unit.Source).MaxHullStrength;
         }
 
         /// <summary>

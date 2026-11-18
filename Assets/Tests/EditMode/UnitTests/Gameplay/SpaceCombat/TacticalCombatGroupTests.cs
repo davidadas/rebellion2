@@ -3,6 +3,7 @@ using NUnit.Framework;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using BitConverter = global::System.BitConverter;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -83,18 +84,9 @@ namespace Rebellion.Tests.Gameplay
 
             group.Advance(1000, 100, 0);
 
-            Assert.AreEqual(
-                0x3ece5cb0,
-                System.BitConverter.SingleToInt32Bits(group.Formation.Position.X)
-            );
-            Assert.AreEqual(
-                0x3e5c1e9a,
-                System.BitConverter.SingleToInt32Bits(group.Formation.Position.Y)
-            );
-            Assert.AreEqual(
-                0x3f2bf7e9,
-                System.BitConverter.SingleToInt32Bits(group.Formation.Position.Z)
-            );
+            Assert.AreEqual(0x3ece5cb0, BitConverter.SingleToInt32Bits(group.Formation.Position.X));
+            Assert.AreEqual(0x3e5c1e9a, BitConverter.SingleToInt32Bits(group.Formation.Position.Y));
+            Assert.AreEqual(0x3f2bf7e9, BitConverter.SingleToInt32Bits(group.Formation.Position.Z));
         }
 
         [TestCase(1000f, unchecked((int)0xbef9c7d2))]
@@ -125,10 +117,7 @@ namespace Rebellion.Tests.Gameplay
 
             group.Advance(elapsed, 100, 0);
 
-            Assert.AreEqual(
-                expectedX,
-                System.BitConverter.SingleToInt32Bits(group.Formation.Position.X)
-            );
+            Assert.AreEqual(expectedX, BitConverter.SingleToInt32Bits(group.Formation.Position.X));
         }
 
         [Test]
@@ -169,7 +158,7 @@ namespace Rebellion.Tests.Gameplay
             if (TacticalCombatNativeMath.SignificandBits == 64)
                 Assert.AreEqual(
                     unchecked((int)0xa89c9435),
-                    System.BitConverter.SingleToInt32Bits(heading.X)
+                    BitConverter.SingleToInt32Bits(heading.X)
                 );
             Assert.That(heading.X, Is.LessThan(0));
             Assert.AreEqual(0, heading.Y);

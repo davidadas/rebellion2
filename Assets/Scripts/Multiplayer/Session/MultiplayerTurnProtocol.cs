@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
+using Rebellion.Game.SpaceCombat;
 using Rebellion.Gameplay;
 using Rebellion.PlayerRequests;
 using UnityEngine;
@@ -444,7 +445,7 @@ namespace Rebellion.Multiplayer
                     random.GetBytes(seed);
                 begin.BattleID = Guid.NewGuid().ToString("N");
                 begin.Seed = BitConverter.ToUInt32(seed, 0);
-                begin.ScenerySeed = TacticalCombatRandom.GetCalendarSeed(DateTimeOffset.Now);
+                begin.ScenerySeed = TacticalCombatSeed.FromClock(DateTimeOffset.Now);
                 item = new ReceivedEvent(
                     item.Type,
                     envelope,

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading;
+using Stopwatch = global::System.Diagnostics.Stopwatch;
 
 namespace Rebellion.Multiplayer
 {
@@ -391,8 +392,7 @@ namespace Rebellion.Multiplayer
         /// </summary>
         /// <returns>The monotonic millisecond timestamp.</returns>
         private static double MonotonicMilliseconds() =>
-            System.Diagnostics.Stopwatch.GetTimestamp()
-            * (1000d / System.Diagnostics.Stopwatch.Frequency);
+            Stopwatch.GetTimestamp() * (1000d / Stopwatch.Frequency);
 
         /// <summary>
         /// Writes an unsigned 16-bit network-order value.

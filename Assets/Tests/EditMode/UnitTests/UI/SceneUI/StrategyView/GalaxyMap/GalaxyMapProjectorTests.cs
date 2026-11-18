@@ -12,6 +12,7 @@ using Rebellion.SceneGraph;
 using UnityEngine;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
+using Point = global::System.Drawing.Point;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 {
@@ -65,7 +66,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             _game.AttachNode(destination, sector);
             GameFleet playerFleet = new GameFleet(_playerFactionId, "Player Fleet")
             {
-                Movement = TestMovement.Create(originPosition: new System.Drawing.Point(12, 14)),
+                Movement = TestMovement.Create(originPosition: new Point(12, 14)),
             };
             playerFleet.Waypoints.Add(destination.InstanceID);
             _game.AttachNode(playerFleet, origin);

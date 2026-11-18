@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Rebellion.AI.Planners;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
@@ -57,7 +58,7 @@ namespace Rebellion.Gameplay
         private readonly List<TacticalCombatGroup> _completedAttackOrders = new();
         private readonly TacticalCombatMotion _motion = new();
         private readonly TacticalCombatSide[] _sides;
-        private readonly TacticalCombatAI _automation;
+        private readonly TacticalCombatPlanner _automation;
         private readonly int[] _nextGroupID = new int[2];
         private readonly IRandomNumberProvider _random;
         private int _progress;
@@ -66,7 +67,7 @@ namespace Rebellion.Gameplay
         private int _systemTime = 3;
         private bool _legacyTimeAdvanced;
         private TacticalCombatScheduler _scheduler;
-        private readonly TacticalCombatDirector _director;
+        private readonly TacticalCombatBriefingSequence _briefing;
         private readonly TacticalCombatEnding _ending;
         private bool _completionStarted;
         private TacticalCombatArrival _arrival;
@@ -80,7 +81,7 @@ namespace Rebellion.Gameplay
         public IReadOnlyList<TacticalCombatGroup> Groups { get; }
         internal IReadOnlyList<TacticalCombatUnit> InitiallyDockedFighters =>
             _initiallyDockedFighters;
-        internal bool CanStartBattleStationAttack => CaptureDirectorState().CanAttackBattleStation;
+        internal bool CanStartBattleStationAttack => CaptureBriefingState().CanAttackBattleStation;
         public CombatSide PlayerSide { get; }
         public float BattleDepth { get; }
         public TacticalCombatNavigation Navigation { get; }
@@ -111,8 +112,8 @@ namespace Rebellion.Gameplay
         public TacticalCombatMovieRequest PendingAttackRunMovie { get; private set; }
         public TacticalCombatSceneryRandom SceneryRandom { get; }
         public TacticalCombatBattleStation BattleStation { get; }
-        public Rebellion.Game.SpaceCombat.TacticalCombatDefinition Definition { get; }
-        public Rebellion.Game.SpaceCombat.TacticalCombatEnvironmentDefinition Environment { get; }
+        public TacticalCombatDefinition Definition { get; }
+        public TacticalCombatEnvironmentDefinition Environment { get; }
         public TacticalCombatAttackRun ActiveAttackRun { get; private set; }
         public event Action<TacticalCombatShot> ShotFired;
 
@@ -184,8 +185,8 @@ namespace Rebellion.Gameplay
             CombatSide playerSide,
             float battleDepth,
             IRandomNumberProvider random,
-            Rebellion.Game.SpaceCombat.TacticalCombatDefinition definition = null,
-            Rebellion.Game.SpaceCombat.TacticalCombatEnvironmentDefinition environment = null,
+            TacticalCombatDefinition definition = null,
+            TacticalCombatEnvironmentDefinition environment = null,
             TacticalCombatSceneryRandom sceneryRandom = null,
             Func<uint> presentationClock = null,
             IReadOnlyList<string> personnelHostInstanceIDs = null,
@@ -314,9 +315,9 @@ namespace Rebellion.Gameplay
                     break;
                 }
             _spatial = new TacticalCombatSpatialIndex(this._units);
-            _automation = new TacticalCombatAI(this);
+            _automation = new TacticalCombatPlanner(this);
             Selection = new TacticalCombatSelection(this);
-            _director = new TacticalCombatDirector(
+            _briefing = new TacticalCombatBriefingSequence(
                 GetSide(PlayerSide).FactionIndex,
                 messageID => EnqueueFactionNotification(PlayerSide, messageID)
             );
@@ -1113,7 +1114,7 @@ namespace Rebellion.Gameplay
                 );
             if (!AdvanceArrival(elapsedMilliseconds) || IsComplete)
                 return;
-            _director.Advance(elapsedMilliseconds, CaptureDirectorState());
+            _briefing.Advance(elapsedMilliseconds, CaptureBriefingState());
             AdvanceRemoteNotifications(elapsedMilliseconds);
             if (IsPaused)
             {
@@ -1160,7 +1161,7 @@ namespace Rebellion.Gameplay
             Selection.ProcessPendingCommands();
             if (IsComplete || elapsedMilliseconds <= 0)
                 return;
-            _director.Advance(elapsedMilliseconds, CaptureDirectorState());
+            _briefing.Advance(elapsedMilliseconds, CaptureBriefingState());
             AdvanceRemoteNotifications(elapsedMilliseconds);
             _elapsedInTick += elapsedMilliseconds;
             if (IsPaused)
@@ -2425,7 +2426,7 @@ namespace Rebellion.Gameplay
         /// Captures the station, faction fighter roots, and retained behavior helpers for notification sequencing.
         /// </summary>
         /// <returns>The current admission and briefing facts, independent of hull and simulation pause.</returns>
-        private TacticalCombatDirectorState CaptureDirectorState()
+        private TacticalCombatBriefingState CaptureBriefingState()
         {
             int allianceFighters = 0;
             int empireFighters = 0;
@@ -2455,7 +2456,7 @@ namespace Rebellion.Gameplay
                         group.Order == TacticalCombatOrder.AttackBattleStation
                         || group.ActiveOrder == TacticalCombatOrder.AttackBattleStation;
             }
-            return new TacticalCombatDirectorState(
+            return new TacticalCombatBriefingState(
                 IsArriving,
                 BattleStation != null,
                 BattleStation?.IsOperational == true,

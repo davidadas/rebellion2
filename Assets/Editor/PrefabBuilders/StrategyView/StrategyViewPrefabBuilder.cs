@@ -5,6 +5,10 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using ArgumentNullException = global::System.ArgumentNullException;
+using InvalidOperationException = global::System.InvalidOperationException;
+using MissingMemberException = global::System.MissingMemberException;
+using StringComparison = global::System.StringComparison;
 
 /// <summary>
 /// Authors the generated Strategy View and related window prefabs.
@@ -295,7 +299,7 @@ public static class StrategyViewPrefabBuilder
                 string.Equals(
                     theme?.FactionInstanceID,
                     _previewThemeId,
-                    System.StringComparison.OrdinalIgnoreCase
+                    StringComparison.OrdinalIgnoreCase
                 )
             )
             {
@@ -303,7 +307,7 @@ public static class StrategyViewPrefabBuilder
             }
         }
 
-        throw new System.InvalidOperationException(
+        throw new InvalidOperationException(
             $"Faction theme '{_previewThemeId}' is required for prefab authoring."
         );
     }
@@ -325,7 +329,7 @@ public static class StrategyViewPrefabBuilder
                 && !string.Equals(
                     theme.FactionInstanceID,
                     _fallbackPreviewThemeId,
-                    System.StringComparison.OrdinalIgnoreCase
+                    StringComparison.OrdinalIgnoreCase
                 )
             )
             {
@@ -338,7 +342,7 @@ public static class StrategyViewPrefabBuilder
                 string.Compare(
                     left.FactionInstanceID,
                     right.FactionInstanceID,
-                    System.StringComparison.Ordinal
+                    StringComparison.Ordinal
                 )
         );
         if (index < 0 || index >= themes.Count)
@@ -4284,7 +4288,7 @@ public static class StrategyViewPrefabBuilder
         where T : MonoBehaviour
     {
         if (component == null)
-            throw new System.ArgumentNullException(nameof(component));
+            throw new ArgumentNullException(nameof(component));
 
         component.enabled = true;
         return component;
@@ -7438,9 +7442,7 @@ public static class StrategyViewPrefabBuilder
         Directory.CreateDirectory(Path.GetDirectoryName(path));
         GameObject saved = PrefabUtility.SaveAsPrefabAsset(root, path, out bool success);
         if (!success || saved == null)
-            throw new System.InvalidOperationException(
-                $"Failed to save generated prefab at {path}."
-            );
+            throw new InvalidOperationException($"Failed to save generated prefab at {path}.");
         return saved;
     }
 
@@ -8600,7 +8602,7 @@ public static class StrategyViewPrefabBuilder
         if (window == null)
             throw new MissingReferenceException($"{handleObject.name} has no owning UIWindow.");
         if (!handleObject.transform.IsChildOf(window.transform))
-            throw new System.InvalidOperationException(
+            throw new InvalidOperationException(
                 $"{handleObject.name} is not a child of {window.name}."
             );
 
@@ -9186,8 +9188,8 @@ public static class StrategyViewPrefabBuilder
     {
         if (
             string.IsNullOrEmpty(path)
-            || !path.StartsWith("Application/", System.StringComparison.Ordinal)
-                && !path.StartsWith("Pack/", System.StringComparison.Ordinal)
+            || !path.StartsWith("Application/", StringComparison.Ordinal)
+                && !path.StartsWith("Pack/", StringComparison.Ordinal)
         )
         {
             return null;
@@ -9490,12 +9492,10 @@ public static class StrategyViewPrefabBuilder
             throw new MissingReferenceException($"{fieldName} is missing.");
 
         if (prefab.transform is not RectTransform rect)
-            throw new System.InvalidOperationException(
-                $"{fieldName} does not use a RectTransform root."
-            );
+            throw new InvalidOperationException($"{fieldName} does not use a RectTransform root.");
 
         if (rect.sizeDelta.x <= 0 || rect.sizeDelta.y <= 0)
-            throw new System.InvalidOperationException($"{fieldName} has no fixed prefab size.");
+            throw new InvalidOperationException($"{fieldName} has no fixed prefab size.");
     }
 
     /// <summary>
@@ -9547,7 +9547,7 @@ public static class StrategyViewPrefabBuilder
     {
         SerializedProperty property = serializedObject.FindProperty(propertyName);
         if (property == null)
-            throw new System.MissingMemberException(target.GetType().Name, propertyName);
+            throw new MissingMemberException(target.GetType().Name, propertyName);
 
         return property;
     }

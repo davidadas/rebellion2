@@ -8,6 +8,7 @@ using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Util.Random;
+using JsonUtility = global::UnityEngine.JsonUtility;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -178,9 +179,10 @@ namespace Rebellion.Tests.Gameplay
             TacticalCombatNetworkFrame captured = authority.CaptureNetworkFrame(1);
             Assert.IsNull(captured.Units[0].CarrierID);
             Assert.IsNull(captured.Units[0].TargetID);
-            string json = UnityEngine.JsonUtility.ToJson(captured);
-            TacticalCombatNetworkFrame restored =
-                UnityEngine.JsonUtility.FromJson<TacticalCombatNetworkFrame>(json);
+            string json = JsonUtility.ToJson(captured);
+            TacticalCombatNetworkFrame restored = JsonUtility.FromJson<TacticalCombatNetworkFrame>(
+                json
+            );
             Assert.AreEqual(string.Empty, restored.Units[0].CarrierID);
             Assert.AreEqual(string.Empty, restored.Units[0].TargetID);
 
@@ -188,10 +190,9 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.IsNull(replica.GetUnit(restored.Units[0].UnitID).CarrierID);
             Assert.IsNull(replica.GetUnit(restored.Units[0].UnitID).TargetID);
-            TacticalCombatNetworkFrame next =
-                UnityEngine.JsonUtility.FromJson<TacticalCombatNetworkFrame>(
-                    UnityEngine.JsonUtility.ToJson(authority.CaptureNetworkFrame(2))
-                );
+            TacticalCombatNetworkFrame next = JsonUtility.FromJson<TacticalCombatNetworkFrame>(
+                JsonUtility.ToJson(authority.CaptureNetworkFrame(2))
+            );
             next.Units[0].TargetID = "missing";
             Assert.Throws<ArgumentException>(() => replica.ApplyNetworkState(next));
             next.Units[0].TargetID = string.Empty;
@@ -705,7 +706,7 @@ namespace Rebellion.Tests.Gameplay
         )
         {
             TacticalCombatNetworkEffect[] effects = frame.Effects;
-            frame.Effects = System.Array.Empty<TacticalCombatNetworkEffect>();
+            frame.Effects = Array.Empty<TacticalCombatNetworkEffect>();
             session.ApplyNetworkState(frame);
             session.ApplyNetworkEffects(effects);
         }

@@ -64,14 +64,18 @@ two-account runtime validation.
 ## Source ownership
 
 - `Assets/Scripts/Game/SpaceCombat` contains campaign-domain definitions and completed outcomes.
+- `Assets/Scripts/AI/Planners` contains tactical AI planning alongside the other AI planners.
+- `Assets/Scripts/Util/Random` contains random-number providers. The fifteen-bit provider names its
+  fixed algorithm parameters; the encounter calendar-seed policy remains in `Game/SpaceCombat`.
 - `Assets/Scripts/Gameplay/SpaceCombat` contains encounter simulation and adjacent partial classes for
-  its state projection. `Replication` contains the separate command, frame, effect, and state contracts,
-  together with the replica playback timeline. The guest driver owns that timeline and the renderer
-  consumes the same instance; the combat session announces validated frames without storing display
-  history. Disposing the driver detaches playback from its old encounter.
+  its state projection. `Replication` contains the command, frame, effect, and state contracts.
+  Presentation consumers use the read-only `ITacticalCombatPresentationTimeline` boundary; the
+  combat session announces validated frames without storing display history.
 - `Assets/Scripts/Gameplay/SpaceCombat/Mathematics` contains the combat-specific native math adapter
   and retained-precision vector calculations. General integer arithmetic remains in `Util/Mathematics`.
 - `Assets/Scripts/Multiplayer/Session/Combat` contains the connection-owned battle driver and protocol.
+  It also owns replica playback and its delayed pose buffer. The guest driver owns that timeline's
+  lifetime; disposing the driver detaches playback from its old encounter.
 - `Assets/Scripts/Multiplayer/Protocol` contains the binary wire codec beside the existing packet and
   player-request codecs.
 - `Assets/Scripts/Multiplayer/Transport` contains fragment assembly and bounded delivery scheduling.
@@ -80,13 +84,18 @@ two-account runtime validation.
 Arrival callbacks describe presentation ownership. The scene controller chooses how that state
 appears on its pause control. Gameplay does not request a particular HUD animation.
 
-Architecture checks reject gameplay dependencies on UI namespaces and unqualified implementation
-types, including the existing global-namespace views and controllers. The established unqualified
+Architecture checks reject gameplay dependencies on UI or multiplayer namespaces and unqualified
+implementation types, including the existing global-namespace views and controllers. The established unqualified
 `GameDataCatalog` remains the explicit content-data boundary. A negative fixture verifies that an
 actual dependency on a global UI type fails the rule.
 
 Tests mirror their subject's existing area under `Assets/Tests/EditMode/UnitTests`. Unity metadata moves
 with an existing asset; generated scenes, prefabs, and copied media remain outside the source change.
+
+Notification scheduling still shares the encounter's random stream. Variant selection happens before
+capacity checks, and playback completion controls pending retries. Separating its ownership must retain
+those draws and their ordering. The session also still owns command admission and frame projection;
+the namespace dependency check does not establish that those responsibilities have been separated.
 
 ## Headless EOS verification
 

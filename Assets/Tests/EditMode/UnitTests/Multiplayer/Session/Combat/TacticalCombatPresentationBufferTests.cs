@@ -3,9 +3,10 @@ using System.Collections.Generic;
 using System.Numerics;
 using NUnit.Framework;
 using Rebellion.Gameplay;
-using Pose = Rebellion.Gameplay.TacticalCombatPresentationBuffer.Pose;
+using Rebellion.Multiplayer;
+using Pose = Rebellion.Multiplayer.TacticalCombatPresentationBuffer.Pose;
 
-namespace Rebellion.Tests.Gameplay
+namespace Rebellion.Tests.Multiplayer
 {
     [TestFixture]
     public sealed class TacticalCombatPresentationBufferTests

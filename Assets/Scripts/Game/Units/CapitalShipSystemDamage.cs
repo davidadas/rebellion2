@@ -1,4 +1,5 @@
 using Rebellion.Util.Serialization;
+using ArgumentOutOfRangeException = global::System.ArgumentOutOfRangeException;
 
 namespace Rebellion.Game.Units
 {
@@ -52,7 +53,7 @@ namespace Rebellion.Game.Units
         internal void RepairComponent(int index)
         {
             if (index < 0 || index >= Total)
-                throw new System.ArgumentOutOfRangeException(nameof(index));
+                throw new ArgumentOutOfRangeException(nameof(index));
             if (index < Shields)
             {
                 Shields--;

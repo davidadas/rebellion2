@@ -16,6 +16,9 @@ using Rebellion.Gameplay;
 using Rebellion.Generation;
 using Rebellion.Multiplayer;
 using Rebellion.PlayerRequests;
+using LogAssert = global::UnityEngine.TestTools.LogAssert;
+using LogType = global::UnityEngine.LogType;
+using Regex = global::System.Text.RegularExpressions.Regex;
 
 namespace Rebellion.Tests.Managers
 {
@@ -1486,10 +1489,7 @@ namespace Rebellion.Tests.Managers
             SaveGameOperation? reported = null;
             _sessionManager.PersistenceFailed += (_, operation, _) => reported = operation;
             Task<bool> saving = _sessionManager.SaveGameAsync("checkpoint", "Checkpoint");
-            UnityEngine.TestTools.LogAssert.Expect(
-                UnityEngine.LogType.Error,
-                new System.Text.RegularExpressions.Regex("test storage failure")
-            );
+            LogAssert.Expect(LogType.Error, new Regex("test storage failure"));
             coordinator.SaveCompletion.SetException(new IOException("test storage failure"));
 
             Assert.That(await saving, Is.False);
@@ -1505,10 +1505,7 @@ namespace Rebellion.Tests.Managers
             bool reported = false;
             _sessionManager.PersistenceFailed += (_, _, _) => reported = true;
             Task<bool> saving = _sessionManager.QuickSaveAsync();
-            UnityEngine.TestTools.LogAssert.Expect(
-                UnityEngine.LogType.Error,
-                new System.Text.RegularExpressions.Regex("test storage failure")
-            );
+            LogAssert.Expect(LogType.Error, new Regex("test storage failure"));
             coordinator.SaveCompletion.SetException(new IOException("test storage failure"));
             await saving;
 
@@ -1524,10 +1521,7 @@ namespace Rebellion.Tests.Managers
             SaveGameOperation? reported = null;
             _sessionManager.PersistenceFailed += (_, operation, _) => reported = operation;
             Task<bool> loading = _sessionManager.LoadGameAsync("checkpoint");
-            UnityEngine.TestTools.LogAssert.Expect(
-                UnityEngine.LogType.Error,
-                new System.Text.RegularExpressions.Regex("test storage failure")
-            );
+            LogAssert.Expect(LogType.Error, new Regex("test storage failure"));
             coordinator.LoadCompletion.SetException(new IOException("test storage failure"));
             await loading;
 
@@ -1543,10 +1537,7 @@ namespace Rebellion.Tests.Managers
             _sessionManager.PersistenceFailed += (_, _, _) => reported = true;
             Task<bool> saving = _sessionManager.SaveGameAsync("checkpoint", "Checkpoint");
             _sessionManager.StartGame(CreateGame());
-            UnityEngine.TestTools.LogAssert.Expect(
-                UnityEngine.LogType.Error,
-                new System.Text.RegularExpressions.Regex("test storage failure")
-            );
+            LogAssert.Expect(LogType.Error, new Regex("test storage failure"));
             coordinator.SaveCompletion.SetException(new IOException("test storage failure"));
             await saving;
 

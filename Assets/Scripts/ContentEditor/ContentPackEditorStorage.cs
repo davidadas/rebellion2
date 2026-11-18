@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using XElement = global::System.Xml.Linq.XElement;
 
 /// <summary>
 /// Persists authored pack documents and imported files without owning editing or presentation state.
@@ -249,7 +250,7 @@ public static class ContentPackEditorStorage
         bool hasInheritedPackDocument = sources.Keys.Any(path =>
             !string.Equals(path, targetPath, StringComparison.OrdinalIgnoreCase)
         );
-        if (System.Xml.Linq.XElement.Parse(sources[sourcePath]).Name.LocalName == "GameConfig")
+        if (XElement.Parse(sources[sourcePath]).Name.LocalName == "GameConfig")
         {
             applicationDefaults = ContentXmlOverrides.Load(resolver, "Application/Rules/game.xml");
             baseline = applicationDefaults;

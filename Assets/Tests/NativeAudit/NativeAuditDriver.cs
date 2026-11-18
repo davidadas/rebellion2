@@ -19,11 +19,15 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using AddNotifyPeerConnectionEstablishedOptions = Epic.OnlineServices.P2P.AddNotifyPeerConnectionEstablishedOptions;
 using EOSManager = PlayEveryWare.EpicOnlineServices.EOSManager;
+using GameRoot = global::Rebellion.Game.GameRoot;
 using GetPacketQueueInfoOptions = Epic.OnlineServices.P2P.GetPacketQueueInfoOptions;
 using OnPeerConnectionEstablishedInfo = Epic.OnlineServices.P2P.OnPeerConnectionEstablishedInfo;
 using P2PInterface = Epic.OnlineServices.P2P.P2PInterface;
 using PacketQueueInfo = Epic.OnlineServices.P2P.PacketQueueInfo;
+using Planet = global::Rebellion.Game.Galaxy.Planet;
 using ProductUserId = Epic.OnlineServices.ProductUserId;
+using TickSpeed = global::Rebellion.Game.TickSpeed;
+using UnityInput = UnityEngine.Input;
 
 namespace Rebellion.Tests.NativeAudit
 {
@@ -257,10 +261,7 @@ namespace Rebellion.Tests.NativeAudit
                     AppBootstrap
                         .Instance.GetGameSessionManager()
                         .GetActiveGameManager()
-                        .SetGameSpeed(
-                            (Rebellion.Game.TickSpeed)
-                                Enum.Parse(typeof(Rebellion.Game.TickSpeed), command.target)
-                        );
+                        .SetGameSpeed((TickSpeed)Enum.Parse(typeof(TickSpeed), command.target));
                     break;
                 case "key":
                     _keyboard ??= InputSystem.AddDevice<Keyboard>("NativeAuditKeyboard");
@@ -367,11 +368,8 @@ namespace Rebellion.Tests.NativeAudit
                     new BombardRequest
                     {
                         ItemIDs = new[] { fleetID },
-                        ObservedTarget =
-                            session.Game.GetSceneNodeByInstanceID<Rebellion.Game.Galaxy.Planet>(
-                                planetID
-                            ),
-                        Type = Rebellion.Game.Results.BombardmentType.DestroyPlanet,
+                        ObservedTarget = session.Game.GetSceneNodeByInstanceID<Planet>(planetID),
+                        Type = BombardmentType.DestroyPlanet,
                     }
                 );
             return result.Accepted;
@@ -425,9 +423,7 @@ namespace Rebellion.Tests.NativeAudit
         /// <returns>Whether the host has an admitted waiting lobby.</returns>
         private static async Task<bool> HostAsync(Command command)
         {
-            Rebellion.Game.GameRoot source = await SaveGameManager.Instance.LoadGameDataAsync(
-                command.target
-            );
+            GameRoot source = await SaveGameManager.Instance.LoadGameDataAsync(command.target);
             MultiplayerCoordinator coordinator = AppBootstrap
                 .EnsureExists()
                 .GetMultiplayerCoordinator();
@@ -529,7 +525,7 @@ namespace Rebellion.Tests.NativeAudit
                 AppBootstrap.Instance == null
                     ? null
                     : AppBootstrap.Instance.GetGameSessionManager();
-            Rebellion.Gameplay.GameSession session = runtime?.GetActiveGameSession();
+            GameSession session = runtime?.GetActiveGameSession();
             response.frame = Time.frameCount;
             response.renderedFrame = Time.renderedFrameCount;
             response.targetFrameRate = Application.targetFrameRate;
@@ -540,7 +536,7 @@ namespace Rebellion.Tests.NativeAudit
             response.width = Screen.width;
             response.height = Screen.height;
             response.status = multiplayer?.Status;
-            response.simulationBuild = typeof(Rebellion.Game.GameRoot)
+            response.simulationBuild = typeof(GameRoot)
                 .Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
                 .Single(attribute => attribute.Key == "SimulationBuild")
                 .Value;
@@ -601,8 +597,8 @@ namespace Rebellion.Tests.NativeAudit
                 .Where(action => action.actionMap.name == "Global")
                 .Select(action => action.name + ": " + action.GetBindingDisplayString())
                 .ToArray();
-            response.pointerX = UnityEngine.Input.mousePosition.x;
-            response.pointerY = UnityEngine.Input.mousePosition.y;
+            response.pointerX = UnityInput.mousePosition.x;
+            response.pointerY = UnityInput.mousePosition.y;
             response.inputOwners = FindObjectsByType<AppInputController>(FindObjectsSortMode.None)
                 .Select(owner => new InputOwner
                 {

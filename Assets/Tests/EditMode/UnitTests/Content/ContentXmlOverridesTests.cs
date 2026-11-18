@@ -3,6 +3,8 @@ using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 using NUnit.Framework;
+using Officer = global::Rebellion.Game.Units.Officer;
+using OfficerLoyaltyAllegiance = global::Rebellion.Game.Units.OfficerLoyaltyAllegiance;
 
 namespace Rebellion.Tests.Content
 {
@@ -31,11 +33,11 @@ namespace Rebellion.Tests.Content
                 Directory.Delete(folder, true);
         }
 
-        [TestCase("None", Rebellion.Game.Units.OfficerLoyaltyAllegiance.None)]
-        [TestCase("SecondFaction", Rebellion.Game.Units.OfficerLoyaltyAllegiance.SecondFaction)]
+        [TestCase("None", OfficerLoyaltyAllegiance.None)]
+        [TestCase("SecondFaction", OfficerLoyaltyAllegiance.SecondFaction)]
         public void Merge_OfficerLoyaltyOverride_PreservesInheritedProtection(
             string value,
-            Rebellion.Game.Units.OfficerLoyaltyAllegiance expected
+            OfficerLoyaltyAllegiance expected
         )
         {
             const string baseline =
@@ -46,10 +48,9 @@ namespace Rebellion.Tests.Content
                 + "</LoyaltyAllegiance></Officer></Officers>";
 
             XElement merged = XElement.Parse(ContentXmlOverrides.Merge(baseline, overlay));
-            Rebellion.Game.Units.Officer officer =
-                SerializationHelper.Deserialize<Rebellion.Game.Units.Officer>(
-                    merged.Element("Officer").ToString()
-                );
+            Officer officer = SerializationHelper.Deserialize<Officer>(
+                merged.Element("Officer").ToString()
+            );
 
             Assert.AreEqual(expected, officer.LoyaltyAllegiance);
             Assert.IsFalse(officer.CanBetray);
@@ -64,10 +65,9 @@ namespace Rebellion.Tests.Content
                 "<Officers Inherit='true'><Officer><TypeID>OFFICER</TypeID><LoyaltyAllegiance /></Officer></Officers>";
 
             XElement merged = XElement.Parse(ContentXmlOverrides.Merge(baseline, overlay));
-            Rebellion.Game.Units.Officer officer =
-                SerializationHelper.Deserialize<Rebellion.Game.Units.Officer>(
-                    merged.Element("Officer").ToString()
-                );
+            Officer officer = SerializationHelper.Deserialize<Officer>(
+                merged.Element("Officer").ToString()
+            );
 
             Assert.IsNull(officer.LoyaltyAllegiance);
             Assert.IsTrue(officer.CanBetray);

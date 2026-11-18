@@ -7,6 +7,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Planet = global::Rebellion.Game.Galaxy.Planet;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -194,7 +195,7 @@ namespace Rebellion.Tests.Gameplay
                 CreateNetworkEncounter();
             CreateDeploymentFighter(
                 game,
-                attacker.GetParentOfType<Rebellion.Game.Galaxy.Planet>(),
+                attacker.GetParentOfType<Planet>(),
                 "FNEMP1",
                 "network-fighter",
                 "SFEM01"

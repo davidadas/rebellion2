@@ -20,7 +20,7 @@ namespace Rebellion.Gameplay
         private long _appliedNetworkSequence = -1;
         private int _networkSystemTime = 3;
         private int _networkMovieID;
-        private TacticalCombatDirector _remoteNotificationDirector;
+        private TacticalCombatBriefingSequence _remoteNotificationBriefing;
         private TacticalCombatEnding _remoteNotificationEnding;
         private CombatSide? _networkNotificationRecipient;
         private bool _networkEntryPresentation;
@@ -101,7 +101,7 @@ namespace Rebellion.Gameplay
             Audio.NotificationRequested += CaptureNetworkNotification;
             CombatSide remote =
                 PlayerSide == CombatSide.Attacker ? CombatSide.Defender : CombatSide.Attacker;
-            _remoteNotificationDirector = new TacticalCombatDirector(
+            _remoteNotificationBriefing = new TacticalCombatBriefingSequence(
                 GetSide(remote).FactionIndex,
                 message => EnqueueFactionNotification(remote, message)
             );
@@ -592,7 +592,7 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="elapsedMilliseconds">The authoritative unscaled interval.</param>
         private void AdvanceRemoteNotifications(float elapsedMilliseconds) =>
-            _remoteNotificationDirector?.Advance(elapsedMilliseconds, CaptureDirectorState());
+            _remoteNotificationBriefing?.Advance(elapsedMilliseconds, CaptureBriefingState());
 
         /// <summary>
         /// Resolves an attack cue's authored recipient index to its authenticated encounter side.

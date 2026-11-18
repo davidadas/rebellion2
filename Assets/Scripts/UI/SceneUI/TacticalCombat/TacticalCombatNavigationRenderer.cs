@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Gameplay;
 using UnityEngine;
+using ShadowCastingMode = global::UnityEngine.Rendering.ShadowCastingMode;
 using Vector3N = System.Numerics.Vector3;
 
 /// <summary>
@@ -90,7 +91,7 @@ internal sealed class TacticalCombatNavigationRenderer : IDisposable
             marker.GetComponent<MeshFilter>().sharedMesh = _mesh;
             MeshRenderer renderer = marker.GetComponent<MeshRenderer>();
             renderer.sharedMaterial = _materials[color];
-            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
             renderer.receiveShadows = false;
             _points.Add(new Point(marker, renderer, position, ring, color));
             marker.SetActive(false);

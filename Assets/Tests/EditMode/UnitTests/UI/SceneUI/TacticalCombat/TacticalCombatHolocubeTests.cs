@@ -5,6 +5,7 @@ using NUnit.Framework;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.TestTools;
+using ShadowCastingMode = global::UnityEngine.Rendering.ShadowCastingMode;
 
 namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
 {
@@ -76,10 +77,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 Assert.AreSame(Texture2D.whiteTexture, renderer.sharedMaterial.mainTexture);
                 Assert.AreEqual("Rebellion/Tactical fighter", renderer.sharedMaterial.shader.name);
                 Assert.IsFalse(renderer.receiveShadows);
-                Assert.AreEqual(
-                    UnityEngine.Rendering.ShadowCastingMode.Off,
-                    renderer.shadowCastingMode
-                );
+                Assert.AreEqual(ShadowCastingMode.Off, renderer.shadowCastingMode);
             }
             yield return null;
         }

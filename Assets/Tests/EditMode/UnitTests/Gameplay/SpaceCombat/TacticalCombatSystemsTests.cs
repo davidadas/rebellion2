@@ -466,7 +466,7 @@ namespace Rebellion.Tests.Gameplay
                 0,
                 1,
                 0,
-                new Rebellion.Game.Units.CapitalShipSystemDamage { Shields = 4 }
+                new CapitalShipSystemDamage { Shields = 4 }
             );
             Assert.AreEqual(0, systems.GetShieldRechargeRatio());
 
@@ -839,17 +839,14 @@ namespace Rebellion.Tests.Gameplay
                 0,
                 1,
                 0,
-                new Rebellion.Game.Units.CapitalShipSystemDamage
+                new CapitalShipSystemDamage
                 {
                     Shields = 1,
                     RepairDueTick = 42,
                     RepairInterval = 30,
                 }
             );
-            Rebellion.Game.Units.CapitalShipSystemDamage result = systems.CaptureDamage(
-                true,
-                false
-            );
+            CapitalShipSystemDamage result = systems.CaptureDamage(true, false);
             Assert.AreEqual(42, result.RepairDueTick);
             Assert.AreEqual(30, result.RepairInterval);
         }
@@ -869,7 +866,7 @@ namespace Rebellion.Tests.Gameplay
                 0,
                 1,
                 0,
-                new Rebellion.Game.Units.CapitalShipSystemDamage
+                new CapitalShipSystemDamage
                 {
                     Shields = 1,
                     RepairDueTick = 42,
@@ -877,10 +874,7 @@ namespace Rebellion.Tests.Gameplay
                 }
             );
             systems.ApplyComponentEvent(TacticalShipSystem.Shields, true);
-            Rebellion.Game.Units.CapitalShipSystemDamage result = systems.CaptureDamage(
-                true,
-                false
-            );
+            CapitalShipSystemDamage result = systems.CaptureDamage(true, false);
             Assert.AreEqual(0, result.RepairDueTick);
             Assert.AreEqual(0, result.RepairInterval);
         }
@@ -894,7 +888,7 @@ namespace Rebellion.Tests.Gameplay
         )
         {
             TacticalCombatSystems systems = new(false, 100, 100, 0, 0, 0, 0, 0, 0, 1, 0);
-            System.Collections.Generic.List<string> events = new();
+            List<string> events = new();
             systems.SoundRequested += _ => events.Add("sound");
             systems.ImpactRequested += (kind, impact) =>
             {

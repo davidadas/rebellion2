@@ -10,6 +10,9 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Random;
+using SystemRandomProvider = global::Rebellion.Util.Random.SystemRandomProvider;
+using Vector3 = global::System.Numerics.Vector3;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -4437,7 +4440,7 @@ namespace Rebellion.Tests.Gameplay
                 2000,
                 1,
                 1,
-                new Rebellion.Util.Random.SystemRandomProvider(1),
+                new SystemRandomProvider(1),
                 shooter.InstanceID
             );
 
@@ -4935,7 +4938,7 @@ namespace Rebellion.Tests.Gameplay
             TacticalCombatUnit independent = battle.GetUnit("placement-fighter-1");
             TacticalCombatUnit planetary = battle.GetUnit("placement-fighter-2");
             Assert.AreEqual(TacticalCombatUnitStatus.Docked, docked.Status);
-            Assert.AreEqual(System.Numerics.Vector3.Zero, docked.Position);
+            Assert.AreEqual(Vector3.Zero, docked.Position);
             Assert.AreEqual(carrier.InstanceID, docked.CarrierID);
             Assert.AreEqual(40, docked.Systems.Hull);
             Assert.AreEqual(TacticalCombatUnitStatus.Active, independent.Status);
@@ -5266,7 +5269,7 @@ namespace Rebellion.Tests.Gameplay
             game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
             game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
             game.Summary.PlayerFactionID = "FNEMP1";
-            game.Random = new Rebellion.Util.Random.SystemRandomProvider(42);
+            game.Random = new SystemRandomProvider(42);
             game.SetFactionController("FNEMP1", "player1", PlayerControllerType.Human);
             (Planet planet, _) = CreatePlanet(game, "tactical-planet");
             Fleet player = CreateFleet(
@@ -5296,7 +5299,7 @@ namespace Rebellion.Tests.Gameplay
                 game,
                 TestContent.Data,
                 queries,
-                () => new TacticalCombatRandom(42)
+                () => new FifteenBitRandomProvider(42)
             );
             SpaceCombatCommands commands = new(game, movement, queries, tacticalFactory: factory);
             Assert.IsNotEmpty(new SpaceCombatTickProcessor(commands).ProcessTick(game));

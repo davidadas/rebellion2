@@ -24,6 +24,9 @@ using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 using AssetDatabase = UnityEditor.AssetDatabase;
+using FogOfWarRecorder = global::Rebellion.Game.FogOfWar.FogOfWarRecorder;
+using SystemRandomProvider = global::Rebellion.Util.Random.SystemRandomProvider;
+using TMP_Text = global::TMPro.TMP_Text;
 
 namespace Rebellion.Tests.Multiplayer
 {
@@ -55,9 +58,7 @@ namespace Rebellion.Tests.Multiplayer
             peers.Guest.ActionApplied += (request, _) =>
                 guestApplied = request as BeginTacticalCombatRequest;
             string forgedID = Guid.NewGuid().ToString("N");
-            long hostRandom = (
-                (Rebellion.Util.Random.SystemRandomProvider)peers.HostGame.Random
-            ).CallCount;
+            long hostRandom = ((SystemRandomProvider)peers.HostGame.Random).CallCount;
             peers.Guest.ExecuteAsync(
                 new BeginTacticalCombatRequest
                 {
@@ -79,10 +80,7 @@ namespace Rebellion.Tests.Multiplayer
             Assert.AreEqual(hostApplied.Seed, guestApplied.Seed);
             Assert.AreEqual(hostApplied.ScenerySeed, guestApplied.ScenerySeed);
             Assert.AreNotEqual(int.MinValue, hostApplied.ScenerySeed);
-            Assert.AreEqual(
-                hostRandom,
-                ((Rebellion.Util.Random.SystemRandomProvider)peers.HostGame.Random).CallCount
-            );
+            Assert.AreEqual(hostRandom, ((SystemRandomProvider)peers.HostGame.Random).CallCount);
         }
 
         [TestCaseSource(nameof(MissionStartCases))]
@@ -183,7 +181,7 @@ namespace Rebellion.Tests.Multiplayer
             )
             {
                 Planet location = (Planet)entry.Item2.Location;
-                new Rebellion.Game.FogOfWar.FogOfWarRecorder().RecordEspionageSnapshot(
+                new FogOfWarRecorder().RecordEspionageSnapshot(
                     entry.Item1.GetFactionByOwnerInstanceID(actor),
                     location,
                     location.GetParentOfType<PlanetSector>(),
@@ -2625,7 +2623,7 @@ namespace Rebellion.Tests.Multiplayer
                         view.GetComponentsInChildren<StrategyDropdownItemView>(true)
                             .Single(item =>
                                 item.gameObject.activeSelf
-                                && item.GetComponentsInChildren<TMPro.TMP_Text>(true)
+                                && item.GetComponentsInChildren<TMP_Text>(true)
                                     .Any(text => text.text == label)
                             );
                     row.GetComponentInChildren<Button>(true).onClick.Invoke();

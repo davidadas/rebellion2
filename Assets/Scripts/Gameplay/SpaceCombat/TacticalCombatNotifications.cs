@@ -27,6 +27,17 @@ namespace Rebellion.Gameplay
     public sealed class TacticalCombatNotifications : IDisposable
     {
         private const int _messageCount = 317;
+        private const int _maximumVariantCount = 4;
+        private const int _firstSpokenMessageID = 32;
+        private const int _firstOtherMessageID = 286;
+        private const int _spokenGroup = 1;
+        private const int _effectGroup = 2;
+        private const int _otherGroup = 3;
+        private const int _effectPlaybackLimit = 5;
+        private const uint _spokenLifetimeMilliseconds = 8000;
+        private const uint _effectLifetimeMilliseconds = 225;
+        private const uint _otherLifetimeMilliseconds = 3000;
+        private const int _pausedLifetimeShift = 2;
         private readonly Dictionary<int, TacticalCombatNotificationDefinition> _definitions = new();
         private readonly LinkedList<Notification> _active = new();
         private readonly LinkedList<Notification> _pending = new();
@@ -75,7 +86,7 @@ namespace Rebellion.Gameplay
                     || definition.MessageID >= _messageCount
                     || definition.Variants == null
                     || definition.Variants.Count == 0
-                    || definition.Variants.Count > 4
+                    || definition.Variants.Count > _maximumVariantCount
                 )
                     throw new InvalidDataException(
                         "A tactical notification requires a bounded message ID and one to four variant slots."
@@ -147,10 +158,10 @@ namespace Rebellion.Gameplay
             if (!Enabled)
                 return;
 
-            Span<int> counts = stackalloc int[4];
-            counts[1] = CountActive(1);
-            counts[2] = CountActive(2);
-            counts[3] = CountActive(3);
+            Span<int> counts = stackalloc int[_otherGroup + 1];
+            counts[_spokenGroup] = CountActive(_spokenGroup);
+            counts[_effectGroup] = CountActive(_effectGroup);
+            counts[_otherGroup] = CountActive(_otherGroup);
             uint now = _clock();
             node = _pending.First;
             while (node != null)
@@ -159,8 +170,8 @@ namespace Rebellion.Gameplay
                 Notification record = node.Value;
                 int group = GetGroup(record.Definition.MessageID);
                 uint lifetime = GetPendingLifetime(group);
-                if (group == 1 && _isPaused())
-                    lifetime <<= 2;
+                if (group == _spokenGroup && _isPaused())
+                    lifetime <<= _pausedLifetimeShift;
                 if (unchecked(now - record.Created) > lifetime)
                     _pending.Remove(node);
                 else if (counts[group] < GetActiveLimit(group))
@@ -272,16 +283,17 @@ namespace Rebellion.Gameplay
         /// <param name="messageID">The addressed message.</param>
         /// <returns>The scheduling group from one to three.</returns>
         private static int GetGroup(int messageID) =>
-            messageID < 32 ? 2
-            : messageID < 286 ? 1
-            : 3;
+            messageID < _firstSpokenMessageID ? _effectGroup
+            : messageID < _firstOtherMessageID ? _spokenGroup
+            : _otherGroup;
 
         /// <summary>
         /// Gets the simultaneous playback limit for a scheduling group.
         /// </summary>
         /// <param name="group">The scheduling group.</param>
         /// <returns>The permitted active record count.</returns>
-        private static int GetActiveLimit(int group) => group == 2 ? 5 : 1;
+        private static int GetActiveLimit(int group) =>
+            group == _effectGroup ? _effectPlaybackLimit : 1;
 
         /// <summary>
         /// Gets a group's unscaled pending lifetime before any simulation-pause adjustment.
@@ -289,9 +301,9 @@ namespace Rebellion.Gameplay
         /// <param name="group">The scheduling group.</param>
         /// <returns>The pending lifetime in milliseconds.</returns>
         private static uint GetPendingLifetime(int group) =>
-            group == 1 ? 8000u
-            : group == 2 ? 225u
-            : 3000u;
+            group == _spokenGroup ? _spokenLifetimeMilliseconds
+            : group == _effectGroup ? _effectLifetimeMilliseconds
+            : _otherLifetimeMilliseconds;
 
         /// <summary>
         /// Links a record in ascending unsigned queue-ID order and advances its owning ID seed.

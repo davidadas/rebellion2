@@ -9,6 +9,7 @@ using Rebellion.Gameplay;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using Stopwatch = global::System.Diagnostics.Stopwatch;
 using Vector3N = System.Numerics.Vector3;
 
 /// <summary>
@@ -158,7 +159,7 @@ public sealed class TacticalCombatController : IDisposable
             _driver.Prepare(_view.Renderer);
         else
         {
-            System.Diagnostics.Stopwatch clock = System.Diagnostics.Stopwatch.StartNew();
+            Stopwatch clock = Stopwatch.StartNew();
             _session.ConfigureClockedAdvance(() => unchecked((uint)clock.ElapsedMilliseconds));
             _session.BeginArrival(_view.Renderer);
         }

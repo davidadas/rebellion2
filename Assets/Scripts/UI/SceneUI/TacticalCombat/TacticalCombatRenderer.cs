@@ -4,6 +4,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using Rebellion.Gameplay;
 using UnityEngine;
+using ShadowCastingMode = global::UnityEngine.Rendering.ShadowCastingMode;
+using TacticalCombatEffectDefinition = global::Rebellion.Game.SpaceCombat.TacticalCombatEffectDefinition;
+using TacticalCombatEffectKind = global::Rebellion.Game.SpaceCombat.TacticalCombatEffectKind;
+using TacticalCombatEnvironmentDefinition = global::Rebellion.Game.SpaceCombat.TacticalCombatEnvironmentDefinition;
+using TacticalCombatFighterSprites = global::Rebellion.Game.SpaceCombat.TacticalCombatFighterSprites;
+using TacticalCombatTextureOverride = global::Rebellion.Game.SpaceCombat.TacticalCombatTextureOverride;
 using Vector3N = System.Numerics.Vector3;
 
 /// <summary>
@@ -26,7 +32,7 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
     private readonly HashSet<TacticalCombatUnit> _whiteBoxes = new();
     private readonly bool[] _factionHighlight = new bool[2];
     private TacticalCombatSession _session;
-    private TacticalCombatReplicaPlayback _replicaPlayback;
+    private ITacticalCombatPresentationTimeline _replicaPlayback;
     private readonly TacticalCombatMeshPicker _picker = new();
     private readonly List<ContentModelInstance> _instances = new();
     private readonly Dictionary<Texture2D, Material> _fighterMaterials = new();
@@ -69,7 +75,7 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
         ContentAssets assets,
         CancellationToken cancellationToken,
         UserVideoSettings videoSettings = null,
-        TacticalCombatReplicaPlayback replicaPlayback = null
+        ITacticalCombatPresentationTimeline replicaPlayback = null
     ) =>
         PrepareAsync(
             session,
@@ -96,7 +102,7 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
         ContentAssets assets,
         CancellationToken cancellationToken,
         TacticalCombatRenderSettings videoSettings,
-        TacticalCombatReplicaPlayback replicaPlayback = null
+        ITacticalCombatPresentationTimeline replicaPlayback = null
     )
     {
         if (_battleCamera == null || _modelRoot == null || _fighterShader == null)
@@ -133,9 +139,7 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
             _modelRoot,
             _battleCamera,
             _fighterShader,
-            _showPyro
-                ? session.Definition.Effects
-                : Array.Empty<Rebellion.Game.SpaceCombat.TacticalCombatEffectDefinition>(),
+            _showPyro ? session.Definition.Effects : Array.Empty<TacticalCombatEffectDefinition>(),
             assets,
             GetPresentationPosition,
             GetCloseUpPrimary
@@ -222,21 +226,13 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
         if (unit.HasGravityWell)
         {
             visual.GravityWellPresentationRequested = () =>
-                _impacts.SetLock(
-                    unit,
-                    Rebellion.Game.SpaceCombat.TacticalCombatEffectKind.GravityLock,
-                    true
-                );
+                _impacts.SetLock(unit, TacticalCombatEffectKind.GravityLock, true);
             unit.GravityWellPresentationRequested += visual.GravityWellPresentationRequested;
         }
         else
         {
             visual.TractorSourcesChanged = enabled =>
-                _impacts.SetLock(
-                    unit,
-                    Rebellion.Game.SpaceCombat.TacticalCombatEffectKind.TractorRestraint,
-                    enabled
-                );
+                _impacts.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, enabled);
             unit.TractorSourcesChanged += visual.TractorSourcesChanged;
             if (unit.HasTractorSources)
                 visual.TractorSourcesChanged(true);
@@ -323,13 +319,10 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
         bool showPlanet
     )
     {
-        Rebellion.Game.SpaceCombat.TacticalCombatEnvironmentDefinition environment =
-            session.Environment;
+        TacticalCombatEnvironmentDefinition environment = session.Environment;
         if (environment == null)
             return;
-        foreach (
-            Rebellion.Game.SpaceCombat.TacticalCombatTextureOverride replacement in environment.TextureOverrides
-        )
+        foreach (TacticalCombatTextureOverride replacement in environment.TextureOverrides)
             _environmentTextures.Add(
                 replacement.TextureName,
                 assets.GetTexture(replacement.ImagePath)
@@ -420,7 +413,7 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
     /// <param name="session">The encounter used to select friendly group colors.</param>
     private void CreateFighter(Visual visual, ContentAssets assets, TacticalCombatSession session)
     {
-        Rebellion.Game.SpaceCombat.TacticalCombatFighterSprites sprites =
+        TacticalCombatFighterSprites sprites =
             visual.Unit.Definition?.FighterSprites
             ?? throw new InvalidOperationException(
                 $"Fighter sprites are missing for '{visual.Unit.TypeID}'."
@@ -446,7 +439,7 @@ public sealed class TacticalCombatRenderer : MonoBehaviour, ITacticalCombatArriv
         billboard.transform.localScale = Vector3.one * 0.3f;
         visual.Billboard = billboard.transform;
         visual.FighterRenderer = billboard.GetComponent<MeshRenderer>();
-        visual.FighterRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        visual.FighterRenderer.shadowCastingMode = ShadowCastingMode.Off;
         visual.FighterRenderer.receiveShadows = false;
     }
 

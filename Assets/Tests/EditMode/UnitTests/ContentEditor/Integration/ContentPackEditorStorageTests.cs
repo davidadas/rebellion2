@@ -7,6 +7,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using StringComparer = global::System.StringComparer;
 
 namespace Rebellion.Tests.ContentEditor.Integration
 {
@@ -476,7 +477,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
                             .OrderBy(
                                 child =>
                                     child.Element("Key").ToString(SaveOptions.DisableFormatting),
-                                System.StringComparer.Ordinal
+                                StringComparer.Ordinal
                             )
                             .Select(child => new XElement(child))
                             .ToArray()

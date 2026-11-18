@@ -1,13 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Rebellion.Gameplay;
 
-namespace Rebellion.Gameplay
+namespace Rebellion.Multiplayer
 {
     /// <summary>
     /// Owns a replica's delayed display timeline independently of authoritative battle state.
     /// </summary>
-    public sealed class TacticalCombatReplicaPlayback : IDisposable
+    public sealed class TacticalCombatReplicaPlayback
+        : ITacticalCombatPresentationTimeline,
+            IDisposable
     {
         private TacticalCombatPresentationBuffer _networkPresentation;
         private bool _disposed;

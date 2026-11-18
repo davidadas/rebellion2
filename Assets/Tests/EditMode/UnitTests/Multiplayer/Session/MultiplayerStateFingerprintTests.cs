@@ -9,6 +9,7 @@ using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
+using InvalidOperationException = global::System.InvalidOperationException;
 
 namespace Rebellion.Tests.Multiplayer
 {
@@ -283,7 +284,7 @@ namespace Rebellion.Tests.Multiplayer
         {
             string expected = MultiplayerStateFingerprint.ComputeSimulation(_source);
             _restored.Game.GetFactionByOwnerInstanceID("owner").Settings.BattleLossLoyaltyDivisor++;
-            Assert.Throws<System.InvalidOperationException>(() =>
+            Assert.Throws<InvalidOperationException>(() =>
                 MultiplayerStateFingerprint.VerifyLoadedGame(_restored, expected)
             );
         }
@@ -292,7 +293,7 @@ namespace Rebellion.Tests.Multiplayer
         [TestCase("")]
         public void VerifyLoadedGame_MissingSourceFingerprint_RejectsBeforeGameplay(string expected)
         {
-            Assert.Throws<System.InvalidOperationException>(() =>
+            Assert.Throws<InvalidOperationException>(() =>
                 MultiplayerStateFingerprint.VerifyLoadedGame(_restored, expected)
             );
         }
@@ -352,7 +353,7 @@ namespace Rebellion.Tests.Multiplayer
         {
             _restored.Game.Random = new SystemRandomProvider(456);
 
-            Assert.Throws<System.InvalidOperationException>(() =>
+            Assert.Throws<InvalidOperationException>(() =>
                 MultiplayerStateFingerprint.ComputeSimulation(_restored)
             );
         }

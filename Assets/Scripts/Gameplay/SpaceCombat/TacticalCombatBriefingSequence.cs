@@ -6,7 +6,7 @@ namespace Rebellion.Gameplay
     /// Captures the battle facts used by station briefings and global attack-run admission.
     /// Fighter counts describe the active tactical root, independently of selection and withdrawal.
     /// </summary>
-    public readonly struct TacticalCombatDirectorState
+    public readonly struct TacticalCombatBriefingState
     {
         public bool IsArriving { get; }
         public bool StationExists { get; }
@@ -42,7 +42,7 @@ namespace Rebellion.Gameplay
         /// <param name="allianceActiveFighters">Every Alliance fighter in the active root.</param>
         /// <param name="empireActiveFighters">Every Empire fighter in the active root.</param>
         /// <param name="allianceActiveFightersOutsideAttackRuns">Alliance active fighters excluding attack-run members.</param>
-        public TacticalCombatDirectorState(
+        public TacticalCombatBriefingState(
             bool isArriving,
             bool stationExists,
             bool stationOperational,
@@ -73,11 +73,19 @@ namespace Rebellion.Gameplay
     /// <summary>
     /// Sequences encounter briefings and observes attack-run admission edges on unscaled time.
     /// </summary>
-    public sealed class TacticalCombatDirector
+    public sealed class TacticalCombatBriefingSequence
     {
+        private const float _briefingIntervalMilliseconds = 6000;
+        private const int _allianceOpeningMessage = 32;
+        private const int _empireOpeningMessage = 154;
+        private const int _stationBriefingMessage = 144;
+        private const int _stationProtectionMessage = 147;
+        private const int _fighterDisadvantageMessage = 148;
+        private const int _allianceAttackRunAvailableMessage = 146;
+        private const int _enemyAttackRunAvailableMessage = 284;
         private readonly int _playerFactionIndex;
         private readonly Action<int> _requestNotification;
-        private int _stage;
+        private BriefingStage _stage;
         private float _remainingMilliseconds;
         private bool _previousAdmission;
 
@@ -86,7 +94,10 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="playerFactionIndex">The authored faction index: Alliance 0 or Empire 1.</param>
         /// <param name="requestNotification">Requests a one-shot authored notification.</param>
-        public TacticalCombatDirector(int playerFactionIndex, Action<int> requestNotification)
+        public TacticalCombatBriefingSequence(
+            int playerFactionIndex,
+            Action<int> requestNotification
+        )
         {
             if (playerFactionIndex is not 0 and not 1)
                 throw new ArgumentOutOfRangeException(nameof(playerFactionIndex));
@@ -100,41 +111,41 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="elapsedMilliseconds">The unscaled frame interval.</param>
         /// <param name="state">The station, active-root, chain, and order facts for this frame.</param>
-        public void Advance(float elapsedMilliseconds, TacticalCombatDirectorState state)
+        public void Advance(float elapsedMilliseconds, TacticalCombatBriefingState state)
         {
-            if (_stage == 1000)
+            if (_stage == BriefingStage.WaitingForAdmission)
             {
                 _remainingMilliseconds -= elapsedMilliseconds;
                 if (_remainingMilliseconds > 0)
                     return;
-                _stage = 4;
+                _stage = BriefingStage.ObservingAdmission;
             }
-            if (_stage == 4)
+            if (_stage == BriefingStage.ObservingAdmission)
             {
                 ObserveAdmission(state);
                 return;
             }
-            if (_stage == 0 && state.IsArriving)
+            if (_stage == BriefingStage.Opening && state.IsArriving)
                 return;
 
             _remainingMilliseconds -= elapsedMilliseconds;
             if (_remainingMilliseconds > 0)
                 return;
-            _remainingMilliseconds = 6000;
+            _remainingMilliseconds = _briefingIntervalMilliseconds;
             _requestNotification(GetBriefingMessage());
             switch (_stage)
             {
-                case 0:
+                case BriefingStage.Opening:
                     _stage =
                         _playerFactionIndex == 0 && state.StationExists && state.StationOperational
-                            ? 1
-                            : 1000;
+                            ? BriefingStage.Station
+                            : BriefingStage.WaitingForAdmission;
                     break;
-                case 1:
+                case BriefingStage.Station:
                     if (!state.StationExists)
-                        _stage = 1000;
+                        _stage = BriefingStage.WaitingForAdmission;
                     else if (state.StationOperational && state.StationProtected)
-                        _stage = 2;
+                        _stage = BriefingStage.Protection;
                     else if (
                         state.AllianceFighterChainPopulated
                         && !state.CanAttackBattleStation
@@ -142,13 +153,13 @@ namespace Rebellion.Gameplay
                         && state.AllianceActiveFightersOutsideAttackRuns
                             <= state.EmpireActiveFighters
                     )
-                        _stage = 3;
+                        _stage = BriefingStage.FighterBalance;
                     else
-                        _stage = 1000;
+                        _stage = BriefingStage.WaitingForAdmission;
                     break;
-                case 2:
-                case 3:
-                    _stage = 1000;
+                case BriefingStage.Protection:
+                case BriefingStage.FighterBalance:
+                    _stage = BriefingStage.WaitingForAdmission;
                     break;
             }
         }
@@ -160,10 +171,12 @@ namespace Rebellion.Gameplay
         private int GetBriefingMessage() =>
             _stage switch
             {
-                0 => _playerFactionIndex == 0 ? 32 : 154,
-                1 => 144,
-                2 => 147,
-                3 => 148,
+                BriefingStage.Opening => _playerFactionIndex == 0
+                    ? _allianceOpeningMessage
+                    : _empireOpeningMessage,
+                BriefingStage.Station => _stationBriefingMessage,
+                BriefingStage.Protection => _stationProtectionMessage,
+                BriefingStage.FighterBalance => _fighterDisadvantageMessage,
                 _ => throw new InvalidOperationException("The briefing stage is not active."),
             };
 
@@ -171,7 +184,7 @@ namespace Rebellion.Gameplay
         /// Records every admission edge, including edges whose additional cue gates reject playback.
         /// </summary>
         /// <param name="state">The current global admission and fighter-chain facts.</param>
-        private void ObserveAdmission(TacticalCombatDirectorState state)
+        private void ObserveAdmission(TacticalCombatBriefingState state)
         {
             bool admission = state.CanAttackBattleStation;
             if (_previousAdmission && !admission)
@@ -183,16 +196,26 @@ namespace Rebellion.Gameplay
                     && !state.AttackRunActive
                     && !state.AllianceAttackRunOrdered
                 )
-                    _requestNotification(148);
+                    _requestNotification(_fighterDisadvantageMessage);
             }
             else if (!_previousAdmission && admission)
             {
                 if (_playerFactionIndex == 0)
-                    _requestNotification(146);
+                    _requestNotification(_allianceAttackRunAvailableMessage);
                 else if (state.AllianceFighterChainPopulated)
-                    _requestNotification(284);
+                    _requestNotification(_enemyAttackRunAvailableMessage);
             }
             _previousAdmission = admission;
+        }
+
+        private enum BriefingStage
+        {
+            Opening,
+            Station,
+            Protection,
+            FighterBalance,
+            ObservingAdmission,
+            WaitingForAdmission,
         }
     }
 }

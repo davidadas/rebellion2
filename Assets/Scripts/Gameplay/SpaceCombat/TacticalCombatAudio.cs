@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Util.Random;
+using Stopwatch = global::System.Diagnostics.Stopwatch;
 
 namespace Rebellion.Gameplay
 {
@@ -153,7 +154,7 @@ namespace Rebellion.Gameplay
         /// <returns>The provider used for relative pending-message lifetimes.</returns>
         private static Func<uint> CreatePresentationClock()
         {
-            System.Diagnostics.Stopwatch clock = System.Diagnostics.Stopwatch.StartNew();
+            Stopwatch clock = Stopwatch.StartNew();
             return () => unchecked((uint)clock.ElapsedMilliseconds);
         }
 

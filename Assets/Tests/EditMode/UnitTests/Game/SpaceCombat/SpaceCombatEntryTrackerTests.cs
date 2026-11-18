@@ -10,6 +10,7 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
+using Point = global::System.Drawing.Point;
 
 namespace Rebellion.Tests.Game.SpaceCombat
 {
@@ -390,7 +391,7 @@ namespace Rebellion.Tests.Game.SpaceCombat
             Assert.AreEqual(2, _destination.SpaceCombatEntryFaction);
             fleet.Movement.Advance(
                 fleet.Movement.TransitTicks - 1,
-                new System.Drawing.Point(_destination.PositionX, _destination.PositionY)
+                new Point(_destination.PositionX, _destination.PositionY)
             );
             new MovementTickProcessor(movement).ProcessTick(_game);
             Assert.IsNull(fleet.Movement);

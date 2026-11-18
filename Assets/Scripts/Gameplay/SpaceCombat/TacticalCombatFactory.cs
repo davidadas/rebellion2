@@ -9,6 +9,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Gameplay
 {
@@ -19,7 +20,7 @@ namespace Rebellion.Gameplay
     {
         private readonly GameRoot _game;
         private readonly SpaceCombatQueries _queries;
-        private readonly Func<TacticalCombatRandom> _createRandom;
+        private readonly Func<FifteenBitRandomProvider> _createRandom;
         private readonly Func<DateTimeOffset> _localClock;
         private readonly TacticalCombatDefinition _definition;
         private readonly Dictionary<string, TacticalCombatUnitDefinition> _definitions;
@@ -37,14 +38,14 @@ namespace Rebellion.Gameplay
             GameRoot game,
             GameDataCatalog catalog,
             SpaceCombatQueries queries,
-            Func<TacticalCombatRandom> createRandom = null,
+            Func<FifteenBitRandomProvider> createRandom = null,
             Func<DateTimeOffset> localClock = null
         )
         {
             this._game = game ?? throw new ArgumentNullException(nameof(game));
             _createRandom =
                 createRandom
-                ?? (() => new TacticalCombatRandom(unchecked((uint)Environment.TickCount)));
+                ?? (() => new FifteenBitRandomProvider(unchecked((uint)Environment.TickCount)));
             _localClock = localClock ?? (() => DateTimeOffset.Now);
             this._queries = queries ?? throw new ArgumentNullException(nameof(queries));
             _definition =
@@ -365,8 +366,8 @@ namespace Rebellion.Gameplay
                 CreateGroups(units, groups, (CombatSide)side, forward, ref counters[side]);
             }
             groups.Sort(CompareGroupRegistration);
-            TacticalCombatRandom random = seed.HasValue
-                ? new TacticalCombatRandom(seed.Value)
+            FifteenBitRandomProvider random = seed.HasValue
+                ? new FifteenBitRandomProvider(seed.Value)
                 : _createRandom();
             return new TacticalCombatSession(
                 units,
@@ -385,7 +386,7 @@ namespace Rebellion.Gameplay
                     () =>
                         scenerySeed.HasValue
                             ? unchecked((int)scenerySeed.Value)
-                            : TacticalCombatRandom.GetCalendarSeed(_localClock())
+                            : TacticalCombatSeed.FromClock(_localClock())
                 ),
                 personnelHostInstanceIDs: personnelHostInstanceIDs,
                 enteringSide: factionDefinitions[0].FactionIndex

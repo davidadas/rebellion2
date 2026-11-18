@@ -4,6 +4,7 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Generation;
+using InvalidOperationException = global::System.InvalidOperationException;
 
 namespace Rebellion.Tests.MultiplayerIntegration
 {
@@ -67,7 +68,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
                     carriers.Add(carrier);
                 }
                 if (carriers.Sum(carrier => carrier.StarfighterCapacity) < options.SquadronsPerSide)
-                    throw new System.InvalidOperationException(
+                    throw new InvalidOperationException(
                         "The requested squadrons exceed the authored carrier bay capacity."
                     );
                 int carrierIndex = 0;

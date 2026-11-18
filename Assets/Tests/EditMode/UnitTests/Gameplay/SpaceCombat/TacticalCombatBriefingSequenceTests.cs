@@ -5,14 +5,14 @@ using Rebellion.Gameplay;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
-    public sealed class TacticalCombatDirectorTests
+    public sealed class TacticalCombatBriefingSequenceTests
     {
         [TestCase(0, 32)]
         [TestCase(1, 154)]
         public void Advance_FirstActiveFrame_QueuesPlayerFactionBriefing(int faction, int message)
         {
             List<int> messages = new();
-            TacticalCombatDirector director = new(faction, messages.Add);
+            TacticalCombatBriefingSequence director = new(faction, messages.Add);
             director.Advance(0, State());
             CollectionAssert.AreEqual(new[] { message }, messages);
         }
@@ -21,7 +21,7 @@ namespace Rebellion.Tests.Gameplay
         public void Advance_ArrivalStage_DoesNotConsumeBriefingTimer()
         {
             List<int> messages = new();
-            TacticalCombatDirector director = new(0, messages.Add);
+            TacticalCombatBriefingSequence director = new(0, messages.Add);
             director.Advance(100000, State(arriving: true));
             Assert.IsEmpty(messages);
             director.Advance(0, State());
@@ -32,8 +32,8 @@ namespace Rebellion.Tests.Gameplay
         public void Advance_ProtectedStation_QueuesOrderedStationBriefings()
         {
             List<int> messages = new();
-            TacticalCombatDirector director = new(0, messages.Add);
-            TacticalCombatDirectorState state = State(
+            TacticalCombatBriefingSequence director = new(0, messages.Add);
+            TacticalCombatBriefingState state = State(
                 station: true,
                 operational: true,
                 protectedStation: true
@@ -50,8 +50,8 @@ namespace Rebellion.Tests.Gameplay
         public void Advance_MultipleIntervalsInOneFrame_DoesNotCatchUpBriefings()
         {
             List<int> messages = new();
-            TacticalCombatDirector director = new(0, messages.Add);
-            TacticalCombatDirectorState state = State(
+            TacticalCombatBriefingSequence director = new(0, messages.Add);
+            TacticalCombatBriefingState state = State(
                 station: true,
                 operational: true,
                 protectedStation: true
@@ -65,7 +65,7 @@ namespace Rebellion.Tests.Gameplay
         public void Advance_StationRemovedAfterFirstBriefing_StillQueuesSecondBriefing()
         {
             List<int> messages = new();
-            TacticalCombatDirector director = new(0, messages.Add);
+            TacticalCombatBriefingSequence director = new(0, messages.Add);
             director.Advance(0, State(station: true, operational: true));
             director.Advance(6000, State());
             director.Advance(6000, State());
@@ -76,8 +76,8 @@ namespace Rebellion.Tests.Gameplay
         public void Advance_FighterWarning_ExcludesAllianceAttackRunMembersOnly()
         {
             List<int> messages = new();
-            TacticalCombatDirector director = new(0, messages.Add);
-            TacticalCombatDirectorState state = State(
+            TacticalCombatBriefingSequence director = new(0, messages.Add);
+            TacticalCombatBriefingState state = State(
                 station: true,
                 operational: true,
                 allianceChain: true,
@@ -97,8 +97,8 @@ namespace Rebellion.Tests.Gameplay
         public void Advance_ExistingAttackRunHelper_SuppressesFighterWarning()
         {
             List<int> messages = new();
-            TacticalCombatDirector director = new(0, messages.Add);
-            TacticalCombatDirectorState state = State(
+            TacticalCombatBriefingSequence director = new(0, messages.Add);
+            TacticalCombatBriefingState state = State(
                 station: true,
                 operational: true,
                 allianceChain: true,
@@ -120,7 +120,7 @@ namespace Rebellion.Tests.Gameplay
         )
         {
             List<int> messages = new();
-            TacticalCombatDirector director = new(faction, messages.Add);
+            TacticalCombatBriefingSequence director = new(faction, messages.Add);
             director.Advance(0, State());
             director.Advance(6000, Admitted());
             Assert.AreEqual(message, messages[1]);
@@ -130,7 +130,7 @@ namespace Rebellion.Tests.Gameplay
         public void Advance_AdmissionChangesAfterWaiting_ObservesEveryFrameWithoutNewDelay()
         {
             List<int> messages = new();
-            TacticalCombatDirector director = new(0, messages.Add);
+            TacticalCombatBriefingSequence director = new(0, messages.Add);
             director.Advance(0, State());
             director.Advance(6000, State());
             director.Advance(1, Admitted());
@@ -142,7 +142,7 @@ namespace Rebellion.Tests.Gameplay
         public void Advance_SuppressedFallingEdge_StillRecordsNewAdmissionState()
         {
             List<int> messages = new();
-            TacticalCombatDirector director = new(0, messages.Add);
+            TacticalCombatBriefingSequence director = new(0, messages.Add);
             director.Advance(0, State());
             director.Advance(6000, Admitted());
             director.Advance(1, State());
@@ -154,7 +154,7 @@ namespace Rebellion.Tests.Gameplay
         public void Advance_EmpireRisingEdgeWithoutAllianceChain_DoesNotRepeatWhenChainAppears()
         {
             List<int> messages = new();
-            TacticalCombatDirector director = new(1, messages.Add);
+            TacticalCombatBriefingSequence director = new(1, messages.Add);
             director.Advance(0, State());
             director.Advance(6000, State(station: true, operational: true, allianceCount: 1));
             director.Advance(1, Admitted());
@@ -169,7 +169,7 @@ namespace Rebellion.Tests.Gameplay
         )
         {
             List<int> messages = new();
-            TacticalCombatDirector director = new(0, messages.Add);
+            TacticalCombatBriefingSequence director = new(0, messages.Add);
             director.Advance(0, State());
             director.Advance(6000, Admitted());
             director.Advance(
@@ -188,7 +188,7 @@ namespace Rebellion.Tests.Gameplay
         public void Advance_UnorderedCountdown_ExpiresBriefingWithoutLooping()
         {
             List<int> messages = new();
-            TacticalCombatDirector director = new(0, messages.Add);
+            TacticalCombatBriefingSequence director = new(0, messages.Add);
             director.Advance(float.NaN, State());
             CollectionAssert.AreEqual(new[] { 32 }, messages);
         }
@@ -196,7 +196,7 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void CanAttackBattleStation_AttackRunMembersInActiveRoot_CountTowardsAdmission()
         {
-            TacticalCombatDirectorState state = State(
+            TacticalCombatBriefingState state = State(
                 station: true,
                 operational: true,
                 allianceCount: 2,
@@ -248,7 +248,7 @@ namespace Rebellion.Tests.Gameplay
         /// Captures a globally admitted attack run with populated fighter chains.
         /// </summary>
         /// <returns>The admitted director facts.</returns>
-        private static TacticalCombatDirectorState Admitted() =>
+        private static TacticalCombatBriefingState Admitted() =>
             State(
                 station: true,
                 operational: true,
@@ -274,7 +274,7 @@ namespace Rebellion.Tests.Gameplay
         /// <param name="empireCount">Every Empire active-root fighter.</param>
         /// <param name="allianceOutsideRuns">Alliance active-root fighters outside attack runs.</param>
         /// <returns>The explicit director facts.</returns>
-        private static TacticalCombatDirectorState State(
+        private static TacticalCombatBriefingState State(
             bool arriving = false,
             bool station = false,
             bool operational = false,

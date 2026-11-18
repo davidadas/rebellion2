@@ -2,14 +2,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.AI.Planners;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Util.Random;
+using BitConverter = global::System.BitConverter;
 
-namespace Rebellion.Tests.Gameplay
+namespace Rebellion.Tests.AI.Planners
 {
     [TestFixture]
-    public sealed class TacticalCombatAITests
+    public sealed class TacticalCombatPlannerTests
     {
         [Test]
         public void Plan_OperationalStationWithUnorderedCharge_QueuesSuperlaser()
@@ -29,7 +32,7 @@ namespace Rebellion.Tests.Gameplay
             );
             TacticalCombatSession session = CreateAssessmentSession(new[] { target, station });
             session.BattleStation.Advance(float.NaN);
-            TacticalCombatAI automation = new(session);
+            TacticalCombatPlanner automation = new(session);
 
             AdvanceAssessment(automation, session.GetSide(CombatSide.Defender));
 
@@ -105,9 +108,9 @@ namespace Rebellion.Tests.Gameplay
             target.Position = group.Formation.Position + new Vector3(x, 1234, 5678);
             float attack = 0;
 
-            float metric = TacticalCombatAI.GetTargetMetric(group, target, ref attack);
+            float metric = TacticalCombatPlanner.GetTargetMetric(group, target, ref attack);
 
-            Assert.AreEqual(0x4043b8ae, System.BitConverter.SingleToInt32Bits(metric));
+            Assert.AreEqual(0x4043b8ae, BitConverter.SingleToInt32Bits(metric));
         }
 
         [Test]
@@ -131,9 +134,9 @@ namespace Rebellion.Tests.Gameplay
             };
             float attack = 1;
 
-            float metric = TacticalCombatAI.GetTargetMetric(group, target, ref attack);
+            float metric = TacticalCombatPlanner.GetTargetMetric(group, target, ref attack);
 
-            Assert.AreEqual(0x4108cccc, System.BitConverter.SingleToInt32Bits(metric));
+            Assert.AreEqual(0x4108cccc, BitConverter.SingleToInt32Bits(metric));
             Assert.AreEqual(1, attack);
         }
 
@@ -156,7 +159,7 @@ namespace Rebellion.Tests.Gameplay
             target.Systems.ApplyHullLoss(5);
             float attack = (float)target.Systems.GetShieldRecharge();
 
-            float metric = TacticalCombatAI.GetTargetMetric(group, target, ref attack);
+            float metric = TacticalCombatPlanner.GetTargetMetric(group, target, ref attack);
 
             Assert.AreEqual(-1, metric);
         }
@@ -181,7 +184,7 @@ namespace Rebellion.Tests.Gameplay
             target.Position = group.Formation.Position + new Vector3(x, y, z);
             float attack = 1;
 
-            float metric = TacticalCombatAI.GetTargetMetric(group, target, ref attack);
+            float metric = TacticalCombatPlanner.GetTargetMetric(group, target, ref attack);
 
             Assert.AreEqual(64999.99609375f, metric);
         }
@@ -202,7 +205,7 @@ namespace Rebellion.Tests.Gameplay
             target.Position = group.Formation.Position + Vector3.UnitX * float.MaxValue;
             float attack = 1;
 
-            float metric = TacticalCombatAI.GetTargetMetric(group, target, ref attack);
+            float metric = TacticalCombatPlanner.GetTargetMetric(group, target, ref attack);
 
             Assert.AreEqual(float.PositiveInfinity, metric);
         }
@@ -238,7 +241,7 @@ namespace Rebellion.Tests.Gameplay
                 new[] { own, capital, fighter }
             );
             TacticalCombatGroup group = session.GetGroup(own);
-            TacticalCombatAI automation = new(session);
+            TacticalCombatPlanner automation = new(session);
 
             AdvanceAssessment(automation, session.GetSide(CombatSide.Defender));
 
@@ -283,7 +286,7 @@ namespace Rebellion.Tests.Gameplay
                 new[] { own, preferred, secondary }
             );
             TacticalCombatGroup group = session.GetGroup(own);
-            TacticalCombatAI automation = new(session);
+            TacticalCombatPlanner automation = new(session);
             AdvanceAssessment(automation, session.GetSide(CombatSide.Defender));
             session.SetTarget(group, secondary);
 
@@ -309,7 +312,7 @@ namespace Rebellion.Tests.Gameplay
             TacticalCombatSession session = CreateAssessmentSession(new[] { player, opposing });
             session.SetAutomated(CombatSide.Attacker, true);
             TacticalCombatGroup previous = session.GetGroup(player);
-            TacticalCombatAI automation = new(session);
+            TacticalCombatPlanner automation = new(session);
 
             AdvanceAssessment(automation, session.GetSide(CombatSide.Attacker));
 
@@ -329,7 +332,7 @@ namespace Rebellion.Tests.Gameplay
                 new[] { own, earlier, preferred }
             );
             TacticalCombatGroup group = session.GetGroup(own);
-            TacticalCombatAI automation = new(session);
+            TacticalCombatPlanner automation = new(session);
 
             AdvanceAssessment(automation, session.GetSide(CombatSide.Defender));
 
@@ -342,7 +345,7 @@ namespace Rebellion.Tests.Gameplay
             TacticalCombatSession session = CreateSession(20, 20, false, 1);
             TacticalCombatUnit unit = session.GetUnit("defender-0");
             TacticalCombatGroup group = session.GetGroup(unit);
-            TacticalCombatAI automation = new(session);
+            TacticalCombatPlanner automation = new(session);
 
             automation.PrepareCandidates(session.GetSide(CombatSide.Defender));
 
@@ -361,7 +364,7 @@ namespace Rebellion.Tests.Gameplay
             );
             unit.Status = TacticalCombatUnitStatus.EnteringHyperspace;
             TacticalCombatSession session = CreateAssessmentSession(new[] { unit });
-            TacticalCombatAI automation = new(session);
+            TacticalCombatPlanner automation = new(session);
 
             automation.AssessStrength(session.GetSide(CombatSide.Defender));
 
@@ -386,7 +389,7 @@ namespace Rebellion.Tests.Gameplay
             );
             unit.Status = TacticalCombatUnitStatus.Recovered;
             TacticalCombatSession session = CreateAssessmentSession(new[] { unit });
-            TacticalCombatAI automation = new(session);
+            TacticalCombatPlanner automation = new(session);
 
             automation.AssessStrength(session.GetSide(CombatSide.Attacker));
 
@@ -397,7 +400,7 @@ namespace Rebellion.Tests.Gameplay
         public void AssessStrength_GlobalInitialHangars_AddsOpposingDockedFighterOnlyToEmpire()
         {
             TacticalCombatSession session = CreateHangarSession(out TacticalCombatUnit fighter);
-            TacticalCombatAI automation = new(session);
+            TacticalCombatPlanner automation = new(session);
 
             automation.AssessStrength(session.GetSide(CombatSide.Attacker));
             automation.AssessStrength(session.GetSide(CombatSide.Defender));
@@ -411,7 +414,7 @@ namespace Rebellion.Tests.Gameplay
         public void AssessStrength_InitialFighterLaunch_RemovesItFromGlobalHangarAssessment()
         {
             TacticalCombatSession session = CreateHangarSession(out TacticalCombatUnit fighter);
-            TacticalCombatAI automation = new(session);
+            TacticalCombatPlanner automation = new(session);
             for (
                 int frame = 0;
                 frame < 600 && fighter.Status == TacticalCombatUnitStatus.Docked;
@@ -432,7 +435,7 @@ namespace Rebellion.Tests.Gameplay
             TacticalCombatUnit opposing = CreateUnit("opposing", CombatSide.Attacker, 1, 20, false);
             TacticalCombatSession session = CreateAssessmentSession(new[] { own, opposing });
             session.GetGroup(opposing).SetTarget(own);
-            TacticalCombatAI automation = new(session);
+            TacticalCombatPlanner automation = new(session);
 
             automation.AssessStrength(session.GetSide(CombatSide.Defender));
 
@@ -446,7 +449,7 @@ namespace Rebellion.Tests.Gameplay
             TacticalCombatUnit opposing = CreateUnit("opposing", CombatSide.Attacker, 1, 20, false);
             TacticalCombatSession session = CreateAssessmentSession(new[] { own, opposing });
             session.SetTarget(session.GetGroup(opposing), own);
-            TacticalCombatAI automation = new(session);
+            TacticalCombatPlanner automation = new(session);
 
             automation.AssessStrength(session.GetSide(CombatSide.Defender));
 
@@ -469,7 +472,7 @@ namespace Rebellion.Tests.Gameplay
                 1000001
             );
             TacticalCombatSession session = CreateAssessmentSession(new[] { station });
-            TacticalCombatAI automation = new(session);
+            TacticalCombatPlanner automation = new(session);
 
             automation.AssessStrength(session.GetSide(CombatSide.Defender));
 
@@ -520,7 +523,10 @@ namespace Rebellion.Tests.Gameplay
         /// </summary>
         /// <param name="automation">The captured tactical planner.</param>
         /// <param name="side">The side being assessed and planned.</param>
-        private static void AdvanceAssessment(TacticalCombatAI automation, TacticalCombatSide side)
+        private static void AdvanceAssessment(
+            TacticalCombatPlanner automation,
+            TacticalCombatSide side
+        )
         {
             automation.PrepareCandidates(side);
             automation.Plan(side);
@@ -593,7 +599,7 @@ namespace Rebellion.Tests.Gameplay
                 defender,
                 CombatSide.Attacker,
                 100,
-                new TacticalCombatRandom(42)
+                new FifteenBitRandomProvider(42)
             );
         }
 
@@ -648,7 +654,7 @@ namespace Rebellion.Tests.Gameplay
                 defender,
                 CombatSide.Attacker,
                 100,
-                new TacticalCombatRandom(42)
+                new FifteenBitRandomProvider(42)
             );
         }
 

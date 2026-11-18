@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using Rebellion.Gameplay;
+using BitConverter = global::System.BitConverter;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -26,7 +27,7 @@ namespace Rebellion.Tests.Gameplay
                 TacticalWeaponType.LaserCannon
             );
 
-            Assert.AreEqual(0x3fe99999b0000000L, System.BitConverter.DoubleToInt64Bits(damage));
+            Assert.AreEqual(0x3fe99999b0000000L, BitConverter.DoubleToInt64Bits(damage));
         }
 
         [Test]

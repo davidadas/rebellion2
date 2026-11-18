@@ -1,8 +1,10 @@
+using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.UIState;
 using UnityEngine;
+using Object = global::UnityEngine.Object;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 {
@@ -131,7 +133,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         /// <param name="restore">The callback invoked to restore persisted state.</param>
         /// <returns>The configured test adapter.</returns>
         private StrategyWindowStateAdapter<TestWindowContent> CreateAdapter(
-            System.Func<WindowState, UIWindow> restore
+            Func<WindowState, UIWindow> restore
         )
         {
             return new StrategyWindowStateAdapter<TestWindowContent>(

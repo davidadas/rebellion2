@@ -6,9 +6,10 @@ using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Multiplayer;
 using Rebellion.Util.Random;
 
-namespace Rebellion.Tests.Gameplay
+namespace Rebellion.Tests.Multiplayer
 {
     [TestFixture]
     public sealed class TacticalCombatReplicaPlaybackTests

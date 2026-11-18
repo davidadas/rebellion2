@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using ShadowCastingMode = global::UnityEngine.Rendering.ShadowCastingMode;
 
 /// <summary>
 /// Owns a capital ship's local bounding-box wireframe and its selection colors.
@@ -76,7 +77,7 @@ internal sealed class TacticalCombatSelectionBox : IDisposable
         _root.GetComponent<MeshFilter>().sharedMesh = _mesh;
         MeshRenderer renderer = _root.GetComponent<MeshRenderer>();
         renderer.sharedMaterial = _material;
-        renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        renderer.shadowCastingMode = ShadowCastingMode.Off;
         renderer.receiveShadows = false;
         _root.SetActive(false);
     }

@@ -11,6 +11,7 @@ using Rebellion.Game.Missions;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using TMP_InputField = global::TMPro.TMP_InputField;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
 {
@@ -955,10 +956,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         /// </summary>
         /// <param name="view">The authored window view.</param>
         /// <returns>The player-message input.</returns>
-        private static TMPro.TMP_InputField GetChatInput(MessagesWindowView view)
+        private static TMP_InputField GetChatInput(MessagesWindowView view)
         {
             return view.GetComponentInChildren<MessagesChatComposerView>(true)
-                .GetComponentInChildren<TMPro.TMP_InputField>(true);
+                .GetComponentInChildren<TMP_InputField>(true);
         }
 
         /// <summary>

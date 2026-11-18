@@ -5,6 +5,7 @@ using ArchUnitNET.Loader;
 using ArchUnitNET.NUnit;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Multiplayer;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
 
 namespace Rebellion.Architecture.Tests
@@ -13,13 +14,14 @@ namespace Rebellion.Architecture.Tests
     public sealed class GameplayArchitectureTests
     {
         private const string _runtimePattern = "^Rebellion\\.(?:Systems|Gameplay)(?:\\.|$)";
-        private const string _presentationPattern = "^(?:Rebellion\\.UI(?:\\..*)?|[^.<][^.]*)$";
+        private const string _presentationPattern =
+            "^(?:Rebellion\\.(?:UI|Multiplayer)(?:\\..*)?|[^.<][^.]*)$";
         private static readonly ArchUnitNET.Domain.Architecture _architecture = new ArchLoader()
             .LoadAssemblies(typeof(GameRoot).Assembly, typeof(ContentPackEditorProject).Assembly)
             .Build();
 
         [Test]
-        public void GameplayRuntime_Dependencies_ExcludePresentationAndUnqualifiedServices()
+        public void GameplayRuntime_Dependencies_ExcludePresentationTransportAndUnqualifiedServices()
         {
             CreateGameplayRule(_runtimePattern).Check(_architecture);
         }
@@ -50,6 +52,26 @@ namespace Rebellion.Architecture.Tests
             Assert.That(failure.Message, Does.Contain(nameof(TacticalCombatHudState)));
         }
 
+        [Test]
+        public void GameplayBoundary_MultiplayerPlaybackDependency_RejectsArchitecture()
+        {
+            var architecture = new ArchLoader()
+                .LoadAssemblies(
+                    typeof(GameRoot).Assembly,
+                    typeof(GameplayTransportDependency).Assembly
+                )
+                .Build();
+            string sourcePattern =
+                "^" + Regex.Escape(typeof(GameplayTransportDependency).FullName) + "$";
+
+            Exception failure = Assert.Catch(() =>
+                CreateGameplayRule(sourcePattern).Check(architecture)
+            );
+
+            Assert.That(failure.Message, Does.Contain(nameof(GameplayTransportDependency)));
+            Assert.That(failure.Message, Does.Contain("TacticalCombatReplicaPlayback"));
+        }
+
         private static IArchRule CreateGameplayRule(string sourcePattern)
         {
             // Runtime services use qualified domain names. The existing unqualified content
@@ -72,5 +94,10 @@ namespace Rebellion.Architecture.Tests
     internal sealed class GameplayUiDependency
     {
         public TacticalCombatHudState View { get; set; }
+    }
+
+    internal sealed class GameplayTransportDependency
+    {
+        public TacticalCombatReplicaPlayback Playback { get; set; }
     }
 }

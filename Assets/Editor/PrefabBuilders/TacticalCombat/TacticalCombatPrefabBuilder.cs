@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using TMPro;
 using UnityEditor;
@@ -159,7 +160,7 @@ public static class TacticalCombatPrefabBuilder
         Assign(view, "_battleRenderer", renderer);
         Directory.CreateDirectory(Path.GetDirectoryName(PrefabPath));
         PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
-        UnityEngine.Object.DestroyImmediate(root);
+        Object.DestroyImmediate(root);
     }
 
     /// <summary>
@@ -169,7 +170,7 @@ public static class TacticalCombatPrefabBuilder
     /// <param name="frame">The fixed-aspect source-space frame.</param>
     private static void BindControls(TacticalCombatView view, RectTransform frame)
     {
-        System.Collections.Generic.Dictionary<TacticalCombatHudPanel, Transform> parents = new()
+        Dictionary<TacticalCombatHudPanel, Transform> parents = new()
         {
             [TacticalCombatHudPanel.Frame] = frame,
         };
@@ -421,7 +422,7 @@ public static class TacticalCombatPrefabBuilder
     /// <param name="target">The generated component.</param>
     /// <param name="property">The serialized field name.</param>
     /// <param name="value">The authored reference.</param>
-    private static void Assign(UnityEngine.Object target, string property, UnityEngine.Object value)
+    private static void Assign(Object target, string property, Object value)
     {
         SerializedObject serialized = new SerializedObject(target);
         serialized.FindProperty(property).objectReferenceValue = value;

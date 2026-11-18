@@ -4,6 +4,8 @@ using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
+using ArgumentNullException = global::System.ArgumentNullException;
+using InvalidOperationException = global::System.InvalidOperationException;
 
 [TestFixture]
 public sealed class AudioManagerTests
@@ -145,7 +147,7 @@ public sealed class AudioManagerTests
         AudioManager manager = AudioManager.EnsureExists();
         manager.InitializeContent(TestContent.Assets);
 
-        Assert.Throws<System.InvalidOperationException>(() =>
+        Assert.Throws<InvalidOperationException>(() =>
             manager.PreloadSfx(new[] { "Application/MainMenu/Audio/missing-required-clip" })
         );
     }
@@ -367,7 +369,7 @@ public sealed class AudioManagerTests
     {
         AudioManager manager = AudioManager.EnsureExists();
 
-        Assert.Throws<System.ArgumentNullException>(() => manager.PlayDynamicPlaylist(null));
+        Assert.Throws<ArgumentNullException>(() => manager.PlayDynamicPlaylist(null));
     }
 
     [Test]

@@ -4,6 +4,8 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using XmlDocument = global::System.Xml.XmlDocument;
+using XmlNode = global::System.Xml.XmlNode;
 
 namespace Rebellion.Tests.Game.Units
 {
@@ -68,9 +70,9 @@ namespace Rebellion.Tests.Game.Units
         public void SerializeAndDeserialize_LegacyShipWithoutSystemDamage_LoadsUndamagedSystems()
         {
             string xml = SerializationHelper.Serialize(_capitalShip);
-            System.Xml.XmlDocument document = new();
+            XmlDocument document = new();
             document.LoadXml(xml);
-            System.Xml.XmlNode damage = document.DocumentElement.SelectSingleNode("SystemDamage");
+            XmlNode damage = document.DocumentElement.SelectSingleNode("SystemDamage");
             Assert.IsNotNull(damage);
             damage.ParentNode.RemoveChild(damage);
             CapitalShip restored = SerializationHelper.Deserialize<CapitalShip>(document.OuterXml);

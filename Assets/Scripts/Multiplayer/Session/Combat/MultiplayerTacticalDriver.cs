@@ -35,6 +35,8 @@ namespace Rebellion.Multiplayer
         private double _providerMilliseconds;
         public TacticalCombatSession Session { get; }
         public TacticalCombatReplicaPlayback ReplicaPlayback { get; }
+        ITacticalCombatPresentationTimeline ITacticalCombatPresentationDriver.ReplicaPlayback =>
+            ReplicaPlayback;
         public bool IsAuthoritative => _role == MultiplayerRole.Host;
         public SpaceCombatResult CommittedResult { get; private set; }
         public event Action<SpaceCombatResult> CompletedBattle;

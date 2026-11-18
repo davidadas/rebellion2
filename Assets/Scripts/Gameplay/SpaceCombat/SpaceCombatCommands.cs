@@ -8,6 +8,7 @@ using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Logging;
+using InvalidDataException = global::System.IO.InvalidDataException;
 
 namespace Rebellion.Gameplay
 {
@@ -235,7 +236,7 @@ namespace Rebellion.Gameplay
             {
                 result = RestoreTacticalOutcome(outcome);
             }
-            catch (System.IO.InvalidDataException)
+            catch (InvalidDataException)
             {
                 return false;
             }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Gameplay;
 using UnityEngine;
+using ShadowCastingMode = global::UnityEngine.Rendering.ShadowCastingMode;
 
 /// <summary>
 /// Owns pooled weapon effects and their independent presentation lifetimes.
@@ -392,7 +393,7 @@ internal sealed class TacticalCombatEffects : IDisposable
             geometry.transform.SetParent(Root.transform, false);
             _mesh = geometry.GetComponent<MeshFilter>();
             _renderer = geometry.GetComponent<MeshRenderer>();
-            _renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            _renderer.shadowCastingMode = ShadowCastingMode.Off;
             _renderer.receiveShadows = false;
         }
 

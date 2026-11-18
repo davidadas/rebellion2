@@ -16,6 +16,7 @@ using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tests.AI.Helpers;
+using ArgumentOutOfRangeException = global::System.ArgumentOutOfRangeException;
 
 namespace Rebellion.Tests.AI
 {
@@ -3411,7 +3412,7 @@ namespace Rebellion.Tests.AI
                     assessment.GetReadyFleetRegimentAttackStrength(fleet),
                 nameof(AIAssessment.GetProjectedFleetRegimentAttackStrength) =>
                     assessment.GetProjectedFleetRegimentAttackStrength(fleet),
-                _ => throw new System.ArgumentOutOfRangeException(nameof(query)),
+                _ => throw new ArgumentOutOfRangeException(nameof(query)),
             };
     }
 }

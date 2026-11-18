@@ -5,6 +5,8 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
+using ArgumentException = global::System.ArgumentException;
+using ArgumentNullException = global::System.ArgumentNullException;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
 
@@ -97,9 +99,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         [Test]
         public void Constructor_NullPlanet_ThrowsArgumentNullException()
         {
-            Assert.Throws<System.ArgumentNullException>(() =>
-                new FleetWindowSession(null, _window)
-            );
+            Assert.Throws<ArgumentNullException>(() => new FleetWindowSession(null, _window));
         }
 
         [Test]
@@ -111,7 +111,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 string.Empty
             );
 
-            Assert.Throws<System.ArgumentNullException>(() => new FleetWindowSession(planet, null));
+            Assert.Throws<ArgumentNullException>(() => new FleetWindowSession(planet, null));
         }
 
         [Test]
@@ -145,8 +145,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         [Test]
         public void RebindPlanet_NullProjection_ThrowsArgumentException()
         {
-            Assert.Throws<System.ArgumentException>(() => _session.RebindPlanet(null));
-            Assert.Throws<System.ArgumentException>(() =>
+            Assert.Throws<ArgumentException>(() => _session.RebindPlanet(null));
+            Assert.Throws<ArgumentException>(() =>
                 _session.RebindPlanet(
                     new GalaxyMapPlanet(new GalaxyPlanetSector(), null, string.Empty)
                 )

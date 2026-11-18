@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Gameplay;
 using UnityEngine;
+using ShadowCastingMode = global::UnityEngine.Rendering.ShadowCastingMode;
 
 /// <summary>
 /// Owns authored impact sequences independently of combat rules.
@@ -414,7 +415,7 @@ internal sealed class TacticalCombatImpactEffects : IDisposable
             root.layer = PresentationLayers.TacticalCombat;
             root.transform.SetParent(parent, false);
             MeshRenderer renderer = root.GetComponent<MeshRenderer>();
-            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
             renderer.receiveShadows = false;
             renderer.enabled = false;
             return (root.GetComponent<MeshFilter>(), renderer);

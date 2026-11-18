@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -76,7 +77,7 @@ namespace Rebellion.Tests.Gameplay
                 CreateSide(CombatSide.Defender),
                 CombatSide.Attacker,
                 80,
-                new TacticalCombatRandom(42)
+                new FifteenBitRandomProvider(42)
             );
             session.SetOrder(group, TacticalCombatOrder.LeftHook);
             for (

@@ -10,6 +10,7 @@ using Rebellion.Gameplay.GameEvents;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
+using TacticalCombatOutcome = global::Rebellion.Game.SpaceCombat.TacticalCombatOutcome;
 
 namespace Rebellion.Gameplay
 {
@@ -456,7 +457,7 @@ namespace Rebellion.Gameplay
         /// <returns>The routed campaign battle summary.</returns>
         public SpaceCombatResult CompleteNetworkTacticalCombat(
             string battleID,
-            Rebellion.Game.SpaceCombat.TacticalCombatOutcome outcome
+            TacticalCombatOutcome outcome
         ) =>
             CompleteCombatResolution(
                 _spaceCombatCommands.CompleteNetworkTacticalCombat(battleID, outcome)
@@ -471,7 +472,7 @@ namespace Rebellion.Gameplay
         /// <returns>Whether the final network encounter was committed.</returns>
         public bool TryCompleteNetworkTacticalCombat(
             string battleID,
-            Rebellion.Game.SpaceCombat.TacticalCombatOutcome outcome,
+            TacticalCombatOutcome outcome,
             out SpaceCombatResult result
         )
         {

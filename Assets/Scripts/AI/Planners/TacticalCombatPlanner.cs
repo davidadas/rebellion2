@@ -2,14 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Rebellion.Game.Results;
+using Rebellion.Gameplay;
 
-namespace Rebellion.Gameplay
+namespace Rebellion.AI.Planners
 {
     /// <summary>
     /// Assigns tactical groups using target durability, sustained attack, movement, and command priorities.
     /// All assessments use the captured battle roster rather than traversing the campaign graph.
     /// </summary>
-    public sealed class TacticalCombatAI
+    public sealed class TacticalCombatPlanner
     {
         private static readonly Comparer<Candidate> _candidateComparer = Comparer<Candidate>.Create(
             CompareCandidates
@@ -40,7 +41,7 @@ namespace Rebellion.Gameplay
         /// Uses the encounter’s captured roster for every target assessment.
         /// </summary>
         /// <param name="session">The isolated tactical encounter.</param>
-        public TacticalCombatAI(TacticalCombatSession session)
+        public TacticalCombatPlanner(TacticalCombatSession session)
         {
             this._session = session ?? throw new ArgumentNullException(nameof(session));
             foreach (TacticalCombatUnit unit in session.Units)

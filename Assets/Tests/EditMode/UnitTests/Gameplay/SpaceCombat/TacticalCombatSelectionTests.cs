@@ -7,6 +7,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -504,7 +505,7 @@ namespace Rebellion.Tests.Gameplay
         {
             Encounter encounter = Create();
             encounter.Random.Reseed(73);
-            TacticalCombatRandom expected = new(73);
+            FifteenBitRandomProvider expected = new(73);
             encounter.Selection.QueueObject(encounter.Friendly[0]);
 
             encounter.Selection.ProcessPendingCommands();
@@ -744,7 +745,7 @@ namespace Rebellion.Tests.Gameplay
             public TacticalCombatUnit SecondEnemy { get; }
             public TacticalCombatUnit Fighter { get; }
             public TacticalCombatUnit EnemyFighter { get; }
-            public TacticalCombatRandom Random { get; } = new(42);
+            public FifteenBitRandomProvider Random { get; } = new(42);
             public List<Playback> Playbacks { get; } = new();
 
             /// <summary>

@@ -101,7 +101,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             Canvas overlay = _view.transform.Find("Combat application menu").GetComponent<Canvas>();
             Assert.Greater(overlay.sortingOrder, canvas.sortingOrder);
             Assert.IsTrue(overlay.gameObject.activeInHierarchy);
-            Assert.IsTrue(overlay.GetComponentInChildren<UnityEngine.UI.Image>().raycastTarget);
+            Assert.IsTrue(overlay.GetComponentInChildren<Image>().raycastTarget);
         }
 
         [UnityTest]

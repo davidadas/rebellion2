@@ -13,6 +13,9 @@ using Rebellion.Gameplay.Scripting;
 using Rebellion.Multiplayer;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
+using Encoding = global::System.Text.Encoding;
+using JsonUtility = global::UnityEngine.JsonUtility;
+using Vector4 = global::System.Numerics.Vector4;
 
 namespace Rebellion.Tests.Multiplayer
 {
@@ -516,9 +519,7 @@ namespace Rebellion.Tests.Multiplayer
                     {
                         if (packet.Type == MultiplayerMessageType.PlayerActionCommit)
                         {
-                            var metadata = UnityEngine.JsonUtility.FromJson<CommitMetadata>(
-                                packet.Metadata
-                            );
+                            var metadata = JsonUtility.FromJson<CommitMetadata>(packet.Metadata);
                             if (metadata.kind == PlayerRequestKind.CompleteTacticalCombat)
                                 LastCompletionCommit = packet;
                         }
@@ -617,10 +618,7 @@ namespace Rebellion.Tests.Multiplayer
                 foreach (GameSession simulation in Simulations)
                 foreach (var item in _entry)
                 {
-                    var node =
-                        simulation.Game.GetSceneNodeByInstanceID<Rebellion.SceneGraph.ISceneNode>(
-                            item.Key
-                        );
+                    var node = simulation.Game.GetSceneNodeByInstanceID<ISceneNode>(item.Key);
                     Assert.IsNotNull(node);
                     Assert.AreEqual(item.Value.Parent, node.ParentInstanceID);
                     if (node is CapitalShip ship)
@@ -773,10 +771,10 @@ namespace Rebellion.Tests.Multiplayer
             /// <returns>The independent peers' first differing XML region.</returns>
             private string DescribeCampaignDifference()
             {
-                string host = System.Text.Encoding.UTF8.GetString(
+                string host = Encoding.UTF8.GetString(
                     MultiplayerSnapshotCodec.Serialize(typeof(GameRoot), HostSimulation.Game)
                 );
-                string guest = System.Text.Encoding.UTF8.GetString(
+                string guest = Encoding.UTF8.GetString(
                     MultiplayerSnapshotCodec.Serialize(typeof(GameRoot), GuestSimulation.Game)
                 );
                 int index = 0;
@@ -1044,11 +1042,7 @@ namespace Rebellion.Tests.Multiplayer
             /// <param name="unitIndex">The index of the unit whose transform changed.</param>
             /// <param name="position">The unit's arrival position.</param>
             /// <param name="direction">The unit's arrival direction.</param>
-            public void SetTransform(
-                int unitIndex,
-                System.Numerics.Vector4 position,
-                System.Numerics.Vector4 direction
-            ) { }
+            public void SetTransform(int unitIndex, Vector4 position, Vector4 direction) { }
 
             /// <summary>
             /// Accepts a unit presentation refresh without requiring a renderer.

@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using JObject = Newtonsoft.Json.Linq.JObject;
+using StringBuilder = global::System.Text.StringBuilder;
 
 namespace Rebellion.Multiplayer
 {
@@ -158,7 +159,7 @@ namespace Rebellion.Multiplayer
         /// <returns>A quoted argument accepted by the process argument parser.</returns>
         private static string QuoteArgument(string value)
         {
-            System.Text.StringBuilder result = new("\"");
+            StringBuilder result = new("\"");
             int slashes = 0;
             foreach (char character in value)
             {

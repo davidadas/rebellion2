@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Gameplay;
+using Rebellion.Util.Random;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -120,7 +121,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 CreateSide(CombatSide.Defender),
                 CombatSide.Attacker,
                 100,
-                new TacticalCombatRandom(42),
+                new FifteenBitRandomProvider(42),
                 new TacticalCombatDefinition
                 {
                     Sounds = new()

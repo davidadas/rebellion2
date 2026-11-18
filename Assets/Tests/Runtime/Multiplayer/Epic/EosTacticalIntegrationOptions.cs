@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using CultureInfo = global::System.Globalization.CultureInfo;
+using NumberStyles = global::System.Globalization.NumberStyles;
 
 namespace Rebellion.Tests.MultiplayerIntegration
 {
@@ -104,8 +106,8 @@ namespace Rebellion.Tests.MultiplayerIntegration
                 if (
                     !double.TryParse(
                         seconds,
-                        System.Globalization.NumberStyles.None,
-                        System.Globalization.CultureInfo.InvariantCulture,
+                        NumberStyles.None,
+                        CultureInfo.InvariantCulture,
                         out double timeout
                     )
                     || !double.IsFinite(timeout)

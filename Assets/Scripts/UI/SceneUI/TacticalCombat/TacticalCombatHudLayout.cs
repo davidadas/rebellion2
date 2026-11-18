@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using Array = global::System.Array;
 
 /// <summary>
 /// Identifies a tactical panel independently of the selected gameplay object.
@@ -73,7 +74,7 @@ public static class TacticalCombatHudLayout
     public static readonly RectInt RightPanel = new(482, 28, 149, 236);
     public static readonly RectInt ObjectPreview = new(6, 21, 137, 43);
     public static IReadOnlyList<TacticalCombatHudControl> Controls { get; } =
-        System.Array.AsReadOnly(
+        Array.AsReadOnly(
             new TacticalCombatHudControl[]
             {
                 new(

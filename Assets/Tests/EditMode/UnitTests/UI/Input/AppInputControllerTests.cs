@@ -4,6 +4,8 @@ using Rebellion.Game;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
+using IDisposable = global::System.IDisposable;
+using LogAssert = global::UnityEngine.TestTools.LogAssert;
 
 namespace Rebellion.Tests.UI.Input
 {
@@ -168,7 +170,7 @@ namespace Rebellion.Tests.UI.Input
                 completion.SetCanceled();
                 await Task.Yield();
 
-                UnityEngine.TestTools.LogAssert.NoUnexpectedReceived();
+                LogAssert.NoUnexpectedReceived();
             }
             finally
             {
@@ -230,8 +232,8 @@ namespace Rebellion.Tests.UI.Input
             AppInputController controller = root.AddComponent<AppInputController>();
             Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
             int loads = 0;
-            System.IDisposable first = null;
-            System.IDisposable second = null;
+            IDisposable first = null;
+            IDisposable second = null;
             try
             {
                 controller.Initialize(
@@ -322,7 +324,7 @@ namespace Rebellion.Tests.UI.Input
             using ShortcutFixture input = new();
             int requests = 0;
             input.Controller.OptionsMenuRequested += () => requests++;
-            System.IDisposable lease = input.Controller.SuppressShortcuts();
+            IDisposable lease = input.Controller.SuppressShortcuts();
 
             input.Press(Key.LeftShift, Key.Escape);
             Assert.AreEqual(1, input.MenuShortcutPerformances);
@@ -340,8 +342,8 @@ namespace Rebellion.Tests.UI.Input
         public void SuppressShortcuts_ConcurrentLeases_ReleasingOnePreservesOtherOwner()
         {
             using ShortcutFixture input = new();
-            System.IDisposable first = input.Controller.SuppressShortcuts();
-            System.IDisposable second = input.Controller.SuppressShortcuts();
+            IDisposable first = input.Controller.SuppressShortcuts();
+            IDisposable second = input.Controller.SuppressShortcuts();
             first.Dispose();
             first.Dispose();
 
@@ -359,7 +361,7 @@ namespace Rebellion.Tests.UI.Input
             using ShortcutFixture input = new();
             TestCancelable cancelable = new();
             input.CancelStack.Register(cancelable);
-            using System.IDisposable lease = input.Controller.SuppressShortcuts();
+            using IDisposable lease = input.Controller.SuppressShortcuts();
 
             input.Press(Key.Escape);
 
@@ -370,7 +372,7 @@ namespace Rebellion.Tests.UI.Input
         public void SuppressShortcuts_ContextReplaced_DoesNotRestoreObsoleteContext()
         {
             using ShortcutFixture input = new();
-            System.IDisposable lease = input.Controller.SuppressShortcuts();
+            IDisposable lease = input.Controller.SuppressShortcuts();
             input.Controller.SetContext(InputContext.Menu);
 
             lease.Dispose();
@@ -379,7 +381,7 @@ namespace Rebellion.Tests.UI.Input
             Assert.Zero(input.LoadRequests);
         }
 
-        private sealed class ShortcutFixture : System.IDisposable
+        private sealed class ShortcutFixture : IDisposable
         {
             private readonly InputTestFixture _input = new();
             private readonly GameObject _root;

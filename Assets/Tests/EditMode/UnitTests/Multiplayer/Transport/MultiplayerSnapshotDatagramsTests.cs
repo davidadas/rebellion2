@@ -6,6 +6,7 @@ using NUnit.Framework;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
+using Encoding = global::System.Text.Encoding;
 
 namespace Rebellion.Tests.Multiplayer
 {
@@ -426,7 +427,7 @@ namespace Rebellion.Tests.Multiplayer
 
             int expected =
                 4
-                + System.Text.Encoding.UTF8.GetByteCount(packet.Metadata)
+                + Encoding.UTF8.GetByteCount(packet.Metadata)
                 + packet.Payload.Length
                 + dataCount
                 + parityCount * (128 - 22)
