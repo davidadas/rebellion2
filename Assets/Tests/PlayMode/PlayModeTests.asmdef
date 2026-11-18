@@ -8,11 +8,7 @@
         "Unity.TextMeshPro",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "Rebellion.Util",
-        "Rebellion.Combat.Contracts",
-        "Rebellion.Tactical.Contracts",
-        "Rebellion.Tactical.Core",
-        "Rebellion.Tactical.Runtime"
+        "Rebellion.Util"
     ],
     "includePlatforms": [],
     "overrideReferences": true,

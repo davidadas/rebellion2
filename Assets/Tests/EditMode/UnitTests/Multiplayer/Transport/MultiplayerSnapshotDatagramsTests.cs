@@ -7,6 +7,7 @@ using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
 using Rebellion.Tactical;
+using Rebellion.Tactical.Networking;
 using Encoding = global::System.Text.Encoding;
 
 namespace Rebellion.Tests.Multiplayer

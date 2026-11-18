@@ -4,6 +4,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
+using Rebellion.Tactical.Integration.Campaign;
 
 namespace Rebellion.Tests.Tactical
 {

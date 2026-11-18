@@ -193,7 +193,7 @@ do_lint() {
                 -verbosity:normal \
                 "${extra_args[@]}"
         fi
-        for assembly in Rebellion.Combat.Contracts Rebellion.Tactical.Contracts Rebellion.Tactical.Core Rebellion.Tactical.Runtime; do
+        for assembly in Rebellion.Networking.Transport Rebellion.Combat.Contracts Rebellion.Tactical.Contracts Rebellion.Tactical.Core Rebellion.Tactical.Runtime; do
             if [ -f "$assembly.csproj" ]; then
                 dotnet build "$assembly.csproj" \
                     --no-dependencies \

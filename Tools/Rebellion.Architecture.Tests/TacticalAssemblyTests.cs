@@ -19,10 +19,45 @@ namespace Rebellion.Architecture.Tests
     [TestFixture]
     public sealed class TacticalAssemblyTests
     {
+        [TestCase(
+            "^Rebellion\\.Tactical\\.Presentation(?:\\.|$)",
+            "^Rebellion\\.(?:Multiplayer|Tactical\\.Networking)(?:\\.|$)"
+        )]
+        [TestCase(
+            "^Rebellion\\.Tactical\\.Networking(?:\\.|$)",
+            "^Rebellion\\.(?:UI|Tactical\\.Presentation)(?:\\.|$)"
+        )]
+        [TestCase(
+            "^Rebellion\\.Tactical\\.Integration(?:\\.|$)",
+            "^Rebellion\\.(?:UI|Multiplayer|Tactical\\.(?:Presentation|Networking))(?:\\.|$)"
+        )]
+        public void TacticalOwnership_ModeAreas_ExcludeAdjacentImplementations(
+            string sourceNamespace,
+            string excludedNamespace
+        )
+        {
+            Assert.That(
+                typeof(GameRoot)
+                    .Assembly.GetTypes()
+                    .Any(type => Regex.IsMatch(type.Namespace ?? string.Empty, sourceNamespace)),
+                Is.True,
+                "The ownership rule must inspect actual production types."
+            );
+            Types()
+                .That()
+                .ResideInNamespaceMatching(sourceNamespace)
+                .Should()
+                .NotDependOnAny(Types().That().ResideInNamespaceMatching(excludedNamespace))
+                .Check(ProductionArchitecture.Load());
+        }
+
         [Test]
         public void TacticalCore_UtilityDependencies_ExcludeApplicationMechanisms()
         {
-            CreateUtilityRule("^Rebellion\\.Tactical(?:\\.|$)")
+            CreateUtilityRule(
+                    "^Rebellion\\.Tactical(?:\\.|$)",
+                    typeof(TacticalCombatSession).Assembly.FullName
+                )
                 .Check(ProductionArchitecture.Load());
         }
 
@@ -39,7 +74,11 @@ namespace Rebellion.Architecture.Tests
                 "^" + Regex.Escape(typeof(TacticalLoggingDependency).FullName) + "$";
 
             Exception failure = Assert.Catch(() =>
-                CreateUtilityRule(sourcePattern).Check(architecture)
+                CreateUtilityRule(
+                        sourcePattern,
+                        typeof(TacticalLoggingDependency).Assembly.FullName
+                    )
+                    .Check(architecture)
             );
 
             Assert.That(failure.Message, Does.Contain(nameof(TacticalLoggingDependency)));
@@ -130,11 +169,14 @@ namespace Rebellion.Architecture.Tests
         /// Keeps application logging, file access, serialization, and service location outside battle execution.
         /// </summary>
         /// <param name="sourcePattern">The battle types or deliberately invalid fixture to inspect.</param>
+        /// <param name="assemblyName">The compiled owner, independent of neighboring mode namespaces.</param>
         /// <returns>The direct utility dependency constraint.</returns>
-        private static IArchRule CreateUtilityRule(string sourcePattern) =>
+        private static IArchRule CreateUtilityRule(string sourcePattern, string assemblyName) =>
             Types()
                 .That()
                 .HaveFullNameMatching(sourcePattern)
+                .And()
+                .ResideInAssembly(assemblyName)
                 .Should()
                 .NotDependOnAny(
                     Types()

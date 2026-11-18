@@ -12,6 +12,7 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using Rebellion.Tactical;
+using Rebellion.Tactical.Integration.Campaign;
 using Rebellion.Util.Random;
 using SystemRandomProvider = global::Rebellion.Util.Random.SystemRandomProvider;
 using Vector3 = global::System.Numerics.Vector3;

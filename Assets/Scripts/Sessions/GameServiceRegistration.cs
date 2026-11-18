@@ -5,6 +5,7 @@ using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay.GameEvents;
 using Rebellion.Gameplay.Scripting;
+using Rebellion.Tactical.Integration.Campaign;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Random;
 

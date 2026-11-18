@@ -63,40 +63,35 @@ two-account runtime validation.
 
 ## Source ownership
 
-- `Assets/Scripts/Game/SpaceCombat` contains campaign-domain definitions and completed outcomes.
-- `Assets/Scripts/AI/Planners` contains tactical AI planning alongside the other AI planners.
-- `Assets/Scripts/Util/Random` contains random-number providers. The linear congruential provider names its
-  fixed algorithm parameters; the encounter calendar-seed policy remains in `Game/SpaceCombat`.
-  `RandomExtensions.NextBits` requests a bit width from an existing random stream.
-- `Assets/Scripts/Gameplay/SpaceCombat` contains encounter simulation and adjacent partial classes for
-  its state projection. `Replication` contains the command, frame, effect, and state contracts.
-  Presentation consumers use the read-only `ITacticalCombatPresentationTimeline` boundary; the
-  combat session announces validated frames without storing display history.
-- `Assets/Scripts/Gameplay/SpaceCombat/Mathematics` contains the combat-specific native math adapter
-  and retained-precision vector calculations. General integer arithmetic remains in `Util/Mathematics`.
-- `Assets/Scripts/Multiplayer/Session/Combat` contains the connection-owned battle driver and protocol.
-  It also owns replica playback and its delayed pose buffer. The guest driver owns that timeline's
-  lifetime; disposing the driver detaches playback from its old encounter.
-- `Assets/Scripts/Multiplayer/Protocol` contains the binary wire codec beside the existing packet and
-  player-request codecs.
-- `Assets/Scripts/Multiplayer/Transport` contains fragment assembly and bounded delivery scheduling.
-- `Assets/Scripts/UI/SceneUI/TacticalCombat` contains Unity rendering and input presentation.
+Battle-specific implementation lives under `Assets/Scripts/Tactical`:
 
-Arrival callbacks describe presentation ownership. The scene controller chooses how that state
-appears on its pause control. Gameplay does not request a particular HUD animation.
+- `Core/Replication` owns semantic input, model projections, and participant validation. The core
+  contains no connection, packet, codec, or retry implementation.
+- `Networking` owns the connection-admitted driver, battle protocol, replica playback adapter, and
+  binary frame codec. Authentication, readiness, sequencing, recovery, and delivery policy stay here.
+- `Runtime/Presentation` owns bounded delayed pose history without peer identities or packets.
+- `Presentation` owns Unity rendering, input, camera, effects, and movies.
+- `Integration/Campaign` captures campaign inputs and exposes the campaign-result presentation bridge.
 
-Architecture checks reject gameplay dependencies on UI or multiplayer namespaces and unqualified
-implementation types, including the existing global-namespace views and controllers. The established unqualified
-`GameDataCatalog` remains the explicit content-data boundary. A negative fixture verifies that an
-actual dependency on a global UI type fails the rule.
+`SpaceCombatCommands` remains the campaign result-import owner. The shared multiplayer coordinator
+admits and disposes the battle driver. `Multiplayer/Transport` compiles independently as `Rebellion.Networking.Transport`, with engine
+references disabled. It owns shared packet contracts, byte framing, fragment assembly, and bounded
+delivery scheduling. The packet contract owns wire size limits; battle encoders depend on that
+contract without a reverse dependency from transport. The guest driver owns replica playback and detaches its timeline from
+the encounter when disposed.
 
-Tests mirror their subject's existing area under `Assets/Tests/EditMode/UnitTests`. Unity metadata moves
-with an existing asset; generated scenes, prefabs, and copied media remain outside the source change.
+The tactical core and runtime have separate assemblies with engine references disabled. Presentation,
+networking, and campaign adapters still use the application assembly; compiled architecture checks
+reject dependencies across their forbidden implementation boundaries. Negative fixtures verify that
+actual UI and transport dependencies fail even after namespace changes. Tests mirror mode ownership,
+and Unity script GUIDs move with their assets.
 
-Notification scheduling still shares the encounter's random stream. Variant selection happens before
-capacity checks, and playback completion controls pending retries. Separating its ownership must retain
-those draws and their ordering. The session also still owns command admission and frame projection;
-the namespace dependency check does not establish that those responsibilities have been separated.
+Notification scheduling retains the shared encounter random stream, playback status, refresh points,
+and capacity/retry ordering. The core retains semantic command admission and complete state
+validation; transport authentication and delivery policy are separate responsibilities.
+
+See [Game mode architecture](GameModes.md) for the ownership rationale, shared mechanisms, compiler
+boundaries, and publication requirements.
 
 ## Headless EOS verification
 

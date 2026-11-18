@@ -1,151 +1,153 @@
 # Game mode architecture
 
-## Scope and migration status
+## Scope and validation status
 
-This document records the mode ownership review and the migration criteria. The tactical separation
-is in progress. A namespace or folder change does not establish that a responsibility has been
-separated.
+Strategic campaign play and tactical battles have separate state, clocks, AI, presentation, and
+synchronization policy. They exchange captured encounter inputs and completed outcomes. Similar
+feature names do not make their execution rules interchangeable.
 
-The review follows `GameSession`, `GameServiceRegistration`, `GameTickProcessor`,
-`SpaceCombatCommands`, `TacticalCombatFactory`, `TacticalCombatSession`, both AI planners, the scene
-controllers, and the campaign and tactical multiplayer protocols. The compiled dependency inventory
-identifies 144 tactical-related types across 74 source files before separation.
-
-The first enforced boundaries are now present:
-
-- `Rebellion.Util` owns shared mechanisms and cannot reference the application assembly.
-- `Rebellion.Combat.Contracts` owns the participation enums and component damage exchanged between
-  the campaign and battle. Existing type names and XML members remain unchanged.
-- `Rebellion.Tactical.Contracts` owns tactical content and detached outcomes.
-- `Rebellion.Tactical.Core` owns the encounter model and execution, with engine references disabled.
-  It references the contracts and utilities, not `GameAssembly`.
-- `Rebellion.Tactical.Runtime` implements notification scheduling and scenery initialization through
-  core-owned interfaces. It also compiles without engine or campaign references.
-
-`TacticalCombatUnitCapture` reads campaign hardware and planetary facilities before constructing
-participants. The battle retains values and identifiers. `SpaceCombatCommands` retains campaign
-references outside the battle and resolves completed outcomes at its existing import boundary.
-Local completion preserves its existing result conversions; remote completion retains its stricter
-input validation before campaign mutation.
-
-The initial extraction compiled in Unity and matched six deterministic traces across three seeds
-and two fleet sizes. The comparison includes each authoritative frame, ordered presentation edges,
-random draw counts, and completed outcomes. One large encounter remains unfinished at the same
-6000-frame limit before and after extraction. These checks do not replace the complete validation
-required before publishing the migration.
-
-The extracted core and campaign integration subsequently pass 881 focused Unity cases and 47
-architecture cases. Repository formatting, compilation, lint, and analyzer checks also pass at this
-checkpoint. Complete application, rendering, player, and live multiplayer validation remains required
-after the remaining migration work.
-
-The combat content branch incorporates the campaign updates required by the merged source. The
-checked-in media revision identifies that combined content; local staged content must match it.
-Missing authored recharge parameters are not replaced with code defaults.
-
-Notification composition is explicit: callers supply the audio factory, and the encounter passes
-its existing random stream, faction, live pause callback, and presentation clock. Queue refresh
-points remain unchanged. Scenery uses its supplied interface and retains lazy clock acquisition,
-reseed timing, and draw order in the runtime implementation. The renderer reads that interface.
-
-Six further active-audio battle comparisons retain identical frames, encoded network payloads,
-random draw counts, and outcomes after runtime extraction. The focused Unity verification passes
-888 cases, with formatting, compilation, lint, analyzer, and architecture checks passing as well.
-
-Mandatory targeting assessment and replication admission still need further separation within the
-mode. Their inclusion in an engine-independent assembly does not establish that their ownership is
-finished.
+The ownership migration is implemented locally. Complete repository, graphics, save/content, and
+live two-account network validation remains required before publication. Focused deterministic
+comparisons do not establish overall completion or Internet performance.
 
 ## Mode ownership
 
-| Area | Strategic campaign | Tactical battle | Shared responsibility |
+| Area | Strategic campaign | Tactical battle | Shared mechanism |
 | --- | --- | --- | --- |
-| State | Persistent galaxy, ownership, units, orders, research | Encounter participants, groups, motion, weapons, damage, battle lifecycle | Stable participant identities and explicit battle setup/outcome contracts |
-| Execution | Ordered campaign ticks and command/result boundaries | Frame advancement and ordered battle commands | Application admission and cancellation infrastructure |
-| AI | Faction planning against a campaign assessment | Automated battle decisions against the encounter state | Random interfaces and arithmetic with matching semantics |
-| Presentation | Galaxy map and campaign windows | Battle scene, inspection, camera, effects, and battle notifications | Content caches, window controls, input routing, and audio devices |
-| Networking | Host-ordered campaign actions and settled-state agreement | Authoritative host simulation and passive replica presentation | Authentication, lobby membership, connection transport, and bounded delivery mechanisms |
-| Integration | Suspending the campaign and committing a completed result | Producing a detached completed battle outcome | A single validated handoff in each direction |
+| State | Persistent galaxy, ownership, units, research, and orders | Captured participants, groups, motion, weapons, damage, and encounter lifecycle | Stable identities and explicit setup/outcome contracts |
+| Execution | Ordered campaign ticks and command/result boundaries | Frame advancement and ordered battle input | Application cancellation and admission infrastructure |
+| AI | Faction planning against a campaign assessment | Deployment, automatic targeting, and retreat policy | Random interfaces and arithmetic with matching semantics |
+| Presentation | Galaxy map and campaign windows | Battle scene, inspection, camera, effects, and notifications | Asset caches, window controls, input routing, and audio devices |
+| Networking | Host-ordered campaign actions and settled-state agreement | Authoritative host simulation and passive replica playback | Authentication, lobby membership, transport, and bounded delivery |
+| Integration | Suspending campaign time and committing battle results | Producing detached outcomes | One validated handoff in each direction |
 
-Similar names do not imply interchangeable behavior. Campaign and battle AI have different state and
-execution frequencies. Campaign synchronization and tactical replication have different authority and
-delivery contracts. These policies remain owned by their modes.
+The campaign retains its established `Game`, `Gameplay`, `Sessions`, `AI`, and strategic UI areas.
+Its existing model names and serialization contracts remain stable. The tactical mode has its own
+cohesive area rather than extending those campaign feature folders. Shared application composition
+still connects the two modes; no common simulation clock, AI superclass, or synchronization protocol
+is imposed on them.
 
-## Inspected boundary problems
+## Tactical source ownership
 
-| Current implementation | Coupling to remove | Required retained behavior |
-| --- | --- | --- |
-| `TacticalCombatUnit` constructors | Reading campaign entities and retaining their live `ISceneNode` references inside battle state | Capturing the same identities, hardware, payload counts, readiness, and initial values |
-| `TacticalCombatSession.CreateResult` | Producing campaign-object results inside the encounter implementation | Applying the same hull conversion, damage, fighter recovery, and withdrawal facts |
-| `TacticalCombatBattleStation` | Casting a participant back to a campaign capital ship | Retaining its captured maximum hull and protection/construction gates |
-| `TacticalCombatPlanner` | Combining automated fleet policy with mandatory target assessment used by human-controlled groups | Retaining candidate order, duplicate assessments, grouping, and call order |
-| `TacticalCombatSession` and `TacticalCombatSelection` | Constructing audio services and refreshing playback-backed notification queues | Retaining notification requests, queue refresh points, status observations, and random draw order |
-| `TacticalCombatSceneryRandom` | Lazily reseeding the battle stream through renderer-driven initialization | Making initialization ownership explicit while retaining the same reseed and four draws |
-| Session network partials and network-shaped state records | Mixing transport sequencing, semantic input admission, and battle state projection | Preserving authenticated-side validation, replica mutation gates, state validation, and wire values |
-| `CombatOwnershipTests` | Treating selected namespaces as evidence of appropriate ownership | Testing actual dependency direction and forbidden coupling |
+| Source area | Responsibility |
+| --- | --- |
+| `Assets/Scripts/Combat/Contracts` | Participation enums and component damage exchanged between the modes |
+| `Assets/Scripts/Tactical/Contracts` | Authored battle content and detached completed outcomes |
+| `Assets/Scripts/Tactical/Core` | Encounter participants, lifecycle, motion, weapons, damage, commands, and completion |
+| `Tactical/Core/Targeting` | Target and force assessment shared by player orders and automated policy |
+| `Tactical/Core/AI` | Autonomous deployment, assignment, regrouping, retreat, and battle-station policy |
+| `Tactical/Core/Replication` | Semantic input records, complete state projections, and model validation/application |
+| `Tactical/Core/Mathematics` | Battle vector operations and the native precision boundary |
+| `Tactical/Runtime/Audio` | Notification scheduling and playback-backed queue maintenance |
+| `Tactical/Runtime/Scenery` | Encounter calendar seeding and lazy scenery initialization |
+| `Tactical/Runtime/Presentation` | Bounded delayed pose history and interpolation |
+| `Tactical/Presentation` | Unity views, camera, input, inspection, rendering, effects, and movie presentation |
+| `Tactical/Networking` | Battle driver, protocol, replica playback adapter, and binary frame codec |
+| `Tactical/Integration/Campaign` | Capturing campaign hardware and facilities, constructing encounters, and the campaign-result presentation bridge |
 
-## Target boundaries
+`SpaceCombatCommands` remains the campaign owner of a pending encounter and its result import.
+The shared multiplayer coordinator owns connection lifetime and admits a battle driver after the
+ordered campaign begin request. Shared `Multiplayer/Transport` code owns packet contracts, framing, fragment assembly, and bounded delivery;
+it does not choose battle targets or mutate encounter participants.
 
-The tactical mode will have a cohesive source area with contracts, simulation/model code, AI policy,
-presentation, networking, and a campaign integration adapter. Its simulation must compile without
-depending on the campaign assembly, scene controllers, audio playback implementations, or transport
-implementations. Mode composition supplies the required external services explicitly.
+Tests mirror their subject under `Assets/Tests/EditMode/UnitTests/Tactical`. Unity asset GUIDs move
+with scripts. Existing persisted contract namespaces and XML members remain unchanged.
 
-The campaign adapter captures battle inputs from campaign objects. The battle operates on its own
-participants. A completed outcome contains stable identities and values; the campaign validates and
-imports it through its existing result boundary. The tactical mode does not mutate the campaign graph.
+## Enforced dependencies
 
-The existing campaign domain and application code retain their public and serialization contracts
-during migration. Strategic and tactical ownership will be made explicit without replacing either
-mode's clock, AI policy, or synchronization protocol with an artificial common implementation.
+- `Rebellion.Util` cannot reference application or mode implementations.
+- `Rebellion.Networking.Transport` owns peer/packet contracts, bounded sends, byte framing, and
+  snapshot fragmentation. It compiles without engine, application, utility, or mode references.
+  Wire size limits belong to its packet contract; encoders consume them without a reverse dependency.
+- `Rebellion.Combat.Contracts` and `Rebellion.Tactical.Contracts` do not reference either mode's
+  implementation. Their existing XML preservation metadata retains its Unity scripting reference.
+- `Rebellion.Tactical.Core` compiles with engine references disabled. It references contracts and
+  utilities, excluding campaign objects, application logging/I/O, scene controllers, runtime service
+  implementations, and transport implementations.
+- `Rebellion.Tactical.Runtime` also compiles without engine or campaign references. Composition
+  supplies its concrete services through core-owned interfaces.
+- Presentation, networking, and campaign adapters currently compile in `GameAssembly` because they
+  use existing application infrastructure. Architecture rules reject presentation-to-transport,
+  transport-to-presentation, and adapter-to-presentation/transport dependencies there.
+- Campaign runtime rules reject UI and transport implementations, including their tactical
+  namespaces. Production assembly loading and nonempty source checks prevent moves from bypassing
+  those rules; deliberately invalid fixtures exercise rejection.
 
-Shared utilities remain in `Util`. Their assembly boundary prevents dependencies on either mode.
-The existing XML preservation attribute requires Unity's scripting metadata, so the utility and
-persisted contract assemblies retain that metadata reference. The tactical core has engine
-references disabled and cannot perform engine operations directly.
-Save I/O and dependency-injection helpers keep their current internal application access; splitting
-an assembly is not a reason to broaden those APIs publicly.
+Every production assembly definition contributes to the simulation build identity. Changes to an
+assembly boundary invalidate the identity alongside source and package changes.
+
+## Campaign handoff
+
+`TacticalCombatUnitCapture` reads campaign hardware, readiness, payload counts, component damage,
+weapons, carrier ownership, and planetary facilities before constructing participants. The encounter
+copies values and identifiers; it retains no live campaign entity or scene-graph reference.
+
+`TacticalCombatSession.CaptureOutcome` produces identifiers, final pools, component damage, recovery,
+withdrawal, and terminal flags. `SpaceCombatCommands` resolves these against the captured campaign
+roster at its result boundary. Local completion retains its result conversions. Remote completion
+retains stricter input validation before campaign mutation. Automatic resolution keeps its existing
+implementation; shared handoff changes must preserve both completion paths.
+
+## Assessment and external services
+
+Mandatory target assessment is independent of whether a faction is automated. Player attack orders
+and automatic fleet policy consume the same retained candidate ordering and force calculations.
+The planner owns policy and its existing cadence; the assessment owns candidate caches and scoring.
+No additional campaign graph traversal or per-candidate graph query is introduced.
+
+The core requests notification behavior through interfaces. Runtime scheduling retains playback
+activity, refresh points, variant selection before capacity checks, retries, and shared random draw
+order. Unity presentation supplies actual playback. Queue completion remains observable to battle
+lifecycle; removing that relationship would change behavior.
+
+Scenery initialization remains lazy: its runtime service receives the encounter stream and clock,
+then performs the same reseed and four draws when scenery first needs a position. Rendering does not
+choose a replacement random stream. `RandomExtensions.NextBits` requests a width from an existing
+provider; it neither changes the provider algorithm nor increases its entropy.
 
 File logging requires an explicit destination on first enable. Null retains an already configured
-destination. The logger no longer chooses an application profile directory: both simulation runners
-already supply their log paths. Invalid configuration is rejected before replacing the current path.
+destination. The utility logger does not choose an application profile directory; its application
+callers supply paths. Invalid configuration is rejected before replacing the active destination.
 
-The native tactical vector operations retain their precision and storage boundaries. They are not
-replaced with the general saturating integer helpers: wrapped multiplication and saturation have
-different observable results.
+## Model projection and delivery policy
 
-`NextBits` bounds a draw from an existing provider. It does not change the provider's algorithm,
-increase its entropy, or justify selecting a particular stream for a mode. Stream selection,
-initialization, and reseeding belong to the battle's explicit initialization policy.
+The core owns faction command eligibility, independent selection contexts, authoritative/passive
+mutation gates, and validation/application of complete model projections. These operations contain no
+EOS identities, lobby state, packet encoding, fragment handling, retry timers, or transport queues.
+The projection ordinal prevents stale model replacement; it does not acknowledge packet delivery.
+
+The networking protocol establishes the authenticated side, validates battle identity, orders and
+acknowledges commands/effects, publishes snapshots, recovers checkpoints, and enforces deadlines.
+Its binary codec owns wire field order, versioning, compression, and bounds. These policies remain
+outside the core. Existing projection names and wire values are retained.
+
+Replica playback observes validated incoming projections and converts them to pose snapshots.
+The runtime buffer owns only bounded pose history, presentation time, interpolation, and lifecycle
+discontinuities. The guest driver owns the adapter lifetime and detaches it when disposed. Rendering
+reads the timeline without advancing simulation, outcomes, or random state.
 
 ## Verification requirements
 
-- Preserving XML element names, save fields, content addresses, Unity asset GUIDs, and existing wire
-  values and field ordering.
-- Recording deterministic battle baselines before changing simulation or AI execution; comparing
-  state, outcomes, ordered events, random consumption, and timings afterward with identical inputs.
-- Proving the battle model does not retain campaign entities and its core assembly cannot reference
-  campaign, presentation, or networking implementations.
-- Exercising actual dependencies, including negative fixtures, instead of relying on namespace
-  equality tests.
-- Loading all production assemblies in architecture checks so moving types cannot make a rule pass
-  vacuously.
-- Including every production assembly definition in the simulation build fingerprint and checking
-  that changes to those boundaries invalidate the compiled identity.
-- Running save/content round trips, relevant deterministic and lifecycle tests, complete Unity and
-  repository checks, and live two-account EOS cases after the final network integration changes.
+- Preserve save fields, XML members, content addresses, script GUIDs, wire values, and field ordering.
+- Compare deterministic state, ordered effects, random consumption, outcomes, and timings with
+  identical fleets, seeds, clocks, and content before and after execution changes.
+- Verify actual compiled dependencies and negative architecture fixtures.
+- Run relevant lifecycle, save/content, rendering, network impairment, and completion tests.
+- Run formatting, compilation, static analysis, architecture checks, and the complete Unity suite
+  against the exact final worktree before pushing.
+- Rebuild the headless integration player from that worktree and exercise two-account EOS recovery,
+  natural completion, and large-fleet forced-relay completion. Local tests do not establish Internet
+  connectivity, latency, or rendered frame rate.
 
-Unknown gameplay behavior remains unresolved rather than receiving a new fallback during cleanup.
-Automatic resolution keeps its upstream implementation; changes to shared handoff code must preserve
-both its existing path and the interactive battle path.
+Unknown gameplay behavior remains unresolved rather than receiving a new default during cleanup.
+Native vector operations retain their precision and storage boundaries; wrapped multiplication and
+general saturating arithmetic have different results and are not substituted for one another.
 
 ## Design references
 
-Unity assembly definitions provide explicit compilation dependencies and reject cycles; source
-organization alone does not provide that enforcement. See the
-[Unity assembly documentation](https://docs.unity3d.com/6000.4/Documentation/Manual/assembly-definitions-intro.html).
+Unity assembly definitions enforce compilation dependencies and reject cycles; folders alone do not.
+See the [Unity assembly documentation](https://docs.unity3d.com/6000.4/Documentation/Manual/assembly-definitions-intro.html).
 
-The two modes have different models and lifecycles despite sharing participant identities. This
-uses the boundary principle described in Microsoft's
-[domain model guidance](https://learn.microsoft.com/en-us/dotnet/architecture/microservices/microservice-ddd-cqrs-patterns/microservice-domain-model);
-it does not introduce separate processes or network services.
+The modes retain separate models and lifecycles while exchanging explicit data, following the boundary
+principle in Microsoft's [domain model guidance](https://learn.microsoft.com/en-us/dotnet/architecture/microservices/microservice-ddd-cqrs-patterns/microservice-domain-model).
+This does not introduce separate processes or network services.

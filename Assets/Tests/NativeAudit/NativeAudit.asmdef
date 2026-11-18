@@ -8,11 +8,7 @@
         "Unity.InputSystem",
         "Unity.TextMeshPro",
         "UnityEngine.UI",
-        "Rebellion.Util",
-        "Rebellion.Combat.Contracts",
-        "Rebellion.Tactical.Contracts",
-        "Rebellion.Tactical.Core",
-        "Rebellion.Tactical.Runtime"
+        "Rebellion.Networking.Transport"
     ],
     "includePlatforms": [
         "Editor",

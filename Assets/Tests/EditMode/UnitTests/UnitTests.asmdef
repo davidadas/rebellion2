@@ -20,7 +20,8 @@
         "Rebellion.Combat.Contracts",
         "Rebellion.Tactical.Contracts",
         "Rebellion.Tactical.Core",
-        "Rebellion.Tactical.Runtime"
+        "Rebellion.Tactical.Runtime",
+        "Rebellion.Networking.Transport"
     ],
     "overrideReferences": true,
     "precompiledReferences": [

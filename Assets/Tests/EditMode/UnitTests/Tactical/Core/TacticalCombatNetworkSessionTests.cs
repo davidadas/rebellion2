@@ -8,7 +8,7 @@ using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Runtime.Audio;
+using Rebellion.Tactical.Integration.Campaign;
 using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Random;
 using JsonUtility = global::UnityEngine.JsonUtility;

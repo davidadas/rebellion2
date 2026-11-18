@@ -6,6 +6,8 @@ using ArchUnitNET.NUnit;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Multiplayer;
+using Rebellion.Tactical.Networking;
+using Rebellion.Tactical.Presentation;
 using Rebellion.Util.Random;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
 
@@ -16,7 +18,7 @@ namespace Rebellion.Architecture.Tests
     {
         private const string _runtimePattern = "^Rebellion\\.(?:Systems|Gameplay)(?:\\.|$)";
         private const string _presentationPattern =
-            "^(?:Rebellion\\.(?:UI|Multiplayer)(?:\\..*)?|[^.<][^.]*)$";
+            "^(?:Rebellion\\.(?:UI|Multiplayer|Tactical\\.(?:Presentation|Networking))(?:\\..*)?|[^.<][^.]*)$";
         private static readonly ArchUnitNET.Domain.Architecture _architecture =
             ProductionArchitecture.Load();
 
@@ -26,14 +28,22 @@ namespace Rebellion.Architecture.Tests
             CreateGameplayRule(_runtimePattern).Check(_architecture);
         }
 
-        [TestCase(typeof(TacticalCombatController))]
-        [TestCase(typeof(TacticalCombatRenderer))]
-        [TestCase(typeof(TacticalCombatHudPanel))]
         [TestCase(typeof(OptionsMenuController))]
         public void GameplayBoundary_GlobalUiType_IsCovered(System.Type presentationType)
         {
             Assert.That(presentationType.Namespace, Is.Null.Or.Empty);
             Assert.That(Regex.IsMatch(presentationType.FullName, _presentationPattern), Is.True);
+        }
+
+        [TestCase(typeof(TacticalCombatController))]
+        [TestCase(typeof(TacticalCombatRenderer))]
+        [TestCase(typeof(TacticalCombatHudPanel))]
+        [TestCase(typeof(TacticalCombatReplicaPlayback))]
+        public void GameplayBoundary_TacticalImplementation_IsCovered(
+            System.Type implementationType
+        )
+        {
+            Assert.That(Regex.IsMatch(implementationType.FullName, _presentationPattern), Is.True);
         }
 
         [Test]

@@ -57,6 +57,7 @@ namespace Rebellion.Tactical
         private readonly List<TacticalCombatGroup> _completedAttackOrders = new();
         private readonly TacticalCombatMotion _motion = new();
         private readonly TacticalCombatSide[] _sides;
+        private readonly TacticalCombatTargeting _targeting;
         private readonly TacticalCombatPlanner _automation;
         private readonly int[] _nextGroupID = new int[2];
         private readonly IRandomNumberProvider _random;
@@ -310,7 +311,8 @@ namespace Rebellion.Tactical
                     break;
                 }
             _spatial = new TacticalCombatSpatialIndex(this._units);
-            _automation = new TacticalCombatPlanner(this);
+            _targeting = new TacticalCombatTargeting(this);
+            _automation = new TacticalCombatPlanner(this, _targeting);
             Selection = new TacticalCombatSelection(this);
             _briefing = new TacticalCombatBriefingSequence(
                 GetSide(PlayerSide).FactionIndex,
@@ -1514,9 +1516,9 @@ namespace Rebellion.Tactical
         /// <param name="side">The side occupying this whole-tick update slot.</param>
         private void AdvanceSide(TacticalCombatSide side)
         {
-            _automation.AssessStrength(side);
+            _targeting.AssessStrength(side);
             AdvanceWithdrawalCountdown(side);
-            _automation.PrepareCandidates(side);
+            _targeting.PrepareCandidates(side);
             if (side.FactionIndex == 1)
                 BattleStation?.Advance(1000);
             AdvanceWithdrawalMembers(side);
@@ -1531,7 +1533,7 @@ namespace Rebellion.Tactical
             _completedAttackOrders.Clear();
             foreach (TacticalCombatGroup group in _pendingAttackOrders)
             {
-                TacticalCombatUnit target = _automation.SelectBehaviorTarget(group);
+                TacticalCombatUnit target = _targeting.SelectBehaviorTarget(group);
                 if (target == null)
                     continue;
                 SetTarget(group, target);

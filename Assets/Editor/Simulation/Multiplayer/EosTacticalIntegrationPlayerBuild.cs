@@ -5,6 +5,13 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using Rebellion.Game;
+using Rebellion.Game.Results;
+using Rebellion.Game.SpaceCombat;
+using Rebellion.Input;
+using Rebellion.Multiplayer;
+using Rebellion.Tactical;
+using Rebellion.Tactical.Runtime.Audio;
+using Rebellion.Util.Random;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Compilation;
@@ -172,6 +179,13 @@ public static class EosTacticalIntegrationPlayerBuild
                 "The integration assembly does not contain its agreed runtime entry."
             );
         VerifyAssemblyFreshness(game);
+        VerifyAssemblyFreshness(typeof(CombatSide).Assembly);
+        VerifyAssemblyFreshness(typeof(TacticalCombatDefinition).Assembly);
+        VerifyAssemblyFreshness(typeof(TacticalCombatSession).Assembly);
+        VerifyAssemblyFreshness(typeof(TacticalCombatAudio).Assembly);
+        VerifyAssemblyFreshness(typeof(IRandomNumberProvider).Assembly);
+        VerifyAssemblyFreshness(typeof(PlayerInputActions).Assembly);
+        VerifyAssemblyFreshness(typeof(IMultiplayerPeer).Assembly);
         VerifyAssemblyFreshness(editor);
         VerifyAssemblyFreshness(harness);
         VerifyDirectoryFreshness(editor, _builderSourceRoot);
@@ -186,7 +200,7 @@ public static class EosTacticalIntegrationPlayerBuild
         string expected = (string)
             inputs
                 .GetMethod("ComputeIdentity", BindingFlags.Public | BindingFlags.Static)
-                .Invoke(null, null);
+                .Invoke(null, new object[] { Directory.GetCurrentDirectory() });
         if (identity != expected)
             throw new InvalidOperationException(
                 "The loaded game source fingerprint is stale; finish a clean script compilation first."
@@ -369,7 +383,7 @@ public static class EosTacticalIntegrationPlayerBuild
             "ProjectSettings/ProjectVersion.txt",
             ".github/media-revision",
         };
-        string[] roots = { "Assets/Scripts", "Assets/Editor", _harnessSourceRoot };
+        string[] roots = { "Assets/Scripts", "Assets/Input", "Assets/Editor", _harnessSourceRoot };
         StringBuilder inputs = new();
         foreach (
             string file in roots

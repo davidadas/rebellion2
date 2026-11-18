@@ -8,6 +8,7 @@ using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Tactical;
+using Rebellion.Tactical.Integration.Campaign;
 using Rebellion.Util.Logging;
 using InvalidDataException = global::System.IO.InvalidDataException;
 

@@ -3,6 +3,7 @@ using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Input;
+using Rebellion.Multiplayer;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Random;
@@ -22,6 +23,7 @@ namespace Rebellion.Architecture.Tests
                     typeof(GameRoot).Assembly,
                     typeof(ContentPackEditorProject).Assembly,
                     typeof(IRandomNumberProvider).Assembly,
+                    typeof(IMultiplayerPeer).Assembly,
                     typeof(CombatSide).Assembly,
                     typeof(TacticalCombatDefinition).Assembly,
                     typeof(TacticalCombatSession).Assembly,

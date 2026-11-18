@@ -12,6 +12,7 @@ using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
 using Rebellion.Tactical;
+using Rebellion.Tactical.Integration.Campaign;
 using UnityEngine;
 using EOSManager = PlayEveryWare.EpicOnlineServices.EOSManager;
 using NetworkConnectionType = Epic.OnlineServices.P2P.NetworkConnectionType;

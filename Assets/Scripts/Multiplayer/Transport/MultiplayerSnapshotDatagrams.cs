@@ -12,7 +12,7 @@ namespace Rebellion.Multiplayer
     /// </summary>
     internal sealed class MultiplayerSnapshotDatagrams
     {
-        internal const int MaximumPayloadBytes = 4 * 1024 * 1024;
+        internal const int MaximumPayloadBytes = MultiplayerPacketCodec.MaximumTacticalFrameBytes;
         internal const int MaximumMetadataBytes =
             MultiplayerPacketCodec.MaximumTacticalMetadataBytes;
         internal const int AssemblyLifetimeMilliseconds = 1000;
