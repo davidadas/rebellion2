@@ -246,7 +246,7 @@ jobs:
           customImage: rebellion2-unity-test:vulkan
           customParameters: -force-vulkan -debugCodeOptimization -executeMethod UIBuilderMenu.BuildAll
           coverageEnabled: true
-          coverageOptions: "generateHtmlReport;assemblyFilters:+GameAssembly"
+          coverageOptions: "generateHtmlReport;assemblyFilters:+GameAssembly,+Rebellion.Util,+Rebellion.Combat.Contracts,+Rebellion.Tactical.Contracts,+Rebellion.Tactical.Core,+Rebellion.Tactical.Runtime,+Rebellion.Networking.Transport"
           checkName: Test results
           cliVersion: v0.1.65
 

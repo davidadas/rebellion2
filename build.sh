@@ -319,7 +319,7 @@ do_coverage() {
         -debugCodeOptimization \
         -enableCodeCoverage \
         -coverageResultsPath "$coverage_dir" \
-        -coverageOptions "generateHtmlReport;assemblyFilters:+GameAssembly"
+        -coverageOptions "generateHtmlReport;assemblyFilters:+GameAssembly,+Rebellion.Util,+Rebellion.Combat.Contracts,+Rebellion.Tactical.Contracts,+Rebellion.Tactical.Core,+Rebellion.Tactical.Runtime,+Rebellion.Networking.Transport"
     echo "Coverage report written to $coverage_dir/Report/index.html"
 
     # Keep thresholds in sync with .github/workflows/unity-tests.yml

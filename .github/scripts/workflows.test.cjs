@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { readFileSync } = require('node:fs');
+const { readFileSync, readdirSync } = require('node:fs');
 const path = require('node:path');
 const YAML = require('yaml');
 const { REVIEW_ENVIRONMENT } = require('./pr-tests.cjs');
@@ -126,6 +126,29 @@ test('default-branch and reviewed PR tests share the complete Unity and coverage
   assert.ok(steps.find(step => step.name === 'Check compiled architecture'));
   assert.equal(runner.env.UNITY_VERSION, ci.env.UNITY_VERSION);
   assert.equal(runner.env.UNITY_IMAGE_VERSION, ci.env.UNITY_IMAGE_VERSION);
+});
+
+test('local and CI coverage include every assembly extracted from the game runtime', () => {
+  const sourceRoot = path.join(root, 'Assets/Scripts');
+  const assemblies = [];
+  const visit = directory => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const file = path.join(directory, entry.name);
+      if (entry.isDirectory()) visit(file);
+      else if (entry.name.endsWith('.asmdef')) {
+        const assembly = JSON.parse(readFileSync(file, 'utf8'));
+        if (assembly.name !== 'ContentPackEditorAssembly') assemblies.push(`+${assembly.name}`);
+      }
+    }
+  };
+  visit(sourceRoot);
+  const gameci = runner.jobs.test.steps.find(step => step.uses === 'game-ci/unity-test-runner@v4');
+  const local = readFileSync(path.join(root, 'build.sh'), 'utf8').match(/-coverageOptions "([^"]+)"/)[1];
+  const filters = options => options.split(';').find(option => option.startsWith('assemblyFilters:'))
+    .slice('assemblyFilters:'.length).split(',').sort();
+
+  assert.deepEqual(filters(gameci.with.coverageOptions), assemblies.sort());
+  assert.deepEqual(filters(local), assemblies.sort());
 });
 
 test('the shared runner stages optional native math after the verified merge and before Unity', () => {
