@@ -1986,13 +1986,17 @@ namespace Rebellion.Gameplay
         /// null to inspect the current planet state.
         /// </param>
         /// <param name="leaveOriginPlanet">Whether destinations at the current planet are excluded.</param>
+        /// <param name="preferFriendlyPlanets">
+        /// Whether local carriers take precedence, followed by friendly planets and then remote carriers.
+        /// </param>
         /// <returns>True when a safe destination accepts the unit.</returns>
         internal bool TryEvacuateToNearestFriendlyPlanet(
             IMovable unit,
             ICollection<GameResult> results,
             bool force = false,
             bool? opposingBlockadeAtDeparture = null,
-            bool leaveOriginPlanet = false
+            bool leaveOriginPlanet = false,
+            bool preferFriendlyPlanets = false
         )
         {
             if (unit == null)
@@ -2035,10 +2039,25 @@ namespace Rebellion.Gameplay
                     unit,
                     currentPlanet,
                     forceInterplanetaryTravel: force,
-                    leaveOriginPlanet: leaveOriginPlanet
+                    leaveOriginPlanet: leaveOriginPlanet,
+                    preferFriendlyPlanets: preferFriendlyPlanets
                 )
             )
             {
+                if (
+                    preferFriendlyPlanets
+                    && fallback is CapitalShip
+                    && fallback.GetParentOfType<Planet>() == currentPlanet
+                )
+                    return ExecuteAcceptedMove(
+                        unit,
+                        fallback,
+                        results,
+                        out _,
+                        _game.GenerateRuntimeIdentifier(),
+                        opposingBlockadeAtDeparture: opposingBlockadeAtDeparture
+                    );
+
                 if (
                     ExecuteMove(
                         unit,

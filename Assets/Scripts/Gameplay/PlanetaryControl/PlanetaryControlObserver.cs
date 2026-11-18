@@ -613,6 +613,12 @@ namespace Rebellion.Gameplay
 
             foreach (IMovable unit in displacedUnits)
             {
+                bool isStationedFighter =
+                    unit is Starfighter
+                    {
+                        ManufacturingStatus: ManufacturingStatus.Complete,
+                        Movement: null,
+                    };
                 bool? opposingBlockadeAtDeparture =
                     change.BlockadedFactionInstanceIDs == null
                         ? null
@@ -621,8 +627,9 @@ namespace Rebellion.Gameplay
                     _movement.TryEvacuateToNearestFriendlyPlanet(
                         unit,
                         results,
-                        force: true,
-                        opposingBlockadeAtDeparture: opposingBlockadeAtDeparture
+                        force: !isStationedFighter,
+                        opposingBlockadeAtDeparture: opposingBlockadeAtDeparture,
+                        preferFriendlyPlanets: isStationedFighter
                     )
                 )
                     continue;
@@ -643,7 +650,10 @@ namespace Rebellion.Gameplay
                     continue;
                 }
 
-                if (unit is not (Starfighter or Regiment) || change.NewOwner == null)
+                if (
+                    unit is not (Starfighter or Regiment)
+                    || change.NewOwner == null && !isStationedFighter
+                )
                     continue;
 
                 _game.DeleteNode(unit);
