@@ -216,6 +216,61 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(Path.Combine(resources, "Content"), actual);
         }
 
+        [TestCase("Contents")]
+        [TestCase("Contents/Resources/Data")]
+        public void ResolvePlayerContentRootPath_NestedMacPlayerWithUserProfile_UsesSharedInstallation(
+            string dataSuffix
+        )
+        {
+            string userProfile = Path.Combine(Path.GetTempPath(), "mac-user-profile");
+            string dataPath = Path.Combine(
+                Path.GetTempPath(),
+                "Rebellion II.app",
+                "Contents",
+                "Resources",
+                "Rebellion2 Game.app",
+                dataSuffix.Replace('/', Path.DirectorySeparatorChar)
+            );
+
+            string actual = ContentPackLoader.ResolvePlayerContentRootPath(
+                dataPath,
+                RuntimePlatform.OSXPlayer,
+                userProfile
+            );
+
+            Assert.AreEqual(
+                Path.Combine(
+                    userProfile,
+                    "Library",
+                    "Application Support",
+                    "Rebellion 2",
+                    "Content"
+                ),
+                actual
+            );
+        }
+
+        [Test]
+        public void ResolvePlayerContentRootPath_StandaloneMacPlayerWithUserProfile_RemainsBesideBundle()
+        {
+            string installation = Path.Combine(Path.GetTempPath(), "standalone-mac-player");
+            string dataPath = Path.Combine(
+                installation,
+                "Rebellion2 Game.app",
+                "Contents",
+                "Resources",
+                "Data"
+            );
+
+            string actual = ContentPackLoader.ResolvePlayerContentRootPath(
+                dataPath,
+                RuntimePlatform.OSXPlayer,
+                Path.Combine(Path.GetTempPath(), "mac-user-profile")
+            );
+
+            Assert.AreEqual(Path.Combine(installation, "Content"), actual);
+        }
+
         [Test]
         public void GetDefaultPackID_CatalogSelection_ReturnsConfiguredPack()
         {
