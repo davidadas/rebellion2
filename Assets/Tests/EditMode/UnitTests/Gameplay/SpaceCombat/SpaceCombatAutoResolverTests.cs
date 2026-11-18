@@ -432,13 +432,15 @@ namespace Rebellion.Tests.Gameplay
         public void Resolve_AdditionalFighterTypeWithSparseGroups_CompletesTheFiringPhase()
         {
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.StarfighterGroups["test-faction"] = new List<string>
-            {
-                "first-type",
-                "second-type",
-                "third-type",
-                "fourth-type",
-            };
+            Starfighter[] designs = Enumerable
+                .Range(0, 4)
+                .Select(index => new Starfighter
+                {
+                    TypeID = "configured-type-" + index,
+                    FormationPriority = index,
+                    ManufacturingFactionInstanceIDs = new List<string> { "test-faction" },
+                })
+                .ToArray();
             Starfighter[] fighters = Enumerable
                 .Range(0, 32)
                 .Select(index =>
@@ -457,12 +459,113 @@ namespace Rebellion.Tests.Gameplay
                 fighters,
                 new[] { target },
                 Array.Empty<Starfighter>(),
-                random: new FixedCombatRNG(50)
+                random: new FixedCombatRNG(50),
+                starfighterTypes: designs
             );
 
             Assert.AreEqual(1, result.IterationsCompleted);
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
             Assert.IsEmpty(result.FighterLosses);
+        }
+
+        [Test]
+        public void Resolve_DifferentFighterTypesWithTheSameRole_KeepSeparateFormations()
+        {
+            Starfighter first = CreateFighter("first", 12, 1);
+            Starfighter second = CreateFighter("second", 12, 1);
+            first.TypeID = "first-design";
+            second.TypeID = "second-design";
+            foreach (Starfighter fighter in new[] { first, second })
+            {
+                fighter.CurrentSquadronSize = 1;
+                fighter.Roles.Add(StarfighterRole.Bomber);
+            }
+            CapitalShip target = CreatePassiveTarget("target", 100);
+
+            SpaceCombatResult result = ResolveSingleStep(
+                CreateConfig(),
+                Array.Empty<CapitalShip>(),
+                new[] { first, second },
+                new[] { target },
+                Array.Empty<Starfighter>(),
+                random: new FixedCombatRNG(50)
+            );
+
+            Assert.AreEqual(98, GetShipOutcome(result, target).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_RepeatedFighterDesign_DoesNotDuplicateTheFormation()
+        {
+            Starfighter fighter = CreateFighter("fighter", 12, 1);
+            fighter.TypeID = "design";
+            fighter.OwnerInstanceID = "owner";
+            fighter.CurrentSquadronSize = 1;
+            Starfighter design = new Starfighter
+            {
+                TypeID = fighter.TypeID,
+                ManufacturingFactionInstanceIDs = new List<string> { "owner" },
+            };
+            CapitalShip target = CreatePassiveTarget("target", 100);
+
+            SpaceCombatResult result = ResolveSingleStep(
+                CreateConfig(),
+                Array.Empty<CapitalShip>(),
+                new[] { fighter },
+                new[] { target },
+                Array.Empty<Starfighter>(),
+                starfighterTypes: new[] { design, design }
+            );
+
+            Assert.AreEqual(99, GetShipOutcome(result, target).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_UnusedAutomaticDesigns_DoNotChangeTheFormations()
+        {
+            Starfighter[] fighters = Enumerable
+                .Range(0, 32)
+                .Select(index =>
+                {
+                    Starfighter fighter = CreateFighter("fighter-" + index, 12, 1);
+                    fighter.TypeID = "present-design";
+                    fighter.OwnerInstanceID = "owner";
+                    fighter.CurrentSquadronSize = 1;
+                    return fighter;
+                })
+                .ToArray();
+            Starfighter[] unused = Enumerable
+                .Range(0, 20)
+                .Select(index => new Starfighter
+                {
+                    TypeID = "unused-design-" + index,
+                    ManufacturingFactionInstanceIDs = new List<string> { "owner" },
+                    Roles = new List<StarfighterRole> { StarfighterRole.Bomber },
+                })
+                .ToArray();
+            CapitalShip firstTarget = CreatePassiveTarget("target", 100);
+            CapitalShip secondTarget = CreatePassiveTarget("target", 100);
+
+            SpaceCombatResult withoutUnused = ResolveSingleStep(
+                CreateConfig(),
+                Array.Empty<CapitalShip>(),
+                fighters,
+                new[] { firstTarget },
+                Array.Empty<Starfighter>()
+            );
+            SpaceCombatResult withUnused = ResolveSingleStep(
+                CreateConfig(),
+                Array.Empty<CapitalShip>(),
+                fighters,
+                new[] { secondTarget },
+                Array.Empty<Starfighter>(),
+                starfighterTypes: unused
+            );
+
+            Assert.AreEqual(
+                GetShipOutcome(withoutUnused, firstTarget).HullAfter,
+                GetShipOutcome(withUnused, secondTarget).HullAfter
+            );
         }
 
         [TestCase(3, 99)]
@@ -2380,6 +2483,7 @@ namespace Rebellion.Tests.Gameplay
         /// <param name="attackerCommand">The attacker's tactical command modifiers.</param>
         /// <param name="defenderCommand">The defender's tactical command modifiers.</param>
         /// <param name="attackerHasInitiative">Whether the attacker acts first.</param>
+        /// <param name="starfighterTypes">Optional fighter designs defining fixed formation slots.</param>
         /// <returns>The resolved value.</returns>
         private static SpaceCombatResult Resolve(
             GameConfig.SpaceCombatConfig config,
@@ -2392,10 +2496,11 @@ namespace Rebellion.Tests.Gameplay
             IRandomNumberProvider random = null,
             SpaceCombatCommandModifiers attackerCommand = default,
             SpaceCombatCommandModifiers defenderCommand = default,
-            bool attackerHasInitiative = false
+            bool attackerHasInitiative = false,
+            IReadOnlyList<Starfighter> starfighterTypes = null
         )
         {
-            return CreateResolver(config, random)
+            return CreateResolver(config, random, starfighterTypes)
                 .Resolve(
                     attackerShips,
                     attackerFighters,
@@ -2444,15 +2549,18 @@ namespace Rebellion.Tests.Gameplay
         /// </summary>
         /// <param name="config">The config.</param>
         /// <param name="random">The random.</param>
+        /// <param name="starfighterTypes">Optional fighter designs defining fixed formation slots.</param>
         /// <returns>The created resolver.</returns>
         private static SpaceCombatAutoResolver CreateResolver(
             GameConfig.SpaceCombatConfig config = null,
-            IRandomNumberProvider random = null
+            IRandomNumberProvider random = null,
+            IReadOnlyList<Starfighter> starfighterTypes = null
         )
         {
             return new SpaceCombatAutoResolver(
                 config ?? CreateConfig(),
-                random ?? new SystemRandomProvider(1894809716)
+                random ?? new SystemRandomProvider(1894809716),
+                starfighterTypes
             );
         }
 
@@ -2677,6 +2785,7 @@ namespace Rebellion.Tests.Gameplay
         /// <param name="attackerCommand">The firing force's command ratings.</param>
         /// <param name="defenderCommand">The receiving force's command ratings.</param>
         /// <param name="random">Optional rolls that isolate the behavior under test.</param>
+        /// <param name="starfighterTypes">Optional fighter designs defining fixed formation slots.</param>
         /// <returns>The resolved step.</returns>
         private static SpaceCombatResult ResolveSingleStep(
             GameConfig.SpaceCombatConfig config,
@@ -2686,7 +2795,8 @@ namespace Rebellion.Tests.Gameplay
             IReadOnlyList<Starfighter> targetFighters,
             SpaceCombatCommandModifiers attackerCommand = default,
             SpaceCombatCommandModifiers defenderCommand = default,
-            IRandomNumberProvider random = null
+            IRandomNumberProvider random = null,
+            IReadOnlyList<Starfighter> starfighterTypes = null
         )
         {
             config.AutoResolveStagnationIterations = 1;
@@ -2710,7 +2820,8 @@ namespace Rebellion.Tests.Gameplay
                 random: random ?? new FixedCombatRNG(100),
                 attackerCommand: attackerCommand,
                 defenderCommand: defenderCommand,
-                attackerHasInitiative: true
+                attackerHasInitiative: true,
+                starfighterTypes: starfighterTypes
             );
         }
 

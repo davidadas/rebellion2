@@ -63,18 +63,21 @@ namespace Rebellion.Gameplay
         /// <param name="movement">Movement operations used for retreats and evacuation.</param>
         /// <param name="queries">Encounter and retreat eligibility queries.</param>
         /// <param name="blockadeTransitionResolver">Resolves blockade changes after combat mutations.</param>
+        /// <param name="starfighterTypes">The available fighter designs used to build combat formations.</param>
         public SpaceCombatCommands(
             GameRoot game,
             MovementCommands movement,
             SpaceCombatQueries queries,
-            BlockadeTransitionResolver blockadeTransitionResolver = null
+            BlockadeTransitionResolver blockadeTransitionResolver = null,
+            IReadOnlyList<Starfighter> starfighterTypes = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _movement = movement ?? throw new ArgumentNullException(nameof(movement));
             _autoResolver = new SpaceCombatAutoResolver(
                 game.Config.Combat.SpaceCombat,
-                game.Random
+                game.Random,
+                starfighterTypes
             );
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
             _withdrawalResolver = new SpaceCombatWithdrawalResolver(game, _queries);

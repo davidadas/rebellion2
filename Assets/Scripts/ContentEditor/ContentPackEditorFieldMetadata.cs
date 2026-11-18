@@ -220,6 +220,9 @@ internal static class ContentPackEditorFieldMetadata
             "The base value used by this unit's manufacturing-progress calculation.",
         ["Hyperdrive"] =
             "Controls hyperspace travel duration together with distance and movement rules.",
+        ["Roles"] = "The combat tasks this unit design is intended to perform.",
+        ["FormationPriority"] =
+            "Sets a fixed place in the faction's formation order, including when this design is absent. Lower values come first. Leave blank to order present fighter types by roles, then type ID.",
         ["DistanceDivisor"] =
             "Divides travel distance when calculating transit duration. Larger values shorten trips.",
         ["MinTransitTicks"] = "The minimum number of turns for a trip between different sectors.",
@@ -470,7 +473,7 @@ internal static class ContentPackEditorFieldMetadata
                 && member != "RequiredSpecialForces"
         )
             return "Force";
-        if (member == "Traits")
+        if (member is "Traits" or "Roles")
             return "Identity";
         if (member.StartsWith("Allowed", StringComparison.Ordinal))
             return "Command and missions";
@@ -495,6 +498,7 @@ internal static class ContentPackEditorFieldMetadata
             || member.Contains("Bombard", StringComparison.Ordinal)
             || member
                 is "LaserCannon"
+                    or "FormationPriority"
                     or "IonCannon"
                     or "Torpedoes"
                     or "LaserRange"

@@ -81,43 +81,23 @@ namespace Rebellion.Tests.Game
         {
             GameConfig.SpaceCombatConfig source = new GameConfig.SpaceCombatConfig
             {
-                StarfighterGroups = new Dictionary<string, List<string>>
-                {
-                    ["faction"] = new List<string> { "scout", "interceptor" },
-                },
                 HyperdriveSystemCounts = new Dictionary<string, int> { ["cruiser"] = 2 },
             };
             GameConfig.SpaceCombatConfig copy = source.CreateCopy();
 
-            CollectionAssert.AreEqual(
-                source.StarfighterGroups["faction"],
-                copy.StarfighterGroups["faction"]
-            );
             CollectionAssert.AreEquivalent(
                 source.HyperdriveSystemCounts,
                 copy.HyperdriveSystemCounts
             );
-            copy.StarfighterGroups["faction"].Reverse();
-            copy.StarfighterGroups.Add("another-faction", new List<string>());
             copy.HyperdriveSystemCounts["cruiser"] = 1;
 
-            CollectionAssert.AreEqual(
-                new[] { "scout", "interceptor" },
-                source.StarfighterGroups["faction"]
-            );
-            Assert.AreEqual(1, source.StarfighterGroups.Count);
             Assert.AreEqual(2, source.HyperdriveSystemCounts["cruiser"]);
         }
 
         [Test]
-        public void Serialize_SpaceCombatMetadata_PreservesGroupOrderAndSystemCounts()
+        public void Serialize_SpaceCombatMetadata_PreservesSystemCounts()
         {
             GameConfig config = new GameConfig();
-            config.Combat.SpaceCombat.StarfighterGroups.Add(
-                "faction",
-                new List<string> { "scout", "unused", "interceptor" }
-            );
-            config.Combat.SpaceCombat.StarfighterGroups.Add("another-faction", new List<string>());
             config.Combat.SpaceCombat.HyperdriveSystemCounts.Add("immobile", 0);
             config.Combat.SpaceCombat.HyperdriveSystemCounts.Add("cruiser", 3);
 
@@ -125,13 +105,6 @@ namespace Rebellion.Tests.Game
                 SerializationHelper.Serialize(config)
             );
 
-            CollectionAssert.AreEqual(
-                new[] { "scout", "unused", "interceptor" },
-                loaded.Combat.SpaceCombat.StarfighterGroups["faction"]
-            );
-            CollectionAssert.IsEmpty(
-                loaded.Combat.SpaceCombat.StarfighterGroups["another-faction"]
-            );
             CollectionAssert.AreEquivalent(
                 config.Combat.SpaceCombat.HyperdriveSystemCounts,
                 loaded.Combat.SpaceCombat.HyperdriveSystemCounts
@@ -145,7 +118,6 @@ namespace Rebellion.Tests.Game
                 "<GameConfig><Combat><SpaceCombat/></Combat></GameConfig>"
             );
 
-            CollectionAssert.IsEmpty(config.Combat.SpaceCombat.StarfighterGroups);
             CollectionAssert.IsEmpty(config.Combat.SpaceCombat.HyperdriveSystemCounts);
         }
 

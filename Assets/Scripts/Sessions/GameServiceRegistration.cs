@@ -135,7 +135,13 @@ namespace Rebellion.Gameplay
                 locator.GetService<PersonnelCommands>()
             ));
             services.AddSingleton<SpaceCombatQueries>();
-            services.AddSingleton<SpaceCombatCommands>();
+            services.AddSingleton<SpaceCombatCommands>(locator => new SpaceCombatCommands(
+                locator.GetService<GameRoot>(),
+                locator.GetService<MovementCommands>(),
+                locator.GetService<SpaceCombatQueries>(),
+                locator.GetService<BlockadeTransitionResolver>(),
+                locator.GetService<GameDataCatalog>().Starfighters
+            ));
             services.AddSingleton<BombardmentQueries>();
             services.AddSingleton<BombardmentCommands>();
             services.AddSingleton<PlanetaryAssaultQueries>();

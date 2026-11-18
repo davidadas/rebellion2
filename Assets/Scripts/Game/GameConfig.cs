@@ -2080,11 +2080,6 @@ namespace Rebellion.Game
         public class SpaceCombatConfig
         {
             /// <summary>
-            /// Orders starfighter types within each faction's tactical groups.
-            /// </summary>
-            public Dictionary<string, List<string>> StarfighterGroups { get; set; } = new();
-
-            /// <summary>
             /// Sets the number of installed hyperdrive systems for each unit type.
             /// </summary>
             public Dictionary<string, int> HyperdriveSystemCounts { get; set; } = new();
@@ -2207,10 +2202,6 @@ namespace Rebellion.Game
             public SpaceCombatConfig CreateCopy() =>
                 new SpaceCombatConfig
                 {
-                    StarfighterGroups = StarfighterGroups.ToDictionary(
-                        entry => entry.Key,
-                        entry => new List<string>(entry.Value)
-                    ),
                     HyperdriveSystemCounts = new Dictionary<string, int>(HyperdriveSystemCounts),
                     AdmiralLeadershipDivisor = AdmiralLeadershipDivisor,
                     CommanderCombatDivisor = CommanderCombatDivisor,

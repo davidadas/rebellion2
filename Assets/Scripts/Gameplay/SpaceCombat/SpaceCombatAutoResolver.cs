@@ -62,19 +62,23 @@ namespace Rebellion.Gameplay
     {
         private readonly GameConfig.SpaceCombatConfig _config;
         private readonly IRandomNumberProvider _random;
+        private readonly IReadOnlyList<Starfighter> _starfighterTypes;
 
         /// <summary>
         /// Creates an automatic resolver using the supplied combat parameters.
         /// </summary>
         /// <param name="config">The automatic space-combat resolution parameters.</param>
         /// <param name="random">The persisted game random-number stream.</param>
+        /// <param name="starfighterTypes">The available fighter designs, including absent formation members.</param>
         public SpaceCombatAutoResolver(
             GameConfig.SpaceCombatConfig config,
-            IRandomNumberProvider random
+            IRandomNumberProvider random,
+            IReadOnlyList<Starfighter> starfighterTypes = null
         )
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _random = random ?? throw new ArgumentNullException(nameof(random));
+            _starfighterTypes = starfighterTypes ?? Array.Empty<Starfighter>();
         }
 
         /// <summary>
@@ -131,8 +135,8 @@ namespace Rebellion.Gameplay
                 _random,
                 defenderRetreatStrengthRatio
             );
-            attacker.InitializeGroups(_config, attackerHasInitiative);
-            defender.InitializeGroups(_config, !attackerHasInitiative);
+            attacker.InitializeGroups(_starfighterTypes, attackerHasInitiative);
+            defender.InitializeGroups(_starfighterTypes, !attackerHasInitiative);
             CombatForce first = attackerHasInitiative ? attacker : defender;
             CombatForce second = attackerHasInitiative ? defender : attacker;
             bool hasPlanetDestroyers =
@@ -1053,9 +1057,12 @@ namespace Rebellion.Gameplay
             /// <summary>
             /// Creates stable weapon formations and captures the original carrier relationships.
             /// </summary>
-            /// <param name="config">The combat formation rules.</param>
+            /// <param name="starfighterTypes">The available fighter designs and their formation metadata.</param>
             /// <param name="hasInitiative">Whether this side performs the first update.</param>
-            internal void InitializeGroups(GameConfig.SpaceCombatConfig config, bool hasInitiative)
+            internal void InitializeGroups(
+                IReadOnlyList<Starfighter> starfighterTypes,
+                bool hasInitiative
+            )
             {
                 HasInitiative = hasInitiative;
                 for (int i = 0; i < Units.Count; i++)
@@ -1083,19 +1090,20 @@ namespace Rebellion.Gameplay
                     Units.Count == 0
                         ? string.Empty
                         : Units[0].Node.GetOwnerInstanceID() ?? string.Empty;
-                List<string> typeOrder =
-                    config.StarfighterGroups != null
-                    && config.StarfighterGroups.TryGetValue(owner, out List<string> configured)
-                        ? new List<string>(configured)
-                        : new List<string>();
-                foreach (
-                    string type in Fighters
-                        .Select(f => f.Fighter.TypeID ?? string.Empty)
-                        .Distinct()
-                        .OrderBy(id => id, StringComparer.Ordinal)
-                )
-                    if (!typeOrder.Contains(type))
-                        typeOrder.Add(type);
+                Dictionary<string, Starfighter> designs = new(StringComparer.Ordinal);
+                foreach (Starfighter design in starfighterTypes)
+                    if (
+                        design.FormationPriority.HasValue
+                        && design.ManufacturingFactionInstanceIDs?.Contains(owner) == true
+                    )
+                        designs.TryAdd(design.TypeID ?? string.Empty, design);
+                foreach (StarfighterState fighter in Fighters)
+                    designs.TryAdd(fighter.Fighter.TypeID ?? string.Empty, fighter.Fighter);
+                List<string> typeOrder = designs
+                    .OrderBy(entry => entry.Value.GetFormationPriority())
+                    .ThenBy(entry => entry.Key, StringComparer.Ordinal)
+                    .Select(entry => entry.Key)
+                    .ToList();
                 while (typeOrder.Count < 4)
                     typeOrder.Add(null);
                 CombatGroup[] buckets = new CombatGroup[typeOrder.Count];

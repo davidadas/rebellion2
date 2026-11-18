@@ -28,7 +28,7 @@ internal static class ContentEditorInspectorLayout
     };
 
     /// <summary>
-    /// Includes optional officer authoring controls without adding XML until they are edited.
+    /// Includes optional unit authoring controls without adding XML until they are edited.
     /// </summary>
     /// <param name="record">The selected entry.</param>
     /// <returns>The complete form field collection.</returns>
@@ -50,6 +50,12 @@ internal static class ContentEditorInspectorLayout
             foreach (string member in new[] { "HQInstanceID", "DisallowedMissionTypeIDs" })
                 if (!fields.Any(field => field.MemberName == member))
                     fields.Add(record.GetField(member));
+        if (record.Kind == "Starfighter")
+            foreach (string member in new[] { "Roles", "FormationPriority" })
+            {
+                fields.RemoveAll(field => field.MemberName == member);
+                fields.Add(record.GetField(member));
+            }
         if (record.Kind == "Officer")
         {
             foreach (string skill in new[] { "Diplomacy", "Espionage", "Combat", "Leadership" })
