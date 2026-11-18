@@ -325,8 +325,11 @@ public sealed class UserSettingsManager
         Settings ??= CreateDefaults();
         if (_audioManager != null)
             Settings.Audio = _audioManager.CreateSettingsSnapshot();
-        if (_inputManager != null)
-            Settings.Input.BindingOverridesJson = _inputManager.SaveBindingOverrides();
+        if (
+            _inputManager != null
+            && _inputManager.TrySaveBindingOverrides(out string bindingOverrides)
+        )
+            Settings.Input.BindingOverridesJson = bindingOverrides;
 
         Settings.Normalize();
     }

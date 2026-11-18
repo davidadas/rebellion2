@@ -11,6 +11,9 @@ using UnityEngine.InputSystem.LowLevel;
 /// </summary>
 internal sealed class OptionsBindingSession : IDisposable
 {
+    private const string _restartMessage =
+        "The shortcut change failed. Restart the game before changing shortcuts again.";
+
     private static readonly string[] _modifierControlPaths =
     {
         "<Keyboard>/ctrl",
@@ -95,6 +98,9 @@ internal sealed class OptionsBindingSession : IDisposable
     /// </summary>
     internal void Rebuild()
     {
+        if (!EnsureBindingsAvailable())
+            return;
+
         _rows.Clear();
         _targets.Clear();
         foreach (InputActionMap map in _inputManager.Asset.actionMaps)
@@ -135,6 +141,9 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <param name="secondary">Whether to edit the secondary slot.</param>
     internal void BeginRebind(int row, bool secondary)
     {
+        if (!EnsureBindingsAvailable())
+            return;
+
         if (
             _editingAction != null
             || _operation != null
@@ -172,6 +181,9 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <param name="row">The controls row to restore.</param>
     internal void RestoreDefault(int row)
     {
+        if (!EnsureBindingsAvailable())
+            return;
+
         if (_operation != null || HasPendingConflict || row < 0 || row >= _targets.Count)
             return;
 
@@ -190,6 +202,9 @@ internal sealed class OptionsBindingSession : IDisposable
     /// </summary>
     internal void RestoreAllDefaults()
     {
+        if (!EnsureBindingsAvailable())
+            return;
+
         if (_operation != null || HasPendingConflict)
             return;
 
@@ -488,16 +503,39 @@ internal sealed class OptionsBindingSession : IDisposable
         );
         ClearEdit();
         restored &= TryRecover(Rebuild, failures);
+        if (!restored)
+            _inputManager.RequireInputRestart();
         TryRecover(() => PresentationChanged?.Invoke(), failures);
         Exception failure = failures.Count == 1 ? exception : new AggregateException(failures);
         GameLogger.Log($"Shortcut rebinding failed: {failure}", GameLogger.LogLevel.Error);
+        NotifyFailure(
+            restored
+                ? "Couldn't change this shortcut. Your previous bindings were restored. Try again."
+                : _restartMessage
+        );
+    }
+
+    /// <summary>
+    /// Rejects further binding access after an unrecoverable edit while keeping settings available.
+    /// </summary>
+    /// <returns>Whether the current runtime bindings remain available for editing.</returns>
+    private bool EnsureBindingsAvailable()
+    {
+        if (!_inputManager.RequiresInputRestart)
+            return true;
+        NotifyFailure(_restartMessage);
+        return false;
+    }
+
+    /// <summary>
+    /// Presents a binding failure without allowing notification errors to escape cleanup.
+    /// </summary>
+    /// <param name="message">The player-facing recovery message.</param>
+    private void NotifyFailure(string message)
+    {
         try
         {
-            Failed?.Invoke(
-                restored
-                    ? "Couldn't change this shortcut. Your previous bindings were restored. Try again."
-                    : "The shortcut change failed. Restart the game before changing shortcuts again."
-            );
+            Failed?.Invoke(message);
         }
         catch (Exception notificationException)
         {

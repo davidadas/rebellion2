@@ -218,8 +218,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                         FindBinding(oldAction, "Primary"),
                         "<Keyboard>/t"
                     );
+                    int originalCount = action.bindings.Count;
                     session.Rebuild();
-                    session.BeginRebind(FindRow(session, "Increase Game Speed"), false);
+                    int row = FindRow(session, "Increase Game Speed");
+                    session.BeginRebind(row, false);
                     InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.T));
                     InputSystem.Update();
                     FinishCapture(fixture);
@@ -227,6 +229,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     session.Changed += () =>
                     {
                         action.ChangeBinding(0).Erase();
+                        if (replaceBinding)
+                            action.AddBinding("<Keyboard>/z").WithName("Primary");
                         throw new InvalidOperationException(
                             "Injected schema change during conflict acceptance."
                         );
@@ -241,6 +245,21 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     Assert.IsFalse(session.HasPendingConflict);
                     Assert.IsFalse(manager.AreApplicationShortcutsSuppressed);
                     StringAssert.Contains("Restart the game", error);
+                    Assert.IsTrue(manager.RequiresInputRestart);
+                    Assert.IsFalse(manager.TrySaveBindingOverrides(out _));
+                    session.BeginRebind(row, true);
+                    session.RestoreDefault(row);
+                    session.RestoreAllDefaults();
+                    Assert.AreEqual(-1, session.ListeningRow);
+                    Assert.DoesNotThrow(session.Rebuild);
+                    Assert.AreEqual(
+                        "<Keyboard>/t",
+                        oldAction.bindings[FindBinding(oldAction, "Primary")].effectivePath
+                    );
+                    Assert.AreEqual(
+                        originalCount - (replaceBinding ? 0 : 1),
+                        action.bindings.Count
+                    );
                 }
             );
         }

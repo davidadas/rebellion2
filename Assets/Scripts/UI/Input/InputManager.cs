@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Rebellion.Input;
 using UnityEngine;
@@ -14,6 +15,11 @@ public sealed class InputManager : MonoBehaviour
     /// Gets whether application shortcuts should ignore input while another UI interaction owns it.
     /// </summary>
     internal bool AreApplicationShortcutsSuppressed { get; private set; }
+
+    /// <summary>
+    /// Gets whether an unrecoverable edit has made runtime overrides unsafe to persist or replace.
+    /// </summary>
+    internal bool RequiresInputRestart { get; private set; }
 
     /// <summary>
     /// Gets the generated input action wrapper.
@@ -96,10 +102,39 @@ public sealed class InputManager : MonoBehaviour
     /// Saves all runtime binding overrides.
     /// </summary>
     /// <returns>The serialized binding override data.</returns>
+    /// <exception cref="InvalidOperationException">Runtime bindings require a restart.</exception>
     public string SaveBindingOverrides()
     {
+        if (RequiresInputRestart)
+            throw new InvalidOperationException(
+                "Shortcut overrides cannot be saved until the game restarts."
+            );
         RemoveReservedShortcutOverrides(Actions.asset);
         return Actions.asset.SaveBindingOverridesAsJson();
+    }
+
+    /// <summary>
+    /// Exports overrides only while runtime bindings remain safe to persist.
+    /// </summary>
+    /// <param name="bindingOverrides">The exported overrides, or null when a restart is required.</param>
+    /// <returns>Whether runtime overrides can be included in a settings save.</returns>
+    internal bool TrySaveBindingOverrides(out string bindingOverrides)
+    {
+        if (RequiresInputRestart)
+        {
+            bindingOverrides = null;
+            return false;
+        }
+        bindingOverrides = SaveBindingOverrides();
+        return true;
+    }
+
+    /// <summary>
+    /// Prevents an unrecoverable runtime edit from replacing the last saved input configuration.
+    /// </summary>
+    internal void RequireInputRestart()
+    {
+        RequiresInputRestart = true;
     }
 
     /// <summary>
@@ -108,6 +143,9 @@ public sealed class InputManager : MonoBehaviour
     /// <param name="bindingOverrides">The serialized binding override data.</param>
     public void LoadBindingOverrides(string bindingOverrides)
     {
+        if (RequiresInputRestart)
+            return;
+
         InputActionAsset asset = Actions.asset;
         asset.RemoveAllBindingOverrides();
         if (!string.IsNullOrWhiteSpace(bindingOverrides))

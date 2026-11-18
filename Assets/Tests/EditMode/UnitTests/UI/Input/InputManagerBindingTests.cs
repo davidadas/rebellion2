@@ -9,6 +9,64 @@ namespace Rebellion.Tests.Managers
     public sealed class InputManagerBindingTests
     {
         [Test]
+        public void TrySaveBindingOverrides_RestartRequired_ReturnsNoOverrides()
+        {
+            GameObject root = new("UnsafeInputManager");
+            try
+            {
+                InputManager input = root.AddComponent<InputManager>();
+                input.RequireInputRestart();
+
+                Assert.IsFalse(input.TrySaveBindingOverrides(out string overrides));
+                Assert.IsNull(overrides);
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void SaveBindingOverrides_RestartRequired_RejectsUnsafeExport()
+        {
+            GameObject root = new("UnsafeInputManager");
+            try
+            {
+                InputManager input = root.AddComponent<InputManager>();
+                input.RequireInputRestart();
+
+                Assert.Throws<System.InvalidOperationException>(() => input.SaveBindingOverrides());
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void LoadBindingOverrides_RestartRequired_LeavesRuntimeBindingsUnchanged()
+        {
+            GameObject root = new("UnsafeInputManager");
+            try
+            {
+                InputManager input = root.AddComponent<InputManager>();
+                InputAction action = input.Asset.FindAction("Strategy/ShowTroopers", true);
+                action.ApplyBindingOverride(0, "<Keyboard>/v");
+                string saved = input.SaveBindingOverrides();
+                action.ApplyBindingOverride(0, "<Keyboard>/k");
+                input.RequireInputRestart();
+
+                input.LoadBindingOverrides(saved);
+
+                Assert.AreEqual("<Keyboard>/k", action.bindings[0].effectivePath);
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
         public void SetShortcutModifier_MacOS_UsesResolvableCommandKey()
         {
             InputTestFixture inputFixture = new InputTestFixture();
