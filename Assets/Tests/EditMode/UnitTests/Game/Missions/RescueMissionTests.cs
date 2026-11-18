@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
@@ -652,6 +653,18 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.DoesNotThrow(() => missionSystem.ProcessMissionTick(game));
             Assert.AreEqual(empirePlanet, captive.GetParent());
+            PlanetSnapshot snapshot = game.GetFactionByOwnerInstanceID("empire")
+                .Fog.Snapshots[enemyPlanet.GetParentOfType<PlanetSector>().InstanceID]
+                .Planets[enemyPlanet.InstanceID];
+            Fleet observedHostileFleet = snapshot.Fleets.Single(fleet =>
+                fleet.InstanceID == hostileFleet.InstanceID
+            );
+            Assert.That(
+                observedHostileFleet
+                    .GetChildren<Officer>(recursive: true)
+                    .Select(observedOfficer => observedOfficer.InstanceID),
+                Does.Not.Contain(captive.InstanceID)
+            );
         }
 
         [Test]
