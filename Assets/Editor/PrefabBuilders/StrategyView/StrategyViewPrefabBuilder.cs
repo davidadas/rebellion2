@@ -752,7 +752,18 @@ public static class StrategyViewPrefabBuilder
         );
         activeFilterLabel.gameObject.SetActive(false);
 
-        GameObject bookmarks = CreateLayer("Bookmarks", root.transform);
+        GameObject hud = CreateLayer(_hudName, root.transform);
+        RectTransform hudRect = hud.GetComponent<RectTransform>();
+        SetStrategySurfaceRect(hudRect);
+        StrategyHudView hudView = EnableRuntimeComponent(hud.AddComponent<StrategyHudView>());
+
+        RectTransform hudBackground = CreateChildLayer(_hudBackgroundImageName, hud.transform);
+        RawImage hudBackgroundImage = hudBackground.gameObject.AddComponent<RawImage>();
+        hudBackgroundImage.texture = LoadTexture(PreviewTheme?.TacticalHUDLayout?.ImagePath);
+        hudBackgroundImage.enabled = hudBackgroundImage.texture != null;
+        hudBackgroundImage.raycastTarget = false;
+
+        GameObject bookmarks = CreateLayer("Bookmarks", hud.transform);
         RectTransform bookmarksRect = bookmarks.GetComponent<RectTransform>();
         SetStrategySurfaceRect(bookmarksRect);
         BookmarkBarView bookmarkBarView = EnableRuntimeComponent(
@@ -766,16 +777,6 @@ public static class StrategyViewPrefabBuilder
             bookmarkLayout
         );
 
-        GameObject hud = CreateLayer(_hudName, root.transform);
-        RectTransform hudRect = hud.GetComponent<RectTransform>();
-        SetStrategySurfaceRect(hudRect);
-        StrategyHudView hudView = EnableRuntimeComponent(hud.AddComponent<StrategyHudView>());
-
-        RectTransform hudBackground = CreateChildLayer(_hudBackgroundImageName, hud.transform);
-        RawImage hudBackgroundImage = hudBackground.gameObject.AddComponent<RawImage>();
-        hudBackgroundImage.texture = LoadTexture(PreviewTheme?.TacticalHUDLayout?.ImagePath);
-        hudBackgroundImage.enabled = hudBackgroundImage.texture != null;
-        hudBackgroundImage.raycastTarget = false;
         StrategyAdvisorView advisorView = CreateStrategyAdvisorView(hud.transform);
 
         RectTransform hudTextFields = CreateChildLayer(_hudTextFieldsName, hud.transform);
