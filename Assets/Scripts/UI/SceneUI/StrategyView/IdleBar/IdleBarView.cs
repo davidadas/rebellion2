@@ -11,6 +11,27 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
+    /// <summary>
+    /// Describes one slot after identical special-forces entries have been collapsed or expanded.
+    /// </summary>
+    private sealed class IdleBarPresentationEntry
+    {
+        internal IdleBarEntry Entry { get; }
+
+        internal int Count { get; }
+
+        /// <summary>
+        /// Creates one slot presentation.
+        /// </summary>
+        /// <param name="entry">The atomic entry represented by the slot.</param>
+        /// <param name="count">The number of identical entries represented by the slot.</param>
+        internal IdleBarPresentationEntry(IdleBarEntry entry, int count)
+        {
+            Entry = entry;
+            Count = count;
+        }
+    }
+
     private const int _collapsedEntryLimit = 5;
     private const int _columnGap = 1;
     private const int _expandedColumnCount = 7;
@@ -47,6 +68,7 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
 
     private IdleBarRenderData currentData;
     private bool contextMenuOpen;
+    private string expandedGroupKey;
     private bool hoverExitPending;
     private string hoveredEntryId;
     private bool initialized;
@@ -106,6 +128,8 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     {
         Initialize();
         bool resetScroll = !HasSameEntries(currentData, data);
+        if (resetScroll)
+            expandedGroupKey = null;
         currentData = data;
         gameObject.SetActive(data?.Visible == true);
         if (data?.Visible != true || data.Entries.Count == 0)
@@ -265,25 +289,26 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     /// <param name="resetScroll">Whether the scroll area should return to its first row.</param>
     private void RenderShelf(bool resetScroll)
     {
+        IReadOnlyList<IdleBarPresentationEntry> displayEntries = CreatePresentationEntries();
         bool expanded =
             (pointerOverShelf || contextMenuOpen || currentData.AlwaysOpen)
-            && currentData.Entries.Count > _collapsedEntryLimit;
+            && displayEntries.Count > _collapsedEntryLimit;
         int visibleEntryCount = expanded
-            ? currentData.Entries.Count
+            ? displayEntries.Count
             : Math.Min(
-                currentData.Entries.Count,
-                currentData.Entries.Count > _collapsedEntryLimit
+                displayEntries.Count,
+                displayEntries.Count > _collapsedEntryLimit
                     ? _collapsedEntryLimit - 1
                     : _collapsedEntryLimit
             );
         int rowCount = expanded
-            ? Mathf.CeilToInt((float)currentData.Entries.Count / _expandedColumnCount)
+            ? Mathf.CeilToInt((float)displayEntries.Count / _expandedColumnCount)
             : 1;
         int viewportRowCount = expanded ? Math.Min(rowCount, _expandedRowLimit) : 1;
         bool scrollable = expanded && rowCount > _expandedRowLimit;
-        bool showOverflow = !expanded && currentData.Entries.Count > _collapsedEntryLimit;
+        bool showOverflow = !expanded && displayEntries.Count > _collapsedEntryLimit;
         int columnCount = expanded
-            ? Math.Min(currentData.Entries.Count, _expandedColumnCount)
+            ? Math.Min(displayEntries.Count, _expandedColumnCount)
             : visibleEntryCount + (showOverflow ? 1 : 0);
         int gridWidth = columnCount * _slotSize + (columnCount - 1) * _columnGap;
         int viewportHeight = viewportRowCount * _slotSize + (viewportRowCount - 1) * _rowGap;
@@ -327,16 +352,15 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
 
             int row = expanded ? index / _expandedColumnCount : 0;
             int entriesInRow = expanded
-                ? Math.Min(
-                    _expandedColumnCount,
-                    currentData.Entries.Count - row * _expandedColumnCount
-                )
+                ? Math.Min(_expandedColumnCount, displayEntries.Count - row * _expandedColumnCount)
                 : visibleEntryCount;
             int firstColumn = expanded && row == 0 ? columnCount - entriesInRow : 0;
             int column = expanded ? index % _expandedColumnCount : index;
+            IdleBarPresentationEntry presentation = displayEntries[index];
             slots[index]
                 .Render(
-                    currentData.Entries[index],
+                    presentation.Entry,
+                    presentation.Count,
                     (firstColumn + column) * (_slotSize + _columnGap),
                     row * (_slotSize + _rowGap),
                     _slotSize
@@ -347,7 +371,7 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
         if (showOverflow)
         {
             overflowSlot.RenderOverflow(
-                currentData.Entries.Count - (_collapsedEntryLimit - 1),
+                displayEntries.Count - (_collapsedEntryLimit - 1),
                 (_collapsedEntryLimit - 1) * (_slotSize + _columnGap),
                 0,
                 _slotSize
@@ -358,6 +382,58 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
         int contentHeight = rowCount * _slotSize + Math.Max(0, rowCount - 1) * _rowGap;
         entriesScrollArea.SetContentHeight(contentHeight, _slotSize + _rowGap, resetScroll);
         UpdateHoverLabel();
+    }
+
+    /// <summary>
+    /// Builds the ordered slot presentation for collapsed and hovered special-forces groups.
+    /// </summary>
+    /// <returns>The ordered slots to render.</returns>
+    private IReadOnlyList<IdleBarPresentationEntry> CreatePresentationEntries()
+    {
+        Dictionary<string, List<IdleBarEntry>> groups = new Dictionary<string, List<IdleBarEntry>>(
+            StringComparer.Ordinal
+        );
+        foreach (IdleBarEntry entry in currentData.Entries)
+        {
+            if (string.IsNullOrEmpty(entry.GroupKey))
+                continue;
+
+            if (!groups.TryGetValue(entry.GroupKey, out List<IdleBarEntry> members))
+            {
+                members = new List<IdleBarEntry>();
+                groups.Add(entry.GroupKey, members);
+            }
+            members.Add(entry);
+        }
+
+        List<IdleBarPresentationEntry> presentations = new List<IdleBarPresentationEntry>();
+        HashSet<string> emittedGroups = new HashSet<string>(StringComparer.Ordinal);
+        foreach (IdleBarEntry entry in currentData.Entries)
+        {
+            if (
+                string.IsNullOrEmpty(entry.GroupKey)
+                || !groups.TryGetValue(entry.GroupKey, out List<IdleBarEntry> members)
+                || members.Count <= 1
+            )
+            {
+                presentations.Add(new IdleBarPresentationEntry(entry, 1));
+                continue;
+            }
+
+            if (!emittedGroups.Add(entry.GroupKey))
+                continue;
+
+            if (entry.GroupKey == expandedGroupKey)
+            {
+                foreach (IdleBarEntry member in members)
+                    presentations.Add(new IdleBarPresentationEntry(member, 1));
+                continue;
+            }
+
+            presentations.Add(new IdleBarPresentationEntry(members[0], members.Count));
+        }
+
+        return presentations;
     }
 
     /// <summary>
@@ -417,7 +493,10 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     private void SetPointerOverShelf(bool pointerOver)
     {
         hoverExitPending = false;
-        if (pointerOverShelf == pointerOver)
+        bool groupChanged = !pointerOver && expandedGroupKey != null;
+        if (groupChanged)
+            expandedGroupKey = null;
+        if (pointerOverShelf == pointerOver && !groupChanged)
             return;
 
         pointerOverShelf = pointerOver;
@@ -432,6 +511,7 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     {
         hoverExitPending = false;
         pointerOverShelf = false;
+        expandedGroupKey = null;
         if (shelfHitArea != null)
             shelfHitArea.gameObject.SetActive(false);
         if (entriesScrollArea != null)
@@ -502,6 +582,18 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     private void HandleSlotHovered(string instanceId)
     {
         hoveredEntryId = instanceId;
+        IdleBarEntry entry = currentData?.Entries.FirstOrDefault(candidate =>
+            candidate.Entity?.InstanceID == instanceId
+        );
+        if (
+            !string.IsNullOrEmpty(entry?.GroupKey)
+            && entry.GroupKey != expandedGroupKey
+            && currentData.Entries.Count(candidate => candidate.GroupKey == entry.GroupKey) > 1
+        )
+        {
+            expandedGroupKey = entry.GroupKey;
+            RenderShelf(resetScroll: false);
+        }
         UpdateHoverLabel();
         EntryHovered?.Invoke(instanceId);
     }

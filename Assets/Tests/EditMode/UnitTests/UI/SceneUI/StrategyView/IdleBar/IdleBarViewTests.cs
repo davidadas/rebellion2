@@ -60,6 +60,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             TextMeshProUGUI overflowText = template
                 .transform.Find("OverflowTextField")
                 .GetComponent<TextMeshProUGUI>();
+            TextMeshProUGUI groupCountText = template
+                .transform.Find("GroupCountBadge/Count")
+                .GetComponent<TextMeshProUGUI>();
             Assert.IsNotNull(button);
             Assert.AreEqual(Selectable.Transition.None, button.transition);
             Assert.AreEqual(Color.black, frame.GetComponent<Image>().color);
@@ -68,6 +71,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.IsNotNull(overflowText);
             Assert.AreEqual(FontStyles.Bold, overflowText.fontStyle);
             Assert.IsFalse(overflowText.gameObject.activeSelf);
+            Assert.IsNotNull(groupCountText);
+            Assert.AreEqual(FontStyles.Bold, groupCountText.fontStyle);
+            Assert.IsFalse(groupCountText.transform.parent.gameObject.activeSelf);
         }
 
         [Test]
@@ -228,6 +234,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         {
             Planet planet = CreatePlanet("Coruscant");
             Officer officer = CreateOfficer("Officer");
+            officer.OwnerInstanceID = planet.OwnerInstanceID;
             planet.AddChild(officer);
             officer.SetParent(planet);
             _view.Render(
@@ -244,6 +251,169 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
                 "Officer (Coruscant)",
                 GetField<TextMeshProUGUI>("hoverLabelText").text
             );
+        }
+
+        [Test]
+        public void Render_LikeSpecialForcesAtSamePlanet_CollapsesIntoCountedGroup()
+        {
+            Planet planet = CreatePlanet("Coruscant");
+            SpecialForces first = CreateStationedSpecialForces(
+                planet,
+                "Infiltrator 1",
+                "Infiltrator",
+                "Infiltrator"
+            );
+            SpecialForces second = CreateStationedSpecialForces(
+                planet,
+                "Infiltrator 2",
+                "Infiltrator",
+                "Infiltrator"
+            );
+            SpecialForces third = CreateStationedSpecialForces(
+                planet,
+                "Infiltrator 3",
+                "Infiltrator",
+                "Infiltrator"
+            );
+
+            _view.Render(
+                new IdleBarRenderData(
+                    true,
+                    new[]
+                    {
+                        new IdleBarEntry(first, null),
+                        new IdleBarEntry(second, null),
+                        new IdleBarEntry(third, null),
+                    },
+                    new RectInt(0, 0, 800, 480)
+                )
+            );
+
+            IdleBarSlotView slot = GetVisibleSlots().Single();
+            TextMeshProUGUI count = slot
+                .transform.Find("GroupCountBadge/Count")
+                .GetComponent<TextMeshProUGUI>();
+            Assert.AreEqual("Infiltrator", slot.name);
+            Assert.IsTrue(count.transform.parent.gameObject.activeSelf);
+            Assert.AreEqual("3", count.text);
+        }
+
+        [Test]
+        public void PointerHover_CountedSpecialForcesGroup_ExpandsAtomicEntriesUntilShelfExit()
+        {
+            string selectedInstanceId = null;
+            _view.EntrySelected += instanceId => selectedInstanceId = instanceId;
+            Planet planet = CreatePlanet("Coruscant");
+            SpecialForces first = CreateStationedSpecialForces(
+                planet,
+                "Infiltrator 1",
+                "Infiltrator",
+                "Infiltrator"
+            );
+            SpecialForces second = CreateStationedSpecialForces(
+                planet,
+                "Infiltrator 2",
+                "Infiltrator",
+                "Infiltrator"
+            );
+            SpecialForces third = CreateStationedSpecialForces(
+                planet,
+                "Infiltrator 3",
+                "Infiltrator",
+                "Infiltrator"
+            );
+            _view.Render(
+                new IdleBarRenderData(
+                    true,
+                    new[]
+                    {
+                        new IdleBarEntry(first, null),
+                        new IdleBarEntry(second, null),
+                        new IdleBarEntry(third, null),
+                    },
+                    new RectInt(0, 0, 800, 480)
+                )
+            );
+
+            GetVisibleSlots().Single().OnPointerEnter(null);
+
+            List<IdleBarSlotView> expanded = GetVisibleSlots();
+            Assert.AreEqual(3, expanded.Count);
+            Assert.IsTrue(
+                expanded.All(slot => !slot.transform.Find("GroupCountBadge").gameObject.activeSelf)
+            );
+            expanded[1].GetComponent<Button>().onClick.Invoke();
+            Assert.AreEqual("Infiltrator 2", selectedInstanceId);
+
+            _view.OnPointerExit(null);
+            InvokeViewMethod("LateUpdate");
+
+            Assert.AreEqual(1, GetVisibleSlots().Count);
+            Assert.AreEqual(
+                "3",
+                GetVisibleSlots()
+                    .Single()
+                    .transform.Find("GroupCountBadge/Count")
+                    .GetComponent<TextMeshProUGUI>()
+                    .text
+            );
+        }
+
+        [Test]
+        public void Render_SameSpecialForcesTypeAtDifferentPlanets_KeepsSeparateEntries()
+        {
+            Planet firstPlanet = CreatePlanet("Coruscant");
+            Planet secondPlanet = CreatePlanet("Alderaan");
+            SpecialForces first = CreateStationedSpecialForces(
+                firstPlanet,
+                "Infiltrator 1",
+                "Infiltrator",
+                "Infiltrator"
+            );
+            SpecialForces second = CreateStationedSpecialForces(
+                secondPlanet,
+                "Infiltrator 2",
+                "Infiltrator",
+                "Infiltrator"
+            );
+
+            _view.Render(
+                new IdleBarRenderData(
+                    true,
+                    new[] { new IdleBarEntry(first, null), new IdleBarEntry(second, null) },
+                    new RectInt(0, 0, 800, 480)
+                )
+            );
+
+            Assert.AreEqual(2, GetVisibleSlots().Count);
+        }
+
+        [Test]
+        public void Render_DifferentSpecialForcesTypesAtSamePlanet_KeepsSeparateEntries()
+        {
+            Planet planet = CreatePlanet("Coruscant");
+            SpecialForces first = CreateStationedSpecialForces(
+                planet,
+                "Infiltrator 1",
+                "Infiltrator",
+                "Infiltrator"
+            );
+            SpecialForces second = CreateStationedSpecialForces(
+                planet,
+                "Guerrilla 1",
+                "Guerrilla",
+                "Guerrilla"
+            );
+
+            _view.Render(
+                new IdleBarRenderData(
+                    true,
+                    new[] { new IdleBarEntry(first, null), new IdleBarEntry(second, null) },
+                    new RectInt(0, 0, 800, 480)
+                )
+            );
+
+            Assert.AreEqual(2, GetVisibleSlots().Count);
         }
 
         [Test]
@@ -604,13 +774,46 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         /// <summary>
+        /// Creates one typed special-forces unit at a planet.
+        /// </summary>
+        /// <param name="planet">The parent planet.</param>
+        /// <param name="instanceId">The stable unit identifier.</param>
+        /// <param name="typeId">The unit type identifier.</param>
+        /// <param name="displayName">The displayed unit name.</param>
+        /// <returns>The created special-forces unit.</returns>
+        private static SpecialForces CreateStationedSpecialForces(
+            Planet planet,
+            string instanceId,
+            string typeId,
+            string displayName
+        )
+        {
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = instanceId,
+                TypeID = typeId,
+                DisplayName = displayName,
+                OwnerInstanceID = planet.OwnerInstanceID,
+            };
+            planet.AddChild(specialForces);
+            specialForces.SetParent(planet);
+            return specialForces;
+        }
+
+        /// <summary>
         /// Creates planet.
         /// </summary>
         /// <param name="displayName">The display name.</param>
         /// <returns>The created planet.</returns>
         private static Planet CreatePlanet(string displayName)
         {
-            return new Planet { InstanceID = displayName, DisplayName = displayName };
+            return new Planet
+            {
+                InstanceID = displayName,
+                DisplayName = displayName,
+                OwnerInstanceID = "FNALL1",
+                IsColonized = true,
+            };
         }
     }
 }

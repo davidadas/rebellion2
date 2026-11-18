@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
 
@@ -14,6 +15,8 @@ internal sealed class IdleBarEntry
     internal string Name { get; }
 
     internal string HoverText { get; }
+
+    internal string GroupKey { get; }
 
     internal Texture2D Texture { get; }
 
@@ -32,7 +35,26 @@ internal sealed class IdleBarEntry
             string.IsNullOrEmpty(Name) || string.IsNullOrEmpty(planetName)
                 ? Name
                 : $"{Name} ({planetName})";
+        GroupKey = CreateGroupKey(entity, planet);
         Texture = texture;
+    }
+
+    /// <summary>
+    /// Creates a stable presentation key for identical special-forces units at one planet.
+    /// </summary>
+    /// <param name="entity">The represented strategy entity.</param>
+    /// <param name="planet">The entity's parent planet, when present.</param>
+    /// <returns>The presentation key, or null when the entry cannot be grouped.</returns>
+    private static string CreateGroupKey(ISceneNode entity, Planet planet)
+    {
+        if (
+            entity is not SpecialForces
+            || string.IsNullOrEmpty(entity.GetTypeID())
+            || string.IsNullOrEmpty(planet?.InstanceID)
+        )
+            return null;
+
+        return $"{planet.InstanceID}\u001f{entity.GetTypeID()}";
     }
 }
 

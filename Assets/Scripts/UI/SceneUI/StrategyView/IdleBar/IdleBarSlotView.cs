@@ -39,6 +39,9 @@ public sealed class IdleBarSlotView
     [SerializeField]
     private TextMeshProUGUI overflowTextField;
 
+    [SerializeField]
+    private TextMeshProUGUI groupCountTextField;
+
     private string instanceId;
     private bool hovered;
     private bool initialized;
@@ -83,13 +86,16 @@ public sealed class IdleBarSlotView
     /// Renders one entity at its top-left source-space position.
     /// </summary>
     /// <param name="entry">The entry to render.</param>
+    /// <param name="groupCount">The number of identical entries represented by this slot.</param>
     /// <param name="x">The source-space horizontal position.</param>
     /// <param name="y">The source-space vertical position.</param>
     /// <param name="slotSize">The source-space square slot size.</param>
-    internal void Render(IdleBarEntry entry, int x, int y, int slotSize)
+    internal void Render(IdleBarEntry entry, int groupCount, int x, int y, int slotSize)
     {
         if (entry == null)
             throw new ArgumentNullException(nameof(entry));
+        if (groupCount <= 0)
+            throw new ArgumentOutOfRangeException(nameof(groupCount));
 
         Initialize();
         currentSlotSize = slotSize;
@@ -100,6 +106,8 @@ public sealed class IdleBarSlotView
 
         portraitMask.gameObject.SetActive(true);
         overflowTextField.gameObject.SetActive(false);
+        groupCountTextField.text = groupCount.ToString();
+        groupCountTextField.transform.parent.gameObject.SetActive(groupCount > 1);
         portraitImage.texture = entry.Texture;
         portraitImage.uvRect = GetCenteredSquareUv(entry.Texture);
         button.interactable = !string.IsNullOrEmpty(instanceId);
@@ -123,6 +131,7 @@ public sealed class IdleBarSlotView
         gameObject.name = $"+{hiddenCount}";
         SetSourceRect(transform as RectTransform, x, y, slotSize, slotSize);
         portraitMask.gameObject.SetActive(false);
+        groupCountTextField.transform.parent.gameObject.SetActive(false);
         overflowTextField.text = $"+{hiddenCount}";
         overflowTextField.gameObject.SetActive(true);
         button.interactable = false;
@@ -242,6 +251,8 @@ public sealed class IdleBarSlotView
 
         if (ignoreButton == null)
             ignoreButton = CreateIgnoreButton();
+        if (groupCountTextField == null)
+            groupCountTextField = CreateGroupCountText();
 
         if (
             button == null
@@ -251,6 +262,7 @@ public sealed class IdleBarSlotView
             || portraitImage == null
             || ignoreButton == null
             || overflowTextField == null
+            || groupCountTextField == null
         )
         {
             throw new MissingReferenceException(
@@ -301,6 +313,42 @@ public sealed class IdleBarSlotView
         FillParent(text.rectTransform);
         ignoreObject.SetActive(false);
         return createdButton;
+    }
+
+    /// <summary>
+    /// Creates the group-count badge when an older generated Strategy prefab is loaded.
+    /// </summary>
+    /// <returns>The newly created group-count text.</returns>
+    private TextMeshProUGUI CreateGroupCountText()
+    {
+        GameObject badgeObject = new GameObject(
+            "GroupCountBadge",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        badgeObject.transform.SetParent(transform, false);
+        Image background = badgeObject.GetComponent<Image>();
+        background.color = new Color(0.02f, 0.02f, 0.02f, 0.92f);
+        background.raycastTarget = false;
+        SetSourceRect(background.rectTransform, 17, 17, 11, 11);
+
+        GameObject textObject = new GameObject(
+            "Count",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(TextMeshProUGUI)
+        );
+        textObject.transform.SetParent(badgeObject.transform, false);
+        TextMeshProUGUI text = textObject.GetComponent<TextMeshProUGUI>();
+        text.color = Color.white;
+        text.fontSize = 7;
+        text.fontStyle = FontStyles.Bold;
+        text.alignment = TextAlignmentOptions.Center;
+        text.raycastTarget = false;
+        FillParent(text.rectTransform);
+        badgeObject.SetActive(false);
+        return text;
     }
 
     /// <summary>

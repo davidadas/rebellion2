@@ -1428,6 +1428,29 @@ public static class StrategyViewPrefabBuilder
         FillParent(overflowText.rectTransform);
         overflowText.gameObject.SetActive(false);
 
+        GameObject groupCountObject = new GameObject(
+            "GroupCountBadge",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        groupCountObject.transform.SetParent(slotObject.transform, false);
+        Image groupCountBackground = groupCountObject.GetComponent<Image>();
+        groupCountBackground.sprite = circleSprite;
+        groupCountBackground.color = new Color(0.02f, 0.02f, 0.02f, 0.92f);
+        groupCountBackground.preserveAspect = true;
+        groupCountBackground.raycastTarget = false;
+        SetSourceRect(groupCountBackground.rectTransform, 17, 17, 11, 11);
+
+        TextMeshProUGUI groupCountText = CreateTextLabel("Count", groupCountObject.transform);
+        groupCountText.color = Color.white;
+        groupCountText.fontSize = 7;
+        groupCountText.fontStyle = FontStyles.Bold;
+        groupCountText.alignment = TextAlignmentOptions.Center;
+        groupCountText.raycastTarget = false;
+        FillParent(groupCountText.rectTransform);
+        groupCountObject.SetActive(false);
+
         AssignReference(slotView, "button", button);
         AssignReference(slotView, "frameImage", frame);
         AssignReference(slotView, "portraitMask", maskImage.rectTransform);
@@ -1435,6 +1458,7 @@ public static class StrategyViewPrefabBuilder
         AssignReference(slotView, "portraitImage", portrait);
         AssignReference(slotView, "ignoreButton", ignoreButton);
         AssignReference(slotView, "overflowTextField", overflowText);
+        AssignReference(slotView, "groupCountTextField", groupCountText);
 
         RawImage hoverLabelBackground = CreatePanelImage(
             "HoverLabel",
