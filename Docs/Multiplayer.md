@@ -65,8 +65,9 @@ two-account runtime validation.
 
 - `Assets/Scripts/Game/SpaceCombat` contains campaign-domain definitions and completed outcomes.
 - `Assets/Scripts/AI/Planners` contains tactical AI planning alongside the other AI planners.
-- `Assets/Scripts/Util/Random` contains random-number providers. The fifteen-bit provider names its
+- `Assets/Scripts/Util/Random` contains random-number providers. The linear congruential provider names its
   fixed algorithm parameters; the encounter calendar-seed policy remains in `Game/SpaceCombat`.
+  `RandomExtensions.NextBits` requests a bit width from an existing random stream.
 - `Assets/Scripts/Gameplay/SpaceCombat` contains encounter simulation and adjacent partial classes for
   its state projection. `Replication` contains the command, frame, effect, and state contracts.
   Presentation consumers use the read-only `ITacticalCombatPresentationTimeline` boundary; the

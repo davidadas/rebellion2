@@ -13,7 +13,7 @@ namespace Rebellion.Architecture.Tests
     public sealed class CombatOwnershipTests
     {
         [TestCase(typeof(TacticalCombatPlanner), "Rebellion.AI.Planners")]
-        [TestCase(typeof(FifteenBitRandomProvider), "Rebellion.Util.Random")]
+        [TestCase(typeof(LinearCongruentialRandomProvider), "Rebellion.Util.Random")]
         [TestCase(typeof(TacticalCombatSeed), "Rebellion.Game.SpaceCombat")]
         [TestCase(typeof(TacticalCombatReplicaPlayback), "Rebellion.Multiplayer")]
         public void CombatServices_Responsibilities_UseOwningNamespaces(

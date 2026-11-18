@@ -666,7 +666,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             ContentPack pack = ContentPackLoader.OpenActive();
             TacticalCombatSession encounter = CreateEncounter(pack.GameData);
             TacticalCombatSceneryRandom expectedRandom = new(
-                new FifteenBitRandomProvider(42),
+                new LinearCongruentialRandomProvider(42),
                 () => 1
             );
             Vector3N expectedStation = expectedRandom.NextPosition(100, -2, 0.2f);
@@ -2383,7 +2383,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                     }
                 );
             }
-            FifteenBitRandomProvider random = new(42);
+            LinearCongruentialRandomProvider random = new(42);
             return new TacticalCombatSession(
                 units,
                 units.ConvertAll(unit => new TacticalCombatGroup(
@@ -2474,7 +2474,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             foreach (TacticalCombatGroup group in groups)
                 if (group.IsFighterGroup)
                     group.FighterCategory = fighterCategory;
-            FifteenBitRandomProvider random = new(42);
+            LinearCongruentialRandomProvider random = new(42);
             return new TacticalCombatSession(
                 units,
                 groups,

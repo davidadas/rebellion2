@@ -20,7 +20,7 @@ namespace Rebellion.Gameplay
     {
         private readonly GameRoot _game;
         private readonly SpaceCombatQueries _queries;
-        private readonly Func<FifteenBitRandomProvider> _createRandom;
+        private readonly Func<LinearCongruentialRandomProvider> _createRandom;
         private readonly Func<DateTimeOffset> _localClock;
         private readonly TacticalCombatDefinition _definition;
         private readonly Dictionary<string, TacticalCombatUnitDefinition> _definitions;
@@ -38,14 +38,17 @@ namespace Rebellion.Gameplay
             GameRoot game,
             GameDataCatalog catalog,
             SpaceCombatQueries queries,
-            Func<FifteenBitRandomProvider> createRandom = null,
+            Func<LinearCongruentialRandomProvider> createRandom = null,
             Func<DateTimeOffset> localClock = null
         )
         {
             this._game = game ?? throw new ArgumentNullException(nameof(game));
             _createRandom =
                 createRandom
-                ?? (() => new FifteenBitRandomProvider(unchecked((uint)Environment.TickCount)));
+                ?? (
+                    () =>
+                        new LinearCongruentialRandomProvider(unchecked((uint)Environment.TickCount))
+                );
             _localClock = localClock ?? (() => DateTimeOffset.Now);
             this._queries = queries ?? throw new ArgumentNullException(nameof(queries));
             _definition =
@@ -366,8 +369,8 @@ namespace Rebellion.Gameplay
                 CreateGroups(units, groups, (CombatSide)side, forward, ref counters[side]);
             }
             groups.Sort(CompareGroupRegistration);
-            FifteenBitRandomProvider random = seed.HasValue
-                ? new FifteenBitRandomProvider(seed.Value)
+            LinearCongruentialRandomProvider random = seed.HasValue
+                ? new LinearCongruentialRandomProvider(seed.Value)
                 : _createRandom();
             return new TacticalCombatSession(
                 units,

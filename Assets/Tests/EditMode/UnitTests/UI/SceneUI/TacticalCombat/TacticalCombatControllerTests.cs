@@ -121,7 +121,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 CreateSide(CombatSide.Defender),
                 CombatSide.Attacker,
                 100,
-                new FifteenBitRandomProvider(42),
+                new LinearCongruentialRandomProvider(42),
                 new TacticalCombatDefinition
                 {
                     Sounds = new()

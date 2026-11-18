@@ -13,7 +13,7 @@ namespace Rebellion.Tests.Gameplay
         [TestCase(1)]
         public void NextInt_TrivialBound_DoesNotAcquireClockOrTouchBattleStream(int bound)
         {
-            FifteenBitRandomProvider shared = new(42);
+            LinearCongruentialRandomProvider shared = new(42);
             int clockCalls = 0;
             TacticalCombatSceneryRandom scenery = new(
                 shared,
@@ -32,7 +32,7 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void NextInt_FirstBoundedDraw_ReseedsAndConsumesFourBattleValues()
         {
-            FifteenBitRandomProvider shared = new(42);
+            LinearCongruentialRandomProvider shared = new(42);
             TacticalCombatSceneryRandom scenery = new(shared, () => 1);
 
             Assert.AreEqual(19, scenery.NextInt(100));
@@ -42,7 +42,7 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void NextInt_SubsequentDraws_PreserveLocalSequenceAndSharedBattleState()
         {
-            FifteenBitRandomProvider shared = new(42);
+            LinearCongruentialRandomProvider shared = new(42);
             int clockCalls = 0;
             TacticalCombatSceneryRandom scenery = new(
                 shared,
@@ -64,7 +64,7 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void NextInt_CalendarFailure_UsesUnsignedFailureSeed()
         {
-            FifteenBitRandomProvider shared = new(42);
+            LinearCongruentialRandomProvider shared = new(42);
             TacticalCombatSceneryRandom scenery = new(shared, () => -1);
 
             Assert.AreEqual(97, scenery.NextInt(100));
@@ -74,7 +74,10 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void NextPosition_PlanetThenStation_PreservesFourLocalDrawsInOrder()
         {
-            TacticalCombatSceneryRandom scenery = new(new FifteenBitRandomProvider(42), () => 1);
+            TacticalCombatSceneryRandom scenery = new(
+                new LinearCongruentialRandomProvider(42),
+                () => 1
+            );
 
             Assert.AreEqual(new Vector3(200, -7, -5), scenery.NextPosition(100, 2, 0.1f));
             Assert.AreEqual(new Vector3(-200, 9, -16), scenery.NextPosition(100, -2, 0.2f));

@@ -3,9 +3,9 @@ using System;
 namespace Rebellion.Util.Random
 {
     /// <summary>
-    /// Generates a deterministic fifteen-bit output stream from a wrapped thirty-two-bit state.
+    /// Generates a deterministic linear congruential sequence from a wrapped thirty-two-bit state.
     /// </summary>
-    public sealed class FifteenBitRandomProvider : IRandomNumberProvider
+    public sealed class LinearCongruentialRandomProvider : IRandomNumberProvider
     {
         private const uint _stateMultiplier = 214013;
         private const uint _stateIncrement = 2531011;
@@ -19,7 +19,7 @@ namespace Rebellion.Util.Random
         /// Starts a reproducible random stream from a captured seed.
         /// </summary>
         /// <param name="seed">The initial stream state.</param>
-        public FifteenBitRandomProvider(uint seed) => _state = seed;
+        public LinearCongruentialRandomProvider(uint seed) => _state = seed;
 
         /// <summary>
         /// Replaces the current stream state.

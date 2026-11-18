@@ -9,7 +9,8 @@ namespace Rebellion.Gameplay
     /// </summary>
     public sealed class TacticalCombatSceneryRandom
     {
-        private readonly FifteenBitRandomProvider _sharedRandom;
+        private const int _seedSampleBits = 15;
+        private readonly LinearCongruentialRandomProvider _sharedRandom;
         private readonly Func<int> _calendarSeed;
         private int _seed = -1;
 
@@ -19,7 +20,7 @@ namespace Rebellion.Gameplay
         /// <param name="sharedRandom">The battle stream reseeded when scenery first needs randomness.</param>
         /// <param name="calendarSeed">The calendar seed acquired on the first nontrivial bounded draw.</param>
         public TacticalCombatSceneryRandom(
-            FifteenBitRandomProvider sharedRandom,
+            LinearCongruentialRandomProvider sharedRandom,
             Func<int> calendarSeed
         )
         {
@@ -75,10 +76,10 @@ namespace Rebellion.Gameplay
         private int SelectSeed()
         {
             _sharedRandom.Reseed(unchecked((uint)_calendarSeed()));
-            int a = _sharedRandom.NextInt(0, FifteenBitRandomProvider.OutputValueCount);
-            int b = _sharedRandom.NextInt(0, FifteenBitRandomProvider.OutputValueCount);
-            int c = _sharedRandom.NextInt(0, FifteenBitRandomProvider.OutputValueCount);
-            int d = _sharedRandom.NextInt(0, FifteenBitRandomProvider.OutputValueCount);
+            int a = _sharedRandom.NextBits(_seedSampleBits);
+            int b = _sharedRandom.NextBits(_seedSampleBits);
+            int c = _sharedRandom.NextBits(_seedSampleBits);
+            int d = _sharedRandom.NextBits(_seedSampleBits);
             return unchecked(a * b + c * d);
         }
 

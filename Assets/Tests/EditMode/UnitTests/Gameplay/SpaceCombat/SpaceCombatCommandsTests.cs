@@ -5299,7 +5299,7 @@ namespace Rebellion.Tests.Gameplay
                 game,
                 TestContent.Data,
                 queries,
-                () => new FifteenBitRandomProvider(42)
+                () => new LinearCongruentialRandomProvider(42)
             );
             SpaceCombatCommands commands = new(game, movement, queries, tacticalFactory: factory);
             Assert.IsNotEmpty(new SpaceCombatTickProcessor(commands).ProcessTick(game));

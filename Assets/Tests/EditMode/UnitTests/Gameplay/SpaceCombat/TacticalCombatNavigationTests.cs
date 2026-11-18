@@ -77,7 +77,7 @@ namespace Rebellion.Tests.Gameplay
                 CreateSide(CombatSide.Defender),
                 CombatSide.Attacker,
                 80,
-                new FifteenBitRandomProvider(42)
+                new LinearCongruentialRandomProvider(42)
             );
             session.SetOrder(group, TacticalCombatOrder.LeftHook);
             for (

@@ -505,7 +505,7 @@ namespace Rebellion.Tests.Gameplay
         {
             Encounter encounter = Create();
             encounter.Random.Reseed(73);
-            FifteenBitRandomProvider expected = new(73);
+            LinearCongruentialRandomProvider expected = new(73);
             encounter.Selection.QueueObject(encounter.Friendly[0]);
 
             encounter.Selection.ProcessPendingCommands();
@@ -745,7 +745,7 @@ namespace Rebellion.Tests.Gameplay
             public TacticalCombatUnit SecondEnemy { get; }
             public TacticalCombatUnit Fighter { get; }
             public TacticalCombatUnit EnemyFighter { get; }
-            public FifteenBitRandomProvider Random { get; } = new(42);
+            public LinearCongruentialRandomProvider Random { get; } = new(42);
             public List<Playback> Playbacks { get; } = new();
 
             /// <summary>

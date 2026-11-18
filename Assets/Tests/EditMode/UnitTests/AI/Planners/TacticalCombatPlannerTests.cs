@@ -599,7 +599,7 @@ namespace Rebellion.Tests.AI.Planners
                 defender,
                 CombatSide.Attacker,
                 100,
-                new FifteenBitRandomProvider(42)
+                new LinearCongruentialRandomProvider(42)
             );
         }
 
@@ -654,7 +654,7 @@ namespace Rebellion.Tests.AI.Planners
                 defender,
                 CombatSide.Attacker,
                 100,
-                new FifteenBitRandomProvider(42)
+                new LinearCongruentialRandomProvider(42)
             );
         }
 
