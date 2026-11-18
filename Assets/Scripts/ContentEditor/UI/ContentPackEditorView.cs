@@ -153,6 +153,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private Button dismissNoticeButton;
 
     [SerializeField]
+    private Button noticeLinkButton;
+
+    [SerializeField]
     private ActionDialogView confirmation;
 
     [SerializeField]
@@ -185,6 +188,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private bool mapDragging;
     private Button menuAnchor;
     private TextInputHistory textRedoTarget;
+    private ContentPackEditorField noticeField;
     private GameSize previewSize = GameSize.Large;
     private GameDifficulty previewDifficulty = GameDifficulty.Medium;
     private string previewScenario;
@@ -231,6 +235,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         ContentPackEditorRecord
     > SelectionRequested;
     internal event Action<string> SectionRequested;
+    internal event Action<ContentPackEditorField> ErrorFieldRequested;
 
     public ContentEditorColorMode ColorMode => appearance.Mode;
     public bool IsPreviewAudioPlaying => previewAudio && previewAudio.isPlaying;
@@ -371,6 +376,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || notice == null
             || noticeText == null
             || dismissNoticeButton == null
+            || noticeLinkButton == null
             || selectionDialog == null
             || confirmation == null
             || imagePreview == null
@@ -435,6 +441,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         packDialog.CreateRequested += ForwardCreateRequest;
         packDialog.BrowseRequested += ForwardBrowseRequest;
         dismissNoticeButton.onClick.AddListener(() => notice.SetActive(false));
+        noticeLinkButton.onClick.AddListener(RequestErrorField);
+        noticeLinkButton.gameObject.SetActive(false);
         map.BackRequested += ReturnToGalaxy;
         map.ArrangeRequested += ArrangeMap;
         map.Selected += SelectMapRecord;
@@ -511,6 +519,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             packDialog.CreateRequested -= ForwardCreateRequest;
             packDialog.BrowseRequested -= ForwardBrowseRequest;
             resetSectionButton.onClick.RemoveListener(RequestSectionReset);
+            noticeLinkButton.onClick.RemoveListener(RequestErrorField);
         }
     }
 
@@ -796,6 +805,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <param name="isError">Whether the operation failed.</param>
     public void RenderStatus(string message, bool isError)
     {
+        noticeField = null;
+        noticeLinkButton.gameObject.SetActive(false);
         if (isError && noticeText.text != message)
             GameLogger.Warning("Content editor: " + message);
         if (isError && packDialog.IsOpen)
@@ -815,6 +826,32 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             .GetComponent<ContentEditorColorBinding>()
             .SetRole(isError ? ContentEditorColorRole.Error : ContentEditorColorRole.Success);
         notice.SetActive(true);
+    }
+
+    /// <summary>
+    /// Presents a pack-wide validation failure with navigation to its authored field.
+    /// </summary>
+    /// <param name="message">The contextual validation failure.</param>
+    /// <param name="field">The rejected field.</param>
+    internal void RenderFieldError(string message, ContentPackEditorField field)
+    {
+        RenderStatus(message, true);
+        if (packDialog.IsOpen || field == null)
+            return;
+        noticeField = field;
+        noticeLinkButton.gameObject.SetActive(true);
+    }
+
+    /// <summary>
+    /// Forwards the field currently attached to the validation link.
+    /// </summary>
+    private void RequestErrorField()
+    {
+        ContentPackEditorField field = noticeField;
+        if (field == null)
+            return;
+        notice.SetActive(false);
+        ErrorFieldRequested?.Invoke(field);
     }
 
     /// <summary>
@@ -2269,6 +2306,68 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// </summary>
     /// <param name="field">The field to focus.</param>
     internal void FocusField(ContentPackEditorField field) => form.FocusField(field);
+
+    /// <summary>
+    /// Selects the page and inspector tab that present a validated field, then focuses it.
+    /// </summary>
+    /// <param name="field">The current project field to reveal.</param>
+    internal void ShowField(ContentPackEditorField field)
+    {
+        searchInput.SetTextWithoutNotify(string.Empty);
+        navigation.Render(catalogs);
+        ContentEditorTreeNode page = navigation.FindFieldPage(field);
+        ContentPackEditorRecord record = page?.Record ?? field.Record;
+        if (page == null && field.Record.Kind == "EncyclopediaEntry")
+        {
+            ContentPackEditorRecord entity = catalogs
+                .SelectMany(catalog =>
+                    catalog.Records.Concat(catalog.Records.SelectMany(item => item.Planets))
+                )
+                .FirstOrDefault(candidate =>
+                    ContentEditorContentSections.HasEncyclopedia(candidate)
+                    && candidate.ID == field.Record.ID
+                );
+            if (entity != null)
+                record = entity;
+        }
+        SelectRecord(record, page);
+        if (record.Kind == "GameEvent")
+            return;
+        string targetSection = FieldSection(field, page, record);
+        ShowSection(targetSection);
+        if (targetSection != "Advanced" && !form.FocusField(field))
+            ShowSection("Advanced");
+    }
+
+    /// <summary>
+    /// Resolves the inspector tab that owns an authored field.
+    /// </summary>
+    /// <param name="field">The field to display.</param>
+    /// <param name="page">The combined page containing the field, when present.</param>
+    /// <param name="record">The record selected in the navigation tree.</param>
+    /// <returns>The owning inspector tab.</returns>
+    private static string FieldSection(
+        ContentPackEditorField field,
+        ContentEditorTreeNode page,
+        ContentPackEditorRecord record
+    )
+    {
+        if (page?.Key.StartsWith("factions/", StringComparison.Ordinal) == true)
+            return ContentEditorContentSections.FactionSection(field);
+        if (record.Kind == "GameGenerationConfig")
+            return ContentEditorContentSections.GenerationSection(field);
+        if (page?.MissionID != null)
+            return field.Record.Kind == "GameConfig" ? "Rules" : "General";
+        if (
+            record.Element != field.Record.Element
+            || ContentEditorContentSections.HasEncyclopedia(record)
+                && ContentEditorContentSections.IsEncyclopediaField(field)
+        )
+            return "Encyclopedia";
+        return field.MediaType == ContentPackEditorMediaType.Audio ? "Audio"
+            : field.IsMedia ? "Artwork"
+            : "General";
+    }
 
     /// <summary>
     /// Opens named multi-selection, retaining repeated building quantities and destination weights.

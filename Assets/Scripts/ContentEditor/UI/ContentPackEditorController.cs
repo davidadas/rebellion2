@@ -730,6 +730,10 @@ public sealed class ContentPackEditorController : MonoBehaviour
             && exception is not UnauthorizedAccessException
         )
             GameLogger.LogException(exception);
-        view.RenderStatus(message ?? exception.Message, true);
+        ContentPackEditorField field = ContentEditorPackValidator.GetValidationField(exception);
+        if (message == null && field != null)
+            view.RenderFieldError(exception.Message, field);
+        else
+            view.RenderStatus(message ?? exception.Message, true);
     }
 }

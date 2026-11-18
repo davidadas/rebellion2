@@ -12,6 +12,8 @@ using static ContentEditorControlBuilder;
 /// </summary>
 public static class ContentPackEditorPrefabBuilder
 {
+    private const string _locationLinkIconPath =
+        "Assets/Content/Application/Strategy/UI/Windows/ui_strategyview_open_location_button.png";
     internal const string ScenePath = "Assets/Scenes/ContentPackEditor.unity";
     internal const string PrefabPath =
         "Assets/Prefabs/UI/ContentPackEditor/ContentPackEditorRoot.prefab";
@@ -883,15 +885,35 @@ public static class ContentPackEditorPrefabBuilder
         notice.rectTransform.pivot = new Vector2(0.5f, 1);
         notice.rectTransform.anchoredPosition = new Vector2(0, -58);
         TextMeshProUGUI text = Label("Text", notice.transform, string.Empty, 15);
-        Stretch(text.rectTransform, 20, 8, 110, 8);
+        Stretch(text.rectTransform, 20, 8, 152, 8);
         text.alignment = TextAlignmentOptions.TopLeft;
         text.overflowMode = TextOverflowModes.Overflow;
         text.textWrappingMode = TextWrappingModes.Normal;
+        RawImage linkImage = Layer("OpenInvalidField", notice.transform)
+            .gameObject.AddComponent<RawImage>();
+        linkImage.texture =
+            AssetDatabase.LoadAssetAtPath<Texture2D>(_locationLinkIconPath)
+            ?? throw new FileNotFoundException("The location-link icon is missing.");
+        linkImage.color = Color.white;
+        linkImage.raycastTarget = true;
+        Rect(linkImage.rectTransform, 512, 10, 30, 30);
+        Button link = linkImage.gameObject.AddComponent<Button>();
+        link.targetGraphic = linkImage;
+        ColorBlock linkColors = link.colors;
+        linkColors.normalColor = Color.white;
+        linkColors.highlightedColor = new Color(1f, 1f, 1f, 0.72f);
+        linkColors.selectedColor = linkColors.highlightedColor;
+        linkColors.pressedColor = new Color(1f, 1f, 1f, 0.55f);
+        linkColors.fadeDuration = 0.05f;
+        link.colors = linkColors;
+        link.gameObject.AddComponent<HelpTooltipView>()
+            .Configure("Go to the field that needs attention.");
         Button close = Button("Dismiss", notice.transform, "Close");
         Rect((RectTransform)close.transform, 550, 10, 60, 30);
         Assign(view, "notice", notice.gameObject);
         Assign(view, "noticeText", text);
         Assign(view, "dismissNoticeButton", close);
+        Assign(view, "noticeLinkButton", link);
         notice.gameObject.SetActive(false);
     }
 

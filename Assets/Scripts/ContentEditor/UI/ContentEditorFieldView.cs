@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
@@ -348,6 +349,25 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         error.text = string.Empty;
         revertButton.gameObject.SetActive(false);
         changed?.Invoke();
+    }
+
+    /// <summary>
+    /// Selects the active control representing this field.
+    /// </summary>
+    public void Focus()
+    {
+        GameObject checklist = choices
+            .FirstOrDefault(choice => choice.gameObject.activeSelf)
+            ?.gameObject;
+        GameObject target =
+            input.gameObject.activeSelf ? input.gameObject
+            : choiceDropdown.gameObject.activeSelf ? choiceDropdown.gameObject
+            : checkbox.gameObject.activeSelf ? checkbox.gameObject
+            : selectItemsButton.gameObject.activeSelf ? selectItemsButton.gameObject
+            : checklist ?? gameObject;
+        EventSystem.current?.SetSelectedGameObject(target);
+        if (target == input.gameObject)
+            input.ActivateInputField();
     }
 
     /// <summary>

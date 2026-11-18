@@ -8,7 +8,6 @@ using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
 using TMPro;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
@@ -319,7 +318,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// Reveals and focuses a field after a structural creation operation.
     /// </summary>
     /// <param name="field">The field to edit.</param>
-    public void FocusField(ContentPackEditorField field)
+    /// <returns>Whether the field has a visible control in the current form.</returns>
+    public bool FocusField(ContentPackEditorField field)
     {
         XElement item = field
             .XmlElement.AncestorsAndSelf()
@@ -329,17 +329,20 @@ public sealed class ContentEditorFormView : MonoBehaviour
             selectedCollection = item;
             RenderFields(true);
         }
-        ContentEditorFieldView row = fieldViews.Single(item =>
-            item.gameObject.activeSelf && item.Field.XmlElement == field.XmlElement
+        ContentEditorFieldView row = fieldViews.SingleOrDefault(item =>
+            item.gameObject.activeSelf
+            && item.Field.XmlElement == field.XmlElement
+            && item.Field.XmlAttributeName == field.XmlAttributeName
         );
+        if (row == null)
+            return false;
         RectTransform rect = (RectTransform)row.transform;
         fieldScroll.ScrollArea.RevealContentRect(
             -rect.anchoredPosition.y,
             fieldScroll.ScrollArea.ViewportHeight
         );
-        TMP_InputField input = row.GetComponentInChildren<TMP_InputField>();
-        EventSystem.current?.SetSelectedGameObject(input.gameObject);
-        input.ActivateInputField();
+        row.Focus();
+        return true;
     }
 
     /// <summary>

@@ -26,6 +26,11 @@ namespace Rebellion.Tests.ContentEditor
             );
             ContentPackEditorRecord record = Records(project).Single(item => item.ID == "one");
             ContentPackEditorField field = record.GetField("RecruitingFactionInstanceIDs");
+            ContentPackEditorField errorField = ContentEditorPackValidator.GetValidationField(
+                error
+            );
+            Assert.AreEqual(field.Record.Key, errorField.Record.Key);
+            Assert.AreEqual(field.Name, errorField.Name);
             StringAssert.Contains(record.Catalog.Document.Address, error.Message);
             StringAssert.Contains(record.ID, error.Message);
             StringAssert.Contains(field.Caption, error.Message);
