@@ -2699,11 +2699,15 @@ namespace Rebellion.Game.Missions
             List<GameResult> results
         )
         {
-            Technology unlocked = faction.ApplyResearchProgress(Discipline, earnedPoints);
-            if (unlocked == null)
+            IReadOnlyList<ResearchAdvancement> advancements = faction.ApplyResearchProgress(
+                Discipline,
+                earnedPoints
+            );
+            if (advancements.Count == 0)
                 return;
 
-            results.Add(BuildOrderedResult(faction, unlocked, game));
+            foreach (ResearchAdvancement advancement in advancements)
+                results.Add(BuildOrderedResult(faction, advancement, game));
             if (faction.IsResearchExhausted(Discipline))
                 results.Add(BuildExhaustedResult(faction, game));
         }
@@ -2713,12 +2717,12 @@ namespace Rebellion.Game.Missions
         /// research order and the technology that became available.
         /// </summary>
         /// <param name="faction">The owning faction.</param>
-        /// <param name="unlocked">The technology that just became available.</param>
+        /// <param name="advancement">The completed research advancement.</param>
         /// <param name="game">The current game state.</param>
         /// <returns>A populated ordered result.</returns>
         private ResearchOrderedResult BuildOrderedResult(
             Faction faction,
-            Technology unlocked,
+            ResearchAdvancement advancement,
             GameRoot game
         )
         {
@@ -2727,9 +2731,9 @@ namespace Rebellion.Game.Missions
                 Tick = game.CurrentTick,
                 Faction = faction,
                 Discipline = Discipline,
-                ResearchOrder = faction.GetHighestUnlockedOrder(Discipline),
-                Capacity = faction.GetResearchCapacityRemaining(Discipline),
-                Technology = unlocked,
+                ResearchOrder = advancement.Order,
+                Capacity = advancement.CapacityRemaining,
+                Technology = advancement.Technology,
             };
         }
 

@@ -2083,6 +2083,11 @@ namespace Rebellion.Game
         [PersistableObject]
         public class SpaceCombatConfig
         {
+            /// <summary>
+            /// Sets the number of installed hyperdrive systems for each unit type.
+            /// </summary>
+            public Dictionary<string, int> HyperdriveSystemCounts { get; set; } = new();
+
             public int AdmiralLeadershipDivisor { get; set; }
 
             public int CommanderCombatDivisor { get; set; }
@@ -2091,7 +2096,12 @@ namespace Rebellion.Game
 
             public double TurbolaserFighterDamageMultiplier { get; set; }
 
-            public double FighterIonCannonFighterDamageMultiplier { get; set; }
+            /// <summary>
+            /// Accepts an obsolete volley setting without applying or writing it.
+            /// </summary>
+            [PersistableMember(Name = nameof(FighterIonCannonFighterDamageMultiplier))]
+            [PersistableIgnore]
+            private double FighterIonCannonFighterDamageMultiplier { get; set; }
 
             public double AutoResolveWeaponDamagePerStrength { get; set; }
 
@@ -2099,11 +2109,21 @@ namespace Rebellion.Game
 
             public double AutoResolveFighterWeaponRechargeMultiplier { get; set; }
 
+            /// <summary>
+            /// Scales the capital-ship recharge rating used for sustained automatic fire.
+            /// </summary>
+            public double AutoResolveCapitalWeaponRechargeMultiplier { get; set; }
+
             public double AutoResolveFighterShieldRechargePerCraft { get; set; }
 
             public double AutoResolveFighterHullPerCraft { get; set; }
 
-            public int AutoResolveMaximumIterations { get; set; }
+            /// <summary>
+            /// Accepts the former combat step limit without applying or writing it.
+            /// </summary>
+            [PersistableMember(Name = nameof(AutoResolveMaximumIterations))]
+            [PersistableIgnore]
+            private int AutoResolveMaximumIterations { get; set; }
 
             public int AutoResolveStagnationIterations { get; set; }
 
@@ -2111,21 +2131,61 @@ namespace Rebellion.Game
 
             public double AutoResolveMinimumManeuverRatio { get; set; }
 
-            public int AutoResolveTargetScanDivisor { get; set; }
+            /// <summary>
+            /// Accepts an obsolete volley setting without applying or writing it.
+            /// </summary>
+            [PersistableMember(Name = nameof(AutoResolveTargetScanDivisor))]
+            [PersistableIgnore]
+            private int AutoResolveTargetScanDivisor { get; set; }
 
-            public double AutoResolveStartingDistance { get; set; }
+            /// <summary>
+            /// Accepts an obsolete volley setting without applying or writing it.
+            /// </summary>
+            [PersistableMember(Name = nameof(AutoResolveStartingDistance))]
+            [PersistableIgnore]
+            private double AutoResolveStartingDistance { get; set; }
 
-            public double AutoResolveWithdrawalDistance { get; set; }
+            /// <summary>
+            /// Accepts the former retreat-distance setting without applying or writing it.
+            /// </summary>
+            [PersistableMember(Name = nameof(AutoResolveWithdrawalDistance))]
+            [PersistableIgnore]
+            private double AutoResolveWithdrawalDistance { get; set; }
 
-            public double AutoResolveComponentDamageInterval { get; set; }
+            /// <summary>
+            /// Accepts an obsolete volley setting without applying or writing it.
+            /// </summary>
+            [PersistableMember(Name = nameof(AutoResolveComponentDamageInterval))]
+            [PersistableIgnore]
+            private double AutoResolveComponentDamageInterval { get; set; }
 
-            public int AutoResolveComponentDamageRollMaximum { get; set; }
+            /// <summary>
+            /// Accepts an obsolete volley setting without applying or writing it.
+            /// </summary>
+            [PersistableMember(Name = nameof(AutoResolveComponentDamageRollMaximum))]
+            [PersistableIgnore]
+            private int AutoResolveComponentDamageRollMaximum { get; set; }
 
-            public int AutoResolveComponentDelayMinimum { get; set; }
+            /// <summary>
+            /// Accepts an obsolete volley setting without applying or writing it.
+            /// </summary>
+            [PersistableMember(Name = nameof(AutoResolveComponentDelayMinimum))]
+            [PersistableIgnore]
+            private int AutoResolveComponentDelayMinimum { get; set; }
 
-            public int AutoResolveComponentDelayMaximum { get; set; }
+            /// <summary>
+            /// Accepts an obsolete volley setting without applying or writing it.
+            /// </summary>
+            [PersistableMember(Name = nameof(AutoResolveComponentDelayMaximum))]
+            [PersistableIgnore]
+            private int AutoResolveComponentDelayMaximum { get; set; }
 
-            public int AutoResolveComponentDelayRecovery { get; set; }
+            /// <summary>
+            /// Accepts an obsolete volley setting without applying or writing it.
+            /// </summary>
+            [PersistableMember(Name = nameof(AutoResolveComponentDelayRecovery))]
+            [PersistableIgnore]
+            private int AutoResolveComponentDelayRecovery { get; set; }
 
             public int AttackRunSelectionMaximumEvaluations { get; set; }
 
@@ -2146,31 +2206,23 @@ namespace Rebellion.Game
             public SpaceCombatConfig CreateCopy() =>
                 new SpaceCombatConfig
                 {
+                    HyperdriveSystemCounts = new Dictionary<string, int>(HyperdriveSystemCounts),
                     AdmiralLeadershipDivisor = AdmiralLeadershipDivisor,
                     CommanderCombatDivisor = CommanderCombatDivisor,
                     LaserCannonCapitalDamageMultiplier = LaserCannonCapitalDamageMultiplier,
                     TurbolaserFighterDamageMultiplier = TurbolaserFighterDamageMultiplier,
-                    FighterIonCannonFighterDamageMultiplier =
-                        FighterIonCannonFighterDamageMultiplier,
                     AutoResolveWeaponDamagePerStrength = AutoResolveWeaponDamagePerStrength,
                     AutoResolveTorpedoDamagePerStrength = AutoResolveTorpedoDamagePerStrength,
                     AutoResolveFighterWeaponRechargeMultiplier =
                         AutoResolveFighterWeaponRechargeMultiplier,
+                    AutoResolveCapitalWeaponRechargeMultiplier =
+                        AutoResolveCapitalWeaponRechargeMultiplier,
                     AutoResolveFighterShieldRechargePerCraft =
                         AutoResolveFighterShieldRechargePerCraft,
                     AutoResolveFighterHullPerCraft = AutoResolveFighterHullPerCraft,
-                    AutoResolveMaximumIterations = AutoResolveMaximumIterations,
                     AutoResolveStagnationIterations = AutoResolveStagnationIterations,
                     AutoResolveRetreatStrengthRatio = AutoResolveRetreatStrengthRatio,
                     AutoResolveMinimumManeuverRatio = AutoResolveMinimumManeuverRatio,
-                    AutoResolveTargetScanDivisor = AutoResolveTargetScanDivisor,
-                    AutoResolveStartingDistance = AutoResolveStartingDistance,
-                    AutoResolveWithdrawalDistance = AutoResolveWithdrawalDistance,
-                    AutoResolveComponentDamageInterval = AutoResolveComponentDamageInterval,
-                    AutoResolveComponentDamageRollMaximum = AutoResolveComponentDamageRollMaximum,
-                    AutoResolveComponentDelayMinimum = AutoResolveComponentDelayMinimum,
-                    AutoResolveComponentDelayMaximum = AutoResolveComponentDelayMaximum,
-                    AutoResolveComponentDelayRecovery = AutoResolveComponentDelayRecovery,
                     AttackRunSelectionMaximumEvaluations = AttackRunSelectionMaximumEvaluations,
                     AttackRunSelectionThresholdMultiplier = AttackRunSelectionThresholdMultiplier,
                     AttackRunTorpedoBudgetMultiplier = AttackRunTorpedoBudgetMultiplier,

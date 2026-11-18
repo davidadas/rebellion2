@@ -245,17 +245,20 @@ public sealed class ContentPackEditorRecord
     public ContentPackEditorField GetField(string memberName)
     {
         XElement element = Element.Element(memberName);
+        Type type = ContentPackEditorFieldSchema.GetValueType(
+            Element,
+            element ?? new XElement(memberName)
+        );
+        bool optional = Nullable.GetUnderlyingType(type ?? typeof(string)) != null;
         if (element == null)
         {
             element = new XElement(memberName);
-            Type type = ContentPackEditorFieldSchema.GetValueType(Element, element);
             if (type == null)
                 throw new InvalidOperationException(
                     "This record has no editable member named " + memberName + "."
                 );
-            bool isNullableEnum = Nullable.GetUnderlyingType(type)?.IsEnum == true;
             type = Nullable.GetUnderlyingType(type) ?? type;
-            if (!isNullableEnum && TypeHelper.IsScalar(type) && type != typeof(string))
+            if (!optional && TypeHelper.IsScalar(type) && type != typeof(string))
                 element.Value =
                     Kind == "Trait" && memberName == "PersonnelTravelTimePercent"
                         ? new OfficerTraitDefinition().PersonnelTravelTimePercent.ToString(
@@ -270,7 +273,8 @@ public sealed class ContentPackEditorRecord
         return new ContentPackEditorField(
             this,
             element,
-            ContentPackEditorField.FormatName(memberName)
+            ContentPackEditorField.FormatName(memberName),
+            detach: optional ? () => element.Remove() : null
         );
     }
 

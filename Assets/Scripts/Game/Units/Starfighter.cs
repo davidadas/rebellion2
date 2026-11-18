@@ -7,6 +7,18 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Units
 {
     /// <summary>
+    /// Describes the combat tasks a starfighter design is intended to perform.
+    /// </summary>
+    public enum StarfighterRole
+    {
+        Fighter,
+        Interceptor,
+        Multirole,
+        Bomber,
+        HeavyAssault,
+    }
+
+    /// <summary>
     /// Represents a starfighter squadron that can be stationed on a planet or capital ship.
     /// </summary>
     public class Starfighter : LeafNode, IManufacturable, IMovable, IEncyclopediaSource
@@ -49,6 +61,30 @@ namespace Rebellion.Game.Units
 
         [PersistableMember(Name = nameof(ShieldStrength))]
         private int _shieldStrength;
+
+        [PersistableMember(Name = nameof(Roles))]
+        private List<StarfighterRole> _roles = new List<StarfighterRole>();
+
+        [PersistableMember(Name = nameof(FormationPriority))]
+        private int? _formationPriority;
+
+        [PersistableIgnore]
+        public List<StarfighterRole> Roles
+        {
+            get => _roles;
+            set => _roles = value ?? new List<StarfighterRole>();
+        }
+
+        /// <summary>
+        /// Gets or sets a fixed design slot in its faction's formation order, or null to order
+        /// the design by its roles when present in battle.
+        /// </summary>
+        [PersistableIgnore]
+        public int? FormationPriority
+        {
+            get => _formationPriority;
+            set => _formationPriority = value;
+        }
 
         // Maneuverability Info.
         [PersistableMember(Name = nameof(Hyperdrive))]
@@ -259,6 +295,8 @@ namespace Rebellion.Game.Units
             copy.ResearchOrder = ResearchOrder;
             copy.ResearchDifficulty = ResearchDifficulty;
             copy.UprisingDefense = UprisingDefense;
+            copy.Roles = new List<StarfighterRole>(Roles);
+            copy.FormationPriority = FormationPriority;
             copy.MaxSquadronSize = MaxSquadronSize;
             copy.CurrentSquadronSize = CurrentSquadronSize;
             copy.NextReplacementTick = NextReplacementTick;
@@ -288,6 +326,33 @@ namespace Rebellion.Game.Units
         /// </summary>
         /// <returns>True if CurrentSquadronSize is below MaxSquadronSize.</returns>
         public bool HasLosses() => CurrentSquadronSize < MaxSquadronSize;
+
+        /// <summary>
+        /// Returns the combat roles assigned to this starfighter design.
+        /// </summary>
+        /// <returns>The design's authored roles.</returns>
+        public IReadOnlyList<StarfighterRole> GetRoles() => Roles;
+
+        /// <summary>
+        /// Checks whether this design is assigned a combat role.
+        /// </summary>
+        /// <param name="role">The role to inspect.</param>
+        /// <returns>True when the design has that role.</returns>
+        public bool HasRole(StarfighterRole role) => Roles.Contains(role);
+
+        /// <summary>
+        /// Orders the design by an explicit priority or its earliest assigned combat role.
+        /// </summary>
+        /// <returns>The formation priority, with unclassified designs ordered last.</returns>
+        public int GetFormationPriority()
+        {
+            if (FormationPriority.HasValue)
+                return FormationPriority.Value;
+            int priority = int.MaxValue;
+            foreach (StarfighterRole role in Roles)
+                priority = Math.Min(priority, (int)role);
+            return priority;
+        }
 
         /// <summary>
         /// Replaces lost fighters by the specified amount, capped at MaxSquadronSize.

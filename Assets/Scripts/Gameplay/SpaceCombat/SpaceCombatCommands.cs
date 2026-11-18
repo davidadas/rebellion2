@@ -463,12 +463,14 @@ namespace Rebellion.Gameplay
         /// <param name="queries">Encounter and retreat eligibility queries.</param>
         /// <param name="blockadeTransitionResolver">Resolves blockade changes after combat mutations.</param>
         /// <param name="tacticalFactory">Captures interactive deployment from the selected content.</param>
+        /// <param name="starfighterTypes">The available fighter designs used to build combat formations.</param>
         public SpaceCombatCommands(
             GameRoot game,
             MovementCommands movement,
             SpaceCombatQueries queries,
             BlockadeTransitionResolver blockadeTransitionResolver = null,
-            TacticalCombatFactory tacticalFactory = null
+            TacticalCombatFactory tacticalFactory = null,
+            IReadOnlyList<Starfighter> starfighterTypes = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
@@ -476,7 +478,8 @@ namespace Rebellion.Gameplay
             _movement = movement ?? throw new ArgumentNullException(nameof(movement));
             _autoResolver = new SpaceCombatAutoResolver(
                 game.Config.Combat.SpaceCombat,
-                game.Random
+                game.Random,
+                starfighterTypes
             );
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
             _withdrawalResolver = new SpaceCombatWithdrawalResolver(game, _queries);
@@ -1008,8 +1011,6 @@ namespace Rebellion.Gameplay
                 defenderFleets,
                 decision.AttackerOwnerInstanceID,
                 decision.DefenderOwnerInstanceID,
-                !RequiresHumanResponse(decision.AttackerOwnerInstanceID),
-                !RequiresHumanResponse(decision.DefenderOwnerInstanceID),
                 planet,
                 _game.CurrentTick,
                 out SpaceCombatWithdrawalPlan attackerWithdrawalPlan,
@@ -1105,8 +1106,6 @@ namespace Rebellion.Gameplay
         /// <param name="defenderFleets">The defending fleets.</param>
         /// <param name="attackerOwnerInstanceId">The attacking owner identifier.</param>
         /// <param name="defenderOwnerInstanceId">The defending owner identifier.</param>
-        /// <param name="attackerMayAutomaticallyWithdraw">Whether the attacking side may withdraw without an explicit order.</param>
-        /// <param name="defenderMayAutomaticallyWithdraw">Whether the defending side may withdraw without an explicit order.</param>
         /// <param name="planet">Planet where combat occurs.</param>
         /// <param name="tick">Current game tick (recorded on the result).</param>
         /// <param name="attackerWithdrawalPlan">Receives the attacking side's reserved withdrawal.</param>
@@ -1117,8 +1116,6 @@ namespace Rebellion.Gameplay
             IReadOnlyList<Fleet> defenderFleets,
             string attackerOwnerInstanceId,
             string defenderOwnerInstanceId,
-            bool attackerMayAutomaticallyWithdraw,
-            bool defenderMayAutomaticallyWithdraw,
             Planet planet,
             int tick,
             out SpaceCombatWithdrawalPlan attackerWithdrawalPlan,
@@ -1151,22 +1148,16 @@ namespace Rebellion.Gameplay
                 .Where(SpaceCombatQueries.IsActiveStarfighter)
                 .Distinct()
                 .ToList();
-            bool attackerCanWithdraw =
-                attackerMayAutomaticallyWithdraw
-                && _withdrawalResolver.CanAutomaticallyWithdraw(
-                    attackerFleets,
-                    defenderFleets,
-                    planet,
-                    attackerOwnerInstanceId
-                );
-            bool defenderCanWithdraw =
-                defenderMayAutomaticallyWithdraw
-                && _withdrawalResolver.CanAutomaticallyWithdraw(
-                    defenderFleets,
-                    attackerFleets,
-                    planet,
-                    defenderOwnerInstanceId
-                );
+            bool attackerCanWithdraw = _withdrawalResolver.CanAutomaticallyWithdraw(
+                attackerFleets,
+                planet,
+                attackerOwnerInstanceId
+            );
+            bool defenderCanWithdraw = _withdrawalResolver.CanAutomaticallyWithdraw(
+                defenderFleets,
+                planet,
+                defenderOwnerInstanceId
+            );
             (Officer Admiral, Officer Commander) attackerCommandOfficers = GetCommandOfficers(
                 attackerFleets,
                 planet,
@@ -1195,7 +1186,21 @@ namespace Rebellion.Gameplay
                 attackerShips
                     .Concat(defenderShips)
                     .Where(ship => SpaceCombatQueries.IsPlanetDestroyerShielded(ship, planet))
-                    .ToList()
+                    .ToList(),
+                attackerHasInitiative: _game
+                    .GetFactions()
+                    .FindIndex(faction => faction.InstanceID == attackerOwnerInstanceId)
+                    > _game
+                        .GetFactions()
+                        .FindIndex(faction => faction.InstanceID == defenderOwnerInstanceId),
+                attackerRetreatStrengthRatio: GetAutomaticRetreatStrengthRatio(
+                    attackerOwnerInstanceId,
+                    defenderOwnerInstanceId
+                ),
+                defenderRetreatStrengthRatio: GetAutomaticRetreatStrengthRatio(
+                    defenderOwnerInstanceId,
+                    attackerOwnerInstanceId
+                )
             );
             IncludeCommandOfficers(result.AttackingUnits, attackerCommandOfficers);
             IncludeCommandOfficers(result.DefendingUnits, defenderCommandOfficers);
@@ -1230,6 +1235,26 @@ namespace Rebellion.Gameplay
                     )
                     : new SpaceCombatWithdrawalPlan();
             return result;
+        }
+
+        /// <summary>
+        /// Selects the automatic retreat threshold for a battle participant.
+        /// </summary>
+        /// <param name="ownerInstanceID">The participant's faction.</param>
+        /// <param name="opponentInstanceID">The opposing faction.</param>
+        /// <returns>Zero for a human facing AI, or null to use the configured threshold.</returns>
+        private double? GetAutomaticRetreatStrengthRatio(
+            string ownerInstanceID,
+            string opponentInstanceID
+        )
+        {
+            return
+                _game.GetFactionPlayer(ownerInstanceID)?.ControllerType
+                    == PlayerControllerType.Human
+                && _game.GetFactionPlayer(opponentInstanceID)?.ControllerType
+                    != PlayerControllerType.Human
+                ? 0
+                : null;
         }
 
         /// <summary>
@@ -1297,7 +1322,11 @@ namespace Rebellion.Gameplay
         {
             return new SpaceCombatCommandModifiers(
                 officers.Admiral?.GetEffectiveRating(SkillRating.Leadership) ?? 0,
-                officers.Commander?.GetEffectiveRating(SkillRating.Combat) ?? 0
+                officers.Commander?.GetParent() is CapitalShip
+                    ? officers.Commander.GetEffectiveRating(SkillRating.Combat)
+                    : 0,
+                officers.Admiral?.GetParent() as CapitalShip,
+                officers.Commander?.GetParent() as CapitalShip
             );
         }
 

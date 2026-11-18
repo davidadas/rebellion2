@@ -34,13 +34,11 @@ namespace Rebellion.Gameplay
         /// Determines whether a combat side can withdraw during automatic combat.
         /// </summary>
         /// <param name="fleets">The fleets on the withdrawing side.</param>
-        /// <param name="opponents">The opposing fleets.</param>
         /// <param name="planet">The combat planet.</param>
         /// <param name="ownerInstanceId">The withdrawing owner identifier.</param>
         /// <returns>True when the side can withdraw.</returns>
         internal bool CanAutomaticallyWithdraw(
             IReadOnlyList<Fleet> fleets,
-            IReadOnlyList<Fleet> opponents,
             Planet planet,
             string ownerInstanceId
         )
@@ -56,7 +54,9 @@ namespace Rebellion.Gameplay
                     && planet.GetOwnerInstanceID() == faction.InstanceID
                     && planet.GetInstanceID() == faction.HQInstanceID
                 )
-                || !_spaceCombatQueries.CanRetreatForces(fleets, opponents, planet, ownerInstanceId)
+                || !_spaceCombatQueries
+                    .GetWithdrawalPlan(fleets, planet, ownerInstanceId)
+                    .CanWithdraw
             )
                 return false;
 
