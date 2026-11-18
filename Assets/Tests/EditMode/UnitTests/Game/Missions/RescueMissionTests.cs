@@ -599,6 +599,62 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void ProcessTick_ReleasedTargetStillInHostileShip_CompletesPendingReturn()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarCommands fog
+            ) = MissionSceneBuilder.Build();
+            Fleet hostileFleet = EntityFactory.CreateFleet("hostile-fleet", "rebels");
+            CapitalShip hostileShip = new CapitalShip
+            {
+                InstanceID = "hostile-ship",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer captive = EntityFactory.CreateOfficer("captive", "empire");
+            captive.IsCaptured = true;
+            captive.CaptorInstanceID = "rebels";
+            game.AttachNode(hostileFleet, enemyPlanet);
+            game.AttachNode(hostileShip, hostileFleet);
+            game.AttachNode(captive, hostileShip);
+
+            Mission mission = CreateRescueMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                captive
+            );
+            game.AttachNode(mission, enemyPlanet);
+            game.MoveNode(officer, mission);
+            mission.Initiate(0);
+            mission.DetectionResolved = true;
+            mission.PreObjectiveEncounterResolved = true;
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            captive.ReleaseFromCaptivity();
+            MissionCommands missionSystem = TestSystems.CreateMissionCommands(
+                game,
+                new FixedRNG(0.0),
+                new MovementCommands(
+                    game,
+                    fog,
+                    new FleetCommands(game),
+                    new FogOfWarQueries(game),
+                    new MovementQueries(game)
+                )
+            );
+
+            Assert.DoesNotThrow(() => missionSystem.ProcessMissionTick(game));
+            Assert.AreEqual(empirePlanet, captive.GetParent());
+        }
+
+        [Test]
         public void ProcessTick_RescuedOfficerAlreadyInTransit_ReturnsRescuerOnly()
         {
             (
