@@ -942,7 +942,7 @@ namespace Rebellion.Tests.Gameplay
         )
         {
             GameRoot game = CreateAutomaticCombatGame();
-            game.Random = new SequenceRNG();
+            game.Random = new FixedRandomProvider(new[] { 0.5 });
             game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 0.5;
             game.Config.Combat.SpaceCombat.AutoResolveStagnationIterations = 2;
             game.SetFactionController("empire", "empire-controller", weakerController);
@@ -988,6 +988,90 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsEmpty(result.ShipDamage);
             Assert.IsNotNull(weakerFleet.Movement);
             Assert.IsNull(strongerFleet.Movement);
+        }
+
+        [TestCase("empire", PlayerControllerType.Human, false)]
+        [TestCase("empire", PlayerControllerType.Human, true)]
+        [TestCase("alliance", PlayerControllerType.Human, false)]
+        [TestCase("alliance", PlayerControllerType.Human, true)]
+        [TestCase("empire", PlayerControllerType.AI, false)]
+        [TestCase("empire", PlayerControllerType.AI, true)]
+        [TestCase("alliance", PlayerControllerType.AI, false)]
+        [TestCase("alliance", PlayerControllerType.AI, true)]
+        public void ProcessTick_SuppressedArmedFleet_RespectsControllerRetreatPolicy(
+            string owner,
+            PlayerControllerType controller,
+            bool losesSupportingFighter
+        )
+        {
+            GameRoot game = CreateAutomaticCombatGame();
+            game.Random = new SequenceRNG();
+            string opponent = owner == "empire" ? "alliance" : "empire";
+            game.SetFactionController(owner, "fleet-controller", controller);
+            game.SetFactionController(opponent, "fighter-controller", PlayerControllerType.AI);
+            (Planet planet, _) = CreatePlanet(game, "combat", owner: opponent);
+            CreatePlanet(game, "fleet-fallback", owner: owner);
+            Fleet fleet = CreateFleet(game, "fleet", owner, planet, 1, 10000, 6, 0);
+            CapitalShip ship = fleet.GetChildren<CapitalShip>().Single();
+            ship.SublightSpeed = 6;
+            ship.PrimaryWeapons.Clear();
+            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 60, 60, 60, 60, 100 };
+            Starfighter enemy = new Starfighter
+            {
+                InstanceID = "enemy-fighter",
+                OwnerInstanceID = opponent,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                LaserCannon = 5,
+                LaserRange = 100,
+                SublightSpeed = 8,
+            };
+            game.AttachNode(enemy, planet);
+            Starfighter supportingFighter = null;
+            if (losesSupportingFighter)
+            {
+                ship.StarfighterCapacity = 1;
+                supportingFighter = new Starfighter
+                {
+                    InstanceID = "supporting-fighter",
+                    OwnerInstanceID = owner,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    MaxSquadronSize = 1,
+                    CurrentSquadronSize = 1,
+                    LaserCannon = 1,
+                    LaserRange = 100,
+                };
+                game.AttachNode(supportingFighter, ship);
+            }
+            SpaceCombatCommands commands = MakeSpaceCombat(game);
+
+            IReadOnlyList<GameResult> results = new SpaceCombatTickProcessor(commands).ProcessTick(
+                game
+            );
+            if (commands.HasPendingDecision)
+                results = commands.ResolvePending(autoResolve: true);
+            SpaceCombatResult result = GetCombatResult(results);
+            SpaceCombatSideOutcome outcome =
+                result.AttackerOwnerInstanceID == owner
+                    ? result.AttackerOutcome
+                    : result.DefenderOutcome;
+
+            if (controller == PlayerControllerType.Human)
+            {
+                Assert.AreEqual(SpaceCombatSideOutcome.Active, outcome);
+                Assert.IsNull(fleet.Movement);
+                Assert.AreEqual(0, enemy.CurrentSquadronSize);
+                Assert.Greater(ship.CurrentHullStrength, ship.MaxHullStrength / 2);
+                Assert.Greater(result.IterationsCompleted, 2);
+            }
+            else
+            {
+                Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, outcome);
+                Assert.IsNotNull(fleet.Movement);
+            }
+            if (losesSupportingFighter)
+                Assert.AreEqual(0, supportingFighter.CurrentSquadronSize);
         }
 
         [Test]

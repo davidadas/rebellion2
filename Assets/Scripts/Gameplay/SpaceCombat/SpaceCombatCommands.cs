@@ -758,11 +758,11 @@ namespace Rebellion.Gameplay
                     > _game
                         .GetFactions()
                         .FindIndex(faction => faction.InstanceID == defenderOwnerInstanceId),
-                attackerRetreatStrengthRatio: GetAutomaticRetreatStrengthRatio(
+                attackerUsesRetreatThreshold: ShouldUseRetreatThreshold(
                     attackerOwnerInstanceId,
                     defenderOwnerInstanceId
                 ),
-                defenderRetreatStrengthRatio: GetAutomaticRetreatStrengthRatio(
+                defenderUsesRetreatThreshold: ShouldUseRetreatThreshold(
                     defenderOwnerInstanceId,
                     attackerOwnerInstanceId
                 )
@@ -803,23 +803,19 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Selects the automatic retreat threshold for a battle participant.
+        /// Determines whether relative combat strength may trigger a participant's retreat.
         /// </summary>
         /// <param name="ownerInstanceID">The participant's faction.</param>
         /// <param name="opponentInstanceID">The opposing faction.</param>
-        /// <returns>Zero for a human facing AI, or null to use the configured threshold.</returns>
-        private double? GetAutomaticRetreatStrengthRatio(
-            string ownerInstanceID,
-            string opponentInstanceID
-        )
+        /// <returns>False for a human facing AI; true otherwise.</returns>
+        private bool ShouldUseRetreatThreshold(string ownerInstanceID, string opponentInstanceID)
         {
-            return
+            return !(
                 _game.GetFactionPlayer(ownerInstanceID)?.ControllerType
                     == PlayerControllerType.Human
                 && _game.GetFactionPlayer(opponentInstanceID)?.ControllerType
                     != PlayerControllerType.Human
-                ? 0
-                : null;
+            );
         }
 
         /// <summary>
