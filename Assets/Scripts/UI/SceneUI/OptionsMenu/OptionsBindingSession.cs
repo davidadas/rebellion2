@@ -963,13 +963,32 @@ internal sealed class OptionsBindingSession : IDisposable
         if (path == "<Mouse>/scroll/down")
             return "WHEEL DOWN";
 
-        return ShortenKey(
-            InputControlPath.ToHumanReadableString(
-                path,
-                InputControlPath.HumanReadableStringOptions.OmitDevice,
-                control: Keyboard.current
-            )
+        string display = InputControlPath.ToHumanReadableString(
+            path,
+            InputControlPath.HumanReadableStringOptions.OmitDevice,
+            control: Keyboard.current
         );
+        if (!IsReadableKeyName(display))
+            display = InputControlPath.ToHumanReadableString(
+                path,
+                InputControlPath.HumanReadableStringOptions.OmitDevice
+            );
+        return ShortenKey(display);
+    }
+
+    /// <summary>
+    /// Checks whether a platform key name can be displayed as a shortcut caption.
+    /// </summary>
+    /// <param name="name">The platform key name.</param>
+    /// <returns>True when the name contains visible text and no control characters.</returns>
+    private static bool IsReadableKeyName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return false;
+        foreach (char character in name)
+            if (char.IsControl(character))
+                return false;
+        return true;
     }
 
     /// <summary>

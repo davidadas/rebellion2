@@ -391,6 +391,60 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
         }
 
+        [TestCase(Key.Escape, "\u001b", "ESC")]
+        [TestCase(Key.Enter, "\r", "ENTER")]
+        [TestCase(Key.Tab, "\t", "TAB")]
+        [TestCase(Key.Backspace, "\b", "BKSP")]
+        [TestCase(Key.Delete, "\u007f", "DEL")]
+        [TestCase(Key.Space, " ", "SPACE")]
+        public void Rebuild_UnreadablePlatformKeyName_UsesSymbolicCaption(
+            Key key,
+            string displayName,
+            string expected
+        )
+        {
+            WithKeyboard(
+                (session, manager, keyboard, fixture) =>
+                {
+                    fixture.SetKeyInfo(key, displayName);
+                    InputAction action = manager.Asset.FindAction("Strategy/ShowTroopers", true);
+                    action.ApplyBindingOverride(
+                        FindBinding(action, "Primary"),
+                        "<Keyboard>/" + keyboard[key].name
+                    );
+
+                    session.Rebuild();
+
+                    Assert.AreEqual(
+                        expected,
+                        session.Rows.Single(row => row.Action == "Show Troopers").Primary
+                    );
+                }
+            );
+        }
+
+        [Test]
+        public void Rebuild_EscapeControlCharacter_ShowsReadableGlobalShortcuts()
+        {
+            WithKeyboard(
+                (session, _, _, fixture) =>
+                {
+                    fixture.SetKeyInfo(Key.Escape, "\u001b");
+
+                    session.Rebuild();
+
+                    Assert.AreEqual(
+                        "ESC",
+                        session.Rows.Single(row => row.Action == "Cancel").Primary
+                    );
+                    Assert.AreEqual(
+                        "SHIFT+ESC",
+                        session.Rows.Single(row => row.Action == "Open Game Menu").Primary
+                    );
+                }
+            );
+        }
+
         [TestCase(Key.Minus, "[")]
         [TestCase(Key.Equals, "]")]
         [TestCase(Key.RightBracket, "=")]
