@@ -453,6 +453,25 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
+        public void Commit_CurrentValueErrorOnChoice_AllowsNavigationWithoutHidingTheError()
+        {
+            ContentPackEditorRecord officer = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.First();
+            SelectRecord(officer);
+            ContentPackEditorField rank = officer.GetField("CurrentRank");
+
+            Assert.IsTrue(view.FocusField(rank, "Choose a listed value."));
+            Assert.IsTrue(view.Commit());
+
+            ContentEditorFieldView row = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.Field.MemberName == "CurrentRank");
+            Assert.IsTrue(row.HasError);
+            Assert.IsFalse(row.HasRejectedDraft);
+        }
+
+        [Test]
         public void Render_SpecialForcesAllowedMissions_UsesASelectableMissionSet()
         {
             ContentPackEditorRecord unit = project

@@ -53,6 +53,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     private IReadOnlyList<string> mediaFiles = Array.Empty<string>();
     private ContentEditorColorRole backgroundRole = ContentEditorColorRole.Input;
     private bool canRevertError;
+    private bool hasRejectedDraft;
 
     public event Action<string> ValidationFailed;
     public event Action<ContentPackEditorField, IReadOnlyList<string>> Submitted;
@@ -62,6 +63,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     public int Height => PreferredHeight(((RectTransform)transform).rect.width, lastLabelWidth);
 
     public bool HasError => error != null && !string.IsNullOrEmpty(error.text);
+    public bool HasRejectedDraft => hasRejectedDraft;
     public bool HasOpenChoice => choiceDropdown.IsExpanded;
     public ContentPackEditorField Field => this.field;
 
@@ -349,6 +351,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         input.GetComponent<TextInputHistory>()?.ClearHistory();
         error.text = string.Empty;
         canRevertError = false;
+        hasRejectedDraft = false;
         revertButton.gameObject.SetActive(false);
         changed?.Invoke();
     }
@@ -380,6 +383,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     {
         error.text = message ?? string.Empty;
         canRevertError = false;
+        hasRejectedDraft = false;
         revertButton.gameObject.SetActive(false);
         changed?.Invoke();
     }
@@ -479,6 +483,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             label.text = field.Caption;
             error.text = string.Empty;
             canRevertError = false;
+            hasRejectedDraft = false;
             revertButton.gameObject.SetActive(false);
             importButton.gameObject.SetActive(field.IsMedia && !field.IsMediaDirectory);
             previewButton.gameObject.SetActive(
@@ -661,11 +666,13 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         {
             ValidationRequested?.Invoke(field);
             error.text = string.Empty;
+            canRevertError = false;
+            hasRejectedDraft = false;
             revertButton.gameObject.SetActive(false);
         }
         catch (ArgumentException exception)
         {
-            ShowError(exception);
+            ShowError(exception, false);
         }
     }
 
@@ -684,6 +691,8 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             {
                 bool hadError = HasError;
                 error.text = string.Empty;
+                canRevertError = false;
+                hasRejectedDraft = false;
                 revertButton.gameObject.SetActive(false);
                 if (hadError)
                     changed?.Invoke();
@@ -701,6 +710,8 @@ public sealed class ContentEditorFieldView : MonoBehaviour
                 Submitted?.Invoke(field, new[] { text });
             input.GetComponent<TextInputHistory>()?.ClearHistory();
             error.text = string.Empty;
+            canRevertError = false;
+            hasRejectedDraft = false;
             if (field.IsMediaDirectory)
                 RenderMediaFiles();
             ApplyBackgroundRole();
@@ -709,7 +720,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         }
         catch (ArgumentException exception)
         {
-            ShowError(exception);
+            ShowError(exception, input.gameObject.activeSelf);
         }
     }
 
@@ -740,13 +751,15 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         {
             Submitted?.Invoke(field, choiceValues.Where(selected.Contains).ToArray());
             error.text = string.Empty;
+            canRevertError = false;
+            hasRejectedDraft = false;
             ApplyBackgroundRole();
             changed?.Invoke();
         }
         catch (ArgumentException exception)
         {
             choices[index].SetIsCheckedWithoutNotify(field.Values.Contains(choiceValues[index]));
-            ShowError(exception);
+            ShowError(exception, false);
         }
     }
 
@@ -763,6 +776,8 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         {
             mediaFiles = Array.Empty<string>();
             error.text = "Check the folder path.";
+            canRevertError = false;
+            hasRejectedDraft = false;
         }
         choiceDropdown.ClearOptions();
         string root = field.Value.TrimEnd('/') + "/";
@@ -784,15 +799,17 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     /// <summary>
     /// Presents a concise field error and forwards the complete notice to the workspace.
     /// </summary>
-    /// <param name="exception">The rejected edit.</param>
-    private void ShowError(ArgumentException exception)
+    /// <param name="exception">The rejected edit or accepted-value failure.</param>
+    /// <param name="rejectedDraft">Whether an uncommitted text draft caused the failure.</param>
+    private void ShowError(ArgumentException exception, bool rejectedDraft)
     {
         string message = exception.Message.Split('\n')[0];
         if (error.text != message)
             ValidationFailed?.Invoke(field.Name + ": " + message);
         error.text = message;
-        canRevertError = true;
-        revertButton.gameObject.SetActive(true);
+        canRevertError = rejectedDraft;
+        hasRejectedDraft = rejectedDraft;
+        revertButton.gameObject.SetActive(rejectedDraft);
         changed?.Invoke();
     }
 
@@ -812,7 +829,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         }
         catch (ArgumentException exception)
         {
-            ShowError(exception);
+            ShowError(exception, false);
             return;
         }
         if (field.IsMediaDirectory)

@@ -199,6 +199,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private TextInputHistory textRedoTarget;
     private ContentPackEditorField noticeField;
     private string noticeFieldError;
+    private bool navigatingValidationIssue;
     private GameSize previewSize = GameSize.Large;
     private GameDifficulty previewDifficulty = GameDifficulty.Medium;
     private string previewScenario;
@@ -1774,7 +1775,11 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// Displays one field validation failure through the workspace status.
     /// </summary>
     /// <param name="message">The concise validation message.</param>
-    private void ReportFieldError(string message) => RenderStatus(message, true);
+    private void ReportFieldError(string message)
+    {
+        if (!navigatingValidationIssue || !validationToggleButton.gameObject.activeSelf)
+            RenderStatus(message, true);
+    }
 
     /// <summary>
     /// Applies valid XML as one reversible operation and rebuilds the editor.
@@ -2395,6 +2400,27 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <param name="field">The current project field to reveal.</param>
     /// <param name="validationError">The current-value failure to display beside the field.</param>
     internal void ShowField(ContentPackEditorField field, string validationError)
+    {
+        if (!ResolveXmlDraft(() => ShowField(field, validationError)) || !CommitFields())
+            return;
+        bool wasNavigatingValidationIssue = navigatingValidationIssue;
+        navigatingValidationIssue = true;
+        try
+        {
+            NavigateToField(field, validationError);
+        }
+        finally
+        {
+            navigatingValidationIssue = wasNavigatingValidationIssue;
+        }
+    }
+
+    /// <summary>
+    /// Selects and focuses a validated field after pending XML has been resolved.
+    /// </summary>
+    /// <param name="field">The current project field to reveal.</param>
+    /// <param name="validationError">The current-value failure to display beside the field.</param>
+    private void NavigateToField(ContentPackEditorField field, string validationError)
     {
         searchInput.SetTextWithoutNotify(string.Empty);
         navigation.Render(catalogs);

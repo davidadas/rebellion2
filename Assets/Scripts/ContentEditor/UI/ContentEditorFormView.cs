@@ -4,7 +4,6 @@ using System.Globalization;
 using System.Linq;
 using System.Xml.Linq;
 using Rebellion.Game;
-using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
 using TMPro;
 using UnityEngine;
@@ -123,7 +122,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         || fieldViews.Any(view => view.gameObject.activeSelf && view.HasOpenChoice);
     public TextInputHistory InvalidTextHistory =>
         fieldViews
-            .FirstOrDefault(view => view.gameObject.activeSelf && view.HasError)
+            .FirstOrDefault(view => view.gameObject.activeSelf && view.HasRejectedDraft)
             ?.GetComponentInChildren<TMP_InputField>()
             ?.GetComponent<TextInputHistory>();
 
@@ -231,7 +230,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             ContentEditorFieldView field in fieldViews.Where(field => field.gameObject.activeSelf)
         )
             field.Commit();
-        return fieldViews.All(field => !field.gameObject.activeSelf || !field.HasError);
+        return fieldViews.All(field => !field.gameObject.activeSelf || !field.HasRejectedDraft);
     }
 
     /// <summary>
@@ -741,9 +740,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
             if (!string.IsNullOrWhiteSpace(address))
                 texture = assets.GetTexture(address);
         }
-        catch (ArgumentException exception)
+        catch (ArgumentException)
         {
-            GameLogger.Warning("Invalid artwork path: " + exception.Message);
             ValidationFailed?.Invoke("Image path is invalid. Use Import to choose an image.");
         }
         previewImage.texture = texture;

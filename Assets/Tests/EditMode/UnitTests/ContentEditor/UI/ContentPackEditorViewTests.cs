@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Xml.Linq;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
@@ -216,6 +217,92 @@ namespace Rebellion.Tests.ContentEditor.UI
             {
                 UnityEngine.Object.DestroyImmediate(eventSystem);
             }
+        }
+
+        [Test]
+        public void RenderValidationErrors_InvalidArtworkIssue_KeepsReportVisibleDuringNavigation()
+        {
+            ContentPackEditorCatalog catalog = project
+                .GetCatalogs()
+                .First(item => item.Name == "Officers");
+            XDocument document = XDocument.Parse(catalog.Document.Text);
+            document
+                .Root.Elements()
+                .First()
+                .SetElementValue("EncyclopediaImagePath", "unscoped/image.png");
+            project.SetDocumentText(catalog.Document, document.ToString());
+            workspace.RenderProject(project, assets);
+            ContentPackEditorField artwork = project
+                .GetCatalogs()
+                .First(item => item.Name == "Officers")
+                .Records.First()
+                .GetField("EncyclopediaImagePath");
+            view.RenderValidationErrors(
+                new[]
+                {
+                    new ContentEditorValidationIssue(
+                        new ArgumentException("Artwork: Use a content-relative path."),
+                        artwork,
+                        "Use a content-relative path."
+                    ),
+                }
+            );
+            ContentEditorValidationIssueListView list =
+                view.GetComponentInChildren<ContentEditorValidationIssueListView>(true);
+
+            list.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "OpenValidationIssue")
+                .onClick.Invoke();
+
+            Assert.IsTrue(list.gameObject.activeSelf);
+            Assert.IsTrue(
+                view.GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "ToggleValidationErrors")
+                    .gameObject.activeSelf
+            );
+            ContentEditorFieldView field = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(item => item.Field?.MemberName == "EncyclopediaImagePath");
+            Assert.IsTrue(field.HasError);
+        }
+
+        [Test]
+        public void ShowField_XmlDraftDiscard_NavigatesToRequestedField()
+        {
+            ContentPackEditorRecord[] officers = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.Take(2)
+                .ToArray();
+            SelectRecord(officers[0]);
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Tab3")
+                .onClick.Invoke();
+            TMP_InputField xml = view.GetComponentsInChildren<TMP_InputField>()
+                .Single(input => input.name == "AdvancedXml");
+            xml.text += "\n<!-- Pending edit -->";
+
+            view.ShowField(officers[1].GetField("CurrentRank"), "Choose a listed value.");
+            ActionDialogView confirmation = view.GetComponentInChildren<ActionDialogView>();
+            confirmation
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.GetComponentInChildren<TMP_Text>().text == "Discard")
+                .onClick.Invoke();
+
+            Assert.AreEqual(
+                officers[1].Name,
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Single(label => label.name == "RecordName")
+                    .text
+            );
+            ContentEditorFieldView rank = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.Field?.MemberName == "CurrentRank");
+            Assert.IsTrue(rank.HasError);
+            Assert.AreEqual(
+                "Choose a listed value.",
+                rank.GetComponentsInChildren<TMP_Text>(true)
+                    .Single(text => text.name == "Error")
+                    .text
+            );
         }
 
         /// <summary>

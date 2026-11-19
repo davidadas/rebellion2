@@ -446,6 +446,14 @@ public sealed class ContentPackEditorController : MonoBehaviour
             return;
         if (!view.ValidateFields())
             throw new ArgumentException("Fix the highlighted fields before saving.");
+        PersistCurrentProject();
+    }
+
+    /// <summary>
+    /// Persists an already-committed project before dependent validation or transitions.
+    /// </summary>
+    private void PersistCurrentProject()
+    {
         string previousBase = project.Definition.BasePackID;
         ContentPackEditorStorage.Save(project);
         if (previousBase != project.Definition.BasePackID)
@@ -464,7 +472,9 @@ public sealed class ContentPackEditorController : MonoBehaviour
         {
             if (project == null)
                 return;
-            SaveCurrentProject();
+            if (!view.CommitFields())
+                throw new ArgumentException("Fix the highlighted fields before validating.");
+            PersistCurrentProject();
             IReadOnlyList<ContentEditorValidationIssue> fieldErrors =
                 ContentEditorPackValidator.GetFieldErrors(project);
             if (fieldErrors.Count > 0)
@@ -728,16 +738,17 @@ public sealed class ContentPackEditorController : MonoBehaviour
     /// <param name="message">An optional user-facing explanation of the failure.</param>
     private void ReportError(Exception exception, string message = null)
     {
-        if (exception.InnerException != null)
+        ContentPackEditorField field = ContentEditorPackValidator.GetValidationField(exception);
+        if (field == null && exception.InnerException != null)
             GameLogger.Warning(exception.ToString());
         if (
-            exception is not ArgumentException
+            field == null
+            && exception is not ArgumentException
             && exception is not IOException
             && exception is not XmlException
             && exception is not UnauthorizedAccessException
         )
             GameLogger.LogException(exception);
-        ContentPackEditorField field = ContentEditorPackValidator.GetValidationField(exception);
         if (message == null && field != null)
             view.RenderFieldError(
                 exception.Message,
