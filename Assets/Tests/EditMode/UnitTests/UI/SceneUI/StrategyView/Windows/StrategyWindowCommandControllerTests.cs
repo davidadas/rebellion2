@@ -531,6 +531,52 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
+        public void ExecuteItemDrop_UnitInFullTransport_BoardsAnotherShipInFleet()
+        {
+            Rebellion.Game.Units.Fleet fleet = CreateOperationalFleet();
+            CapitalShip fullTransport = fleet.GetChildren<CapitalShip>().Single();
+            fullTransport.RegimentCapacity = 1;
+            CapitalShip availableTransport = new CapitalShip
+            {
+                InstanceID = "available-transport",
+                OwnerInstanceID = _playerFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 1,
+                Hyperdrive = 1,
+            };
+            Regiment embarked = new Regiment
+            {
+                InstanceID = "embarked-regiment",
+                OwnerInstanceID = _playerFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Regiment incoming = new Regiment
+            {
+                InstanceID = "incoming-regiment",
+                OwnerInstanceID = _playerFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Planet origin = _officer.GetParentOfType<Planet>();
+            _game.AttachNode(availableTransport, fleet);
+            _game.AttachNode(embarked, fullTransport);
+            _game.AttachNode(incoming, origin);
+            GalaxyMapPlanet planet = new GalaxyMapPlanet(
+                origin.GetParentOfType<GalaxyPlanetSector>(),
+                origin,
+                _playerFactionId
+            );
+
+            _controller.ExecuteItemDrop(
+                _sourceWindow,
+                new StrategyMissionTarget(planet, embarked),
+                new ISceneNode[] { incoming }
+            );
+
+            Assert.AreSame(availableTransport, incoming.GetParent());
+            Assert.AreEqual(0, _invalidOrderRejectionCount);
+        }
+
+        [Test]
         public void ExecuteTargetedCommand_CreateMissionWithoutItem_PlaysAdvisorRejection()
         {
             _controller.ExecuteTargetedCommand(
