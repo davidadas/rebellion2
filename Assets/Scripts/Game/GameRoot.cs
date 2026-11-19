@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
@@ -159,6 +160,19 @@ namespace Rebellion.Game
             get => _gameSpeed;
             set => _gameSpeed = value;
         }
+
+        [PersistableMember(Name = "ActiveBattle")]
+        private ActiveBattle _activeBattle;
+
+        /// <summary>
+        /// Returns the independently persisted tactical battle, if one is in progress.
+        /// </summary>
+        public ActiveBattle GetActiveBattle() => _activeBattle;
+
+        /// <summary>
+        /// Replaces or clears the independently persisted tactical battle.
+        /// </summary>
+        public void SetActiveBattle(ActiveBattle activeBattle) => _activeBattle = activeBattle;
 
         // Game events.
         [PersistableMember(Name = "EventPool")]

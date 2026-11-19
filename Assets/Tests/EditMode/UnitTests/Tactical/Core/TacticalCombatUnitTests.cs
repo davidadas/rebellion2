@@ -1,11 +1,10 @@
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
-using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Integration.Campaign;
 
 namespace Rebellion.Tests.Tactical
 {
@@ -13,9 +12,9 @@ namespace Rebellion.Tests.Tactical
     public sealed class TacticalCombatUnitTests
     {
         [Test]
-        public void Constructor_ReusedCapturedSetup_CreatesIndependentEncounterState()
+        public void Constructor_ReusedCombatant_CreatesIndependentSimulationState()
         {
-            TacticalCombatUnitSetup setup = TacticalCombatUnitCapture.Capture(
+            CombatUnit combatant = CombatUnit.Create(
                 new CapitalShip
                 {
                     InstanceID = "ship",
@@ -23,15 +22,15 @@ namespace Rebellion.Tests.Tactical
                     CurrentHullStrength = 100,
                 }
             );
-            TacticalCombatUnit first = new(setup, CombatSide.Attacker, 1);
-            TacticalCombatUnit second = new(setup, CombatSide.Attacker, 1);
+            TacticalCombatUnit first = new(combatant, CombatSide.Attacker, 1);
+            TacticalCombatUnit second = new(combatant, CombatSide.Attacker, 1);
 
             first.Systems.ApplyHullLoss(20);
             first.Systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
 
             Assert.AreEqual(100, second.Systems.Hull);
             Assert.AreEqual(0, second.Systems.GetDamage(TacticalShipSystem.Engines));
-            Assert.AreEqual(0, setup.SystemDamage.Engines);
+            Assert.AreEqual(0, ((CapitalShip)combatant.GetUnit()).SystemDamage.Engines);
             Assert.AreNotSame(first.Weapons, second.Weapons);
         }
 
@@ -53,7 +52,7 @@ namespace Rebellion.Tests.Tactical
                 Hyperdrive = primary,
             };
             TacticalCombatUnit unit = new(
-                TacticalCombatUnitCapture.Capture(fighter),
+                CombatUnit.Create(fighter),
                 CombatSide.Attacker,
                 1,
                 new TacticalCombatUnitDefinition { BackupHyperdrive = backup }
@@ -81,7 +80,7 @@ namespace Rebellion.Tests.Tactical
             };
 
             TacticalCombatUnit unit = new(
-                TacticalCombatUnitCapture.Capture(CreateShip()),
+                CombatUnit.Create(CreateShip()),
                 CombatSide.Attacker,
                 1,
                 definition
@@ -96,7 +95,7 @@ namespace Rebellion.Tests.Tactical
         public void Constructor_OrdinaryCapitalWithAuthoredTurnCap_UsesUncappedManeuverRate()
         {
             TacticalCombatUnit unit = new(
-                TacticalCombatUnitCapture.Capture(CreateShip()),
+                CombatUnit.Create(CreateShip()),
                 CombatSide.Attacker,
                 1,
                 new TacticalCombatUnitDefinition
@@ -114,7 +113,7 @@ namespace Rebellion.Tests.Tactical
         public void Constructor_LargeCapitalWithoutAuthoredTurnCap_UsesFixedTurnCap()
         {
             TacticalCombatUnit unit = new(
-                TacticalCombatUnitCapture.Capture(CreateShip()),
+                CombatUnit.Create(CreateShip()),
                 CombatSide.Attacker,
                 1,
                 new TacticalCombatUnitDefinition { PresentationIndex = 21 }
@@ -125,13 +124,20 @@ namespace Rebellion.Tests.Tactical
         }
 
         [Test]
+        public void Constructor_IncompleteOrdinaryCapital_RemainsActive()
+        {
+            CapitalShip ship = CreateShip();
+            ship.ManufacturingStatus = ManufacturingStatus.Building;
+
+            TacticalCombatUnit unit = new(CombatUnit.Create(ship), CombatSide.Attacker, 1);
+
+            Assert.AreEqual(TacticalCombatUnitStatus.Active, unit.Status);
+        }
+
+        [Test]
         public void Proximity_MovementMagnitudeNearFloatMidpoint_RetainsMovementArithmeticPrecision()
         {
-            TacticalCombatUnit unit = new(
-                TacticalCombatUnitCapture.Capture(CreateShip()),
-                CombatSide.Attacker,
-                1
-            )
+            TacticalCombatUnit unit = new(CombatUnit.Create(CreateShip()), CombatSide.Attacker, 1)
             {
                 CollisionRadius = 0,
                 Velocity = new Vector3(0.9999999403953552f, 0.00048828125f, 9.313225746154785e-10f),

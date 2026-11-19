@@ -1,11 +1,11 @@
 using System;
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Integration.Campaign;
 
 namespace Rebellion.Tests.Tactical
 {
@@ -363,7 +363,7 @@ namespace Rebellion.Tests.Tactical
         /// <returns>The initialized turning unit.</returns>
         private static TacticalCombatUnit CreateTurningUnit(int index) =>
             new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new CapitalShip
                     {
                         InstanceID = "turning-" + index,
@@ -382,7 +382,7 @@ namespace Rebellion.Tests.Tactical
         /// <returns>The captured tactical unit.</returns>
         private static TacticalCombatUnit CreateUnit() =>
             new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new CapitalShip
                     {
                         InstanceID = "ship",

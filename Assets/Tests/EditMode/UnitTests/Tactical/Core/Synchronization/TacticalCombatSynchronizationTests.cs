@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Integration.Campaign;
 using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Tactical.Synchronization;
 using Rebellion.Util.Random;
@@ -730,7 +730,7 @@ namespace Rebellion.Tests.Tactical
         )
         {
             TacticalCombatUnit fighter = new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new Starfighter
                     {
                         InstanceID = "fighter",
@@ -744,7 +744,7 @@ namespace Rebellion.Tests.Tactical
                 1
             );
             TacticalCombatUnit station = new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new CapitalShip
                     {
                         InstanceID = "station",
@@ -766,7 +766,7 @@ namespace Rebellion.Tests.Tactical
             if (reserveFighter)
             {
                 TacticalCombatUnit reserve = new(
-                    TacticalCombatUnitCapture.Capture(
+                    CombatUnit.Create(
                         new Starfighter
                         {
                             InstanceID = "reserve",
@@ -974,7 +974,7 @@ namespace Rebellion.Tests.Tactical
             };
             ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 20, 20, 20, 20, 100 };
             return new(
-                TacticalCombatUnitCapture.Capture(ship),
+                CombatUnit.Create(ship),
                 side,
                 index,
                 new TacticalCombatUnitDefinition { PresentationIndex = 1 }

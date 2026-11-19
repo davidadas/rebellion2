@@ -1,10 +1,10 @@
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Integration.Campaign;
 using BitConverter = global::System.BitConverter;
 
 namespace Rebellion.Tests.Tactical
@@ -24,13 +24,9 @@ namespace Rebellion.Tests.Tactical
                 WeaponRecharge = 1,
             };
             ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 1, 1, 1, 1, 6 };
-            TacticalCombatUnit member = new(
-                TacticalCombatUnitCapture.Capture(ship),
-                CombatSide.Attacker,
-                1
-            );
+            TacticalCombatUnit member = new(CombatUnit.Create(ship), CombatSide.Attacker, 1);
             TacticalCombatUnit target = new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new CapitalShip
                     {
                         InstanceID = "target",
@@ -72,13 +68,13 @@ namespace Rebellion.Tests.Tactical
                 };
                 ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 1, 1, 1, 1, 100 };
                 members[index] = new TacticalCombatUnit(
-                    TacticalCombatUnitCapture.Capture(ship),
+                    CombatUnit.Create(ship),
                     CombatSide.Attacker,
                     index + 1
                 );
             }
             TacticalCombatUnit target = new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new CapitalShip
                     {
                         InstanceID = "target",
@@ -111,7 +107,7 @@ namespace Rebellion.Tests.Tactical
         )
         {
             TacticalCombatUnit fighter = new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new Starfighter
                     {
                         InstanceID = "fighter",
@@ -306,11 +302,7 @@ namespace Rebellion.Tests.Tactical
                 CurrentHullStrength = 100,
             };
             ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = weapons;
-            return new TacticalCombatUnit(
-                TacticalCombatUnitCapture.Capture(ship),
-                CombatSide.Attacker,
-                id
-            );
+            return new TacticalCombatUnit(CombatUnit.Create(ship), CombatSide.Attacker, id);
         }
 
         /// <summary>
@@ -341,7 +333,7 @@ namespace Rebellion.Tests.Tactical
         /// <returns>The captured tactical squadron.</returns>
         private static TacticalCombatUnit CreateFighter(string id, CombatSide side) =>
             new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new Starfighter
                     {
                         InstanceID = id,

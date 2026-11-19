@@ -12,7 +12,6 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Integration.Campaign;
 using Rebellion.Util.Random;
 using SystemRandomProvider = global::Rebellion.Util.Random.SystemRandomProvider;
 using Vector3 = global::System.Numerics.Vector3;
@@ -4185,6 +4184,11 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(2, battle.Units.Count);
             Assert.AreEqual(1000, attacker.CurrentHullStrength);
             Assert.IsTrue(attacker.GetParentOfType<Fleet>().IsInCombat);
+            Assert.IsNotNull(game.GetActiveBattle());
+            Assert.AreNotSame(
+                attacker,
+                game.GetActiveBattle().GetCombatant(attacker.InstanceID).GetUnit()
+            );
         }
 
         [Test]
@@ -4563,12 +4567,13 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void CancelTacticalPreparation_UnstartedEncounter_AllowsPreparingPendingEncounterAgain()
         {
-            (_, SpaceCombatCommands commands, _) = CreateTacticalEncounter();
+            (GameRoot game, SpaceCombatCommands commands, _) = CreateTacticalEncounter();
             TacticalCombatSession prepared = commands.BeginTacticalCombat();
 
             commands.CancelTacticalPreparation(prepared);
 
             Assert.IsTrue(commands.HasPendingDecision);
+            Assert.IsNull(game.GetActiveBattle());
             TacticalCombatSession retried = commands.BeginTacticalCombat();
             Assert.AreNotSame(prepared, retried);
             CollectionAssert.AreEqual(
@@ -4629,6 +4634,7 @@ namespace Rebellion.Tests.Gameplay
             SpaceCombatResult combat = results.OfType<SpaceCombatResult>().Single();
             Assert.IsTrue(combat.IsTacticalCombat);
             Assert.IsFalse(commands.HasPendingDecision);
+            Assert.IsNull(game.GetActiveBattle());
             Assert.IsFalse(attacker.GetParentOfType<Fleet>().IsInCombat);
             Assert.AreEqual(1, attacker.SystemDamage.Weapons);
             Assert.AreEqual(

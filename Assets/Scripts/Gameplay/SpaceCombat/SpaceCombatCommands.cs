@@ -8,7 +8,6 @@ using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Integration.Campaign;
 using Rebellion.Util.Logging;
 using InvalidDataException = global::System.IO.InvalidDataException;
 
@@ -48,7 +47,6 @@ namespace Rebellion.Gameplay
         private readonly TacticalCombatFactory _tacticalFactory;
         private readonly SpaceCombatObserver _combatObserver;
         private TacticalCombatSession _tacticalCombat;
-        private Dictionary<string, ISceneNode> _tacticalSources;
         private string _tacticalBattleID;
         private List<CombatUnitSnapshot> _tacticalAttackingUnits;
         private List<CombatUnitSnapshot> _tacticalDefendingUnits;
@@ -99,7 +97,6 @@ namespace Rebellion.Gameplay
                 _pendingDecision.DefenderOwnerInstanceID
             );
             _tacticalCombat = _tacticalFactory.Create(_pendingDecision);
-            CaptureTacticalSources();
             return _tacticalCombat;
         }
 
@@ -150,7 +147,6 @@ namespace Rebellion.Gameplay
                 unchecked((uint)scenerySeed),
                 _game.LocalPlayerFactionID != _game.Metadata.MultiplayerCampaign.HostFactionID
             );
-            CaptureTacticalSources();
             if (_game.LocalPlayerFactionID == _game.Metadata.MultiplayerCampaign.HostFactionID)
             {
                 _tacticalCombat.SetAutomated(
@@ -177,7 +173,7 @@ namespace Rebellion.Gameplay
                     "Only an unstarted tactical encounter can be released."
                 );
             _tacticalCombat = null;
-            _tacticalSources = null;
+            _game.SetActiveBattle(null);
             _tacticalBattleID = null;
             _tacticalAttackingUnits = null;
             _tacticalDefendingUnits = null;
@@ -283,6 +279,7 @@ namespace Rebellion.Gameplay
             bool wasBlockaded = planet.IsBlockaded();
             List<GameResult> events = ApplyFighterResults(result);
             events.AddRange(ApplyShipResults(result, attackers, defenders));
+            ReconcileBattleCopies(result);
             if (immediateResult)
                 result = ResolveImmediateTacticalContinuation(
                     decision,
@@ -343,7 +340,7 @@ namespace Rebellion.Gameplay
             ClearCombatFlags(decision);
             _pendingDecision = null;
             _tacticalCombat = null;
-            _tacticalSources = null;
+            _game.SetActiveBattle(null);
             _tacticalBattleID = null;
             _tacticalAttackingUnits = null;
             _tacticalDefendingUnits = null;

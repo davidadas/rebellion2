@@ -36,9 +36,9 @@ namespace Rebellion.Gameplay
             );
             if (
                 outcome.Ships.Length
-                    != units.Values.Count(unit => _tacticalSources[unit.InstanceID] is CapitalShip)
+                    != units.Values.Count(unit => unit.Combatant.GetUnit() is CapitalShip)
                 || outcome.Fighters.Length
-                    != units.Values.Count(unit => _tacticalSources[unit.InstanceID] is Starfighter)
+                    != units.Values.Count(unit => unit.Combatant.GetUnit() is Starfighter)
             )
                 throw new InvalidDataException(
                     "The tactical outcome does not cover the captured roster."
@@ -58,13 +58,19 @@ namespace Rebellion.Gameplay
                     shipOutcome == null
                     || string.IsNullOrEmpty(shipOutcome.UnitID)
                     || !units.TryGetValue(shipOutcome.UnitID, out TacticalCombatUnit unit)
-                    || _tacticalSources[unit.InstanceID] is not CapitalShip ship
+                    || ResolveTacticalSource(unit) is not CapitalShip ship
                     || !imported.Add(shipOutcome.UnitID)
                     || shipOutcome.Hull < 0
                     || shipOutcome.Hull > Math.Max(1, (int)unit.Systems.MaximumHull)
                     || !IsValidTacticalComponentDamage(shipOutcome.SystemDamage, unit, ship)
                 )
                     throw new InvalidDataException("A tactical ship outcome is invalid.");
+                unit.Combatant.ApplyCapitalShipState(
+                    shipOutcome.Hull,
+                    (int)unit.Systems.Shields,
+                    shipOutcome.SystemDamage
+                );
+                unit.Combatant.HasRetreated = shipOutcome.Withdrawn;
                 result.ShipDamage.Add(
                     new ShipDamageResult
                     {
@@ -84,7 +90,7 @@ namespace Rebellion.Gameplay
                     fighterOutcome == null
                     || string.IsNullOrEmpty(fighterOutcome.UnitID)
                     || !units.TryGetValue(fighterOutcome.UnitID, out TacticalCombatUnit unit)
-                    || _tacticalSources[unit.InstanceID] is not Starfighter fighter
+                    || ResolveTacticalSource(unit) is not Starfighter fighter
                     || !imported.Add(fighterOutcome.UnitID)
                     || fighterOutcome.SquadronSize < 0
                     || fighterOutcome.SquadronSize > Math.Max(1, fighter.MaxSquadronSize)
@@ -95,12 +101,17 @@ namespace Rebellion.Gameplay
                 {
                     if (
                         !units.TryGetValue(fighterOutcome.CarrierID, out TacticalCombatUnit host)
-                        || _tacticalSources[host.InstanceID] is not CapitalShip ship
+                        || ResolveTacticalSource(host) is not CapitalShip ship
                         || host.Side != unit.Side
                     )
                         throw new InvalidDataException("A tactical recovery host is invalid.");
                     carrier = ship;
                 }
+                unit.Combatant.ApplyStarfighterState(
+                    fighterOutcome.SquadronSize,
+                    fighterOutcome.CarrierID
+                );
+                unit.Combatant.HasRetreated = fighterOutcome.Withdrawn;
                 result.FighterLosses.Add(
                     new FighterLossResult
                     {

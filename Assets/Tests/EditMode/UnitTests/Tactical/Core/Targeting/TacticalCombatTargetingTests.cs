@@ -3,12 +3,12 @@ using System.Linq;
 using System.Numerics;
 using NUnit.Framework;
 using Rebellion.Campaign.AI.Planners;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Automation;
-using Rebellion.Tactical.Integration.Campaign;
 using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Random;
 using static Rebellion.Tests.Tactical.TacticalCombatAssessmentScenario;
@@ -54,7 +54,7 @@ namespace Rebellion.Tests.Tactical
             TacticalCombatUnit attacker = CreateUnit("attacker", CombatSide.Attacker, 1, 0, false);
             TacticalCombatGroup group = new(10, new[] { attacker }, Vector3.UnitZ);
             TacticalCombatUnit target = new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new CapitalShip
                     {
                         InstanceID = "target",
@@ -83,7 +83,7 @@ namespace Rebellion.Tests.Tactical
             TacticalCombatUnit attacker = CreateUnit("attacker", CombatSide.Attacker, 1, 0, false);
             TacticalCombatGroup group = new(10, new[] { attacker }, Vector3.UnitZ);
             TacticalCombatUnit target = new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new Starfighter
                     {
                         InstanceID = "target",
@@ -185,7 +185,7 @@ namespace Rebellion.Tests.Tactical
         public void AssessStrength_RecoveryCompletedFighter_ExcludesItsAttackBudget()
         {
             TacticalCombatUnit unit = new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new Starfighter
                     {
                         InstanceID = "recovered",
@@ -272,7 +272,7 @@ namespace Rebellion.Tests.Tactical
         public void AssessStrength_OperationalEmpireStation_AddsItsFixedAttackBudget()
         {
             TacticalCombatUnit station = new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new CapitalShip
                     {
                         InstanceID = "station",

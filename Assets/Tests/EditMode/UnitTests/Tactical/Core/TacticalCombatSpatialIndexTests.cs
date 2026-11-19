@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Integration.Campaign;
 
 namespace Rebellion.Tests.Tactical
 {
@@ -47,7 +47,7 @@ namespace Rebellion.Tests.Tactical
         /// <returns>The complete tactical ship.</returns>
         private static TacticalCombatUnit CreateCapital(int index) =>
             new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new CapitalShip
                     {
                         InstanceID = $"ship-{index}",
@@ -67,7 +67,7 @@ namespace Rebellion.Tests.Tactical
         /// <returns>The complete tactical squadron.</returns>
         private static TacticalCombatUnit CreateFighter(int index) =>
             new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new Starfighter
                     {
                         InstanceID = $"fighter-{index}",

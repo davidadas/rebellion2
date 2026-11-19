@@ -3,12 +3,12 @@ using System.Linq;
 using System.Numerics;
 using NUnit.Framework;
 using Rebellion.Campaign.AI.Planners;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Automation;
-using Rebellion.Tactical.Integration.Campaign;
 using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Random;
 using static Rebellion.Tests.Tactical.TacticalCombatAssessmentScenario;
@@ -24,7 +24,7 @@ namespace Rebellion.Tests.Tactical.Core.Automation
         {
             TacticalCombatUnit target = CreateUnit("target", CombatSide.Attacker, 1, 20, false);
             TacticalCombatUnit station = new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new CapitalShip
                     {
                         InstanceID = "station",
@@ -104,7 +104,7 @@ namespace Rebellion.Tests.Tactical.Core.Automation
                 false
             );
             TacticalCombatUnit fighter = new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new Starfighter
                     {
                         InstanceID = "priority-fighter",

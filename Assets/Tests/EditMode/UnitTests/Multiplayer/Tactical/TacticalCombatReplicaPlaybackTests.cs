@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
@@ -9,7 +10,6 @@ using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
 using Rebellion.Multiplayer.Tactical;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Integration.Campaign;
 using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Tactical.Synchronization;
 using Rebellion.Util.Random;
@@ -341,7 +341,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
         /// <returns>The captured capital ship.</returns>
         private static TacticalCombatUnit CreateUnit(string id, CombatSide side, int index) =>
             new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new CapitalShip
                     {
                         InstanceID = id,

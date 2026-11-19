@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Integration.Campaign;
 using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Random;
 
@@ -59,7 +59,7 @@ namespace Rebellion.Tests.Tactical
             if (stationPresent)
             {
                 station = new TacticalCombatUnit(
-                    TacticalCombatUnitCapture.Capture(
+                    CombatUnit.Create(
                         new CapitalShip
                         {
                             InstanceID = "station",
@@ -118,7 +118,7 @@ namespace Rebellion.Tests.Tactical
         /// <returns>The captured participant.</returns>
         private static TacticalCombatUnit CreateUnit(string id, CombatSide side, int index) =>
             new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new CapitalShip
                     {
                         InstanceID = id,

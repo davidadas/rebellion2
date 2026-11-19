@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
+using Rebellion.Game.Units;
 
 namespace Rebellion.Tactical
 {
@@ -152,19 +153,26 @@ namespace Rebellion.Tactical
             List<TacticalCombatFighterOutcome> fighters = new();
             foreach (TacticalCombatUnit unit in _units)
             {
+                bool withdrawn = HasDeparted(unit);
+                unit.Combatant.HasRetreated = withdrawn;
                 if (!unit.IsFighter)
+                {
+                    int hull = GetCapitalResultHull(unit);
+                    CapitalShipSystemDamage damage = unit.Systems.CaptureDamage(
+                        unit.HasPrimaryHyperdrive,
+                        unit.Definition?.BackupHyperdrive > 0
+                    );
+                    unit.Combatant.ApplyCapitalShipState(hull, (int)unit.Systems.Shields, damage);
                     ships.Add(
                         new TacticalCombatShipOutcome
                         {
                             UnitID = unit.InstanceID,
-                            Hull = GetCapitalResultHull(unit),
-                            SystemDamage = unit.Systems.CaptureDamage(
-                                unit.HasPrimaryHyperdrive,
-                                unit.Definition?.BackupHyperdrive > 0
-                            ),
-                            Withdrawn = HasDeparted(unit),
+                            Hull = hull,
+                            SystemDamage = damage,
+                            Withdrawn = withdrawn,
                         }
                     );
+                }
                 else
                 {
                     TacticalCombatUnit carrier = unit.Status
@@ -172,13 +180,16 @@ namespace Rebellion.Tactical
                             or TacticalCombatUnitStatus.Recovered
                         ? GetUnit(unit.CarrierID)
                         : null;
+                    int squadronSize = GetFighterResultCount(unit);
+                    string carrierID = carrier?.IsFighter == false ? carrier.InstanceID : null;
+                    unit.Combatant.ApplyStarfighterState(squadronSize, carrierID);
                     fighters.Add(
                         new TacticalCombatFighterOutcome
                         {
                             UnitID = unit.InstanceID,
-                            SquadronSize = GetFighterResultCount(unit),
-                            CarrierID = carrier?.IsFighter == false ? carrier.InstanceID : null,
-                            Withdrawn = HasDeparted(unit),
+                            SquadronSize = squadronSize,
+                            CarrierID = carrierID,
+                            Withdrawn = withdrawn,
                         }
                     );
                 }

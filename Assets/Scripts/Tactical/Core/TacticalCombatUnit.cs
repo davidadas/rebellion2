@@ -1,7 +1,10 @@
 using System;
 using System.Numerics;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
+using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 
 namespace Rebellion.Tactical
 {
@@ -27,6 +30,7 @@ namespace Rebellion.Tactical
     /// </summary>
     public sealed class TacticalCombatUnit
     {
+        public CombatUnit Combatant { get; }
         public TacticalCombatUnitDefinition Definition { get; }
         public string InstanceID { get; }
         public string TypeID { get; }
@@ -112,61 +116,120 @@ namespace Rebellion.Tactical
         public event Action GravityWellPresentationRequested;
 
         /// <summary>
-        /// Creates independent battle state from the participant values captured at encounter entry.
+        /// Creates tactical simulation state over an independently copied campaign unit.
         /// </summary>
-        /// <param name="setup">The detached hardware and initial participation values.</param>
+        /// <param name="combatant">The battle-owned unit copy.</param>
         /// <param name="side">The participant's encounter side.</param>
         /// <param name="index">The unique battle registration identifier.</param>
         /// <param name="definition">The authored tactical unit definition.</param>
         public TacticalCombatUnit(
-            TacticalCombatUnitSetup setup,
+            CombatUnit combatant,
             CombatSide side,
             int index,
             TacticalCombatUnitDefinition definition = null
         )
         {
-            if (setup == null)
-                throw new ArgumentNullException(nameof(setup));
+            Combatant = combatant ?? throw new ArgumentNullException(nameof(combatant));
+            BaseSceneNode battleUnit = combatant.GetUnit();
+            if (battleUnit is not CapitalShip && battleUnit is not Starfighter)
+                throw new ArgumentException(
+                    "The combatant must contain a capital ship or starfighter copy.",
+                    nameof(combatant)
+                );
+
+            CapitalShip ship = battleUnit as CapitalShip;
+            Starfighter fighter = battleUnit as Starfighter;
+            bool isFighter = fighter != null;
+            bool isBattleStation = ship?.CanDestroyPlanets == true;
+            bool isUnderConstruction =
+                isBattleStation && ship.ManufacturingStatus != ManufacturingStatus.Complete;
+            bool hasPrimaryHyperdrive = isFighter ? fighter.Hyperdrive != 0 : ship.Hyperdrive != 0;
+            float maximumHull = isFighter ? fighter.MaxSquadronSize * 8 : ship.MaxHullStrength;
+            float initialHull = isFighter
+                ? fighter.CurrentSquadronSize * 8
+                : ship.CurrentHullStrength;
+            int initialSquadronSize = isFighter ? fighter.CurrentSquadronSize : 0;
+            float maximumShields = isFighter
+                ? fighter.ShieldStrength * fighter.MaxSquadronSize
+                : ship.MaxShieldStrength;
+            float weaponRecharge = isFighter ? 0 : ship.WeaponRecharge;
+            float shieldRecharge = isFighter ? 0 : ship.ShieldRechargeRate;
+            float sublightSpeed = isFighter ? fighter.SublightSpeed : ship.SublightSpeed;
+            float maneuverability = isFighter ? fighter.Agility : ship.Maneuverability;
+            float tractorBeamPower = isFighter ? 0 : ship.TractorBeamPower;
+            float damageControl = isFighter ? 0 : ship.DamageControl;
+            CapitalShipSystemDamage systemDamage = ship?.SystemDamage?.CreateCopy();
+            int[,] weaponStrengths = new int[4, 3];
+            float[] weaponRanges = new float[3];
+            int torpedoStrength = 0;
+            float torpedoRange = 0;
+            if (isFighter)
+            {
+                weaponStrengths[0, 0] = fighter.LaserCannon * fighter.MaxSquadronSize;
+                weaponStrengths[0, 1] = fighter.IonCannon * fighter.MaxSquadronSize;
+                weaponRanges[0] = fighter.LaserRange;
+                weaponRanges[1] = fighter.IonRange;
+                torpedoStrength = fighter.Torpedoes * fighter.MaxSquadronSize;
+                torpedoRange = fighter.TorpedoRange;
+            }
+            else
+            {
+                int[] sourceArcs = { 0, 3, 1, 2 };
+                PrimaryWeaponType[] sourceWeapons =
+                {
+                    PrimaryWeaponType.LaserCannon,
+                    PrimaryWeaponType.IonCannon,
+                    PrimaryWeaponType.Turbolaser,
+                };
+                for (int weapon = 0; weapon < sourceWeapons.Length; weapon++)
+                {
+                    int[] values = ship.PrimaryWeapons[sourceWeapons[weapon]];
+                    weaponRanges[weapon] = values[CapitalShip.PrimaryWeaponRangeIndex];
+                    for (int arc = 0; arc < sourceArcs.Length; arc++)
+                        weaponStrengths[arc, weapon] = values[sourceArcs[arc]];
+                }
+            }
+
             Definition = definition;
-            InstanceID = setup.InstanceID;
-            TypeID = setup.TypeID;
-            DisplayName = setup.DisplayName;
+            InstanceID = battleUnit.InstanceID;
+            TypeID = battleUnit.TypeID;
+            DisplayName = battleUnit.GetDisplayName();
             Side = side;
             Index = index;
-            IsFighter = setup.IsFighter;
-            IsBattleStation = setup.IsBattleStation;
-            HasPrimaryHyperdrive = setup.HasPrimaryHyperdrive;
-            HasPlanetaryProtection = setup.HasPlanetaryProtection;
-            InitialHull = setup.InitialHull;
-            InitialSquadronSize = setup.InitialSquadronSize;
-            InitialCarrierID = setup.InitialCarrierID;
+            IsFighter = isFighter;
+            IsBattleStation = isBattleStation;
+            HasPrimaryHyperdrive = hasPrimaryHyperdrive;
+            HasPlanetaryProtection = combatant.HasPlanetaryProtection;
+            InitialHull = initialHull;
+            InitialSquadronSize = initialSquadronSize;
+            InitialCarrierID = combatant.CarrierSourceUnitInstanceID;
             CarrierID = InitialCarrierID;
-            PayloadCount = setup.PayloadCount;
+            PayloadCount = combatant.PayloadCount;
             Systems = new TacticalCombatSystems(
                 IsFighter,
-                setup.MaximumHull,
+                maximumHull,
                 InitialHull,
-                setup.MaximumShields,
-                setup.WeaponRecharge,
-                setup.ShieldRecharge,
-                setup.SublightSpeed,
-                setup.Maneuverability,
-                setup.TractorBeamPower,
+                maximumShields,
+                weaponRecharge,
+                shieldRecharge,
+                sublightSpeed,
+                maneuverability,
+                tractorBeamPower,
                 (uint)((HasPrimaryHyperdrive ? 1 : 0) + (definition?.BackupHyperdrive > 0 ? 1 : 0)),
-                setup.DamageControl,
-                setup.SystemDamage
+                damageControl,
+                systemDamage
             );
             Weapons = new TacticalCombatWeapons(
-                setup.WeaponStrengths,
-                setup.WeaponRanges,
+                weaponStrengths,
+                weaponRanges,
                 IsFighter ? 0 : Systems.GetDamage(TacticalShipSystem.Weapons),
                 IsFighter
             );
-            _torpedoStrength = setup.TorpedoStrength;
-            TorpedoRange = setup.TorpedoRange;
-            TractorRange = setup.TractorRange;
-            HasGravityWell = setup.HasGravityWell;
-            FighterCapacity = setup.FighterCapacity;
+            _torpedoStrength = torpedoStrength;
+            TorpedoRange = torpedoRange;
+            TractorRange = ship?.TractorBeamnRange ?? 0;
+            HasGravityWell = ship?.HasGravityWell == true;
+            FighterCapacity = combatant.FighterCapacity;
             MaximumTurnRate =
                 !IsFighter && definition?.PresentationIndex == 21
                     ? (float)((double)1.5707964f * 0.033333335f)
@@ -189,7 +252,7 @@ namespace Rebellion.Tactical
             Status =
                 IsFighter && InitialCarrierID != null && !Systems.HasHyperdrive
                     ? TacticalCombatUnitStatus.Docked
-                : setup.IsUnderConstruction ? TacticalCombatUnitStatus.UnderConstruction
+                : isUnderConstruction ? TacticalCombatUnitStatus.UnderConstruction
                 : TacticalCombatUnitStatus.Active;
         }
 

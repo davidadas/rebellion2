@@ -1,12 +1,12 @@
 using System;
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Integration.Campaign;
 using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Random;
 
@@ -61,7 +61,7 @@ namespace Rebellion.Tests.Tactical
         private static TacticalCombatSession CreateSession()
         {
             TacticalCombatUnit fighter = new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new Starfighter
                     {
                         InstanceID = "fighter",
@@ -75,7 +75,7 @@ namespace Rebellion.Tests.Tactical
                 1
             );
             TacticalCombatUnit station = new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new CapitalShip
                     {
                         InstanceID = "station",

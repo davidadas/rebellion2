@@ -2,8 +2,8 @@
     "name": "Rebellion.Tactical.Runtime",
     "rootNamespace": "Rebellion.Tactical.Runtime",
     "references": [
+        "Rebellion.Game",
         "Rebellion.Tactical.Core",
-        "Rebellion.Tactical.Contracts",
         "Rebellion.Util"
     ],
     "includePlatforms": [],

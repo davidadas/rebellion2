@@ -1,10 +1,10 @@
 using System;
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Integration.Campaign;
 
 namespace Rebellion.Tests.Tactical
 {
@@ -91,11 +91,7 @@ namespace Rebellion.Tests.Tactical
             ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { lasers, 0, 0, 0, 10 };
             ship.PrimaryWeapons[PrimaryWeaponType.IonCannon] = new[] { ions, 0, 0, 0, 10 };
             ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { turbolasers, 0, 0, 0, 10 };
-            return new TacticalCombatUnit(
-                TacticalCombatUnitCapture.Capture(ship),
-                CombatSide.Defender,
-                1000001
-            );
+            return new TacticalCombatUnit(CombatUnit.Create(ship), CombatSide.Defender, 1000001);
         }
 
         /// <summary>
@@ -105,7 +101,7 @@ namespace Rebellion.Tests.Tactical
         private static TacticalCombatUnit CreateFighter()
         {
             TacticalCombatUnit unit = new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new Starfighter
                     {
                         InstanceID = "fighter",

@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Integration.Campaign;
 using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Random;
 
@@ -1091,17 +1091,17 @@ namespace Rebellion.Tests.Tactical
             CombatSide factionZeroSide =
                 factionOneSide == CombatSide.Attacker ? CombatSide.Defender : CombatSide.Attacker;
             TacticalCombatUnit first = new(
-                TacticalCombatUnitCapture.Capture(CreateShip("first", 100, 0)),
+                CombatUnit.Create(CreateShip("first", 100, 0)),
                 factionZeroSide,
                 1
             );
             TacticalCombatUnit selected = new(
-                TacticalCombatUnitCapture.Capture(CreateShip("selected", 100, 0)),
+                CombatUnit.Create(CreateShip("selected", 100, 0)),
                 factionOneSide,
                 2
             );
             TacticalCombatUnit fighter = new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new Starfighter
                     {
                         InstanceID = "fighter",
@@ -2124,7 +2124,7 @@ namespace Rebellion.Tests.Tactical
         public void Advance_EnteringHyperspaceFighter_UsesFighterAnimationSound()
         {
             TacticalCombatUnit fighter = new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new Starfighter
                     {
                         InstanceID = "fighter",
@@ -2136,7 +2136,7 @@ namespace Rebellion.Tests.Tactical
                 0
             );
             TacticalCombatUnit enemy = new(
-                TacticalCombatUnitCapture.Capture(CreateShip("enemy", 1000, 0)),
+                CombatUnit.Create(CreateShip("enemy", 1000, 0)),
                 CombatSide.Defender,
                 1000000
             );
@@ -2466,7 +2466,7 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatUnit departed = fighter
                 ? new TacticalCombatUnit(
-                    TacticalCombatUnitCapture.Capture(
+                    CombatUnit.Create(
                         new Starfighter
                         {
                             InstanceID = "departed",
@@ -2479,12 +2479,12 @@ namespace Rebellion.Tests.Tactical
                     1
                 )
                 : new TacticalCombatUnit(
-                    TacticalCombatUnitCapture.Capture(CreateShip("departed", 100, 0)),
+                    CombatUnit.Create(CreateShip("departed", 100, 0)),
                     CombatSide.Attacker,
                     1
                 );
             TacticalCombatUnit enemy = new(
-                TacticalCombatUnitCapture.Capture(CreateShip("enemy", 100, 0)),
+                CombatUnit.Create(CreateShip("enemy", 100, 0)),
                 CombatSide.Defender,
                 1000001
             );
@@ -2942,7 +2942,7 @@ namespace Rebellion.Tests.Tactical
             if (weapon == TacticalWeaponType.Torpedo)
             {
                 TacticalCombatUnit source = new(
-                    TacticalCombatUnitCapture.Capture(
+                    CombatUnit.Create(
                         new Starfighter
                         {
                             InstanceID = "a",
@@ -2965,7 +2965,7 @@ namespace Rebellion.Tests.Tactical
                     Position = new Vector3(0, 0, -40),
                 };
                 TacticalCombatUnit target = new(
-                    TacticalCombatUnitCapture.Capture(CreateShip("b", 1000, 0)),
+                    CombatUnit.Create(CreateShip("b", 1000, 0)),
                     CombatSide.Defender,
                     1000000
                 )
@@ -3025,19 +3025,19 @@ namespace Rebellion.Tests.Tactical
             stationSource.CanDestroyPlanets = true;
             stationSource.StarfighterCapacity = 2;
             TacticalCombatUnit station = new(
-                TacticalCombatUnitCapture.Capture(stationSource),
+                CombatUnit.Create(stationSource),
                 CombatSide.Defender,
                 1000000
             );
             CapitalShip carrierSource = CreateShip("carrier", 1000, 0);
             carrierSource.StarfighterCapacity = carrierCapacity;
             TacticalCombatUnit carrier = new(
-                TacticalCombatUnitCapture.Capture(carrierSource),
+                CombatUnit.Create(carrierSource),
                 CombatSide.Defender,
                 1000001
             );
             TacticalCombatUnit fighter = new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new Starfighter
                     {
                         InstanceID = "fighter",
@@ -3055,7 +3055,7 @@ namespace Rebellion.Tests.Tactical
                 CarrierID = preferredStation ? station.InstanceID : null,
             };
             TacticalCombatUnit enemy = new(
-                TacticalCombatUnitCapture.Capture(CreateShip("enemy", 1000, 0)),
+                CombatUnit.Create(CreateShip("enemy", 1000, 0)),
                 CombatSide.Attacker,
                 1
             )
@@ -3096,19 +3096,19 @@ namespace Rebellion.Tests.Tactical
             stationSource.CanDestroyPlanets = true;
             stationSource.StarfighterCapacity = 2;
             TacticalCombatUnit station = new(
-                TacticalCombatUnitCapture.Capture(stationSource),
+                CombatUnit.Create(stationSource),
                 CombatSide.Defender,
                 1000000
             );
             CapitalShip carrierSource = CreateShip("carrier", 100, 0);
             carrierSource.StarfighterCapacity = carrierCapacity;
             TacticalCombatUnit carrier = new(
-                TacticalCombatUnitCapture.Capture(carrierSource),
+                CombatUnit.Create(carrierSource),
                 CombatSide.Defender,
                 1000002
             );
             TacticalCombatUnit fighter = new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new Starfighter
                     {
                         InstanceID = "fighter",
@@ -3121,7 +3121,7 @@ namespace Rebellion.Tests.Tactical
                 1000003
             );
             TacticalCombatUnit enemy = new(
-                TacticalCombatUnitCapture.Capture(CreateShip("enemy", 100, 0)),
+                CombatUnit.Create(CreateShip("enemy", 100, 0)),
                 CombatSide.Attacker,
                 0
             )
@@ -3135,7 +3135,7 @@ namespace Rebellion.Tests.Tactical
                 secondSource.StarfighterCapacity = 1;
                 units.Add(
                     new TacticalCombatUnit(
-                        TacticalCombatUnitCapture.Capture(secondSource),
+                        CombatUnit.Create(secondSource),
                         CombatSide.Defender,
                         1000001
                     )
@@ -3168,7 +3168,7 @@ namespace Rebellion.Tests.Tactical
             TacticalCombatUnit first;
             if (fighter)
                 first = new TacticalCombatUnit(
-                    TacticalCombatUnitCapture.Capture(
+                    CombatUnit.Create(
                         new Starfighter
                         {
                             InstanceID = "exported",
@@ -3183,15 +3183,11 @@ namespace Rebellion.Tests.Tactical
             {
                 CapitalShip ship = CreateShip("exported", 100, 0);
                 ship.CanDestroyPlanets = station;
-                first = new TacticalCombatUnit(
-                    TacticalCombatUnitCapture.Capture(ship),
-                    CombatSide.Attacker,
-                    1
-                );
+                first = new TacticalCombatUnit(CombatUnit.Create(ship), CombatSide.Attacker, 1);
             }
             first.Status = TacticalCombatUnitStatus.Withdrawn;
             TacticalCombatUnit second = new(
-                TacticalCombatUnitCapture.Capture(CreateShip("enemy", 100, 0)),
+                CombatUnit.Create(CreateShip("enemy", 100, 0)),
                 CombatSide.Defender,
                 1000001
             )
@@ -3260,7 +3256,7 @@ namespace Rebellion.Tests.Tactical
         )
         {
             TacticalCombatUnit first = new(
-                TacticalCombatUnitCapture.Capture(attacker),
+                CombatUnit.Create(attacker),
                 CombatSide.Attacker,
                 0,
                 new TacticalCombatUnitDefinition { PresentationIndex = 1 }
@@ -3269,7 +3265,7 @@ namespace Rebellion.Tests.Tactical
                 Position = new Vector3(0, 0, -40),
             };
             TacticalCombatUnit second = new(
-                TacticalCombatUnitCapture.Capture(defender),
+                CombatUnit.Create(defender),
                 CombatSide.Defender,
                 1000000,
                 new TacticalCombatUnitDefinition { PresentationIndex = 2 }
@@ -3371,17 +3367,17 @@ namespace Rebellion.Tests.Tactical
         )
         {
             TacticalCombatUnit first = new(
-                TacticalCombatUnitCapture.Capture(CreateShip("first", 100, 0)),
+                CombatUnit.Create(CreateShip("first", 100, 0)),
                 CombatSide.Attacker,
                 8
             );
             TacticalCombatUnit second = new(
-                TacticalCombatUnitCapture.Capture(CreateShip("second", 100, 0)),
+                CombatUnit.Create(CreateShip("second", 100, 0)),
                 CombatSide.Attacker,
                 2
             );
             TacticalCombatUnit fighter = new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new Starfighter
                     {
                         InstanceID = "fighter",
@@ -3394,7 +3390,7 @@ namespace Rebellion.Tests.Tactical
                 5
             );
             TacticalCombatUnit enemy = new(
-                TacticalCombatUnitCapture.Capture(CreateShip("enemy", 100, 0)),
+                CombatUnit.Create(CreateShip("enemy", 100, 0)),
                 CombatSide.Defender,
                 1000001
             );
@@ -3550,7 +3546,7 @@ namespace Rebellion.Tests.Tactical
         )
         {
             TacticalCombatUnit fighter = new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new Starfighter
                     {
                         InstanceID = "fighter",
@@ -3564,7 +3560,7 @@ namespace Rebellion.Tests.Tactical
                 1
             );
             TacticalCombatUnit station = new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new CapitalShip
                     {
                         InstanceID = "station",
@@ -3586,7 +3582,7 @@ namespace Rebellion.Tests.Tactical
             if (reserveFighter)
             {
                 TacticalCombatUnit reserve = new(
-                    TacticalCombatUnitCapture.Capture(
+                    CombatUnit.Create(
                         new Starfighter
                         {
                             InstanceID = "reserve",

@@ -12,7 +12,6 @@ using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Integration.Campaign;
 using Rebellion.Tactical.Synchronization;
 using UnityEngine;
 using EOSManager = PlayEveryWare.EpicOnlineServices.EOSManager;

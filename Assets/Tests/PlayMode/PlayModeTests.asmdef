@@ -8,7 +8,9 @@
         "Unity.TextMeshPro",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "Rebellion.Util"
+        "Rebellion.Util",
+        "Rebellion.SceneGraph",
+        "Rebellion.Game"
     ],
     "includePlatforms": [],
     "overrideReferences": true,

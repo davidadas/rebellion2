@@ -2,8 +2,8 @@
     "name": "Rebellion.Tactical.Core",
     "rootNamespace": "Rebellion.Tactical",
     "references": [
-        "Rebellion.Combat.Contracts",
-        "Rebellion.Tactical.Contracts",
+        "Rebellion.SceneGraph",
+        "Rebellion.Game",
         "Rebellion.Util"
     ],
     "includePlatforms": [],

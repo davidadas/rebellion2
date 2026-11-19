@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Integration.Campaign;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Tactical
@@ -253,7 +253,7 @@ namespace Rebellion.Tests.Tactical
             for (int index = 0; index < count; index++)
                 fighters.Add(
                     new TacticalCombatUnit(
-                        TacticalCombatUnitCapture.Capture(
+                        CombatUnit.Create(
                             new Starfighter
                             {
                                 InstanceID = "fighter" + index,

@@ -5,8 +5,8 @@
         "GameAssembly",
         "com.Epic.OnlineServices",
         "com.playeveryware.eos.core",
-        "Rebellion.Combat.Contracts",
-        "Rebellion.Tactical.Contracts",
+        "Rebellion.SceneGraph",
+        "Rebellion.Game",
         "Rebellion.Tactical.Core"
     ],
     "includePlatforms": [

@@ -1,26 +1,18 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Tactical;
+using InvalidDataException = global::System.IO.InvalidDataException;
 
 namespace Rebellion.Gameplay
 {
     public partial class SpaceCombatCommands
     {
-        /// <summary>
-        /// Retains campaign references solely at the campaign's encounter import boundary.
-        /// </summary>
-        private void CaptureTacticalSources()
-        {
-            _tacticalSources = new Dictionary<string, ISceneNode>(StringComparer.Ordinal);
-            foreach (TacticalCombatUnit unit in _tacticalCombat.Units)
-                _tacticalSources.Add(unit.InstanceID, _game.NodesByInstanceID[unit.InstanceID]);
-        }
-
         /// <summary>
         /// Restores a locally completed battle's facts without running remote-input admission rules.
         /// </summary>
@@ -43,7 +35,7 @@ namespace Rebellion.Gameplay
                 outcome.Fighters.ToDictionary(fighter => fighter.UnitID, StringComparer.Ordinal);
             foreach (TacticalCombatUnit unit in _tacticalCombat.Units)
             {
-                ISceneNode source = _tacticalSources[unit.InstanceID];
+                ISceneNode source = ResolveTacticalSource(unit);
                 bool withdrawn;
                 if (source is CapitalShip ship)
                 {
@@ -77,7 +69,9 @@ namespace Rebellion.Gameplay
                             Fighter = fighter,
                             Carrier =
                                 state.CarrierID != null
-                                    ? (CapitalShip)_tacticalSources[state.CarrierID]
+                                    ? (CapitalShip)ResolveTacticalSource(
+                                        _tacticalCombat.GetUnit(state.CarrierID)
+                                    )
                                     : null,
                         }
                     );
@@ -87,6 +81,52 @@ namespace Rebellion.Gameplay
                     result.WithdrawnUnits.Add(source);
             }
             return result;
+        }
+
+        /// <summary>
+        /// Resolves a battle copy's stable source identity only when campaign results are committed.
+        /// </summary>
+        private ISceneNode ResolveTacticalSource(TacticalCombatUnit unit)
+        {
+            string sourceID = unit?.Combatant?.SourceUnitInstanceID;
+            ISceneNode source = _game.GetSceneNodeByInstanceID<ISceneNode>(
+                sourceID,
+                includeDisabled: true
+            );
+            if (source == null)
+                throw new InvalidDataException(
+                    $"Tactical source '{sourceID}' is no longer present in the campaign."
+                );
+            return source;
+        }
+
+        /// <summary>
+        /// Commits only battle-owned damage and survivor counts after the campaign result pipeline
+        /// has performed its destruction, recovery, and event work.
+        /// </summary>
+        private void ReconcileBattleCopies(SpaceCombatResult result)
+        {
+            Dictionary<string, CapitalShip> ships = result.ShipDamage.ToDictionary(
+                damage => damage.Ship.InstanceID,
+                damage => damage.Ship,
+                StringComparer.Ordinal
+            );
+            Dictionary<string, Starfighter> fighters = result.FighterLosses.ToDictionary(
+                loss => loss.Fighter.InstanceID,
+                loss => loss.Fighter,
+                StringComparer.Ordinal
+            );
+            foreach (TacticalCombatUnit unit in _tacticalCombat.Units)
+            {
+                if (ships.TryGetValue(unit.InstanceID, out CapitalShip ship))
+                    BattleResultReconciler.Apply(unit.Combatant, ship);
+                else if (fighters.TryGetValue(unit.InstanceID, out Starfighter fighter))
+                    BattleResultReconciler.Apply(unit.Combatant, fighter);
+                else
+                    throw new InvalidDataException(
+                        $"Tactical result did not include combatant '{unit.InstanceID}'."
+                    );
+            }
         }
     }
 }

@@ -1,9 +1,9 @@
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Integration.Campaign;
 
 namespace Rebellion.Tests.Tactical
 {
@@ -61,11 +61,7 @@ namespace Rebellion.Tests.Tactical
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 5, 0, 0, 0, range };
-            return new TacticalCombatUnit(
-                TacticalCombatUnitCapture.Capture(ship),
-                CombatSide.Attacker,
-                index
-            );
+            return new TacticalCombatUnit(CombatUnit.Create(ship), CombatSide.Attacker, index);
         }
     }
 }

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
-using Rebellion.Tactical.Presentation;
+using Rebellion.Tactical.Rendering;
+using Rebellion.UI.SceneUI.TacticalCombat;
 using TMPro;
 using UnityEditor;
 using UnityEngine;

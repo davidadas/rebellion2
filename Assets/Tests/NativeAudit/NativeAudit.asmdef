@@ -8,6 +8,7 @@
         "Unity.InputSystem",
         "Unity.TextMeshPro",
         "UnityEngine.UI",
+        "Rebellion.Game",
         "Rebellion.Networking.Transport"
     ],
     "includePlatforms": [

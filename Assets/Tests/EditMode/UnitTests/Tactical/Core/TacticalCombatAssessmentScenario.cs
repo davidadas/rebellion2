@@ -2,12 +2,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Rebellion.Campaign.AI.Planners;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Automation;
-using Rebellion.Tactical.Integration.Campaign;
 using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Random;
 using BitConverter = global::System.BitConverter;
@@ -43,7 +43,7 @@ namespace Rebellion.Tests.Tactical
             carrier.AddStarfighter(sourceFighter);
             sourceFighter.SetParent(carrier);
             fighter = new TacticalCombatUnit(
-                TacticalCombatUnitCapture.Capture(sourceFighter),
+                CombatUnit.Create(sourceFighter),
                 CombatSide.Attacker,
                 2
             );
@@ -57,11 +57,7 @@ namespace Rebellion.Tests.Tactical
             return CreateAssessmentSession(
                 new[]
                 {
-                    new TacticalCombatUnit(
-                        TacticalCombatUnitCapture.Capture(carrier),
-                        CombatSide.Attacker,
-                        1
-                    ),
+                    new TacticalCombatUnit(CombatUnit.Create(carrier), CombatSide.Attacker, 1),
                     fighter,
                     opposing,
                 }
@@ -222,7 +218,7 @@ namespace Rebellion.Tests.Tactical
         internal static TacticalCombatUnit CreateUnarmedFighter(string id, int index, float loss)
         {
             TacticalCombatUnit unit = new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new Starfighter
                     {
                         InstanceID = id,
@@ -276,7 +272,7 @@ namespace Rebellion.Tests.Tactical
                 strength,
                 100,
             };
-            return new TacticalCombatUnit(TacticalCombatUnitCapture.Capture(ship), side, index)
+            return new TacticalCombatUnit(CombatUnit.Create(ship), side, index)
             {
                 Position = new Vector3(0, 0, side == CombatSide.Attacker ? -40 : 40),
                 Heading = side == CombatSide.Attacker ? Vector3.UnitZ : -Vector3.UnitZ,

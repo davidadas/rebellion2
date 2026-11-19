@@ -1,10 +1,10 @@
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Integration.Campaign;
 
 namespace Rebellion.Tests.Tactical
 {
@@ -57,7 +57,7 @@ namespace Rebellion.Tests.Tactical
         /// <returns>The captured host used by both command-officer lanes.</returns>
         private static TacticalCombatUnit CreateHost() =>
             new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new CapitalShip
                     {
                         InstanceID = "host",

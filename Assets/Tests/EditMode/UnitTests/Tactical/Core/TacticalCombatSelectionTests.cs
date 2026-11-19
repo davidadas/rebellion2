@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Integration.Campaign;
 using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Random;
 
@@ -776,7 +776,7 @@ namespace Rebellion.Tests.Tactical
                 for (int index = 0; index < count; index++)
                 {
                     TacticalCombatUnit unit = new(
-                        TacticalCombatUnitCapture.Capture(
+                        CombatUnit.Create(
                             CreateShip("friendly-" + index, maximumHull, currentHull ?? maximumHull)
                         ),
                         CombatSide.Attacker,
@@ -787,7 +787,7 @@ namespace Rebellion.Tests.Tactical
                     groups.Add(new TacticalCombatGroup(100 + index, new[] { unit }, Vector3.UnitZ));
                 }
                 Enemy = new TacticalCombatUnit(
-                    TacticalCombatUnitCapture.Capture(CreateShip("enemy", 1000, 1000)),
+                    CombatUnit.Create(CreateShip("enemy", 1000, 1000)),
                     CombatSide.Defender,
                     1000001
                 );
@@ -815,7 +815,7 @@ namespace Rebellion.Tests.Tactical
                 if (secondEnemy)
                 {
                     SecondEnemy = new TacticalCombatUnit(
-                        TacticalCombatUnitCapture.Capture(CreateShip("other-enemy", 1000, 1000)),
+                        CombatUnit.Create(CreateShip("other-enemy", 1000, 1000)),
                         CombatSide.Defender,
                         1000003
                     );
@@ -897,7 +897,7 @@ namespace Rebellion.Tests.Tactical
                 int index
             ) =>
                 new(
-                    TacticalCombatUnitCapture.Capture(
+                    CombatUnit.Create(
                         new Starfighter
                         {
                             InstanceID = id,

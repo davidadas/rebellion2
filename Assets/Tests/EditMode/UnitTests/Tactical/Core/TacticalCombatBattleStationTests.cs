@@ -1,9 +1,9 @@
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Integration.Campaign;
 
 namespace Rebellion.Tests.Tactical
 {
@@ -147,11 +147,7 @@ namespace Rebellion.Tests.Tactical
                     : ManufacturingStatus.Complete,
             };
             return new TacticalCombatBattleStation(
-                new TacticalCombatUnit(
-                    TacticalCombatUnitCapture.Capture(ship),
-                    CombatSide.Defender,
-                    1000001
-                ),
+                new TacticalCombatUnit(CombatUnit.Create(ship), CombatSide.Defender, 1000001),
                 protectedByPlanet
             );
         }

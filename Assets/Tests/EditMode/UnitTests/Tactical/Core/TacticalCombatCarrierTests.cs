@@ -1,9 +1,9 @@
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Integration.Campaign;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Tactical
@@ -142,11 +142,7 @@ namespace Rebellion.Tests.Tactical
                 StarfighterCapacity = capacity,
             };
             return new TacticalCombatCarrier(
-                new TacticalCombatUnit(
-                    TacticalCombatUnitCapture.Capture(ship),
-                    CombatSide.Attacker,
-                    1
-                )
+                new TacticalCombatUnit(CombatUnit.Create(ship), CombatSide.Attacker, 1)
             );
         }
 
@@ -157,7 +153,7 @@ namespace Rebellion.Tests.Tactical
         /// <returns>The captured squadron.</returns>
         private static TacticalCombatUnit CreateFighter(string id = "fighter") =>
             new(
-                TacticalCombatUnitCapture.Capture(
+                CombatUnit.Create(
                     new Starfighter
                     {
                         InstanceID = id,
