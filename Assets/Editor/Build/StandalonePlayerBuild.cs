@@ -2,7 +2,9 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using UnityEditor;
+using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEditor.EngineDiagnostics;
 using UnityEngine;
@@ -26,6 +28,16 @@ public static class StandalonePlayerBuild
     private const string _enableDiagnosticsArgument = "-enableDiagnostics";
     private const string _enableAnalyticsArgument = "-enableAnalytics";
     private const string _analyticsScriptingDefine = "REBELLION_ANALYTICS_ENABLED";
+
+#if UNITY_STANDALONE_WIN
+    private const string _buildArchitectureArgument = "-buildArchitecture";
+
+    // Unity has no built-in ARM64 symbol for Windows players, and the Epic Online Services plugin
+    // only injects its own from the Build window, not for BuildPipeline.BuildPlayer callers. Its
+    // pre-build guard also rejects scripted ARM64 builds unless the symbol is in the project's
+    // Standalone defines, so it is set there for the duration of the build as well.
+    private const string _epicWindowsArm64ScriptingDefine = "EOS_PLATFORM_WINDOWS_ARM64";
+#endif
 
     /// <summary>
     /// Builds an external-content player for the active desktop target from the Unity editor.
@@ -242,9 +254,53 @@ public static class StandalonePlayerBuild
         };
 
         bool originalDiagnosticsEnabled = EngineDiagnosticsSettings.enabled;
+#if UNITY_STANDALONE_WIN
+        OSArchitecture originalWindowsArchitecture = UnityEditor
+            .WindowsStandalone
+            .UserBuildSettings
+            .architecture;
+        string originalStandaloneDefines = PlayerSettings.GetScriptingDefineSymbols(
+            NamedBuildTarget.Standalone
+        );
+#endif
         try
         {
             EngineDiagnosticsSettings.enabled = enableDiagnostics;
+#if UNITY_STANDALONE_WIN
+            if (target == BuildTarget.StandaloneWindows64)
+            {
+                OSArchitecture architecture = ResolveWindowsArchitecture(
+                    GetOptionalArgument(_buildArchitectureArgument),
+                    RuntimeInformation.ProcessArchitecture
+                );
+                UnityEditor.WindowsStandalone.UserBuildSettings.architecture = architecture;
+                if (architecture == OSArchitecture.ARM64)
+                {
+                    options.extraScriptingDefines = (
+                        options.extraScriptingDefines ?? Array.Empty<string>()
+                    )
+                        .Append(_epicWindowsArm64ScriptingDefine)
+                        .ToArray();
+                    PlayerSettings.SetScriptingDefineSymbols(
+                        NamedBuildTarget.Standalone,
+                        AppendScriptingDefine(
+                            originalStandaloneDefines,
+                            _epicWindowsArm64ScriptingDefine
+                        )
+                    );
+                }
+                else
+                {
+                    PlayerSettings.SetScriptingDefineSymbols(
+                        NamedBuildTarget.Standalone,
+                        originalStandaloneDefines
+                            .Split(';')
+                            .Where(define => define != _epicWindowsArm64ScriptingDefine)
+                            .ToArray()
+                    );
+                }
+            }
+#endif
             BuildReport report = BuildPipeline.BuildPlayer(options);
             if (report.summary.result != BuildResult.Succeeded)
             {
@@ -268,6 +324,72 @@ public static class StandalonePlayerBuild
         finally
         {
             EngineDiagnosticsSettings.enabled = originalDiagnosticsEnabled;
+#if UNITY_STANDALONE_WIN
+            UnityEditor.WindowsStandalone.UserBuildSettings.architecture =
+                originalWindowsArchitecture;
+            if (
+                PlayerSettings.GetScriptingDefineSymbols(NamedBuildTarget.Standalone)
+                != originalStandaloneDefines
+            )
+            {
+                PlayerSettings.SetScriptingDefineSymbols(
+                    NamedBuildTarget.Standalone,
+                    originalStandaloneDefines
+                );
+            }
+#endif
+        }
+    }
+
+    /// <summary>
+    /// Adds a symbol to a semicolon-separated scripting define list unless it is already present.
+    /// </summary>
+    /// <param name="defines">The existing semicolon-separated defines, which may be empty.</param>
+    /// <param name="define">The symbol to add.</param>
+    /// <returns>The define list containing the symbol exactly once.</returns>
+    internal static string AppendScriptingDefine(string defines, string define)
+    {
+        string[] existing = (defines ?? string.Empty).Split(
+            new[] { ';' },
+            StringSplitOptions.RemoveEmptyEntries
+        );
+        return existing.Contains(define, StringComparer.Ordinal)
+            ? string.Join(";", existing)
+            : string.Join(";", existing.Append(define));
+    }
+
+    /// <summary>
+    /// Chooses the 64-bit Windows player architecture, preferring an explicit request and otherwise
+    /// matching the editor process so local builds run natively on the machine that built them.
+    /// </summary>
+    /// <param name="requested">The requested architecture name, or null to match the editor.</param>
+    /// <param name="editorArchitecture">The architecture of the running editor process.</param>
+    /// <returns>The Windows player architecture to build.</returns>
+    internal static OSArchitecture ResolveWindowsArchitecture(
+        string requested,
+        Architecture editorArchitecture
+    )
+    {
+        if (string.IsNullOrWhiteSpace(requested))
+        {
+            return editorArchitecture == Architecture.Arm64
+                ? OSArchitecture.ARM64
+                : OSArchitecture.x64;
+        }
+
+        switch (requested.Trim().ToLowerInvariant())
+        {
+            case "x64":
+            case "x86_64":
+            case "amd64":
+                return OSArchitecture.x64;
+            case "arm64":
+            case "aarch64":
+                return OSArchitecture.ARM64;
+            default:
+                throw new InvalidOperationException(
+                    $"Unsupported Windows build architecture '{requested}'. Use x64 or arm64."
+                );
         }
     }
 
