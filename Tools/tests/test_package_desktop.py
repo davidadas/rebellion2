@@ -28,7 +28,12 @@ class PackageDesktopTests(unittest.TestCase):
         target.write_bytes(value)
         return target
 
-    def create_build(self, platform="StandaloneWindows64", game_name="rebellion2"):
+    def create_build(
+        self,
+        platform="StandaloneWindows64",
+        game_name="rebellion2",
+        architecture="x64",
+    ):
         suffix, native = packager.PLATFORMS[platform]
         for name in (game_name, "rebellion2-editor"):
             if suffix == ".app":
@@ -63,7 +68,7 @@ class PackageDesktopTests(unittest.TestCase):
             binary[:2], binary[60:64], binary[64:70] = (
                 b"MZ",
                 (64).to_bytes(4, "little"),
-                b"PE\0\0\x64\x86",
+                b"PE\0\0" + packager.WINDOWS_MACHINES[architecture],
             )
         elif platform == "StandaloneLinux64":
             binary = bytearray(64)
@@ -206,6 +211,52 @@ class PackageDesktopTests(unittest.TestCase):
         (editor / "Plugins/nfd.dll").write_bytes(b"wrong architecture")
         with self.assertRaisesRegex(ValueError, "dialog library"):
             packager.collect_files(self.root, "StandaloneWindows64")
+
+    def test_collect_files_accepts_windows_arm64_build(self):
+        self.create_build(architecture="arm64")
+
+        files = packager.collect_files(
+            self.root, "StandaloneWindows64", architecture="arm64"
+        )
+
+        self.assertIn(self.root / "rebellion2-editor_Data/Plugins/nfd.dll", files)
+
+    def test_collect_files_rejects_dialog_library_for_another_windows_architecture(
+        self,
+    ):
+        for built, expected in (("x64", "arm64"), ("arm64", "x64")):
+            with (
+                self.subTest(built=built, expected=expected),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                self.root = Path(temporary) / "build"
+                self.root.mkdir()
+                self.create_build(architecture=built)
+                with self.assertRaisesRegex(
+                    ValueError, "must target Windows " + expected
+                ):
+                    packager.collect_files(
+                        self.root, "StandaloneWindows64", architecture=expected
+                    )
+
+    def test_collect_files_rejects_arm64_outside_windows(self):
+        for platform in ("StandaloneLinux64", "StandaloneOSX"):
+            with (
+                self.subTest(platform=platform),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                self.root = Path(temporary) / "build"
+                self.root.mkdir()
+                self.create_build(platform)
+                with self.assertRaisesRegex(ValueError, "support only x64"):
+                    packager.collect_files(self.root, platform, architecture="arm64")
+
+    def test_collect_files_rejects_unknown_architecture(self):
+        self.create_build()
+        with self.assertRaisesRegex(ValueError, "Unsupported architecture"):
+            packager.collect_files(
+                self.root, "StandaloneWindows64", architecture="riscv64"
+            )
 
     def test_collect_files_rejects_missing_license(self):
         editor = self.create_build()

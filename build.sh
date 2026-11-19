@@ -351,10 +351,43 @@ default_build_player_path() {
     esac
 }
 
+default_build_architecture() {
+    # Windows x64 and ARM64 players share the StandaloneWindows64 target. Build for the host CPU
+    # so the result runs natively on the machine that produced it. Git Bash is an emulated x64
+    # process on Windows on Arm, so PROCESSOR_ARCHITECTURE reports AMD64 there; MSYS2 marks the
+    # real host by appending -ARM64 to the kernel name.
+    case "$(uname -s):${PROCESSOR_ARCHITEW6432:-${PROCESSOR_ARCHITECTURE:-}}" in
+        *-ARM64:*|*:ARM64|*:arm64)
+            echo "arm64"
+            ;;
+        *)
+            echo "x64"
+            ;;
+    esac
+}
+
 do_build() {
     local build_target="${BUILD_TARGET:-$(default_build_target)}"
     local build_player_path="${BUILD_PLAYER_PATH:-$(default_build_player_path)}"
     local resolved_player_path
+    local build_architecture="x64"
+    local architecture_args=()
+
+    if [ "$build_target" = "StandaloneWindows64" ]; then
+        build_architecture="${BUILD_ARCHITECTURE:-$(default_build_architecture)}"
+        case "$build_architecture" in
+            x64|arm64)
+                ;;
+            *)
+                echo "FAIL: BUILD_ARCHITECTURE must be x64 or arm64 (got '$build_architecture')."
+                exit 1
+                ;;
+        esac
+        architecture_args=(-buildArchitecture "$build_architecture")
+    elif [ -n "${BUILD_ARCHITECTURE:-}" ] && [ "$BUILD_ARCHITECTURE" != "x64" ]; then
+        echo "FAIL: BUILD_ARCHITECTURE=$BUILD_ARCHITECTURE is only supported for StandaloneWindows64."
+        exit 1
+    fi
 
     case "$build_player_path" in
         /*|[A-Za-z]:/*)
@@ -372,6 +405,7 @@ do_build() {
         -buildTarget "$build_target" \
         -executeMethod StandalonePlayerBuild.Build \
         -buildPlayerPath "$build_player_path" \
+        "${architecture_args[@]}" \
         -quit
 
     if [ ! -e "$resolved_player_path" ]; then
@@ -384,7 +418,7 @@ do_build() {
     game_artifact_name="$(basename "$resolved_player_path")"
     "${PYTHON:-python3}" "$PROJECT_PATH/Tools/package_desktop.py" \
         --platform "$build_target" --build-dir "$(dirname "$resolved_player_path")" \
-        --game-name "${game_artifact_name%.*}"
+        --game-name "${game_artifact_name%.*}" --architecture "$build_architecture"
 
     echo "Build complete: $resolved_player_path"
 }
