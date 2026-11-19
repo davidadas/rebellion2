@@ -618,7 +618,13 @@ namespace Rebellion.Gameplay
                 List<IMovable> passengerGroup = returnGroups[passengerDestination]
                     .Concat(passengers)
                     .ToList();
-                if (_queries.CanMoveGroup(passengerGroup, passengerDestination))
+                if (
+                    _queries.CanMoveMissionReturnGroup(
+                        passengerGroup,
+                        passengerDestination,
+                        passengers
+                    )
+                )
                     returnGroups[passengerDestination] = passengerGroup;
                 else
                     strandedUnits.AddRange(passengers);

@@ -434,6 +434,23 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Returns whether a completed mission group can depart together, allowing explicit
+        /// passengers to leave movement inherited from their current carrier.
+        /// </summary>
+        /// <param name="units">The mission participants and passengers being moved together.</param>
+        /// <param name="destination">The shared destination.</param>
+        /// <param name="passengers">Passengers extracted from their current container by the mission.</param>
+        /// <returns>True when the complete return group can move.</returns>
+        internal bool CanMoveMissionReturnGroup(
+            List<IMovable> units,
+            ContainerNode destination,
+            IReadOnlyCollection<IMovable> passengers
+        )
+        {
+            return TryResolveMoveGroupDestinations(units, destination, passengers, out _, out _);
+        }
+
+        /// <summary>
         /// Resolves destinations for a movement group without mutating scene state.
         /// </summary>
         /// <param name="units">The units being validated together.</param>
@@ -444,6 +461,33 @@ namespace Rebellion.Gameplay
         internal bool TryResolveMoveGroupDestinations(
             List<IMovable> units,
             ContainerNode destination,
+            out List<ContainerNode> resolvedDestinations,
+            out string rejectionReason
+        )
+        {
+            return TryResolveMoveGroupDestinations(
+                units,
+                destination,
+                null,
+                out resolvedDestinations,
+                out rejectionReason
+            );
+        }
+
+        /// <summary>
+        /// Resolves destinations for a movement group with an optional set of mission passengers
+        /// that may leave transit inherited from a carrier.
+        /// </summary>
+        /// <param name="units">The units being validated together.</param>
+        /// <param name="destination">The shared requested destination.</param>
+        /// <param name="extractedPassengers">Mission passengers allowed to leave inherited carrier transit.</param>
+        /// <param name="resolvedDestinations">The accepted destination for each unit in order.</param>
+        /// <param name="rejectionReason">The reason the group cannot move, or null when accepted.</param>
+        /// <returns>True when every unit has an accepted destination.</returns>
+        private bool TryResolveMoveGroupDestinations(
+            List<IMovable> units,
+            ContainerNode destination,
+            IReadOnlyCollection<IMovable> extractedPassengers,
             out List<ContainerNode> resolvedDestinations,
             out string rejectionReason
         )
@@ -461,7 +505,11 @@ namespace Rebellion.Gameplay
                     return false;
                 }
 
-                if (!CanReceiveMoveOrder(unit, out rejectionReason))
+                bool leavesMovingCarrier =
+                    unit.Movement == null
+                    && unit.GetTransitMovement() != null
+                    && extractedPassengers?.Contains(unit) == true;
+                if (!leavesMovingCarrier && !CanReceiveMoveOrder(unit, out rejectionReason))
                     return false;
 
                 Planet unitOrigin = unit.GetParentOfType<Planet>();
