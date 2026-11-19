@@ -1,19 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using Rebellion.Util.Logging;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Controls;
-using UnityEngine.InputSystem.LowLevel;
 
 /// <summary>
 /// Manages the controls list and input rebinding against authored binding slots.
 /// </summary>
 internal sealed class OptionsBindingSession : IDisposable
 {
-    private const string _restartMessage =
-        "The shortcut change failed. Restart the game before changing shortcuts again.";
-
     private static readonly string[] _modifierControlPaths =
     {
         "<Keyboard>/ctrl",
@@ -32,14 +27,13 @@ internal sealed class OptionsBindingSession : IDisposable
     private readonly InputManager _inputManager;
     private readonly List<OptionsBindingRow> _rows = new List<OptionsBindingRow>();
     private readonly List<BindingTarget> _targets = new List<BindingTarget>();
-    private readonly Dictionary<InputControl, string> _candidateModifiers = new();
     private InputActionRebindingExtensions.RebindingOperation _operation;
     private InputAction _listeningAction;
-    private InputBinding[] _previousActionOverrides;
+    private string[] _previousActionOverrides;
     private bool _rebindApplied;
     private InputAction _conflictOldAction;
     private int _conflictOldIndex;
-    private InputAction _editingAction;
+    private InputAction _conflictNewAction;
     private bool _rebindOwnsShortcutInput;
     private bool _textEntryOwnsShortcutInput;
     private bool _shortcutReleaseScheduled;
@@ -60,11 +54,6 @@ internal sealed class OptionsBindingSession : IDisposable
     internal event Action PresentationChanged;
 
     /// <summary>
-    /// Raised after a failed edit is cleaned up, with a player-facing recovery message.
-    /// </summary>
-    internal event Action<string> Failed;
-
-    /// <summary>
     /// Gets the current controls rows.
     /// </summary>
     internal IReadOnlyList<OptionsBindingRow> Rows => _rows;
@@ -82,7 +71,7 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <summary>
     /// Gets whether a binding conflict is awaiting a decision.
     /// </summary>
-    internal bool HasPendingConflict => _conflictOldAction != null;
+    internal bool HasPendingConflict => _conflictNewAction != null;
 
     /// <summary>
     /// Creates a binding editor for the supplied input manager.
@@ -98,9 +87,6 @@ internal sealed class OptionsBindingSession : IDisposable
     /// </summary>
     internal void Rebuild()
     {
-        if (!EnsureBindingsAvailable())
-            return;
-
         _rows.Clear();
         _targets.Clear();
         foreach (InputActionMap map in _inputManager.Asset.actionMaps)
@@ -141,16 +127,7 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <param name="secondary">Whether to edit the secondary slot.</param>
     internal void BeginRebind(int row, bool secondary)
     {
-        if (!EnsureBindingsAvailable())
-            return;
-
-        if (
-            _editingAction != null
-            || _operation != null
-            || HasPendingConflict
-            || row < 0
-            || row >= _targets.Count
-        )
+        if (_operation != null || HasPendingConflict || row < 0 || row >= _targets.Count)
             return;
 
         BindingTarget target = _targets[row];
@@ -159,20 +136,12 @@ internal sealed class OptionsBindingSession : IDisposable
         if (!secondary && HasReservedPrimary(target.Action))
             return;
 
-        try
-        {
-            _editingAction = target.Action;
-            _previousActionOverrides = CaptureOverrides(target.Action);
-            ListeningRow = row;
-            ListeningSecondary = secondary;
-            SetRebindShortcutInputOwnership(true);
-            PresentationChanged?.Invoke();
-            StartRebind(target.Action, secondary ? target.Secondary : target.Primary);
-        }
-        catch (Exception exception)
-        {
-            RecoverRebind(exception);
-        }
+        ListeningRow = row;
+        ListeningSecondary = secondary;
+        _previousActionOverrides = CaptureOverrides(target.Action);
+        SetRebindShortcutInputOwnership(true);
+        PresentationChanged?.Invoke();
+        StartRebind(target.Action, secondary ? target.Secondary : target.Primary);
     }
 
     /// <summary>
@@ -181,9 +150,6 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <param name="row">The controls row to restore.</param>
     internal void RestoreDefault(int row)
     {
-        if (!EnsureBindingsAvailable())
-            return;
-
         if (_operation != null || HasPendingConflict || row < 0 || row >= _targets.Count)
             return;
 
@@ -202,9 +168,6 @@ internal sealed class OptionsBindingSession : IDisposable
     /// </summary>
     internal void RestoreAllDefaults()
     {
-        if (!EnsureBindingsAvailable())
-            return;
-
         if (_operation != null || HasPendingConflict)
             return;
 
@@ -223,27 +186,19 @@ internal sealed class OptionsBindingSession : IDisposable
         if (!HasPendingConflict)
             return;
 
-        InputAction oldAction = _conflictOldAction;
-        InputBinding[] oldOverrides = null;
-        try
+        if (clearOld)
         {
-            oldOverrides = CaptureOverrides(oldAction);
-            if (clearOld)
-            {
-                UnbindTopLevel(oldAction, _conflictOldIndex);
-                Changed?.Invoke();
-            }
-            else
-                RestoreOverrides(_editingAction, _previousActionOverrides);
+            UnbindTopLevel(_conflictOldAction, _conflictOldIndex);
+            Changed?.Invoke();
+        }
+        else
+        {
+            RestoreOverrides(_conflictNewAction, _previousActionOverrides);
+        }
 
-            Rebuild();
-            PresentationChanged?.Invoke();
-            ClearEdit();
-        }
-        catch (Exception exception)
-        {
-            RecoverRebind(exception, oldAction, oldOverrides);
-        }
+        ClearConflict();
+        Rebuild();
+        PresentationChanged?.Invoke();
     }
 
     /// <summary>
@@ -267,14 +222,7 @@ internal sealed class OptionsBindingSession : IDisposable
     /// </summary>
     internal void CancelRebind()
     {
-        try
-        {
-            _operation?.Cancel();
-        }
-        catch (Exception exception)
-        {
-            RecoverRebind(exception);
-        }
+        _operation?.Cancel();
     }
 
     /// <summary>
@@ -282,22 +230,15 @@ internal sealed class OptionsBindingSession : IDisposable
     /// </summary>
     public void Dispose()
     {
-        try
-        {
-            StopCapture();
-            RestoreOverrides(_editingAction, _previousActionOverrides);
-        }
-        catch (Exception exception)
-        {
-            RecoverRebind(exception);
-        }
-        finally
-        {
-            ClearEdit();
-            _textEntryOwnsShortcutInput = false;
-            CancelScheduledShortcutRelease();
-            ReleaseShortcutSuppression();
-        }
+        _operation?.Dispose();
+        _operation = null;
+        _listeningAction?.Dispose();
+        _listeningAction = null;
+        _rebindOwnsShortcutInput = false;
+        _textEntryOwnsShortcutInput = false;
+        CancelScheduledShortcutRelease();
+        ReleaseShortcutSuppression();
+        ClearConflict();
     }
 
     /// <summary>
@@ -308,10 +249,9 @@ internal sealed class OptionsBindingSession : IDisposable
     private void StartRebind(InputAction action, BindingSlot slot)
     {
         _rebindApplied = false;
-        _candidateModifiers.Clear();
         _listeningAction = new InputAction(type: InputActionType.Value);
 
-        _operation = _listeningAction
+        InputActionRebindingExtensions.RebindingOperation candidate = _listeningAction
             .PerformInteractiveRebinding()
             .WithRebindAddingNewBinding()
             .WithCancelingThrough("<Keyboard>/escape")
@@ -324,33 +264,15 @@ internal sealed class OptionsBindingSession : IDisposable
         if (!IsModifierAction(action.name))
         {
             foreach (string path in _modifierControlPaths)
-                _operation.WithControlsExcluding(path);
+                candidate.WithControlsExcluding(path);
         }
 
-        _operation
+        _operation = candidate
             .OnGeneratePath(GetRebindPath)
             .OnApplyBinding((_, path) => ApplyRebindPath(action, slot, path))
             .OnCancel(_ => FinishRebind(action, slot, false))
             .OnComplete(_ => FinishRebind(action, slot, true))
             .Start();
-
-        // Observe each event after Unity has added its candidates, before capture settles.
-        InputSystem.onEvent += CaptureCandidateModifiers;
-    }
-
-    /// <summary>
-    /// Remembers the modifier held when each control first becomes a rebind candidate.
-    /// </summary>
-    /// <param name="eventPtr">The input event that supplied the candidates.</param>
-    /// <param name="device">The device supplying the event.</param>
-    private void CaptureCandidateModifiers(InputEventPtr eventPtr, InputDevice device)
-    {
-        if (_operation == null || !eventPtr.IsA<StateEvent>() && !eventPtr.IsA<DeltaStateEvent>())
-            return;
-
-        string modifier = GetPressedModifierPath(device as Keyboard ?? Keyboard.current, eventPtr);
-        foreach (InputControl control in _operation.candidates)
-            _candidateModifiers.TryAdd(control, modifier);
     }
 
     /// <summary>
@@ -380,28 +302,19 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <param name="path">The path.</param>
     private void ApplyRebindPath(InputAction action, BindingSlot slot, string path)
     {
-        try
+        string modifierPath = IsModifierAction(action.name) ? null : GetPressedModifierPath();
+        if (string.IsNullOrEmpty(modifierPath))
         {
-            string modifierPath = null;
-            if (!IsModifierAction(action.name))
-                _candidateModifiers.TryGetValue(_operation.selectedControl, out modifierPath);
-            if (string.IsNullOrEmpty(modifierPath))
-            {
-                action.ApplyBindingOverride(slot.PlainIndex, path);
-                ClearComposite(action, slot);
-            }
-            else
-            {
-                action.ApplyBindingOverride(slot.PlainIndex, string.Empty);
-                action.ApplyBindingOverride(slot.ModifierIndex, modifierPath);
-                action.ApplyBindingOverride(slot.BindingIndex, path);
-            }
-            _rebindApplied = true;
+            action.ApplyBindingOverride(slot.PlainIndex, path);
+            ClearComposite(action, slot);
         }
-        catch (Exception exception)
+        else
         {
-            RecoverRebind(exception);
+            action.ApplyBindingOverride(slot.PlainIndex, string.Empty);
+            action.ApplyBindingOverride(slot.ModifierIndex, modifierPath);
+            action.ApplyBindingOverride(slot.BindingIndex, path);
         }
+        _rebindApplied = true;
     }
 
     /// <summary>
@@ -412,159 +325,40 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <param name="completed">Whether completed.</param>
     private void FinishRebind(InputAction action, BindingSlot slot, bool completed)
     {
-        if (_editingAction != action)
-            return;
-
-        try
-        {
-            StopCapture();
-            if (!completed || !_rebindApplied)
-            {
-                RestoreOverrides(action, _previousActionOverrides);
-                Rebuild();
-                PresentationChanged?.Invoke();
-                ClearEdit();
-                return;
-            }
-
-            int activeIndex = GetActiveTopLevelIndex(action, slot);
-            (InputAction other, int otherIndex) = FindConflict(action, activeIndex);
-            if (other != null)
-            {
-                _conflictOldAction = other;
-                _conflictOldIndex = otherIndex;
-                Rebuild();
-                PresentationChanged?.Invoke();
-                ConflictRequested?.Invoke(
-                    $"That input is already bound to \"{GetActionLabel(other.name)}\". Move it here and clear the old binding?"
-                );
-                return;
-            }
-
-            Changed?.Invoke();
-            Rebuild();
-            PresentationChanged?.Invoke();
-            ClearEdit();
-        }
-        catch (Exception exception)
-        {
-            RecoverRebind(exception);
-        }
-    }
-
-    /// <summary>
-    /// Releases capture resources and listening state even when disposal fails.
-    /// </summary>
-    private void StopCapture()
-    {
-        InputSystem.onEvent -= CaptureCandidateModifiers;
-        _candidateModifiers.Clear();
-        InputActionRebindingExtensions.RebindingOperation operation = _operation;
-        InputAction listeningAction = _listeningAction;
+        _operation?.Dispose();
         _operation = null;
+        _listeningAction?.Dispose();
         _listeningAction = null;
         ListeningRow = -1;
         ListeningSecondary = false;
-        try
-        {
-            operation?.Dispose();
-        }
-        finally
-        {
-            try
-            {
-                listeningAction?.Dispose();
-            }
-            finally
-            {
-                SetRebindShortcutInputOwnership(false);
-            }
-        }
-    }
+        SetRebindShortcutInputOwnership(false);
 
-    /// <summary>
-    /// Rolls back a failed shortcut edit and reports recovery after releasing capture ownership.
-    /// </summary>
-    /// <param name="exception">The edit failure.</param>
-    /// <param name="oldAction">The action displaced during conflict resolution.</param>
-    /// <param name="oldOverrides">The displaced action's overrides before resolution.</param>
-    private void RecoverRebind(
-        Exception exception,
-        InputAction oldAction = null,
-        InputBinding[] oldOverrides = null
-    )
-    {
-        List<Exception> failures = new() { exception };
-        bool restored = TryRecover(StopCapture, failures);
-        restored &= TryRecover(() => RestoreOverrides(oldAction, oldOverrides), failures);
-        restored &= TryRecover(
-            () => RestoreOverrides(_editingAction, _previousActionOverrides),
-            failures
-        );
-        ClearEdit();
-        restored &= TryRecover(Rebuild, failures);
-        if (!restored)
-            _inputManager.RequireInputRestart();
-        // Notification errors must not change whether the binding state was restored.
-        TryRecover(() => PresentationChanged?.Invoke(), failures);
-        Exception failure = failures.Count == 1 ? exception : new AggregateException(failures);
-        GameLogger.Log($"Shortcut rebinding failed: {failure}", GameLogger.LogLevel.Error);
-        NotifyFailure(
-            restored
-                ? "Couldn't change this shortcut. Your previous bindings were restored. Try again."
-                : _restartMessage
-        );
-    }
-
-    /// <summary>
-    /// Rejects further binding access after an unrecoverable edit while keeping settings available.
-    /// </summary>
-    /// <returns>Whether the current runtime bindings remain available for editing.</returns>
-    private bool EnsureBindingsAvailable()
-    {
-        if (!_inputManager.RequiresInputRestart)
-            return true;
-        NotifyFailure(_restartMessage);
-        return false;
-    }
-
-    /// <summary>
-    /// Presents a binding failure without allowing notification errors to escape cleanup.
-    /// </summary>
-    /// <param name="message">The player-facing recovery message.</param>
-    private void NotifyFailure(string message)
-    {
-        try
+        if (!completed || !_rebindApplied)
         {
-            Failed?.Invoke(message);
+            RestoreOverrides(action, _previousActionOverrides);
+            _previousActionOverrides = null;
+            Rebuild();
+            PresentationChanged?.Invoke();
+            return;
         }
-        catch (Exception notificationException)
+
+        int activeIndex = GetActiveTopLevelIndex(action, slot);
+        (InputAction other, int otherIndex) = FindConflict(action, activeIndex);
+        if (other != null)
         {
-            GameLogger.Log(
-                $"Shortcut error notification failed: {notificationException}",
-                GameLogger.LogLevel.Error
+            _conflictOldAction = other;
+            _conflictOldIndex = otherIndex;
+            _conflictNewAction = action;
+            ConflictRequested?.Invoke(
+                $"That input is already bound to \"{GetActionLabel(other.name)}\". Move it here and clear the old binding?"
             );
+            return;
         }
-    }
 
-    /// <summary>
-    /// Attempts one recovery step without skipping the remaining cleanup steps on failure.
-    /// </summary>
-    /// <param name="recover">The recovery step.</param>
-    /// <param name="failures">The collected edit and recovery failures.</param>
-    /// <returns>Whether the recovery step completed.</returns>
-    private static bool TryRecover(Action recover, ICollection<Exception> failures)
-    {
-        try
-        {
-            recover();
-            return true;
-        }
-        catch (Exception exception)
-        {
-            failures.Add(exception);
-            return false;
-        }
+        Changed?.Invoke();
+        _previousActionOverrides = null;
+        Rebuild();
+        PresentationChanged?.Invoke();
     }
 
     /// <summary>
@@ -610,11 +404,11 @@ internal sealed class OptionsBindingSession : IDisposable
     /// </summary>
     /// <param name="action">The action.</param>
     /// <returns>The result of capture overrides.</returns>
-    private static InputBinding[] CaptureOverrides(InputAction action)
+    private static string[] CaptureOverrides(InputAction action)
     {
-        InputBinding[] result = new InputBinding[action.bindings.Count];
+        string[] result = new string[action.bindings.Count];
         for (int index = 0; index < action.bindings.Count; index++)
-            result[index] = action.bindings[index];
+            result[index] = action.bindings[index].overridePath;
         return result;
     }
 
@@ -623,25 +417,19 @@ internal sealed class OptionsBindingSession : IDisposable
     /// </summary>
     /// <param name="action">The action.</param>
     /// <param name="overrides">The overrides.</param>
-    private static void RestoreOverrides(InputAction action, IReadOnlyList<InputBinding> overrides)
+    private static void RestoreOverrides(InputAction action, IReadOnlyList<string> overrides)
     {
         if (action == null || overrides == null)
             return;
 
-        if (action.bindings.Count != overrides.Count)
-            throw new InvalidOperationException(
-                "Shortcut bindings changed during the edit and could not be restored."
-            );
-
-        for (int index = 0; index < overrides.Count; index++)
-            if (action.bindings[index].id != overrides[index].id)
-                throw new InvalidOperationException(
-                    "Shortcut bindings changed during the edit and could not be restored."
-                );
-
         action.RemoveAllBindingOverrides();
-        for (int index = 0; index < overrides.Count; index++)
-            action.ApplyBindingOverride(index, overrides[index]);
+        int count = Math.Min(action.bindings.Count, overrides.Count);
+        for (int index = 0; index < count; index++)
+        {
+            string overridePath = overrides[index];
+            if (overridePath != null)
+                action.ApplyBindingOverride(index, overridePath);
+        }
     }
 
     /// <summary>
@@ -677,15 +465,14 @@ internal sealed class OptionsBindingSession : IDisposable
     }
 
     /// <summary>
-    /// Clears the completed edit, pending conflict, and rollback snapshot.
+    /// Clears pending conflict state and its cancellation snapshot.
     /// </summary>
-    private void ClearEdit()
+    private void ClearConflict()
     {
         _conflictOldAction = null;
-        _editingAction = null;
+        _conflictNewAction = null;
         _conflictOldIndex = -1;
         _previousActionOverrides = null;
-        _rebindApplied = false;
     }
 
     /// <summary>
@@ -808,66 +595,38 @@ internal sealed class OptionsBindingSession : IDisposable
     }
 
     /// <summary>
-    /// Returns the single modifier held in a candidate's event, or null when none or several are held.
+    /// Returns the single held keyboard modifier path, or null when none or several are held.
     /// </summary>
-    /// <param name="keyboard">The candidate's keyboard or the active keyboard for another device.</param>
-    /// <param name="eventPtr">The candidate's state event.</param>
     /// <returns>The requested pressed modifier path.</returns>
-    private static string GetPressedModifierPath(Keyboard keyboard, InputEventPtr eventPtr)
+    private static string GetPressedModifierPath()
     {
+        Keyboard keyboard = Keyboard.current;
         if (keyboard == null)
             return null;
 
         string result = null;
         int count = 0;
-        if (
-            IsModifierPressed(keyboard.leftCtrlKey, eventPtr)
-            || IsModifierPressed(keyboard.rightCtrlKey, eventPtr)
-        )
+        if (keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed)
         {
             result = "<Keyboard>/ctrl";
             count++;
         }
-        if (
-            IsModifierPressed(keyboard.leftShiftKey, eventPtr)
-            || IsModifierPressed(keyboard.rightShiftKey, eventPtr)
-        )
+        if (keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed)
         {
             result = "<Keyboard>/shift";
             count++;
         }
-        if (
-            IsModifierPressed(keyboard.leftAltKey, eventPtr)
-            || IsModifierPressed(keyboard.rightAltKey, eventPtr)
-        )
+        if (keyboard.leftAltKey.isPressed || keyboard.rightAltKey.isPressed)
         {
             result = "<Keyboard>/alt";
             count++;
         }
-        if (
-            IsModifierPressed(keyboard.leftMetaKey, eventPtr)
-            || IsModifierPressed(keyboard.rightMetaKey, eventPtr)
-        )
+        if (keyboard.leftMetaKey.isPressed || keyboard.rightMetaKey.isPressed)
         {
             result = "<Keyboard>/leftMeta";
             count++;
         }
         return count == 1 ? result : null;
-    }
-
-    /// <summary>
-    /// Reads a modifier from its event, retaining held state when that event omits the control.
-    /// </summary>
-    /// <param name="control">The modifier key.</param>
-    /// <param name="eventPtr">The candidate's state event.</param>
-    /// <returns>Whether the modifier was held for the candidate.</returns>
-    private static bool IsModifierPressed(ButtonControl control, InputEventPtr eventPtr)
-    {
-        return
-            eventPtr.deviceId == control.device.deviceId
-            && control.ReadValueFromEvent(eventPtr, out float value)
-            ? value >= control.pressPointOrDefault
-            : control.isPressed;
     }
 
     /// <summary>
@@ -963,32 +722,12 @@ internal sealed class OptionsBindingSession : IDisposable
         if (path == "<Mouse>/scroll/down")
             return "WHEEL DOWN";
 
-        string display = InputControlPath.ToHumanReadableString(
-            path,
-            InputControlPath.HumanReadableStringOptions.OmitDevice,
-            control: Keyboard.current
-        );
-        if (!IsReadableKeyName(display))
-            display = InputControlPath.ToHumanReadableString(
+        return ShortenKey(
+            InputControlPath.ToHumanReadableString(
                 path,
                 InputControlPath.HumanReadableStringOptions.OmitDevice
-            );
-        return ShortenKey(display);
-    }
-
-    /// <summary>
-    /// Checks whether a platform key name can be displayed as a shortcut caption.
-    /// </summary>
-    /// <param name="name">The platform key name.</param>
-    /// <returns>True when the name contains visible text and no control characters.</returns>
-    private static bool IsReadableKeyName(string name)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-            return false;
-        foreach (char character in name)
-            if (char.IsControl(character))
-                return false;
-        return true;
+            )
+        );
     }
 
     /// <summary>

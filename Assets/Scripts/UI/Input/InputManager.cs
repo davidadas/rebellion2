@@ -11,15 +11,14 @@ public sealed class InputManager : MonoBehaviour
 {
     private PlayerInputActions _actions;
 
+    private bool _bindingShortcutsSuppressed;
+    private int _shortcutSuppressionCount;
+
     /// <summary>
     /// Gets whether application shortcuts should ignore input while another UI interaction owns it.
     /// </summary>
-    internal bool AreApplicationShortcutsSuppressed { get; private set; }
-
-    /// <summary>
-    /// Gets whether an unrecoverable edit has made runtime overrides unsafe to persist or replace.
-    /// </summary>
-    internal bool RequiresInputRestart { get; private set; }
+    internal bool AreApplicationShortcutsSuppressed =>
+        _bindingShortcutsSuppressed || _shortcutSuppressionCount > 0;
 
     /// <summary>
     /// Gets the generated input action wrapper.
@@ -33,6 +32,42 @@ public sealed class InputManager : MonoBehaviour
     /// Gets the generated input action asset.
     /// </summary>
     public InputActionAsset Asset => Actions.asset;
+
+    /// <summary>
+    /// Reserves application shortcut input for an independently focused presentation.
+    /// Overlapping reservations remain active until every owner releases its lease.
+    /// </summary>
+    /// <returns>The idempotent suppression lease.</returns>
+    internal IDisposable SuppressApplicationShortcuts()
+    {
+        _shortcutSuppressionCount++;
+        return new ShortcutSuppression(this);
+    }
+
+    /// <summary>
+    /// Owns one application-shortcut suppression reservation.
+    /// </summary>
+    private sealed class ShortcutSuppression : IDisposable
+    {
+        private InputManager owner;
+
+        /// <summary>
+        /// Captures the manager that owns this reservation.
+        /// </summary>
+        /// <param name="owner">The input manager.</param>
+        internal ShortcutSuppression(InputManager owner) => this.owner = owner;
+
+        /// <summary>
+        /// Releases this reservation exactly once.
+        /// </summary>
+        public void Dispose()
+        {
+            if (ReferenceEquals(owner, null))
+                return;
+            owner._shortcutSuppressionCount--;
+            owner = null;
+        }
+    }
 
     /// <summary>
     /// Captures the currently held, user-configured strategy selection modifiers.
@@ -64,7 +99,7 @@ public sealed class InputManager : MonoBehaviour
     /// <param name="suppressed">Whether application shortcuts should ignore input.</param>
     internal void SetApplicationShortcutsSuppressed(bool suppressed)
     {
-        AreApplicationShortcutsSuppressed = suppressed;
+        _bindingShortcutsSuppressed = suppressed;
     }
 
     /// <summary>
@@ -102,39 +137,10 @@ public sealed class InputManager : MonoBehaviour
     /// Saves all runtime binding overrides.
     /// </summary>
     /// <returns>The serialized binding override data.</returns>
-    /// <exception cref="InvalidOperationException">Runtime bindings require a restart.</exception>
     public string SaveBindingOverrides()
     {
-        if (RequiresInputRestart)
-            throw new InvalidOperationException(
-                "Shortcut overrides cannot be saved until the game restarts."
-            );
         RemoveReservedShortcutOverrides(Actions.asset);
         return Actions.asset.SaveBindingOverridesAsJson();
-    }
-
-    /// <summary>
-    /// Exports overrides only while runtime bindings remain safe to persist.
-    /// </summary>
-    /// <param name="bindingOverrides">The exported overrides, or null when a restart is required.</param>
-    /// <returns>Whether runtime overrides can be included in a settings save.</returns>
-    internal bool TrySaveBindingOverrides(out string bindingOverrides)
-    {
-        if (RequiresInputRestart)
-        {
-            bindingOverrides = null;
-            return false;
-        }
-        bindingOverrides = SaveBindingOverrides();
-        return true;
-    }
-
-    /// <summary>
-    /// Prevents an unrecoverable runtime edit from replacing the last saved input configuration.
-    /// </summary>
-    internal void RequireInputRestart()
-    {
-        RequiresInputRestart = true;
     }
 
     /// <summary>
@@ -143,9 +149,6 @@ public sealed class InputManager : MonoBehaviour
     /// <param name="bindingOverrides">The serialized binding override data.</param>
     public void LoadBindingOverrides(string bindingOverrides)
     {
-        if (RequiresInputRestart)
-            return;
-
         InputActionAsset asset = Actions.asset;
         asset.RemoveAllBindingOverrides();
         if (!string.IsNullOrWhiteSpace(bindingOverrides))

@@ -454,13 +454,11 @@ internal sealed class OptionsSettingsSession
     /// </summary>
     internal void MarkInputChanged()
     {
-        _inputDiffersFromSnapshot =
-            _inputManager.TrySaveBindingOverrides(out string bindingOverrides)
-            && !string.Equals(
-                bindingOverrides,
-                _snapshotBindingOverrides,
-                StringComparison.Ordinal
-            );
+        _inputDiffersFromSnapshot = !string.Equals(
+            _inputManager.SaveBindingOverrides(),
+            _snapshotBindingOverrides,
+            StringComparison.Ordinal
+        );
         RefreshDirtyState();
     }
 
@@ -488,11 +486,7 @@ internal sealed class OptionsSettingsSession
         _snapshotIdleBarLocation = UserInterface.IdleBarLocation;
         _snapshotGameLaunchSpeed = Gameplay.GameLaunchSpeed;
         _snapshotAnalyticsConsent = Analytics.Consent;
-        _snapshotBindingOverrides = _inputManager.TrySaveBindingOverrides(
-            out string bindingOverrides
-        )
-            ? bindingOverrides
-            : _userSettings.Settings.Input.BindingOverridesJson;
+        _snapshotBindingOverrides = _inputManager.SaveBindingOverrides();
         _inputDiffersFromSnapshot = false;
         _snapshotTactical.Clear();
         foreach (UserTacticalOption option in Enum.GetValues(typeof(UserTacticalOption)))

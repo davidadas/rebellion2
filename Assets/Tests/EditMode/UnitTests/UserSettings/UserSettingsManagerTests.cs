@@ -1,13 +1,9 @@
 using System;
 using System.IO;
-using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.InputSystem.LowLevel;
-using UnityEngine.TestTools;
 using UserSettingsModel = global::UserSettings;
 
 namespace Rebellion.Tests.Managers
@@ -15,69 +11,6 @@ namespace Rebellion.Tests.Managers
     [TestFixture]
     public sealed class UserSettingsManagerTests
     {
-        [TestCase(false)]
-        [TestCase(true)]
-        public void Save_UnrecoverableRebind_PreservesSavedBindings(bool reapply)
-        {
-            InputTestFixture fixture = new();
-            fixture.Setup();
-            GameObject root = new("UnrecoverableInputManager");
-            InputManager input = root.AddComponent<InputManager>();
-            Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
-            string directory = Path.Combine(
-                Path.GetTempPath(),
-                "rebellion2-input-recovery-" + Guid.NewGuid().ToString("N")
-            );
-            string path = Path.Combine(directory, "user-settings.json");
-            try
-            {
-                UserSettingsManager settings = new(null, CreateDisplayManager(), input, path);
-                settings.Load();
-                InputAction oldAction = input.Asset.FindAction("Strategy/ShowTroopers", true);
-                oldAction.ApplyBindingOverride(0, "<Keyboard>/t");
-                settings.Save();
-                string savedBindings = settings.Settings.Input.BindingOverridesJson;
-                InputAction action = input.Asset.FindAction("Strategy/IncreaseGameSpeed", true);
-                using OptionsBindingSession session = new(input);
-                session.Rebuild();
-                int row = session
-                    .Rows.Select((binding, index) => (binding, index))
-                    .Single(item => item.binding.Action == "Increase Game Speed")
-                    .index;
-                session.BeginRebind(row, false);
-                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.T));
-                InputSystem.Update();
-                fixture.currentTime += 0.1;
-                InputSystem.Update();
-                InputSystem.Update();
-                session.Changed += () =>
-                {
-                    action.ChangeBinding(0).Erase();
-                    throw new InvalidOperationException("Injected unrecoverable shortcut edit.");
-                };
-                LogAssert.Expect(LogType.Error, new Regex("Shortcut rebinding failed:"));
-                session.ResolveConflict(true);
-                settings.Settings.Gameplay.ShowMissionOdds = false;
-
-                settings.Save();
-                if (reapply)
-                    settings.Apply();
-
-                UserSettingsModel persisted = JsonUtility.FromJson<UserSettingsModel>(
-                    File.ReadAllText(path)
-                );
-                Assert.AreEqual(savedBindings, persisted.Input.BindingOverridesJson);
-                Assert.IsFalse(persisted.Gameplay.ShowMissionOdds);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(root);
-                fixture.TearDown();
-                if (Directory.Exists(directory))
-                    Directory.Delete(directory, true);
-            }
-        }
-
         [Test]
         public void Save_LegacyTemporaryFileIsExclusivelyOwned_PublishesSettingsWithoutTouchingOtherWriter()
         {

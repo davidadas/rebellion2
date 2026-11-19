@@ -182,7 +182,8 @@ internal static class ContentPackEditorFieldMetadata
             "Checked missions can be performed by this special forces unit.",
         ["GarrisonTroopTypeID"] =
             "The regiment type used when this faction creates automatic garrisons.",
-        ["RecruitingFactionInstanceIDs"] = "Factions allowed to recruit this officer.",
+        ["RecruitingFactionInstanceIDs"] =
+            "Factions allowed to recruit this officer. Battle loyalty favors a combatant only when its flag is set and the opposing flag is clear.",
         ["ManufacturingFactionInstanceIDs"] = "Factions allowed to build this unit or facility.",
         ["AllowedRanks"] = "Command assignments this officer is eligible to hold.",
         ["NamePoolID"] =

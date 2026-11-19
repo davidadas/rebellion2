@@ -8,6 +8,9 @@ using Rebellion.Game.PlayerRequests;
 using Rebellion.Gameplay;
 using UnityEditor;
 using UnityEngine;
+using Array = global::System.Array;
+using Guid = global::System.Guid;
+using InvalidOperationException = global::System.InvalidOperationException;
 
 namespace Rebellion.Tests.App
 {
@@ -77,7 +80,7 @@ namespace Rebellion.Tests.App
         [Test]
         public void EnsureExists_EditMode_RejectsRuntimeBootstrapCreation()
         {
-            Assert.Throws<System.InvalidOperationException>(() => AppBootstrap.EnsureExists());
+            Assert.Throws<InvalidOperationException>(() => AppBootstrap.EnsureExists());
 
             Assert.IsFalse(
                 Object
@@ -95,7 +98,7 @@ namespace Rebellion.Tests.App
 
             ContentLoadOperation operation = _bootstrap.CreateContentLoadOperation();
             operation
-                .PrepareContentReloadAsync(packID, System.Array.Empty<string>())
+                .PrepareContentReloadAsync(packID, Array.Empty<string>())
                 .GetAwaiter()
                 .GetResult();
 
@@ -125,7 +128,7 @@ namespace Rebellion.Tests.App
             Assert.Throws<InvalidDataException>(() =>
                 _bootstrap
                     .CreateContentLoadOperation()
-                    .PrepareContentReloadAsync(active.Definition.ID, System.Array.Empty<string>())
+                    .PrepareContentReloadAsync(active.Definition.ID, Array.Empty<string>())
                     .GetAwaiter()
                     .GetResult()
             );
@@ -139,10 +142,10 @@ namespace Rebellion.Tests.App
             UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
             ContentPack active = _bootstrap.GetContentPack();
 
-            Assert.Throws<System.InvalidOperationException>(() =>
+            Assert.Throws<InvalidOperationException>(() =>
                 _bootstrap
                     .CreateContentLoadOperation()
-                    .PrepareContentReloadAsync("not-installed", System.Array.Empty<string>())
+                    .PrepareContentReloadAsync("not-installed", Array.Empty<string>())
                     .GetAwaiter()
                     .GetResult()
             );
@@ -182,7 +185,7 @@ namespace Rebellion.Tests.App
 
             bool started = _bootstrap.ReloadContent(
                 TestContent.Pack.Definition.ID,
-                System.Array.Empty<string>()
+                Array.Empty<string>()
             );
 
             Assert.IsFalse(started);
@@ -199,7 +202,7 @@ namespace Rebellion.Tests.App
 
             bool started = _bootstrap.ReloadContent(
                 _bootstrap.GetContentPack().Definition.ID,
-                System.Array.Empty<string>()
+                Array.Empty<string>()
             );
 
             Assert.IsTrue(started);
@@ -214,9 +217,9 @@ namespace Rebellion.Tests.App
         {
             UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
             string packID = _bootstrap.GetContentPack().Definition.ID;
-            Assert.IsTrue(_bootstrap.ReloadContent(packID, System.Array.Empty<string>()));
+            Assert.IsTrue(_bootstrap.ReloadContent(packID, Array.Empty<string>()));
 
-            Assert.IsFalse(_bootstrap.ReloadContent(packID, System.Array.Empty<string>()));
+            Assert.IsFalse(_bootstrap.ReloadContent(packID, Array.Empty<string>()));
         }
 
         [Test]
@@ -225,7 +228,7 @@ namespace Rebellion.Tests.App
             UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
             _bootstrap.ReloadContent(
                 _bootstrap.GetContentPack().Definition.ID,
-                System.Array.Empty<string>()
+                Array.Empty<string>()
             );
             GameObject otherObject = new GameObject("UnrelatedBootstrap");
             otherObject.SetActive(false);
@@ -303,7 +306,7 @@ namespace Rebellion.Tests.App
             GameSessionManager runtime = _bootstrap.GetGameSessionManager();
             GameRoot activeGame = CreateCompatibleGame(contentPack, 1);
             runtime.StartGame(activeGame);
-            string fileName = $"bootstrap-hot-load-{System.Guid.NewGuid():N}";
+            string fileName = $"bootstrap-hot-load-{Guid.NewGuid():N}";
             SaveGameManager saveGameManager = SaveGameManager.Instance;
             int transitionCount = 0;
             _bootstrap.LoadStarting += () => transitionCount++;
@@ -364,7 +367,7 @@ namespace Rebellion.Tests.App
         {
             UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
             ContentPack contentPack = _bootstrap.GetContentPack();
-            string fileName = $"bootstrap-failed-load-{System.Guid.NewGuid():N}";
+            string fileName = $"bootstrap-failed-load-{Guid.NewGuid():N}";
             SaveGameManager saveGameManager = SaveGameManager.Instance;
 
             try
@@ -393,7 +396,7 @@ namespace Rebellion.Tests.App
         {
             UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
             ContentPack contentPack = _bootstrap.GetContentPack();
-            string fileName = $"bootstrap-menu-failed-load-{System.Guid.NewGuid():N}";
+            string fileName = $"bootstrap-menu-failed-load-{Guid.NewGuid():N}";
             SaveGameManager saveGameManager = SaveGameManager.Instance;
 
             try
@@ -438,7 +441,7 @@ namespace Rebellion.Tests.App
         /// <returns>The derived pack identifier.</returns>
         private string CreateDerivedPack(ContentPack active)
         {
-            string packID = $"reload-test-{System.Guid.NewGuid():N}";
+            string packID = $"reload-test-{Guid.NewGuid():N}";
             _packDirectory = Path.Combine(active.ContentRootPath, "Packs", packID);
             Directory.CreateDirectory(_packDirectory);
             XDocument definition = XDocument.Load(Path.Combine(active.PackRootPath, "pack.xml"));
@@ -456,7 +459,7 @@ namespace Rebellion.Tests.App
         /// <returns>The test mod's content root.</returns>
         private string CreateContentMod(ContentPack active)
         {
-            string modID = $"reload-test-mod-{System.Guid.NewGuid():N}";
+            string modID = $"reload-test-mod-{Guid.NewGuid():N}";
             _modDirectory = Path.Combine(
                 Directory.GetParent(active.ContentRootPath).FullName,
                 "Mods",

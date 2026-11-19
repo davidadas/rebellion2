@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.UI.SceneUI.MainMenu.Multiplayer;
+using CancellationToken = global::System.Threading.CancellationToken;
 
 namespace Rebellion.Tests.UI.SceneUI.MainMenu.Multiplayer
 {
@@ -55,7 +56,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu.Multiplayer
         {
             using MultiplayerMenuOperation operation = new();
             TaskCompletionSource<bool> completion = new();
-            System.Threading.CancellationToken captured = default;
+            CancellationToken captured = default;
             Task pending = operation.RunAsync(
                 MultiplayerMenuPage.Save,
                 token =>

@@ -16,6 +16,13 @@
   <ItemGroup Condition="'$(UnityCompiledAssembliesPath)' == ''">
     <ProjectReference Include="../../GameAssembly.csproj" />
     <ProjectReference Include="../../ContentPackEditorAssembly.csproj" />
+    <ProjectReference Include="../../Rebellion.Util.csproj" />
+    <ProjectReference Include="../../Rebellion.Networking.Transport.csproj" />
+    <ProjectReference Include="../../Rebellion.Combat.Contracts.csproj" />
+    <ProjectReference Include="../../Rebellion.Tactical.Contracts.csproj" />
+    <ProjectReference Include="../../Rebellion.Tactical.Core.csproj" />
+    <ProjectReference Include="../../Rebellion.Tactical.Runtime.csproj" />
+    <ProjectReference Include="../../Rebellion.InputActions.csproj" />
   </ItemGroup>
   <ItemGroup Condition="'$(UnityCompiledAssembliesPath)' != ''">
     <Reference Include="GameAssembly">
@@ -23,6 +30,27 @@
     </Reference>
     <Reference Include="ContentPackEditorAssembly">
       <HintPath>$(UnityCompiledAssembliesPath)/ContentPackEditorAssembly.dll</HintPath>
+    </Reference>
+    <Reference Include="Rebellion.Networking.Transport">
+      <HintPath>$(UnityCompiledAssembliesPath)/Rebellion.Networking.Transport.dll</HintPath>
+    </Reference>
+    <Reference Include="Rebellion.Util">
+      <HintPath>$(UnityCompiledAssembliesPath)/Rebellion.Util.dll</HintPath>
+    </Reference>
+    <Reference Include="Rebellion.Combat.Contracts">
+      <HintPath>$(UnityCompiledAssembliesPath)/Rebellion.Combat.Contracts.dll</HintPath>
+    </Reference>
+    <Reference Include="Rebellion.Tactical.Contracts">
+      <HintPath>$(UnityCompiledAssembliesPath)/Rebellion.Tactical.Contracts.dll</HintPath>
+    </Reference>
+    <Reference Include="Rebellion.Tactical.Core">
+      <HintPath>$(UnityCompiledAssembliesPath)/Rebellion.Tactical.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Rebellion.Tactical.Runtime">
+      <HintPath>$(UnityCompiledAssembliesPath)/Rebellion.Tactical.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="Rebellion.InputActions">
+      <HintPath>$(UnityCompiledAssembliesPath)/Rebellion.InputActions.dll</HintPath>
     </Reference>
   </ItemGroup>
 </Project>

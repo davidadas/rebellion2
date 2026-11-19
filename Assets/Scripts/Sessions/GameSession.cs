@@ -203,6 +203,7 @@ namespace Rebellion.Gameplay
 
             PrepareGameReplacement();
             Game = game;
+            Game.ConfigureSpaceCombatEntries(_gameData.TacticalCombat);
             EnsureGameConfiguration();
             Game.RebuildSceneState();
             RestoreSectorSuppressionDefaults();
@@ -405,6 +406,7 @@ namespace Rebellion.Gameplay
         private void RebuildContentBindings()
         {
             _gameData.BindOfficerDefinitions(GetPersistedOfficers());
+            _gameData.BindCapitalShipDefinitions(Game.GetSceneNodesByType<CapitalShip>());
 
             IManufacturable[] templates = CopyTemplates(_gameData.Buildings)
                 .Cast<IManufacturable>()
@@ -414,6 +416,7 @@ namespace Rebellion.Gameplay
                 .Concat(CopyTemplates(_gameData.SpecialForces))
                 .ToArray();
 
+            _gameData.BindCapitalShipDefinitions(templates.OfType<CapitalShip>());
             foreach (Faction faction in Game.GetFactions())
                 faction.RebuildResearchCatalog(templates);
         }

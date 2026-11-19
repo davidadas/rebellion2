@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Xml.Linq;
 using NUnit.Framework;
@@ -924,6 +925,142 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(officer.IsCaptured);
         }
 
+        [TestCase(false, false, "first", 65)]
+        [TestCase(false, false, "second", 65)]
+        [TestCase(true, false, "first", 85)]
+        [TestCase(true, false, "second", 65)]
+        [TestCase(false, true, "first", 65)]
+        [TestCase(false, true, "second", 85)]
+        [TestCase(true, true, "first", 65)]
+        [TestCase(true, true, "second", 65)]
+        public void TryAdjustBattleLoyalty_RecruitmentFactionFlags_ChoosesRelativeDirection(
+            bool first,
+            bool second,
+            string favored,
+            int expected
+        )
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(75, null);
+            if (first)
+                officer.RecruitingFactionInstanceIDs.Add("first");
+            if (second)
+                officer.RecruitingFactionInstanceIDs.Add("second");
+
+            Assert.IsTrue(
+                officer.TryAdjustBattleLoyalty(10, favored, favored == "first" ? "second" : "first")
+            );
+
+            Assert.AreEqual(expected, officer.Loyalty);
+        }
+
+        [Test]
+        public void TryAdjustBattleLoyalty_ChangedCurrentOwner_KeepsRecruitmentFactionDirection()
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(75, "first");
+            officer.OwnerInstanceID = "second";
+
+            Assert.IsTrue(officer.TryAdjustBattleLoyalty(10, "first", "second"));
+
+            Assert.AreEqual(85, officer.Loyalty);
+        }
+
+        [Test]
+        public void TryAdjustBattleLoyalty_ChangedRecruitmentFlags_UsesTheSameFlagsAsRecruitment()
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(75, "first");
+            officer.RecruitingFactionInstanceIDs.Clear();
+            officer.RecruitingFactionInstanceIDs.Add("second");
+
+            Assert.IsTrue(officer.TryAdjustBattleLoyalty(10, "first", "second"));
+
+            Assert.AreEqual(65, officer.Loyalty);
+        }
+
+        [Test]
+        public void TryAdjustBattleLoyalty_ProtectedOfficer_DoesNotChangeLoyalty()
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(75, null, false);
+
+            Assert.IsFalse(officer.TryAdjustBattleLoyalty(int.MaxValue, "first", "second"));
+
+            Assert.AreEqual(75, officer.Loyalty);
+        }
+
+        [Test]
+        public void TryAdjustBattleLoyalty_ZeroChange_DoesNotChangeLoyalty()
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(75, null);
+
+            Assert.IsFalse(officer.TryAdjustBattleLoyalty(0, "first", "second"));
+
+            Assert.AreEqual(75, officer.Loyalty);
+        }
+
+        [TestCase(null, "second")]
+        [TestCase("first", null)]
+        [TestCase("", "second")]
+        [TestCase("first", "first")]
+        public void TryAdjustBattleLoyalty_InvalidCombatantPair_DoesNotChangeLoyalty(
+            string favored,
+            string opposing
+        )
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(75, "first");
+
+            Assert.IsFalse(officer.TryAdjustBattleLoyalty(10, favored, opposing));
+
+            Assert.AreEqual(75, officer.Loyalty);
+        }
+
+        [TestCase(75, 10, 85, true)]
+        [TestCase(75, -10, 65, true)]
+        [TestCase(75, 1000, 100, true)]
+        [TestCase(75, -1000, 0, true)]
+        [TestCase(0, -1, 0, false)]
+        [TestCase(100, 1, 100, false)]
+        [TestCase(75, int.MaxValue, 0, true)]
+        [TestCase(75, int.MinValue, 0, true)]
+        public void TryAdjustBattleLoyalty_SignedAdjustment_WrapsBeforeClampingAndReportsStoredChange(
+            int initial,
+            int adjustment,
+            int expected,
+            bool changed
+        )
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(initial, "first");
+
+            Assert.AreEqual(changed, officer.TryAdjustBattleLoyalty(adjustment, "first", "second"));
+
+            Assert.AreEqual(expected, officer.Loyalty);
+        }
+
+        [Test]
+        public void TryAdjustBattleLoyalty_OpposingMinimumChange_RetainsLow32Negation()
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(75, "second");
+
+            Assert.IsTrue(officer.TryAdjustBattleLoyalty(int.MinValue, "first", "second"));
+
+            Assert.AreEqual(0, officer.Loyalty);
+        }
+
+        [TestCase(32768, 1, 0)]
+        [TestCase(65535, 2, 1)]
+        [TestCase(65536, 1, 1)]
+        [TestCase(-32769, -1, 100)]
+        public void TryAdjustBattleLoyalty_SerializedBase_ReadsSigned16BitsBeforeAddition(
+            int initial,
+            int adjustment,
+            int expected
+        )
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(initial, "first");
+
+            Assert.IsTrue(officer.TryAdjustBattleLoyalty(adjustment, "first", "second"));
+
+            Assert.AreEqual(expected, officer.Loyalty);
+        }
+
         [Test]
         public void TryAdjustLoyalty_BetrayableOfficer_ChangesAndClampsLoyalty()
         {
@@ -1018,6 +1155,31 @@ namespace Rebellion.Tests.Game.Units
             };
             game.AddSceneNodeByInstanceID(officer);
             return (game, officer);
+        }
+
+        /// <summary>
+        /// Creates an officer with one retained recruitment-faction flag and a saved base loyalty.
+        /// </summary>
+        /// <param name="loyalty">The saved base loyalty.</param>
+        /// <param name="faction">The flagged faction, or null for neither combatant.</param>
+        /// <param name="canBetray">Whether loyalty changes are allowed.</param>
+        /// <returns>The officer.</returns>
+        private static Officer CreateBattleLoyaltyOfficer(
+            int loyalty,
+            string faction,
+            bool canBetray = true
+        )
+        {
+            Officer officer = SerializationHelper.Deserialize<Officer>(
+                new XElement(
+                    "Officer",
+                    new XElement("CanBetray", canBetray),
+                    new XElement("Loyalty", loyalty)
+                ).ToString()
+            );
+            if (faction != null)
+                officer.RecruitingFactionInstanceIDs.Add(faction);
+            return officer;
         }
 
         /// <summary>

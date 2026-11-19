@@ -45,6 +45,24 @@ namespace Rebellion.Game.Galaxy
 
         private readonly HashSet<CapitalShip> _suppressionSources = new HashSet<CapitalShip>();
         private Dictionary<string, int> _projectedSectorSuppressionDivisors;
+        private int? _projectedSectorSuppressionDivisor;
+
+        /// <summary>
+        /// Returns the strongest operational, stationary suppression divisor in the sector.
+        /// Support resistance depends on sector presence regardless of the source's owner.
+        /// </summary>
+        /// <returns>The strongest divisor, or one when no active source is present.</returns>
+        internal int GetSectorSuppressionDivisor()
+        {
+            if (_projectedSectorSuppressionDivisor.HasValue)
+                return _projectedSectorSuppressionDivisor.Value;
+
+            int divisor = 1;
+            foreach (CapitalShip ship in _suppressionSources)
+                if (IsActiveSuppressionSource(ship))
+                    divisor = Math.Max(divisor, ship.SectorSuppression);
+            return divisor;
+        }
 
         /// <summary>
         /// Returns the strongest operational, stationary suppression divisor owned by a faction.
@@ -87,6 +105,15 @@ namespace Rebellion.Game.Galaxy
             _projectedSectorSuppressionDivisors ??= new Dictionary<string, int>();
             if (!string.IsNullOrEmpty(ownerInstanceID))
                 _projectedSectorSuppressionDivisors[ownerInstanceID] = divisor;
+        }
+
+        /// <summary>
+        /// Captures sector-wide suppression for a view with partial descendants.
+        /// </summary>
+        /// <param name="divisor">The observed divisor across all source owners.</param>
+        internal void SetProjectedSectorSuppression(int divisor)
+        {
+            _projectedSectorSuppressionDivisor = divisor;
         }
 
         /// <summary>

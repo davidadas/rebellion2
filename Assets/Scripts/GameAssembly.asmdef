@@ -13,7 +13,13 @@
         "Unity.RenderPipelines.Core.Runtime",
         "Unity.RenderPipelines.HighDefinition.Runtime",
         "Unity.Services.Core",
-        "Unity.Services.Analytics"
+        "Unity.Services.Analytics",
+        "Rebellion.Util",
+        "Rebellion.SceneGraph",
+        "Rebellion.Game",
+        "Rebellion.Tactical.Core",
+        "Rebellion.Tactical.Runtime",
+        "Rebellion.Networking.Transport"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

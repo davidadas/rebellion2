@@ -1,8 +1,9 @@
 using System;
-using Rebellion.AI;
+using Rebellion.Campaign.AI;
 using Rebellion.Game;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.Gameplay.GameEvents;
 using Rebellion.Gameplay.Scripting;
 using Rebellion.Util.DependencyInjection;
@@ -27,6 +28,7 @@ namespace Rebellion.Gameplay
             typeof(PlanetaryControlObserver),
             typeof(UprisingObserver),
             typeof(OfficerLoyaltyObserver),
+            typeof(SpaceCombatObserver),
             typeof(FogOfWarObserver),
             typeof(ManufacturingObserver),
             typeof(AdvisorAutomationObserver),
@@ -75,7 +77,8 @@ namespace Rebellion.Gameplay
                     content.CapitalShips,
                     content.Starfighters,
                     content.Regiments,
-                    content.SpecialForces
+                    content.SpecialForces,
+                    content.TacticalCombat
                 );
             });
 
@@ -135,12 +138,19 @@ namespace Rebellion.Gameplay
                 locator.GetService<PersonnelCommands>()
             ));
             services.AddSingleton<SpaceCombatQueries>();
+            services.AddSingleton<TacticalCombatFactory>(locator => new TacticalCombatFactory(
+                locator.GetService<GameRoot>(),
+                locator.GetService<GameDataCatalog>(),
+                locator.GetService<SpaceCombatQueries>()
+            ));
             services.AddSingleton<SpaceCombatCommands>(locator => new SpaceCombatCommands(
                 locator.GetService<GameRoot>(),
                 locator.GetService<MovementCommands>(),
                 locator.GetService<SpaceCombatQueries>(),
                 locator.GetService<BlockadeTransitionResolver>(),
-                locator.GetService<GameDataCatalog>().Starfighters
+                locator.GetService<TacticalCombatFactory>(),
+                locator.GetService<GameDataCatalog>().Starfighters,
+                locator.GetService<SpaceCombatObserver>()
             ));
             services.AddSingleton<BombardmentQueries>();
             services.AddSingleton<BombardmentCommands>();

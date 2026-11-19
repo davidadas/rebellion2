@@ -620,6 +620,46 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
+        /// Applies a battle loyalty change using the existing faction eligibility flags.
+        /// The stored base is read as a signed 16-bit value; negation and addition retain their
+        /// low 32 bits before the result is clamped from zero through one hundred.
+        /// </summary>
+        /// <param name="adjustment">The signed change relative to the favored allegiance.</param>
+        /// <param name="favoredFactionID">The combatant favored by the change.</param>
+        /// <param name="opposingFactionID">The other authored combatant.</param>
+        /// <returns>True when the stored loyalty changed; otherwise false.</returns>
+        public bool TryAdjustBattleLoyalty(
+            int adjustment,
+            string favoredFactionID,
+            string opposingFactionID
+        )
+        {
+            if (
+                !CanBetray
+                || adjustment == 0
+                || string.IsNullOrEmpty(favoredFactionID)
+                || string.IsNullOrEmpty(opposingFactionID)
+                || favoredFactionID == opposingFactionID
+            )
+                return false;
+
+            bool favorsFaction =
+                RecruitingFactionInstanceIDs.Contains(favoredFactionID)
+                && !RecruitingFactionInstanceIDs.Contains(opposingFactionID);
+            int officerAdjustment = favorsFaction ? adjustment : unchecked(-adjustment);
+            int adjustedLoyalty = Math.Clamp(
+                unchecked((short)_loyalty + officerAdjustment),
+                0,
+                100
+            );
+            if (adjustedLoyalty == _loyalty)
+                return false;
+
+            _loyalty = adjustedLoyalty;
+            return true;
+        }
+
+        /// <summary>
         /// Creates an officer for copying, retaining default state for derived factory callers.
         /// </summary>
         /// <returns>The created node copy.</returns>

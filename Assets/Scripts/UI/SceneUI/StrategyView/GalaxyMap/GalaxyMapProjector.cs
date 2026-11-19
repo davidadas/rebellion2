@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using UnityEngine;
+using Point = global::System.Drawing.Point;
 
 /// <summary>
 /// Projects visible galaxy state and faction presentation into immutable map render data.
@@ -140,7 +141,7 @@ public sealed class GalaxyMapProjector
         List<GalaxyMapWaypointRenderData> waypoints = new List<GalaxyMapWaypointRenderData>();
         foreach (FleetWaypointRouteStop stop in route.Stops)
         {
-            System.Drawing.Point position = stop.Planet.GetPosition();
+            Point position = stop.Planet.GetPosition();
             waypoints.Add(
                 new GalaxyMapWaypointRenderData(
                     stop.Order,
@@ -221,7 +222,7 @@ public sealed class GalaxyMapProjector
         SourcePointLayout backgroundPosition = context
             .GetPlayerFactionTheme()
             ?.GalaxyBackground?.SourcePosition;
-        System.Drawing.Point localPosition = sector.GetPosition();
+        Point localPosition = sector.GetPosition();
         return new Vector2Int(
             (backgroundPosition?.X ?? 0) + localPosition.X,
             (backgroundPosition?.Y ?? 0) + localPosition.Y
@@ -269,7 +270,7 @@ public sealed class GalaxyMapProjector
             if (sector?.PlanetSector == null)
                 continue;
 
-            System.Drawing.Point sectorPosition = sector.PlanetSector.GetPosition();
+            Point sectorPosition = sector.PlanetSector.GetPosition();
             clusters.Add(
                 new GalaxyMapClusterRenderData(
                     sector.PlanetSector.InstanceID,
@@ -313,7 +314,7 @@ public sealed class GalaxyMapProjector
         string playerFactionId,
         GalacticInformationFilterTheme filter,
         UIContext context,
-        System.Drawing.Point sectorPosition,
+        Point sectorPosition,
         StrategyBriefingMapPresentation briefing,
         string spotlightPlanetInstanceId
     )
@@ -350,7 +351,7 @@ public sealed class GalaxyMapProjector
             {
                 marker = new GalacticInformationMarker(3, marker.FactionInstanceId, marker.Mixed);
             }
-            System.Drawing.Point planetPosition = planet.Planet.GetPosition();
+            Point planetPosition = planet.Planet.GetPosition();
             stars.Add(
                 new GalaxyMapStarRenderData(
                     planet.Planet.InstanceID,

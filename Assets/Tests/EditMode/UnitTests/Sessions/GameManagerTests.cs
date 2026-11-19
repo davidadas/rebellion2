@@ -321,7 +321,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void AdvanceTick_ActiveWorkPaused_CompletesWithoutResumingClock()
+        public void AdvanceTick_ActiveWorkPaused_HoldsPositionUntilResumed()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.Config.GameSpeed.TickWorkBudgetMilliseconds = 0;
@@ -337,11 +337,11 @@ namespace Rebellion.Tests.Managers
             manager.SetGameSpeed(TickSpeed.Paused);
 
             bool remainsPaused = manager.AdvanceTick(work);
-            bool workRemains = manager.AdvanceTick(work);
+            manager.SetGameSpeed(TickSpeed.Fast);
+            bool remainsResumed = manager.AdvanceTick(work);
 
             Assert.IsTrue(remainsPaused);
-            Assert.IsFalse(workRemains);
-            Assert.AreEqual(TickSpeed.Paused, manager.GetGameSpeed());
+            Assert.IsTrue(remainsResumed);
             CollectionAssert.AreEqual(new[] { 0, 1 }, completed);
         }
 

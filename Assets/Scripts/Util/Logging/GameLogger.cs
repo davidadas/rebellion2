@@ -46,7 +46,7 @@ namespace Rebellion.Util.Logging
         /// <summary>
         /// Configures the logger settings.
         /// </summary>
-        /// <param name="filePath">The log file path, or null to retain the current profile's configured path.</param>
+        /// <param name="filePath">The log file path, or null to retain an already configured path.</param>
         /// <param name="enableFileLogging">Whether to log messages to a file.</param>
         /// <param name="addTimestamps">Whether to include timestamps in log messages.</param>
         public static void Configure(
@@ -55,9 +55,13 @@ namespace Rebellion.Util.Logging
             bool addTimestamps = true
         )
         {
-            _logFilePath = filePath ?? _logFilePath;
-            if (enableFileLogging && _logFilePath == null)
-                _logFilePath = Path.Combine(UserDataPaths.Root, "log.txt");
+            string selectedPath = filePath ?? _logFilePath;
+            if (enableFileLogging && string.IsNullOrWhiteSpace(selectedPath))
+                throw new ArgumentException(
+                    "Configure a file path before enabling file logging.",
+                    nameof(filePath)
+                );
+            _logFilePath = selectedPath;
             _logToFile = enableFileLogging;
             _includeTimestamp = addTimestamps;
 

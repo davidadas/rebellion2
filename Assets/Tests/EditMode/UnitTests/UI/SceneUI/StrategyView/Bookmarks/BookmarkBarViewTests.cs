@@ -46,35 +46,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
         }
 
         [Test]
-        public void PrefabProperties_BookmarkLayer_PlacesAboveHudBackground()
+        public void PrefabProperties_BookmarkLayer_PlacesBelowStrategyHud()
         {
             StrategyHudView strategyHud = _rootObject.GetComponentInChildren<StrategyHudView>(true);
-            Transform background = strategyHud.transform.Find("BackgroundImage");
 
-            Assert.AreSame(strategyHud.transform, _view.transform.parent);
-            Assert.Greater(_view.transform.GetSiblingIndex(), background.GetSiblingIndex());
-        }
-
-        [Test]
-        public void PrefabProperties_BookmarkLayer_PlacesBelowHudControls()
-        {
-            StrategyHudView strategyHud = _rootObject.GetComponentInChildren<StrategyHudView>(true);
-            UIRaycastArea[] controls = strategyHud.GetComponentsInChildren<UIRaycastArea>(true);
-
-            Assert.IsNotEmpty(controls);
-            Assert.AreSame(strategyHud.transform, _view.transform.parent);
-            foreach (UIRaycastArea control in controls)
-            {
-                Transform controlLayer = control.transform;
-                while (controlLayer.parent != strategyHud.transform)
-                    controlLayer = controlLayer.parent;
-
-                Assert.Less(
-                    _view.transform.GetSiblingIndex(),
-                    controlLayer.GetSiblingIndex(),
-                    control.name
-                );
-            }
+            Assert.AreSame(_view.transform.parent, strategyHud.transform.parent);
+            Assert.Less(_view.transform.GetSiblingIndex(), strategyHud.transform.GetSiblingIndex());
         }
 
         [Test]

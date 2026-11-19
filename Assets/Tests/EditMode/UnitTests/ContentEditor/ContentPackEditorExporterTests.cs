@@ -85,9 +85,9 @@ namespace Rebellion.Tests.ContentEditor
             Assert.IsFalse(copy.IsDirty);
             Assert.IsTrue(project.IsDirty);
             Assert.AreEqual(
-                System.Xml.Linq.XElement.Parse(units.Text).ToString(),
-                System
-                    .Xml.Linq.XElement.Parse(
+                XElement.Parse(units.Text).ToString(),
+                XElement
+                    .Parse(
                         copy.Documents.Single(document => document.Address == units.Address).Text
                     )
                     .ToString()
@@ -142,11 +142,9 @@ namespace Rebellion.Tests.ContentEditor
             string exported = text.ReadToEnd();
             Assert.IsTrue(ContentXmlOverrides.IsOverlay(exported));
             Assert.AreEqual(
-                System.Xml.Linq.XElement.Parse(units.Text).ToString(),
-                System
-                    .Xml.Linq.XElement.Parse(
-                        ContentXmlOverrides.Merge(File.ReadAllText(units.SourcePath), exported)
-                    )
+                XElement.Parse(units.Text).ToString(),
+                XElement
+                    .Parse(ContentXmlOverrides.Merge(File.ReadAllText(units.SourcePath), exported))
                     .ToString()
             );
             using Stream asset = archive.GetEntry("Assets/sound.wav").Open();

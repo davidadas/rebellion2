@@ -3,8 +3,11 @@
     "rootNamespace": "",
     "references": [
         "GameAssembly",
+        "Rebellion.SceneGraph",
+        "Rebellion.Game",
         "Unity.TextMeshPro",
-        "UnityEngine.UI"
+        "UnityEngine.UI",
+        "Rebellion.Util"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

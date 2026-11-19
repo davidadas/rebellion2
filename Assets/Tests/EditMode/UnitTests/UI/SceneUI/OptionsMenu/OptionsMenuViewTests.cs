@@ -339,6 +339,45 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsFalse(saveButton.interactable);
         }
 
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Render_LoadingPermission_ControlsExistingSaveActions(bool canLoad)
+        {
+            OptionsMenuRenderData data = new(
+                0,
+                0,
+                OptionsMenuTab.SaveLoad,
+                string.Empty,
+                string.Empty,
+                new Dictionary<UserTacticalOption, bool>(),
+                Array.Empty<float>(),
+                Array.Empty<OptionsBindingRow>(),
+                new[] { new OptionsSaveSlot("Save", "Today", null, false, "save") },
+                0,
+                true,
+                false,
+                -1,
+                false,
+                canLoad: canLoad
+            );
+
+            _view.Render(data);
+
+            Button[] buttons = _root.GetComponentsInChildren<Button>(true);
+            Assert.AreEqual(
+                canLoad,
+                buttons.Single(button => button.name == "LoadIcon").interactable
+            );
+            Assert.AreEqual(
+                canLoad,
+                buttons.Single(button => button.name == "SlotRow0").interactable
+            );
+            Assert.AreEqual(
+                canLoad,
+                buttons.Single(button => button.name == "SlotDelete0").interactable
+            );
+        }
+
         [Test]
         public void GameplayPage_AnalyticsSection_UsesSpecificHeading()
         {
@@ -573,37 +612,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 "Pack/Shared/Strategy/UI/ContextMenus/context-menu-check-mark",
                 checkmark.GetComponent<ContentTextureBinding>().Address
             );
-        }
-
-        [Test]
-        public void Render_ControlsStatusMessage_KeepsViewportAboveMessage()
-        {
-            OptionsBindingRow[] bindings = Enumerable
-                .Range(0, 24)
-                .Select(index => new OptionsBindingRow($"Action {index}", "A"))
-                .ToArray();
-            _view.Render(
-                CreateRenderDataForTab(
-                    OptionsMenuTab.Controls,
-                    bindings: bindings,
-                    statusMessage: "Couldn't change this shortcut. Your previous bindings were restored. Try again.",
-                    statusIsError: true
-                )
-            );
-            RectTransform viewport = _root
-                .GetComponentsInChildren<ScrollAreaView>(true)
-                .Single(area => area.name == "ControlsScrollArea")
-                .ViewportRoot;
-            RectTransform status = _root
-                .GetComponentsInChildren<TextMeshProUGUI>(true)
-                .Single(field => field.name == "SettingsStatusTextField")
-                .rectTransform;
-            Vector3[] viewportCorners = new Vector3[4];
-            Vector3[] statusCorners = new Vector3[4];
-            viewport.GetWorldCorners(viewportCorners);
-            status.GetWorldCorners(statusCorners);
-
-            Assert.GreaterOrEqual(viewportCorners[0].y, statusCorners[1].y);
         }
 
         [Test]

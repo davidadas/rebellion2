@@ -68,6 +68,8 @@ namespace Rebellion.Gameplay
         {
             foreach (SpaceCombatResult result in results ?? Array.Empty<SpaceCombatResult>())
             {
+                if (result?.IsTacticalCombat == true)
+                    continue;
                 if (!TryGetExclusiveSpaceController(result, out string controllerId))
                     continue;
 
@@ -267,7 +269,7 @@ namespace Rebellion.Gameplay
                     $"Faction '{controller.InstanceID}' BattleLossLoyaltyDivisor must be greater than zero."
                 );
 
-            int shift = (opponentLoss - controllerLoss) / divisor + opponentLoss / divisor;
+            int shift = CombatLoyaltyCalculator.Calculate(controllerLoss, opponentLoss, divisor);
             _commands.ApplyGlobalLoyaltyShift(controller, shift);
         }
     }

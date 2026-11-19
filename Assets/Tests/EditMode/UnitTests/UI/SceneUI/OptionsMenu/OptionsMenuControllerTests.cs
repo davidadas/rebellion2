@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -12,9 +11,6 @@ using Rebellion.Game.Galaxy;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.InputSystem;
-using UnityEngine.InputSystem.LowLevel;
-using UnityEngine.TestTools;
 using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
@@ -32,7 +28,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         private SaveGameManager _saveGameManager;
         private string _saveDirectoryPath;
         private int _dirtyCount;
-        private bool _failNextDirty;
         private bool _loadResult;
         private bool _menuOpenWhenLoadCalled;
         private string _loadedFileName;
@@ -48,7 +43,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         [SetUp]
         public void SetUp()
         {
-            _failNextDirty = false;
+            _dirtyCount = 0;
+            _loadResult = false;
+            _menuOpenWhenLoadCalled = false;
+            _loadedFileName = null;
             _saveCompletion = null;
             _loadCompletion = null;
             _saveRequests = 0;
@@ -108,93 +106,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void RenderWindows_FailedRebind_ShowsRecoveryMessageAndAllowsRetry()
-        {
-            OptionsMenuView view = CreateFailedRebindView();
-            TextMeshProUGUI error = view.GetComponentsInChildren<TextMeshProUGUI>(true)
-                .Single(text => text.name == "SettingsStatusTextField");
-
-            Assert.AreEqual(
-                "Couldn't change this shortcut. Your previous bindings were restored. Try again.",
-                error.text
-            );
-            Assert.Greater(error.color.r, error.color.g);
-            Assert.IsFalse(_bootstrap.GetInputManager().AreApplicationShortcutsSuppressed);
-            Button badge = GetRebindBadge(view, "Increase Game Speed");
-            badge.onClick.Invoke();
-            _controller.RenderWindows();
-            Assert.IsTrue(
-                view.GetComponentsInChildren<TextMeshProUGUI>(true).Any(text => text.text == "...")
-            );
-            Assert.IsTrue(_controller.TryCancel());
-            Assert.IsTrue(_controller.IsOpen);
-        }
-
-        [TestCase(true)]
-        [TestCase(false)]
-        public void RenderWindows_RebindConflict_RefreshesCaptionAndAllowsNextRebind(bool accept)
-        {
-            InputTestFixture fixture = new();
-            fixture.Setup();
-            Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
-            try
-            {
-                InputAction oldAction = _bootstrap
-                    .GetInputManager()
-                    .Asset.FindAction("Strategy/ShowTroopers", true);
-                oldAction.ApplyBindingOverride(0, "<Keyboard>/t");
-                OptionsMenuView view = OpenAndRender(OptionsMenuTab.Controls);
-                TextMeshProUGUI label = view.GetComponentsInChildren<TextMeshProUGUI>(true)
-                    .Single(text => text.text == "Increase Game Speed");
-                string row = label.name.Substring("BindingAction".Length);
-                Button badge = view.GetComponentsInChildren<Button>(true)
-                    .Single(button => button.name == "BindingPrimaryBadge" + row);
-                badge.onClick.Invoke();
-                _controller.RenderWindows();
-                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.T));
-                InputSystem.Update();
-                fixture.currentTime += 0.1;
-                InputSystem.Update();
-                ConfirmationDialogView confirmation =
-                    view.GetComponentInChildren<ConfirmationDialogView>(true);
-
-                _controller.RenderWindows();
-
-                Assert.IsTrue(confirmation.gameObject.activeSelf);
-                Assert.AreEqual(
-                    "T",
-                    view.GetComponentsInChildren<TextMeshProUGUI>(true)
-                        .Single(text => text.name == "BindingPrimaryKey" + row)
-                        .text
-                );
-                confirmation
-                    .GetComponentsInChildren<Button>(true)
-                    .Single(button =>
-                        button.name == (accept ? "ConfirmButtonImage" : "CancelButtonImage")
-                    )
-                    .onClick.Invoke();
-                Assert.IsFalse(confirmation.gameObject.activeSelf);
-                InputSystem.QueueStateEvent(keyboard, new KeyboardState());
-                InputSystem.Update();
-                badge.onClick.Invoke();
-                _controller.RenderWindows();
-                Assert.AreEqual(
-                    "...",
-                    view.GetComponentsInChildren<TextMeshProUGUI>(true)
-                        .Single(text => text.name == "BindingPrimaryKey" + row)
-                        .text
-                );
-                Assert.IsTrue(_controller.TryCancel());
-                Assert.IsTrue(_controller.IsOpen);
-            }
-            finally
-            {
-                _controller.Close();
-                fixture.TearDown();
-            }
-        }
-
-        [Test]
         public void Open_ClosedController_CreatesAndRendersSingleWindow()
         {
             _controller.Open();
@@ -207,6 +118,61 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(1, _windowManager.Windows.Count);
             Assert.IsTrue(view.gameObject.activeSelf);
             Assert.GreaterOrEqual(_dirtyCount, 1);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Open_SavedGamePermission_ControlsLoadingFromTheWindow(bool allowSaveLoad)
+        {
+            _saveGameManager.SaveGameData(CreateGame(), "existing_save", "Existing Save");
+            _controller.Dispose();
+            _controller = CreateController(GetPrefab(), allowSaveLoad: allowSaveLoad);
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
+            view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "SlotRow0")
+                .onClick.Invoke();
+            _controller.RenderWindows();
+
+            view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "LoadIcon")
+                .onClick.Invoke();
+
+            Assert.AreEqual(allowSaveLoad ? "existing_save" : null, _loadedFileName);
+        }
+
+        [Test]
+        public void Open_SaveLoadUnavailable_PreventsSavedGameMutations()
+        {
+            _saveGameManager.SaveGameData(CreateGame(), "existing_save", "Existing Save");
+            _bootstrap.GetGameSessionManager().StartGame(CreateGame());
+            _controller.Dispose();
+            _controller = CreateController(GetPrefab(), allowSaveLoad: false);
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
+            Button load = view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "LoadIcon");
+            Button save = view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "SaveIcon");
+            Button row = view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "SlotRow0");
+            Button delete = view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "SlotDelete0");
+            TMP_InputField rename = view.GetComponentsInChildren<TMP_InputField>(true)
+                .Single(field => field.name == "SlotRenameField");
+
+            row.onClick.Invoke();
+            delete.onClick.Invoke();
+            rename.onEndEdit.Invoke("Changed Save");
+            load.onClick.Invoke();
+            save.onClick.Invoke();
+
+            Assert.IsFalse(load.interactable);
+            Assert.IsFalse(save.interactable);
+            Assert.IsFalse(delete.interactable);
+            Assert.IsNull(_loadedFileName);
+            Assert.AreEqual(
+                "Existing Save",
+                _saveGameManager.GetSavedGames().Single().Metadata.SaveDisplayName
+            );
         }
 
         [Test]
@@ -1612,11 +1578,13 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         /// </summary>
         /// <param name="prefab">The Options prefab.</param>
         /// <param name="showModsTab">Whether the controller exposes content management.</param>
+        /// <param name="allowSaveLoad">Whether the owning interaction permits saved-game operations.</param>
         /// <param name="getSavedGames">The injected save visibility query.</param>
         /// <returns>The created controller.</returns>
         private OptionsMenuController CreateController(
             OptionsMenuView prefab,
             bool showModsTab = true,
+            bool allowSaveLoad = true,
             Func<IReadOnlyList<SaveGameEntry>> getSavedGames = null
         )
         {
@@ -1645,18 +1613,11 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     _loadedFileName = fileName;
                     return _loadCompletion?.Task ?? Task.FromResult(_loadResult);
                 },
-                () =>
-                {
-                    _dirtyCount++;
-                    if (_failNextDirty)
-                    {
-                        _failNextDirty = false;
-                        throw new InvalidOperationException("Injected menu refresh failure.");
-                    }
-                },
+                () => _dirtyCount++,
                 _saveGameManager,
                 showModsTab,
-                getSavedGames
+                getSavedGames,
+                allowSaveLoad
             );
         }
 
@@ -1758,36 +1719,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     + "<DisplayName>Second Duplicate</DisplayName></ContentPack>"
             );
             return new[] { firstDirectory, secondDirectory };
-        }
-
-        /// <summary>
-        /// Fails one real rebind startup through the controller's injected refresh callback.
-        /// </summary>
-        /// <returns>The settings view after recovery has rendered.</returns>
-        private OptionsMenuView CreateFailedRebindView()
-        {
-            OptionsMenuView view = OpenAndRender(OptionsMenuTab.Controls);
-            _failNextDirty = true;
-            LogAssert.Expect(LogType.Error, new Regex("Shortcut rebinding failed:"));
-            GetRebindBadge(view, "Increase Game Speed").onClick.Invoke();
-            InputSystem.Update();
-            _controller.RenderWindows();
-            return view;
-        }
-
-        /// <summary>
-        /// Finds one action's editable primary shortcut in the rendered controls table.
-        /// </summary>
-        /// <param name="view">The rendered options view.</param>
-        /// <param name="action">The action caption.</param>
-        /// <returns>The primary binding button.</returns>
-        private static Button GetRebindBadge(OptionsMenuView view, string action)
-        {
-            TextMeshProUGUI label = view.GetComponentsInChildren<TextMeshProUGUI>(true)
-                .Single(text => text.text == action);
-            string row = label.name.Substring("BindingAction".Length);
-            return view.GetComponentsInChildren<Button>(true)
-                .Single(button => button.name == "BindingPrimaryBadge" + row);
         }
 
         /// <summary>

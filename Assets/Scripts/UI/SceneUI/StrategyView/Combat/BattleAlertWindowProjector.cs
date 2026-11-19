@@ -30,6 +30,7 @@ internal sealed class BattleAlertWindowProjector
     /// <param name="y">The source-space vertical window position.</param>
     /// <param name="uiContext">The current strategy UI context.</param>
     /// <param name="pendingPlanet">The pending encounter's faction-visible planet projection.</param>
+    /// <param name="canTakeCommand">Whether the encounter has complete tactical deployment data.</param>
     /// <returns>The complete immutable window presentation.</returns>
     internal BattleAlertWindowRenderData Project(
         BattleAlertWindowMode mode,
@@ -42,7 +43,8 @@ internal sealed class BattleAlertWindowProjector
         int x,
         int y,
         UIContext uiContext,
-        Planet pendingPlanet
+        Planet pendingPlanet,
+        bool canTakeCommand = false
     )
     {
         BattleAlertWindowTheme theme = uiContext
@@ -77,7 +79,8 @@ internal sealed class BattleAlertWindowProjector
             y,
             uiContext,
             theme,
-            titleColor
+            titleColor,
+            canTakeCommand
         );
     }
 
@@ -93,6 +96,7 @@ internal sealed class BattleAlertWindowProjector
     /// <param name="uiContext">The current strategy UI context.</param>
     /// <param name="theme">The active battle-alert theme.</param>
     /// <param name="titleColor">The faction-themed title color.</param>
+    /// <param name="canTakeCommand">Whether tactical deployment is available.</param>
     /// <returns>The pending-combat window presentation.</returns>
     private static BattleAlertWindowRenderData ProjectPending(
         BattleAlertPanel panel,
@@ -103,7 +107,8 @@ internal sealed class BattleAlertWindowProjector
         int y,
         UIContext uiContext,
         BattleAlertWindowTheme theme,
-        Color titleColor
+        Color titleColor,
+        bool canTakeCommand
     )
     {
         IReadOnlyList<BattleAlertRowRenderData> rows =
@@ -118,7 +123,7 @@ internal sealed class BattleAlertWindowProjector
                 ? GetPendingSummary(uiContext, pending, pendingPlanet)
                 : string.Empty,
             rows,
-            CreatePendingCommandButtons(uiContext, theme, pending, playerFactionId),
+            CreatePendingCommandButtons(uiContext, theme, pending, playerFactionId, canTakeCommand),
             GetResponseStatus(pending, playerFactionId)
         );
 
@@ -278,12 +283,14 @@ internal sealed class BattleAlertWindowProjector
     /// <param name="theme">The active battle-alert theme.</param>
     /// <param name="pending">The pending encounter.</param>
     /// <param name="playerFactionId">The current player faction identifier.</param>
+    /// <param name="canTakeCommand">Whether tactical deployment is available.</param>
     /// <returns>The command buttons in source order.</returns>
     private static IReadOnlyList<BattleAlertButtonRenderData> CreatePendingCommandButtons(
         UIContext uiContext,
         BattleAlertWindowTheme theme,
         PendingCombatResult pending,
-        string playerFactionId
+        string playerFactionId,
+        bool canTakeCommand
     )
     {
         bool? choice =
@@ -299,7 +306,7 @@ internal sealed class BattleAlertWindowProjector
                 choice == true
             ),
             CreateButton(uiContext, theme?.AutoResolveButton, true, choice == false),
-            CreateButton(uiContext, theme?.TakeCommandButton, false, false),
+            CreateButton(uiContext, theme?.TakeCommandButton, canTakeCommand, false),
         };
     }
 

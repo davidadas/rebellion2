@@ -98,6 +98,92 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsTrue(canExecute);
         }
 
+        [Test]
+        public void CanExecute_OperationalDefendingFleet_ReturnsFalse()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
+            Fleet attacker = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+            AddAssaultFleet(game, planet, "alliance", regimentCount: 0);
+
+            Assert.IsFalse(
+                new PlanetaryAssaultQueries(game).CanExecute(new[] { attacker }, planet)
+            );
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void CanExecute_UnreadyDefendingFleet_ReturnsTrue(bool defenderMoving)
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
+            Fleet attacker = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+            Fleet defender = AddAssaultFleet(game, planet, "alliance", regimentCount: 0);
+            if (defenderMoving)
+                defender.Movement = TestMovement.Create();
+            else
+                defender.GetChildren<CapitalShip>()[0].ManufacturingStatus =
+                    ManufacturingStatus.Building;
+
+            Assert.IsTrue(new PlanetaryAssaultQueries(game).CanExecute(new[] { attacker }, planet));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void CanExecute_DestroyedOrFriendlyTarget_ReturnsFalse(bool destroyed)
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", destroyed ? "alliance" : "empire");
+            Fleet attacker = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+            planet.IsDestroyed = destroyed;
+
+            Assert.IsFalse(
+                new PlanetaryAssaultQueries(game).CanExecute(new[] { attacker }, planet)
+            );
+        }
+
+        [Test]
+        public void CanExecute_UncolonizedOwnedTarget_ReturnsTrue()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
+            planet.IsColonized = false;
+            Fleet attacker = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+
+            Assert.IsTrue(new PlanetaryAssaultQueries(game).CanExecute(new[] { attacker }, planet));
+        }
+
+        [TestCase(false, false)]
+        [TestCase(true, true)]
+        public void CanExecute_NeutralTarget_RequiresPopulation(bool populated, bool expected)
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", owner: null);
+            planet.IsColonized = populated;
+            Fleet attacker = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+
+            Assert.AreEqual(
+                expected,
+                new PlanetaryAssaultQueries(game).CanExecute(new[] { attacker }, planet)
+            );
+        }
+
+        [Test]
+        public void CanExecute_DefenderStartsAndCancelsMovement_UsesCurrentBlockadeState()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
+            Fleet attacker = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+            Fleet defender = AddAssaultFleet(game, planet, "alliance", regimentCount: 0);
+            PlanetaryAssaultQueries queries = new PlanetaryAssaultQueries(game);
+
+            Assert.IsFalse(queries.CanExecute(new[] { attacker }, planet));
+            defender.Movement = TestMovement.Create();
+            Assert.IsTrue(queries.CanExecute(new[] { attacker }, planet));
+            defender.Movement = null;
+            Assert.IsFalse(queries.CanExecute(new[] { attacker }, planet));
+        }
+
         /// <summary>
         /// Adds assault fleet.
         /// </summary>

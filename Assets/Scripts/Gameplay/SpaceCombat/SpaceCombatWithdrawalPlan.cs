@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
@@ -175,6 +176,47 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Reserves strategic destinations while preserving the carriers selected during interactive combat.
+        /// </summary>
+        /// <param name="fleets">The participating fleets.</param>
+        /// <param name="planet">The encounter's planet.</param>
+        /// <param name="ownerInstanceId">The departing faction.</param>
+        /// <param name="departures">The units that actually escaped.</param>
+        /// <param name="recoveries">The final fighter-to-carrier assignments.</param>
+        /// <returns>The reserved departure plan.</returns>
+        internal SpaceCombatWithdrawalPlan CreateTacticalPlan(
+            IReadOnlyList<Fleet> fleets,
+            Planet planet,
+            string ownerInstanceId,
+            ISet<ISceneNode> departures,
+            IReadOnlyList<FighterRecoveryResult> recoveries
+        )
+        {
+            SpaceCombatWithdrawalPlan plan = new();
+            AddFleetDestinations(
+                plan,
+                fleets,
+                planet,
+                GetParticipatingShips(fleets).Where(departures.Contains).ToList()
+            );
+            List<Starfighter> independent = new();
+            foreach (FighterRecoveryResult recovery in recoveries)
+            {
+                if (
+                    !departures.Contains(recovery.Fighter)
+                    || recovery.Fighter.GetOwnerInstanceID() != ownerInstanceId
+                )
+                    continue;
+                if (recovery.Carrier != null)
+                    plan.AddFighterRecovery(recovery.Fighter, recovery.Carrier);
+                else
+                    independent.Add(recovery.Fighter);
+            }
+            AddFighterDestinations(plan, planet, independent, independent);
+            return plan;
+        }
+
+        /// <summary>
         /// Reserves a shared safe planet for every fleet with a mobile ship.
         /// </summary>
         /// <param name="plan">The plan receiving fleet destinations.</param>
@@ -189,7 +231,7 @@ namespace Rebellion.Gameplay
         )
         {
             List<CapitalShip> mobileShips = (eligibleShips ?? Array.Empty<CapitalShip>())
-                .Where(ship => ship.Hyperdrive > 0)
+                .Where(ship => ship.GetOperationalHyperdrive() > 0)
                 .ToList();
             List<Fleet> mobileFleets = (fleets ?? Array.Empty<Fleet>())
                 .Where(fleet =>

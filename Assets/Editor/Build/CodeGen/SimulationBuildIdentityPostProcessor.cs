@@ -85,7 +85,7 @@ internal sealed class SimulationBuildIdentityPostProcessor : ILPostProcessor
         identity.ConstructorArguments.Add(
             new CustomAttributeArgument(
                 module.TypeSystem.String,
-                SimulationBuildIdentityInputs.ComputeIdentity()
+                SimulationBuildIdentityInputs.ComputeIdentity(Directory.GetCurrentDirectory())
             )
         );
         assembly.CustomAttributes.Add(identity);

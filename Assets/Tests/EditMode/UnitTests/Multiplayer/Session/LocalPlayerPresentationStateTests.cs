@@ -3,6 +3,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.UIState;
 using Rebellion.Multiplayer;
+using XElement = global::System.Xml.Linq.XElement;
 
 namespace Rebellion.Tests.Multiplayer
 {
@@ -123,11 +124,9 @@ namespace Rebellion.Tests.Multiplayer
             GameRoot hostCheckpoint = CreateGame("stale-guest-at-save");
             hostCheckpoint.CurrentTick = 40;
             GameRoot localCheckpoint = CreateGame("guest-at-save");
-            System.Xml.Linq.XElement document = System.Xml.Linq.XElement.Parse(
-                SerializationHelper.Serialize(localCheckpoint)
-            );
-            System.Xml.Linq.XElement metadata = document.Element("Metadata");
-            System.Xml.Linq.XElement saveID = metadata.Element(nameof(GameMetadata.SaveID));
+            XElement document = XElement.Parse(SerializationHelper.Serialize(localCheckpoint));
+            XElement metadata = document.Element("Metadata");
+            XElement saveID = metadata.Element(nameof(GameMetadata.SaveID));
             Assert.That(saveID, Is.Not.Null);
             Assert.That(metadata.Element("SharedSaveToken"), Is.Null);
             if (legacyName)

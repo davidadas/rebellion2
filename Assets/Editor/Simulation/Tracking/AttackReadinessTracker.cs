@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI;
-using Rebellion.AI.Phases;
+using Rebellion.Campaign.AI;
+using Rebellion.Campaign.AI.Phases;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;

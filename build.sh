@@ -52,7 +52,24 @@ require_command() {
     fi
 }
 
+prepare_native_math() {
+    local native_target
+    case "$(uname -s)" in
+        Darwin) native_target="osx" ;;
+        Linux) native_target="linux-x64" ;;
+        MINGW*|MSYS*|CYGWIN*) native_target="win-x64" ;;
+        *) echo "Unsupported native vector math host: $(uname -s)"; return 1 ;;
+    esac
+    require_command "${PYTHON:-python3}"
+    "${PYTHON:-python3}" "$PROJECT_PATH/Tools/build_tactical_math.py" \
+        --source "$PROJECT_PATH/Native/TacticalMath" \
+        --build-directory "$PROJECT_PATH/.native-math-build/$native_target" \
+        --output-directory "$PROJECT_PATH/Assets/Plugins/TacticalMath" \
+        --target "$native_target"
+}
+
 run_unity_tests() {
+    prepare_native_math
     local platform results
     for platform in EditMode PlayMode; do
         results="$TEST_RESULTS"
@@ -169,12 +186,37 @@ do_lint() {
             -maxcpucount:1 \
             -verbosity:normal \
             "${extra_args[@]}"
+        if [ -f Rebellion.Util.csproj ]; then
+            dotnet build Rebellion.Util.csproj \
+                --no-dependencies \
+                -maxcpucount:1 \
+                -verbosity:normal \
+                "${extra_args[@]}"
+        fi
+        for assembly in Rebellion.Networking.Transport Rebellion.Combat.Contracts Rebellion.Tactical.Contracts Rebellion.Tactical.Core Rebellion.Tactical.Runtime; do
+            if [ -f "$assembly.csproj" ]; then
+                dotnet build "$assembly.csproj" \
+                    --no-dependencies \
+                    -maxcpucount:1 \
+                    -verbosity:normal \
+                    "${extra_args[@]}"
+            fi
+        done
         dotnet build GameAssembly.csproj \
             --no-dependencies \
             -maxcpucount:1 \
             -verbosity:normal \
             "${extra_args[@]}"
         echo ""
+        if [ -f ContentPackEditorAssembly.csproj ]; then
+            echo "=== ContentPackEditorAssembly ==="
+            dotnet build ContentPackEditorAssembly.csproj \
+                --no-dependencies \
+                -maxcpucount:1 \
+                -verbosity:normal \
+                "${extra_args[@]}"
+            echo ""
+        fi
         for test_project in UnitTests.csproj PlayModeTests.csproj NativeAudit.csproj; do
             if [ ! -f "$test_project" ]; then
                 continue
@@ -258,7 +300,7 @@ do_lint() {
         --analyzer-assemblies "$MEMBER_ORDER_ANALYZER" \
         --ignore-analyzer-references \
         --ignore-compiler-diagnostics \
-        --supported-diagnostics REB0001 REB0002 REB0003 REB0004 REB0005 REB0006 REB0007 REB0008 REB0009 REB0010 REB0011 \
+        --supported-diagnostics REB0001 REB0002 REB0003 REB0004 REB0005 REB0006 REB0007 REB0008 REB0009 REB0010 REB0011 REB0012 \
         --severity-level error
     echo ""
     echo "Lint complete."
@@ -277,7 +319,7 @@ do_coverage() {
         -debugCodeOptimization \
         -enableCodeCoverage \
         -coverageResultsPath "$coverage_dir" \
-        -coverageOptions "generateHtmlReport;assemblyFilters:+GameAssembly"
+        -coverageOptions "generateHtmlReport;assemblyFilters:+GameAssembly,+Rebellion.Util,+Rebellion.Combat.Contracts,+Rebellion.Tactical.Contracts,+Rebellion.Tactical.Core,+Rebellion.Tactical.Runtime,+Rebellion.Networking.Transport"
     echo "Coverage report written to $coverage_dir/Report/index.html"
 
     # Keep thresholds in sync with .github/workflows/unity-tests.yml
@@ -352,6 +394,7 @@ default_build_player_path() {
 }
 
 do_build() {
+    prepare_native_math
     local build_target="${BUILD_TARGET:-$(default_build_target)}"
     local build_player_path="${BUILD_PLAYER_PATH:-$(default_build_player_path)}"
     local resolved_player_path

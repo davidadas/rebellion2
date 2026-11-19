@@ -5,6 +5,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using UnityEngine;
+using Point = global::System.Drawing.Point;
 
 /// <summary>
 /// Projects planet-sector game state into immutable presentation data.
@@ -383,8 +384,8 @@ internal sealed class PlanetSectorWindowProjector
     /// <returns>The projected galaxy offset.</returns>
     private static Vector2Int CreatePlanetOffset(PlanetSector sector, Planet planet)
     {
-        System.Drawing.Point sectorPosition = sector?.GetPosition() ?? System.Drawing.Point.Empty;
-        System.Drawing.Point planetPosition = planet?.GetPosition() ?? System.Drawing.Point.Empty;
+        Point sectorPosition = sector?.GetPosition() ?? Point.Empty;
+        Point planetPosition = planet?.GetPosition() ?? Point.Empty;
         return new Vector2Int(
             planetPosition.X - sectorPosition.X,
             planetPosition.Y - sectorPosition.Y

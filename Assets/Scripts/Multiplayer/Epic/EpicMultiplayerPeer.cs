@@ -21,16 +21,14 @@ using P2PInterface = Epic.OnlineServices.P2P.P2PInterface;
 using PacketReliability = Epic.OnlineServices.P2P.PacketReliability;
 using ProductUserId = Epic.OnlineServices.ProductUserId;
 using ReceivePacketOptions = Epic.OnlineServices.P2P.ReceivePacketOptions;
-using RelayControl = Epic.OnlineServices.P2P.RelayControl;
 using Result = Epic.OnlineServices.Result;
 using SendPacketOptions = Epic.OnlineServices.P2P.SendPacketOptions;
-using SetRelayControlOptions = Epic.OnlineServices.P2P.SetRelayControlOptions;
 using SocketId = Epic.OnlineServices.P2P.SocketId;
 
 namespace Rebellion.Multiplayer
 {
     /// <summary>
-    /// Transfers the game protocol over one admitted, reliable ordered EOS connection.
+    /// Transfers ordered campaign traffic and independently replaceable tactical snapshots over one admitted EOS connection.
     /// </summary>
     public sealed class EpicMultiplayerPeer : IMultiplayerPeer
     {
@@ -39,10 +37,11 @@ namespace Rebellion.Multiplayer
         private readonly SocketId _socket;
         private readonly Queue<MultiplayerTransportEvent> _events = new();
         private readonly CancellationTokenSource _cancellation = new();
-        private readonly SemaphoreSlim _sendGate = new(1, 1);
         private readonly byte[] _receiveBuffer = new byte[P2PInterface.MAX_PACKET_SIZE];
         private readonly MultiplayerPacketStream _stream;
         private readonly MultiplayerPacketFramer _framer;
+        private readonly MultiplayerSnapshotDatagrams _snapshots;
+        private readonly MultiplayerSendScheduler _sendScheduler;
         private readonly ulong _requestNotification;
         private readonly ulong _connectedNotification;
         private readonly ulong _interruptedNotification;
@@ -54,6 +53,7 @@ namespace Rebellion.Multiplayer
         private bool _connected;
         private bool _disconnected;
         private bool _disposed;
+        private MultiplayerPacket _latestSnapshot;
 
         /// <summary>
         /// Gets whether the admitted counterpart is connected.
@@ -72,9 +72,17 @@ namespace Rebellion.Multiplayer
             _localUser = localUser ?? throw new ArgumentNullException(nameof(localUser));
             _socket = new SocketId { SocketName = CreateSocketName(lobbyId) };
             _framer = new MultiplayerPacketFramer(P2PInterface.MAX_PACKET_SIZE, TrySendFrame);
+            _snapshots = new MultiplayerSnapshotDatagrams(
+                P2PInterface.MAX_PACKET_SIZE,
+                TrySendSnapshot
+            );
             _stream = new MultiplayerPacketStream(
                 _framer.WriteAsync,
                 MultiplayerPacketCodec.MaximumPacketLength
+            );
+            _sendScheduler = new MultiplayerSendScheduler(
+                WriteReliablePacketAsync,
+                _snapshots.TrySend
             );
             _receiveOptions = new ReceivePacketOptions
             {
@@ -82,11 +90,6 @@ namespace Rebellion.Multiplayer
                 MaxDataSizeBytes = P2PInterface.MAX_PACKET_SIZE,
                 RequestedChannel = 0,
             };
-            SetRelayControlOptions relayOptions = new SetRelayControlOptions
-            {
-                RelayControl = RelayControl.AllowRelays,
-            };
-            RequireSuccess(_p2p.SetRelayControl(ref relayOptions), "Enable relay fallback");
             AddNotifyPeerConnectionRequestOptions requestOptions =
                 new AddNotifyPeerConnectionRequestOptions
                 {
@@ -206,6 +209,19 @@ namespace Rebellion.Multiplayer
         {
             if (_disposed || _disconnected)
                 return;
+            _snapshots.Expire();
+            PollChannel(0);
+            if (!_disconnected)
+                PollChannel(2);
+        }
+
+        /// <summary>
+        /// Drains one admitted transport channel without consuming the lobby chat channel.
+        /// </summary>
+        /// <param name="requestedChannel">The ordered control or replaceable snapshot channel.</param>
+        private void PollChannel(byte requestedChannel)
+        {
+            _receiveOptions.RequestedChannel = requestedChannel;
             while (true)
             {
                 Result result = _p2p.ReceivePacket(
@@ -227,8 +243,8 @@ namespace Rebellion.Multiplayer
                     return;
                 }
                 if (
-                    channel != 0
-                    || !_receivedUser.Equals(_remoteUser)
+                    channel != requestedChannel
+                    || _receivedUser?.Equals(_remoteUser) != true
                     || !string.Equals(
                         _receivedSocket.SocketName,
                         _socket.SocketName,
@@ -239,6 +255,15 @@ namespace Rebellion.Multiplayer
                 ArraySegment<byte> frame;
                 try
                 {
+                    if (requestedChannel == 2)
+                    {
+                        MultiplayerPacket snapshot = _snapshots.Receive(
+                            new ArraySegment<byte>(_receiveBuffer, 0, checked((int)length))
+                        );
+                        if (snapshot != null)
+                            _latestSnapshot = snapshot;
+                        continue;
+                    }
                     frame = MultiplayerPacketFramer.ReadFrame(
                         new ArraySegment<byte>(_receiveBuffer, 0, checked((int)length))
                     );
@@ -266,24 +291,27 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Sends a complete game packet in connection order.
+        /// Sends ordered game packets reliably and attempts replaceable snapshots without waiting for that stream.
         /// </summary>
         /// <param name="packet">The game packet.</param>
         /// <returns>The pending send.</returns>
-        public async Task SendAsync(MultiplayerPacket packet)
+        public Task SendAsync(MultiplayerPacket packet)
         {
             if (!IsConnected)
                 throw new InvalidOperationException("No multiplayer peer is connected.");
-            await _sendGate.WaitAsync(_cancellation.Token);
-            try
-            {
-                await MultiplayerPacketCodec.WriteAsync(_stream, packet, _cancellation.Token);
-            }
-            finally
-            {
-                _sendGate.Release();
-            }
+            return _sendScheduler.SendAsync(packet, _cancellation.Token);
         }
+
+        /// <summary>
+        /// Writes one reliable packet after bounded transport ownership has acquired its ordered writer gate.
+        /// </summary>
+        /// <param name="packet">The admitted complete reliable packet.</param>
+        /// <param name="cancellationToken">Cancels active provider I/O.</param>
+        /// <returns>The reliable packet write.</returns>
+        private Task WriteReliablePacketAsync(
+            MultiplayerPacket packet,
+            CancellationToken cancellationToken
+        ) => MultiplayerPacketCodec.WriteAsync(_stream, packet, cancellationToken);
 
         /// <summary>
         /// Retrieves the next connection or decoded packet event.
@@ -295,6 +323,15 @@ namespace Rebellion.Multiplayer
             if (_events.Count > 0)
             {
                 transportEvent = _events.Dequeue();
+                return true;
+            }
+            if (_latestSnapshot != null)
+            {
+                transportEvent = new MultiplayerTransportEvent(
+                    MultiplayerTransportEventType.PacketReceived,
+                    _latestSnapshot
+                );
+                _latestSnapshot = null;
                 return true;
             }
             transportEvent = null;
@@ -469,6 +506,24 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
+        /// Attempts one unordered snapshot fragment without delaying or retrying provider backpressure.
+        /// </summary>
+        /// <param name="data">The independently framed snapshot fragment.</param>
+        /// <returns>Whether EOS accepted this replaceable fragment.</returns>
+        private bool TrySendSnapshot(ArraySegment<byte> data)
+        {
+            SendPacketOptions options = CreateSendOptions(data);
+            options.Channel = 2;
+            options.Reliability = PacketReliability.UnreliableUnordered;
+            options.AllowDelayedDelivery = false;
+            Result result = _p2p.SendPacket(ref options);
+            if (result == Result.LimitExceeded)
+                return false;
+            RequireSuccess(result, "Send tactical snapshot");
+            return true;
+        }
+
+        /// <summary>
         /// Builds reliable ordered options for the admitted participant.
         /// </summary>
         /// <param name="data">The outgoing transport frame.</param>
@@ -495,6 +550,8 @@ namespace Rebellion.Multiplayer
             _disconnected = true;
             _connected = false;
             _cancellation.Cancel();
+            _latestSnapshot = null;
+            _snapshots.ClearAssembly();
             _stream.Complete();
             if (_remoteUser == null)
                 return;

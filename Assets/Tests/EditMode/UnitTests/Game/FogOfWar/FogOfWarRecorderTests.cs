@@ -9,6 +9,7 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Tests.Helpers;
 using Rebellion.Util.Serialization;
+using Array = global::System.Array;
 
 namespace Rebellion.Tests.Game.FogOfWar
 {
@@ -288,7 +289,7 @@ namespace Rebellion.Tests.Game.FogOfWar
             _alliance.Fog.EntityLastSeenAt["REMEMBERED"] = "UNKNOWN_PLANET";
             ISceneNode[] observations = detachedEntity
                 ? new ISceneNode[] { CreateOfficer("DETACHED", _empire) }
-                : System.Array.Empty<ISceneNode>();
+                : Array.Empty<ISceneNode>();
 
             new FogOfWarRecorder().RecordSelectedObservations(_game, _alliance, observations, 20);
 

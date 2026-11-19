@@ -21,7 +21,7 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Tests.PlayerRequests
 {
     [TestFixture]
-    public sealed class PlayerRequestExecutorTests
+    public sealed partial class PlayerRequestExecutorTests
     {
         private const string _ownerID = "FNALL1";
         private const string _opponentID = "FNEMP1";
@@ -90,54 +90,6 @@ namespace Rebellion.Tests.PlayerRequests
                 _session.PumpCommands();
                 Assert.IsTrue((await action).Accepted);
                 Assert.AreEqual("Queued name", fleet.DisplayName);
-            }
-            finally
-            {
-                (tick as IDisposable)?.Dispose();
-            }
-        }
-
-        [TestCase(false)]
-        [TestCase(true)]
-        public void ExecuteAsync_PausingActiveTick_CompletesMessageRequestWithoutStartingAnotherTick(
-            bool coordinatedSpeeds
-        )
-        {
-            _game.Config.GameSpeed.TickWorkBudgetMilliseconds = 0;
-            _gameManager.SetGameSpeed(TickSpeed.Fast);
-            if (coordinatedSpeeds)
-                _gameManager.EnableCoordinatedSpeeds();
-            Message message = AddMessage(_actor, "paused-message");
-            IEnumerator tick = _session.Tick.ProcessTickIncrementally();
-            try
-            {
-                Assert.IsTrue(_gameManager.AdvanceTick(tick));
-                int currentTick = _game.CurrentTick;
-                if (coordinatedSpeeds)
-                    _gameManager.ApplyPlayerGameSpeed(_ownerID, TickSpeed.Paused);
-                else
-                    _gameManager.SetGameSpeed(TickSpeed.Paused);
-                Task<PlayerRequestOutcome> request = _executor.ExecuteAsync(
-                    _ownerID,
-                    new ReadMessagesRequest { MessageIDs = new[] { message.InstanceID } }
-                );
-                Assert.IsFalse(request.IsCompleted);
-                Assert.IsFalse(message.Read);
-
-                bool workRemains = true;
-                for (int frame = 0; frame < 100 && workRemains; frame++)
-                    workRemains = _gameManager.AdvanceTick(tick);
-                _session.PumpCommands();
-
-                Assert.IsFalse(workRemains, "The started tick must reach its command boundary.");
-                Assert.IsTrue(request.IsCompletedSuccessfully);
-                Assert.IsTrue(request.GetAwaiter().GetResult().Accepted);
-                Assert.IsTrue(message.Read);
-                Assert.AreEqual(TickSpeed.Paused, _gameManager.GetGameSpeed());
-                Assert.AreEqual(currentTick, _game.CurrentTick);
-                Assert.IsFalse(_gameManager.TryAdvanceTickTimer(1000));
-                _session.Tick.ProcessTick();
-                Assert.AreEqual(currentTick, _game.CurrentTick);
             }
             finally
             {

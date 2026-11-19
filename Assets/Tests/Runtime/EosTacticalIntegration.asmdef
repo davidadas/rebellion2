@@ -1,0 +1,22 @@
+{
+    "name": "EosTacticalIntegration",
+    "rootNamespace": "Rebellion.Tests.MultiplayerIntegration",
+    "references": [
+        "GameAssembly",
+        "com.Epic.OnlineServices",
+        "com.playeveryware.eos.core",
+        "Rebellion.SceneGraph",
+        "Rebellion.Game",
+        "Rebellion.Tactical.Core"
+    ],
+    "includePlatforms": [
+        "Editor",
+        "WindowsStandalone64",
+        "LinuxStandalone64"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNITY_EDITOR || REBELLION_EOS_TACTICAL_TEST"
+    ],
+    "noEngineReferences": false
+}

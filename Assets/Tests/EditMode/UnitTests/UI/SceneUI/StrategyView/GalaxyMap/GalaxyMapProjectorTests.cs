@@ -12,6 +12,7 @@ using Rebellion.SceneGraph;
 using UnityEngine;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
+using Point = global::System.Drawing.Point;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 {
@@ -65,7 +66,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             _game.AttachNode(destination, sector);
             GameFleet playerFleet = new GameFleet(_playerFactionId, "Player Fleet")
             {
-                Movement = TestMovement.Create(originPosition: new System.Drawing.Point(12, 14)),
+                Movement = TestMovement.Create(originPosition: new Point(12, 14)),
             };
             playerFleet.Waypoints.Add(destination.InstanceID);
             _game.AttachNode(playerFleet, origin);
@@ -378,6 +379,48 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(11, firstStar.SourceY);
             Assert.AreEqual(31, secondStar.SourceX);
             Assert.AreEqual(32, secondStar.SourceY);
+        }
+
+        [Test]
+        public void Project_CorellianPlanets_ReturnsAuthoredSeloniaAndDurosOffsets()
+        {
+            ContentPack classicPack = ContentPackLoader.OpenActive(
+                "classic-galactic-civil-war",
+                "standard"
+            );
+            GalaxyPlanetSector planetSector = classicPack.GameData.PlanetSectors.Single(candidate =>
+                candidate.TypeID == "PSCOR"
+            );
+            Planet selonia = planetSector
+                .GetChildren<Planet>()
+                .Single(planet => planet.InstanceID == "SELONIA");
+            Planet duros = planetSector
+                .GetChildren<Planet>()
+                .Single(planet => planet.InstanceID == "DUROS");
+            GalaxyMapSector sector = new GalaxyMapSector(
+                planetSector,
+                new[]
+                {
+                    new GalaxyMapPlanet(planetSector, selonia, string.Empty),
+                    new GalaxyMapPlanet(planetSector, duros, string.Empty),
+                }
+            );
+
+            GalaxyMapRenderData data = _projector.Project(
+                new[] { sector },
+                _playerFactionId,
+                GalacticInformationFilterMode.DisplayOff,
+                null
+            );
+
+            GalaxyMapStarRenderData seloniaStar = data.Clusters[0]
+                .Stars.Single(star => star.PlanetInstanceId == "SELONIA");
+            GalaxyMapStarRenderData durosStar = data.Clusters[0]
+                .Stars.Single(star => star.PlanetInstanceId == "DUROS");
+            Assert.AreEqual(225, selonia.PositionX);
+            Assert.AreEqual(240, duros.PositionX);
+            Assert.AreEqual(19, seloniaStar.SourceX);
+            Assert.AreEqual(34, durosStar.SourceX);
         }
 
         [Test]

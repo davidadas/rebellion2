@@ -10,6 +10,7 @@ using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
+using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
@@ -22,6 +23,37 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class MovementCommandsTests
     {
+        [TestCase(false, true)]
+        [TestCase(true, null)]
+        public void ProcessTick_BuildingSettlement_ChangesEligibilityOnlyForNewPopulation(
+            bool initiallyColonized,
+            bool? expectedEligibility
+        )
+        {
+            (GameRoot game, Planet origin, Planet destination, _, MovementCommands movement) =
+                BuildScene(new GameConfig());
+            destination.EnergyCapacity = 5;
+            Building building = new()
+            {
+                InstanceID = "settlement-building",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Delivering,
+            };
+            game.AttachNode(building, destination);
+            destination.IsColonized = initiallyColonized;
+            building.Movement = TestMovement.Create(
+                originPosition: origin.GetPosition(),
+                transitTicks: 1
+            );
+
+            new MovementTickProcessor(movement).ProcessTick(game);
+
+            Assert.IsTrue(destination.IsColonized);
+            Assert.AreEqual(expectedEligibility, destination.IsSectorSupportEligible);
+            Assert.IsNull(building.Movement);
+        }
+
         [Test]
         public void RequestMove_DeterministicPeerGames_AssignsSameMovementGroupWithoutRandomDraws()
         {
@@ -2845,6 +2877,99 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void RequestMove_LastDefendingPlanetaryFighterDeparts_ReportsBlockadeStart()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new ThrowingRNG());
+            ConfigureBlockadeFactions(game);
+            Starfighter fighter = new()
+            {
+                InstanceID = "departing-defender",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Hyperdrive = 1,
+            };
+            game.AttachNode(fighter, origin);
+            Assert.IsFalse(origin.IsBlockaded());
+
+            movement.RequestMove(fighter, destination);
+            IReadOnlyList<GameResult> results = movement.TakePendingResults();
+
+            Assert.IsTrue(origin.IsBlockaded());
+            Assert.IsNotNull(fighter.Movement);
+            BlockadeChangedResult blockade = results.OfType<BlockadeChangedResult>().Single();
+            Assert.AreSame(origin, blockade.Planet);
+            Assert.AreSame(origin.GetChildren<Fleet>().Single(), blockade.BlockadingFleet);
+            Assert.IsTrue(blockade.Blockaded);
+        }
+
+        [Test]
+        public void RequestMove_NewPlanetaryFighterCompletesLocalDelivery_ReportsBlockadeEnd()
+        {
+            (GameRoot game, Planet origin, _, MovementCommands movement) = BuildBlockadeScene(
+                new ThrowingRNG()
+            );
+            ConfigureBlockadeFactions(game);
+            Starfighter fighter = new()
+            {
+                InstanceID = "delivered-defender",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Delivering,
+            };
+            game.AttachNode(fighter, origin);
+            Assert.IsTrue(origin.IsBlockaded());
+
+            movement.RequestMove(fighter, origin, origin);
+            IReadOnlyList<GameResult> results = movement.TakePendingResults();
+
+            Assert.AreEqual(ManufacturingStatus.Complete, fighter.ManufacturingStatus);
+            Assert.IsFalse(origin.IsBlockaded());
+            BlockadeChangedResult blockade = results.OfType<BlockadeChangedResult>().Single();
+            Assert.AreSame(origin, blockade.Planet);
+            Assert.IsNull(blockade.BlockadingFleet);
+            Assert.IsFalse(blockade.Blockaded);
+        }
+
+        [Test]
+        public void RequestMove_NewFighterReturnsFromBlockadedDestination_ReportsProducerBlockadeEnd()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new ThrowingRNG());
+            ConfigureBlockadeFactions(game);
+            Fleet destinationFleet = EntityFactory.CreateFleet("delivery-blockader", "rebels");
+            game.AttachNode(destinationFleet, destination);
+            game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = "delivery-blockading-ship",
+                    OwnerInstanceID = "rebels",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                destinationFleet
+            );
+            Starfighter fighter = new()
+            {
+                InstanceID = "returned-defender",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Delivering,
+            };
+            game.AttachNode(fighter, destination);
+            Assert.IsTrue(origin.IsBlockaded());
+            Assert.IsTrue(destination.IsBlockaded());
+
+            movement.RequestMove(fighter, destination, origin);
+            IReadOnlyList<GameResult> results = movement.TakePendingResults();
+
+            Assert.AreSame(origin, fighter.GetParent());
+            Assert.AreEqual(ManufacturingStatus.Complete, fighter.ManufacturingStatus);
+            Assert.IsFalse(origin.IsBlockaded());
+            Assert.IsTrue(destination.IsBlockaded());
+            BlockadeChangedResult blockade = results.OfType<BlockadeChangedResult>().Single();
+            Assert.AreSame(origin, blockade.Planet);
+            Assert.IsFalse(blockade.Blockaded);
+        }
+
+        [Test]
         public void RequestMove_RegimentFromUnblockedPlanet_NoEvacuationLoss()
         {
             // FixedRNG would cause loss, but planet isn't blockaded
@@ -3324,7 +3449,7 @@ namespace Rebellion.Tests.Gameplay
                 .TakePendingResults()
                 .OfType<PlanetOwnershipChangedResult>()
                 .Single();
-            CollectionAssert.Contains(ownershipChange.BlockadedFactionInstanceIDs, "rebels");
+            CollectionAssert.IsEmpty(ownershipChange.BlockadedFactionInstanceIDs);
         }
 
         [Test]
@@ -7181,6 +7306,24 @@ namespace Rebellion.Tests.Gameplay
             );
 
             return (game, origin, destination, movement);
+        }
+
+        /// <summary>
+        /// Binds the scene's two faction identities to their combat indexes.
+        /// </summary>
+        /// <param name="game">The game containing the two factions.</param>
+        private static void ConfigureBlockadeFactions(GameRoot game)
+        {
+            game.ConfigureSpaceCombatEntries(
+                new TacticalCombatDefinition
+                {
+                    Factions = new List<TacticalCombatFactionDefinition>
+                    {
+                        new() { FactionInstanceID = "empire", FactionIndex = 0 },
+                        new() { FactionInstanceID = "rebels", FactionIndex = 1 },
+                    },
+                }
+            );
         }
 
         /// <summary>

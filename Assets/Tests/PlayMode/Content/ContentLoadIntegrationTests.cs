@@ -20,6 +20,11 @@ using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 using UnityEngine.Video;
+using Action = global::System.Action;
+using Array = global::System.Array;
+using Convert = global::System.Convert;
+using PlayerRequestOutcome = global::Rebellion.Game.PlayerRequests.PlayerRequestOutcome;
+using SetSpeedRequest = global::Rebellion.Game.PlayerRequests.SetSpeedRequest;
 
 namespace Rebellion.Tests.Content
 {
@@ -38,7 +43,7 @@ namespace Rebellion.Tests.Content
             SessionState.SetString(
                 _settingsBackupKey,
                 File.Exists(settingsPath)
-                    ? System.Convert.ToBase64String(
+                    ? Convert.ToBase64String(
                         Encoding.UTF8.GetBytes(AtomicTextFile.ReadAllText(settingsPath))
                     )
                     : "-"
@@ -88,7 +93,7 @@ namespace Rebellion.Tests.Content
             else
                 AtomicTextFile.WriteAllText(
                     settingsPath,
-                    Encoding.UTF8.GetString(System.Convert.FromBase64String(settingsBackup))
+                    Encoding.UTF8.GetString(Convert.FromBase64String(settingsBackup))
                 );
             SessionState.EraseString(_settingsBackupKey);
         }
@@ -162,10 +167,9 @@ namespace Rebellion.Tests.Content
             yield return null;
 
             Assert.IsFalse(manager.HasActiveGame);
-            Task<Rebellion.Game.PlayerRequests.PlayerRequestOutcome> request =
-                requests.ExecuteAsync(
-                    new Rebellion.Game.PlayerRequests.SetSpeedRequest { Speed = TickSpeed.Fast }
-                );
+            Task<PlayerRequestOutcome> request = requests.ExecuteAsync(
+                new SetSpeedRequest { Speed = TickSpeed.Fast }
+            );
             while (!request.IsCompleted)
                 yield return null;
             Assert.IsFalse(request.GetAwaiter().GetResult().Accepted);
@@ -356,7 +360,7 @@ namespace Rebellion.Tests.Content
             int strategyLoads = 0;
             bool recoveryAccepted = false;
             BootstrapDestructionObserver observer = null;
-            System.Action requestRecovery = () =>
+            Action requestRecovery = () =>
                 recoveryAccepted = AppBootstrap.RecoverInterruptedMultiplayerLoad();
             List<AppBootstrap> replacements = new();
             UnityAction<Scene, LoadSceneMode> observeScene = (scene, mode) =>
@@ -707,7 +711,7 @@ namespace Rebellion.Tests.Content
                 UIContext context = new UIContext(
                     game,
                     new FactionThemeLibrary(pack.GameData.FactionThemes),
-                    new EncyclopediaCatalog(System.Array.Empty<EncyclopediaEntry>()),
+                    new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>()),
                     assets.GetTexture,
                     assets.GetTextureContentBounds,
                     assets.GetSmoothTexture
@@ -805,7 +809,7 @@ namespace Rebellion.Tests.Content
         /// </summary>
         private sealed class BootstrapDestructionObserver : MonoBehaviour
         {
-            public event System.Action Destroyed;
+            public event Action Destroyed;
 
             /// <summary>
             /// Notifies the integration test while the outgoing application's destruction completes.

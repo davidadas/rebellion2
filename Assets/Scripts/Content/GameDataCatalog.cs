@@ -8,6 +8,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
+using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 
 /// <summary>
@@ -47,6 +48,8 @@ public sealed class GameDataCatalog
 
     public FactionThemes FactionThemes { get; }
 
+    public TacticalCombatDefinition TacticalCombat { get; }
+
     /// <summary>
     /// Creates a complete typed game-data catalog.
     /// </summary>
@@ -65,6 +68,7 @@ public sealed class GameDataCatalog
     /// <param name="encyclopediaEntries">The authored encyclopedia entries.</param>
     /// <param name="factionThemes">The neutral and faction presentation themes.</param>
     /// <param name="officerTraits">The content-authored officer trait definitions.</param>
+    /// <param name="tacticalCombat">The shared tactical deployment and geometry definitions.</param>
     public GameDataCatalog(
         GameConfig gameConfig,
         GameGenerationConfig generationConfig,
@@ -80,7 +84,8 @@ public sealed class GameDataCatalog
         MessageDefinition[] messageDefinitions,
         EncyclopediaEntries encyclopediaEntries,
         FactionThemes factionThemes,
-        OfficerTraitDefinition[] officerTraits = null
+        OfficerTraitDefinition[] officerTraits = null,
+        TacticalCombatDefinition tacticalCombat = null
     )
     {
         GameConfig = gameConfig ?? throw new ArgumentNullException(nameof(gameConfig));
@@ -106,6 +111,25 @@ public sealed class GameDataCatalog
         EncyclopediaEntries =
             encyclopediaEntries ?? throw new ArgumentNullException(nameof(encyclopediaEntries));
         FactionThemes = factionThemes ?? throw new ArgumentNullException(nameof(factionThemes));
+        TacticalCombat = tacticalCombat ?? new TacticalCombatDefinition();
+    }
+
+    /// <summary>
+    /// Reattaches shared tactical equipment and repair definitions to campaign ships.
+    /// </summary>
+    /// <param name="ships">The newly created or loaded ships.</param>
+    internal void BindCapitalShipDefinitions(IEnumerable<CapitalShip> ships)
+    {
+        Dictionary<string, TacticalCombatUnitDefinition> definitions =
+            TacticalCombat.Units.ToDictionary(unit => unit.UnitTypeID, StringComparer.Ordinal);
+        foreach (CapitalShip ship in ships)
+        {
+            definitions.TryGetValue(
+                ship.TypeID ?? string.Empty,
+                out TacticalCombatUnitDefinition definition
+            );
+            ship.BindTacticalDefinitions(TacticalCombat, definition);
+        }
     }
 
     /// <summary>

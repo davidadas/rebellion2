@@ -77,40 +77,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void MarkInputChanged_UnrecoverableInput_DoesNotMarkInputDirty()
-        {
-            InputAction action = _inputManager.Asset.FindAction("Strategy/ShowTroopers", true);
-            action.ApplyBindingOverride(0, "<Keyboard>/v");
-            _inputManager.RequireInputRestart();
-
-            _session.MarkInputChanged();
-
-            Assert.IsFalse(_session.IsDirty);
-        }
-
-        [Test]
-        public void Commit_UnrecoverableInput_PreservesSavedBindings()
-        {
-            InputAction action = _inputManager.Asset.FindAction("Strategy/ShowTroopers", true);
-            action.ApplyBindingOverride(0, "<Keyboard>/v");
-            _userSettings.Save();
-            _session.Begin();
-            string saved = _userSettings.Settings.Input.BindingOverridesJson;
-            action.ApplyBindingOverride(0, "<Keyboard>/k");
-            _inputManager.RequireInputRestart();
-            _session.SetVolume(2, 0.25f);
-            _session.MarkInputChanged();
-
-            Assert.DoesNotThrow(_session.Commit);
-
-            global::UserSettings persisted = JsonUtility.FromJson<global::UserSettings>(
-                File.ReadAllText(_settingsPath)
-            );
-            Assert.AreEqual(saved, persisted.Input.BindingOverridesJson);
-            Assert.IsFalse(_session.IsDirty);
-        }
-
-        [Test]
         public void SetVolume_ReturnedToSnapshot_ClearsDirtyState()
         {
             _session.SetVolume(2, 0.25f);

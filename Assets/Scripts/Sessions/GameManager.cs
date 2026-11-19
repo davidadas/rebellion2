@@ -273,8 +273,6 @@ public sealed class GameManager
 
     /// <summary>
     /// Advances ordered simulation work within the configured application-frame budget.
-    /// A started tick finishes while paused so its command boundary can reopen; paused time
-    /// continues to prevent another tick from starting.
     /// </summary>
     /// <param name="tick">The current tick enumerator, still owned and disposed by its caller.</param>
     /// <returns>True when work remains for a later frame; false when the tick has completed.</returns>
@@ -282,6 +280,8 @@ public sealed class GameManager
     {
         if (tick == null)
             return false;
+        if (GetGameSpeed() == TickSpeed.Paused)
+            return true;
         double budget = _getGame().Config.GameSpeed.TickWorkBudgetMilliseconds;
         long started = _getTimestamp();
         do

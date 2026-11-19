@@ -7,7 +7,9 @@
         "com.playeveryware.eos.core",
         "Unity.InputSystem",
         "Unity.TextMeshPro",
-        "UnityEngine.UI"
+        "UnityEngine.UI",
+        "Rebellion.Game",
+        "Rebellion.Networking.Transport"
     ],
     "includePlatforms": [
         "Editor",

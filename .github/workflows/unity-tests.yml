@@ -26,12 +26,17 @@ env:
   UNITY_IMAGE_VERSION: 3
 
 jobs:
+  native-math:
+    if: github.event_name != 'workflow_dispatch'
+    uses: ./.github/workflows/native-math.yml
+
   resolve-media:
     name: Resolve media revision
     if: github.event_name == 'push'
     uses: ./.github/workflows/resolve-media.yml
     with:
       branch: ${{ github.head_ref }}
+      checkout_ref: ${{ github.sha }}
     secrets: inherit
     permissions:
       contents: read
@@ -40,7 +45,7 @@ jobs:
     name: Build (${{ matrix.targetPlatform }})
     if: github.event_name == 'push'
     runs-on: ${{ matrix.targetPlatform == 'StandaloneWindows64' && 'windows-2022' || 'ubuntu-latest' }}
-    needs: resolve-media
+    needs: [resolve-media, native-math]
     environment: production
     permissions:
       contents: read
@@ -56,6 +61,24 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Install Windows native vector library
+        uses: actions/download-artifact@v4
+        with:
+          name: tactical-math-win-x64
+          path: Assets/Plugins
+
+      - name: Install Linux native vector library
+        uses: actions/download-artifact@v4
+        with:
+          name: tactical-math-linux-x64
+          path: Assets/Plugins
+
+      - name: Install macOS native vector library
+        uses: actions/download-artifact@v4
+        with:
+          name: tactical-math-osx
+          path: Assets/Plugins
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -374,6 +397,9 @@ jobs:
     uses: ./.github/workflows/resolve-media.yml
     with:
       branch: ${{ needs.approve-pr.outputs.media_branch }}
+      checkout_ref: refs/pull/${{ inputs.pull_request_number }}/merge
+      expected_base_sha: ${{ needs.approve-pr.outputs.base_sha }}
+      expected_head_sha: ${{ inputs.head_sha }}
     secrets: inherit
     permissions:
       contents: read

@@ -1,7 +1,9 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
+using Object = global::UnityEngine.Object;
 
 namespace Rebellion.Tests.UI.Components
 {
@@ -466,7 +468,7 @@ namespace Rebellion.Tests.UI.Components
         private static UIWindow ToggleExclusiveWindow<TContent>(
             UIWindowManager windowManager,
             TContent prefab,
-            System.Predicate<TContent> matchesRequestedWindow
+            Predicate<TContent> matchesRequestedWindow
         )
             where TContent : MonoBehaviour
         {

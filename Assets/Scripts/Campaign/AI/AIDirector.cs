@@ -1,0 +1,303 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Rebellion.Campaign.AI.Demands;
+using Rebellion.Campaign.AI.Phases;
+using Rebellion.Campaign.AI.Planners;
+using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Results;
+using Rebellion.Game.Units;
+using Rebellion.Gameplay;
+using Rebellion.Util.Random;
+
+namespace Rebellion.Campaign.AI
+{
+    /// <summary>
+    /// Coordinates the AI turn phases for each faction.
+    /// </summary>
+    public sealed class AIDirector
+    {
+        private readonly IReadOnlyDictionary<string, OfficerAIBehavior> _officerBehaviors;
+        private readonly GameRoot _game;
+        private readonly FogOfWarQueries _fogOfWar;
+        private readonly IRandomNumberProvider _random;
+        private readonly MissionCommands _missions;
+        private readonly MissionEncounterOdds.Cache _missionEncounterCache;
+        private readonly MovementCommands _movement;
+        private readonly HeadquartersCommands _headquarters;
+        private readonly PersonnelCommands _officerCommands;
+        private readonly ManufacturingCommands _manufacturing;
+        private readonly MaintenanceCommands _maintenance;
+        private readonly BombardmentCommands _bombardment;
+        private readonly PlanetaryAssaultCommands _planetaryAssault;
+        private readonly IReadOnlyList<IAITurnPhase> _turnPhases;
+        private readonly IReadOnlyList<IAITurnPhase> _fleetTurnPhases;
+
+        /// <summary>
+        /// Raised immediately before one named unit of faction-turn work begins.
+        /// </summary>
+        public event Action<Faction, string> FactionTurnStepStarted;
+
+        /// <summary>
+        /// Raised after one named unit of faction-turn work finishes or is interrupted.
+        /// </summary>
+        public event Action<Faction, string> FactionTurnStepCompleted;
+
+        /// <summary>
+        /// Raised immediately before one faction's AI turn begins.
+        /// </summary>
+        public event Action<Faction> FactionTurnStarted;
+
+        /// <summary>
+        /// Raised after one faction's AI turn completes.
+        /// </summary>
+        public event Action<Faction> FactionTurnCompleted;
+
+        /// <summary>
+        /// Creates an AI director using the current game systems.
+        /// </summary>
+        /// <param name="game">The game instance.</param>
+        /// <param name="missions">Mission system used by mission proposals.</param>
+        /// <param name="movement">Movement system used by movement proposals.</param>
+        /// <param name="manufacturing">Manufacturing system used by production proposals.</param>
+        /// <param name="bombardment">Bombardment system used by fleet attack proposals.</param>
+        /// <param name="planetaryAssault">Planetary-assault system used by fleet attack proposals.</param>
+        /// <param name="random">RNG provider used by probabilistic AI decisions.</param>
+        /// <param name="maintenance">Maintenance system used to project production capacity.</param>
+        /// <param name="headquarters">Headquarters system used by relocation proposals.</param>
+        /// <param name="officerCommands">Officer command appointment operations.</param>
+        /// <param name="results">Completed game changes that can invalidate incremental execution state.</param>
+        /// <param name="gameData">The active content catalog supplying officer AI configuration.</param>
+        public AIDirector(
+            GameRoot game,
+            MissionCommands missions,
+            MovementCommands movement,
+            ManufacturingCommands manufacturing,
+            BombardmentCommands bombardment,
+            PlanetaryAssaultCommands planetaryAssault,
+            IRandomNumberProvider random,
+            MaintenanceCommands maintenance = null,
+            HeadquartersCommands headquarters = null,
+            PersonnelCommands officerCommands = null,
+            GameResultBus results = null,
+            GameDataCatalog gameData = null
+        )
+        {
+            _game = game;
+            _officerBehaviors =
+                gameData
+                    ?.Officers.Where(officer => officer.AIBehavior != null)
+                    .ToDictionary(
+                        officer => officer.InstanceID,
+                        officer => officer.AIBehavior,
+                        StringComparer.Ordinal
+                    )
+                ?? new Dictionary<string, OfficerAIBehavior>(StringComparer.Ordinal);
+            _fogOfWar = game == null ? null : new FogOfWarQueries(game);
+            _random = random;
+            _missions = missions;
+            _missionEncounterCache = new MissionEncounterOdds.Cache(
+                game?.Config?.AI?.MissionPlanning?.EncounterCacheCapacity ?? 0
+            );
+            _movement = movement;
+            _headquarters = headquarters;
+            _officerCommands = officerCommands;
+            _manufacturing = manufacturing;
+            _maintenance = maintenance;
+            _bombardment = bombardment;
+            _planetaryAssault = planetaryAssault;
+            AIProductionDemandGenerator productionDemandGenerator =
+                new AIProductionDemandGenerator();
+            AIProductionPlanner productionPlanner = new AIProductionPlanner();
+            _turnPhases = new List<IAITurnPhase>
+            {
+                new AIDemandGenerationPhase(
+                    new IAIDemandGenerator[] { new AIAttackDemandGenerator() }
+                ),
+                new AIPlanningPhase(
+                    new IAIProposalPlanner[]
+                    {
+                        new AIAbortMissionPlanner(),
+                        new AIHeadquartersRelocationPlanner(),
+                        new AIMissionPlanner(),
+                        new AIOrbitalEngagementPlanner(),
+                        new AIFleetPlanner(),
+                        new AIMaintenanceRecoveryPlanner(),
+                    }
+                ),
+                new AIDemandGenerationPhase(new IAIDemandGenerator[] { productionDemandGenerator }),
+                new AIScoringPhase(),
+                new AISelectionPhase(),
+                new AIDemandGenerationPhase(new IAIDemandGenerator[] { productionDemandGenerator }),
+                new AIPlanningPhase(
+                    new IAIProposalPlanner[] { productionPlanner, new AIFacilityRemovalPlanner() }
+                ),
+                new AIScoringPhase(),
+                new AISelectionPhase(continueSelection: true),
+                new AIExecutionPhase(results),
+            };
+            _fleetTurnPhases = new List<IAITurnPhase>
+            {
+                new AIDemandGenerationPhase(
+                    new IAIDemandGenerator[] { new AIAttackDemandGenerator() }
+                ),
+                new AIPlanningPhase(
+                    new IAIProposalPlanner[]
+                    {
+                        new AIOrbitalEngagementPlanner(),
+                        new AIFleetPlanner(),
+                    }
+                ),
+                new AIScoringPhase(),
+                new AISelectionPhase(),
+                new AIExecutionPhase(results),
+            };
+        }
+
+        /// <summary>
+        /// Processes AI turns for every eligible AI-controlled faction.
+        /// </summary>
+        /// <returns>The results produced by AI actions.</returns>
+        public List<GameResult> ProcessTick()
+        {
+            List<GameResult> results = new List<GameResult>();
+            foreach (object _ in ProcessTickIncrementally(results)) { }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Processes eligible AI factions one phase at a time.
+        /// </summary>
+        /// <param name="results">The result list populated as faction turns complete.</param>
+        /// <returns>A sequence containing one step per completed AI phase.</returns>
+        internal IEnumerable<object> ProcessTickIncrementally(ICollection<GameResult> results)
+        {
+            int tickInterval = _game.Config.AI.TickInterval;
+            if (tickInterval <= 0 || _game.CurrentTick % tickInterval != 0)
+                yield break;
+
+            int decisionInterval =
+                _game.Summary.CustomSettings?.AIDecisionTickInterval
+                ?? _game.Config.AI.GetDecisionTickInterval(_game.Summary.Difficulty);
+            bool isDecisionTick =
+                (_game.CurrentTick / tickInterval - 1) % Math.Max(1, decisionInterval) == 0;
+
+            foreach (Faction faction in _game.GetFactions().Where(_game.IsFactionAIControlled))
+            {
+                GalaxyMap factionView = _fogOfWar.BuildFactionView(faction);
+                FactionTurnStarted?.Invoke(faction);
+                foreach (
+                    object step in ProcessFactionIncrementally(
+                        faction,
+                        factionView,
+                        results,
+                        isDecisionTick
+                    )
+                )
+                    yield return step;
+                FactionTurnCompleted?.Invoke(faction);
+            }
+        }
+
+        /// <summary>
+        /// Processes one faction AI turn.
+        /// </summary>
+        /// <param name="faction">The faction to process.</param>
+        /// <param name="factionView">The faction-visible galaxy state for this turn.</param>
+        /// <returns>Game results emitted by this AI turn.</returns>
+        internal List<GameResult> ProcessFaction(Faction faction, GalaxyMap factionView)
+        {
+            List<GameResult> results = new List<GameResult>();
+            foreach (object _ in ProcessFactionIncrementally(faction, factionView, results)) { }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Processes one faction AI turn one phase at a time.
+        /// </summary>
+        /// <param name="faction">The faction to process.</param>
+        /// <param name="factionView">The faction-visible galaxy state for this turn.</param>
+        /// <param name="results">The result list populated when processing completes.</param>
+        /// <param name="isDecisionTick">Whether to evaluate new strategic assignments.</param>
+        /// <returns>A sequence containing one step per completed phase.</returns>
+        internal IEnumerable<object> ProcessFactionIncrementally(
+            Faction faction,
+            GalaxyMap factionView,
+            ICollection<GameResult> results,
+            bool isDecisionTick = true
+        )
+        {
+            const string assessmentStep = "Assessment";
+            FactionTurnStepStarted?.Invoke(faction, assessmentStep);
+            AITurnContext context;
+            try
+            {
+                AIAssessment assessment = new AIAssessment(
+                    _game,
+                    faction,
+                    factionView,
+                    _officerBehaviors
+                );
+                assessment.BeginPlanning();
+                AIStrategicPlan strategicPlan = new AIStrategicPlan(_game, assessment);
+                context = new AITurnContext(
+                    _game,
+                    faction,
+                    _missions,
+                    _movement,
+                    _manufacturing,
+                    _bombardment,
+                    _planetaryAssault,
+                    _random,
+                    assessment,
+                    strategicPlan,
+                    factionView,
+                    _maintenance,
+                    _headquarters,
+                    _officerCommands,
+                    new MissionQueries(
+                        _game,
+                        assessment.GetMissionDetectorCommander,
+                        _missionEncounterCache,
+                        reuseObservedState: true
+                    )
+                );
+                context.IsDecisionTick = isDecisionTick;
+            }
+            finally
+            {
+                FactionTurnStepCompleted?.Invoke(faction, assessmentStep);
+            }
+            yield return null;
+
+            foreach (IAITurnPhase phase in isDecisionTick ? _turnPhases : _fleetTurnPhases)
+            {
+                string stepName = phase.GetType().Name;
+                FactionTurnStepStarted?.Invoke(faction, stepName);
+                try
+                {
+                    if (phase is IAIIncrementalTurnPhase incrementalPhase)
+                    {
+                        foreach (object step in incrementalPhase.ExecuteIncrementally(context))
+                            yield return step;
+                    }
+                    else
+                        phase.Execute(context);
+                }
+                finally
+                {
+                    FactionTurnStepCompleted?.Invoke(faction, stepName);
+                }
+
+                yield return null;
+            }
+
+            foreach (GameResult result in context.Results)
+                results.Add(result);
+        }
+    }
+}
