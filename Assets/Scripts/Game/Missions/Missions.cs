@@ -2296,11 +2296,7 @@ namespace Rebellion.Game.Missions
         private bool HasValidTarget(GameRoot game)
         {
             Officer captive = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
-            if (
-                captive == null
-                || !IsOperationalTarget(captive)
-                || captive.GetParentOfType<Planet>() != GetParent() as Planet
-            )
+            if (captive == null || captive.GetParentOfType<Planet>() != GetParent() as Planet)
                 return false;
 
             bool isAwaitingCompletedReturn =
@@ -2308,7 +2304,8 @@ namespace Rebellion.Game.Missions
                 && !captive.IsCaptured
                 && captive.GetParent() is CapitalShip carrier
                 && carrier.GetOwnerInstanceID() != captive.GetOwnerInstanceID();
-            return captive.IsCaptured || isAwaitingCompletedReturn;
+            return isAwaitingCompletedReturn
+                || (captive.IsCaptured && IsOperationalTarget(captive));
         }
 
         /// <summary>
