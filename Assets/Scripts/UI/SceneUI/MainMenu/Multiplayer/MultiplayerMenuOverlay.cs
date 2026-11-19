@@ -442,7 +442,9 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
             else
             {
                 string signature =
-                    _coordinator.IsSearchingGames
+                    signedIn
+                    + ":"
+                    + _coordinator.IsSearchingGames
                     + ":"
                     + string.Join(
                         ";",
