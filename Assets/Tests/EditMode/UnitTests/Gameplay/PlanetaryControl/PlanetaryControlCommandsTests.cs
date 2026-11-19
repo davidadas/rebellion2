@@ -638,7 +638,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void TransferPlanet_StationedEnemyStarfighter_ReroutesStarfighter()
+        public void TransferPlanet_StationedEnemyStarfighterWithoutHyperdrive_DestroysStarfighter()
         {
             _game.ChangeOwnership(_targetPlanet, "empire");
             Starfighter fighter = new Starfighter
@@ -654,16 +654,9 @@ namespace Rebellion.Tests.Gameplay
 
             TransferPlanet(_targetPlanet, _rebels);
 
-            Assert.AreSame(
-                _empirePlanet,
-                fighter.GetParentOfType<Planet>(),
-                "Stationed enemy starfighter should evacuate despite lacking its own hyperdrive"
-            );
-            Assert.IsNotNull(fighter.Movement);
-            Assert.AreSame(
-                fighter,
-                _game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID)
-            );
+            Assert.IsNull(fighter.GetParent());
+            Assert.IsNull(fighter.Movement);
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID, true));
         }
 
         [Test]
