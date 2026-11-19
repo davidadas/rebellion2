@@ -289,6 +289,16 @@ public static class StandalonePlayerBuild
                         )
                     );
                 }
+                else
+                {
+                    PlayerSettings.SetScriptingDefineSymbols(
+                        NamedBuildTarget.Standalone,
+                        originalStandaloneDefines
+                            .Split(';')
+                            .Where(define => define != _epicWindowsArm64ScriptingDefine)
+                            .ToArray()
+                    );
+                }
             }
 #endif
             BuildReport report = BuildPipeline.BuildPlayer(options);
