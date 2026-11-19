@@ -465,6 +465,13 @@ public sealed class ContentPackEditorController : MonoBehaviour
             if (project == null)
                 return;
             SaveCurrentProject();
+            IReadOnlyList<ContentEditorValidationIssue> fieldErrors =
+                ContentEditorPackValidator.GetFieldErrors(project);
+            if (fieldErrors.Count > 0)
+            {
+                view.RenderValidationErrors(fieldErrors);
+                return;
+            }
             view.RenderStatus("Validating content pack. Press Escape to cancel.", false);
             IReadOnlyList<string> warnings = await ContentEditorPackValidator.ValidateAsync(
                 project,

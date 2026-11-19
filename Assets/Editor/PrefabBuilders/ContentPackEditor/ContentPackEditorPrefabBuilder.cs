@@ -455,6 +455,7 @@ public static class ContentPackEditorPrefabBuilder
         BuildWelcome(canvasRoot, view);
         BuildPackDialog(canvasRoot, view);
         BuildSelectionDialog(canvasRoot, view);
+        BuildValidationDialog(canvasRoot, view);
         BuildConfirmation(canvasRoot, view);
         BuildImagePreview(canvasRoot, view);
         BuildNotification(canvasRoot, view);
@@ -647,6 +648,70 @@ public static class ContentPackEditorPrefabBuilder
         Assign(dialog, "apply", apply);
         Assign(dialog, "cancel", cancel);
         Assign(view, "selectionDialog", dialog);
+        overlay.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Authors a scrollable report whose rows navigate to rejected authored fields.
+    /// </summary>
+    /// <param name="parent">The canvas root.</param>
+    /// <param name="view">The workspace owning the report.</param>
+    private static void BuildValidationDialog(Transform parent, ContentPackEditorView view)
+    {
+        Image overlay = Surface("ValidationResults", parent, new Color(0, 0, 0, 0.75f));
+        Stretch(overlay.rectTransform);
+        overlay.raycastTarget = true;
+        ContentEditorValidationDialogView dialog =
+            overlay.gameObject.AddComponent<ContentEditorValidationDialogView>();
+        Image panel = Surface("Panel", overlay.transform, ContentEditorColorRole.Panel);
+        panel.rectTransform.anchorMin =
+            panel.rectTransform.anchorMax =
+            panel.rectTransform.pivot =
+                new Vector2(0.5f, 0.5f);
+        panel.rectTransform.sizeDelta = new Vector2(880, 650);
+        TMP_Text heading = Label("Heading", panel.transform, "Validation errors", 22);
+        Rect(heading.rectTransform, 24, 18, 716, 34);
+        TMP_Text summary = Label("Summary", panel.transform, string.Empty, 14, true);
+        Rect(summary.rectTransform, 24, 58, 832, 28);
+        ScrollAreaLayout scroll = Scroll("Issues", panel.transform);
+        Rect((RectTransform)scroll.transform, 24, 98, 832, 484);
+        RectTransform row = Layer("IssueTemplate", scroll.ScrollArea.ContentRoot);
+        Rect(row, 0, 0, 816, 76);
+        ContentEditorValidationIssueView issue =
+            row.gameObject.AddComponent<ContentEditorValidationIssueView>();
+        Image rowSurface = Surface("ValidationIssueLink", row, ContentEditorColorRole.Button);
+        Stretch(rowSurface.rectTransform, 0, 4, 0, 4);
+        Button open = rowSurface.gameObject.AddComponent<Button>();
+        open.targetGraphic = rowSurface;
+        TextMeshProUGUI message = Label("Message", rowSurface.transform, string.Empty, 13);
+        Stretch(message.rectTransform, 16, 9, 52, 9);
+        message.alignment = TextAlignmentOptions.MidlineLeft;
+        message.textWrappingMode = TextWrappingModes.Normal;
+        RawImage linkImage = Layer("Icon", rowSurface.transform)
+            .gameObject.AddComponent<RawImage>();
+        linkImage.texture =
+            AssetDatabase.LoadAssetAtPath<Texture2D>(_locationLinkIconPath)
+            ?? throw new FileNotFoundException("The location-link icon is missing.");
+        linkImage.color = Color.white;
+        linkImage.raycastTarget = false;
+        linkImage
+            .gameObject.AddComponent<ContentTextureBinding>()
+            .SetAddress(_locationLinkIconAddress);
+        Rect(linkImage.rectTransform, 0, 0, 20, 20);
+        linkImage.rectTransform.anchorMin = linkImage.rectTransform.anchorMax = Vector2.right;
+        linkImage.rectTransform.pivot = Vector2.right;
+        linkImage.rectTransform.anchoredPosition = new Vector2(-16, 0);
+        Assign(issue, "openButton", open);
+        Assign(issue, "message", message);
+        row.gameObject.SetActive(false);
+        Button close = Button("Close", panel.transform, "Close");
+        Rect((RectTransform)close.transform, 736, 598, 120, 34);
+        Assign(dialog, "heading", heading);
+        Assign(dialog, "summary", summary);
+        Assign(dialog, "scroll", scroll);
+        Assign(dialog, "rowTemplate", issue);
+        Assign(dialog, "closeButton", close);
+        Assign(view, "validationDialog", dialog);
         overlay.gameObject.SetActive(false);
     }
 

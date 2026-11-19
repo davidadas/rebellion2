@@ -56,6 +56,27 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void GetFieldErrors_MultipleInvalidSavedFields_ReturnsEveryFailure()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorRecord[] officers = Records(project)
+                .Where(item => item.Kind == "Officer")
+                .Take(2)
+                .ToArray();
+            RewriteField(project, officers[0], "CurrentRank", "UnknownRankOne");
+            RewriteField(project, officers[1], "CurrentRank", "UnknownRankTwo");
+            ContentPackEditorStorage.Save(project);
+
+            IReadOnlyList<ContentEditorValidationIssue> issues =
+                ContentEditorPackValidator.GetFieldErrors(project);
+
+            Assert.AreEqual(2, issues.Count);
+            Assert.That(issues, Has.Some.Property("Message").Contains("UnknownRankOne"));
+            Assert.That(issues, Has.Some.Property("Message").Contains("UnknownRankTwo"));
+            Assert.That(issues.All(issue => issue.Field.MemberName == "CurrentRank"), Is.True);
+        }
+
+        [Test]
         public async Task ValidateAsync_CancelledBeforeStartup_ReturnsControlAndPreservesTheProjectAsync()
         {
             ContentPackEditorProject project = CreateLoadableProject();

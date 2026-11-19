@@ -457,6 +457,20 @@ internal static class ContentEditorPackValidator
     /// <param name="project">The saved project or immutable play/export snapshot.</param>
     internal static void ValidateFields(ContentPackEditorProject project)
     {
+        ContentEditorValidationIssue issue = GetFieldErrors(project).FirstOrDefault();
+        if (issue != null)
+            throw issue.Exception;
+    }
+
+    /// <summary>
+    /// Collects every independently invalid authored field before dependent startup checks run.
+    /// </summary>
+    /// <param name="project">The saved project or immutable play/export snapshot.</param>
+    /// <returns>All field failures from the completed structural pass.</returns>
+    internal static IReadOnlyList<ContentEditorValidationIssue> GetFieldErrors(
+        ContentPackEditorProject project
+    )
+    {
         if (project.IsDirty)
             throw new InvalidOperationException("Save the content pack before validating it.");
         ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
@@ -466,6 +480,7 @@ internal static class ContentEditorPackValidator
         );
         IReadOnlyDictionary<string, string> factions = project.GetFactionOptions();
         IReadOnlyDictionary<string, string> traits = project.GetTraitOptions();
+        List<ContentEditorValidationIssue> issues = new List<ContentEditorValidationIssue>();
         foreach (
             ContentPackEditorRecord record in project
                 .GetCatalogs()
@@ -488,9 +503,10 @@ internal static class ContentEditorPackValidator
                     exception
                 );
                 contextual.Data[_fieldDataKey] = field;
-                throw contextual;
+                issues.Add(new ContentEditorValidationIssue(contextual, field, detail));
             }
         }
+        return issues;
     }
 
     /// <summary>

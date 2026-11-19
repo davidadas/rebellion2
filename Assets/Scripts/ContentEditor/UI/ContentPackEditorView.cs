@@ -160,6 +160,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
 
     [SerializeField]
     private SelectionDialogView selectionDialog;
+
+    [SerializeField]
+    private ContentEditorValidationDialogView validationDialog;
     internal event Action<ContentPackEditorCollection> CollectionAddRequested;
     internal event Action<ContentPackEditorCollection, int> CollectionRemoveRequested;
     internal event Action<
@@ -379,6 +382,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || dismissNoticeButton == null
             || noticeLinkButton == null
             || selectionDialog == null
+            || validationDialog == null
             || confirmation == null
             || imagePreview == null
             || previewAudio == null
@@ -576,6 +580,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <returns>Whether an editor popup consumed the cancellation.</returns>
     public bool TryCancel()
     {
+        if (validationDialog.TryCancel())
+            return true;
         if (selectionDialog.TryCancel())
             return true;
         if (
@@ -642,6 +648,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         welcomePane.SetActive(false);
         editButton.interactable = true;
         selectionDialog.Hide();
+        validationDialog.Hide();
         confirmation.TryCancel();
         imagePreview.TryCancel();
         menu.Reset();
@@ -948,6 +955,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     public void ClearProject()
     {
         selectionDialog.Hide();
+        validationDialog.Hide();
         form.ResetGenerationSelection();
         xml.Clear();
         FinishMapEdit();
@@ -1195,6 +1203,21 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     }
 
     /// <summary>
+    /// Displays every rejected authored field from one completed structural validation pass.
+    /// </summary>
+    /// <param name="issues">The rejected fields and their contextual messages.</param>
+    internal void RenderValidationErrors(IReadOnlyList<ContentEditorValidationIssue> issues)
+    {
+        string count =
+            issues.Count == 1 ? "1 validation error." : $"{issues.Count} validation errors.";
+        RenderStatus(count, true);
+        validationDialog.Show(
+            issues,
+            issue => ErrorFieldRequested?.Invoke(issue.Field, issue.FieldError)
+        );
+    }
+
+    /// <summary>
     /// Presents one warning at a time so large packs cannot overflow a fixed dialog.
     /// </summary>
     /// <param name="warnings">The operation's completed warning list.</param>
@@ -1236,6 +1259,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             !workbench.interactable
             || packDialog.IsOpen
             || selectionDialog.IsOpen
+            || validationDialog.IsOpen
             || confirmation.gameObject.activeSelf
             || imagePreview.gameObject.activeSelf
         )
