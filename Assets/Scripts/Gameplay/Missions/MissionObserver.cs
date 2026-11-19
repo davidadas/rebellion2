@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 
 namespace Rebellion.Gameplay
 {
     /// <summary>
-    /// Reconciles missions after participant capture, death, or injury results are published.
+    /// Reconciles missions after participant capture, death, injury, or destruction results are published.
     /// </summary>
     internal sealed class MissionObserver : IResultObserver, IDisposable
     {
@@ -24,9 +25,9 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Registers the capture and death callbacks with the result bus.
+        /// Registers participant-state callbacks with the result bus.
         /// </summary>
-        /// <param name="results">The bus that delivers officer capture and death changes.</param>
+        /// <param name="results">The bus that delivers participant-state changes.</param>
         public void Connect(GameResultBus results)
         {
             if (_subscriptions != null)
@@ -39,11 +40,12 @@ namespace Rebellion.Gameplay
                 results.Subscribe<OfficerCaptureStateResult>(HandleResults),
                 results.Subscribe<OfficerKilledResult>(HandleResults),
                 results.Subscribe<OfficerInjuredResult>(HandleResults),
+                results.Subscribe<GameObjectDestroyedResult>(HandleResults),
             };
         }
 
         /// <summary>
-        /// Stops receiving officer capture and death changes.
+        /// Stops receiving participant-state changes.
         /// </summary>
         public void Dispose()
         {
@@ -127,6 +129,37 @@ namespace Rebellion.Gameplay
                     missionResults
                 );
 
+            return missionResults;
+        }
+
+        /// <summary>
+        /// Reevaluates the mission that directly contained each destroyed special-forces unit
+        /// before its scene removal.
+        /// </summary>
+        /// <param name="results">The unit-destruction changes to process.</param>
+        /// <returns>Results produced while interrupting missions that lost their last primary participant.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<GameObjectDestroyedResult> results)
+        {
+            List<GameResult> missionResults = new();
+            IEnumerable<IGrouping<Mission, SpecialForces>> affectedMissions = (
+                results ?? Array.Empty<GameObjectDestroyedResult>()
+            )
+                .Select(result => result?.DestroyedObject)
+                .OfType<SpecialForces>()
+                .Select(participant =>
+                    (participant, mission: participant.GetLastParent() as Mission)
+                )
+                .Where(affected => affected.mission != null)
+                .GroupBy(affected => affected.mission, affected => affected.participant);
+
+            foreach (IGrouping<Mission, SpecialForces> affectedMission in affectedMissions)
+            {
+                _resolver.ReconcileDestroyedSpecialForces(
+                    affectedMission.Key,
+                    affectedMission.Distinct().ToList(),
+                    missionResults
+                );
+            }
             return missionResults;
         }
     }

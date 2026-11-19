@@ -266,6 +266,41 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Reconciles a mission after its directly contained special-forces participants have
+        /// been removed from the scene and interrupts it when the remaining primary team is invalid.
+        /// </summary>
+        /// <param name="mission">The mission that directly contained the units before deletion.</param>
+        /// <param name="destroyedParticipants">The destroyed units attributed to the mission.</param>
+        /// <param name="results">The batch receiving interruption and teardown results.</param>
+        internal void ReconcileDestroyedSpecialForces(
+            Mission mission,
+            IReadOnlyCollection<SpecialForces> destroyedParticipants,
+            List<GameResult> results
+        )
+        {
+            if (mission == null)
+                throw new ArgumentNullException(nameof(mission));
+            if (destroyedParticipants == null)
+                throw new ArgumentNullException(nameof(destroyedParticipants));
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
+            if (destroyedParticipants.Count == 0 || mission.GetParent() == null)
+                return;
+
+            List<IMissionParticipant> removed = destroyedParticipants
+                .Where(participant => ReferenceEquals(participant.GetLastParent(), mission))
+                .Distinct()
+                .Cast<IMissionParticipant>()
+                .ToList();
+            if (removed.Count == 0)
+                return;
+
+            mission.AcceptCurrentParticipantRoster();
+            if (mission.GetAbortReason(_game).HasValue)
+                InterruptMission(mission, results, removed);
+        }
+
+        /// <summary>
         /// Withdraws injured officers from their recorded mission while preserving a valid remaining team.
         /// Officers on friendly ground remain there; others follow the shared mission return policy.
         /// </summary>
