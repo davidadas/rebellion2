@@ -33,11 +33,21 @@ namespace Rebellion.Tests.ContentEditor.UI
                     new XElement(officer.Element)
                 );
                 ContentPackEditorField rank = snapshot.GetField("CurrentRank");
-                view.RenderFieldError("Choose a listed value.", rank);
+                view.RenderFieldError(
+                    "Officers/OFAL005/Current rank: Choose a listed value.",
+                    rank,
+                    "Choose a listed value."
+                );
                 Button link = view.GetComponentsInChildren<Button>(true)
                     .Single(button => button.name == "OpenInvalidField");
+                RawImage linkIcon = link.GetComponentInChildren<RawImage>(true);
 
                 Assert.IsTrue(link.gameObject.activeSelf);
+                Assert.AreEqual(new Vector2(16, 16), linkIcon.rectTransform.sizeDelta);
+                Assert.AreEqual(
+                    "Application/Strategy/UI/Windows/ui_strategyview_open_location_button",
+                    linkIcon.GetComponent<ContentTextureBinding>().Address
+                );
                 link.onClick.Invoke();
 
                 ContentEditorFieldView field =
@@ -45,6 +55,20 @@ namespace Rebellion.Tests.ContentEditor.UI
                         .Single(item => item.Field?.MemberName == "CurrentRank");
                 TMP_Dropdown dropdown = field.GetComponentInChildren<TMP_Dropdown>();
                 Assert.AreSame(dropdown.gameObject, EventSystem.current.currentSelectedGameObject);
+                Assert.IsTrue(field.HasError);
+                Assert.AreEqual(
+                    "Choose a listed value.",
+                    field
+                        .GetComponentsInChildren<TextMeshProUGUI>(true)
+                        .Single(text => text.name == "Error")
+                        .text
+                );
+                Assert.IsFalse(
+                    field
+                        .GetComponentsInChildren<Button>(true)
+                        .Single(button => button.name == "Revert")
+                        .gameObject.activeSelf
+                );
             }
             finally
             {
@@ -60,7 +84,11 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .First(catalog => catalog.Name == "Officers")
                 .Records.First()
                 .GetField("CurrentRank");
-            view.RenderFieldError("Choose a listed value.", field);
+            view.RenderFieldError(
+                "Officers/OFAL001/Current rank: Choose a listed value.",
+                field,
+                "Choose a listed value."
+            );
             Button link = view.GetComponentsInChildren<Button>(true)
                 .Single(button => button.name == "OpenInvalidField");
 

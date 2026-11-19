@@ -189,6 +189,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private Button menuAnchor;
     private TextInputHistory textRedoTarget;
     private ContentPackEditorField noticeField;
+    private string noticeFieldError;
     private GameSize previewSize = GameSize.Large;
     private GameDifficulty previewDifficulty = GameDifficulty.Medium;
     private string previewScenario;
@@ -235,7 +236,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         ContentPackEditorRecord
     > SelectionRequested;
     internal event Action<string> SectionRequested;
-    internal event Action<ContentPackEditorField> ErrorFieldRequested;
+    internal event Action<ContentPackEditorField, string> ErrorFieldRequested;
 
     public ContentEditorColorMode ColorMode => appearance.Mode;
     public bool IsPreviewAudioPlaying => previewAudio && previewAudio.isPlaying;
@@ -806,6 +807,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     public void RenderStatus(string message, bool isError)
     {
         noticeField = null;
+        noticeFieldError = null;
         noticeLinkButton.gameObject.SetActive(false);
         if (isError && noticeText.text != message)
             GameLogger.Warning("Content editor: " + message);
@@ -833,12 +835,14 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// </summary>
     /// <param name="message">The contextual validation failure.</param>
     /// <param name="field">The rejected field.</param>
-    internal void RenderFieldError(string message, ContentPackEditorField field)
+    /// <param name="fieldError">The concise failure to display beside the field.</param>
+    internal void RenderFieldError(string message, ContentPackEditorField field, string fieldError)
     {
         RenderStatus(message, true);
         if (packDialog.IsOpen || field == null)
             return;
         noticeField = field;
+        noticeFieldError = fieldError;
         noticeLinkButton.gameObject.SetActive(true);
     }
 
@@ -850,8 +854,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         ContentPackEditorField field = noticeField;
         if (field == null)
             return;
+        string fieldError = noticeFieldError;
         notice.SetActive(false);
-        ErrorFieldRequested?.Invoke(field);
+        ErrorFieldRequested?.Invoke(field, fieldError);
     }
 
     /// <summary>
@@ -2311,7 +2316,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// Selects the page and inspector tab that present a validated field, then focuses it.
     /// </summary>
     /// <param name="field">The current project field to reveal.</param>
-    internal void ShowField(ContentPackEditorField field)
+    /// <param name="validationError">The current-value failure to display beside the field.</param>
+    internal void ShowField(ContentPackEditorField field, string validationError)
     {
         searchInput.SetTextWithoutNotify(string.Empty);
         navigation.Render(catalogs);
@@ -2335,7 +2341,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             return;
         string targetSection = FieldSection(field, page, record);
         ShowSection(targetSection);
-        if (targetSection != "Advanced" && !form.FocusField(field))
+        if (targetSection != "Advanced" && !form.FocusField(field, validationError))
             ShowSection("Advanced");
     }
 

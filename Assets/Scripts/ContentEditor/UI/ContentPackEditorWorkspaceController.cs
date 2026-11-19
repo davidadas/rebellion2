@@ -211,7 +211,8 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
     /// Resolves a validation field against the current workspace before revealing it.
     /// </summary>
     /// <param name="source">The field reported by validation.</param>
-    private void ShowField(ContentPackEditorField source)
+    /// <param name="validationError">The concise validation failure.</param>
+    private void ShowField(ContentPackEditorField source, string validationError)
     {
         ContentPackEditorField field = Project
             ?.GetCatalogs()
@@ -233,7 +234,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
             );
             return;
         }
-        view.ShowField(field);
+        view.ShowField(field, validationError);
     }
 
     /// <summary>

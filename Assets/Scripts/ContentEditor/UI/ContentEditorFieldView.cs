@@ -52,6 +52,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     private IReadOnlyList<string> choiceValues = Array.Empty<string>();
     private IReadOnlyList<string> mediaFiles = Array.Empty<string>();
     private ContentEditorColorRole backgroundRole = ContentEditorColorRole.Input;
+    private bool canRevertError;
 
     public event Action<string> ValidationFailed;
     public event Action<ContentPackEditorField, IReadOnlyList<string>> Submitted;
@@ -236,7 +237,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             Mathf.Max(1, Mathf.RoundToInt(bounds.width - valueLeft - 8)),
             32
         );
-        revertButton.gameObject.SetActive(HasError);
+        revertButton.gameObject.SetActive(HasError && canRevertError);
         if (HasError)
         {
             UILayout.SetSourceRect(
@@ -347,6 +348,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         input.SetTextWithoutNotify(field.IsList ? string.Join("\n", field.Values) : field.Value);
         input.GetComponent<TextInputHistory>()?.ClearHistory();
         error.text = string.Empty;
+        canRevertError = false;
         revertButton.gameObject.SetActive(false);
         changed?.Invoke();
     }
@@ -368,6 +370,18 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         EventSystem.current?.SetSelectedGameObject(target);
         if (target == input.gameObject)
             input.ActivateInputField();
+    }
+
+    /// <summary>
+    /// Displays a validation failure for the field's currently authored value.
+    /// </summary>
+    /// <param name="message">The concise validation failure.</param>
+    public void ShowValidationError(string message)
+    {
+        error.text = message ?? string.Empty;
+        canRevertError = false;
+        revertButton.gameObject.SetActive(false);
+        changed?.Invoke();
     }
 
     /// <summary>
@@ -464,6 +478,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
                 field.MediaType == ContentPackEditorMediaType.Audio ? "Play/stop" : "Preview";
             label.text = field.Caption;
             error.text = string.Empty;
+            canRevertError = false;
             revertButton.gameObject.SetActive(false);
             importButton.gameObject.SetActive(field.IsMedia && !field.IsMediaDirectory);
             previewButton.gameObject.SetActive(
@@ -776,6 +791,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         if (error.text != message)
             ValidationFailed?.Invoke(field.Name + ": " + message);
         error.text = message;
+        canRevertError = true;
         revertButton.gameObject.SetActive(true);
         changed?.Invoke();
     }

@@ -14,6 +14,8 @@ public static class ContentPackEditorPrefabBuilder
 {
     private const string _locationLinkIconPath =
         "Assets/Content/Application/Strategy/UI/Windows/ui_strategyview_open_location_button.png";
+    private const string _locationLinkIconAddress =
+        "Application/Strategy/UI/Windows/ui_strategyview_open_location_button";
     internal const string ScenePath = "Assets/Scenes/ContentPackEditor.unity";
     internal const string PrefabPath =
         "Assets/Prefabs/UI/ContentPackEditor/ContentPackEditorRoot.prefab";
@@ -889,15 +891,21 @@ public static class ContentPackEditorPrefabBuilder
         text.alignment = TextAlignmentOptions.TopLeft;
         text.overflowMode = TextOverflowModes.Overflow;
         text.textWrappingMode = TextWrappingModes.Normal;
-        RawImage linkImage = Layer("OpenInvalidField", notice.transform)
+        Image linkHitArea = Surface("OpenInvalidField", notice.transform, Color.clear);
+        linkHitArea.raycastTarget = true;
+        Rect(linkHitArea.rectTransform, 512, 10, 30, 30);
+        RawImage linkImage = Layer("Icon", linkHitArea.transform)
             .gameObject.AddComponent<RawImage>();
         linkImage.texture =
             AssetDatabase.LoadAssetAtPath<Texture2D>(_locationLinkIconPath)
             ?? throw new FileNotFoundException("The location-link icon is missing.");
         linkImage.color = Color.white;
-        linkImage.raycastTarget = true;
-        Rect(linkImage.rectTransform, 512, 10, 30, 30);
-        Button link = linkImage.gameObject.AddComponent<Button>();
+        linkImage.raycastTarget = false;
+        linkImage
+            .gameObject.AddComponent<ContentTextureBinding>()
+            .SetAddress(_locationLinkIconAddress);
+        Rect(linkImage.rectTransform, 7, 7, 16, 16);
+        Button link = linkHitArea.gameObject.AddComponent<Button>();
         link.targetGraphic = linkImage;
         ColorBlock linkColors = link.colors;
         linkColors.normalColor = Color.white;

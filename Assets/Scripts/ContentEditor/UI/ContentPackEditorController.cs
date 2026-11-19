@@ -732,7 +732,11 @@ public sealed class ContentPackEditorController : MonoBehaviour
             GameLogger.LogException(exception);
         ContentPackEditorField field = ContentEditorPackValidator.GetValidationField(exception);
         if (message == null && field != null)
-            view.RenderFieldError(exception.Message, field);
+            view.RenderFieldError(
+                exception.Message,
+                field,
+                (exception.InnerException?.Message ?? exception.Message).Split('\n')[0]
+            );
         else
             view.RenderStatus(message ?? exception.Message, true);
     }

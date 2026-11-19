@@ -318,8 +318,9 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// Reveals and focuses a field after a structural creation operation.
     /// </summary>
     /// <param name="field">The field to edit.</param>
+    /// <param name="validationError">The current-value failure to display beside the field.</param>
     /// <returns>Whether the field has a visible control in the current form.</returns>
-    public bool FocusField(ContentPackEditorField field)
+    public bool FocusField(ContentPackEditorField field, string validationError = null)
     {
         XElement item = field
             .XmlElement.AncestorsAndSelf()
@@ -336,6 +337,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
         );
         if (row == null)
             return false;
+        if (!string.IsNullOrWhiteSpace(validationError))
+        {
+            row.ShowValidationError(validationError);
+            RenderFields(false);
+        }
         RectTransform rect = (RectTransform)row.transform;
         fieldScroll.ScrollArea.RevealContentRect(
             -rect.anchoredPosition.y,
