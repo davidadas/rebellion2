@@ -21,7 +21,8 @@ comparisons do not establish overall completion or Internet performance.
 | Networking | Host-ordered campaign actions and settled-state agreement | Authoritative host simulation and passive replica playback | Authentication, lobby membership, transport, and bounded delivery |
 | Integration | Suspending campaign time and committing battle results | Producing detached outcomes | One validated handoff in each direction |
 
-The campaign retains its established `Game`, `Gameplay`, `Sessions`, `AI`, and strategic UI areas.
+The campaign retains its established `Game`, `Gameplay`, `Sessions`, and strategic UI areas. Its
+turn planner is explicitly owned by `Campaign/AI`; tactical battle automation is a separate policy.
 Its existing model names and serialization contracts remain stable. The tactical mode has its own
 cohesive area rather than extending those campaign feature folders. Shared application composition
 still connects the two modes; no common simulation clock, AI superclass, or synchronization protocol
@@ -31,18 +32,19 @@ is imposed on them.
 
 | Source area | Responsibility |
 | --- | --- |
+| `Assets/Scripts/Campaign/AI` | Strategic faction assessment, planning, scoring, selection, and turn execution |
 | `Assets/Scripts/Combat/Contracts` | Participation enums and component damage exchanged between the modes |
 | `Assets/Scripts/Tactical/Contracts` | Authored battle content and detached completed outcomes |
 | `Assets/Scripts/Tactical/Core` | Encounter participants, lifecycle, motion, weapons, damage, commands, and completion |
 | `Tactical/Core/Targeting` | Target and force assessment shared by player orders and automated policy |
-| `Tactical/Core/AI` | Autonomous deployment, assignment, regrouping, retreat, and battle-station policy |
-| `Tactical/Core/Replication` | Semantic input records, complete state projections, and model validation/application |
+| `Tactical/Core/Automation` | Autonomous deployment, assignment, regrouping, retreat, and battle-station policy |
+| `Tactical/Core/Synchronization` | Transport-agnostic commands, complete snapshots, ordered presentation events, and validation/application |
 | `Tactical/Core/Mathematics` | Battle vector operations and the native precision boundary |
 | `Tactical/Runtime/Audio` | Notification scheduling and playback-backed queue maintenance |
 | `Tactical/Runtime/Scenery` | Encounter calendar seeding and lazy scenery initialization |
 | `Tactical/Runtime/Presentation` | Bounded delayed pose history and interpolation |
 | `Tactical/Presentation` | Unity views, camera, input, inspection, rendering, effects, and movie presentation |
-| `Tactical/Networking` | Battle driver, protocol, replica playback adapter, and binary frame codec |
+| `Multiplayer/Tactical` | Battle driver, protocol, replica playback adapter, and binary snapshot codec |
 | `Tactical/Integration/Campaign` | Capturing campaign hardware and facilities, constructing encounters, and the campaign-result presentation bridge |
 
 `SpaceCombatCommands` remains the campaign owner of a pending encounter and its result import.
@@ -131,7 +133,8 @@ The projection ordinal prevents stale model replacement; it does not acknowledge
 The networking protocol establishes the authenticated side, validates battle identity, orders and
 acknowledges commands/effects, publishes snapshots, recovers checkpoints, and enforces deadlines.
 Its binary codec owns wire field order, versioning, compression, and bounds. These policies remain
-outside the core. Existing projection names and wire values are retained.
+outside the core. Source terminology consistently calls complete model projections snapshots; the
+existing wire numeric values and field order are retained.
 
 Replica playback observes validated incoming projections and converts them to pose snapshots.
 The runtime buffer owns only bounded pose history, presentation time, interpolation, and lifecycle

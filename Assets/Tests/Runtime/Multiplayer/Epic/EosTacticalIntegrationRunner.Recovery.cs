@@ -375,7 +375,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
         {
             if (_driver != null)
             {
-                _driver.Session.NetworkCommandRequested -= HandleCommand;
+                _driver.Session.SynchronizedCommandRequested -= HandleCommand;
                 _driver.Session.ShotFired -= HandleShot;
                 _driver.Session.ImpactApplied -= HandleImpact;
                 _driver.Session.UnitDestroyed -= HandleDestroyed;

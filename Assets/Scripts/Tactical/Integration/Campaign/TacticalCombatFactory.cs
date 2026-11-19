@@ -158,9 +158,9 @@ namespace Rebellion.Tactical.Integration.Campaign
                 _game.LocalPlayerFactionID
             );
             if (isReplica)
-                session.ConfigureNetworkReplica();
+                session.ConfigureSynchronizedReplica();
             else
-                session.ConfigureNetworkAuthority();
+                session.ConfigureSynchronizedAuthority();
             return session;
         }
 

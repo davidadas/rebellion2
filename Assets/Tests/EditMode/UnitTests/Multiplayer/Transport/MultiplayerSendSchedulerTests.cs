@@ -149,7 +149,7 @@ namespace Rebellion.Tests.Multiplayer
             );
 
             Task snapshot = scheduler.SendAsync(
-                new(MultiplayerMessageType.TacticalFrame),
+                new(MultiplayerMessageType.TacticalSnapshot),
                 CancellationToken.None
             );
 

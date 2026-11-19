@@ -28,7 +28,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="charge">The stored charge.</param>
         /// <param name="departed">Whether departure has completed.</param>
-        internal void ApplyNetworkState(float charge, bool departed)
+        internal void ApplySnapshot(float charge, bool departed)
         {
             Charge = charge;
             HasDeparted = departed;

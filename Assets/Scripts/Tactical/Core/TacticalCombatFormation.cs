@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Rebellion.Tactical.Synchronization;
 
 namespace Rebellion.Tactical
 {
@@ -47,8 +48,8 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="state">The validated group projection.</param>
         /// <param name="members">The authoritative applied members in their captured order.</param>
-        internal void ApplyNetworkState(
-            TacticalCombatNetworkGroupState state,
+        internal void ApplySnapshot(
+            TacticalCombatGroupSnapshot state,
             IReadOnlyList<TacticalCombatUnit> members
         )
         {

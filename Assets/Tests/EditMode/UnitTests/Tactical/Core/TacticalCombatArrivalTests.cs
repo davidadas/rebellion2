@@ -394,7 +394,7 @@ namespace Rebellion.Tests.Tactical
             /// Records effect reset ordering.
             /// </summary>
             /// <param name="unitIndex">The affected unit.</param>
-            public void Reset(int unitIndex) => Events.Add($"reset:{unitIndex}");
+            public void ResetArrival(int unitIndex) => Events.Add($"reset:{unitIndex}");
 
             /// <summary>
             /// Records a presentation transform.

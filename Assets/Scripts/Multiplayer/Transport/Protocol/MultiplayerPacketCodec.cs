@@ -13,7 +13,7 @@ namespace Rebellion.Multiplayer
     {
         internal const int MaximumTacticalMetadataBytes = 2048;
         internal const int MaximumTacticalCommandBytes = 16 * 1024;
-        internal const int MaximumTacticalFrameBytes = 4 * 1024 * 1024;
+        internal const int MaximumTacticalSnapshotBytes = 4 * 1024 * 1024;
         internal const int MaximumTacticalEffectsBytes = 4 * 1024 * 1024;
         private const int _headerLength = 14;
         private const int _maximumMetadataLength = 1024 * 1024;
@@ -177,12 +177,12 @@ namespace Rebellion.Multiplayer
             int payloadLimit = type switch
             {
                 MultiplayerMessageType.TacticalCommand => MaximumTacticalCommandBytes,
-                MultiplayerMessageType.TacticalFrame or MultiplayerMessageType.TacticalCheckpoint =>
-                    MaximumTacticalFrameBytes,
+                MultiplayerMessageType.TacticalSnapshot
+                or MultiplayerMessageType.TacticalCheckpoint => MaximumTacticalSnapshotBytes,
                 MultiplayerMessageType.TacticalEffects => MaximumTacticalEffectsBytes,
                 MultiplayerMessageType.TacticalReady
                 or MultiplayerMessageType.TacticalCommandResult
-                or MultiplayerMessageType.TacticalFrameReceipt
+                or MultiplayerMessageType.TacticalSnapshotReceipt
                 or MultiplayerMessageType.TacticalMovieReceipt
                 or MultiplayerMessageType.TacticalResync => 0,
                 _ => _maximumPayloadLength,

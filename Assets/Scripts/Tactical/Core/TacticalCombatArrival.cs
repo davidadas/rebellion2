@@ -20,7 +20,7 @@ namespace Rebellion.Tactical
         /// Resets a unit's presentation effect before its first arrival transform.
         /// </summary>
         /// <param name="unitIndex">The battle registration identifier.</param>
-        void Reset(int unitIndex);
+        void ResetArrival(int unitIndex);
 
         /// <summary>
         /// Applies one presentation transform.
@@ -196,7 +196,7 @@ namespace Rebellion.Tactical
                 position.Y = (float)((double)position.Y + offset.Y);
                 position.Z = (float)((double)position.Z + offset.Z);
                 position.W = -1;
-                _presentation.Reset(member.UnitIndex);
+                _presentation.ResetArrival(member.UnitIndex);
                 Present(member, position);
             }
         }

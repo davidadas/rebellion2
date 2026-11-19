@@ -10,12 +10,13 @@ using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
+using Rebellion.Multiplayer.Tactical;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Integration.Campaign;
-using Rebellion.Tactical.Networking;
 using Rebellion.Tactical.Presentation;
 using Rebellion.Tactical.Runtime;
 using Rebellion.Tactical.Runtime.Audio;
+using Rebellion.Tactical.Synchronization;
 using Rebellion.Util.Random;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -240,10 +241,10 @@ namespace Rebellion.Tests.Tactical.Presentation
                 pack.GameData,
                 playerSide: CombatSide.Defender
             );
-            host.ConfigureNetworkAuthority();
-            guest.ConfigureNetworkReplica();
-            List<TacticalCombatNetworkCommand> commands = new();
-            guest.NetworkCommandRequested += commands.Add;
+            host.ConfigureSynchronizedAuthority();
+            guest.ConfigureSynchronizedReplica();
+            List<TacticalCombatCommand> commands = new();
+            guest.SynchronizedCommandRequested += commands.Add;
             PresentationDriver driver = new(guest);
             yield return PrepareController(guest, pack, driver);
             string framePath = guest
@@ -279,11 +280,11 @@ namespace Rebellion.Tests.Tactical.Presentation
                 )
             );
             Assert.AreEqual(1, commands.Count);
-            Assert.AreEqual(TacticalCombatNetworkCommandKind.ObjectCategory, commands[0].Kind);
+            Assert.AreEqual(TacticalCombatCommandKind.ObjectCategory, commands[0].Kind);
             Assert.AreEqual(TacticalCombatSelectionKind.Empty, guest.Selection.Kind);
-            Assert.IsTrue(host.ApplyNetworkCommand(CombatSide.Defender, commands[0]));
+            Assert.IsTrue(host.ApplySynchronizedCommand(CombatSide.Defender, commands[0]));
 
-            ApplyCapturedProjection(guest, host.CaptureNetworkFrame(1));
+            ApplyCapturedProjection(guest, host.CaptureSnapshot(1));
             controller.Advance(0);
 
             Assert.AreEqual(TacticalCombatSelectionKind.ObjectGroup, guest.Selection.Kind);
@@ -305,17 +306,17 @@ namespace Rebellion.Tests.Tactical.Presentation
             ContentPack pack = ContentPackLoader.OpenActive();
             TacticalCombatSession host = CreateEncounter(pack.GameData);
             TacticalCombatSession guest = CreateEncounter(pack.GameData);
-            host.ConfigureNetworkAuthority();
-            guest.ConfigureNetworkReplica();
+            host.ConfigureSynchronizedAuthority();
+            guest.ConfigureSynchronizedReplica();
             try
             {
                 TacticalCombatUnit target = host.GetUnit("ALCS008");
                 Vector3N start = target.Position;
-                TacticalCombatNetworkFrame first = host.CaptureNetworkFrame(1);
+                TacticalCombatSnapshot first = host.CaptureSnapshot(1);
                 first.TimestampMilliseconds = 0;
                 target.Position += Vector3N.UnitX * 4;
                 target.Heading = Vector3N.Normalize(Vector3N.UnitZ + Vector3N.UnitX);
-                TacticalCombatNetworkFrame second = host.CaptureNetworkFrame(2);
+                TacticalCombatSnapshot second = host.CaptureSnapshot(2);
                 second.TimestampMilliseconds = 100;
                 ApplyCapturedProjection(guest, first);
                 ApplyCapturedProjection(guest, second);
@@ -388,17 +389,17 @@ namespace Rebellion.Tests.Tactical.Presentation
             ContentPack pack = ContentPackLoader.OpenActive();
             TacticalCombatSession host = CreateEncounter(pack.GameData);
             TacticalCombatSession guest = CreateEncounter(pack.GameData);
-            host.ConfigureNetworkAuthority();
-            guest.ConfigureNetworkReplica();
+            host.ConfigureSynchronizedAuthority();
+            guest.ConfigureSynchronizedReplica();
             try
             {
                 TacticalCombatUnit departing = host.GetUnit("ALCS008");
                 departing.Status = TacticalCombatUnitStatus.EnteringHyperspace;
                 departing.HyperspaceMilliseconds = 1000;
-                TacticalCombatNetworkFrame first = host.CaptureNetworkFrame(1);
+                TacticalCombatSnapshot first = host.CaptureSnapshot(1);
                 first.TimestampMilliseconds = 0;
                 departing.HyperspaceMilliseconds = 1200;
-                TacticalCombatNetworkFrame second = host.CaptureNetworkFrame(2);
+                TacticalCombatSnapshot second = host.CaptureSnapshot(2);
                 second.TimestampMilliseconds = 100;
                 ApplyCapturedProjection(guest, first);
                 ApplyCapturedProjection(guest, second);
@@ -438,17 +439,17 @@ namespace Rebellion.Tests.Tactical.Presentation
             ContentPack pack = ContentPackLoader.OpenActive();
             TacticalCombatSession host = CreateEncounter(pack.GameData);
             TacticalCombatSession guest = CreateEncounter(pack.GameData);
-            host.ConfigureNetworkAuthority();
-            guest.ConfigureNetworkReplica();
+            host.ConfigureSynchronizedAuthority();
+            guest.ConfigureSynchronizedReplica();
             Action<TacticalCombatUnit> destruction = null;
             try
             {
-                TacticalCombatNetworkFrame first = host.CaptureNetworkFrame(1);
+                TacticalCombatSnapshot first = host.CaptureSnapshot(1);
                 first.TimestampMilliseconds = 0;
-                TacticalCombatNetworkFrame death = host.CaptureNetworkFrame(2);
+                TacticalCombatSnapshot death = host.CaptureSnapshot(2);
                 death.TimestampMilliseconds = 100;
                 foreach (
-                    TacticalCombatNetworkUnitState state in death.Units.Where(unit =>
+                    TacticalCombatUnitSnapshot state in death.Units.Where(unit =>
                         unit.UnitID is "ALCS008" or "fighter"
                     )
                 )
@@ -456,14 +457,14 @@ namespace Rebellion.Tests.Tactical.Presentation
                     state.Status = TacticalCombatUnitStatus.Destroyed;
                     state.Hull = 0;
                 }
-                TacticalCombatNetworkUnitState departure = death.Units.Single(unit =>
+                TacticalCombatUnitSnapshot departure = death.Units.Single(unit =>
                     unit.UnitID == "CSEM006"
                 );
                 departure.Status = TacticalCombatUnitStatus.EnteringHyperspace;
                 departure.HyperspaceMilliseconds = 1200;
                 GetReplicaPlayback(guest);
-                guest.ApplyNetworkState(first);
-                guest.ApplyNetworkState(death);
+                guest.ApplySnapshot(first);
+                guest.ApplySnapshot(death);
                 yield return PrepareRenderer(guest, pack);
                 destruction = view.Renderer.ShowDestruction;
                 guest.DestructionEffectRequested += destruction;
@@ -490,12 +491,12 @@ namespace Rebellion.Tests.Tactical.Presentation
                 );
 
                 GetReplicaPlayback(guest).Advance(1);
-                guest.ApplyNetworkEffects(
+                guest.ApplySynchronizedEvents(
                     new[]
                     {
-                        new TacticalCombatNetworkEffect
+                        new TacticalCombatEvent
                         {
-                            Kind = TacticalCombatNetworkEffectKind.Destruction,
+                            Kind = TacticalCombatEventKind.Destruction,
                             TargetID = "ALCS008",
                         },
                     }
@@ -566,7 +567,7 @@ namespace Rebellion.Tests.Tactical.Presentation
                 .Single(item => item.name == unit.InstanceID);
             ITacticalCombatArrivalPresentation presentation = view.Renderer;
             presentation.SetArrivalActive(true);
-            presentation.Reset(unit.Index);
+            presentation.ResetArrival(unit.Index);
             presentation.SetTransform(
                 unit.Index,
                 new System.Numerics.Vector4(14, 7, -350, -1),
@@ -598,7 +599,7 @@ namespace Rebellion.Tests.Tactical.Presentation
             view.Renderer.ArrivalPresentationChanged += strobes.Add;
             ITacticalCombatArrivalPresentation presentation = view.Renderer;
             presentation.SetArrivalActive(true);
-            presentation.Reset(unit.Index);
+            presentation.ResetArrival(unit.Index);
             presentation.SetTransform(
                 unit.Index,
                 new System.Numerics.Vector4(14, 7, -350, -1),
@@ -635,7 +636,7 @@ namespace Rebellion.Tests.Tactical.Presentation
                 .Single(item => item.name == unit.InstanceID);
             root.gameObject.SetActive(false);
 
-            view.Renderer.Reset(unit.Index);
+            view.Renderer.ResetArrival(unit.Index);
 
             Assert.IsTrue(root.gameObject.activeSelf);
             Assert.AreEqual(1, root.GetComponentsInChildren<MeshRenderer>().Length);
@@ -649,7 +650,7 @@ namespace Rebellion.Tests.Tactical.Presentation
             {
                 ITacticalCombatArrivalPresentation presentation =
                     root.GetComponent<TacticalCombatRenderer>();
-                presentation.Reset(42);
+                presentation.ResetArrival(42);
                 presentation.SetTransform(
                     42,
                     System.Numerics.Vector4.Zero,
@@ -904,7 +905,7 @@ namespace Rebellion.Tests.Tactical.Presentation
             );
             Vector3N before = unit.Position;
             view.Renderer.SetArrivalActive(true);
-            view.Renderer.Reset(unit.Index);
+            view.Renderer.ResetArrival(unit.Index);
             view.Renderer.SetTransform(
                 unit.Index,
                 new System.Numerics.Vector4(14, 7, -350, -1),
@@ -2295,14 +2296,14 @@ namespace Rebellion.Tests.Tactical.Presentation
         /// <param name="frame">The captured state and its separately delivered effects.</param>
         private void ApplyCapturedProjection(
             TacticalCombatSession session,
-            TacticalCombatNetworkFrame frame
+            TacticalCombatSnapshot frame
         )
         {
             GetReplicaPlayback(session);
-            TacticalCombatNetworkEffect[] effects = frame.Effects;
-            frame.Effects = Array.Empty<TacticalCombatNetworkEffect>();
-            session.ApplyNetworkState(frame);
-            session.ApplyNetworkEffects(effects);
+            TacticalCombatEvent[] effects = frame.Effects;
+            frame.Effects = Array.Empty<TacticalCombatEvent>();
+            session.ApplySnapshot(frame);
+            session.ApplySynchronizedEvents(effects);
         }
 
         /// <summary>

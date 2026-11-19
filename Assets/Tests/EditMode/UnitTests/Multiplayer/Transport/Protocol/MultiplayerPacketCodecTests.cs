@@ -105,14 +105,14 @@ namespace Rebellion.Tests.Multiplayer
             MultiplayerPacketCodec.MaximumTacticalCommandBytes + 1
         )]
         [TestCase(
-            MultiplayerMessageType.TacticalFrame,
+            MultiplayerMessageType.TacticalSnapshot,
             0,
-            MultiplayerPacketCodec.MaximumTacticalFrameBytes + 1
+            MultiplayerPacketCodec.MaximumTacticalSnapshotBytes + 1
         )]
         [TestCase(
             MultiplayerMessageType.TacticalCheckpoint,
             0,
-            MultiplayerPacketCodec.MaximumTacticalFrameBytes + 1
+            MultiplayerPacketCodec.MaximumTacticalSnapshotBytes + 1
         )]
         [TestCase(
             MultiplayerMessageType.TacticalEffects,
@@ -121,11 +121,11 @@ namespace Rebellion.Tests.Multiplayer
         )]
         [TestCase(MultiplayerMessageType.TacticalReady, 0, 1)]
         [TestCase(MultiplayerMessageType.TacticalCommandResult, 0, 1)]
-        [TestCase(MultiplayerMessageType.TacticalFrameReceipt, 0, 1)]
+        [TestCase(MultiplayerMessageType.TacticalSnapshotReceipt, 0, 1)]
         [TestCase(MultiplayerMessageType.TacticalMovieReceipt, 0, 1)]
         [TestCase(MultiplayerMessageType.TacticalResync, 0, 1)]
         [TestCase(
-            MultiplayerMessageType.TacticalFrame,
+            MultiplayerMessageType.TacticalSnapshot,
             MultiplayerPacketCodec.MaximumTacticalMetadataBytes + 1,
             0
         )]
@@ -149,12 +149,12 @@ namespace Rebellion.Tests.Multiplayer
             MultiplayerPacketCodec.MaximumTacticalCommandBytes + 1
         )]
         [TestCase(
-            MultiplayerMessageType.TacticalFrame,
-            MultiplayerPacketCodec.MaximumTacticalFrameBytes + 1
+            MultiplayerMessageType.TacticalSnapshot,
+            MultiplayerPacketCodec.MaximumTacticalSnapshotBytes + 1
         )]
         [TestCase(
             MultiplayerMessageType.TacticalCheckpoint,
-            MultiplayerPacketCodec.MaximumTacticalFrameBytes + 1
+            MultiplayerPacketCodec.MaximumTacticalSnapshotBytes + 1
         )]
         [TestCase(
             MultiplayerMessageType.TacticalEffects,
@@ -162,7 +162,7 @@ namespace Rebellion.Tests.Multiplayer
         )]
         [TestCase(MultiplayerMessageType.TacticalReady, 1)]
         [TestCase(MultiplayerMessageType.TacticalCommandResult, 1)]
-        [TestCase(MultiplayerMessageType.TacticalFrameReceipt, 1)]
+        [TestCase(MultiplayerMessageType.TacticalSnapshotReceipt, 1)]
         [TestCase(MultiplayerMessageType.TacticalMovieReceipt, 1)]
         [TestCase(MultiplayerMessageType.TacticalResync, 1)]
         public void WriteAsync_ExcessiveTacticalPayload_RejectsBeforeWritingHeader(

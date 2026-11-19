@@ -54,7 +54,7 @@ namespace Rebellion.Tactical
         /// Restores the authoritative terminal flags without running local ending callbacks.
         /// </summary>
         /// <param name="flags">The seven validated terminal flags.</param>
-        internal void ApplyNetworkFlags(bool[] flags) => Array.Copy(flags, _flags, _flags.Length);
+        internal void ApplySnapshotFlags(bool[] flags) => Array.Copy(flags, _flags, _flags.Length);
 
         /// <summary>
         /// Captures notification and command ownership for one encounter's ending.

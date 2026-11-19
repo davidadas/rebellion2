@@ -44,7 +44,7 @@ namespace Rebellion.Multiplayer
                 throw new ArgumentNullException(nameof(packet));
             cancellationToken.ThrowIfCancellationRequested();
             int encodedBytes = MultiplayerPacketCodec.GetEncodedLength(packet);
-            if (packet.Type == MultiplayerMessageType.TacticalFrame)
+            if (packet.Type == MultiplayerMessageType.TacticalSnapshot)
             {
                 _trySnapshot(packet);
                 return Task.CompletedTask;

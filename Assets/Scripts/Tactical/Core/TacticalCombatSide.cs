@@ -1,6 +1,7 @@
 using System;
 using System.Numerics;
 using Rebellion.Game.Results;
+using Rebellion.Tactical.Synchronization;
 
 namespace Rebellion.Tactical
 {
@@ -20,7 +21,7 @@ namespace Rebellion.Tactical
         public float AdmiralLeadership { get; }
         public float CommanderCombat { get; }
         public bool IsAutomated { get; internal set; }
-        private TacticalCombatNetworkSideState _networkState;
+        private TacticalCombatSideSnapshot _networkState;
         public bool IsWithdrawing => _networkState?.Withdrawing ?? Withdrawal != null;
         public float AttackBudget { get; internal set; }
         public float WithdrawalMilliseconds =>
@@ -35,9 +36,9 @@ namespace Rebellion.Tactical
         /// Restores faction presentation facts without starting a local withdrawal lifecycle.
         /// </summary>
         /// <param name="state">The validated faction projection.</param>
-        internal void ApplyNetworkState(TacticalCombatNetworkSideState state)
+        internal void ApplySnapshot(TacticalCombatSideSnapshot state)
         {
-            _networkState = new TacticalCombatNetworkSideState
+            _networkState = new TacticalCombatSideSnapshot
             {
                 Side = state.Side,
                 Automated = state.Automated,

@@ -6,8 +6,9 @@ using NUnit.Framework;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
+using Rebellion.Multiplayer.Tactical;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Networking;
+using Rebellion.Tactical.Synchronization;
 using Encoding = global::System.Text.Encoding;
 
 namespace Rebellion.Tests.Multiplayer
@@ -31,7 +32,7 @@ namespace Rebellion.Tests.Multiplayer
             Assert.IsNotNull(restored);
             Assert.AreEqual(original.Metadata, restored.Metadata);
             CollectionAssert.AreEqual(original.Payload, restored.Payload);
-            Assert.AreEqual(MultiplayerMessageType.TacticalFrame, restored.Type);
+            Assert.AreEqual(MultiplayerMessageType.TacticalSnapshot, restored.Type);
             Assert.AreEqual(0, receiver.BufferedBytes);
             Assert.IsTrue(datagrams.All(datagram => datagram.Length <= 128));
         }
@@ -497,7 +498,7 @@ namespace Rebellion.Tests.Multiplayer
             Assert.Throws<InvalidDataException>(() =>
                 sender.TrySend(
                     new(
-                        MultiplayerMessageType.TacticalFrame,
+                        MultiplayerMessageType.TacticalSnapshot,
                         new string('x', MultiplayerSnapshotDatagrams.MaximumMetadataBytes + 1)
                     )
                 )
@@ -505,7 +506,7 @@ namespace Rebellion.Tests.Multiplayer
             Assert.Throws<InvalidDataException>(() =>
                 sender.TrySend(
                     new(
-                        MultiplayerMessageType.TacticalFrame,
+                        MultiplayerMessageType.TacticalSnapshot,
                         payload: new byte[MultiplayerSnapshotDatagrams.MaximumPayloadBytes + 1]
                     )
                 )
@@ -535,7 +536,7 @@ namespace Rebellion.Tests.Multiplayer
             int payloadBytes = 0;
             string initialization = Guid.NewGuid().ToString("N");
             string battle = Guid.NewGuid().ToString("N");
-            TacticalCombatNetworkUnitState[] units = CreateFullFrameUnits();
+            TacticalCombatUnitSnapshot[] units = CreateFullFrameUnits();
             MultiplayerSnapshotDatagrams sender = new(
                 1170,
                 datagram =>
@@ -561,14 +562,14 @@ namespace Rebellion.Tests.Multiplayer
                 battle,
                 CombatSide.Attacker,
                 (_, _) => true,
-                sequence => new TacticalCombatNetworkFrame { Sequence = sequence, Units = units },
+                sequence => new TacticalCombatSnapshot { Sequence = sequence, Units = units },
                 _ => Assert.Fail("The authority cannot import a replica state."),
                 _ => Assert.Fail("The authority cannot import replica effects."),
                 () => 0,
                 _ => false,
                 packet =>
                 {
-                    if (packet.Type == MultiplayerMessageType.TacticalFrame)
+                    if (packet.Type == MultiplayerMessageType.TacticalSnapshot)
                     {
                         payloadBytes = packet.Payload.Length;
                         Assert.IsTrue(sender.TrySend(packet));
@@ -577,7 +578,7 @@ namespace Rebellion.Tests.Multiplayer
                     {
                         if (packet.Type == MultiplayerMessageType.TacticalCheckpoint)
                             checkpoints.Add(
-                                MultiplayerTacticalFrameCodec.Decode(packet.Payload).Sequence
+                                MultiplayerTacticalSnapshotCodec.Decode(packet.Payload).Sequence
                             );
                         reliable.Add((now + 100, packet));
                     }
@@ -617,7 +618,7 @@ namespace Rebellion.Tests.Multiplayer
             {
                 now = step * 10;
                 if (step < updates * 5 && step % 5 == 0)
-                    host.PublishFrame();
+                    host.PublishSnapshot();
                 foreach (var item in reliable.Where(item => item.Due <= now).ToArray())
                     guest.Receive(item.Packet);
                 reliable.RemoveAll(item => item.Due <= now);
@@ -678,12 +679,12 @@ namespace Rebellion.Tests.Multiplayer
         /// Creates a complete fleet projection with independently varying lossless fields.
         /// </summary>
         /// <returns>The detached synthetic full unit states.</returns>
-        private static TacticalCombatNetworkUnitState[] CreateFullFrameUnits()
+        private static TacticalCombatUnitSnapshot[] CreateFullFrameUnits()
         {
             Random random = new(741);
-            TacticalCombatNetworkUnitState[] units = new TacticalCombatNetworkUnitState[96];
+            TacticalCombatUnitSnapshot[] units = new TacticalCombatUnitSnapshot[96];
             for (int index = 0; index < units.Length; index++)
-                units[index] = new TacticalCombatNetworkUnitState
+                units[index] = new TacticalCombatUnitSnapshot
                 {
                     UnitID = $"unit-{index:D4}",
                     Position = CreateVector(random),
@@ -720,7 +721,7 @@ namespace Rebellion.Tests.Multiplayer
         /// </summary>
         /// <param name="random">The deterministic fixture random source.</param>
         /// <returns>The detached vector value.</returns>
-        private static TacticalCombatNetworkVector CreateVector(Random random) =>
+        private static TacticalCombatSnapshotVector CreateVector(Random random) =>
             new()
             {
                 X = (float)random.NextDouble() * 10000,
@@ -753,7 +754,7 @@ namespace Rebellion.Tests.Multiplayer
         {
             byte[] bytes = new byte[size];
             new Random(seed).NextBytes(bytes);
-            return new(MultiplayerMessageType.TacticalFrame, "{\"frame\":" + seed + "}", bytes);
+            return new(MultiplayerMessageType.TacticalSnapshot, "{\"frame\":" + seed + "}", bytes);
         }
     }
 }

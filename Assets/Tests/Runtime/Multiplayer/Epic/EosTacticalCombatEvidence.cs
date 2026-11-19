@@ -9,6 +9,7 @@ using System.Text;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
+using Rebellion.Tactical.Synchronization;
 using JsonUtility = UnityEngine.JsonUtility;
 
 namespace Rebellion.Tests.MultiplayerIntegration
@@ -37,7 +38,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
         /// <param name="shot">The authoritative or projected discharge.</param>
         internal void RecordShot(TacticalCombatShot shot)
         {
-            BeginEvent(TacticalCombatNetworkEffectKind.Shot);
+            BeginEvent(TacticalCombatEventKind.Shot);
             _writer.Write(shot.Source.InstanceID);
             _writer.Write(shot.Target.InstanceID);
             _writer.Write((int)shot.Weapon);
@@ -57,7 +58,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
             TacticalCombatImpactKind impact
         )
         {
-            BeginEvent(TacticalCombatNetworkEffectKind.Impact);
+            BeginEvent(TacticalCombatEventKind.Impact);
             _writer.Write(unit.InstanceID);
             _writer.Write((int)weapon);
             _writer.Write((int)impact);
@@ -69,7 +70,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
         /// </summary>
         /// <param name="kind">The transported unit-event discriminator.</param>
         /// <param name="unit">The affected participant.</param>
-        internal void RecordUnit(TacticalCombatNetworkEffectKind kind, TacticalCombatUnit unit)
+        internal void RecordUnit(TacticalCombatEventKind kind, TacticalCombatUnit unit)
         {
             BeginEvent(kind);
             _writer.Write(unit.InstanceID);
@@ -168,7 +169,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
         /// Starts a length-independent binary event record without reallocating previous records.
         /// </summary>
         /// <param name="kind">The ordered event type.</param>
-        private void BeginEvent(TacticalCombatNetworkEffectKind kind)
+        private void BeginEvent(TacticalCombatEventKind kind)
         {
             if (_completed)
                 throw new InvalidOperationException(

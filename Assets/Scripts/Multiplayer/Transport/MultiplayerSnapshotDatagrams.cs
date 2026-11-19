@@ -12,7 +12,8 @@ namespace Rebellion.Multiplayer
     /// </summary>
     internal sealed class MultiplayerSnapshotDatagrams
     {
-        internal const int MaximumPayloadBytes = MultiplayerPacketCodec.MaximumTacticalFrameBytes;
+        internal const int MaximumPayloadBytes =
+            MultiplayerPacketCodec.MaximumTacticalSnapshotBytes;
         internal const int MaximumMetadataBytes =
             MultiplayerPacketCodec.MaximumTacticalMetadataBytes;
         internal const int AssemblyLifetimeMilliseconds = 1000;
@@ -68,7 +69,7 @@ namespace Rebellion.Multiplayer
         /// <returns>Whether the provider accepted every fragment.</returns>
         internal bool TrySend(MultiplayerPacket packet)
         {
-            if (packet == null || packet.Type != MultiplayerMessageType.TacticalFrame)
+            if (packet == null || packet.Type != MultiplayerMessageType.TacticalSnapshot)
                 throw new ArgumentException(
                     "Only tactical snapshots use replaceable datagrams.",
                     nameof(packet)
@@ -254,7 +255,7 @@ namespace Rebellion.Multiplayer
             byte[] payload = new byte[complete.Length - 4 - metadataLength];
             Buffer.BlockCopy(complete, 4 + (int)metadataLength, payload, 0, payload.Length);
             return new MultiplayerPacket(
-                MultiplayerMessageType.TacticalFrame,
+                MultiplayerMessageType.TacticalSnapshot,
                 metadataText,
                 payload
             );

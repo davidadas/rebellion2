@@ -13,6 +13,7 @@ using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Integration.Campaign;
+using Rebellion.Tactical.Synchronization;
 using UnityEngine;
 using EOSManager = PlayEveryWare.EpicOnlineServices.EOSManager;
 using NetworkConnectionType = Epic.OnlineServices.P2P.NetworkConnectionType;
@@ -591,7 +592,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
                 );
                 _report.humanControllersVerified = true;
                 _evidence = new EosTacticalCombatEvidence();
-                session.NetworkCommandRequested += HandleCommand;
+                session.SynchronizedCommandRequested += HandleCommand;
                 session.ShotFired += HandleShot;
                 session.ImpactApplied += HandleImpact;
                 session.UnitDestroyed += HandleDestroyed;
@@ -1132,12 +1133,12 @@ namespace Rebellion.Tests.MultiplayerIntegration
         /// Counts a local captured intent without treating submission as acceptance.
         /// </summary>
         /// <param name="command">The semantic command sent through the actual tactical driver.</param>
-        private void HandleCommand(TacticalCombatNetworkCommand command)
+        private void HandleCommand(TacticalCombatCommand command)
         {
             _report.commandsSubmitted++;
-            if (command.Kind == TacticalCombatNetworkCommandKind.Formation)
+            if (command.Kind == TacticalCombatCommandKind.Formation)
                 _report.formationCommandsSubmitted++;
-            if (command.Kind == TacticalCombatNetworkCommandKind.Withdrawal)
+            if (command.Kind == TacticalCombatCommandKind.Withdrawal)
                 _report.withdrawalCommandsSubmitted++;
         }
 
@@ -1177,7 +1178,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
         /// <param name="unit">The naturally destroyed unit.</param>
         private void HandleDestroyed(TacticalCombatUnit unit)
         {
-            _evidence.RecordUnit(TacticalCombatNetworkEffectKind.Destroyed, unit);
+            _evidence.RecordUnit(TacticalCombatEventKind.Destroyed, unit);
             _report.destructions++;
         }
 
@@ -1187,7 +1188,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
         /// <param name="unit">The naturally departing participant.</param>
         private void HandleWithdrawn(TacticalCombatUnit unit)
         {
-            _evidence.RecordUnit(TacticalCombatNetworkEffectKind.Withdrawn, unit);
+            _evidence.RecordUnit(TacticalCombatEventKind.Withdrawn, unit);
             _report.withdrawals++;
         }
 
@@ -1197,7 +1198,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
         /// <param name="unit">The recovered fighter squadron.</param>
         private void HandleRecovered(TacticalCombatUnit unit)
         {
-            _evidence.RecordUnit(TacticalCombatNetworkEffectKind.Recovered, unit);
+            _evidence.RecordUnit(TacticalCombatEventKind.Recovered, unit);
             _report.recoveries++;
         }
 
@@ -1449,7 +1450,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
             /// Receives a unit presentation reset without drawing UI.
             /// </summary>
             /// <param name="unitIndex">The unit's projection index.</param>
-            public void Reset(int unitIndex) { }
+            public void ResetArrival(int unitIndex) { }
 
             /// <summary>
             /// Receives the normal local arrival transform without rendering.

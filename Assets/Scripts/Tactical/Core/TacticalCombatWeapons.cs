@@ -1,4 +1,5 @@
 using System;
+using Rebellion.Tactical.Synchronization;
 
 namespace Rebellion.Tactical
 {
@@ -77,7 +78,7 @@ namespace Rebellion.Tactical
         /// Restores visible battery charge without admitting a local discharge or recharge.
         /// </summary>
         /// <param name="state">The validated participant projection.</param>
-        internal void ApplyNetworkState(TacticalCombatNetworkUnitState state)
+        internal void ApplySnapshot(TacticalCombatUnitSnapshot state)
         {
             for (int arc = 0; arc < 4; arc++)
             {

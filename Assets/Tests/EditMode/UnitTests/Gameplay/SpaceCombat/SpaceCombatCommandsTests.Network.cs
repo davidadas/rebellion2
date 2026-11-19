@@ -68,7 +68,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(_networkBattleID, commands.ActiveTacticalBattleID);
             TacticalCombatSession battle = commands.ActiveTacticalCombat;
             Assert.IsNotNull(battle);
-            Assert.IsTrue(battle.IsNetworked);
+            Assert.IsTrue(battle.IsSynchronized);
             Assert.IsFalse(battle.IsReplica);
             Assert.IsFalse(battle.GetSide(CombatSide.Attacker).IsAutomated);
             Assert.IsFalse(battle.GetSide(CombatSide.Defender).IsAutomated);
@@ -324,7 +324,7 @@ namespace Rebellion.Tests.Gameplay
                 battle.IsComplete,
                 "The authoritative encounter must finish through normal combat."
             );
-            return battle.CaptureNetworkOutcome();
+            return battle.CaptureSynchronizedOutcome();
         }
     }
 }

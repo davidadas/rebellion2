@@ -62,7 +62,7 @@ namespace Rebellion.Tests.PlayerRequests
             Assert.IsNull(second.SpaceCombatResult);
             Assert.IsNotNull(combat.ActiveTacticalCombat);
             Assert.AreEqual(_tacticalRequestBattleID, combat.ActiveTacticalBattleID);
-            Assert.IsTrue(combat.ActiveTacticalCombat.IsNetworked);
+            Assert.IsTrue(combat.ActiveTacticalCombat.IsSynchronized);
             Assert.IsFalse(combat.ActiveTacticalCombat.IsReplica);
             Assert.IsTrue(combat.HasPendingDecision);
         }
@@ -268,7 +268,7 @@ namespace Rebellion.Tests.PlayerRequests
                 battle.IsComplete,
                 "The battle must finish through its actual weapon and ending phases."
             );
-            TacticalCombatOutcome final = battle.CaptureNetworkOutcome();
+            TacticalCombatOutcome final = battle.CaptureSynchronizedOutcome();
             Assert.AreEqual(1000, hostShip.CurrentHullStrength);
             Assert.AreEqual(10, guestShip.CurrentHullStrength);
             string before = CaptureTacticalCampaignState();

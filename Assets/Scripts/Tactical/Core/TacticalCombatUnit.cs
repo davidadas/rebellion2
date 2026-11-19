@@ -242,7 +242,7 @@ namespace Rebellion.Tactical
         /// Restores retained membership before separately replaying its ordered presentation edges.
         /// </summary>
         /// <param name="populated">Whether the authoritative source chain contains a contributor.</param>
-        internal void ApplyNetworkTractorMembership(bool populated) =>
+        internal void ApplySnapshotTractorMembership(bool populated) =>
             HasTractorSources = populated;
 
         /// <summary>

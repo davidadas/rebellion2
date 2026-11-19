@@ -548,7 +548,7 @@ namespace Rebellion.Tests.NativeAudit
             response.canRequestSharedSave = multiplayer?.CanRequestSave == true;
             response.canSendPeerChat = multiplayer?.CanSendPeerChat == true;
             if (multiplayer?.PlayerSession != null)
-                CaptureNetworkState(response);
+                CaptureSnapshot(response);
             response.operation = _operationName;
             response.operationPending = _operation?.IsCompleted == false;
             response.operationSucceeded =
@@ -645,7 +645,7 @@ namespace Rebellion.Tests.NativeAudit
         /// Captures provider queue sizes only for an explicit audit observation.
         /// </summary>
         /// <param name="response">The observation that receives provider state without packet contents.</param>
-        private void CaptureNetworkState(Response response)
+        private void CaptureSnapshot(Response response)
         {
             EOSManager.EOSSingleton sdk = EOSManager.Instance;
             var platform = sdk.GetEOSPlatformInterface();

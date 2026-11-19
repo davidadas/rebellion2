@@ -3446,7 +3446,7 @@ namespace Rebellion.Tests.Tactical
             /// Records each unit whose arrival presentation is reset.
             /// </summary>
             /// <param name="unitIndex">The registered unit index.</param>
-            public void Reset(int unitIndex) => ResetIndices.Add(unitIndex);
+            public void ResetArrival(int unitIndex) => ResetIndices.Add(unitIndex);
 
             /// <summary>
             /// Accepts an arrival pose without creating scene objects.

@@ -658,11 +658,11 @@ namespace Rebellion.Multiplayer
                     case MultiplayerMessageType.TacticalReady:
                     case MultiplayerMessageType.TacticalCommand:
                     case MultiplayerMessageType.TacticalCommandResult:
-                    case MultiplayerMessageType.TacticalFrame:
+                    case MultiplayerMessageType.TacticalSnapshot:
                     case MultiplayerMessageType.TacticalCheckpoint:
                     case MultiplayerMessageType.TacticalEffects:
                     case MultiplayerMessageType.TacticalResync:
-                    case MultiplayerMessageType.TacticalFrameReceipt:
+                    case MultiplayerMessageType.TacticalSnapshotReceipt:
                     case MultiplayerMessageType.TacticalMovieReceipt:
                         MultiplayerSessionIdentity tacticalIdentity =
                             JsonUtility.FromJson<MultiplayerSessionIdentity>(packet.Metadata);

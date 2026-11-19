@@ -59,7 +59,7 @@ namespace Rebellion.Tactical
         /// Routes both factions' existing attack cues through the shared presentation authority.
         /// </summary>
         /// <param name="notifications">The recipient-faction and authored-message sink.</param>
-        internal void ConfigureNetworkNotifications(Action<int, int> notifications) =>
+        internal void ConfigureSynchronizedNotifications(Action<int, int> notifications) =>
             _networkNotifications = notifications;
 
         /// <summary>
@@ -91,10 +91,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="state">The authoritative attack state.</param>
         /// <param name="remainingMilliseconds">The stored attack countdown.</param>
-        internal void ApplyNetworkState(
-            TacticalCombatAttackRunState state,
-            float remainingMilliseconds
-        )
+        internal void ApplySnapshot(TacticalCombatAttackRunState state, float remainingMilliseconds)
         {
             State = state;
             RemainingMilliseconds = remainingMilliseconds;

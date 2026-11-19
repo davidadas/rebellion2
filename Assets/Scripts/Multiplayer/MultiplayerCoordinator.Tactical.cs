@@ -2,8 +2,8 @@ using System;
 using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
+using Rebellion.Multiplayer.Tactical;
 using Rebellion.Tactical.Integration.Campaign;
-using Rebellion.Tactical.Networking;
 
 namespace Rebellion.Multiplayer
 {

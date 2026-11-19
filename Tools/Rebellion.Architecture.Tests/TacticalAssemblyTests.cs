@@ -21,15 +21,15 @@ namespace Rebellion.Architecture.Tests
     {
         [TestCase(
             "^Rebellion\\.Tactical\\.Presentation(?:\\.|$)",
-            "^Rebellion\\.(?:Multiplayer|Tactical\\.Networking)(?:\\.|$)"
+            "^Rebellion\\.Multiplayer(?:\\.|$)"
         )]
         [TestCase(
-            "^Rebellion\\.Tactical\\.Networking(?:\\.|$)",
+            "^Rebellion\\.Multiplayer\\.Tactical(?:\\.|$)",
             "^Rebellion\\.(?:UI|Tactical\\.Presentation)(?:\\.|$)"
         )]
         [TestCase(
             "^Rebellion\\.Tactical\\.Integration(?:\\.|$)",
-            "^Rebellion\\.(?:UI|Multiplayer|Tactical\\.(?:Presentation|Networking))(?:\\.|$)"
+            "^Rebellion\\.(?:UI|Multiplayer|Tactical\\.Presentation)(?:\\.|$)"
         )]
         public void TacticalOwnership_ModeAreas_ExcludeAdjacentImplementations(
             string sourceNamespace,
@@ -57,6 +57,23 @@ namespace Rebellion.Architecture.Tests
             CreateUtilityRule(
                     "^Rebellion\\.Tactical(?:\\.|$)",
                     typeof(TacticalCombatSession).Assembly.FullName
+                )
+                .Check(ProductionArchitecture.Load());
+        }
+
+        [Test]
+        public void TacticalAutomation_Dependencies_ExcludeCampaignAndApplicationAdapters()
+        {
+            Types()
+                .That()
+                .ResideInNamespaceMatching("^Rebellion\\.Tactical\\.Automation(?:\\.|$)")
+                .Should()
+                .NotDependOnAny(
+                    Types()
+                        .That()
+                        .ResideInNamespaceMatching(
+                            "^Rebellion\\.(?:Campaign\\.AI|Multiplayer|Tactical\\.(?:Integration|Presentation))(?:\\.|$)"
+                        )
                 )
                 .Check(ProductionArchitecture.Load());
         }

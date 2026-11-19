@@ -63,12 +63,13 @@ two-account runtime validation.
 
 ## Source ownership
 
-Battle-specific implementation lives under `Assets/Scripts/Tactical`:
+Battle implementation is split between the tactical mode and its multiplayer adapter:
 
-- `Core/Replication` owns semantic input, model projections, and participant validation. The core
+- `Core/Synchronization` owns semantic input, model snapshots, and participant validation. The core
   contains no connection, packet, codec, or retry implementation.
-- `Networking` owns the connection-admitted driver, battle protocol, replica playback adapter, and
-  binary frame codec. Authentication, readiness, sequencing, recovery, and delivery policy stay here.
+- `Assets/Scripts/Multiplayer/Tactical` owns the connection-admitted driver, battle protocol,
+  replica playback adapter, and binary snapshot codec. Authentication, readiness, sequencing,
+  recovery, and delivery policy stay here.
 - `Runtime/Presentation` owns bounded delayed pose history without peer identities or packets.
 - `Presentation` owns Unity rendering, input, camera, effects, and movies.
 - `Integration/Campaign` captures campaign inputs and exposes the campaign-result presentation bridge.

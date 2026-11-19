@@ -1,6 +1,7 @@
 using System;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
+using Rebellion.Tactical.Synchronization;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tactical
@@ -149,7 +150,7 @@ namespace Rebellion.Tactical
         /// Restores authoritative visible pools and components without applying damage or requesting repairs.
         /// </summary>
         /// <param name="state">The validated participant projection.</param>
-        internal void ApplyNetworkState(TacticalCombatNetworkUnitState state)
+        internal void ApplySnapshot(TacticalCombatUnitSnapshot state)
         {
             Hull = state.Hull;
             Shields = state.Shields;
@@ -165,7 +166,7 @@ namespace Rebellion.Tactical
         /// Captures retained recharge samples without calling their stateful budget getters.
         /// </summary>
         /// <param name="state">The participant projection receiving these samples.</param>
-        internal void CaptureNetworkSamples(TacticalCombatNetworkUnitState state)
+        internal void CaptureSnapshotSamples(TacticalCombatUnitSnapshot state)
         {
             state.WeaponRechargeSample = _weaponRecharge;
             state.ShieldRechargeSample = _shieldRecharge;

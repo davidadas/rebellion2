@@ -6,7 +6,7 @@ using ArchUnitNET.NUnit;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Multiplayer;
-using Rebellion.Tactical.Networking;
+using Rebellion.Multiplayer.Tactical;
 using Rebellion.Tactical.Presentation;
 using Rebellion.Util.Random;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
@@ -18,7 +18,7 @@ namespace Rebellion.Architecture.Tests
     {
         private const string _runtimePattern = "^Rebellion\\.(?:Systems|Gameplay)(?:\\.|$)";
         private const string _presentationPattern =
-            "^(?:Rebellion\\.(?:UI|Multiplayer|Tactical\\.(?:Presentation|Networking))(?:\\..*)?|[^.<][^.]*)$";
+            "^(?:Rebellion\\.(?:UI|Multiplayer|Tactical\\.Presentation)(?:\\..*)?|[^.<][^.]*)$";
         private static readonly ArchUnitNET.Domain.Architecture _architecture =
             ProductionArchitecture.Load();
 
