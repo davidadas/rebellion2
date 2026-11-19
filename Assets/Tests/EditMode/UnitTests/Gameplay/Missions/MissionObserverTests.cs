@@ -9,6 +9,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Util.Random;
 
 /// <summary>
 /// Verifies terminal participant changes reconcile missions at their current planets.
@@ -212,6 +213,117 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsEmpty(results);
             Assert.AreSame(planet, mission.GetParent());
             Assert.AreSame(mission, officer.GetParent());
+        }
+
+        [Test]
+        public void HandleResults_DestroyedUnassignedSpecialForces_DoesNotAffectMission()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            SpecialForces specialForces = CreateSpecialForces("unassigned");
+            game.AttachNode(specialForces, planet);
+            StubMission mission = CreateMission(game, planet, officer);
+            mission.Initiate(10);
+            MissionObserver observer = CreateMissionObserver(game, movement, new ThrowingRNG());
+            game.DeleteNode(specialForces);
+
+            List<GameResult> results = observer.HandleResults(
+                new[] { new GameObjectDestroyedResult { DestroyedObject = specialForces } }
+            );
+
+            Assert.IsEmpty(results);
+            Assert.AreSame(planet, mission.GetParent());
+            Assert.AreSame(officer, mission.GetMainParticipants().Single());
+        }
+
+        [Test]
+        public void HandleResults_DestroyedSpecialForcesDecoy_ReconcilesDirectMission()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            SpecialForces decoy = CreateSpecialForces("decoy");
+            StubMission mission = CreateMission(game, planet, officer);
+            mission.AddDecoyParticipant(decoy);
+            game.AttachNode(decoy, mission);
+            mission.Initiate(10);
+            MissionObserver observer = CreateMissionObserver(game, movement, new ThrowingRNG());
+            game.DeleteNode(decoy);
+
+            List<GameResult> results = observer.HandleResults(
+                new[]
+                {
+                    new GameObjectDestroyedResult { DestroyedObject = decoy, Context = planet },
+                }
+            );
+
+            Assert.IsEmpty(results);
+            Assert.AreSame(planet, mission.GetParent());
+            Assert.AreSame(officer, mission.GetMainParticipants().Single());
+            Assert.IsEmpty(mission.GetDecoyParticipants(includeDisabled: true));
+        }
+
+        [Test]
+        public void HandleResults_DestroyedOneOfTwoSpecialForcesPrimary_PreservesRemainingMission()
+        {
+            (GameRoot game, Planet planet, _, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            SpecialForces destroyed = CreateSpecialForces("destroyed-primary");
+            SpecialForces remaining = CreateSpecialForces("remaining-primary");
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            game.AttachNode(mission, planet);
+            game.AttachNode(destroyed, mission);
+            game.AttachNode(remaining, mission);
+            mission.Initiate(10);
+            MissionObserver observer = CreateMissionObserver(game, movement, new StubRNG());
+            game.DeleteNode(destroyed);
+
+            List<GameResult> results = observer.HandleResults(
+                new[]
+                {
+                    new GameObjectDestroyedResult { DestroyedObject = destroyed, Context = planet },
+                }
+            );
+
+            Assert.IsEmpty(results);
+            Assert.AreSame(planet, mission.GetParent());
+            Assert.AreSame(remaining, mission.GetMainParticipants().Single());
+        }
+
+        [Test]
+        public void HandleResults_DestroyedLastSpecialForcesPrimary_InterruptsMissionWithoutDeletingTwice()
+        {
+            (GameRoot game, Planet planet, _, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            SpecialForces primary = CreateSpecialForces("primary", planet);
+            game.AttachNode(primary, planet);
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            game.AttachNode(mission, planet);
+            game.MoveNode(primary, mission);
+            mission.Initiate(10);
+            MissionObserver observer = CreateMissionObserver(game, movement, new StubRNG());
+            GameResultBus resultBus = new();
+            observer.Connect(resultBus);
+            game.DeleteNode(primary);
+
+            List<GameResult> results = resultBus.Publish(
+                new[]
+                {
+                    new GameObjectDestroyedResult { DestroyedObject = primary, Context = planet },
+                }
+            );
+
+            Assert.IsNull(mission.GetParent());
+            Assert.AreEqual(
+                1,
+                results
+                    .OfType<GameObjectDestroyedResult>()
+                    .Count(result => ReferenceEquals(result.DestroyedObject, primary))
+            );
+            Assert.IsEmpty(mission.GetAllParticipants(includeDisabled: true));
         }
 
         [Test]
@@ -749,6 +861,40 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.AreSame(mission, officer.GetParent());
+        }
+
+        /// <summary>
+        /// Creates a mission observer backed by the supplied game services.
+        /// </summary>
+        /// <param name="game">The game containing the observed missions.</param>
+        /// <param name="movement">The movement commands used by mission resolution.</param>
+        /// <param name="random">The random number provider used by mission resolution.</param>
+        /// <returns>The configured mission observer.</returns>
+        private static MissionObserver CreateMissionObserver(
+            GameRoot game,
+            MovementCommands movement,
+            IRandomNumberProvider random
+        )
+        {
+            MissionCommands commands = TestSystems.CreateMissionCommands(game, random, movement);
+            return new MissionObserver(TestSystems.GetMissionResolver(commands));
+        }
+
+        /// <summary>
+        /// Creates a special-forces unit with an optional return location.
+        /// </summary>
+        /// <param name="instanceId">The unit instance identifier.</param>
+        /// <param name="home">The optional planet to use as the unit's return location.</param>
+        /// <returns>The configured special-forces unit.</returns>
+        private static SpecialForces CreateSpecialForces(string instanceId, Planet home = null)
+        {
+            return new SpecialForces
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = "empire",
+                MissionReturnParentInstanceID = home?.InstanceID,
+                MissionReturnLocationInstanceID = home?.InstanceID,
+            };
         }
 
         /// <summary>

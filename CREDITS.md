@@ -3,6 +3,7 @@
 ## Project contributors
 
 - David Adams
+- Aaron Newsom
 - The Architect
 - Metasharp
 - Nick Himebaugh

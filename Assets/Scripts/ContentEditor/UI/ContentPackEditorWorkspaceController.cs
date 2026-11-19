@@ -48,6 +48,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.MapEditEnded += session.EndMapEdit;
         view.SelectionRequested += SelectRecord;
         view.SectionRequested += SelectSection;
+        view.ErrorFieldRequested += ShowField;
     }
 
     /// <summary>
@@ -205,6 +206,36 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
     /// </summary>
     /// <param name="field">The field whose form is being left.</param>
     private void ValidateField(ContentPackEditorField field) => Project.ValidateField(field);
+
+    /// <summary>
+    /// Resolves a validation field against the current workspace before revealing it.
+    /// </summary>
+    /// <param name="source">The field reported by validation.</param>
+    /// <param name="validationError">The concise validation failure.</param>
+    private void ShowField(ContentPackEditorField source, string validationError)
+    {
+        ContentPackEditorField field = Project
+            ?.GetCatalogs()
+            .SelectMany(catalog => catalog.Records)
+            .SelectMany(record => new[] { record }.Concat(record.Planets))
+            .Where(record => record.Key == source.Record.Key)
+            .SelectMany(record => record.GetFields())
+            .FirstOrDefault(candidate =>
+                candidate.Name == source.Name
+                && candidate.MemberName == source.MemberName
+                && candidate.XmlAttributeName == source.XmlAttributeName
+                && candidate.SectionPath.SequenceEqual(source.SectionPath)
+            );
+        if (field == null)
+        {
+            view.RenderStatus(
+                "That field changed after validation. Validate the pack again.",
+                true
+            );
+            return;
+        }
+        view.ShowField(field, validationError);
+    }
 
     /// <summary>
     /// Records a requested selection before rendering its derived inspector state.
@@ -407,6 +438,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.MapEditEnded -= session.EndMapEdit;
         view.SelectionRequested -= SelectRecord;
         view.SectionRequested -= SelectSection;
+        view.ErrorFieldRequested -= ShowField;
         session.Dispose();
         assets = null;
     }

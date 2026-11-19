@@ -12,6 +12,10 @@ using static ContentEditorControlBuilder;
 /// </summary>
 public static class ContentPackEditorPrefabBuilder
 {
+    private const string _locationLinkIconPath =
+        "Assets/Content/Application/Strategy/UI/Windows/ui_strategyview_open_location_button.png";
+    private const string _locationLinkIconAddress =
+        "Application/Strategy/UI/Windows/ui_strategyview_open_location_button";
     internal const string ScenePath = "Assets/Scenes/ContentPackEditor.unity";
     internal const string PrefabPath =
         "Assets/Prefabs/UI/ContentPackEditor/ContentPackEditorRoot.prefab";
@@ -883,15 +887,102 @@ public static class ContentPackEditorPrefabBuilder
         notice.rectTransform.pivot = new Vector2(0.5f, 1);
         notice.rectTransform.anchoredPosition = new Vector2(0, -58);
         TextMeshProUGUI text = Label("Text", notice.transform, string.Empty, 15);
-        Stretch(text.rectTransform, 20, 8, 110, 8);
+        Stretch(text.rectTransform, 20, 8, 152, 8);
         text.alignment = TextAlignmentOptions.TopLeft;
         text.overflowMode = TextOverflowModes.Overflow;
         text.textWrappingMode = TextWrappingModes.Normal;
+        Image linkHitArea = Surface("OpenInvalidField", notice.transform, Color.clear);
+        linkHitArea.raycastTarget = true;
+        Rect(linkHitArea.rectTransform, 512, 10, 30, 30);
+        RawImage linkImage = Layer("Icon", linkHitArea.transform)
+            .gameObject.AddComponent<RawImage>();
+        linkImage.texture =
+            AssetDatabase.LoadAssetAtPath<Texture2D>(_locationLinkIconPath)
+            ?? throw new FileNotFoundException("The location-link icon is missing.");
+        linkImage.color = Color.white;
+        linkImage.raycastTarget = false;
+        linkImage
+            .gameObject.AddComponent<ContentTextureBinding>()
+            .SetAddress(_locationLinkIconAddress);
+        Rect(linkImage.rectTransform, 7, 7, 16, 16);
+        Button link = linkHitArea.gameObject.AddComponent<Button>();
+        link.targetGraphic = linkImage;
+        ColorBlock linkColors = link.colors;
+        linkColors.normalColor = Color.white;
+        linkColors.highlightedColor = new Color(1f, 1f, 1f, 0.72f);
+        linkColors.selectedColor = linkColors.highlightedColor;
+        linkColors.pressedColor = new Color(1f, 1f, 1f, 0.55f);
+        linkColors.fadeDuration = 0.05f;
+        link.colors = linkColors;
+        link.gameObject.AddComponent<HelpTooltipView>()
+            .Configure("Go to the field that needs attention.");
+        RectTransform validationRoot = Layer("ValidationErrors", notice.transform);
+        Rect(validationRoot, 16, 46, 588, 216);
+        ContentEditorValidationIssueListView validationList =
+            validationRoot.gameObject.AddComponent<ContentEditorValidationIssueListView>();
+        ScrollAreaLayout validationScroll = Scroll("Issues", validationRoot);
+        Stretch((RectTransform)validationScroll.transform);
+        RectTransform row = Layer("IssueTemplate", validationScroll.ScrollArea.ContentRoot);
+        Rect(row, 0, 0, 572, 72);
+        ContentEditorValidationIssueView issue =
+            row.gameObject.AddComponent<ContentEditorValidationIssueView>();
+        Image rowSurface = Surface("ValidationIssueLink", row, ContentEditorColorRole.Button);
+        Stretch(rowSurface.rectTransform, 0, 2, 0, 2);
+        rowSurface.raycastTarget = false;
+        TextMeshProUGUI message = Label("Message", rowSurface.transform, string.Empty, 13);
+        Stretch(message.rectTransform, 12, 8, 52, 8);
+        message.alignment = TextAlignmentOptions.MidlineLeft;
+        message.textWrappingMode = TextWrappingModes.Normal;
+        message.raycastTarget = false;
+        Image issueLinkHitArea = Surface("OpenValidationIssue", rowSurface.transform, Color.clear);
+        issueLinkHitArea.raycastTarget = true;
+        Rect(issueLinkHitArea.rectTransform, 0, 0, 36, 36);
+        issueLinkHitArea.rectTransform.anchorMin = issueLinkHitArea.rectTransform.anchorMax =
+            Vector2.right;
+        issueLinkHitArea.rectTransform.pivot = Vector2.right;
+        issueLinkHitArea.rectTransform.anchoredPosition = new Vector2(-8, 0);
+        RawImage issueLinkImage = Layer("Icon", issueLinkHitArea.transform)
+            .gameObject.AddComponent<RawImage>();
+        issueLinkImage.texture =
+            AssetDatabase.LoadAssetAtPath<Texture2D>(_locationLinkIconPath)
+            ?? throw new FileNotFoundException("The location-link icon is missing.");
+        issueLinkImage.color = Color.white;
+        issueLinkImage.raycastTarget = false;
+        issueLinkImage
+            .gameObject.AddComponent<ContentTextureBinding>()
+            .SetAddress(_locationLinkIconAddress);
+        Rect(issueLinkImage.rectTransform, 10, 10, 16, 16);
+        Button open = issueLinkHitArea.gameObject.AddComponent<Button>();
+        open.targetGraphic = issueLinkImage;
+        ColorBlock openColors = open.colors;
+        openColors.normalColor = new Color(0.78f, 0.78f, 0.78f, 1);
+        openColors.highlightedColor = Color.white;
+        openColors.selectedColor = Color.white;
+        openColors.pressedColor = new Color(0.58f, 0.58f, 0.58f, 1);
+        openColors.fadeDuration = 0.05f;
+        open.colors = openColors;
+        open.gameObject.AddComponent<HelpTooltipView>()
+            .Configure("Go to the field that needs attention.");
+        Assign(issue, "openButton", open);
+        Assign(issue, "message", message);
+        Assign(validationList, "scroll", validationScroll);
+        Assign(validationList, "rowTemplate", issue);
+        row.gameObject.SetActive(false);
+        validationRoot.gameObject.SetActive(false);
+        Button validationToggle = Button("ToggleValidationErrors", notice.transform, "Hide");
+        Rect((RectTransform)validationToggle.transform, 464, 10, 72, 30);
+        TextMeshProUGUI validationToggleText =
+            validationToggle.GetComponentInChildren<TextMeshProUGUI>();
+        validationToggle.gameObject.SetActive(false);
         Button close = Button("Dismiss", notice.transform, "Close");
-        Rect((RectTransform)close.transform, 550, 10, 60, 30);
+        Rect((RectTransform)close.transform, 544, 10, 60, 30);
         Assign(view, "notice", notice.gameObject);
         Assign(view, "noticeText", text);
         Assign(view, "dismissNoticeButton", close);
+        Assign(view, "noticeLinkButton", link);
+        Assign(view, "validationToggleButton", validationToggle);
+        Assign(view, "validationToggleText", validationToggleText);
+        Assign(view, "validationList", validationList);
         notice.gameObject.SetActive(false);
     }
 

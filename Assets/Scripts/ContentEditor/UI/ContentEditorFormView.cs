@@ -4,11 +4,9 @@ using System.Globalization;
 using System.Linq;
 using System.Xml.Linq;
 using Rebellion.Game;
-using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
 using TMPro;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
@@ -124,7 +122,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         || fieldViews.Any(view => view.gameObject.activeSelf && view.HasOpenChoice);
     public TextInputHistory InvalidTextHistory =>
         fieldViews
-            .FirstOrDefault(view => view.gameObject.activeSelf && view.HasError)
+            .FirstOrDefault(view => view.gameObject.activeSelf && view.HasRejectedDraft)
             ?.GetComponentInChildren<TMP_InputField>()
             ?.GetComponent<TextInputHistory>();
 
@@ -232,7 +230,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             ContentEditorFieldView field in fieldViews.Where(field => field.gameObject.activeSelf)
         )
             field.Commit();
-        return fieldViews.All(field => !field.gameObject.activeSelf || !field.HasError);
+        return fieldViews.All(field => !field.gameObject.activeSelf || !field.HasRejectedDraft);
     }
 
     /// <summary>
@@ -319,7 +317,9 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// Reveals and focuses a field after a structural creation operation.
     /// </summary>
     /// <param name="field">The field to edit.</param>
-    public void FocusField(ContentPackEditorField field)
+    /// <param name="validationError">The current-value failure to display beside the field.</param>
+    /// <returns>Whether the field has a visible control in the current form.</returns>
+    public bool FocusField(ContentPackEditorField field, string validationError = null)
     {
         XElement item = field
             .XmlElement.AncestorsAndSelf()
@@ -329,17 +329,22 @@ public sealed class ContentEditorFormView : MonoBehaviour
             selectedCollection = item;
             RenderFields(true);
         }
-        ContentEditorFieldView row = fieldViews.Single(item =>
-            item.gameObject.activeSelf && item.Field.XmlElement == field.XmlElement
+        ContentEditorFieldView row = fieldViews.SingleOrDefault(item =>
+            item.gameObject.activeSelf
+            && item.Field.XmlElement == field.XmlElement
+            && item.Field.XmlAttributeName == field.XmlAttributeName
         );
+        if (row == null)
+            return false;
+        if (!string.IsNullOrWhiteSpace(validationError))
+        {
+            row.ShowValidationError(validationError);
+            RenderFields(false);
+        }
         RectTransform rect = (RectTransform)row.transform;
-        fieldScroll.ScrollArea.RevealContentRect(
-            -rect.anchoredPosition.y,
-            fieldScroll.ScrollArea.ViewportHeight
-        );
-        TMP_InputField input = row.GetComponentInChildren<TMP_InputField>();
-        EventSystem.current?.SetSelectedGameObject(input.gameObject);
-        input.ActivateInputField();
+        fieldScroll.ScrollArea.RevealContentRect(-rect.anchoredPosition.y, rect.rect.height);
+        row.Focus();
+        return true;
     }
 
     /// <summary>
@@ -735,9 +740,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
             if (!string.IsNullOrWhiteSpace(address))
                 texture = assets.GetTexture(address);
         }
-        catch (ArgumentException exception)
+        catch (ArgumentException)
         {
-            GameLogger.Warning("Invalid artwork path: " + exception.Message);
             ValidationFailed?.Invoke("Image path is invalid. Use Import to choose an image.");
         }
         previewImage.texture = texture;

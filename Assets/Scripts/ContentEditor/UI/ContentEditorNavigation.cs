@@ -399,6 +399,25 @@ public sealed class ContentEditorNavigation
     }
 
     /// <summary>
+    /// Finds a logical page that explicitly presents the requested field.
+    /// </summary>
+    /// <param name="field">The field to reveal.</param>
+    /// <returns>The combined page containing the field, or null for an ordinary record page.</returns>
+    public ContentEditorTreeNode FindFieldPage(ContentPackEditorField field)
+    {
+        if (field == null)
+            throw new ArgumentNullException(nameof(field));
+        return GetRowsForAll()
+            .FirstOrDefault(node =>
+                node.Fields?.Any(candidate =>
+                    candidate.Record.Key == field.Record.Key
+                    && candidate.XmlElement == field.XmlElement
+                    && candidate.XmlAttributeName == field.XmlAttributeName
+                ) == true
+            );
+    }
+
+    /// <summary>
     /// Gets each creatable catalog once in the same order as its sidebar actions.
     /// </summary>
     /// <returns>The ordered creation destinations, independent of expanded branches.</returns>

@@ -4,9 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 
@@ -15,6 +17,86 @@ namespace Rebellion.Tests.ContentEditor.UI
     [TestFixture]
     public sealed class ContentPackEditorWorkspaceControllerTests : ContentEditorViewTestBase
     {
+        [Test]
+        public void RenderFieldError_SnapshotInvalidChoice_RevealsAndFocusesItsDropdown()
+        {
+            GameObject eventSystem = new GameObject("EventSystem");
+            eventSystem.AddComponent<EditModeEventSystem>();
+            try
+            {
+                ContentPackEditorRecord officer = project
+                    .GetCatalogs()
+                    .First(catalog => catalog.Name == "Officers")
+                    .Records.Last();
+                ContentPackEditorRecord snapshot = new ContentPackEditorRecord(
+                    officer.Catalog,
+                    new XElement(officer.Element)
+                );
+                ContentPackEditorField rank = snapshot.GetField("CurrentRank");
+                view.RenderFieldError(
+                    "Officers/OFAL005/Current rank: Choose a listed value.",
+                    rank,
+                    "Choose a listed value."
+                );
+                Button link = view.GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "OpenInvalidField");
+                RawImage linkIcon = link.GetComponentInChildren<RawImage>(true);
+
+                Assert.IsTrue(link.gameObject.activeSelf);
+                Assert.AreEqual(new Vector2(16, 16), linkIcon.rectTransform.sizeDelta);
+                Assert.AreEqual(
+                    "Application/Strategy/UI/Windows/ui_strategyview_open_location_button",
+                    linkIcon.GetComponent<ContentTextureBinding>().Address
+                );
+                link.onClick.Invoke();
+
+                ContentEditorFieldView field =
+                    view.GetComponentsInChildren<ContentEditorFieldView>()
+                        .Single(item => item.Field?.MemberName == "CurrentRank");
+                TMP_Dropdown dropdown = field.GetComponentInChildren<TMP_Dropdown>();
+                Assert.AreSame(dropdown.gameObject, EventSystem.current.currentSelectedGameObject);
+                Assert.IsTrue(field.HasError);
+                Assert.AreEqual(
+                    "Choose a listed value.",
+                    field
+                        .GetComponentsInChildren<TextMeshProUGUI>(true)
+                        .Single(text => text.name == "Error")
+                        .text
+                );
+                Assert.IsFalse(
+                    field
+                        .GetComponentsInChildren<Button>(true)
+                        .Single(button => button.name == "Revert")
+                        .gameObject.activeSelf
+                );
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(eventSystem);
+            }
+        }
+
+        [Test]
+        public void RenderStatus_AfterFieldError_HidesTheValidationLink()
+        {
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.First()
+                .GetField("CurrentRank");
+            view.RenderFieldError(
+                "Officers/OFAL001/Current rank: Choose a listed value.",
+                field,
+                "Choose a listed value."
+            );
+            Button link = view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "OpenInvalidField");
+
+            view.RenderStatus("Content pack saved.", false);
+
+            Assert.IsFalse(link.gameObject.activeSelf);
+        }
+
         [Test]
         public void ResetSection_VisibleButton_ResetsOnlyTheCurrentSectionAndSupportsUndo()
         {
