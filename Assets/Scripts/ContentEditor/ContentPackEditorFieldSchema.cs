@@ -107,7 +107,7 @@ internal static class ContentPackEditorFieldSchema
     }
 
     /// <summary>
-    /// Validates a scalar through the content serializer's conversions and enum members.
+    /// Validates scalar conversions, enum members, and combinations of declared flags.
     /// </summary>
     /// <param name="value">The proposed value.</param>
     /// <param name="type">The declared scalar type.</param>
@@ -118,7 +118,7 @@ internal static class ContentPackEditorFieldSchema
         try
         {
             object parsed = TypeHelper.ConvertToScalar(value, type);
-            if (type.IsEnum && !Enum.IsDefined(type, parsed))
+            if (type.IsEnum && !IsDefinedEnumValue(type, parsed))
                 throw new ArgumentException("Choose a listed value.");
         }
         catch (Exception exception)
@@ -131,6 +131,34 @@ internal static class ContentPackEditorFieldSchema
             );
         }
     }
+
+    /// <summary>
+    /// Accepts declared enum members and flag combinations without undefined bits.
+    /// </summary>
+    /// <param name="type">The declared enum type.</param>
+    /// <param name="value">The parsed enum value.</param>
+    /// <returns>True when the value contains only declared members or flags.</returns>
+    private static bool IsDefinedEnumValue(Type type, object value)
+    {
+        if (Enum.IsDefined(type, value))
+            return true;
+        if (!type.IsDefined(typeof(FlagsAttribute), false))
+            return false;
+        ulong declaredBits = 0;
+        foreach (object member in Enum.GetValues(type))
+            declaredBits |= GetEnumBits(member);
+        return (GetEnumBits(value) & ~declaredBits) == 0;
+    }
+
+    /// <summary>
+    /// Preserves signed and unsigned enum bits without overflowing their underlying values.
+    /// </summary>
+    /// <param name="value">The enum value to inspect.</param>
+    /// <returns>The enum's bits represented as an unsigned integer.</returns>
+    private static ulong GetEnumBits(object value) =>
+        Enum.GetUnderlyingType(value.GetType()) == typeof(ulong)
+            ? Convert.ToUInt64(value)
+            : unchecked((ulong)Convert.ToInt64(value));
 
     /// <summary>
     /// Resolves one member, dictionary component, collection item, or polymorphic wrapper.
