@@ -189,6 +189,88 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(scene.origin.InstanceID, arrival.Destination.InstanceID);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ProcessTick_FastOfficerPartyFollowingSlowerCarrier_ReportsArrivalAfterCarrier(
+            bool moveFleet
+        )
+        {
+            GameConfig config = TestConfig.Create();
+            config.Movement.DistanceDivisor = 10;
+            config.Movement.DefaultPersonnelHyperdrive = 100;
+            config.Movement.SameSectorMinTransitTicks = 1;
+            var scene = BuildScene(config);
+            Planet finalDestination = new Planet
+            {
+                InstanceID = "final-destination",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 300,
+                PositionY = 300,
+            };
+            scene.game.AttachNode(finalDestination, scene.origin.GetParent());
+            Fleet fleet = EntityFactory.CreateFleet("receiving-fleet", "empire");
+            CapitalShip carrier = CreateMovableCapitalShip("receiving-carrier");
+            carrier.Hyperdrive = 200;
+            scene.game.AttachNode(fleet, scene.destination);
+            scene.game.AttachNode(carrier, fleet);
+            Officer companion = EntityFactory.CreateOfficer("companion", "empire");
+            scene.game.AttachNode(companion, scene.origin);
+            OfficerTraitDefinition trait = new OfficerTraitDefinition
+            {
+                ID = "smuggler",
+                PersonnelTravelTimePercent = 50,
+                SharesPersonnelTravelTimeModifier = true,
+            };
+            scene.officer.Traits.Add(trait.ID);
+            scene.officer.BindTraitDefinitions(
+                new Dictionary<string, OfficerTraitDefinition> { [trait.ID] = trait }
+            );
+            scene.movement.RequestMove(new List<IMovable> { scene.officer, companion }, carrier);
+            string groupID = scene.officer.Movement.MovementGroupID;
+            IMovable transport = moveFleet ? fleet : carrier;
+            Assert.IsTrue(
+                scene.movement.TryRequestMove(
+                    new ISceneNode[] { transport },
+                    finalDestination,
+                    "empire"
+                )
+            );
+            int transportTicks = transport.GetTransitMovement().TicksRemaining();
+            MovementQueries queries = new(scene.game);
+            int independentTicks =
+                queries.CalculateTransitTicks(scene.officer, scene.origin, scene.destination)
+                + queries.CalculateTransitTicks(scene.officer, scene.destination, finalDestination);
+            Assert.Less(independentTicks, transportTicks);
+            MovementTickProcessor processor = new(scene.movement);
+            List<GameResult> results = new();
+
+            for (int tick = 0; tick < transportTicks - 1; tick++)
+                results.AddRange(processor.ProcessTick(scene.game));
+
+            Assert.IsNotNull(transport.GetTransitMovement());
+            Assert.IsEmpty(
+                results
+                    .OfType<UnitArrivedResult>()
+                    .Where(result => result.Unit == scene.officer || result.Unit == companion),
+                "The party must not report arrival while its carrier is still in transit."
+            );
+
+            results.AddRange(processor.ProcessTick(scene.game));
+
+            Assert.IsNull(transport.GetTransitMovement());
+            foreach (Officer officer in new[] { scene.officer, companion })
+            {
+                Assert.IsNull(((IMovable)officer).GetTransitMovement());
+                Assert.AreSame(carrier, officer.GetParent());
+                UnitArrivedResult arrival = results
+                    .OfType<UnitArrivedResult>()
+                    .Single(result => result.Unit == officer);
+                Assert.AreEqual(groupID, arrival.MovementGroupID);
+                Assert.AreSame(finalDestination, arrival.Destination);
+            }
+        }
+
         [TestCase(false, false)]
         [TestCase(true, false)]
         [TestCase(false, true)]
@@ -4410,7 +4492,10 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsNull(captive.Movement);
             Assert.AreSame(carrier, officer.GetParent());
             Assert.AreSame(carrier, captive.GetParent());
-            Assert.AreEqual(fleetHyperdrive == 1000, fleet.Movement != null);
+            Assert.IsNull(
+                fleet.Movement,
+                "Returning personnel must not arrive before their receiving fleet."
+            );
             Assert.IsFalse(officer.IsCaptured);
             ForceExperienceResult growth = results.OfType<ForceExperienceResult>().Single();
             Assert.AreSame(officer, growth.Officer);

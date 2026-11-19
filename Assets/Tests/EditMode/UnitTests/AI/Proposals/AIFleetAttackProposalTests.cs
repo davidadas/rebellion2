@@ -406,7 +406,7 @@ namespace Rebellion.Tests.AI.Fleets
         }
 
         [Test]
-        public void Execute_WithSharedTravelOfficerGroup_PreservesIndependentArrivalTimes()
+        public void Execute_WithSharedTravelOfficerGroup_CoordinatesArrivalWithFleet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             ConfigureMinimalAttackRequirements(game);
@@ -493,8 +493,8 @@ namespace Rebellion.Tests.AI.Fleets
             Assert.AreEqual(fleetTransitTicks, fleet.Movement.TransitTicks);
             Assert.AreEqual(100, smuggler.Movement.TransitTicks);
             Assert.AreEqual(100, companion.Movement.TransitTicks);
-            Assert.AreEqual(groupTransitTicks, smuggler.Movement.TicksRemaining());
-            Assert.AreEqual(groupTransitTicks, companion.Movement.TicksRemaining());
+            Assert.AreEqual(fleetTransitTicks, smuggler.Movement.TicksRemaining());
+            Assert.AreEqual(fleetTransitTicks, companion.Movement.TicksRemaining());
         }
 
         [Test]
