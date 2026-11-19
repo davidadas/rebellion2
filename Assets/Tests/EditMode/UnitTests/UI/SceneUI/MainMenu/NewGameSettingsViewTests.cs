@@ -438,7 +438,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                     "DIFFICULTY",
                     "WORLD SETTINGS",
                     "FACTION MODIFIERS",
-                    "Presets",
+                    "PRESETS",
                 },
                 labels
             );

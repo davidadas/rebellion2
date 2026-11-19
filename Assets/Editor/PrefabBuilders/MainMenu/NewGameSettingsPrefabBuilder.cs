@@ -51,7 +51,7 @@ public static class NewGameSettingsPrefabBuilder
             "DIFFICULTY",
             "WORLD SETTINGS",
             "FACTION MODIFIERS",
-            "Presets",
+            "PRESETS",
         };
         Button[] tabs = new Button[names.Length];
         for (int i = 0; i < tabs.Length; i++)

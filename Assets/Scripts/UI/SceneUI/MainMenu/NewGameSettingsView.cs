@@ -182,7 +182,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             "DIFFICULTY",
             "WORLD SETTINGS",
             "FACTION MODIFIERS",
-            "Presets",
+            "PRESETS",
         };
         while (tabs.Length < captions.Length)
         {
@@ -544,7 +544,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             NewGameSettingsCategory.DifficultyModifiers => "DIFFICULTY MODIFIERS",
             NewGameSettingsCategory.WorldGeneration => "WORLD GENERATION",
             NewGameSettingsCategory.FactionModifiers => "FACTION MODIFIERS",
-            NewGameSettingsCategory.SaveLoad => "Game settings presets",
+            NewGameSettingsCategory.SaveLoad => "GAME SETTINGS PRESETS",
             _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
         };
     }
