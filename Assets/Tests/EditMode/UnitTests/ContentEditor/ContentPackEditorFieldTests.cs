@@ -162,6 +162,59 @@ namespace Rebellion.Tests.ContentEditor
             Assert.AreEqual("Admiral", field.Value);
         }
 
+        [TestCase("PlanetControl, PlanetResources")]
+        [TestCase("CapitalShips, Starfighters")]
+        [TestCase("Regiments, SpecialForces")]
+        [TestCase("PlanetMilitaryProduction, Officers")]
+        [TestCase("768")]
+        [TestCase("None")]
+        [TestCase("All")]
+        public void ValidateValues_FlagCombination_AcceptsDeclaredBits(string value)
+        {
+            ContentPackEditorField field = CreateIntelligenceField(value);
+
+            Assert.DoesNotThrow(() => field.ValidateValues(field.Values));
+        }
+
+        [TestCase("UnknownCategory")]
+        [TestCase("PlanetControl, UnknownCategory")]
+        [TestCase("32768")]
+        [TestCase("33024")]
+        [TestCase("-1")]
+        public void ValidateValues_InvalidFlags_RejectsValue(string value)
+        {
+            ContentPackEditorField field = CreateIntelligenceField(value);
+
+            Assert.Throws<ArgumentException>(() => field.ValidateValues(field.Values));
+        }
+
+        [Test]
+        public void SetListValues_FlagCombinations_PreservesSeparateEntries()
+        {
+            ContentPackEditorField field = CreateIntelligenceField("None");
+            string[] values =
+            {
+                "PlanetControl, PlanetResources",
+                "CapitalShips, Starfighters",
+                "Regiments, SpecialForces",
+            };
+
+            field.SetListValues(values);
+
+            CollectionAssert.AreEqual(values, field.Values);
+        }
+
+        [TestCase("PlanetControl, UnknownCategory")]
+        [TestCase("32768")]
+        public void SetListValues_InvalidFlags_DoesNotChangeDocument(string value)
+        {
+            ContentPackEditorField field = CreateIntelligenceField("None");
+
+            Assert.Throws<ArgumentException>(() => field.SetListValues(new[] { value }));
+            CollectionAssert.AreEqual(new[] { "None" }, field.Values);
+            Assert.IsFalse(field.Record.Catalog.Document.IsDirty);
+        }
+
         [Test]
         public void SetImportedAsset_EmptyVoiceList_PreservesPathItemNameAndPunctuation()
         {
@@ -181,6 +234,19 @@ namespace Rebellion.Tests.ContentEditor
             Assert.AreEqual("Path", list.Elements().Single().Name.LocalName);
             Assert.AreEqual("Pack/Assets/yes, commander.wav", list.Elements().Single().Value);
         }
+
+        /// <summary>
+        /// Creates an incident intelligence list with one authored flag value.
+        /// </summary>
+        /// <param name="value">The flag value stored in the rules.</param>
+        /// <returns>The editable intelligence list.</returns>
+        private static ContentPackEditorField CreateIntelligenceField(string value) =>
+            Create(
+                $"<GameConfig><Uprising><IncidentIntelligence><PlanetIntelligenceCategory>{value}</PlanetIntelligenceCategory></IncidentIntelligence></Uprising></GameConfig>"
+            )
+                .Records[0]
+                .GetFields()
+                .Single(field => field.MemberName == "IncidentIntelligence");
 
         /// <summary>
         /// Creates a sector with two planets for coordinate-edit tests.

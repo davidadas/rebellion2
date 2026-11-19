@@ -1222,13 +1222,17 @@ namespace Rebellion.Gameplay
         /// Whether the origin planet itself may receive the unit without interplanetary travel.
         /// </param>
         /// <param name="leaveOriginPlanet">Whether every destination at the origin is excluded.</param>
-        /// <returns>The valid relocation destinations, nearest first.</returns>
+        /// <param name="preferFriendlyPlanets">
+        /// Whether local carriers take precedence, followed by friendly planets and then remote carriers.
+        /// </param>
+        /// <returns>The valid relocation destinations, ordered by preference and proximity.</returns>
         internal IReadOnlyList<ContainerNode> FindSafeRelocationDestinations(
             IMovable unit,
             Planet originPlanet,
             bool forceInterplanetaryTravel = false,
             bool allowOriginPlanet = false,
-            bool leaveOriginPlanet = false
+            bool leaveOriginPlanet = false,
+            bool preferFriendlyPlanets = false
         )
         {
             if (unit == null)
@@ -1270,7 +1274,9 @@ namespace Rebellion.Gameplay
                     Destination = destination,
                     Planet = RequireDestinationPlanet(destination),
                 })
-                .OrderBy(candidate => candidate.Planet.GetRawDistanceTo(originPosition))
+                .OrderBy(candidate => preferFriendlyPlanets && candidate.Planet != originPlanet)
+                .ThenBy(candidate => preferFriendlyPlanets && candidate.Destination is CapitalShip)
+                .ThenBy(candidate => candidate.Planet.GetRawDistanceTo(originPosition))
                 .ThenBy(candidate => candidate.Destination is CapitalShip ? 0 : 1)
                 .ThenBy(candidate => candidate.Destination.InstanceID, StringComparer.Ordinal)
                 .Select(candidate => candidate.Destination)
