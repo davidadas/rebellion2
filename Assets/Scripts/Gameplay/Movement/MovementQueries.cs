@@ -363,18 +363,20 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Returns the in-transit units assigned to a fleet, grouped exactly as retarget execution
+        /// Returns the in-transit units assigned to a ship or fleet, grouped exactly as retarget execution
         /// will move them.
         /// </summary>
-        /// <param name="fleet">The fleet receiving a new destination.</param>
+        /// <param name="transport">The ship or fleet receiving a new destination.</param>
         /// <returns>Movement groups with each ungrouped unit represented independently.</returns>
-        internal IReadOnlyList<IReadOnlyList<IMovable>> GetInTransitFleetJoinerGroups(Fleet fleet)
+        internal IReadOnlyList<IReadOnlyList<IMovable>> GetInTransitJoinerGroups(
+            ContainerNode transport
+        )
         {
-            Fleet liveFleet = ResolveLiveNode(fleet) as Fleet;
-            if (liveFleet == null)
+            ContainerNode liveTransport = ResolveLiveNode(transport) as ContainerNode;
+            if (liveTransport == null)
                 return Array.Empty<IReadOnlyList<IMovable>>();
 
-            List<IMovable> joiners = liveFleet
+            List<IMovable> joiners = liveTransport
                 .GetChildren<IMovable>(recursive: true)
                 .Where(movable => movable.Movement != null)
                 .ToList();

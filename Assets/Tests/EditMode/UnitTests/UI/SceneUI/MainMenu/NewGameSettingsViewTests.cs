@@ -438,7 +438,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                     "DIFFICULTY",
                     "WORLD SETTINGS",
                     "FACTION MODIFIERS",
-                    "SAVE / LOAD",
+                    "PRESETS",
                 },
                 labels
             );
@@ -811,6 +811,8 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(settingsPage.pivot, presetPage.pivot);
             Assert.AreEqual(Vector3.one, presetPage.localScale);
             Assert.IsTrue(ApplyButton().gameObject.activeSelf);
+            TMP_Text description = presetPage.Find("SavedGamesLabel").GetComponent<TMP_Text>();
+            Assert.LessOrEqual(description.preferredWidth, description.rectTransform.rect.width);
         }
 
         [TestCase("SaveIcon")]

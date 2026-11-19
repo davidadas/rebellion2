@@ -5,7 +5,6 @@ using System.Xml;
 using System.Xml.Schema;
 using Rebellion.Game;
 using Rebellion.Game.Messages;
-using Rebellion.Util.Logging;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -153,10 +152,23 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private Button dismissNoticeButton;
 
     [SerializeField]
+    private Button noticeLinkButton;
+
+    [SerializeField]
+    private Button validationToggleButton;
+
+    [SerializeField]
+    private TextMeshProUGUI validationToggleText;
+
+    [SerializeField]
+    private ContentEditorValidationIssueListView validationList;
+
+    [SerializeField]
     private ActionDialogView confirmation;
 
     [SerializeField]
     private SelectionDialogView selectionDialog;
+
     internal event Action<ContentPackEditorCollection> CollectionAddRequested;
     internal event Action<ContentPackEditorCollection, int> CollectionRemoveRequested;
     internal event Action<
@@ -185,6 +197,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private bool mapDragging;
     private Button menuAnchor;
     private TextInputHistory textRedoTarget;
+    private ContentPackEditorField noticeField;
+    private string noticeFieldError;
+    private bool navigatingValidationIssue;
     private GameSize previewSize = GameSize.Large;
     private GameDifficulty previewDifficulty = GameDifficulty.Medium;
     private string previewScenario;
@@ -231,6 +246,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         ContentPackEditorRecord
     > SelectionRequested;
     internal event Action<string> SectionRequested;
+    internal event Action<ContentPackEditorField, string> ErrorFieldRequested;
 
     public ContentEditorColorMode ColorMode => appearance.Mode;
     public bool IsPreviewAudioPlaying => previewAudio && previewAudio.isPlaying;
@@ -371,6 +387,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || notice == null
             || noticeText == null
             || dismissNoticeButton == null
+            || noticeLinkButton == null
+            || validationToggleButton == null
+            || validationToggleText == null
+            || validationList == null
             || selectionDialog == null
             || confirmation == null
             || imagePreview == null
@@ -434,7 +454,11 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         deleteButton.onClick.AddListener(ConfirmDeleteRecord);
         packDialog.CreateRequested += ForwardCreateRequest;
         packDialog.BrowseRequested += ForwardBrowseRequest;
-        dismissNoticeButton.onClick.AddListener(() => notice.SetActive(false));
+        dismissNoticeButton.onClick.AddListener(HideNotice);
+        noticeLinkButton.onClick.AddListener(RequestErrorField);
+        noticeLinkButton.gameObject.SetActive(false);
+        validationToggleButton.onClick.AddListener(ToggleValidationIssues);
+        validationToggleButton.gameObject.SetActive(false);
         map.BackRequested += ReturnToGalaxy;
         map.ArrangeRequested += ArrangeMap;
         map.Selected += SelectMapRecord;
@@ -511,6 +535,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             packDialog.CreateRequested -= ForwardCreateRequest;
             packDialog.BrowseRequested -= ForwardBrowseRequest;
             resetSectionButton.onClick.RemoveListener(RequestSectionReset);
+            dismissNoticeButton.onClick.RemoveListener(HideNotice);
+            noticeLinkButton.onClick.RemoveListener(RequestErrorField);
+            validationToggleButton.onClick.RemoveListener(ToggleValidationIssues);
         }
     }
 
@@ -596,7 +623,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         }
         if (!notice.activeSelf)
             return false;
-        notice.SetActive(false);
+        HideNotice();
         return true;
     }
 
@@ -632,6 +659,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         welcomePane.SetActive(false);
         editButton.interactable = true;
         selectionDialog.Hide();
+        HideValidationIssues();
         confirmation.TryCancel();
         imagePreview.TryCancel();
         menu.Reset();
@@ -796,8 +824,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <param name="isError">Whether the operation failed.</param>
     public void RenderStatus(string message, bool isError)
     {
-        if (isError && noticeText.text != message)
-            GameLogger.Warning("Content editor: " + message);
+        noticeField = null;
+        noticeFieldError = null;
+        HideValidationIssues();
+        noticeLinkButton.gameObject.SetActive(false);
         if (isError && packDialog.IsOpen)
         {
             packDialog.ShowError(message);
@@ -815,6 +845,56 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             .GetComponent<ContentEditorColorBinding>()
             .SetRole(isError ? ContentEditorColorRole.Error : ContentEditorColorRole.Success);
         notice.SetActive(true);
+    }
+
+    /// <summary>
+    /// Presents a pack-wide validation failure with navigation to its authored field.
+    /// </summary>
+    /// <param name="message">The contextual validation failure.</param>
+    /// <param name="field">The rejected field.</param>
+    /// <param name="fieldError">The concise failure to display beside the field.</param>
+    internal void RenderFieldError(string message, ContentPackEditorField field, string fieldError)
+    {
+        RenderStatus(message, true);
+        if (packDialog.IsOpen || field == null)
+            return;
+        noticeField = field;
+        noticeFieldError = fieldError;
+        noticeLinkButton.gameObject.SetActive(true);
+    }
+
+    /// <summary>
+    /// Forwards the field currently attached to the validation link.
+    /// </summary>
+    private void RequestErrorField()
+    {
+        ContentPackEditorField field = noticeField;
+        if (field == null)
+            return;
+        string fieldError = noticeFieldError;
+        HideNotice();
+        ErrorFieldRequested?.Invoke(field, fieldError);
+    }
+
+    /// <summary>
+    /// Dismisses the operation notice and any validation rows it currently owns.
+    /// </summary>
+    private void HideNotice()
+    {
+        noticeField = null;
+        noticeFieldError = null;
+        noticeLinkButton.gameObject.SetActive(false);
+        HideValidationIssues();
+        notice.SetActive(false);
+    }
+
+    /// <summary>
+    /// Clears validation-report controls without changing the surrounding operation notice.
+    /// </summary>
+    private void HideValidationIssues()
+    {
+        validationList.Hide();
+        validationToggleButton.gameObject.SetActive(false);
     }
 
     /// <summary>
@@ -906,6 +986,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     public void ClearProject()
     {
         selectionDialog.Hide();
+        HideValidationIssues();
         form.ResetGenerationSelection();
         xml.Clear();
         FinishMapEdit();
@@ -1150,6 +1231,45 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         RenderStatus(warnings.Count == 0 ? message : $"{message} {count}", false);
         if (warnings.Count > 0)
             ShowValidationWarning(warnings, 0);
+    }
+
+    /// <summary>
+    /// Displays every rejected authored field from one completed structural validation pass.
+    /// </summary>
+    /// <param name="issues">The rejected fields and their contextual messages.</param>
+    internal void RenderValidationErrors(IReadOnlyList<ContentEditorValidationIssue> issues)
+    {
+        string count =
+            issues.Count == 1 ? "1 validation error." : $"{issues.Count} validation errors.";
+        RenderStatus(count, true);
+        validationList.Show(
+            issues,
+            issue => ErrorFieldRequested?.Invoke(issue.Field, issue.FieldError)
+        );
+        validationToggleButton.gameObject.SetActive(true);
+        SetValidationIssuesExpanded(true);
+    }
+
+    /// <summary>
+    /// Switches between the compact validation summary and its complete issue list.
+    /// </summary>
+    private void ToggleValidationIssues()
+    {
+        SetValidationIssuesExpanded(!validationList.IsExpanded);
+    }
+
+    /// <summary>
+    /// Resizes the operation notice for either its compact summary or expanded validation list.
+    /// </summary>
+    /// <param name="expanded">Whether the validation issue rows should be visible.</param>
+    private void SetValidationIssuesExpanded(bool expanded)
+    {
+        validationList.SetExpanded(expanded);
+        validationToggleText.text = expanded ? "Hide" : "Show";
+        ((RectTransform)notice.transform).SetSizeWithCurrentAnchors(
+            RectTransform.Axis.Vertical,
+            58 + (expanded ? validationList.VisibleHeight : 0)
+        );
     }
 
     /// <summary>
@@ -1655,7 +1775,11 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// Displays one field validation failure through the workspace status.
     /// </summary>
     /// <param name="message">The concise validation message.</param>
-    private void ReportFieldError(string message) => RenderStatus(message, true);
+    private void ReportFieldError(string message)
+    {
+        if (!navigatingValidationIssue || !validationToggleButton.gameObject.activeSelf)
+            RenderStatus(message, true);
+    }
 
     /// <summary>
     /// Applies valid XML as one reversible operation and rebuilds the editor.
@@ -2269,6 +2393,90 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// </summary>
     /// <param name="field">The field to focus.</param>
     internal void FocusField(ContentPackEditorField field) => form.FocusField(field);
+
+    /// <summary>
+    /// Selects the page and inspector tab that present a validated field, then focuses it.
+    /// </summary>
+    /// <param name="field">The current project field to reveal.</param>
+    /// <param name="validationError">The current-value failure to display beside the field.</param>
+    internal void ShowField(ContentPackEditorField field, string validationError)
+    {
+        if (!ResolveXmlDraft(() => ShowField(field, validationError)) || !CommitFields())
+            return;
+        bool wasNavigatingValidationIssue = navigatingValidationIssue;
+        navigatingValidationIssue = true;
+        try
+        {
+            NavigateToField(field, validationError);
+        }
+        finally
+        {
+            navigatingValidationIssue = wasNavigatingValidationIssue;
+        }
+    }
+
+    /// <summary>
+    /// Selects and focuses a validated field after pending XML has been resolved.
+    /// </summary>
+    /// <param name="field">The current project field to reveal.</param>
+    /// <param name="validationError">The current-value failure to display beside the field.</param>
+    private void NavigateToField(ContentPackEditorField field, string validationError)
+    {
+        searchInput.SetTextWithoutNotify(string.Empty);
+        navigation.Render(catalogs);
+        ContentEditorTreeNode page = navigation.FindFieldPage(field);
+        ContentPackEditorRecord record = page?.Record ?? field.Record;
+        if (page == null && field.Record.Kind == "EncyclopediaEntry")
+        {
+            ContentPackEditorRecord entity = catalogs
+                .SelectMany(catalog =>
+                    catalog.Records.Concat(catalog.Records.SelectMany(item => item.Planets))
+                )
+                .FirstOrDefault(candidate =>
+                    ContentEditorContentSections.HasEncyclopedia(candidate)
+                    && candidate.ID == field.Record.ID
+                );
+            if (entity != null)
+                record = entity;
+        }
+        SelectRecord(record, page);
+        if (record.Kind == "GameEvent")
+            return;
+        string targetSection = FieldSection(field, page, record);
+        ShowSection(targetSection);
+        if (targetSection != "Advanced" && !form.FocusField(field, validationError))
+            ShowSection("Advanced");
+    }
+
+    /// <summary>
+    /// Resolves the inspector tab that owns an authored field.
+    /// </summary>
+    /// <param name="field">The field to display.</param>
+    /// <param name="page">The combined page containing the field, when present.</param>
+    /// <param name="record">The record selected in the navigation tree.</param>
+    /// <returns>The owning inspector tab.</returns>
+    private static string FieldSection(
+        ContentPackEditorField field,
+        ContentEditorTreeNode page,
+        ContentPackEditorRecord record
+    )
+    {
+        if (page?.Key.StartsWith("factions/", StringComparison.Ordinal) == true)
+            return ContentEditorContentSections.FactionSection(field);
+        if (record.Kind == "GameGenerationConfig")
+            return ContentEditorContentSections.GenerationSection(field);
+        if (page?.MissionID != null)
+            return field.Record.Kind == "GameConfig" ? "Rules" : "General";
+        if (
+            record.Element != field.Record.Element
+            || ContentEditorContentSections.HasEncyclopedia(record)
+                && ContentEditorContentSections.IsEncyclopediaField(field)
+        )
+            return "Encyclopedia";
+        return field.MediaType == ContentPackEditorMediaType.Audio ? "Audio"
+            : field.IsMedia ? "Artwork"
+            : "General";
+    }
 
     /// <summary>
     /// Opens named multi-selection, retaining repeated building quantities and destination weights.

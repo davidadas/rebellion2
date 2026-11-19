@@ -2026,7 +2026,7 @@ namespace Rebellion.Gameplay
                 if (rebasePlanet != null)
                 {
                     MoveNode(inactiveFleet, rebasePlanet, results);
-                    RetargetInTransitFleetJoiners(inactiveFleet, currentPlanet, rebasePlanet);
+                    RetargetInTransitJoiners(inactiveFleet, currentPlanet, rebasePlanet);
                     GameLogger.Log(
                         $"{inactiveFleet.GetDisplayName()} rebased to {rebasePlanet.GetDisplayName()} because it has no operational capital ships."
                     );
@@ -2386,8 +2386,8 @@ namespace Rebellion.Gameplay
 
             AddPlanetGarrisonChangedResults(results, unit, originPlanet);
 
-            if (unit is Fleet movingFleet)
-                RetargetInTransitFleetJoiners(movingFleet, originPlanet, destinationPlanet);
+            if (unit is Fleet or CapitalShip)
+                RetargetInTransitJoiners(unit, originPlanet, destinationPlanet);
 
             results.Add(
                 new GameObjectEnrouteResult { GameObject = unit, Tick = _game.CurrentTick }
@@ -2443,31 +2443,43 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Retargets units that are already moving to join a fleet after the fleet receives a new destination.
+        /// Retargets inbound journeys when their receiving ship or fleet relocates, keeping personnel with the transport.
         /// </summary>
-        /// <param name="fleet">The fleet whose inbound units should be retargeted.</param>
-        /// <param name="previousDestination">The fleet's planet before relocation.</param>
-        /// <param name="destinationPlanet">The fleet's new destination planet.</param>
-        private void RetargetInTransitFleetJoiners(
-            Fleet fleet,
+        /// <param name="transport">The relocating ship or fleet receiving the inbound units.</param>
+        /// <param name="previousDestination">The transport's planet before relocation.</param>
+        /// <param name="destinationPlanet">The transport's new destination planet.</param>
+        private void RetargetInTransitJoiners(
+            IMovable transport,
             Planet previousDestination,
             Planet destinationPlanet
         )
         {
-            foreach (IReadOnlyList<IMovable> group in _queries.GetInTransitFleetJoinerGroups(fleet))
-                RetargetMovementGroup(group, previousDestination, destinationPlanet);
+            int earliestArrivalTicks = transport.Movement?.TicksRemaining() ?? 0;
+            foreach (
+                IReadOnlyList<IMovable> group in _queries.GetInTransitJoinerGroups(
+                    (ContainerNode)transport
+                )
+            )
+                RetargetMovementGroup(
+                    group,
+                    previousDestination,
+                    destinationPlanet,
+                    earliestArrivalTicks
+                );
         }
 
         /// <summary>
         /// Updates a movement group's routes while preserving unfinished travel and one common arrival time.
         /// </summary>
         /// <param name="movables">The moving units to retarget together.</param>
-        /// <param name="previousDestination">The receiving fleet's planet before relocation.</param>
+        /// <param name="previousDestination">The receiving transport's planet before relocation.</param>
         /// <param name="destinationPlanet">The new destination planet.</param>
+        /// <param name="earliestArrivalTicks">The remaining transport journey that personnel must wait for.</param>
         private void RetargetMovementGroup(
             IReadOnlyList<IMovable> movables,
             Planet previousDestination,
-            Planet destinationPlanet
+            Planet destinationPlanet,
+            int earliestArrivalTicks
         )
         {
             int transitTicks = _queries.CalculateRetargetedGroupTransitTicks(
@@ -2475,6 +2487,8 @@ namespace Rebellion.Gameplay
                 destinationPlanet,
                 previousDestination
             );
+            if (movables.Any(movable => movable is IMissionParticipant))
+                transitTicks = Math.Max(earliestArrivalTicks, transitTicks);
             foreach (IMovable movable in movables)
                 RedirectTransit(movable, previousDestination, destinationPlanet, transitTicks);
         }
