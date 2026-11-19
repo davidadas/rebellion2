@@ -182,7 +182,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             "DIFFICULTY",
             "WORLD SETTINGS",
             "FACTION MODIFIERS",
-            "SAVE / LOAD",
+            "Presets",
         };
         while (tabs.Length < captions.Length)
         {
@@ -535,7 +535,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
     /// Returns the heading displayed for one settings category.
     /// </summary>
     /// <param name="category">The selected category.</param>
-    /// <returns>The uppercase category heading.</returns>
+    /// <returns>The category heading.</returns>
     private static string GetCategoryTitle(NewGameSettingsCategory category)
     {
         return category switch
@@ -544,7 +544,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             NewGameSettingsCategory.DifficultyModifiers => "DIFFICULTY MODIFIERS",
             NewGameSettingsCategory.WorldGeneration => "WORLD GENERATION",
             NewGameSettingsCategory.FactionModifiers => "FACTION MODIFIERS",
-            NewGameSettingsCategory.SaveLoad => "SAVE / LOAD CUSTOM GAMES",
+            NewGameSettingsCategory.SaveLoad => "Game settings presets",
             _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
         };
     }
@@ -1001,11 +1001,15 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         presetRect.localRotation = Quaternion.identity;
         presetRect.localScale = Vector3.one;
         presetSaveList = presetPage.GetComponent<OptionsSaveListView>();
-        TMP_Text heading = presetPage
+        TMP_Text description = presetPage
             .GetComponentsInChildren<TMP_Text>(true)
             .FirstOrDefault(text => text.name == "SavedGamesLabel");
-        if (heading != null)
-            heading.text = "CUSTOM GAME PRESETS";
+        if (description != null)
+        {
+            description.text = "Save and reuse your custom game settings.";
+            description.fontSize = _descriptionFontSize;
+            description.color = new Color(0.573f, 0.635f, 0.706f);
+        }
         if (contentAssets != null)
             ContentBindings.Apply(presetPage, contentAssets);
 
