@@ -19,6 +19,7 @@ using Rebellion.SceneGraph;
 internal static class ContentEditorPackValidator
 {
     private const int _mediaFrameBudgetMilliseconds = 8;
+    private static readonly object _fieldDataKey = new object();
 
     /// <summary>
     /// Checks authored identities and generation references independently of random selections.
@@ -456,6 +457,20 @@ internal static class ContentEditorPackValidator
     /// <param name="project">The saved project or immutable play/export snapshot.</param>
     internal static void ValidateFields(ContentPackEditorProject project)
     {
+        ContentEditorValidationIssue issue = GetFieldErrors(project).FirstOrDefault();
+        if (issue != null)
+            throw issue.Exception;
+    }
+
+    /// <summary>
+    /// Collects every independently invalid authored field before dependent startup checks run.
+    /// </summary>
+    /// <param name="project">The saved project or immutable play/export snapshot.</param>
+    /// <returns>All field failures from the completed structural pass.</returns>
+    internal static IReadOnlyList<ContentEditorValidationIssue> GetFieldErrors(
+        ContentPackEditorProject project
+    )
+    {
         if (project.IsDirty)
             throw new InvalidOperationException("Save the content pack before validating it.");
         ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
@@ -465,6 +480,7 @@ internal static class ContentEditorPackValidator
         );
         IReadOnlyDictionary<string, string> factions = project.GetFactionOptions();
         IReadOnlyDictionary<string, string> traits = project.GetTraitOptions();
+        List<ContentEditorValidationIssue> issues = new List<ContentEditorValidationIssue>();
         foreach (
             ContentPackEditorRecord record in project
                 .GetCatalogs()
@@ -472,6 +488,32 @@ internal static class ContentEditorPackValidator
                 .SelectMany(record => new[] { record }.Concat(record.Planets))
         )
         foreach (ContentPackEditorField field in record.GetFields())
-            project.ValidateFieldValues(field, field.Values, resolver, factions, traits);
+        {
+            try
+            {
+                project.ValidateFieldValues(field, field.Values, resolver, factions, traits);
+            }
+            catch (ArgumentException exception)
+            {
+                string detail = exception.Message.Split('\n')[0];
+                ArgumentException contextual = new ArgumentException(
+                    detail.StartsWith(field.Document.Address + ":", StringComparison.Ordinal)
+                        ? detail
+                        : $"{field.Document.Address}: {record.ID} / {field.Caption}: {detail}",
+                    exception
+                );
+                contextual.Data[_fieldDataKey] = field;
+                issues.Add(new ContentEditorValidationIssue(contextual, field, detail));
+            }
+        }
+        return issues;
     }
+
+    /// <summary>
+    /// Gets the authored field attached to a contextual validation failure.
+    /// </summary>
+    /// <param name="exception">The validation failure.</param>
+    /// <returns>The responsible field, or null when the failure is not field-specific.</returns>
+    internal static ContentPackEditorField GetValidationField(Exception exception) =>
+        exception?.Data[_fieldDataKey] as ContentPackEditorField;
 }
