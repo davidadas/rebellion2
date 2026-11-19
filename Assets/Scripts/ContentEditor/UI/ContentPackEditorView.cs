@@ -5,7 +5,6 @@ using System.Xml;
 using System.Xml.Schema;
 using Rebellion.Game;
 using Rebellion.Game.Messages;
-using Rebellion.Util.Logging;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -156,13 +155,20 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private Button noticeLinkButton;
 
     [SerializeField]
+    private Button validationToggleButton;
+
+    [SerializeField]
+    private TextMeshProUGUI validationToggleText;
+
+    [SerializeField]
+    private ContentEditorValidationIssueListView validationList;
+
+    [SerializeField]
     private ActionDialogView confirmation;
 
     [SerializeField]
     private SelectionDialogView selectionDialog;
 
-    [SerializeField]
-    private ContentEditorValidationDialogView validationDialog;
     internal event Action<ContentPackEditorCollection> CollectionAddRequested;
     internal event Action<ContentPackEditorCollection, int> CollectionRemoveRequested;
     internal event Action<
@@ -381,8 +387,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || noticeText == null
             || dismissNoticeButton == null
             || noticeLinkButton == null
+            || validationToggleButton == null
+            || validationToggleText == null
+            || validationList == null
             || selectionDialog == null
-            || validationDialog == null
             || confirmation == null
             || imagePreview == null
             || previewAudio == null
@@ -445,9 +453,11 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         deleteButton.onClick.AddListener(ConfirmDeleteRecord);
         packDialog.CreateRequested += ForwardCreateRequest;
         packDialog.BrowseRequested += ForwardBrowseRequest;
-        dismissNoticeButton.onClick.AddListener(() => notice.SetActive(false));
+        dismissNoticeButton.onClick.AddListener(HideNotice);
         noticeLinkButton.onClick.AddListener(RequestErrorField);
         noticeLinkButton.gameObject.SetActive(false);
+        validationToggleButton.onClick.AddListener(ToggleValidationIssues);
+        validationToggleButton.gameObject.SetActive(false);
         map.BackRequested += ReturnToGalaxy;
         map.ArrangeRequested += ArrangeMap;
         map.Selected += SelectMapRecord;
@@ -524,7 +534,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             packDialog.CreateRequested -= ForwardCreateRequest;
             packDialog.BrowseRequested -= ForwardBrowseRequest;
             resetSectionButton.onClick.RemoveListener(RequestSectionReset);
+            dismissNoticeButton.onClick.RemoveListener(HideNotice);
             noticeLinkButton.onClick.RemoveListener(RequestErrorField);
+            validationToggleButton.onClick.RemoveListener(ToggleValidationIssues);
         }
     }
 
@@ -580,8 +592,6 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <returns>Whether an editor popup consumed the cancellation.</returns>
     public bool TryCancel()
     {
-        if (validationDialog.TryCancel())
-            return true;
         if (selectionDialog.TryCancel())
             return true;
         if (
@@ -612,7 +622,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         }
         if (!notice.activeSelf)
             return false;
-        notice.SetActive(false);
+        HideNotice();
         return true;
     }
 
@@ -648,7 +658,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         welcomePane.SetActive(false);
         editButton.interactable = true;
         selectionDialog.Hide();
-        validationDialog.Hide();
+        HideValidationIssues();
         confirmation.TryCancel();
         imagePreview.TryCancel();
         menu.Reset();
@@ -815,9 +825,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     {
         noticeField = null;
         noticeFieldError = null;
+        HideValidationIssues();
         noticeLinkButton.gameObject.SetActive(false);
-        if (isError && noticeText.text != message)
-            GameLogger.Warning("Content editor: " + message);
         if (isError && packDialog.IsOpen)
         {
             packDialog.ShowError(message);
@@ -862,8 +871,29 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         if (field == null)
             return;
         string fieldError = noticeFieldError;
-        notice.SetActive(false);
+        HideNotice();
         ErrorFieldRequested?.Invoke(field, fieldError);
+    }
+
+    /// <summary>
+    /// Dismisses the operation notice and any validation rows it currently owns.
+    /// </summary>
+    private void HideNotice()
+    {
+        noticeField = null;
+        noticeFieldError = null;
+        noticeLinkButton.gameObject.SetActive(false);
+        HideValidationIssues();
+        notice.SetActive(false);
+    }
+
+    /// <summary>
+    /// Clears validation-report controls without changing the surrounding operation notice.
+    /// </summary>
+    private void HideValidationIssues()
+    {
+        validationList.Hide();
+        validationToggleButton.gameObject.SetActive(false);
     }
 
     /// <summary>
@@ -955,7 +985,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     public void ClearProject()
     {
         selectionDialog.Hide();
-        validationDialog.Hide();
+        HideValidationIssues();
         form.ResetGenerationSelection();
         xml.Clear();
         FinishMapEdit();
@@ -1211,9 +1241,33 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         string count =
             issues.Count == 1 ? "1 validation error." : $"{issues.Count} validation errors.";
         RenderStatus(count, true);
-        validationDialog.Show(
+        validationList.Show(
             issues,
             issue => ErrorFieldRequested?.Invoke(issue.Field, issue.FieldError)
+        );
+        validationToggleButton.gameObject.SetActive(true);
+        SetValidationIssuesExpanded(true);
+    }
+
+    /// <summary>
+    /// Switches between the compact validation summary and its complete issue list.
+    /// </summary>
+    private void ToggleValidationIssues()
+    {
+        SetValidationIssuesExpanded(!validationList.IsExpanded);
+    }
+
+    /// <summary>
+    /// Resizes the operation notice for either its compact summary or expanded validation list.
+    /// </summary>
+    /// <param name="expanded">Whether the validation issue rows should be visible.</param>
+    private void SetValidationIssuesExpanded(bool expanded)
+    {
+        validationList.SetExpanded(expanded);
+        validationToggleText.text = expanded ? "Hide" : "Show";
+        ((RectTransform)notice.transform).SetSizeWithCurrentAnchors(
+            RectTransform.Axis.Vertical,
+            58 + (expanded ? validationList.VisibleHeight : 0)
         );
     }
 
@@ -1259,7 +1313,6 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             !workbench.interactable
             || packDialog.IsOpen
             || selectionDialog.IsOpen
-            || validationDialog.IsOpen
             || confirmation.gameObject.activeSelf
             || imagePreview.gameObject.activeSelf
         )

@@ -70,20 +70,22 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
-        public void RenderValidationErrors_MultipleIssues_ShowsEveryNavigableFailure()
+        public void RenderValidationErrors_FourIssues_ShowsEveryIssueInThreeRowViewport()
         {
-            ContentPackEditorRecord[] officers = project
+            ContentPackEditorField[] fields = project
                 .GetCatalogs()
                 .First(catalog => catalog.Name == "Officers")
                 .Records.Take(2)
+                .SelectMany(officer =>
+                    new[] { officer.GetField("CurrentRank"), officer.GetField("DisplayName") }
+                )
                 .ToArray();
-            ContentEditorValidationIssue[] issues = officers
+            ContentEditorValidationIssue[] issues = fields
                 .Select(
-                    (officer, index) =>
+                    (field, index) =>
                     {
-                        ContentPackEditorField field = officer.GetField("CurrentRank");
                         return new ContentEditorValidationIssue(
-                            new ArgumentException($"{officer.ID} / Current rank: Invalid {index}."),
+                            new ArgumentException($"{field.MemberName}: Invalid {index}."),
                             field,
                             $"Invalid {index}."
                         );
@@ -93,12 +95,22 @@ namespace Rebellion.Tests.ContentEditor.UI
 
             view.RenderValidationErrors(issues);
 
-            ContentEditorValidationDialogView dialog =
-                view.GetComponentInChildren<ContentEditorValidationDialogView>(true);
+            ContentEditorValidationIssueListView list =
+                view.GetComponentInChildren<ContentEditorValidationIssueListView>(true);
             ContentEditorValidationIssueView[] rows =
-                dialog.GetComponentsInChildren<ContentEditorValidationIssueView>();
-            Assert.IsTrue(dialog.IsOpen);
-            Assert.AreEqual(2, rows.Length);
+                list.GetComponentsInChildren<ContentEditorValidationIssueView>();
+            Assert.IsTrue(list.gameObject.activeSelf);
+            Assert.AreEqual(4, rows.Length);
+            Assert.AreEqual(216, ((RectTransform)list.transform).rect.height);
+            Assert.AreEqual(
+                216,
+                list.GetComponentInChildren<ScrollAreaLayout>().ScrollArea.ViewportHeight
+            );
+            Assert.AreEqual(274, ((RectTransform)list.transform.parent).rect.height);
+            Assert.Greater(
+                list.GetComponentInChildren<ScrollAreaLayout>().ScrollArea.ViewportWidth,
+                500
+            );
             Assert.That(
                 rows.Select(row => row.GetComponentInChildren<TMP_Text>().text),
                 Is.EquivalentTo(issues.Select(issue => issue.Message))
@@ -106,7 +118,37 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
-        public void RenderValidationErrors_SelectedIssue_RevealsItsFieldAndInlineError()
+        public void RenderStatus_AfterValidationErrors_HidesValidationControls()
+        {
+            ContentPackEditorField rank = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.First()
+                .GetField("CurrentRank");
+            view.RenderValidationErrors(
+                new[]
+                {
+                    new ContentEditorValidationIssue(
+                        new ArgumentException("Current rank: Choose a listed value."),
+                        rank,
+                        "Choose a listed value."
+                    ),
+                }
+            );
+
+            view.RenderStatus("Content pack saved.", false);
+
+            ContentEditorValidationIssueListView list =
+                view.GetComponentInChildren<ContentEditorValidationIssueListView>(true);
+            Button toggle = view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "ToggleValidationErrors");
+            Assert.IsFalse(list.gameObject.activeSelf);
+            Assert.IsFalse(toggle.gameObject.activeSelf);
+            Assert.IsTrue(list.transform.parent.gameObject.activeSelf);
+        }
+
+        [Test]
+        public void RenderValidationErrors_SelectedIssue_RevealsFieldAndKeepsIssueListOpen()
         {
             GameObject eventSystem = new GameObject("EventSystem");
             eventSystem.AddComponent<EditModeEventSystem>();
@@ -127,18 +169,26 @@ namespace Rebellion.Tests.ContentEditor.UI
                         ),
                     }
                 );
-                ContentEditorValidationDialogView dialog =
-                    view.GetComponentInChildren<ContentEditorValidationDialogView>(true);
+                ContentEditorValidationIssueListView list =
+                    view.GetComponentInChildren<ContentEditorValidationIssueListView>(true);
 
-                dialog
-                    .GetComponentsInChildren<Button>()
-                    .Single(button => button.name == "ValidationIssueLink")
-                    .onClick.Invoke();
+                Button link = list.GetComponentsInChildren<Button>()
+                    .Single(button => button.name == "OpenValidationIssue");
+                Assert.AreEqual("Icon", link.targetGraphic.name);
+                Assert.AreNotEqual(link.colors.normalColor, link.colors.highlightedColor);
+                link.OnPointerClick(
+                    new PointerEventData(EventSystem.current)
+                    {
+                        button = PointerEventData.InputButton.Left,
+                    }
+                );
 
                 ContentEditorFieldView field =
                     view.GetComponentsInChildren<ContentEditorFieldView>()
                         .Single(item => item.Field?.MemberName == "CurrentRank");
-                Assert.IsFalse(dialog.IsOpen);
+                Assert.IsTrue(list.transform.parent.gameObject.activeSelf);
+                Assert.IsTrue(list.gameObject.activeSelf);
+                Assert.AreEqual(130, ((RectTransform)list.transform.parent).rect.height);
                 Assert.IsTrue(field.HasError);
                 Assert.AreEqual(
                     "Choose a listed value.",
@@ -147,6 +197,20 @@ namespace Rebellion.Tests.ContentEditor.UI
                         .Single(text => text.name == "Error")
                         .text
                 );
+
+                Button toggle = list
+                    .transform.parent.GetComponentsInChildren<Button>()
+                    .Single(button => button.name == "ToggleValidationErrors");
+                Assert.AreEqual("Hide", toggle.GetComponentInChildren<TMP_Text>().text);
+                toggle.onClick.Invoke();
+
+                Assert.IsFalse(list.gameObject.activeSelf);
+                Assert.AreEqual(58, ((RectTransform)list.transform.parent).rect.height);
+                Assert.AreEqual("Show", toggle.GetComponentInChildren<TMP_Text>().text);
+                toggle.onClick.Invoke();
+
+                Assert.IsTrue(list.gameObject.activeSelf);
+                Assert.AreEqual("Hide", toggle.GetComponentInChildren<TMP_Text>().text);
             }
             finally
             {

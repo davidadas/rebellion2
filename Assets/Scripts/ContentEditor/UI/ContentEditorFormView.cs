@@ -343,10 +343,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             RenderFields(false);
         }
         RectTransform rect = (RectTransform)row.transform;
-        fieldScroll.ScrollArea.RevealContentRect(
-            -rect.anchoredPosition.y,
-            fieldScroll.ScrollArea.ViewportHeight
-        );
+        fieldScroll.ScrollArea.RevealContentRect(-rect.anchoredPosition.y, rect.rect.height);
         row.Focus();
         return true;
     }

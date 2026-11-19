@@ -455,7 +455,6 @@ public static class ContentPackEditorPrefabBuilder
         BuildWelcome(canvasRoot, view);
         BuildPackDialog(canvasRoot, view);
         BuildSelectionDialog(canvasRoot, view);
-        BuildValidationDialog(canvasRoot, view);
         BuildConfirmation(canvasRoot, view);
         BuildImagePreview(canvasRoot, view);
         BuildNotification(canvasRoot, view);
@@ -648,70 +647,6 @@ public static class ContentPackEditorPrefabBuilder
         Assign(dialog, "apply", apply);
         Assign(dialog, "cancel", cancel);
         Assign(view, "selectionDialog", dialog);
-        overlay.gameObject.SetActive(false);
-    }
-
-    /// <summary>
-    /// Authors a scrollable report whose rows navigate to rejected authored fields.
-    /// </summary>
-    /// <param name="parent">The canvas root.</param>
-    /// <param name="view">The workspace owning the report.</param>
-    private static void BuildValidationDialog(Transform parent, ContentPackEditorView view)
-    {
-        Image overlay = Surface("ValidationResults", parent, new Color(0, 0, 0, 0.75f));
-        Stretch(overlay.rectTransform);
-        overlay.raycastTarget = true;
-        ContentEditorValidationDialogView dialog =
-            overlay.gameObject.AddComponent<ContentEditorValidationDialogView>();
-        Image panel = Surface("Panel", overlay.transform, ContentEditorColorRole.Panel);
-        panel.rectTransform.anchorMin =
-            panel.rectTransform.anchorMax =
-            panel.rectTransform.pivot =
-                new Vector2(0.5f, 0.5f);
-        panel.rectTransform.sizeDelta = new Vector2(880, 650);
-        TMP_Text heading = Label("Heading", panel.transform, "Validation errors", 22);
-        Rect(heading.rectTransform, 24, 18, 716, 34);
-        TMP_Text summary = Label("Summary", panel.transform, string.Empty, 14, true);
-        Rect(summary.rectTransform, 24, 58, 832, 28);
-        ScrollAreaLayout scroll = Scroll("Issues", panel.transform);
-        Rect((RectTransform)scroll.transform, 24, 98, 832, 484);
-        RectTransform row = Layer("IssueTemplate", scroll.ScrollArea.ContentRoot);
-        Rect(row, 0, 0, 816, 76);
-        ContentEditorValidationIssueView issue =
-            row.gameObject.AddComponent<ContentEditorValidationIssueView>();
-        Image rowSurface = Surface("ValidationIssueLink", row, ContentEditorColorRole.Button);
-        Stretch(rowSurface.rectTransform, 0, 4, 0, 4);
-        Button open = rowSurface.gameObject.AddComponent<Button>();
-        open.targetGraphic = rowSurface;
-        TextMeshProUGUI message = Label("Message", rowSurface.transform, string.Empty, 13);
-        Stretch(message.rectTransform, 16, 9, 52, 9);
-        message.alignment = TextAlignmentOptions.MidlineLeft;
-        message.textWrappingMode = TextWrappingModes.Normal;
-        RawImage linkImage = Layer("Icon", rowSurface.transform)
-            .gameObject.AddComponent<RawImage>();
-        linkImage.texture =
-            AssetDatabase.LoadAssetAtPath<Texture2D>(_locationLinkIconPath)
-            ?? throw new FileNotFoundException("The location-link icon is missing.");
-        linkImage.color = Color.white;
-        linkImage.raycastTarget = false;
-        linkImage
-            .gameObject.AddComponent<ContentTextureBinding>()
-            .SetAddress(_locationLinkIconAddress);
-        Rect(linkImage.rectTransform, 0, 0, 20, 20);
-        linkImage.rectTransform.anchorMin = linkImage.rectTransform.anchorMax = Vector2.right;
-        linkImage.rectTransform.pivot = Vector2.right;
-        linkImage.rectTransform.anchoredPosition = new Vector2(-16, 0);
-        Assign(issue, "openButton", open);
-        Assign(issue, "message", message);
-        row.gameObject.SetActive(false);
-        Button close = Button("Close", panel.transform, "Close");
-        Rect((RectTransform)close.transform, 736, 598, 120, 34);
-        Assign(dialog, "heading", heading);
-        Assign(dialog, "summary", summary);
-        Assign(dialog, "scroll", scroll);
-        Assign(dialog, "rowTemplate", issue);
-        Assign(dialog, "closeButton", close);
-        Assign(view, "validationDialog", dialog);
         overlay.gameObject.SetActive(false);
     }
 
@@ -981,12 +916,73 @@ public static class ContentPackEditorPrefabBuilder
         link.colors = linkColors;
         link.gameObject.AddComponent<HelpTooltipView>()
             .Configure("Go to the field that needs attention.");
+        RectTransform validationRoot = Layer("ValidationErrors", notice.transform);
+        Rect(validationRoot, 16, 46, 588, 216);
+        ContentEditorValidationIssueListView validationList =
+            validationRoot.gameObject.AddComponent<ContentEditorValidationIssueListView>();
+        ScrollAreaLayout validationScroll = Scroll("Issues", validationRoot);
+        Stretch((RectTransform)validationScroll.transform);
+        RectTransform row = Layer("IssueTemplate", validationScroll.ScrollArea.ContentRoot);
+        Rect(row, 0, 0, 572, 72);
+        ContentEditorValidationIssueView issue =
+            row.gameObject.AddComponent<ContentEditorValidationIssueView>();
+        Image rowSurface = Surface("ValidationIssueLink", row, ContentEditorColorRole.Button);
+        Stretch(rowSurface.rectTransform, 0, 2, 0, 2);
+        rowSurface.raycastTarget = false;
+        TextMeshProUGUI message = Label("Message", rowSurface.transform, string.Empty, 13);
+        Stretch(message.rectTransform, 12, 8, 52, 8);
+        message.alignment = TextAlignmentOptions.MidlineLeft;
+        message.textWrappingMode = TextWrappingModes.Normal;
+        message.raycastTarget = false;
+        Image issueLinkHitArea = Surface("OpenValidationIssue", rowSurface.transform, Color.clear);
+        issueLinkHitArea.raycastTarget = true;
+        Rect(issueLinkHitArea.rectTransform, 0, 0, 36, 36);
+        issueLinkHitArea.rectTransform.anchorMin = issueLinkHitArea.rectTransform.anchorMax =
+            Vector2.right;
+        issueLinkHitArea.rectTransform.pivot = Vector2.right;
+        issueLinkHitArea.rectTransform.anchoredPosition = new Vector2(-8, 0);
+        RawImage issueLinkImage = Layer("Icon", issueLinkHitArea.transform)
+            .gameObject.AddComponent<RawImage>();
+        issueLinkImage.texture =
+            AssetDatabase.LoadAssetAtPath<Texture2D>(_locationLinkIconPath)
+            ?? throw new FileNotFoundException("The location-link icon is missing.");
+        issueLinkImage.color = Color.white;
+        issueLinkImage.raycastTarget = false;
+        issueLinkImage
+            .gameObject.AddComponent<ContentTextureBinding>()
+            .SetAddress(_locationLinkIconAddress);
+        Rect(issueLinkImage.rectTransform, 10, 10, 16, 16);
+        Button open = issueLinkHitArea.gameObject.AddComponent<Button>();
+        open.targetGraphic = issueLinkImage;
+        ColorBlock openColors = open.colors;
+        openColors.normalColor = new Color(0.78f, 0.78f, 0.78f, 1);
+        openColors.highlightedColor = Color.white;
+        openColors.selectedColor = Color.white;
+        openColors.pressedColor = new Color(0.58f, 0.58f, 0.58f, 1);
+        openColors.fadeDuration = 0.05f;
+        open.colors = openColors;
+        open.gameObject.AddComponent<HelpTooltipView>()
+            .Configure("Go to the field that needs attention.");
+        Assign(issue, "openButton", open);
+        Assign(issue, "message", message);
+        Assign(validationList, "scroll", validationScroll);
+        Assign(validationList, "rowTemplate", issue);
+        row.gameObject.SetActive(false);
+        validationRoot.gameObject.SetActive(false);
+        Button validationToggle = Button("ToggleValidationErrors", notice.transform, "Hide");
+        Rect((RectTransform)validationToggle.transform, 464, 10, 72, 30);
+        TextMeshProUGUI validationToggleText =
+            validationToggle.GetComponentInChildren<TextMeshProUGUI>();
+        validationToggle.gameObject.SetActive(false);
         Button close = Button("Dismiss", notice.transform, "Close");
-        Rect((RectTransform)close.transform, 550, 10, 60, 30);
+        Rect((RectTransform)close.transform, 544, 10, 60, 30);
         Assign(view, "notice", notice.gameObject);
         Assign(view, "noticeText", text);
         Assign(view, "dismissNoticeButton", close);
         Assign(view, "noticeLinkButton", link);
+        Assign(view, "validationToggleButton", validationToggle);
+        Assign(view, "validationToggleText", validationToggleText);
+        Assign(view, "validationList", validationList);
         notice.gameObject.SetActive(false);
     }
 

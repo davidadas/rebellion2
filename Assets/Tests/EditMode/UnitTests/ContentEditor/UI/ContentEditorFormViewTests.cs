@@ -129,6 +129,35 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
+        public void FocusField_FieldBelowViewport_ScrollsMinimumDistanceToRevealRow()
+        {
+            ScrollAreaLayout fields = view.GetComponentsInChildren<ScrollAreaLayout>(true).Single();
+            ((RectTransform)fields.transform).SetSizeWithCurrentAnchors(
+                RectTransform.Axis.Vertical,
+                120
+            );
+            SelectRecord(
+                project.GetCatalogs().First(catalog => catalog.Name == "Officers").Records.First()
+            );
+            Canvas.ForceUpdateCanvases();
+            ContentEditorFieldView target = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .OrderBy(field => ((RectTransform)field.transform).anchoredPosition.y)
+                .First();
+            RectTransform targetRect = (RectTransform)target.transform;
+            float targetBottom = -targetRect.anchoredPosition.y + targetRect.rect.height;
+            float expectedOffset = targetBottom - fields.ScrollArea.ViewportHeight;
+            Assert.Greater(expectedOffset, 0);
+
+            Assert.IsTrue(view.FocusField(target.Field));
+
+            Assert.AreEqual(
+                expectedOffset,
+                fields.ScrollArea.ContentRoot.anchoredPosition.y,
+                0.01f
+            );
+        }
+
+        [Test]
         public void Render_PlanetEncyclopedia_EditsEmbeddedDataBeforeTheStandaloneArticle()
         {
             ContentPackEditorRecord article = project
