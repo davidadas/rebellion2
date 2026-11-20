@@ -15,14 +15,8 @@ namespace Rebellion.Tests.ContentEditor.UI
                 "Strategy/UI/theme.xml",
                 "<FactionThemes><FactionTheme><FactionInstanceID>neutral</FactionInstanceID></FactionTheme></FactionThemes>"
             );
+            UpdateBasePackDefinition(pack => pack.NeutralThemePath = path);
             ContentPackEditorProject project = CreateWorkingProject();
-            project.SetField(
-                project
-                    .GetCatalogs()
-                    .Single(catalog => catalog.Document.Address == "Pack/pack.xml")
-                    .DocumentRecord.GetField("NeutralThemePath"),
-                path
-            );
 
             Assert.AreEqual(
                 "neutral",
