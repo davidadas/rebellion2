@@ -20,6 +20,7 @@ namespace Rebellion.Tests.ContentEditor
                 "Data/officers.xml",
                 "<Officers><Officer><TypeID>one</TypeID><RecruitingFactionInstanceIDs><string>missing</string></RecruitingFactionInstanceIDs></Officer></Officers>"
             );
+            UpdateBaseFactionDefinition(faction => faction.OfficersPath = "Data/officers.xml");
             ContentPackEditorProject project = CreateWorkingProject();
             ArgumentException error = await ExpectFailureAsync<ArgumentException>(() =>
                 ContentEditorPackValidator.ValidateAsync(project)

@@ -1016,6 +1016,7 @@ namespace Rebellion.Tests.ContentEditor
                 "Data/officers.xml",
                 "<Officers><Officer><TypeID>one</TypeID><DisplayImagePath /></Officer></Officers>"
             );
+            UpdateBaseFactionDefinition(faction => faction.OfficersPath = "Data/officers.xml");
             ContentPackEditorProject project = CreateWorkingProject();
             ContentPackEditorField field = project
                 .GetCatalogs()
@@ -1036,6 +1037,7 @@ namespace Rebellion.Tests.ContentEditor
                 "Data/officers.xml",
                 "<Officers><Officer><TypeID>one</TypeID><DisplayImagePath /></Officer></Officers>"
             );
+            UpdateBaseFactionDefinition(faction => faction.OfficersPath = "Data/officers.xml");
             WriteFixtureFile("Images/wrong.txt", "not an image");
             ContentPackEditorProject project = CreateWorkingProject();
             ContentPackEditorField field = project
@@ -1057,6 +1059,7 @@ namespace Rebellion.Tests.ContentEditor
                 "Data/officers.xml",
                 "<Officers><Officer><TypeID>one</TypeID><RecruitingFactionInstanceIDs /></Officer></Officers>"
             );
+            UpdateBaseFactionDefinition(faction => faction.OfficersPath = "Data/officers.xml");
             ContentPackEditorProject project = CreateWorkingProject();
             ContentPackEditorField field = project
                 .GetCatalogs()
@@ -1081,6 +1084,7 @@ namespace Rebellion.Tests.ContentEditor
                 "Data/officers.xml",
                 "<Officers><Officer><TypeID>one</TypeID><Traits /></Officer></Officers>"
             );
+            UpdateBaseFactionDefinition(faction => faction.OfficersPath = "Data/officers.xml");
             ContentPackEditorProject project = CreateWorkingProject();
             CollectionAssert.AreEquivalent(
                 new[] { "fast-travel", "leadership" },
@@ -1120,6 +1124,7 @@ namespace Rebellion.Tests.ContentEditor
                 "Data/officers.xml",
                 "<Officers><Officer><TypeID>one</TypeID><Traits /></Officer></Officers>"
             );
+            UpdateBaseFactionDefinition(faction => faction.OfficersPath = "Data/officers.xml");
             ContentPackEditorProject project = CreateWorkingProject();
             ContentPackEditorField field = project
                 .GetCatalogs()
@@ -1140,6 +1145,7 @@ namespace Rebellion.Tests.ContentEditor
                 "Data/theme.xml",
                 "<FactionTheme><StrategyAdvisor><AnimationImageRoot>Pack/Frames</AnimationImageRoot></StrategyAdvisor></FactionTheme>"
             );
+            UpdateBasePackDefinition(pack => pack.NeutralThemePath = "Data/theme.xml");
             WriteFixtureFile("Frames/idle/frame-001.png", "fixture");
             WriteFixtureFile("Frames/idle/frame-002.png", "fixture");
             ContentPackEditorProject project = CreateWorkingProject();
@@ -1263,6 +1269,7 @@ namespace Rebellion.Tests.ContentEditor
                 "Data/planets.xml",
                 "<PlanetSectors><PlanetSector><TypeID>FIRST</TypeID><PositionX>0</PositionX><PositionY>0</PositionY><Planets/></PlanetSector><PlanetSector><TypeID>SECOND</TypeID><PositionX>0</PositionX><PositionY>0</PositionY><Planets><Planet><TypeID>PLANET</TypeID><PositionX>2147483647</PositionX><PositionY>0</PositionY></Planet></Planets></PlanetSector></PlanetSectors>"
             );
+            UpdateBasePackDefinition(pack => pack.PlanetSectorsPath = "Data/planets.xml");
             var project = CreateWorkingProject();
             var catalog = project.GetCatalogs().Single(item => item.IsMap);
             string before = catalog.Document.Text;
@@ -1285,6 +1292,7 @@ namespace Rebellion.Tests.ContentEditor
                 "Data/planets.xml",
                 "<PlanetSectors><PlanetSector><TypeID>SECTOR</TypeID><PositionX>0</PositionX><PositionY>0</PositionY><Planets><Planet><TypeID>PLANET</TypeID><PositionX>1</PositionX><PositionY>0</PositionY></Planet></Planets></PlanetSector></PlanetSectors>"
             );
+            UpdateBasePackDefinition(pack => pack.PlanetSectorsPath = "Data/planets.xml");
             var project = CreateWorkingProject();
             var catalog = project.GetCatalogs().Single(item => item.IsMap);
             var sector = catalog.Records.Single();
@@ -1306,6 +1314,7 @@ namespace Rebellion.Tests.ContentEditor
                 "Data/planets.xml",
                 "<PlanetSectors><PlanetSector><TypeID>FIRST</TypeID><PositionX>0</PositionX><PositionY>0</PositionY><Planets/></PlanetSector><PlanetSector><TypeID>SECOND</TypeID><PositionX>0</PositionX><PositionY>0</PositionY><Planets/></PlanetSector></PlanetSectors>"
             );
+            UpdateBasePackDefinition(pack => pack.PlanetSectorsPath = "Data/planets.xml");
             var project = CreateWorkingProject();
             var catalog = project.GetCatalogs().Single(item => item.IsMap);
             string before = catalog.Document.Text;
@@ -1370,6 +1379,11 @@ namespace Rebellion.Tests.ContentEditor
                 Path.Combine(data, "ships.xml"),
                 "<CapitalShips><CapitalShip><TypeID>UNIT_COPY</TypeID></CapitalShip></CapitalShips>"
             );
+            UpdateBaseFactionDefinition(faction =>
+            {
+                faction.OfficersPath = "Data/units.xml";
+                faction.CapitalShipsPath = "Data/ships.xml";
+            });
             ContentPackEditorProject project = CreateWorkingProject();
             ContentPackEditorRecord source = project
                 .GetCatalogs()
