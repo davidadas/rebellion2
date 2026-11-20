@@ -130,6 +130,27 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.IsFalse(project.IsDirty);
         }
 
+        [TestCase("RefinementMultiplier")]
+        [TestCase("ResourceProcessingPointsPerFacility")]
+        public void Render_FactionEconomyRules_ShowsHelpInsideEachFieldRow(string member)
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("factions/Alliance"));
+            RenderSection("Rules");
+            Canvas.ForceUpdateCanvases();
+
+            ContentEditorFieldView field = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(control => control.Field.MemberName == member);
+            HelpTooltipView help = field.GetComponentInChildren<HelpTooltipView>();
+            RectInt bounds = UILayout.GetSourceRect((RectTransform)help.transform);
+            RectTransform row = (RectTransform)field.transform;
+
+            Assert.That(bounds.yMin, Is.GreaterThanOrEqualTo(0));
+            Assert.That(bounds.yMax, Is.LessThanOrEqualTo(row.rect.height));
+            Assert.That(field.Field.HelpText, Is.Not.Empty);
+        }
+
         [Test]
         public void FocusField_FieldBelowViewport_AlignsRowWithViewportTop()
         {
@@ -1025,6 +1046,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             HelpTooltipView info = caption.GetComponentInChildren<HelpTooltipView>();
             Assert.IsNotNull(info);
             Assert.IsTrue(info.gameObject.activeSelf);
+            Assert.GreaterOrEqual(UILayout.GetSourceRect((RectTransform)info.transform).yMin, 0);
             Assert.IsFalse(project.IsDirty);
         }
 

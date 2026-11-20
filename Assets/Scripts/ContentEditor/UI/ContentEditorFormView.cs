@@ -52,6 +52,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private int selectedCurve;
 
     private XElement selectedCollection;
+    private string selectedMissionReportKey;
     private XElement[] collectionItems = Array.Empty<XElement>();
 
     [SerializeField]
@@ -149,6 +150,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
     public event Action<ContentPackEditorField> FieldValidationRequested;
     public event Action WidthChanged;
     public event Action<Button> AddMessageRequested;
+    internal event Action<
+        ContentPackEditorRecord,
+        ContentEditorMissionReport,
+        bool
+    > MissionReportOverrideRequested;
     public event Action AddNamePoolRequested;
     public event Action<ContentPackEditorField> RemoveMessageRequested;
     public event Action<IReadOnlyList<ContentPackEditorField>> ClearFieldsRequested;
@@ -417,6 +423,17 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <returns>Whether the field has a visible control in the current form.</returns>
     public bool FocusField(ContentPackEditorField field, string validationError = null)
     {
+        if (section == ContentEditorMissionReport.Section)
+        {
+            ContentEditorMissionReport report = selectedPage.MissionReports.FirstOrDefault(report =>
+                report.Fields.Any(candidate => SameField(candidate, field))
+            );
+            if (report != null && report.Key != selectedMissionReportKey)
+            {
+                selectedMissionReportKey = report.Key;
+                RenderFields(true);
+            }
+        }
         XElement item = field
             .XmlElement.AncestorsAndSelf()
             .FirstOrDefault(element => element.Name.LocalName is "Message" or "NamePool");
@@ -471,7 +488,19 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// </summary>
     private void RequestAddMessage()
     {
-        if (section == "Ship names")
+        if (section == ContentEditorMissionReport.Section)
+        {
+            ContentEditorMissionReport report = selectedPage.MissionReports.First(report =>
+                report.Key == selectedMissionReportKey
+            );
+            if (report.Shared != null && Commit())
+                MissionReportOverrideRequested?.Invoke(
+                    selectedPage.RelatedRecords.Single(),
+                    report,
+                    report.Custom == null
+                );
+        }
+        else if (section == "Ship names")
             AddNamePoolRequested?.Invoke();
         else
             AddMessageRequested?.Invoke(addMessageButton);
@@ -483,6 +512,23 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="index">The entry selected in the standard dropdown.</param>
     private void SelectCollectionItem(int index)
     {
+        if (section == ContentEditorMissionReport.Section)
+        {
+            IReadOnlyList<ContentEditorMissionReport> reports = selectedPage.MissionReports;
+            if (!Commit())
+            {
+                collectionDropdown.SetValueWithoutNotify(
+                    Array.FindIndex(
+                        reports.ToArray(),
+                        report => report.Key == selectedMissionReportKey
+                    )
+                );
+                return;
+            }
+            selectedMissionReportKey = reports[index].Key;
+            RenderFields(true);
+            return;
+        }
         if (!Commit())
         {
             collectionDropdown.SetValueWithoutNotify(
@@ -735,6 +781,14 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 false
             );
             fieldScroll.SetContentHeight(height, rebind);
+            return;
+        }
+        if (
+            selectedPage?.IsMissionPresentation == true
+            && section == ContentEditorMissionReport.Section
+        )
+        {
+            RenderMissionReportText();
             return;
         }
         if (selectedPage?.IsMissionPresentation == true && section == "General")
@@ -2637,6 +2691,94 @@ public sealed class ContentEditorFormView : MonoBehaviour
     }
 
     /// <summary>
+    /// Displays the shared report and the editor for an optional faction-specific copy.
+    /// </summary>
+    private void RenderMissionReportText()
+    {
+        previewPane.SetActive(false);
+        float width = Mathf.Min(1024, fieldScroll.ScrollArea.ViewportWidth);
+        ContentEditorMissionReport[] reports = selectedPage.MissionReports.ToArray();
+        int index = Math.Max(
+            0,
+            Array.FindIndex(reports, report => report.Key == selectedMissionReportKey)
+        );
+        ContentEditorMissionReport selected = reports[index];
+        selectedMissionReportKey = selected.Key;
+        int heading = 0,
+            fieldIndex = 0;
+        int y = 4;
+        y += PlaceLabel("Outcome", heading++, 4, y, width - 8, true);
+        int dropdownWidth = Mathf.FloorToInt(Mathf.Min(350, width - 8));
+        bool actionAlongside = width >= dropdownWidth + 256;
+        collectionDropdown.gameObject.SetActive(true);
+        collectionDropdown.ClearOptions();
+        collectionDropdown.AddOptions(reports.Select(report => report.Caption).ToList());
+        collectionDropdown.SetValueWithoutNotify(index);
+        collectionDropdown.RefreshShownValue();
+        UILayout.SetSourceRect(
+            (RectTransform)collectionDropdown.transform,
+            4,
+            y,
+            dropdownWidth,
+            34
+        );
+
+        if (selected.Shared != null)
+        {
+            bool customize = selected.Custom == null;
+            addMessageButton.gameObject.SetActive(true);
+            addMessageButton.name = customize ? "CustomizeEspionageReport" : "ResetEspionageReport";
+            addMessageButton.GetComponentInChildren<TMP_Text>().text = customize
+                ? "Customize for this faction"
+                : "Use shared report";
+            UILayout.SetSourceRect(
+                (RectTransform)addMessageButton.transform,
+                actionAlongside ? dropdownWidth + 16 : 4,
+                actionAlongside ? y : y + 42,
+                Mathf.FloorToInt(Mathf.Min(240, width - 8)),
+                34
+            );
+            if (!actionAlongside)
+                y += 42;
+        }
+        y += 48;
+
+        if (selected.Custom == null)
+        {
+            y += PlaceLabel("Shared report template", heading++, 4, y, width - 8, true);
+            string subject = (string)selected.Shared.Element.Element("Subject");
+            if (!string.IsNullOrEmpty(subject))
+                y += PlaceLabel(subject, heading++, 4, y, width - 8, true);
+            string body = (string)selected.Shared.Element.Element("Body");
+            if (!string.IsNullOrEmpty(body))
+                y += PlaceLabel(body, heading++, 4, y, width - 8, false);
+        }
+        else
+        {
+            foreach (ContentPackEditorField field in selected.Fields)
+            {
+                bool stacked = field.IsMultiline || width < 480;
+                if (stacked)
+                    y += PlaceLabel(field.Caption, heading++, 4, y, width - 8, false);
+                int height =
+                    field.MemberName is "Body" or "UnattributedBody" ? 112
+                    : field.IsMultiline ? 80
+                    : 46;
+                y += PlaceField(
+                    field,
+                    fieldIndex++,
+                    4,
+                    y,
+                    width - 8,
+                    stacked ? 0 : Mathf.Min(280, width * 0.4f),
+                    height
+                );
+            }
+        }
+        fieldScroll.SetContentHeight(y + 12, !reflowingFields);
+    }
+
+    /// <summary>
     /// Presents one lazy faction-artwork surface at a time beneath a reusable surface selector.
     /// </summary>
     private void RenderFactionArtwork()
@@ -3893,16 +4035,16 @@ public sealed class ContentEditorFormView : MonoBehaviour
             groupIndex = 0;
         foreach (
             var group in grid.Settings.GroupBy(field =>
-                field.XmlElement.Parent?.Parent?.Name == "TickRanges" ? "Timing"
-                : selectedPage?.MissionID != null ? "Settings"
-                : string.Join(
-                    " / ",
-                    field
-                        .SectionPath.Skip(1)
-                        .Where(part =>
-                            part is not "Value" and not "Game modifier" and not "Mission"
-                        )
-                )
+                field.XmlElement.Parent?.Parent?.Name == "TickRanges"
+                    ? "Timing"
+                    : string.Join(
+                        " / ",
+                        field
+                            .SectionPath.Skip(1)
+                            .Where(part =>
+                                part is not "Value" and not "Game modifier" and not "Mission"
+                            )
+                    )
             )
         )
             RenderSettings(
@@ -4401,10 +4543,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
         {
             UILayout.SetSourceRect(
                 helpRect,
-                Mathf.RoundToInt(
-                    Mathf.Min(label.preferredWidth, labelRect.width - helpSize - 4) + 4
-                ),
-                -Mathf.RoundToInt((helpSize - label.fontSize) / 2),
+                Mathf.RoundToInt(Mathf.Min(label.preferredWidth, labelRect.width) + 4),
+                Mathf.Max(0, Mathf.RoundToInt((label.fontSize - helpSize) / 2)),
                 helpSize,
                 helpSize
             );

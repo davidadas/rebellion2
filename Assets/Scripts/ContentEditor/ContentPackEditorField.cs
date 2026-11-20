@@ -93,7 +93,7 @@ public sealed class ContentPackEditorField
         : MediaType == ContentPackEditorMediaType.Video ? new[] { ".mp4", ".webm" }
         : new[] { ".png", ".jpg", ".jpeg" };
     public bool IsMultiline =>
-        MemberName == "Body"
+        MemberName is "Body" or "UnattributedBody"
         || element.Name.LocalName.Contains("Description", StringComparison.Ordinal)
         || Value.Contains('\n');
     public string Section { get; }

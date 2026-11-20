@@ -228,6 +228,73 @@ namespace Rebellion.Tests.ContentEditor.Integration
         }
 
         [Test]
+        public void RenderProject_EspionageReportText_CustomizesOneOutcomeForTheNewFaction()
+        {
+            ContentPackEditorDocument definitions = project.Documents.Single(document =>
+                document.Address == "Pack/" + project.Definition.MessageDefinitionsPath
+            );
+            XDocument authored = XDocument.Parse(definitions.Text);
+            foreach (string outcome in new[] { "Success", "Failed" })
+                authored.Root.Add(
+                    new XElement(
+                        "MessageDefinition",
+                        new XElement("DisplayName", "Shared Espionage " + outcome),
+                        new XElement("ResultType", "MissionReport"),
+                        new XElement("Outcome", outcome),
+                        new XElement("MissionTypeID", "Espionage"),
+                        new XElement("MessageType", "Mission"),
+                        new XElement("Subject", "Report for {system}"),
+                        new XElement("Body", "Shared " + outcome + " {details}"),
+                        new XElement("BackgroundImage", new XAttribute("Key", "mission_report"))
+                    )
+                );
+            project.SetDocumentText(definitions, authored.ToString());
+            ContentPackEditorRecord faction = project.AddFaction();
+            workspace.RenderProject(project, assets);
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(
+                navigation.Find("mission-presentation/" + faction.Catalog.Faction + "/Espionage")
+            );
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.GetComponentInChildren<TMP_Text>()?.text == "Report text")
+                .onClick.Invoke();
+            TMP_Dropdown outcomes = view.GetComponentsInChildren<TMP_Dropdown>()
+                .Single(dropdown => dropdown.name == "CollectionSelection");
+            outcomes.value = outcomes.options.FindIndex(option => option.text == "Failed");
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "CustomizeEspionageReport")
+                .onClick.Invoke();
+            TMP_InputField input = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.Field.MemberName == "Body")
+                .GetComponentInChildren<TMP_InputField>();
+            Assert.AreEqual("Shared Failed {details}", input.text);
+            input.SetTextWithoutNotify("Faction report {system}");
+            input.onEndEdit.Invoke(input.text);
+            ContentPackEditorStorage.Save(project);
+            XDocument saved = XDocument.Load(definitions.TargetPath);
+            XElement custom = saved
+                .Root.Elements()
+                .Single(entry => (string)entry.Element("FactionInstanceID") == faction.ID);
+            Assert.AreEqual("Failed", (string)custom.Element("Outcome"));
+            Assert.AreEqual("Faction report {system}", (string)custom.Element("Body"));
+            Assert.AreEqual(
+                "mission_report",
+                (string)custom.Element("BackgroundImage").Attribute("Key")
+            );
+
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "ResetEspionageReport")
+                .onClick.Invoke();
+            Assert.IsFalse(
+                XDocument
+                    .Parse(definitions.Text)
+                    .Root.Elements()
+                    .Any(entry => (string)entry.Element("FactionInstanceID") == faction.ID)
+            );
+        }
+
+        [Test]
         public void AddFaction_OneExistingFaction_CreatesWithoutAWarning()
         {
             ContentPackEditorRecord removed = project

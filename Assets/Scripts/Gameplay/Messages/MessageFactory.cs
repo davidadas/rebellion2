@@ -296,7 +296,8 @@ namespace Rebellion.Gameplay
                 MessageResultType.MissionReport,
                 outcome,
                 GetMissionTypeID(result),
-                completionReason
+                completionReason,
+                faction?.InstanceID
             );
             string missionDetails = BuildMissionDetailList(
                 definition,
@@ -1199,19 +1200,22 @@ namespace Rebellion.Gameplay
         /// <param name="outcome">The mission outcome selector to match.</param>
         /// <param name="missionTypeID">The mission type selector to match.</param>
         /// <param name="completionReason">The completion reason selector to match.</param>
+        /// <param name="factionInstanceID">The recipient faction whose Espionage report may be customized.</param>
         /// <returns>The matching mission definition, or null when none exists.</returns>
         private MessageDefinition GetMissionDefinition(
             MessageResultType resultType,
             MessageResultOutcome outcome,
             string missionTypeID,
-            MissionCompletionReason completionReason = MissionCompletionReason.None
+            MissionCompletionReason completionReason,
+            string factionInstanceID = null
         )
         {
             MessageDefinition definition = FindMissionDefinition(
                 resultType,
                 outcome,
                 missionTypeID,
-                completionReason
+                completionReason,
+                factionInstanceID
             );
             if (definition != null)
                 return definition;
@@ -1223,48 +1227,80 @@ namespace Rebellion.Gameplay
                     resultType,
                     outcome,
                     missionTypeID,
-                    MissionCompletionReason.None
+                    MissionCompletionReason.None,
+                    factionInstanceID
                 );
             }
             if (definition != null || string.IsNullOrEmpty(missionTypeID))
                 return definition;
 
-            definition = FindMissionDefinition(resultType, outcome, null, completionReason);
+            definition = FindMissionDefinition(
+                resultType,
+                outcome,
+                null,
+                completionReason,
+                factionInstanceID
+            );
             if (definition != null || completionReason == MissionCompletionReason.None)
                 return definition;
 
             return canUseGenericDefinition
-                ? FindMissionDefinition(resultType, outcome, null, MissionCompletionReason.None)
+                ? FindMissionDefinition(
+                    resultType,
+                    outcome,
+                    null,
+                    MissionCompletionReason.None,
+                    factionInstanceID
+                )
                 : null;
         }
 
         /// <summary>
-        /// Finds mission definition.
+        /// Selects the first matching report or the recipient's configured Espionage variant.
         /// </summary>
         /// <param name="resultType">The result type.</param>
         /// <param name="outcome">The outcome.</param>
         /// <param name="missionTypeID">The mission type id.</param>
         /// <param name="completionReason">The completion reason.</param>
+        /// <param name="factionInstanceID">The recipient faction instance ID.</param>
         /// <returns>The matching mission definition.</returns>
         private MessageDefinition FindMissionDefinition(
             MessageResultType resultType,
             MessageResultOutcome outcome,
             string missionTypeID,
-            MissionCompletionReason completionReason
-        ) =>
-            _definitions.FirstOrDefault(candidate =>
-                candidate.ResultType == resultType
-                && candidate.Outcome == outcome
-                && candidate.PlanetOwnership == MessagePlanetOwnership.None
-                && candidate.BuildingType == BuildingType.None
-                && candidate.ManufacturingType == ManufacturingType.None
-                && string.Equals(
-                    candidate.MissionTypeID ?? string.Empty,
-                    missionTypeID ?? string.Empty,
-                    StringComparison.Ordinal
+            MissionCompletionReason completionReason,
+            string factionInstanceID
+        )
+        {
+            bool supportsOverride =
+                resultType == MessageResultType.MissionReport
+                && missionTypeID == MissionTypeIDs.Espionage;
+            MessageDefinition shared = null;
+            foreach (MessageDefinition candidate in _definitions)
+            {
+                if (
+                    candidate.ResultType != resultType
+                    || candidate.Outcome != outcome
+                    || candidate.PlanetOwnership != MessagePlanetOwnership.None
+                    || candidate.BuildingType != BuildingType.None
+                    || candidate.ManufacturingType != ManufacturingType.None
+                    || !string.Equals(
+                        candidate.MissionTypeID ?? string.Empty,
+                        missionTypeID ?? string.Empty,
+                        StringComparison.Ordinal
+                    )
+                    || candidate.MissionCompletionReason != completionReason
                 )
-                && candidate.MissionCompletionReason == completionReason
-            );
+                    continue;
+                if (!supportsOverride)
+                    return candidate;
+                if (string.IsNullOrWhiteSpace(candidate.FactionInstanceID))
+                    shared ??= candidate;
+                else if (Matches(candidate.FactionInstanceID, factionInstanceID))
+                    return candidate;
+            }
+            return shared;
+        }
 
         /// <summary>
         /// Checks whether the completion reason can use a generic mission definition.

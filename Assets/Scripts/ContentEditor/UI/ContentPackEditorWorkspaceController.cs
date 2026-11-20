@@ -34,6 +34,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.AddPlanetRequested += AddPlanet;
         view.AddMessageRequested += AddMessage;
         view.AddMissionArticleRequested += AddMissionArticle;
+        view.MissionReportOverrideRequested += SetMissionReportOverride;
         view.AddNamePoolRequested += AddNamePool;
         view.RemoveMessageRequested += RemoveMessage;
         view.ClearFieldsRequested += ClearFields;
@@ -387,6 +388,22 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
     }
 
     /// <summary>
+    /// Changes the report used for a faction and refreshes the visible text editor.
+    /// </summary>
+    /// <param name="faction">The recipient faction.</param>
+    /// <param name="report">The selected authored report.</param>
+    /// <param name="customize">Whether to create a local copy or restore the shared report.</param>
+    private void SetMissionReportOverride(
+        ContentPackEditorRecord faction,
+        ContentEditorMissionReport report,
+        bool customize
+    )
+    {
+        Project.SetMissionReportOverride(faction, report, customize);
+        view.RenderProject(Project, assets);
+    }
+
+    /// <summary>
     /// Applies a grouped field clear before rebuilding the current inspector from its edited definitions.
     /// </summary>
     /// <param name="fields">The fields requested by the inspector.</param>
@@ -464,6 +481,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.AddPlanetRequested -= AddPlanet;
         view.AddMessageRequested -= AddMessage;
         view.AddMissionArticleRequested -= AddMissionArticle;
+        view.MissionReportOverrideRequested -= SetMissionReportOverride;
         view.AddNamePoolRequested -= AddNamePool;
         view.RemoveMessageRequested -= RemoveMessage;
         view.ClearFieldsRequested -= ClearFields;

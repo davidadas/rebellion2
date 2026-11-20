@@ -244,6 +244,11 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         ContentPackEditorRecord,
         string
     > AddMissionArticleRequested;
+    internal event Action<
+        ContentPackEditorRecord,
+        ContentEditorMissionReport,
+        bool
+    > MissionReportOverrideRequested;
     internal event Action<ContentPackEditorRecord> AddNamePoolRequested;
     internal event Action<ContentPackEditorField> RemoveMessageRequested;
     internal event Action<IReadOnlyList<ContentPackEditorField>> ClearFieldsRequested;
@@ -450,13 +455,20 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         rulesTab.onClick.AddListener(() => ShowSection("Rules"));
         shipNamesTab.onClick.AddListener(() => ShowSection("Ship names"));
         factionMessagesTab.onClick.AddListener(() => ShowSection("Messages"));
-        referenceTab.onClick.AddListener(() => ShowSection("Encyclopedia"));
+        referenceTab.onClick.AddListener(() =>
+            ShowSection(
+                selectedPage?.IsMissionPresentation == true
+                    ? ContentEditorMissionReport.Section
+                    : "Encyclopedia"
+            )
+        );
         for (int index = 0; index < generationTabs.Length; index++)
         {
             string caption = ContentEditorContentSections.GenerationSections[index];
             generationTabs[index].onClick.AddListener(() => ShowSection(caption));
         }
         form.AddMessageRequested += ShowAddMessageMenu;
+        form.MissionReportOverrideRequested += ForwardMissionReportOverride;
         form.AddNamePoolRequested += RequestNamePool;
         form.RemoveMessageRequested += ConfirmRemoveMessage;
         form.ClearFieldsRequested += ForwardClearFields;
@@ -541,6 +553,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             xml.ScopeRequested -= RequestXmlScope;
             form.WidthChanged -= HandleFieldAreaResize;
             form.AddMessageRequested -= ShowAddMessageMenu;
+            form.MissionReportOverrideRequested -= ForwardMissionReportOverride;
             form.AddNamePoolRequested -= RequestNamePool;
             form.RemoveMessageRequested -= ConfirmRemoveMessage;
             form.ClearFieldsRequested -= ForwardClearFields;
@@ -1742,7 +1755,12 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         );
         referenceTab.gameObject.SetActive(
             faction && selectedPage.RelatedRecords.Any(record => record.Kind == "EncyclopediaEntry")
+                || selectedPage?.MissionReports.Count > 0
         );
+        referenceTab.GetComponentInChildren<TMP_Text>().text =
+            selectedPage?.IsMissionPresentation == true
+                ? ContentEditorMissionReport.Section
+                : "Encyclopedia";
         foreach (Button tab in generationTabs)
             tab.gameObject.SetActive(generation);
         Button[] tabs =
@@ -1760,7 +1778,16 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                     referenceTab,
                     advancedTab,
                 }
-            : new[] { propertiesTab, encyclopediaTab, artworkTab, audioTab, rulesTab, advancedTab };
+            : new[]
+            {
+                propertiesTab,
+                encyclopediaTab,
+                artworkTab,
+                audioTab,
+                rulesTab,
+                referenceTab,
+                advancedTab,
+            };
         string[] names =
             generation
                 ? ContentEditorContentSections
@@ -1779,7 +1806,16 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                     "Encyclopedia",
                     "Advanced",
                 }
-            : new[] { "General", "Encyclopedia", "Artwork", "Audio", "Rules", "Advanced" };
+            : new[]
+            {
+                "General",
+                "Encyclopedia",
+                "Artwork",
+                "Audio",
+                "Rules",
+                ContentEditorMissionReport.Section,
+                "Advanced",
+            };
         if (
             !Enumerable
                 .Range(0, tabs.Length)
@@ -2208,6 +2244,18 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     }
 
     /// <summary>
+    /// Forwards the faction report edit to the workspace that owns the pack.
+    /// </summary>
+    /// <param name="faction">The recipient faction.</param>
+    /// <param name="report">The selected Espionage report variant.</param>
+    /// <param name="customize">Whether the faction should use its own report.</param>
+    private void ForwardMissionReportOverride(
+        ContentPackEditorRecord faction,
+        ContentEditorMissionReport report,
+        bool customize
+    ) => MissionReportOverrideRequested?.Invoke(faction, report, customize);
+
+    /// <summary>
     /// Adds a starting message and reveals its editable title without copying another message.
     /// </summary>
     /// <param name="type">The selected message category.</param>
@@ -2582,7 +2630,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     )
     {
         if (page?.IsMissionPresentation == true)
-            return "General";
+            return field.Record.Kind == "MessageDefinition"
+                ? ContentEditorMissionReport.Section
+                : "General";
         if (page?.Key.StartsWith("factions/", StringComparison.Ordinal) == true)
             return ContentEditorContentSections.FactionSection(field);
         if (record.Kind == "GameGenerationConfig")

@@ -183,6 +183,16 @@ internal static class ContentPackEditorFieldMetadata
             "Checked missions can be performed by this special forces unit.",
         ["GarrisonTroopTypeID"] =
             "The regiment type used when this faction creates automatic garrisons.",
+        ["RefinementMultiplier"] =
+            "Multiplies the raw and refined material supply available to this faction. A value of 1 leaves supply unchanged.",
+        ["ResourceProcessingPointsPerFacility"] =
+            "Base maintenance capacity from each operating mine and refinery pair. Difficulty can adjust the final capacity.",
+        ["GarrisonEfficiency"] =
+            "Retained for saved settings. Sector garrison reduction is controlled by each ship's sector suppression settings.",
+        ["TroopEffectiveness"] =
+            "Multiplies the weight of hostile troops when this faction evaluates popular support.",
+        ["UprisingResistance"] =
+            "Multiplies garrison strength during an uprising in sectors with an operational suppression ship.",
         ["RecruitingFactionInstanceIDs"] = "Factions allowed to recruit this officer.",
         ["ManufacturingFactionInstanceIDs"] = "Factions allowed to build this unit or facility.",
         ["AllowedRanks"] = "Command assignments this officer is eligible to hold.",
@@ -322,9 +332,12 @@ internal static class ContentPackEditorFieldMetadata
             return "The random starting variation applied to this rating during world generation.";
         if (field.IsMedia)
         {
-            string description = field.IsMediaDirectory
-                ? "Select a content folder. Its supported files are discovered automatically, including inherited files."
-                : "A Pack/ or Application/ asset address. Use Import to copy a file into this pack.";
+            string description =
+                field.IsMediaDirectory
+                    ? "Select a content folder. Its supported files are discovered automatically, including inherited files."
+                : field.MediaType == ContentPackEditorMediaType.Image
+                    ? "Choose an image from your computer. The editor copies it into this pack."
+                : "Choose a file from your computer. The editor copies it into this pack.";
             string expected = GetExpectedImageDimensions(field);
             return expected == null
                 ? description
@@ -359,6 +372,13 @@ internal static class ContentPackEditorFieldMetadata
             "RecruitingFactionInstanceIDs" => "Recruitable by",
             "ManufacturingFactionInstanceIDs" => "Buildable by",
             "GarrisonTroopTypeID" => "Garrison troop",
+            "ResourceProcessingPointsPerFacility" => "Maintenance per resource pair",
+            "UnattributedSubject" => "Subject without a reporter",
+            "UnattributedBody" => "Body without a reporter",
+            "PersonnelReturningTemplate" => "Personnel returning",
+            "PersonnelLostTemplate" => "Personnel lost",
+            "DetailListHeaderTemplate" => "Additional systems heading",
+            "DetailListItemTemplate" => "Additional system entry",
             "OfficerInstanceID" => "Officer",
             "PlanetTypeID" => "Planet",
             "DestinationTypeID" => "Destination",

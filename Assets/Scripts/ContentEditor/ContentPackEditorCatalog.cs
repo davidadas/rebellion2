@@ -574,6 +574,26 @@ public sealed class ContentPackEditorCatalog
     }
 
     /// <summary>
+    /// Copies an authored report, keeping its existing presentation and runtime selectors.
+    /// </summary>
+    /// <param name="shared">The shared definition to customize.</param>
+    /// <param name="faction">The recipient faction.</param>
+    internal void AddMissionReportOverride(
+        ContentPackEditorRecord shared,
+        ContentPackEditorRecord faction
+    )
+    {
+        RequireAttachedRecord(shared);
+        XElement report = new(shared.Element);
+        report.Element("InstanceID")?.Remove();
+        report.SetElementValue("DisplayName", shared.Name + " (" + faction.Name + ")");
+        report.SetElementValue("FactionInstanceID", faction.ID);
+        shared.Element.AddAfterSelf(report);
+        Commit();
+        RefreshRecords();
+    }
+
+    /// <summary>
     /// Rebuilds stable record wrappers after adding or removing an entry.
     /// </summary>
     private void RefreshRecords()

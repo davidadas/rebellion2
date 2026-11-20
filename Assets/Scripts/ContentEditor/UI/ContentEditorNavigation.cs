@@ -278,6 +278,17 @@ public sealed class ContentEditorNavigation
     )
     {
         ContentEditorTreeNode root = new ContentEditorTreeNode("factions", "Factions", 0);
+        string messageDefinitionsPath = projectCatalogs
+            .FirstOrDefault(catalog => catalog.CanAddFaction)
+            ?.DocumentRecord.Element.Element("MessageDefinitionsPath")
+            ?.Value.Replace('\\', '/');
+        IReadOnlyList<ContentPackEditorRecord> messageDefinitions =
+            projectCatalogs
+                .FirstOrDefault(catalog =>
+                    catalog.Document.Address == "Pack/" + messageDefinitionsPath
+                )
+                ?.Records
+            ?? Array.Empty<ContentPackEditorRecord>();
         foreach (
             IGrouping<string, ContentPackEditorCatalog> group in catalogs.GroupBy(catalog =>
                 catalog.Faction
@@ -317,6 +328,9 @@ public sealed class ContentEditorNavigation
             );
             if (theme != null)
             {
+                ContentPackEditorRecord gameplayFaction = records.FirstOrDefault(record =>
+                    record.Kind == "Faction" && record.Element.Element("InstanceID") != null
+                );
                 string articlePath = records
                     .Select(record => record.Element.Element("EncyclopediaEntriesPath")?.Value)
                     .FirstOrDefault(path => !string.IsNullOrEmpty(path));
@@ -343,7 +357,9 @@ public sealed class ContentEditorNavigation
                         group.Key,
                         theme,
                         articleCatalog,
-                        factionArticles
+                        factionArticles,
+                        gameplayFaction,
+                        messageDefinitions
                     )
                 );
             }
@@ -359,12 +375,16 @@ public sealed class ContentEditorNavigation
     /// <param name="theme">The editable faction theme.</param>
     /// <param name="articleCatalog">The linked faction encyclopedia when configured.</param>
     /// <param name="articles">The faction's authored mission articles.</param>
+    /// <param name="gameplayFaction">The faction that receives the reports.</param>
+    /// <param name="messageDefinitions">The linked message definitions.</param>
     /// <returns>A branch containing each supported mission presentation.</returns>
     private static ContentEditorTreeNode CreateFactionMissionPresentation(
         string faction,
         ContentPackEditorRecord theme,
         ContentPackEditorCatalog articleCatalog,
-        IReadOnlyList<ContentPackEditorRecord> articles
+        IReadOnlyList<ContentPackEditorRecord> articles,
+        ContentPackEditorRecord gameplayFaction,
+        IReadOnlyList<ContentPackEditorRecord> messageDefinitions
     )
     {
         string prefix = ContentEditorContentSections.FactionMissionPresentationPrefix + faction;
@@ -380,6 +400,10 @@ public sealed class ContentEditorNavigation
         {
             ContentPackEditorRecord article = articles.FirstOrDefault(record => record.ID == key);
             bool hasGameIcon = ContentEditorContentSections.FactionMissionIconKeys.Contains(key);
+            IReadOnlyList<ContentEditorMissionReport> reports =
+                key == MissionIconKeys.Espionage && gameplayFaction != null
+                    ? ContentEditorMissionReport.Create(messageDefinitions, gameplayFaction.ID)
+                    : Array.Empty<ContentEditorMissionReport>();
             ContentPackEditorField[] fields = (
                 hasGameIcon
                     ? ContentEditorContentSections.FactionMissionIconFields(theme, key)
@@ -392,6 +416,7 @@ public sealed class ContentEditorNavigation
                             article.GetField
                         )
                 )
+                .Concat(reports.SelectMany(report => report.Fields))
                 .ToArray();
             branch.Children.Add(
                 new ContentEditorTreeNode(
@@ -401,12 +426,16 @@ public sealed class ContentEditorNavigation
                     theme,
                     theme.Catalog,
                     fields,
+                    relatedRecords: reports.Count == 0 ? null : new[] { gameplayFaction },
                     missionArticleCatalog: article == null
                     && articleCatalog?.Faction == faction
                     && !articleCatalog.Records.Any(record => record.ID == key)
                         ? articleCatalog
                         : null
                 )
+                {
+                    MissionReports = reports,
+                }
             );
         }
         return branch;
@@ -991,6 +1020,8 @@ public sealed class ContentEditorTreeNode
     public string CreationFactionInstanceID { get; }
     public string MissionID { get; }
     internal ContentPackEditorCatalog MissionArticleCatalog { get; }
+    internal IReadOnlyList<ContentEditorMissionReport> MissionReports { get; set; } =
+        Array.Empty<ContentEditorMissionReport>();
     internal bool IsMissionPresentation =>
         Fields != null
         && Key.StartsWith(
