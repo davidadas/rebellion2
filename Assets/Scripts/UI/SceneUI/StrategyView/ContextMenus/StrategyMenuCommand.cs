@@ -146,6 +146,7 @@ public enum StrategyMenuAction
     CommandCommander,
     CommandAdmiral,
     CommandGeneral,
+    AdvisorMapLegend,
 }
 
 /// <summary>

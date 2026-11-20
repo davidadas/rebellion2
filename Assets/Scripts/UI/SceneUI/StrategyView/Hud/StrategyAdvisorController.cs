@@ -22,6 +22,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     private readonly Action<string> playSfx;
     private readonly Func<string, AudioPlaybackHandle> playSfxInstance;
     private readonly Func<int, int> selectRandomIndex;
+    private readonly Func<bool> canShowMapLegend;
     private readonly List<AudioPlaybackHandle> activeAudioPlaybacks =
         new List<AudioPlaybackHandle>();
     private readonly Queue<PendingAdvisorNotification> pendingNotifications =
@@ -57,6 +58,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// <param name="selectRandomIndex">Selects a zero-based index below the supplied count.</param>
     /// <param name="playSfxInstance">Plays an independently stoppable advisor response.</param>
     /// <param name="getAudioDuration">Gets the duration of a loaded advisor response.</param>
+    /// <param name="canShowMapLegend">Returns whether the current map display has an available legend.</param>
     public StrategyAdvisorController(
         Func<Faction> getPlayerFaction,
         Func<string, Texture2D> getTexture,
@@ -64,7 +66,8 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         IPlayerRequestDispatcher playerRequests,
         Func<int, int> selectRandomIndex = null,
         Func<string, AudioPlaybackHandle> playSfxInstance = null,
-        Func<string, float> getAudioDuration = null
+        Func<string, float> getAudioDuration = null,
+        Func<bool> canShowMapLegend = null
     )
     {
         this.getPlayerFaction =
@@ -75,6 +78,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             playerRequests ?? throw new ArgumentNullException(nameof(playerRequests));
         this.playSfxInstance = playSfxInstance;
         this.getAudioDuration = getAudioDuration ?? (_ => 0f);
+        this.canShowMapLegend = canShowMapLegend ?? (() => false);
         this.selectRandomIndex = selectRandomIndex ?? (count => UnityEngine.Random.Range(0, count));
     }
 
@@ -514,8 +518,12 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// Builds the protocol advisor command menu in authored display order.
     /// </summary>
     /// <param name="faction">The active player faction, or null when unavailable.</param>
+    /// <param name="canShowMapLegend">Whether the selected map display has an available legend.</param>
     /// <returns>The advisor command presentation.</returns>
-    internal static IReadOnlyList<StrategyMenuCommand> BuildCommandMenu(Faction faction)
+    internal static IReadOnlyList<StrategyMenuCommand> BuildCommandMenu(
+        Faction faction,
+        bool canShowMapLegend = false
+    )
     {
         return new List<StrategyMenuCommand>
         {
@@ -538,6 +546,11 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
                 StrategyMenuAction.AdvisorGalaxyOverview,
                 "Galaxy Overview",
                 faction != null
+            ),
+            new StrategyMenuCommand(
+                StrategyMenuAction.AdvisorMapLegend,
+                "Map Legend",
+                faction != null && canShowMapLegend
             ),
             new StrategyMenuCommand(
                 StrategyMenuAction.AdvisorObjectives,
@@ -691,6 +704,13 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         {
             case StrategyMenuAction.AdvisorGalaxyOverview:
                 actions.OpenAdvisorReport(AdvisorReportMode.GalaxyOverview);
+                return;
+            case StrategyMenuAction.AdvisorMapLegend:
+                actions.ReleaseHudButton(
+                    StrategyHudAction.GalacticInformationLegend,
+                    source.SourceX,
+                    source.SourceY
+                );
                 return;
             case StrategyMenuAction.AdvisorObjectives:
                 actions.OpenAdvisorReport(AdvisorReportMode.Objectives);
@@ -909,7 +929,10 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// <param name="sourceY">The source-space vertical pointer coordinate.</param>
     private void HandleProtocolContextRequested(int sourceX, int sourceY)
     {
-        IReadOnlyList<StrategyMenuCommand> commands = BuildCommandMenu(getPlayerFaction());
+        IReadOnlyList<StrategyMenuCommand> commands = BuildCommandMenu(
+            getPlayerFaction(),
+            canShowMapLegend()
+        );
         actions.OpenAdvisorCommandContextMenu(
             CreateContextMenuRequest(commands, sourceX, sourceY),
             sourceX,

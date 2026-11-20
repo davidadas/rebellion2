@@ -11,4 +11,5 @@ public enum StrategyHudAction
     TroopFinder = 54,
     PersonnelFinder = 55,
     Encyclopedia = 56,
+    GalacticInformationLegend = 57,
 }

@@ -1,4 +1,5 @@
 using System;
+using UnityEngine.EventSystems;
 
 /// <summary>
 /// Defines strategy-screen actions requested by the galactic-information selector.
@@ -9,6 +10,11 @@ public interface IGalacticInformationDisplayActions
     /// Requests a strategy render after selector state or the active filter changes.
     /// </summary>
     void RequestGalacticInformationRender();
+
+    /// <summary>
+    /// Opens the map legend through the strategy-screen interaction boundary.
+    /// </summary>
+    void OpenGalacticInformationLegend();
 }
 
 /// <summary>
@@ -22,6 +28,7 @@ public sealed class GalacticInformationDisplayController : ICancelable
     private IGalacticInformationDisplayActions actions;
     private GalacticInformationDisplayView displayView;
     private GalacticInformationLegendView legendView;
+    private UIRaycastArea legendTrigger;
     private GalacticInformationFilterMode filterMode = GalacticInformationFilterMode.DisplayOff;
     private int activeCategoryIndex = -1;
     private int hoveredFilterIndex = -1;
@@ -31,6 +38,10 @@ public sealed class GalacticInformationDisplayController : ICancelable
     public event Action<GalacticInformationFilterMode> FilterChanged;
 
     public bool Open => open;
+
+    public bool LegendOpen => legendView?.Visible == true;
+
+    public bool CanShowLegend => legendView != null && projector.HasLegend(filterMode);
 
     public GalacticInformationFilterMode FilterMode => filterMode;
 
@@ -99,6 +110,56 @@ public sealed class GalacticInformationDisplayController : ICancelable
         legendView.CloseRequested += HandleLegendCloseRequested;
         legendView.Destroyed += HandleLegendViewDestroyed;
         legendView.Hide();
+        RefreshLegendControl();
+    }
+
+    /// <summary>
+    /// Binds the small map-legend control without coupling it to selector visibility.
+    /// </summary>
+    /// <param name="nextTrigger">The authored map control.</param>
+    public void BindLegendTrigger(UIRaycastArea nextTrigger)
+    {
+        if (nextTrigger == null)
+            throw new ArgumentNullException(nameof(nextTrigger));
+        EnsureInitialized();
+        if (ReferenceEquals(legendTrigger, nextTrigger))
+            return;
+        if (legendTrigger != null)
+        {
+            legendTrigger.Clicked -= HandleLegendControlClicked;
+            legendTrigger.Pressed -= HandleLegendControlPressed;
+        }
+        legendTrigger = nextTrigger;
+        legendTrigger.Clicked += HandleLegendControlClicked;
+        legendTrigger.Pressed += HandleLegendControlPressed;
+        RefreshLegendControl();
+    }
+
+    /// <summary>
+    /// Opens the current display's legend on request and retains its dragged position.
+    /// </summary>
+    public void ShowLegend()
+    {
+        EnsureInitialized();
+        if (!CanShowLegend)
+            return;
+        GalacticInformationLegendRenderData data = projector.ProjectLegend(filterMode);
+        if (data == null)
+            return;
+        Hide();
+        legendView.Render(data);
+        RefreshLegendControl();
+        actions.RequestGalacticInformationRender();
+    }
+
+    /// <summary>
+    /// Refreshes visible legend artwork and the map control after strategy resources change.
+    /// </summary>
+    public void RefreshPresentation()
+    {
+        if (LegendOpen)
+            legendView.Render(projector.ProjectLegend(filterMode));
+        RefreshLegendControl();
     }
 
     /// <summary>
@@ -125,6 +186,7 @@ public sealed class GalacticInformationDisplayController : ICancelable
         if (displayView != null)
             RenderDisplay();
         legendView?.Hide();
+        RefreshLegendControl();
     }
 
     /// <summary>
@@ -149,11 +211,14 @@ public sealed class GalacticInformationDisplayController : ICancelable
     /// <returns>True when an open selector was dismissed.</returns>
     public bool TryCancel()
     {
-        if (!open)
+        if (!open && !LegendOpen)
             return false;
 
         playSfx(StrategyUISoundPaths.GalacticInformationControl);
-        DismissSelector();
+        if (open)
+            DismissSelector();
+        else
+            HandleLegendCloseRequested();
         return true;
     }
 
@@ -178,6 +243,8 @@ public sealed class GalacticInformationDisplayController : ICancelable
     internal void RestoreFilter(GalacticInformationFilterMode mode)
     {
         filterMode = mode;
+        legendView?.Hide();
+        RefreshLegendControl();
     }
 
     /// <summary>
@@ -190,6 +257,19 @@ public sealed class GalacticInformationDisplayController : ICancelable
             playSfx(StrategyUISoundPaths.GalacticInformationControl);
 
         SelectFilter(mode);
+    }
+
+    /// <summary>
+    /// Refreshes the map control after filtering, window dismissal, or a context replacement.
+    /// </summary>
+    private void RefreshLegendControl()
+    {
+        if (!legendTrigger)
+            return;
+
+        legendTrigger.Render(
+            CanShowLegend && !LegendOpen ? projector.GetLegendControlBounds() : null
+        );
     }
 
     /// <summary>
@@ -314,7 +394,30 @@ public sealed class GalacticInformationDisplayController : ICancelable
     private void HandleLegendCloseRequested()
     {
         legendView?.Hide();
+        RefreshLegendControl();
         actions.RequestGalacticInformationRender();
+    }
+
+    /// <summary>
+    /// Routes an available map control through the strategy interaction owner.
+    /// </summary>
+    /// <param name="area">The legend control.</param>
+    /// <param name="eventData">The originating pointer event.</param>
+    private void HandleLegendControlClicked(UIRaycastArea area, PointerEventData eventData)
+    {
+        if (CanShowLegend)
+            actions.OpenGalacticInformationLegend();
+    }
+
+    /// <summary>
+    /// Plays the map-control cue when an available legend control is pressed.
+    /// </summary>
+    /// <param name="area">The legend control.</param>
+    /// <param name="eventData">The originating pointer event.</param>
+    private void HandleLegendControlPressed(UIRaycastArea area, PointerEventData eventData)
+    {
+        if (CanShowLegend)
+            playSfx(StrategyUISoundPaths.GalacticInformationControl);
     }
 
     /// <summary>
@@ -344,6 +447,7 @@ public sealed class GalacticInformationDisplayController : ICancelable
         legendView.CloseRequested -= HandleLegendCloseRequested;
         legendView.Destroyed -= HandleLegendViewDestroyed;
         legendView = null;
+        RefreshLegendControl();
     }
 
     /// <summary>
