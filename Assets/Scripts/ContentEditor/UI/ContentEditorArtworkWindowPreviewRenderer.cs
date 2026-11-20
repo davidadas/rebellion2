@@ -311,7 +311,11 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
             );
             Texture2D missionIcon = GetTexture(
                 assets,
-                theme.MissionIcons?.Icons?.FirstOrDefault()?.SmallImagePath
+                theme.MissionIcons?.GetImagePath(MissionIconKeys.Diplomacy, true)
+            );
+            Texture2D reconnaissanceIcon = GetTexture(
+                assets,
+                theme.MissionIcons?.GetImagePath(MissionIconKeys.Reconnaissance, true)
             );
             Texture2D selection = GetAlphaTintedTexture(
                 assets,
@@ -332,7 +336,11 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
                     new[]
                     {
                         new MissionListRowRenderData("Diplomatic mission", missionIcon, selection),
-                        new MissionListRowRenderData("Reconnaissance mission", missionIcon, null),
+                        new MissionListRowRenderData(
+                            "Reconnaissance mission",
+                            reconnaissanceIcon,
+                            null
+                        ),
                     },
                     MissionsWindowRenderData
                         .OrderedRoles.Select(role =>
@@ -376,7 +384,7 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
             );
             Texture2D missionIcon = GetTexture(
                 assets,
-                theme.MissionIcons?.Icons?.FirstOrDefault()?.LargeImagePath
+                theme.MissionIcons?.GetImagePath(MissionIconKeys.Diplomacy, false)
             );
             missionCreate.Render(
                 new MissionCreateWindowRenderData(

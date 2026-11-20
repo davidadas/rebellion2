@@ -737,6 +737,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
             fieldScroll.SetContentHeight(height, rebind);
             return;
         }
+        if (selectedPage?.IsMissionPresentation == true && section == "General")
+        {
+            RenderFactionMissionPresentation();
+            return;
+        }
         if (selectedPage?.Key.StartsWith("factions/", StringComparison.Ordinal) == true)
         {
             if (section == "Interfaces")
@@ -2545,6 +2550,91 @@ public sealed class ContentEditorFormView : MonoBehaviour
             nameof(FactionArtworkDefaults.StarfighterBackgroundImagePath) => "Starfighters",
             _ => field.Caption,
         };
+
+    /// <summary>
+    /// Shows a faction's two gameplay mission icons and its authored encyclopedia presentation.
+    /// </summary>
+    private void RenderFactionMissionPresentation()
+    {
+        previewPane.SetActive(false);
+        float width = fieldScroll.ScrollArea.ViewportWidth;
+        int y = 0,
+            fieldIndex = 0,
+            imageIndex = 0,
+            labelIndex = 0,
+            panelIndex = 0;
+        ContentPackEditorField[] icons = selectedPage
+            .Fields.Where(ContentEditorContentSections.IsFactionMissionIcon)
+            .ToArray();
+        if (icons.Length > 0)
+        {
+            y = BeginArtworkPanel(ref panelIndex, "MissionIcons", y, width);
+            GetArtworkContentBounds(width, out float left, out float available);
+            const int gap = 16;
+            bool sideBySide = available >= 480;
+            int columnWidth = Mathf.Min(
+                320,
+                Mathf.FloorToInt(sideBySide ? (available - gap) / 2 : available)
+            );
+            int iconBottom = y;
+            for (int index = 0; index < icons.Length; index++)
+            {
+                ContentPackEditorField icon = icons[index];
+                float x = left + (sideBySide ? index * (columnWidth + gap) : 0);
+                int top = sideBySide ? y : iconBottom;
+                top += PlaceLabel(icon.Caption, labelIndex++, x, top, columnWidth, true) + 6;
+                if (!string.IsNullOrWhiteSpace(icon.Value))
+                    top = PlaceArtworkImagePreview(
+                        icon,
+                        x,
+                        top,
+                        columnWidth,
+                        columnWidth - 8,
+                        115,
+                        ref imageIndex,
+                        ref labelIndex
+                    );
+                iconBottom = Mathf.Max(
+                    iconBottom,
+                    top + PlaceField(icon, fieldIndex++, x, top, columnWidth, 0, 0, true) + 8
+                );
+            }
+            y = CompleteArtworkPanel(0, iconBottom);
+        }
+        ContentPackEditorField[] article = selectedPage
+            .Fields.Where(field => field.Record.Kind == "EncyclopediaEntry")
+            .ToArray();
+        if (article.Length > 0)
+        {
+            int start = y;
+            y = BeginArtworkPanel(ref panelIndex, "MissionEncyclopedia", y, width);
+            y += PlaceLabel("Encyclopedia", labelIndex++, 0, y, width, true) + 8;
+            y = PlaceArtworkFieldGroup(
+                article,
+                y,
+                width,
+                ref fieldIndex,
+                ref labelIndex,
+                ref imageIndex
+            );
+            y = CompleteArtworkPanel(start, y);
+        }
+        else if (selectedPage.MissionArticleCatalog != null)
+        {
+            addMessageButton.gameObject.SetActive(true);
+            addMessageButton.name = "AddMissionArticle";
+            addMessageButton.GetComponentInChildren<TMP_Text>().text = "Add encyclopedia entry";
+            UILayout.SetSourceRect(
+                (RectTransform)addMessageButton.transform,
+                4,
+                y,
+                Mathf.RoundToInt(Mathf.Min(220, width - 8)),
+                34
+            );
+            y += 42;
+        }
+        fieldScroll.SetContentHeight(y, !reflowingFields);
+    }
 
     /// <summary>
     /// Presents one lazy faction-artwork surface at a time beneath a reusable surface selector.

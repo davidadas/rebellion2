@@ -684,18 +684,16 @@ public sealed class ContentEditorFieldView : MonoBehaviour
                     field.IsMultiline || field.IsList
                         ? TextAlignmentOptions.TopLeft
                         : TextAlignmentOptions.MidlineLeft;
+                input.stringPosition = 0;
+                input.selectionStringAnchorPosition = 0;
+                input.selectionStringFocusPosition = 0;
+                input.caretPosition = 0;
+                input.selectionAnchorPosition = 0;
+                input.selectionFocusPosition = 0;
+                input.textComponent.rectTransform.anchoredPosition = Vector2.zero;
+                verticalScrollbar.SetValueWithoutNotify(0);
                 input.SetTextWithoutNotify(GetEditorText(field));
-                if (!multilineInput)
-                {
-                    input.stringPosition = 0;
-                    input.selectionStringAnchorPosition = 0;
-                    input.selectionStringFocusPosition = 0;
-                    input.caretPosition = 0;
-                    input.selectionAnchorPosition = 0;
-                    input.selectionFocusPosition = 0;
-                    input.textComponent.rectTransform.anchoredPosition = Vector2.zero;
-                    input.ForceLabelUpdate();
-                }
+                input.ForceLabelUpdate();
                 RectTransform rect = (RectTransform)input.transform;
                 rect.offsetMin = new Vector2(244, 22);
                 rect.offsetMax = new Vector2(field.IsMedia ? -190 : -14, -8);

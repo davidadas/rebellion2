@@ -33,6 +33,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.AddSectorRequested += AddSector;
         view.AddPlanetRequested += AddPlanet;
         view.AddMessageRequested += AddMessage;
+        view.AddMissionArticleRequested += AddMissionArticle;
         view.AddNamePoolRequested += AddNamePool;
         view.RemoveMessageRequested += RemoveMessage;
         view.ClearFieldsRequested += ClearFields;
@@ -369,6 +370,23 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
     }
 
     /// <summary>
+    /// Adds a mission article and focuses its title in the current faction presentation.
+    /// </summary>
+    /// <param name="catalog">The linked faction encyclopedia.</param>
+    /// <param name="theme">The owning faction theme.</param>
+    /// <param name="missionID">The mission identifier.</param>
+    private void AddMissionArticle(
+        ContentPackEditorCatalog catalog,
+        ContentPackEditorRecord theme,
+        string missionID
+    )
+    {
+        ContentPackEditorField title = Project.AddMissionArticle(catalog, theme, missionID);
+        view.RenderProject(Project, assets);
+        view.FocusField(title);
+    }
+
+    /// <summary>
     /// Applies a grouped field clear before rebuilding the current inspector from its edited definitions.
     /// </summary>
     /// <param name="fields">The fields requested by the inspector.</param>
@@ -445,6 +463,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.AddSectorRequested -= AddSector;
         view.AddPlanetRequested -= AddPlanet;
         view.AddMessageRequested -= AddMessage;
+        view.AddMissionArticleRequested -= AddMissionArticle;
         view.AddNamePoolRequested -= AddNamePool;
         view.RemoveMessageRequested -= RemoveMessage;
         view.ClearFieldsRequested -= ClearFields;

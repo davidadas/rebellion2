@@ -133,6 +133,101 @@ namespace Rebellion.Tests.ContentEditor.Integration
         }
 
         [Test]
+        public void RenderProject_NewFactionMissionPresentation_ExposesBothUnsetIconSlots()
+        {
+            ContentPackEditorRecord faction = project.AddFaction();
+            workspace.RenderProject(project, assets);
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = navigation.Find(
+                "mission-presentation/" + faction.Catalog.Faction + "/Espionage"
+            );
+            SelectPage(page);
+
+            ContentEditorFieldView[] fields =
+                view.GetComponentsInChildren<ContentEditorFieldView>();
+            CollectionAssert.AreEquivalent(
+                new[] { "LargeImagePath", "SmallImagePath" },
+                fields.Select(field => field.Field.MemberName)
+            );
+            Assert.IsTrue(
+                fields.All(field =>
+                    field
+                        .GetComponentsInChildren<Button>()
+                        .Any(button =>
+                            button.GetComponentInChildren<TMP_Text>()?.text == "Choose image..."
+                        )
+                )
+            );
+            Assert.IsNull(page.Record.Element.Element(nameof(FactionTheme.MissionIcons)));
+        }
+
+        [Test]
+        public void RenderProject_NewFactionIconEdits_SaveBothSizesOnOneRuntimeKey()
+        {
+            ContentPackEditorRecord faction = project.AddFaction();
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = navigation.Find(
+                "mission-presentation/" + faction.Catalog.Faction + "/Espionage"
+            );
+            string source = Path.Combine(folder, "mission-art.png");
+            Texture2D image = new(2, 2);
+            try
+            {
+                File.WriteAllBytes(source, image.EncodeToPNG());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(image);
+            }
+            ContentPackEditorField large = page.Fields.Single(field =>
+                field.MemberName == "LargeImagePath"
+            );
+            ContentPackEditorField small = page.Fields.Single(field =>
+                field.MemberName == "SmallImagePath"
+            );
+            project.SetField(large, ContentPackEditorStorage.ImportAsset(project, source, large));
+            project.SetField(small, ContentPackEditorStorage.ImportAsset(project, source, small));
+            ContentPackEditorStorage.Save(project);
+
+            XDocument saved = XDocument.Load(page.Record.Catalog.Document.TargetPath);
+            XElement icon = saved.Descendants(nameof(MissionIconTheme)).Single();
+            Assert.AreEqual(MissionIconKeys.Espionage, (string)icon.Element("Key"));
+            string expected =
+                "Pack/Factions/" + faction.Catalog.Faction + "/Assets/mission-art.png";
+            Assert.AreEqual(expected, (string)icon.Element("LargeImagePath"));
+            Assert.AreEqual(expected, (string)icon.Element("SmallImagePath"));
+            Assert.IsTrue(File.Exists(Path.Combine(project.PackRootPath, expected[5..])));
+        }
+
+        [Test]
+        public void RenderProject_NewFactionMissionArticle_AddsAnEditableFactionScopedEntry()
+        {
+            ContentPackEditorRecord faction = project.AddFaction();
+            workspace.RenderProject(project, assets);
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(
+                navigation.Find("mission-presentation/" + faction.Catalog.Faction + "/Espionage")
+            );
+
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "AddMissionArticle")
+                .onClick.Invoke();
+
+            ContentPackEditorField description =
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Single(field => field.Field.MemberName == "Description")
+                    .Field;
+            Assert.AreEqual("Espionage", description.Record.ID);
+            Assert.AreEqual(
+                faction.ID,
+                (string)description.Record.Element.Element("VisibleFactionInstanceID")
+            );
+        }
+
+        [Test]
         public void AddFaction_OneExistingFaction_CreatesWithoutAWarning()
         {
             ContentPackEditorRecord removed = project
@@ -563,7 +658,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
         }
 
         [Test]
-        public void RenderProject_MissionPages_CombineFactionArticlesAndExcludeAiWeights()
+        public void RenderProject_MissionPages_SeparateFactionPresentationFromSharedRules()
         {
             ContentEditorNavigation navigation = new ContentEditorNavigation();
             navigation.Render(project.GetCatalogs());
@@ -585,17 +680,28 @@ namespace Rebellion.Tests.ContentEditor.Integration
                     .Single(page => page.Caption == "Difficulty")
                     .Fields.Any(field => field.MemberName == "MissionSuccessChancePoints")
             );
-            ContentEditorTreeNode research = pages.Single(page => page.MissionID == "Diplomacy");
-            Assert.IsTrue(research.Fields.Any(field => field.SectionPath.Contains("Diplomacy")));
-            Assert.IsFalse(research.Fields.Any(field => field.Group == "AI"));
-            Assert.AreEqual(2, research.RelatedRecords.Count);
-            Assert.IsEmpty(research.Children);
-            SelectPage(research);
-            foreach (ContentPackEditorRecord article in research.RelatedRecords)
+            ContentEditorTreeNode diplomacy = pages.Single(page => page.MissionID == "Diplomacy");
+            Assert.IsTrue(diplomacy.Fields.Any(field => field.SectionPath.Contains("Diplomacy")));
+            Assert.IsTrue(
+                diplomacy.Fields.All(field =>
+                    field.Record.Kind == "GameConfig" && field.Group != "AI"
+                )
+            );
+            foreach (string faction in new[] { "Alliance", "Empire" })
+            {
+                ContentEditorTreeNode presentation = navigation.Find(
+                    "mission-presentation/" + faction + "/Diplomacy"
+                );
+                ContentPackEditorRecord article = presentation
+                    .Fields.Single(field => field.MemberName == "Description")
+                    .Record;
+                Assert.AreEqual(faction, article.Catalog.Faction);
+                SelectPage(presentation);
                 Assert.IsTrue(
                     view.GetComponentsInChildren<RawImage>()
                         .Any(image => image.texture == assets.GetTexture(article.ImageAddress))
                 );
+            }
             Assert.AreEqual(
                 1,
                 view.GetComponentsInChildren<ContentEditorRecordRowView>()
@@ -2375,7 +2481,11 @@ namespace Rebellion.Tests.ContentEditor.Integration
             workspace.RenderProject(project, assets);
             ContentEditorNavigation navigation = new ContentEditorNavigation();
             navigation.Render(project.GetCatalogs());
-            SelectPage(navigation.Find("missions/reference-only-mission"));
+            string key =
+                catalog.Faction == "Shared"
+                    ? "missions/reference-only-mission"
+                    : "mission-presentation/" + catalog.Faction + "/reference-only-mission";
+            SelectPage(navigation.Find(key));
             Assert.IsFalse(
                 view.GetComponentsInChildren<Button>()
                     .Any(button => button.GetComponentInChildren<TMP_Text>()?.text == "Rules")

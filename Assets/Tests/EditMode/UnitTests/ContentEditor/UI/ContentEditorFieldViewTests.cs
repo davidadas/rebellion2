@@ -142,6 +142,28 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
+        public void Render_ReusedDescriptionInput_StartsAtTheFirstLine()
+        {
+            ContentPackEditorField description = officer.GetField("EncyclopediaDescription");
+            ContentPackEditorFieldRenderData data = ContentPackEditorProjector.BuildField(
+                project,
+                description
+            );
+            control.Render(data, null, null, null);
+            TMP_InputField input = control.GetComponentInChildren<TMP_InputField>();
+            input.stringPosition = input.text.Length;
+            input.textComponent.rectTransform.anchoredPosition = new Vector2(0, 56);
+            input.verticalScrollbar.SetValueWithoutNotify(1);
+
+            control.Render(data, null, null, null);
+            control.SetLayout(new Rect(0, 0, 520, control.Height), 0);
+            Canvas.ForceUpdateCanvases();
+
+            Assert.AreEqual(0, input.stringPosition);
+            Assert.AreEqual(0f, input.textComponent.rectTransform.anchoredPosition.y, 0.01f);
+        }
+
+        [Test]
         public void SetLayout_LongFieldCaption_WrapsAndExpandsTheRow()
         {
             control.Render(

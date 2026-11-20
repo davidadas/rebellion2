@@ -64,16 +64,21 @@ public sealed class ContentEditorNavigation
                 .Select(record => record.ID),
             StringComparer.Ordinal
         );
-        ContentEditorTreeNode missions = CreateMissions(catalogs);
-        ContentPackEditorRecord[] referenceArticles = catalogs
+        ContentPackEditorRecord[] articles = catalogs
             .SelectMany(catalog => catalog.Records)
+            .Where(record => record.Kind == "EncyclopediaEntry")
+            .ToArray();
+        ContentPackEditorRecord[] missionArticles = articles
+            .Where(record => record.Element.Element("Category")?.Value == "Mission")
+            .ToArray();
+        ContentPackEditorRecord[] referenceArticles = articles
             .Where(record =>
-                record.Kind == "EncyclopediaEntry"
-                && record.Element.Element("Category")?.Value != "Mission"
+                record.Element.Element("Category")?.Value != "Mission"
                 && !entities.Contains(record.ID)
             )
             .ToArray();
         ContentEditorTreeNode units = new ContentEditorTreeNode("units", "Units", 0);
+        HashSet<ContentPackEditorRecord> assignedMissionArticles = new();
         foreach (string category in _unitCategories)
         {
             ContentPackEditorCatalog[] matches = catalogs
@@ -137,11 +142,9 @@ public sealed class ContentEditorNavigation
                     CreateFactions(
                         category.ToArray(),
                         referenceArticles,
-                        catalogs
-                            .Where(catalog =>
-                                catalog.Records.Any(record => record.Kind == "FactionTheme")
-                            )
-                            .ToArray()
+                        missionArticles,
+                        catalogs,
+                        assignedMissionArticles
                     )
                 );
             else if (category.Key == "Encyclopedia entries")
@@ -203,6 +206,10 @@ public sealed class ContentEditorNavigation
                 new ContentEditorTreeNode("factions/add", "+ Add faction", 1, creationCatalog: pack)
             );
         }
+        ContentEditorTreeNode missions = CreateMissions(
+            catalogs,
+            missionArticles.Where(article => !assignedMissionArticles.Contains(article)).ToArray()
+        );
         if (missions.Children.Count > 0)
             roots.Add(missions);
         roots.Sort(
@@ -258,12 +265,16 @@ public sealed class ContentEditorNavigation
     /// </summary>
     /// <param name="catalogs">The faction settings and manifests.</param>
     /// <param name="articles">The remaining faction-owned encyclopedia entries.</param>
-    /// <param name="themes">The effective faction presentation catalogs.</param>
+    /// <param name="missionArticles">The existing articles representing mission presentations.</param>
+    /// <param name="projectCatalogs">The catalogs linked by the faction manifests.</param>
+    /// <param name="assignedMissionArticles">The mission articles represented under their owning factions.</param>
     /// <returns>The combined faction navigation branch.</returns>
     private static ContentEditorTreeNode CreateFactions(
         IReadOnlyList<ContentPackEditorCatalog> catalogs,
         IReadOnlyList<ContentPackEditorRecord> articles,
-        IReadOnlyList<ContentPackEditorCatalog> themes
+        IReadOnlyList<ContentPackEditorRecord> missionArticles,
+        IReadOnlyList<ContentPackEditorCatalog> projectCatalogs,
+        ISet<ContentPackEditorRecord> assignedMissionArticles
     )
     {
         ContentEditorTreeNode root = new ContentEditorTreeNode("factions", "Factions", 0);
@@ -287,10 +298,10 @@ public sealed class ContentEditorNavigation
             string themePath = records
                 .Select(record => record.Element.Element("ThemePath")?.Value)
                 .FirstOrDefault(path => !string.IsNullOrEmpty(path));
-            ContentPackEditorRecord theme = themes
+            ContentPackEditorRecord theme = projectCatalogs
                 .Where(catalog => catalog.Document.Address == "Pack/" + themePath)
                 .SelectMany(catalog => catalog.Records)
-                .FirstOrDefault();
+                .FirstOrDefault(record => record.Kind == "FactionTheme");
             ContentPackEditorField[] fields = records
                 .SelectMany(ContentEditorInspectorLayout.GetFields)
                 .Concat(ContentEditorContentSections.FactionArtworkFields(theme))
@@ -304,18 +315,112 @@ public sealed class ContentEditorNavigation
                 fields,
                 theme == null ? records : records.Append(theme).ToArray()
             );
+            if (theme != null)
+            {
+                string articlePath = records
+                    .Select(record => record.Element.Element("EncyclopediaEntriesPath")?.Value)
+                    .FirstOrDefault(path => !string.IsNullOrEmpty(path));
+                ContentPackEditorCatalog articleCatalog = projectCatalogs.FirstOrDefault(catalog =>
+                    catalog.Document.Address == "Pack/" + articlePath
+                );
+                ContentPackEditorRecord[] factionArticles = missionArticles
+                    .Where(article =>
+                        article.Catalog == articleCatalog
+                        && (
+                            article.Element.Element("VisibleFactionInstanceID")?.Value
+                                is { Length: > 0 } id
+                                ? id
+                                    == theme
+                                        .Element.Element(nameof(FactionTheme.FactionInstanceID))
+                                        ?.Value
+                                : article.Catalog.Faction == group.Key
+                        )
+                    )
+                    .ToArray();
+                assignedMissionArticles.UnionWith(factionArticles);
+                faction.Children.Add(
+                    CreateFactionMissionPresentation(
+                        group.Key,
+                        theme,
+                        articleCatalog,
+                        factionArticles
+                    )
+                );
+            }
             root.Children.Add(faction);
         }
         return root;
     }
 
     /// <summary>
-    /// Places each mission's execution settings and faction articles in the same branch.
+    /// Creates one faction branch for editing mission icons and existing encyclopedia articles.
+    /// </summary>
+    /// <param name="faction">The owning faction's catalog name.</param>
+    /// <param name="theme">The editable faction theme.</param>
+    /// <param name="articleCatalog">The linked faction encyclopedia when configured.</param>
+    /// <param name="articles">The faction's authored mission articles.</param>
+    /// <returns>A branch containing each supported mission presentation.</returns>
+    private static ContentEditorTreeNode CreateFactionMissionPresentation(
+        string faction,
+        ContentPackEditorRecord theme,
+        ContentPackEditorCatalog articleCatalog,
+        IReadOnlyList<ContentPackEditorRecord> articles
+    )
+    {
+        string prefix = ContentEditorContentSections.FactionMissionPresentationPrefix + faction;
+        ContentEditorTreeNode branch = new(prefix, "Mission presentation", 2);
+        foreach (
+            string key in ContentEditorContentSections
+                .FactionMissionIconKeys.Union(
+                    articles.Select(article => article.ID),
+                    StringComparer.Ordinal
+                )
+                .OrderBy(key => key, StringComparer.Ordinal)
+        )
+        {
+            ContentPackEditorRecord article = articles.FirstOrDefault(record => record.ID == key);
+            bool hasGameIcon = ContentEditorContentSections.FactionMissionIconKeys.Contains(key);
+            ContentPackEditorField[] fields = (
+                hasGameIcon
+                    ? ContentEditorContentSections.FactionMissionIconFields(theme, key)
+                    : Array.Empty<ContentPackEditorField>()
+            )
+                .Concat(
+                    article == null
+                        ? Array.Empty<ContentPackEditorField>()
+                        : new[] { "DisplayName", "ImagePath", "Description" }.Select(
+                            article.GetField
+                        )
+                )
+                .ToArray();
+            branch.Children.Add(
+                new ContentEditorTreeNode(
+                    prefix + "/" + key,
+                    article?.Name ?? ContentPackEditorField.FormatName(key),
+                    3,
+                    theme,
+                    theme.Catalog,
+                    fields,
+                    missionArticleCatalog: article == null
+                    && articleCatalog?.Faction == faction
+                    && !articleCatalog.Records.Any(record => record.ID == key)
+                        ? articleCatalog
+                        : null
+                )
+            );
+        }
+        return branch;
+    }
+
+    /// <summary>
+    /// Presents shared mission rules and articles without a faction presentation page.
     /// </summary>
     /// <param name="catalogs">The project's authored catalogs.</param>
+    /// <param name="missionArticles">The articles that have no faction presentation page.</param>
     /// <returns>The mission navigation branch.</returns>
     private static ContentEditorTreeNode CreateMissions(
-        IReadOnlyList<ContentPackEditorCatalog> catalogs
+        IReadOnlyList<ContentPackEditorCatalog> catalogs,
+        IReadOnlyList<ContentPackEditorRecord> missionArticles
     )
     {
         ContentEditorTreeNode root = new ContentEditorTreeNode("missions", "Missions", 0);
@@ -332,13 +437,6 @@ public sealed class ContentEditorNavigation
                         .Where(ContentPackEditorFieldMetadata.IsMissionField)
                         .ToLookup(ContentPackEditorFieldMetadata.MissionFor, StringComparer.Ordinal)
             );
-        ContentPackEditorRecord[] missionArticles = catalogs
-            .SelectMany(catalog => catalog.Records)
-            .Where(record =>
-                record.Kind == "EncyclopediaEntry"
-                && record.Element.Element("Category")?.Value == "Mission"
-            )
-            .ToArray();
         string[] missionIDs = ContentPackEditorFieldSchema
             .MissionIDs.Where(id =>
                 id != MissionTypeIDs.Research
@@ -892,6 +990,13 @@ public sealed class ContentEditorTreeNode
     public ContentPackEditorRecord CreationParent { get; }
     public string CreationFactionInstanceID { get; }
     public string MissionID { get; }
+    internal ContentPackEditorCatalog MissionArticleCatalog { get; }
+    internal bool IsMissionPresentation =>
+        Fields != null
+        && Key.StartsWith(
+            ContentEditorContentSections.FactionMissionPresentationPrefix,
+            StringComparison.Ordinal
+        );
     public List<ContentEditorTreeNode> Children { get; } = new List<ContentEditorTreeNode>();
 
     /// <summary>
@@ -908,6 +1013,7 @@ public sealed class ContentEditorTreeNode
     /// <param name="creationCatalog">The optional destination of a create action.</param>
     /// <param name="creationParent">The optional parent receiving a nested record.</param>
     /// <param name="creationFactionInstanceID">The optional faction selected by a unit creation action.</param>
+    /// <param name="missionArticleCatalog">The destination for an absent faction mission article.</param>
     public ContentEditorTreeNode(
         string key,
         string caption,
@@ -919,7 +1025,8 @@ public sealed class ContentEditorTreeNode
         string missionID = null,
         ContentPackEditorCatalog creationCatalog = null,
         ContentPackEditorRecord creationParent = null,
-        string creationFactionInstanceID = null
+        string creationFactionInstanceID = null,
+        ContentPackEditorCatalog missionArticleCatalog = null
     )
     {
         Key = key;
@@ -930,6 +1037,7 @@ public sealed class ContentEditorTreeNode
         Fields = fields;
         RelatedRecords = relatedRecords ?? Array.Empty<ContentPackEditorRecord>();
         MissionID = missionID;
+        MissionArticleCatalog = missionArticleCatalog;
         CreationCatalog = creationCatalog;
         CreationParent = creationParent;
         CreationFactionInstanceID = creationFactionInstanceID;

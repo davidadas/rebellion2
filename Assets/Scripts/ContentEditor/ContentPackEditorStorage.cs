@@ -381,7 +381,12 @@ public static class ContentPackEditorStorage
         )
             throw new ArgumentException("Unsupported file type.");
         string root = field.MediaRoot;
-        string address = ImportAssetToFolder(project, sourcePath, root ?? "Pack/Assets");
+        string folder =
+            ContentEditorContentSections.IsFactionMissionIcon(field)
+            && field.Record.Catalog.Faction != "Shared"
+                ? "Pack/Factions/" + field.Record.Catalog.Faction + "/Assets"
+                : "Pack/Assets";
+        string address = ImportAssetToFolder(project, sourcePath, root ?? folder);
         return root == null ? address : address[(root.TrimEnd('/').Length + 1)..];
     }
 
@@ -407,6 +412,14 @@ public static class ContentPackEditorStorage
             return false;
         string address = field.GetMediaAddress(field.Value);
         if (!address.StartsWith("Pack/", StringComparison.Ordinal))
+            return false;
+        if (
+            ContentEditorContentSections.IsFactionMissionIcon(field)
+            && !address.StartsWith(
+                "Pack/Factions/" + field.Record.Catalog.Faction + "/",
+                StringComparison.Ordinal
+            )
+        )
             return false;
         try
         {

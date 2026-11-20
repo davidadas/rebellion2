@@ -2,12 +2,30 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
+using Rebellion.Game.Missions;
 
 /// <summary>
 /// Projects related authored content into task-oriented inspector and navigation sections.
 /// </summary>
 internal static class ContentEditorContentSections
 {
+    internal const string FactionMissionPresentationPrefix = "mission-presentation/";
+
+    internal static readonly IReadOnlyList<string> FactionMissionIconKeys =
+        ContentPackEditorFieldSchema
+            .MissionIDs.Where(id => id != MissionTypeIDs.Research)
+            .Select(id => MissionIconKeys.GetMissionIconKey(id))
+            .Concat(
+                new[]
+                {
+                    MissionIconKeys.ResearchShipDesign,
+                    MissionIconKeys.ResearchFacilityDesign,
+                    MissionIconKeys.ResearchTroopTraining,
+                }
+            )
+            .OrderBy(key => key, StringComparer.Ordinal)
+            .ToArray();
+
     private static readonly string[] _factionArtworkDefaultMembers =
     {
         nameof(FactionArtworkDefaults.OfficerBackgroundImagePath),
@@ -92,6 +110,95 @@ internal static class ContentEditorContentSections
     /// <returns>Whether the field belongs to the background editor instead of interface theming.</returns>
     internal static bool IsFactionBackgroundField(ContentPackEditorField field) =>
         IsFactionArtworkField(field) && field.Group == nameof(FactionTheme.ArtworkDefaults);
+
+    /// <summary>
+    /// Identifies a keyed large or small mission icon in the owning faction theme.
+    /// </summary>
+    /// <param name="field">The editable media field.</param>
+    /// <returns>True for a mission icon field, including an optional unassigned image.</returns>
+    internal static bool IsFactionMissionIcon(ContentPackEditorField field) =>
+        IsFactionArtworkField(field) && field.Group == nameof(FactionTheme.MissionIcons);
+
+    /// <summary>
+    /// Projects both icon slots for a mission, creating missing XML only when a value is assigned.
+    /// </summary>
+    /// <param name="theme">The faction theme that owns the icon set.</param>
+    /// <param name="key">The mission icon key read by the strategy windows.</param>
+    /// <returns>The large and small image fields.</returns>
+    internal static IReadOnlyList<ContentPackEditorField> FactionMissionIconFields(
+        ContentPackEditorRecord theme,
+        string key
+    )
+    {
+        XElement icon = theme
+            .Element.Element(nameof(FactionTheme.MissionIcons))
+            ?.Element(nameof(MissionIconSetTheme.Icons))
+            ?.Elements(nameof(MissionIconTheme))
+            .FirstOrDefault(item => item.Element(nameof(MissionIconTheme.Key))?.Value == key);
+        XElement owner =
+            icon
+            ?? new XElement(
+                nameof(MissionIconTheme),
+                new XElement(nameof(MissionIconTheme.Key), key)
+            );
+        return new[]
+        {
+            MissionIconField(
+                theme,
+                owner,
+                nameof(MissionIconTheme.LargeImagePath),
+                "Mission setup icon"
+            ),
+            MissionIconField(
+                theme,
+                owner,
+                nameof(MissionIconTheme.SmallImagePath),
+                "Mission list icon"
+            ),
+        };
+    }
+
+    /// <summary>
+    /// Binds one icon to its theme and prepares any missing parent elements for the first edit.
+    /// </summary>
+    /// <param name="theme">The editable faction theme.</param>
+    /// <param name="icon">The existing or pending keyed icon entry.</param>
+    /// <param name="member">The serialized image member.</param>
+    /// <param name="caption">The display label for this use of the icon.</param>
+    /// <returns>The editable image field.</returns>
+    private static ContentPackEditorField MissionIconField(
+        ContentPackEditorRecord theme,
+        XElement icon,
+        string member,
+        string caption
+    )
+    {
+        XElement element = icon.Element(member) ?? new XElement(member);
+        return new ContentPackEditorField(
+            theme,
+            element,
+            caption,
+            attach: () =>
+            {
+                if (icon.Parent == null)
+                {
+                    XElement set = theme.Element.Element(nameof(FactionTheme.MissionIcons));
+                    if (set == null)
+                        theme.Element.Add(set = new XElement(nameof(FactionTheme.MissionIcons)));
+                    XElement icons = set.Element(nameof(MissionIconSetTheme.Icons));
+                    if (icons == null)
+                        set.Add(icons = new XElement(nameof(MissionIconSetTheme.Icons)));
+                    icons.Add(icon);
+                }
+                if (element.Parent == null)
+                    icon.Add(element);
+            },
+            valueTypeOverride: typeof(string),
+            groupOverride: nameof(FactionTheme.MissionIcons),
+            caption: caption,
+            parentOverride: icon
+        );
+    }
 
     /// <summary>
     /// Identifies faction-theme images that are rendered by an interface surface.

@@ -983,6 +983,34 @@ public sealed class ContentPackEditorProject
     }
 
     /// <summary>
+    /// Creates one editable encyclopedia article for a faction's mission.
+    /// </summary>
+    /// <param name="catalog">The faction's linked encyclopedia catalog.</param>
+    /// <param name="theme">The faction theme represented by the mission page.</param>
+    /// <param name="missionID">The mission icon key also used by the encyclopedia.</param>
+    /// <returns>The field for editing the article title.</returns>
+    internal ContentPackEditorField AddMissionArticle(
+        ContentPackEditorCatalog catalog,
+        ContentPackEditorRecord theme,
+        string missionID
+    )
+    {
+        RequireOwnedCatalog(catalog);
+        RequireOwnedRecord(theme);
+        string factionID = theme.Element.Element(nameof(FactionTheme.FactionInstanceID))?.Value;
+        if (
+            theme.Kind != nameof(FactionTheme)
+            || catalog.Faction == "Shared"
+            || catalog.Faction != theme.Catalog.Faction
+            || string.IsNullOrWhiteSpace(factionID)
+            || !ContentEditorContentSections.FactionMissionIconKeys.Contains(missionID)
+        )
+            throw new ArgumentException("Choose a faction mission.");
+        using (BeginEdit("Add mission encyclopedia entry"))
+            return catalog.AddMissionArticle(missionID, factionID);
+    }
+
+    /// <summary>
     /// Clears a set of owned fields after validating every proposed change, preserving one undo step.
     /// </summary>
     /// <param name="fields">The fields to clear.</param>

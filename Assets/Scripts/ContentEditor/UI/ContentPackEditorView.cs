@@ -239,6 +239,11 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     internal event Action<ContentPackEditorCatalog, Vector2Int> AddSectorRequested;
     internal event Action<ContentPackEditorRecord, Vector2Int> AddPlanetRequested;
     internal event Action<ContentPackEditorRecord, MessageType> AddMessageRequested;
+    internal event Action<
+        ContentPackEditorCatalog,
+        ContentPackEditorRecord,
+        string
+    > AddMissionArticleRequested;
     internal event Action<ContentPackEditorRecord> AddNamePoolRequested;
     internal event Action<ContentPackEditorField> RemoveMessageRequested;
     internal event Action<IReadOnlyList<ContentPackEditorField>> ClearFieldsRequested;
@@ -799,7 +804,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 ? "Starting setup"
                 : selectedPage?.Caption ?? selectedRecord.Name;
         string kind =
-            selectedPage?.MissionID != null ? "Mission"
+            selectedPage?.IsMissionPresentation == true ? "Mission presentation"
+            : selectedPage?.MissionID != null ? "Mission"
             : selectedRecord.Kind is "PlanetSector" or "PlanetSectors" ? "Galaxy"
             : selectedRecord.Kind == "GameConfig" ? "Game rules"
             : selectedRecord.Kind == "GameGenerationConfig" ? "New-game settings"
@@ -1583,7 +1589,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         tabRoot.gameObject.SetActive(record != null);
         form.gameObject.SetActive(record != null);
         resetSectionButton.gameObject.SetActive(false);
-        duplicateButton.interactable = record?.Catalog.CanDuplicate == true;
+        duplicateButton.interactable =
+            page?.IsMissionPresentation != true && record?.Catalog.CanDuplicate == true;
         deleteButton.interactable = record?.Kind == "Faction" || duplicateButton.interactable;
         if (record == null)
         {
@@ -1687,10 +1694,17 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         }
         bool faction = selectedPage?.Key.StartsWith("factions/", StringComparison.Ordinal) == true;
         bool generation = selectedRecord.Kind == "GameGenerationConfig";
+        bool missionRulesOnly =
+            selectedPage?.MissionID != null
+            && selectedPage.Fields.Count > 0
+            && selectedPage.Fields.All(field => field.Record.Kind == "GameConfig");
         artworkTab.GetComponentInChildren<TMP_Text>().text = faction ? "Interfaces" : "Artwork";
-        propertiesTab.GetComponentInChildren<TMP_Text>().text = faction ? "Faction" : "General";
+        propertiesTab.GetComponentInChildren<TMP_Text>().text =
+            faction ? "Faction"
+            : selectedPage?.IsMissionPresentation == true ? "Presentation"
+            : "General";
         defaultBackgroundsTab.GetComponentInChildren<TMP_Text>().text = "Default backgrounds";
-        propertiesTab.gameObject.SetActive(!generation);
+        propertiesTab.gameObject.SetActive(!generation && !missionRulesOnly);
         if (faction)
             artworkTab.gameObject.SetActive(
                 selectedPage.Fields.Any(ContentEditorContentSections.IsFactionInterfaceField)
@@ -1771,7 +1785,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 .Range(0, tabs.Length)
                 .Any(index => tabs[index].gameObject.activeSelf && names[index] == section)
         )
-            SectionRequested?.Invoke(names[0]);
+            SectionRequested?.Invoke(missionRulesOnly ? "Rules" : names[0]);
         List<(RectTransform Rect, float Width)> layout = new();
         for (int i = 0; i < tabs.Length; i++)
         {
@@ -2171,6 +2185,16 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <param name="anchor">The form command that owns the popup.</param>
     private void ShowAddMessageMenu(Button anchor)
     {
+        if (selectedPage?.IsMissionPresentation == true)
+        {
+            if (CommitFields())
+                AddMissionArticleRequested?.Invoke(
+                    selectedPage.MissionArticleCatalog,
+                    selectedRecord,
+                    selectedPage.Key[(selectedPage.Key.LastIndexOf('/') + 1)..]
+                );
+            return;
+        }
         ShowMenu(
             anchor,
             Enum.GetValues(typeof(MessageType))
@@ -2557,6 +2581,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         ContentPackEditorRecord record
     )
     {
+        if (page?.IsMissionPresentation == true)
+            return "General";
         if (page?.Key.StartsWith("factions/", StringComparison.Ordinal) == true)
             return ContentEditorContentSections.FactionSection(field);
         if (record.Kind == "GameGenerationConfig")
