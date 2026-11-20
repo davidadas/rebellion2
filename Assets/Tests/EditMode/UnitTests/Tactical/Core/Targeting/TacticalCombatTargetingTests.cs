@@ -8,7 +8,6 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Automation;
 using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Random;
 using static Rebellion.Tests.Tactical.TacticalCombatAssessmentScenario;

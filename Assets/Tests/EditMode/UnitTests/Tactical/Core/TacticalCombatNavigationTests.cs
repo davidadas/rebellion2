@@ -83,7 +83,8 @@ namespace Rebellion.Tests.Tactical
                 CombatSide.Attacker,
                 80,
                 new LinearCongruentialRandomProvider(42),
-                TacticalCombatAudio.Create
+                TacticalCombatAudio.Create,
+                Rebellion.AI.Tactical.TacticalCombatPlanner.Attach
             );
             session.SetOrder(group, TacticalCombatOrder.LeftHook);
             for (

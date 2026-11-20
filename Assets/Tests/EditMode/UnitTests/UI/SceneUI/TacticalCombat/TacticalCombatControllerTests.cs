@@ -127,6 +127,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 100,
                 new LinearCongruentialRandomProvider(42),
                 TacticalCombatAudio.Create,
+                Rebellion.AI.Tactical.TacticalCombatPlanner.Attach,
                 new TacticalCombatDefinition
                 {
                     Sounds = new()

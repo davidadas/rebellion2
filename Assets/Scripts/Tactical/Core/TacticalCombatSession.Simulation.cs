@@ -164,7 +164,7 @@ namespace Rebellion.Tactical
             if (side.FactionIndex == 1)
                 BattleStation?.Advance(1000);
             AdvanceWithdrawalMembers(side);
-            _automation.Plan(side);
+            AutomationRequested?.Invoke(side);
         }
 
         /// <summary>

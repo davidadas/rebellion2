@@ -1,14 +1,15 @@
 using System;
 using System.Collections.Generic;
 using Rebellion.Game.Results;
+using Rebellion.Tactical;
 
-namespace Rebellion.Tactical.Automation
+namespace Rebellion.AI.Tactical
 {
     /// <summary>
     /// Owns autonomous regrouping, target assignment, retreat, and battle-station policy.
     /// Target assessment remains shared with explicit player orders.
     /// </summary>
-    internal sealed class TacticalCombatPlanner
+    public sealed class TacticalCombatPlanner
     {
         private readonly TacticalCombatSession _session;
         private readonly TacticalCombatTargeting _targeting;
@@ -28,7 +29,7 @@ namespace Rebellion.Tactical.Automation
         /// </summary>
         /// <param name="session">The isolated tactical encounter.</param>
         /// <param name="targeting">The assessment also used by explicit attack orders.</param>
-        public TacticalCombatPlanner(
+        internal TacticalCombatPlanner(
             TacticalCombatSession session,
             TacticalCombatTargeting targeting
         )
@@ -40,6 +41,18 @@ namespace Rebellion.Tactical.Automation
                     _deployments[(int)unit.Side].Add(new TacticalCombatDeployment(unit));
             foreach (List<TacticalCombatDeployment> deployments in _deployments)
                 deployments.Sort(TacticalCombatDeployment.Compare);
+            session.AutomationRequested += Plan;
+        }
+
+        /// <summary>
+        /// Attaches the default tactical planner to an encounter for its lifetime.
+        /// </summary>
+        /// <param name="session">The isolated tactical encounter.</param>
+        public static void Attach(TacticalCombatSession session)
+        {
+            if (session == null)
+                throw new ArgumentNullException(nameof(session));
+            _ = new TacticalCombatPlanner(session, session.Targeting);
         }
 
         /// <summary>

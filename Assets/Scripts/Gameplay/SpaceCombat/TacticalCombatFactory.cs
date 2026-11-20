@@ -24,6 +24,7 @@ namespace Rebellion.Gameplay
     {
         private readonly GameRoot _game;
         private readonly SpaceCombatQueries _queries;
+        private readonly Action<TacticalCombatSession> _attachAutomation;
         private readonly Func<LinearCongruentialRandomProvider> _createRandom;
         private readonly Func<DateTimeOffset> _localClock;
         private readonly TacticalCombatDefinition _definition;
@@ -31,22 +32,26 @@ namespace Rebellion.Gameplay
         private readonly Dictionary<string, TacticalCombatFactionDefinition> _factions;
 
         /// <summary>
-        /// Creates the battle-entry boundary for the active campaign and content catalog.
+        /// Creates the battle-entry boundary for the active campaign and tactical definitions.
         /// </summary>
         /// <param name="game">The active campaign graph.</param>
-        /// <param name="catalog">The selected content catalog.</param>
+        /// <param name="definition">The selected tactical combat definitions.</param>
         /// <param name="queries">The campaign encounter and departure queries.</param>
+        /// <param name="attachAutomation">Attaches the configured tactical AI after the encounter is constructed.</param>
         /// <param name="createRandom">An optional replay stream factory; live battles capture the entry clock.</param>
         /// <param name="localClock">The platform's local clock, acquired only when scenery first needs a random position.</param>
         public TacticalCombatFactory(
             GameRoot game,
-            GameDataCatalog catalog,
+            TacticalCombatDefinition definition,
             SpaceCombatQueries queries,
+            Action<TacticalCombatSession> attachAutomation,
             Func<LinearCongruentialRandomProvider> createRandom = null,
             Func<DateTimeOffset> localClock = null
         )
         {
             this._game = game ?? throw new ArgumentNullException(nameof(game));
+            _attachAutomation =
+                attachAutomation ?? throw new ArgumentNullException(nameof(attachAutomation));
             _createRandom =
                 createRandom
                 ?? (
@@ -55,8 +60,7 @@ namespace Rebellion.Gameplay
                 );
             _localClock = localClock ?? (() => DateTimeOffset.Now);
             this._queries = queries ?? throw new ArgumentNullException(nameof(queries));
-            _definition =
-                catalog?.TacticalCombat ?? throw new ArgumentNullException(nameof(catalog));
+            _definition = definition ?? throw new ArgumentNullException(nameof(definition));
             _definitions = _definition.Units.ToDictionary(
                 unit => unit.UnitTypeID,
                 StringComparer.Ordinal
@@ -396,6 +400,7 @@ namespace Rebellion.Gameplay
                 depth,
                 random,
                 TacticalCombatAudio.Create,
+                _attachAutomation,
                 _definition,
                 _definition.Environments.FirstOrDefault(environment =>
                     environment.PlanetIconPath == planet.PlanetIconPath

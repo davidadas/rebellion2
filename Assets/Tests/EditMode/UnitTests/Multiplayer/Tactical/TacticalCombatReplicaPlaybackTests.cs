@@ -328,7 +328,8 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                 player,
                 100,
                 random,
-                TacticalCombatAudio.Create
+                TacticalCombatAudio.Create,
+                Rebellion.AI.Tactical.TacticalCombatPlanner.Attach
             );
         }
 

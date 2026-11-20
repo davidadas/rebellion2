@@ -22,18 +22,16 @@ namespace Rebellion.Gameplay
         /// Creates the campaign aftermath owner for manually played space battles.
         /// </summary>
         /// <param name="game">The campaign whose retained losses and current military values are read.</param>
-        /// <param name="gameData">The authored faction-index mapping.</param>
+        /// <param name="definition">The authored faction-index mapping.</param>
         /// <param name="personnel">The commands applying loyalty changes.</param>
         public SpaceCombatObserver(
             GameRoot game,
-            GameDataCatalog gameData,
+            TacticalCombatDefinition definition,
             PersonnelCommands personnel
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
-            _definition = (
-                gameData ?? throw new ArgumentNullException(nameof(gameData))
-            ).TacticalCombat;
+            _definition = definition ?? throw new ArgumentNullException(nameof(definition));
             _personnel = personnel ?? throw new ArgumentNullException(nameof(personnel));
         }
 

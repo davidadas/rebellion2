@@ -10,7 +10,9 @@
         "UnityEditor.TestRunner",
         "Rebellion.Util",
         "Rebellion.SceneGraph",
-        "Rebellion.Game"
+        "Rebellion.Game",
+        "Rebellion.Gameplay",
+        "Rebellion.AI"
     ],
     "includePlatforms": [],
     "overrideReferences": true,

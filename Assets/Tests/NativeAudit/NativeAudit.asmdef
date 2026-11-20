@@ -9,6 +9,8 @@
         "Unity.TextMeshPro",
         "UnityEngine.UI",
         "Rebellion.Game",
+        "Rebellion.Gameplay",
+        "Rebellion.AI",
         "Rebellion.Networking.Transport"
     ],
     "includePlatforms": [

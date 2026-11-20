@@ -65,10 +65,7 @@ namespace Rebellion.Gameplay
                     || !IsValidTacticalComponentDamage(shipOutcome.SystemDamage, unit, ship)
                 )
                     throw new InvalidDataException("A tactical ship outcome is invalid.");
-                unit.Combatant.ApplyCapitalShipState(
-                    shipOutcome.Hull,
-                    shipOutcome.SystemDamage
-                );
+                unit.Combatant.ApplyCapitalShipState(shipOutcome.Hull, shipOutcome.SystemDamage);
                 result.ShipDamage.Add(
                     new ShipDamageResult
                     {

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Numerics;
 using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
-using Rebellion.Tactical.Automation;
 using Rebellion.Tactical.Synchronization;
 using Rebellion.Util.Random;
 
@@ -58,7 +57,6 @@ namespace Rebellion.Tactical
         private readonly TacticalCombatMotion _motion = new();
         private readonly TacticalCombatSide[] _sides;
         private readonly TacticalCombatTargeting _targeting;
-        private readonly TacticalCombatPlanner _automation;
         private readonly int[] _nextGroupID = new int[2];
         private readonly IRandomNumberProvider _random;
         private int _progress;
@@ -87,6 +85,7 @@ namespace Rebellion.Tactical
         public TacticalCombatNavigation Navigation { get; }
         public ITacticalCombatAudio Audio { get; }
         public TacticalCombatSelection Selection { get; }
+        internal TacticalCombatTargeting Targeting => _targeting;
         public int SystemTime =>
             _synchronizationReplica ? _synchronizedSystemTime
             : _scheduler == null ? _systemTime
@@ -160,6 +159,7 @@ namespace Rebellion.Tactical
         public event Action<TacticalCombatUnit, TacticalCombatUnit> SuperlaserFired;
         public event Action<TacticalCombatAttackRun> AttackRunChanged;
         public event Action<TacticalCombatMovieRequest> AttackRunMovieRequested;
+        internal event Action<TacticalCombatSide> AutomationRequested;
 
         /// <summary>
         /// Creates an encounter from its ordered units, groups, and captured side state.
@@ -172,6 +172,7 @@ namespace Rebellion.Tactical
         /// <param name="battleDepth">The deployment span used by movement and withdrawal.</param>
         /// <param name="random">The encounter's random-number stream.</param>
         /// <param name="createAudio">Creates notification scheduling with this encounter's stream and pause state.</param>
+        /// <param name="attachAutomation">Attaches the selected tactical AI after encounter initialization.</param>
         /// <param name="definition">The shared tactical presentation definitions.</param>
         /// <param name="environment">The planet-specific tactical scenery and texture palette.</param>
         /// <param name="sceneryRandom">The encounter-owned scenery stream, when presentation is available.</param>
@@ -187,6 +188,7 @@ namespace Rebellion.Tactical
             float battleDepth,
             IRandomNumberProvider random,
             TacticalCombatAudioFactory createAudio,
+            Action<TacticalCombatSession> attachAutomation,
             TacticalCombatDefinition definition = null,
             TacticalCombatEnvironmentDefinition environment = null,
             ITacticalCombatSceneryRandom sceneryRandom = null,
@@ -220,6 +222,8 @@ namespace Rebellion.Tactical
                 ?.FactionInstanceID;
             if (createAudio == null)
                 throw new ArgumentNullException(nameof(createAudio));
+            if (attachAutomation == null)
+                throw new ArgumentNullException(nameof(attachAutomation));
             Audio =
                 createAudio(definition, random, playerFactionID, () => IsPaused, presentationClock)
                 ?? throw new InvalidOperationException(
@@ -312,7 +316,6 @@ namespace Rebellion.Tactical
                 }
             _spatial = new TacticalCombatSpatialIndex(this._units);
             _targeting = new TacticalCombatTargeting(this);
-            _automation = new TacticalCombatPlanner(this, _targeting);
             Selection = new TacticalCombatSelection(this);
             _briefing = new TacticalCombatBriefingSequence(
                 GetSide(PlayerSide).FactionIndex,
@@ -326,6 +329,7 @@ namespace Rebellion.Tactical
             );
             _fireControl.ShotRequested += RequestShot;
             _fireControl.TractorTargetRequested += RequestTractorTarget;
+            attachAutomation(this);
         }
 
         /// <summary>

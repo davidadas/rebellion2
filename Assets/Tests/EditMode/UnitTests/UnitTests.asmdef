@@ -19,6 +19,8 @@
         "Rebellion.Util",
         "Rebellion.SceneGraph",
         "Rebellion.Game",
+        "Rebellion.Gameplay",
+        "Rebellion.AI",
         "Rebellion.Tactical.Core",
         "Rebellion.Tactical.Runtime",
         "Rebellion.Networking.Transport"

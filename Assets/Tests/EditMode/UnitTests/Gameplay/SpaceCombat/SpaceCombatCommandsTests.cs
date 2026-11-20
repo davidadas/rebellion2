@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.AI.Tactical;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -5422,8 +5423,9 @@ namespace Rebellion.Tests.Gameplay
             SpaceCombatQueries queries = new(game, new MovementQueries(game));
             TacticalCombatFactory factory = new(
                 game,
-                TestContent.Data,
+                TestContent.Data.TacticalCombat,
                 queries,
+                TacticalCombatPlanner.Attach,
                 () => new LinearCongruentialRandomProvider(42)
             );
             SpaceCombatCommands commands = new(game, movement, queries, tacticalFactory: factory);

@@ -93,10 +93,7 @@ namespace Rebellion.Multiplayer.Tactical
             isAlive = false;
             if (
                 _replicaBuffer == null
-                || !_replicaBuffer.TryGetPose(
-                    unitID,
-                    out TacticalCombatReplicaBuffer.Pose pose
-                )
+                || !_replicaBuffer.TryGetPose(unitID, out TacticalCombatReplicaBuffer.Pose pose)
             )
                 return false;
             position = pose.Position;

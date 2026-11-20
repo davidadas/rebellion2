@@ -7,6 +7,8 @@
         "com.playeveryware.eos.core",
         "Rebellion.SceneGraph",
         "Rebellion.Game",
+        "Rebellion.Gameplay",
+        "Rebellion.AI",
         "Rebellion.Tactical.Core"
     ],
     "includePlatforms": [

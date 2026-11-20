@@ -2,12 +2,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Rebellion.AI.Planners;
+using Rebellion.AI.Tactical;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Automation;
 using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Util.Random;
 using BitConverter = global::System.BitConverter;
@@ -148,7 +148,8 @@ namespace Rebellion.Tests.Tactical
                 CombatSide.Attacker,
                 100,
                 new LinearCongruentialRandomProvider(42),
-                TacticalCombatAudio.Create
+                TacticalCombatAudio.Create,
+                TacticalCombatPlanner.Attach
             );
         }
 
@@ -204,7 +205,8 @@ namespace Rebellion.Tests.Tactical
                 CombatSide.Attacker,
                 100,
                 new LinearCongruentialRandomProvider(42),
-                TacticalCombatAudio.Create
+                TacticalCombatAudio.Create,
+                TacticalCombatPlanner.Attach
             );
         }
 

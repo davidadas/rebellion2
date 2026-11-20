@@ -1131,7 +1131,8 @@ namespace Rebellion.Tests.Tactical
                 factionOneSide,
                 100,
                 new SystemRandomProvider(42),
-                TacticalCombatAudio.Create
+                TacticalCombatAudio.Create,
+                Rebellion.AI.Tactical.TacticalCombatPlanner.Attach
             );
 
             TacticalCombatGroup requested = session.CreateGroup(new[] { selected });
@@ -3075,7 +3076,8 @@ namespace Rebellion.Tests.Tactical
                 CombatSide.Defender,
                 100,
                 new SystemRandomProvider(42),
-                TacticalCombatAudio.Create
+                TacticalCombatAudio.Create,
+                Rebellion.AI.Tactical.TacticalCombatPlanner.Attach
             );
         }
 
@@ -3150,6 +3152,7 @@ namespace Rebellion.Tests.Tactical
                 100,
                 new SystemRandomProvider(42),
                 TacticalCombatAudio.Create,
+                Rebellion.AI.Tactical.TacticalCombatPlanner.Attach,
                 presentationClock: () => 0
             );
         }
@@ -3341,6 +3344,7 @@ namespace Rebellion.Tests.Tactical
                 100,
                 new SystemRandomProvider(42),
                 TacticalCombatAudio.Create,
+                Rebellion.AI.Tactical.TacticalCombatPlanner.Attach,
                 definition,
                 presentationClock: () => 0,
                 personnelHostInstanceIDs: personnelHostInstanceIDs,
@@ -3412,6 +3416,7 @@ namespace Rebellion.Tests.Tactical
                 100,
                 new SystemRandomProvider(42),
                 TacticalCombatAudio.Create,
+                Rebellion.AI.Tactical.TacticalCombatPlanner.Attach,
                 definition
             );
         }
@@ -3610,6 +3615,7 @@ namespace Rebellion.Tests.Tactical
                 100,
                 new SystemRandomProvider(42),
                 TacticalCombatAudio.Create,
+                Rebellion.AI.Tactical.TacticalCombatPlanner.Attach,
                 definition
             );
             session.SetOrder(group, TacticalCombatOrder.AttackBattleStation);

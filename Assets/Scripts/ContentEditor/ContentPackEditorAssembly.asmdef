@@ -5,6 +5,7 @@
         "GameAssembly",
         "Rebellion.SceneGraph",
         "Rebellion.Game",
+        "Rebellion.Gameplay",
         "Unity.TextMeshPro",
         "UnityEngine.UI",
         "Rebellion.Util"

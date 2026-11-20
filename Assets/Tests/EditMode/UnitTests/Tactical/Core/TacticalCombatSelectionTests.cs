@@ -845,6 +845,7 @@ namespace Rebellion.Tests.Tactical
                     100,
                     Random,
                     TacticalCombatAudio.Create,
+                    Rebellion.AI.Tactical.TacticalCombatPlanner.Attach,
                     definition,
                     presentationClock: () => 0
                 );

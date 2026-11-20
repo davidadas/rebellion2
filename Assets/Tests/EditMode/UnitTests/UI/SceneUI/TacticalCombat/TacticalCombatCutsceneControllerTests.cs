@@ -538,6 +538,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 100,
                 new SystemRandomProvider(42),
                 TacticalCombatAudio.Create,
+                Rebellion.AI.Tactical.TacticalCombatPlanner.Attach,
                 new TacticalCombatDefinition
                 {
                     AttackRunSuccessMoviePath = "Pack/Videos/success",
