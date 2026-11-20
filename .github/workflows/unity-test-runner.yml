@@ -310,9 +310,7 @@ jobs:
       - name: Check compiled architecture
         run: |
           set -euo pipefail
-          if [ -f Library/ScriptAssemblies/GameAssembly.dll ]; then
-            runtime_assemblies=(GameAssembly)
-          else
+          if [ -f Assets/Scripts/Rebellion.App.asmdef ]; then
             runtime_assemblies=(
               Rebellion.AI
               Rebellion.Analytics
@@ -329,6 +327,8 @@ jobs:
               Rebellion.UserSettings
               Rebellion.Util
             )
+          else
+            runtime_assemblies=(GameAssembly)
           fi
           for assembly in "${runtime_assemblies[@]}"; do
             test -f "Library/ScriptAssemblies/$assembly.dll"
