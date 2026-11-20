@@ -216,6 +216,13 @@ public sealed class FinderWindowView : MonoBehaviour
             throw new ArgumentNullException(nameof(data));
 
         VerifyReferences();
+        if (
+            defaultUpperButtonTextures.Length != upperButtonImages.Length
+            || defaultTwoButtonTextures.Length != twoButtonImages.Length
+            || defaultFourButtonTextures.Length != fourButtonImages.Length
+            || defaultTabTextures.Length != tabImageSlots.Length
+        )
+            CaptureDefaultTextures();
         lastData = data;
         UILayout.SetSourcePosition(transform as RectTransform, data.Frame.X, data.Frame.Y);
         RenderFrame(data.Frame);

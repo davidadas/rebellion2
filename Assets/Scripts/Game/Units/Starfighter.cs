@@ -30,6 +30,7 @@ namespace Rebellion.Game.Units
         public string BattleResultImagePath { get; set; }
         public string BattleResultInTransitImagePath { get; set; }
         public string BattleResultDamagedImagePath { get; set; }
+        public string BackgroundImagePath { get; set; }
 
         // Construction Info.
         public int ConstructionCost { get; set; }
@@ -261,6 +262,7 @@ namespace Rebellion.Game.Units
             copy.BattleResultImagePath = BattleResultImagePath;
             copy.BattleResultInTransitImagePath = BattleResultInTransitImagePath;
             copy.BattleResultDamagedImagePath = BattleResultDamagedImagePath;
+            copy.BackgroundImagePath = BackgroundImagePath;
             copy.ConstructionCost = ConstructionCost;
             copy.MaintenanceCost = MaintenanceCost;
             copy.BaseBuildSpeed = BaseBuildSpeed;

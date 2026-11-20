@@ -1,0 +1,976 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Xml.Linq;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
+
+/// <summary>
+/// Selects the interaction state displayed by a composed faction-interface preview.
+/// </summary>
+public enum ContentEditorArtworkPreviewState
+{
+    Default,
+    Disabled,
+}
+
+/// <summary>
+/// Displays exact gameplay-window prefabs for one faction-artwork surface.
+/// </summary>
+[ExecuteAlways]
+public sealed class ContentEditorArtworkWindowPreview
+    : UIBehaviour,
+        IPointerEnterHandler,
+        IPointerExitHandler,
+        IPointerMoveHandler,
+        IPointerClickHandler,
+        IBeginDragHandler,
+        IDragHandler,
+        IEndDragHandler
+{
+    private const float _maximumScale = 3f;
+    private const int _surfacePadding = 12;
+    private const int _windowGap = 12;
+
+    private static readonly IReadOnlyDictionary<string, string[]> _windowNames = new Dictionary<
+        string,
+        string[]
+    >(StringComparer.Ordinal)
+    {
+        ["Defense window"] = new[] { "DefenseWindow" },
+        ["Fleet window"] = new[] { "FleetWindow" },
+        ["Missions"] = new[] { "MissionsWindow", "MissionCreateWindow" },
+        ["Facilities and construction"] = new[] { "FacilityWindow" },
+        ["Status window"] = new[] { "StatusWindow" },
+        ["Messages"] = new[] { "MessagesWindow" },
+        ["Combat"] = new[] { "BattleAlertWindow" },
+        ["Encyclopedia"] = new[] { "EncyclopediaWindow" },
+        ["Galactic information"] = new[] { "FinderWindow" },
+        ["Advisor"] = new[] { "AdvisorReportWindow" },
+        ["Strategy view"] = new[] { "StrategyView" },
+        ["Shell and dialogs"] = new[] { "ConfirmDialogWindow" },
+    };
+
+    private string activeCategory;
+    private Vector2Int artworkDragDelta;
+    private Vector2 artworkDragOrigin;
+    private ContentEditorArtworkEditTarget draggedTarget;
+    private RectTransform draggedWindow;
+    private ContentEditorArtworkEditTarget hoveredTarget;
+    private readonly List<ContentPackEditorField> renderedFields = new();
+
+    /// <summary>
+    /// Raised when editable artwork is intentionally opened from the composed window.
+    /// </summary>
+    public event Action<ContentPackEditorField> ArtworkOpened;
+
+    /// <summary>
+    /// Raised after a click-drag gesture produces authored source-coordinate replacements.
+    /// </summary>
+    public event Action<IReadOnlyList<ContentEditorArtworkPlacementChange>> ArtworkMoved;
+
+    /// <summary>
+    /// Gets the faction-theme fields currently represented by literal editable images.
+    /// </summary>
+    internal IReadOnlyList<ContentPackEditorField> RenderedFields => renderedFields;
+
+    /// <summary>
+    /// Reports whether an exact gameplay-window preview is authored for a category.
+    /// </summary>
+    /// <param name="category">The faction-artwork category.</param>
+    /// <returns>True when at least one matching window exists.</returns>
+    public bool Supports(string category) => GetWindows(category).Count > 0;
+
+    /// <summary>
+    /// Reports whether the currently rendered controls can visibly represent another artwork state.
+    /// </summary>
+    /// <param name="surfaceFields">The theme fields owned by the selected interface surface.</param>
+    /// <param name="assets">The working pack's resolved artwork.</param>
+    /// <param name="state">The candidate state.</param>
+    /// <returns>True when at least one visible target has a distinct, loadable field for the state.</returns>
+    internal bool CanRenderState(
+        IReadOnlyList<ContentPackEditorField> surfaceFields,
+        ContentAssets assets,
+        ContentEditorArtworkPreviewState state
+    )
+    {
+        if (surfaceFields == null)
+            throw new ArgumentNullException(nameof(surfaceFields));
+        if (assets == null)
+            throw new ArgumentNullException(nameof(assets));
+        if (state == ContentEditorArtworkPreviewState.Default)
+            return true;
+
+        return GetComponentsInChildren<ContentEditorArtworkEditTarget>()
+            .SelectMany(target => target.Fields)
+            .Any(field =>
+            {
+                ContentPackEditorField stateField = ResolvePreviewStateField(
+                    field,
+                    surfaceFields,
+                    state
+                );
+                return stateField != field && ResolveFieldTexture(stateField, assets) != null;
+            });
+    }
+
+    /// <summary>
+    /// Measures the enlarged window gallery within the available browser width.
+    /// </summary>
+    /// <param name="category">The faction-artwork category.</param>
+    /// <param name="availableWidth">The available browser width.</param>
+    /// <param name="availableHeight">The available browser height for full-screen surfaces.</param>
+    /// <returns>The preferred displayed surface size.</returns>
+    public Vector2Int GetPreferredSize(
+        string category,
+        int availableWidth,
+        int availableHeight = int.MaxValue
+    )
+    {
+        IReadOnlyList<RectTransform> windows = GetWindows(category);
+        if (windows.Count == 0)
+            return Vector2Int.zero;
+
+        GetSourceBounds(windows, out int sourceWidth, out int sourceHeight);
+        float widthScale = (availableWidth - _surfacePadding * 2f) / sourceWidth;
+        float heightScale =
+            category == "Strategy view"
+                ? (availableHeight - _surfacePadding * 2f) / sourceHeight
+                : _maximumScale;
+        float scale = Mathf.Min(
+            _maximumScale,
+            Mathf.Max(0.1f, widthScale),
+            Mathf.Max(0.1f, heightScale)
+        );
+        return new Vector2Int(
+            Mathf.CeilToInt(sourceWidth * scale) + _surfacePadding * 2,
+            Mathf.CeilToInt(sourceHeight * scale) + _surfacePadding * 2
+        );
+    }
+
+    /// <summary>
+    /// Displays and re-themes the exact gameplay windows assigned to one artwork category.
+    /// </summary>
+    /// <param name="category">The faction-artwork category.</param>
+    /// <param name="project">The working pack whose records supply representative content.</param>
+    /// <param name="theme">The selected faction theme.</param>
+    /// <param name="assets">The working pack's resolved artwork.</param>
+    /// <param name="themeFields">Every editable interface field on the selected faction theme.</param>
+    /// <param name="surfaceFields">The theme fields represented by the selected surface.</param>
+    /// <param name="state">The interaction state to project across compatible controls.</param>
+    public void Render(
+        string category,
+        ContentPackEditorProject project,
+        FactionTheme theme,
+        ContentAssets assets,
+        IReadOnlyList<ContentPackEditorField> themeFields,
+        IReadOnlyList<ContentPackEditorField> surfaceFields,
+        ContentEditorArtworkPreviewState state = ContentEditorArtworkPreviewState.Default
+    )
+    {
+        if (project == null)
+            throw new ArgumentNullException(nameof(project));
+        if (theme == null)
+            throw new ArgumentNullException(nameof(theme));
+        if (assets == null)
+            throw new ArgumentNullException(nameof(assets));
+        if (themeFields == null)
+            throw new ArgumentNullException(nameof(themeFields));
+        if (surfaceFields == null)
+            throw new ArgumentNullException(nameof(surfaceFields));
+
+        Clear();
+        ContentEditorArtworkPreviewContent content = new(project, theme, assets);
+        IReadOnlyList<RectTransform> windows = GetWindows(category);
+        gameObject.SetActive(windows.Count > 0);
+        foreach (RectTransform window in windows)
+            window.gameObject.SetActive(true);
+        foreach (RectTransform window in windows)
+        {
+            foreach (
+                ContentEditorArtworkEditTarget target in window.GetComponentsInChildren<ContentEditorArtworkEditTarget>(
+                    true
+                )
+            )
+                target.Clear();
+            foreach (
+                ContentEditorThemeTextureBinding binding in window.GetComponentsInChildren<ContentEditorThemeTextureBinding>(
+                    true
+                )
+            )
+            {
+                binding.Apply(theme, assets);
+            }
+            ContentEditorArtworkWindowPreviewRenderer.Render(window, content, theme, assets);
+            DisableGameplayInput(window);
+            AttachEditCommands(window, themeFields, surfaceFields, assets, state);
+            foreach (
+                RawImagePressVisual visual in window.GetComponentsInChildren<RawImagePressVisual>(
+                    true
+                )
+            )
+            {
+                ContentEditorArtworkEditTarget target =
+                    visual.GetComponent<ContentEditorArtworkEditTarget>();
+                ContentEditorWindowControlHover hover =
+                    visual.GetComponent<ContentEditorWindowControlHover>();
+                if (target?.Field != null && state == ContentEditorArtworkPreviewState.Default)
+                {
+                    hover ??= visual.gameObject.AddComponent<ContentEditorWindowControlHover>();
+                    hover.Bind(visual);
+                }
+                else
+                    hover?.Clear();
+            }
+        }
+        activeCategory = category;
+        Layout(windows);
+    }
+
+    /// <summary>
+    /// Prevents copied gameplay controls from consuming authoring clicks inside the preview.
+    /// </summary>
+    /// <param name="window">The copied gameplay window used only for artwork authoring.</param>
+    private static void DisableGameplayInput(RectTransform window)
+    {
+        foreach (Selectable selectable in window.GetComponentsInChildren<Selectable>(true))
+            selectable.enabled = false;
+    }
+
+    /// <summary>
+    /// Publishes navigation from one rendered editable image.
+    /// </summary>
+    /// <param name="field">The exact authored field supplying the image.</param>
+    private void OpenArtwork(ContentPackEditorField field) => ArtworkOpened?.Invoke(field);
+
+    /// <summary>
+    /// Hides every window preview and forgets the active category.
+    /// </summary>
+    public void Clear()
+    {
+        CancelArtworkMove();
+        renderedFields.Clear();
+        activeCategory = null;
+        foreach (Transform child in transform)
+            child.gameObject.SetActive(false);
+        gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Clears transient pointer state before the preview surface becomes inactive.
+    /// </summary>
+    protected override void OnDisable()
+    {
+        CancelArtworkMove();
+        ResetHover();
+        base.OnDisable();
+    }
+
+    /// <summary>
+    /// Refits the active window gallery after the artwork browser changes size.
+    /// </summary>
+    protected override void OnRectTransformDimensionsChange()
+    {
+        base.OnRectTransformDimensionsChange();
+        if (!string.IsNullOrEmpty(activeCategory))
+            Layout(GetWindows(activeCategory));
+    }
+
+    /// <summary>
+    /// Finds the authored gameplay windows assigned to one category.
+    /// </summary>
+    /// <param name="category">The faction-artwork category.</param>
+    /// <returns>The matching window transforms in display order.</returns>
+    private List<RectTransform> GetWindows(string category)
+    {
+        List<RectTransform> windows = new();
+        if (category == null || !_windowNames.TryGetValue(category, out string[] names))
+            return windows;
+
+        foreach (string windowName in names)
+        {
+            if (transform.Find(windowName) is RectTransform window)
+                windows.Add(window);
+        }
+        return windows;
+    }
+
+    /// <summary>
+    /// Arranges the active windows at an enlarged uniform scale within the preview surface.
+    /// </summary>
+    /// <param name="windows">The windows to arrange.</param>
+    private void Layout(IReadOnlyList<RectTransform> windows)
+    {
+        if (windows.Count == 0)
+            return;
+
+        GetSourceBounds(windows, out int sourceWidth, out int sourceHeight);
+        Rect bounds = ((RectTransform)transform).rect;
+        float scale = Mathf.Min(
+            _maximumScale,
+            (bounds.width - _surfacePadding * 2f) / sourceWidth,
+            (bounds.height - _surfacePadding * 2f) / sourceHeight
+        );
+        scale = Mathf.Max(0.1f, scale);
+        float displayedWidth = sourceWidth * scale;
+        float x = (bounds.width - displayedWidth) * 0.5f;
+        foreach (RectTransform window in windows)
+        {
+            RectInt source = GetSourceRect(window);
+            float y = Mathf.Max(_surfacePadding, (bounds.height - source.height * scale) * 0.5f);
+            window.anchorMin = window.anchorMax = window.pivot = Vector2.up;
+            window.anchoredPosition = new Vector2(x, -y);
+            window.localScale = Vector3.one * scale;
+            x += (source.width + _windowGap) * scale;
+        }
+    }
+
+    /// <summary>
+    /// Restores normal artwork for all gameplay controls.
+    /// </summary>
+    private void ResetHover()
+    {
+        hoveredTarget = null;
+        foreach (
+            ContentEditorArtworkEditTarget target in GetComponentsInChildren<ContentEditorArtworkEditTarget>(
+                true
+            )
+        )
+            target.SetHovered(false);
+        foreach (
+            ContentEditorWindowControlHover hover in GetComponentsInChildren<ContentEditorWindowControlHover>(
+                true
+            )
+        )
+            hover.SetHovered(false);
+    }
+
+    /// <summary>
+    /// Adds hover-outline and double-click editing to every active image backed by a pack field.
+    /// </summary>
+    /// <param name="window">The rendered gameplay surface.</param>
+    /// <param name="themeFields">Every editable interface field on the selected faction theme.</param>
+    /// <param name="surfaceFields">The selected interface surface's theme fields.</param>
+    /// <param name="assets">The working pack's resolved artwork.</param>
+    /// <param name="state">The interaction state displayed by compatible controls.</param>
+    private void AttachEditCommands(
+        RectTransform window,
+        IReadOnlyList<ContentPackEditorField> themeFields,
+        IReadOnlyList<ContentPackEditorField> surfaceFields,
+        ContentAssets assets,
+        ContentEditorArtworkPreviewState state
+    )
+    {
+        Dictionary<string, ContentPackEditorField> fieldsByAddress = new(StringComparer.Ordinal);
+        foreach (ContentPackEditorField field in surfaceFields)
+            RegisterFieldAddress(field, assets, fieldsByAddress);
+        foreach (RawImage image in window.GetComponentsInChildren<RawImage>(true))
+        {
+            if (!image.gameObject.activeInHierarchy || !image.enabled || image.texture == null)
+                continue;
+            Texture releasedTexture = image.texture;
+            ContentPackEditorField releasedField = ResolveBoundField(image, surfaceFields);
+            releasedField ??= ResolveTextureField(releasedTexture, fieldsByAddress, assets);
+            RawImagePressVisual visual = image.GetComponent<RawImagePressVisual>();
+            Texture authoredHoverTexture = visual?.PressedTexture;
+            ContentPackEditorField hoverField = ResolveCompanionStateField(
+                releasedField,
+                themeFields
+            );
+            hoverField ??= ResolveTextureField(authoredHoverTexture, fieldsByAddress, assets);
+            hoverField ??= releasedField;
+            if (releasedField == null && hoverField == null)
+            {
+                ContentPackEditorField colorField = ResolveTintColorField(
+                    image.texture,
+                    themeFields,
+                    assets
+                );
+                if (colorField != null)
+                {
+                    ContentEditorArtworkEditTarget colorTarget =
+                        image.GetComponent<ContentEditorArtworkEditTarget>()
+                        ?? image.gameObject.AddComponent<ContentEditorArtworkEditTarget>();
+                    RectInt bounds = assets.GetTextureContentBounds(image.texture as Texture2D);
+                    colorTarget.Bind(
+                        colorField,
+                        colorField,
+                        OpenArtwork,
+                        bounds,
+                        bounds,
+                        null,
+                        Array.Empty<ContentEditorArtworkPlacement>(),
+                        null
+                    );
+                    if (!renderedFields.Contains(colorField))
+                        renderedFields.Add(colorField);
+                }
+                continue;
+            }
+            if (state != ContentEditorArtworkPreviewState.Default)
+            {
+                ContentPackEditorField stateField = ResolvePreviewStateField(
+                    releasedField ?? hoverField,
+                    surfaceFields,
+                    state
+                );
+                Texture2D stateTexture = ResolveFieldTexture(stateField, assets);
+                if (stateField != null && stateTexture != null)
+                {
+                    releasedField = stateField;
+                    hoverField = stateField;
+                    releasedTexture = stateTexture;
+                    authoredHoverTexture = stateTexture;
+                    image.texture = stateTexture;
+                }
+            }
+            Texture hoverTexture = ResolveFieldTexture(hoverField, assets) ?? authoredHoverTexture;
+            if (visual != null && hoverTexture != null)
+                visual.SetTextures(releasedTexture, hoverTexture);
+            ContentEditorArtworkEditTarget target =
+                image.GetComponent<ContentEditorArtworkEditTarget>()
+                ?? image.gameObject.AddComponent<ContentEditorArtworkEditTarget>();
+            target.Bind(
+                releasedField,
+                hoverField,
+                OpenArtwork,
+                assets.GetTextureContentBounds(releasedTexture as Texture2D),
+                assets.GetTextureContentBounds(hoverTexture as Texture2D),
+                visual == null && hoverTexture != releasedTexture ? hoverTexture : null,
+                ResolvePlacementFields(releasedField, hoverField, themeFields),
+                ResolveInteractionArea(image, window)
+            );
+            foreach (ContentPackEditorField field in target.Fields)
+                if (!renderedFields.Contains(field))
+                    renderedFields.Add(field);
+        }
+    }
+
+    /// <summary>
+    /// Resolves the faction color that produced one rendered shared-mask texture.
+    /// </summary>
+    /// <param name="texture">The tinted texture rendered by the gameplay surface.</param>
+    /// <param name="themeFields">Every editable field on the selected faction theme.</param>
+    /// <param name="assets">The working pack's resolved artwork.</param>
+    /// <returns>The color field responsible for the tint, or null for ordinary artwork.</returns>
+    private static ContentPackEditorField ResolveTintColorField(
+        Texture texture,
+        IReadOnlyList<ContentPackEditorField> themeFields,
+        ContentAssets assets
+    )
+    {
+        if (texture?.name.EndsWith("-tinted", StringComparison.Ordinal) != true)
+            return null;
+        foreach (
+            ContentPackEditorField maskField in themeFields.Where(field =>
+                field.MediaType == ContentPackEditorMediaType.Image
+            )
+        )
+        {
+            Texture2D mask = ResolveFieldTexture(maskField, assets);
+            if (mask == null || mask.name + "-tinted" != texture.name)
+                continue;
+            string colorMember = ResolveTintColorMember(maskField);
+            if (colorMember == null)
+                continue;
+            return themeFields.FirstOrDefault(field =>
+                field.Group == nameof(FactionTheme.ColorScheme) && field.MemberName == colorMember
+            );
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Maps one shared mask image to the color property applied by its runtime renderer.
+    /// </summary>
+    /// <param name="field">The shared mask image field.</param>
+    /// <returns>The corresponding faction color member, or null for an untinted image.</returns>
+    private static string ResolveTintColorMember(ContentPackEditorField field)
+    {
+        string[] ancestors = field
+            .XmlElement.AncestorsAndSelf()
+            .Select(element => element.Name.LocalName)
+            .ToArray();
+        if (ancestors.Contains(nameof(WindowTitleTheme)))
+            return field.MemberName == nameof(WindowTitleTheme.InactiveImagePath)
+                ? nameof(FactionColorScheme.InactiveWindowTitleColorHex)
+                : nameof(FactionColorScheme.ActiveWindowTitleColorHex);
+        if (ancestors.Contains(nameof(ManufacturingLaneStateTheme)))
+            return field.MemberName == nameof(ManufacturingLaneStateTheme.InactiveImagePath)
+                ? nameof(FactionColorScheme.InactiveBuildingPaneColorHex)
+                : nameof(FactionColorScheme.ActiveBuildingPaneColorHex);
+        if (ancestors.Contains(nameof(PlanetIcons)) && ancestors.Contains(nameof(GalaxyBackground)))
+            return nameof(FactionColorScheme.PlanetMarkerColorHex);
+        if (field.MemberName.Contains("Selection", StringComparison.Ordinal))
+            return nameof(FactionColorScheme.SelectionColorHex);
+        return null;
+    }
+
+    /// <summary>
+    /// Associates artwork with the larger authored gameplay hit area that represents the same control.
+    /// </summary>
+    /// <param name="image">The rendered artwork image.</param>
+    /// <param name="window">The composed gameplay surface containing the control.</param>
+    /// <returns>The matching interaction rectangle, or null when the image itself is the interaction area.</returns>
+    private static RectTransform ResolveInteractionArea(RawImage image, RectTransform window)
+    {
+        if (image == null || window == null || image.name != "SpeedIndicatorImage")
+            return null;
+        return window
+            .GetComponentsInChildren<RectTransform>(true)
+            .FirstOrDefault(rect => rect.name == "GameSpeedButton");
+    }
+
+    /// <summary>
+    /// Resolves the persisted source-coordinate layouts moved with a rendered image.
+    /// </summary>
+    /// <param name="releasedField">The field supplying the image's released artwork.</param>
+    /// <param name="hoverField">The field supplying its hover or pressed artwork.</param>
+    /// <param name="fields">Every editable field on the selected faction theme.</param>
+    /// <returns>The distinct coordinate pairs that place the rendered image and its hit area.</returns>
+    private static IReadOnlyList<ContentEditorArtworkPlacement> ResolvePlacementFields(
+        ContentPackEditorField releasedField,
+        ContentPackEditorField hoverField,
+        IReadOnlyList<ContentPackEditorField> fields
+    )
+    {
+        HashSet<XElement> layouts = new();
+        foreach (
+            ContentPackEditorField imageField in new[] { releasedField, hoverField }.Where(field =>
+                field != null
+            )
+        )
+        {
+            XElement owner = imageField.XmlElement.Parent;
+            if (owner == null)
+                continue;
+            AddPlacementLayout(layouts, owner.Element(nameof(GalaxyBackground.SourcePosition)));
+            AddPlacementLayout(layouts, owner.Element("SourceLayout"));
+            if (owner.Name.LocalName == nameof(StrategyHudButtonTheme))
+            {
+                AddPlacementLayout(
+                    layouts,
+                    owner.Element(nameof(StrategyHudButtonTheme.PressedImageLayout))
+                );
+                AddPlacementLayout(layouts, owner.Element(nameof(StrategyHudButtonTheme.HitArea)));
+            }
+            if (owner.Name.LocalName == nameof(TacticalHUDLayout.SpeedIndicators))
+            {
+                AddPlacementLayout(
+                    layouts,
+                    owner.Parent?.Element(nameof(TacticalHUDLayout.SpeedIndicatorSourceLayout))
+                );
+                AddPlacementLayout(
+                    layouts,
+                    owner.Parent?.Element(nameof(TacticalHUDLayout.SpeedContextSourceLayout))
+                );
+            }
+        }
+
+        List<ContentEditorArtworkPlacement> placements = new();
+        foreach (XElement layout in layouts)
+        {
+            XElement xElement = layout.Element(nameof(SourceRectLayout.X));
+            XElement yElement = layout.Element(nameof(SourceRectLayout.Y));
+            ContentPackEditorField xField = fields.FirstOrDefault(field =>
+                field.XmlElement == xElement && field.XmlAttributeName == null
+            );
+            ContentPackEditorField yField = fields.FirstOrDefault(field =>
+                field.XmlElement == yElement && field.XmlAttributeName == null
+            );
+            if (xField != null && yField != null)
+                placements.Add(new ContentEditorArtworkPlacement(xField, yField));
+        }
+        return placements;
+    }
+
+    /// <summary>
+    /// Adds one complete X/Y layout to a placement set.
+    /// </summary>
+    /// <param name="layouts">The distinct layout elements collected for an image.</param>
+    /// <param name="layout">The candidate source layout.</param>
+    private static void AddPlacementLayout(ISet<XElement> layouts, XElement layout)
+    {
+        if (
+            layout?.Element(nameof(SourceRectLayout.X)) != null
+            && layout.Element(nameof(SourceRectLayout.Y)) != null
+        )
+            layouts.Add(layout);
+    }
+
+    /// <summary>
+    /// Indexes one authored image field by the normalized address used by loaded textures.
+    /// </summary>
+    /// <param name="field">The exact authored image field.</param>
+    /// <param name="assets">The working pack's resolved artwork.</param>
+    /// <param name="fieldsByAddress">The address-to-field index to populate.</param>
+    private static void RegisterFieldAddress(
+        ContentPackEditorField field,
+        ContentAssets assets,
+        IDictionary<string, ContentPackEditorField> fieldsByAddress
+    )
+    {
+        if (
+            field.MediaType != ContentPackEditorMediaType.Image
+            || string.IsNullOrWhiteSpace(field.Value)
+        )
+            return;
+        string address = field.GetMediaAddress(field.Value);
+        try
+        {
+            address = assets.GetNormalizedTextureAddress(address);
+        }
+        catch (ArgumentException)
+        {
+            return;
+        }
+        if (!string.IsNullOrEmpty(address) && !fieldsByAddress.ContainsKey(address))
+            fieldsByAddress.Add(address, field);
+    }
+
+    /// <summary>
+    /// Resolves an already loaded texture to its exact field on the selected theme surface.
+    /// </summary>
+    /// <param name="texture">The rendered texture.</param>
+    /// <param name="fieldsByAddress">The indexed faction-interface fields.</param>
+    /// <param name="assets">The working pack's resolved artwork.</param>
+    /// <returns>The supplying field, or null when the texture is not owned by this theme surface.</returns>
+    private static ContentPackEditorField ResolveTextureField(
+        Texture texture,
+        IReadOnlyDictionary<string, ContentPackEditorField> fieldsByAddress,
+        ContentAssets assets
+    )
+    {
+        if (
+            texture is Texture2D texture2D
+            && assets.TryGetTextureAddress(texture2D, out string address)
+            && fieldsByAddress.TryGetValue(address, out ContentPackEditorField field)
+        )
+            return field;
+        return null;
+    }
+
+    /// <summary>
+    /// Selects the authored disabled sibling represented by one preview control.
+    /// </summary>
+    /// <param name="field">The control's default image field.</param>
+    /// <param name="fields">The fields owned by the current interface surface.</param>
+    /// <param name="state">The requested preview state.</param>
+    /// <returns>The matching state field, or the default field when no sibling is configured.</returns>
+    private static ContentPackEditorField ResolvePreviewStateField(
+        ContentPackEditorField field,
+        IReadOnlyList<ContentPackEditorField> fields,
+        ContentEditorArtworkPreviewState state
+    )
+    {
+        if (field == null || state == ContentEditorArtworkPreviewState.Default)
+            return field;
+
+        string[] members = new[] { "DisabledImagePath" };
+        foreach (string member in members)
+        {
+            ContentPackEditorField candidate = fields.FirstOrDefault(item =>
+                item.MemberName == member && item.XmlElement.Parent == field.XmlElement.Parent
+            );
+            if (candidate != null)
+                return candidate;
+        }
+        return field;
+    }
+
+    /// <summary>
+    /// Finds the sibling field supplying the literal hover or pressed state of a rendered control.
+    /// </summary>
+    /// <param name="releasedField">The field supplying the released state.</param>
+    /// <param name="fields">Every editable interface field on the selected faction theme.</param>
+    /// <returns>The exact companion-state field, or the released field when the artwork is static.</returns>
+    private static ContentPackEditorField ResolveCompanionStateField(
+        ContentPackEditorField releasedField,
+        IReadOnlyList<ContentPackEditorField> fields
+    )
+    {
+        if (releasedField == null)
+            return null;
+        string[] members = releasedField.MemberName switch
+        {
+            "InactiveImagePath" => new[] { "ActiveImagePath" },
+            "UpImagePath" => new[] { "PressedImagePath", "DownImagePath" },
+            "DefaultImagePath" => new[] { "HighlightedImagePath" },
+            "NormalImagePath" => new[] { "HoverImagePath", "SelectedImagePath" },
+            _ => Array.Empty<string>(),
+        };
+        foreach (string member in members)
+        {
+            ContentPackEditorField companion = fields.FirstOrDefault(candidate =>
+                candidate.MemberName == member
+                && candidate.XmlElement.Parent == releasedField.XmlElement.Parent
+            );
+            if (companion != null)
+                return companion;
+        }
+        return releasedField;
+    }
+
+    /// <summary>
+    /// Loads the texture for one already selected authored field.
+    /// </summary>
+    /// <param name="field">The selected image field.</param>
+    /// <param name="assets">The working pack's resolved artwork.</param>
+    /// <returns>The texture, or null when the field is empty or invalid.</returns>
+    private static Texture2D ResolveFieldTexture(ContentPackEditorField field, ContentAssets assets)
+    {
+        if (field == null || string.IsNullOrWhiteSpace(field.Value))
+            return null;
+        try
+        {
+            return assets.GetTexture(field.GetMediaAddress(field.Value));
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Routes entry through transparent gameplay hit areas to the literal rendered artwork below.
+    /// </summary>
+    /// <param name="eventData">The pointer-enter event.</param>
+    public void OnPointerEnter(PointerEventData eventData) => UpdatePointerTarget(eventData);
+
+    /// <summary>
+    /// Keeps the outlined edit target synchronized while the pointer crosses composed controls.
+    /// </summary>
+    /// <param name="eventData">The pointer-move event.</param>
+    public void OnPointerMove(PointerEventData eventData) => UpdatePointerTarget(eventData);
+
+    /// <summary>
+    /// Clears preview-routed hover state after the pointer leaves the composed surface.
+    /// </summary>
+    /// <param name="eventData">The pointer-exit event.</param>
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        hoveredTarget?.SetHovered(false);
+        hoveredTarget = null;
+    }
+
+    /// <summary>
+    /// Opens artwork beneath transparent gameplay hit areas on a primary-button double click.
+    /// </summary>
+    /// <param name="eventData">The completed pointer gesture.</param>
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (eventData?.used != false)
+            return;
+        UpdatePointerTarget(eventData);
+        hoveredTarget?.TryOpen(eventData);
+    }
+
+    /// <summary>
+    /// Begins moving the topmost authored image beneath a primary-button grab.
+    /// </summary>
+    /// <param name="eventData">The initial drag event.</param>
+    public void OnBeginDrag(PointerEventData eventData)
+    {
+        if (eventData?.button != PointerEventData.InputButton.Left)
+            return;
+        UpdatePointerTarget(eventData);
+        ContentEditorArtworkEditTarget target = hoveredTarget;
+        RectTransform window = GetWindows(activeCategory)
+            .FirstOrDefault(candidate => target?.transform.IsChildOf(candidate) == true);
+        if (
+            target == null
+            || window == null
+            || !target.BeginMove()
+            || !TryGetSourcePoint(window, eventData, out artworkDragOrigin)
+        )
+        {
+            target?.CancelMove();
+            return;
+        }
+
+        draggedTarget = target;
+        draggedWindow = window;
+        artworkDragDelta = Vector2Int.zero;
+        eventData.Use();
+    }
+
+    /// <summary>
+    /// Moves grabbed artwork in the preview using the Strategy surface's source-coordinate scale.
+    /// </summary>
+    /// <param name="eventData">The current drag event.</param>
+    public void OnDrag(PointerEventData eventData)
+    {
+        if (
+            draggedTarget == null
+            || draggedWindow == null
+            || eventData?.button != PointerEventData.InputButton.Left
+            || !TryGetSourcePoint(draggedWindow, eventData, out Vector2 point)
+        )
+            return;
+        artworkDragDelta = new Vector2Int(
+            Mathf.RoundToInt(point.x - artworkDragOrigin.x),
+            Mathf.RoundToInt(point.y - artworkDragOrigin.y)
+        );
+        draggedTarget.PreviewMove(artworkDragDelta);
+        eventData.Use();
+    }
+
+    /// <summary>
+    /// Completes a placement gesture and publishes the underlying theme-field changes.
+    /// </summary>
+    /// <param name="eventData">The final drag event.</param>
+    public void OnEndDrag(PointerEventData eventData)
+    {
+        if (draggedTarget == null)
+            return;
+        if (eventData?.button == PointerEventData.InputButton.Left)
+            OnDrag(eventData);
+        IReadOnlyList<ContentEditorArtworkPlacementChange> changes = draggedTarget.CompleteMove(
+            artworkDragDelta
+        );
+        draggedTarget = null;
+        draggedWindow = null;
+        artworkDragDelta = Vector2Int.zero;
+        if (changes.Count > 0)
+            ArtworkMoved?.Invoke(changes);
+        eventData?.Use();
+    }
+
+    /// <summary>
+    /// Converts a pointer event into top-left coordinates within one unscaled gameplay window.
+    /// </summary>
+    /// <param name="window">The source-sized gameplay window.</param>
+    /// <param name="eventData">The pointer event to convert.</param>
+    /// <param name="point">Receives the source-space point.</param>
+    /// <returns>True when the pointer can be converted.</returns>
+    private static bool TryGetSourcePoint(
+        RectTransform window,
+        PointerEventData eventData,
+        out Vector2 point
+    )
+    {
+        point = default;
+        if (
+            window == null
+            || eventData == null
+            || !RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                window,
+                eventData.position,
+                eventData.pressEventCamera ?? eventData.enterEventCamera,
+                out Vector2 local
+            )
+        )
+            return false;
+        Rect rect = window.rect;
+        point = new Vector2(local.x - rect.xMin, rect.yMax - local.y);
+        return true;
+    }
+
+    /// <summary>
+    /// Restores an interrupted placement gesture without committing coordinates.
+    /// </summary>
+    private void CancelArtworkMove()
+    {
+        draggedTarget?.CancelMove();
+        draggedTarget = null;
+        draggedWindow = null;
+        artworkDragDelta = Vector2Int.zero;
+    }
+
+    /// <summary>
+    /// Selects the highest visible authored image beneath the pointer.
+    /// </summary>
+    /// <param name="eventData">The current pointer event.</param>
+    private void UpdatePointerTarget(PointerEventData eventData)
+    {
+        if (eventData == null)
+            return;
+        Camera camera = eventData.pressEventCamera ?? eventData.enterEventCamera;
+        ContentEditorArtworkEditTarget next =
+            GetComponentsInChildren<ContentEditorArtworkEditTarget>()
+                .Where(target => target.Field != null)
+                .Where(target => target.ContainsScreenPoint(eventData.position, camera))
+                .OrderByDescending(target => target.GetComponent<RawImage>().depth)
+                .ThenBy(target =>
+                {
+                    Rect rect = ((RectTransform)target.transform).rect;
+                    return rect.width * rect.height;
+                })
+                .FirstOrDefault();
+        if (next == hoveredTarget)
+            return;
+        hoveredTarget?.SetHovered(false);
+        hoveredTarget = next;
+        hoveredTarget?.SetHovered(true);
+    }
+
+    /// <summary>
+    /// Resolves a semantic prefab binding to the exact field on the selected faction page.
+    /// </summary>
+    /// <param name="image">The rendered image.</param>
+    /// <param name="fields">The selected surface's fields.</param>
+    /// <returns>The exact bound field, or null when the image has no semantic binding.</returns>
+    private static ContentPackEditorField ResolveBoundField(
+        RawImage image,
+        IReadOnlyList<ContentPackEditorField> fields
+    )
+    {
+        string memberPath = image.GetComponent<ContentEditorThemeTextureBinding>()?.MemberPath;
+        if (string.IsNullOrWhiteSpace(memberPath))
+            return null;
+        string[] members = memberPath.Split('.');
+        return fields.FirstOrDefault(candidate =>
+        {
+            if (candidate.MemberName != members[^1])
+                return false;
+            string[] candidatePath = candidate
+                .XmlElement.AncestorsAndSelf()
+                .TakeWhile(element => element != candidate.Record.Element)
+                .Reverse()
+                .Select(element => element.Name.LocalName)
+                .ToArray();
+            return candidatePath.Length <= members.Length
+                && candidatePath.SequenceEqual(members.Skip(members.Length - candidatePath.Length));
+        });
+    }
+
+    /// <summary>
+    /// Measures the combined source-space window bounds before scaling.
+    /// </summary>
+    /// <param name="windows">The windows to measure.</param>
+    /// <param name="width">Receives the combined width.</param>
+    /// <param name="height">Receives the greatest height.</param>
+    private static void GetSourceBounds(
+        IReadOnlyList<RectTransform> windows,
+        out int width,
+        out int height
+    )
+    {
+        width = 0;
+        height = 0;
+        for (int index = 0; index < windows.Count; index++)
+        {
+            RectInt source = GetSourceRect(windows[index]);
+            width += source.width;
+            height = Mathf.Max(height, source.height);
+        }
+        width += Mathf.Max(0, windows.Count - 1) * _windowGap;
+    }
+
+    /// <summary>
+    /// Reads a stable positive source rectangle from an authored window root.
+    /// </summary>
+    /// <param name="window">The authored window.</param>
+    /// <returns>The window's source rectangle.</returns>
+    private static RectInt GetSourceRect(RectTransform window)
+    {
+        RectInt source = UILayout.GetSourceRect(window);
+        return new RectInt(
+            source.x,
+            source.y,
+            Mathf.Max(1, source.width),
+            Mathf.Max(1, source.height)
+        );
+    }
+}

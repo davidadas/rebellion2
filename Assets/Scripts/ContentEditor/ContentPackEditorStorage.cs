@@ -385,6 +385,95 @@ public static class ContentPackEditorStorage
     }
 
     /// <summary>
+    /// Reports whether a scalar media field currently points to a writable file in this pack.
+    /// </summary>
+    /// <param name="project">The project that owns the working pack.</param>
+    /// <param name="field">The media field whose current file may be replaced.</param>
+    /// <returns>True when the current value resolves to an existing pack-owned file.</returns>
+    public static bool CanReplaceAsset(
+        ContentPackEditorProject project,
+        ContentPackEditorField field
+    )
+    {
+        if (
+            project == null
+            || field == null
+            || !field.IsMedia
+            || field.IsMediaDirectory
+            || field.IsList
+            || string.IsNullOrWhiteSpace(field.Value)
+        )
+            return false;
+        string address = field.GetMediaAddress(field.Value);
+        if (!address.StartsWith("Pack/", StringComparison.Ordinal))
+            return false;
+        try
+        {
+            string target = Path.GetFullPath(address[5..], project.PackRootPath);
+            ContentEditorPaths.VerifyWritePath(project, target);
+            return File.Exists(target);
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Replaces the current pack-owned media file while preserving its existing content address.
+    /// </summary>
+    /// <param name="project">The project that owns the working pack.</param>
+    /// <param name="sourcePath">The replacement local media file.</param>
+    /// <param name="field">The scalar media field whose current file is replaced.</param>
+    public static void ReplaceAsset(
+        ContentPackEditorProject project,
+        string sourcePath,
+        ContentPackEditorField field
+    )
+    {
+        if (!CanReplaceAsset(project, field))
+            throw new IOException("The current media file is not writable in this content pack.");
+        string source = Path.GetFullPath(sourcePath);
+        if (!File.Exists(source))
+            throw new FileNotFoundException("The selected media file does not exist.", source);
+        string address = field.GetMediaAddress(field.Value);
+        string target = Path.GetFullPath(address[5..], project.PackRootPath);
+        if (
+            !string.Equals(
+                Path.GetExtension(source),
+                Path.GetExtension(target),
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
+            throw new ArgumentException(
+                "Replacing a media file requires the same file type as the current asset."
+            );
+        if (string.Equals(source, target, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        ContentEditorPaths.VerifyWritePath(project, target);
+        string temporary = Path.Combine(
+            Path.GetDirectoryName(target),
+            "." + Path.GetFileName(target) + "." + Guid.NewGuid().ToString("N") + ".tmp"
+        );
+        ContentEditorPaths.VerifyWritePath(project, temporary);
+        try
+        {
+            File.Copy(source, temporary);
+            File.Replace(temporary, target, null);
+        }
+        finally
+        {
+            if (File.Exists(temporary))
+                File.Delete(temporary);
+        }
+    }
+
+    /// <summary>
     /// Copies a file to a pack directory without overwriting an existing asset.
     /// </summary>
     /// <param name="project">The project receiving the imported file.</param>

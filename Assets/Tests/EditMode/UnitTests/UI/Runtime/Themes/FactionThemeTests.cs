@@ -50,6 +50,102 @@ namespace Rebellion.Tests.UI.Runtime.Themes
         }
 
         [Test]
+        public void Deserialize_ArtworkDefaults_PreservesEveryUnitBackground()
+        {
+            const string xml =
+                @"
+                <FactionTheme>
+                  <ArtworkDefaults>
+                    <OfficerBackgroundImagePath>Pack/Art/officer-background.png</OfficerBackgroundImagePath>
+                    <CapitalShipBackgroundImagePath>Pack/Art/ship-background.png</CapitalShipBackgroundImagePath>
+                    <StarfighterBackgroundImagePath>Pack/Art/starfighter-background.png</StarfighterBackgroundImagePath>
+                  </ArtworkDefaults>
+                </FactionTheme>
+                ";
+            using StringReader reader = new StringReader(xml);
+
+            FactionTheme theme = (FactionTheme)
+                new GameSerializer(typeof(FactionTheme)).Deserialize(reader);
+
+            Assert.AreEqual(
+                "Pack/Art/officer-background.png",
+                theme.ArtworkDefaults.OfficerBackgroundImagePath
+            );
+            Assert.AreEqual(
+                "Pack/Art/ship-background.png",
+                theme.ArtworkDefaults.CapitalShipBackgroundImagePath
+            );
+            Assert.AreEqual(
+                "Pack/Art/starfighter-background.png",
+                theme.ArtworkDefaults.StarfighterBackgroundImagePath
+            );
+        }
+
+        [Test]
+        public void Deserialize_ColorScheme_PreservesEveryFactionMaskColor()
+        {
+            const string xml =
+                @"
+                <FactionTheme>
+                  <FactionPrimaryColorHex>010203</FactionPrimaryColorHex>
+                  <ColorScheme>
+                    <PrimaryColorHex>111213</PrimaryColorHex>
+                    <SelectionColorHex>212223</SelectionColorHex>
+                    <ActiveWindowTitleColorHex>313233</ActiveWindowTitleColorHex>
+                    <InactiveWindowTitleColorHex>414243</InactiveWindowTitleColorHex>
+                    <ActiveBuildingPaneColorHex>515253</ActiveBuildingPaneColorHex>
+                    <InactiveBuildingPaneColorHex>616263</InactiveBuildingPaneColorHex>
+                    <PlanetMarkerColorHex>717273</PlanetMarkerColorHex>
+                  </ColorScheme>
+                </FactionTheme>
+                ";
+            using StringReader reader = new StringReader(xml);
+
+            FactionTheme theme = (FactionTheme)
+                new GameSerializer(typeof(FactionTheme)).Deserialize(reader);
+
+            Assert.AreEqual(new Color32(0x11, 0x12, 0x13, 0xff), (Color32)theme.GetPrimaryColor());
+            Assert.AreEqual(
+                new Color32(0x21, 0x22, 0x23, 0xff),
+                (Color32)theme.GetSelectionColor()
+            );
+            Assert.AreEqual(
+                new Color32(0x31, 0x32, 0x33, 0xff),
+                (Color32)theme.GetActiveWindowTitleColor()
+            );
+            Assert.AreEqual(
+                new Color32(0x41, 0x42, 0x43, 0xff),
+                (Color32)theme.GetInactiveWindowTitleColor()
+            );
+            Assert.AreEqual(
+                new Color32(0x51, 0x52, 0x53, 0xff),
+                (Color32)theme.GetActiveBuildingPaneColor()
+            );
+            Assert.AreEqual(
+                new Color32(0x61, 0x62, 0x63, 0xff),
+                (Color32)theme.GetInactiveBuildingPaneColor()
+            );
+            Assert.AreEqual(
+                new Color32(0x71, 0x72, 0x73, 0xff),
+                (Color32)theme.GetPlanetMarkerColor()
+            );
+        }
+
+        [Test]
+        public void GetMaskColors_MissingColorScheme_FallBackToPrimaryColor()
+        {
+            FactionTheme theme = new FactionTheme { FactionPrimaryColorHex = "#123456" };
+            Color32 expected = new Color32(0x12, 0x34, 0x56, 0xff);
+
+            Assert.AreEqual(expected, (Color32)theme.GetSelectionColor());
+            Assert.AreEqual(expected, (Color32)theme.GetActiveWindowTitleColor());
+            Assert.AreEqual(expected, (Color32)theme.GetInactiveWindowTitleColor());
+            Assert.AreEqual(expected, (Color32)theme.GetActiveBuildingPaneColor());
+            Assert.AreEqual(expected, (Color32)theme.GetInactiveBuildingPaneColor());
+            Assert.AreEqual(expected, (Color32)theme.GetPlanetMarkerColor());
+        }
+
+        [Test]
         public void GetPrimaryColor_ValidHex_ReturnsParsedColor()
         {
             FactionTheme theme = new FactionTheme { FactionPrimaryColorHex = "#123456" };

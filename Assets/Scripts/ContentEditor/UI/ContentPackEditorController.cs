@@ -382,16 +382,45 @@ public sealed class ContentPackEditorController : MonoBehaviour
             );
             if (string.IsNullOrEmpty(source))
                 return;
-            string address = ContentPackEditorStorage.ImportAsset(project, source, field);
-            if (field.IsList)
-                project.SetFieldValues(
-                    field,
-                    field.Values.Where(value => !string.IsNullOrWhiteSpace(value)).Append(address)
+            if (ContentPackEditorStorage.CanReplaceAsset(project, field))
+            {
+                view.ConfirmMediaReplacement(
+                    field.GetMediaAddress(field.Value),
+                    () => RunOperation(() => ApplyMediaImport(field, source, true)),
+                    () => RunOperation(() => ApplyMediaImport(field, source, false))
                 );
-            else
-                project.SetField(field, address);
-            workspace.RenderProject(project, assets);
+                return;
+            }
+            ApplyMediaImport(field, source, false);
         });
+    }
+
+    /// <summary>
+    /// Applies one selected media file either in place or as a separately addressed pack asset.
+    /// </summary>
+    /// <param name="field">The media field receiving the selected file.</param>
+    /// <param name="source">The absolute selected file path.</param>
+    /// <param name="replace">Whether to overwrite the field's current pack-owned file.</param>
+    private void ApplyMediaImport(ContentPackEditorField field, string source, bool replace)
+    {
+        if (project == null)
+            return;
+        if (replace)
+        {
+            ContentPackEditorStorage.ReplaceAsset(project, source, field);
+            OpenProject(project);
+            return;
+        }
+
+        string address = ContentPackEditorStorage.ImportAsset(project, source, field);
+        if (field.IsList)
+            project.SetFieldValues(
+                field,
+                field.Values.Where(value => !string.IsNullOrWhiteSpace(value)).Append(address)
+            );
+        else
+            project.SetField(field, address);
+        workspace.RenderProject(project, assets);
     }
 
     /// <summary>

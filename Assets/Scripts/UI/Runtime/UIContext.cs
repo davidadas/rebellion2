@@ -18,6 +18,7 @@ public sealed class UIContext
     private readonly FactionThemeLibrary themeLibrary;
     private readonly Func<string, Texture2D> loadTexture;
     private readonly Func<string, Texture2D> loadSmoothTexture;
+    private readonly Func<string, Color32, Texture2D> loadAlphaTintedTexture;
     private readonly Func<Texture2D, RectInt> getTextureContentBounds;
     private IReadOnlyList<Faction> factionPresentations;
     private string playerFactionInstanceId;
@@ -35,13 +36,15 @@ public sealed class UIContext
     /// <param name="loadTexture">The active content texture resolver.</param>
     /// <param name="getTextureContentBounds">The optional visible-pixel bounds resolver.</param>
     /// <param name="loadSmoothTexture">The optional resolver for substantially reduced artwork.</param>
+    /// <param name="loadAlphaTintedTexture">The optional resolver for colorized shared alpha masks.</param>
     public UIContext(
         GameRoot game,
         FactionThemeLibrary themeLibrary,
         EncyclopediaCatalog encyclopediaCatalog,
         Func<string, Texture2D> loadTexture,
         Func<Texture2D, RectInt> getTextureContentBounds = null,
-        Func<string, Texture2D> loadSmoothTexture = null
+        Func<string, Texture2D> loadSmoothTexture = null,
+        Func<string, Color32, Texture2D> loadAlphaTintedTexture = null
     )
     {
         if (game == null)
@@ -59,6 +62,7 @@ public sealed class UIContext
         this.themeLibrary = themeLibrary;
         this.loadTexture = loadTexture;
         this.loadSmoothTexture = loadSmoothTexture ?? loadTexture;
+        this.loadAlphaTintedTexture = loadAlphaTintedTexture;
         this.getTextureContentBounds =
             getTextureContentBounds
             ?? (
@@ -173,6 +177,19 @@ public sealed class UIContext
             return null;
 
         return loadSmoothTexture(path);
+    }
+
+    /// <summary>
+    /// Resolves a shared alpha mask using one faction-configured color.
+    /// </summary>
+    /// <param name="path">The shared mask content address.</param>
+    /// <param name="color">The color applied independently of the mask's source RGB.</param>
+    /// <returns>The tinted texture, or the regular texture when no tint resolver is configured.</returns>
+    public Texture2D GetAlphaTintedTexture(string path, Color color)
+    {
+        if (string.IsNullOrEmpty(path))
+            return null;
+        return loadAlphaTintedTexture?.Invoke(path, (Color32)color) ?? GetTexture(path);
     }
 
     /// <summary>

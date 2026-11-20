@@ -272,6 +272,8 @@ internal static class ContentEditorControlBuilder
                         : ContentEditorColorRole.Panel
                 );
         }
+        foreach (Scrollbar scrollbar in dropdown.GetComponentsInChildren<Scrollbar>(true))
+            StyleScrollbar(scrollbar);
         ((Image)item.graphic).sprite = LoadIcon("Checkmark");
         foreach (TMP_Text label in dropdown.GetComponentsInChildren<TMP_Text>(true))
         {
@@ -360,11 +362,11 @@ internal static class ContentEditorControlBuilder
         Image target = Surface("Info", parent, Color.clear);
         target.raycastTarget = true;
         target.canvasRenderer.cullTransparentMesh = false;
-        Rect(target.rectTransform, 0, 0, 24, 24);
+        Rect(target.rectTransform, 0, 0, 32, 32);
         Image icon = Surface("Glyph", target.transform, ContentEditorColorRole.Muted);
         icon.sprite = LoadIcon("Information");
         icon.preserveAspect = true;
-        Rect(icon.rectTransform, 4, 4, 16, 16);
+        Rect(icon.rectTransform, 4, 4, 24, 24);
         HelpTooltipView help = target.gameObject.AddComponent<HelpTooltipView>();
         target.gameObject.SetActive(false);
         return help;

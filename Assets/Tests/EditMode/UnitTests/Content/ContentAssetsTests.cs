@@ -93,6 +93,20 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void TryGetTextureAddress_LoadedPointAndSmoothTextures_ReturnsNormalizedAddress()
+        {
+            using ContentAssets assets = CreateAssets();
+
+            Texture2D point = assets.GetTexture(" Application\\Textures\\test ");
+            Texture2D smooth = assets.GetSmoothTexture(_textureAddress);
+
+            Assert.IsTrue(assets.TryGetTextureAddress(point, out string pointAddress));
+            Assert.IsTrue(assets.TryGetTextureAddress(smooth, out string smoothAddress));
+            Assert.AreEqual(_textureAddress, pointAddress);
+            Assert.AreEqual(_textureAddress, smoothAddress);
+        }
+
+        [Test]
         public void GetTextureContentBounds_TransparentCanvas_ReturnsVisiblePixelBounds()
         {
             const string address = "Application/Textures/trimmed";
@@ -110,6 +124,33 @@ namespace Rebellion.Tests.Content
 
             Assert.AreEqual(new RectInt(2, 1, 1, 1), bounds);
             Assert.IsFalse(texture.isReadable);
+        }
+
+        [Test]
+        public void GetAlphaTintedTexture_SharedMask_AppliesColorAndCachesColorVariant()
+        {
+            const string address = "Application/Textures/mask";
+            string path = Path.Combine(_contentRoot, "Application", "Textures", "mask.png");
+            Texture2D source = new Texture2D(2, 1, TextureFormat.RGBA32, false);
+            source.SetPixels32(new[] { new Color32(4, 5, 6, 128), new Color32(7, 8, 9, 0) });
+            source.Apply();
+            File.WriteAllBytes(path, source.EncodeToPNG());
+            UnityEngine.Object.DestroyImmediate(source);
+            using ContentAssets assets = CreateAssets();
+
+            Texture2D first = assets.GetAlphaTintedTexture(address, new Color32(20, 40, 60, 128));
+            Texture2D second = assets.GetAlphaTintedTexture(address, new Color32(20, 40, 60, 128));
+            Texture2D alternate = assets.GetAlphaTintedTexture(
+                address,
+                new Color32(60, 40, 20, 128)
+            );
+            Color32[] pixels = first.GetPixels32();
+
+            Assert.AreSame(first, second);
+            Assert.AreNotSame(first, alternate);
+            Assert.AreEqual(new Color32(20, 40, 60, 64), pixels[0]);
+            Assert.AreEqual(new Color32(20, 40, 60, 0), pixels[1]);
+            Assert.IsTrue(first.isReadable);
         }
 
         [Test]

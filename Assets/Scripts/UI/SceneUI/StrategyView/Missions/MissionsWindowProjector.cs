@@ -83,8 +83,10 @@ internal sealed class MissionsWindowProjector
     )
     {
         List<MissionListRowRenderData> rows = new List<MissionListRowRenderData>();
-        Texture selectionTexture = uiContext.GetTexture(
-            uiContext.GetPlayerFactionTheme()?.StrategyWindows?.Missions?.SelectionImagePath
+        FactionTheme playerTheme = uiContext.GetPlayerFactionTheme();
+        Texture selectionTexture = uiContext.GetAlphaTintedTexture(
+            playerTheme?.StrategyWindows?.Missions?.SelectionImagePath,
+            playerTheme?.GetSelectionColor() ?? Color.white
         );
         for (int index = 0; index < missions.Count; index++)
         {
@@ -264,8 +266,14 @@ internal sealed class MissionsWindowProjector
     /// <returns>The resolved title texture.</returns>
     private static Texture GetTitleTexture(UIContext uiContext, string ownerFactionId, bool active)
     {
-        WindowTitleTheme theme = uiContext.GetTheme(ownerFactionId)?.WindowTitleTheme;
-        return uiContext.GetTexture(active ? theme?.ActiveImagePath : theme?.InactiveImagePath);
+        FactionTheme factionTheme = uiContext.GetTheme(ownerFactionId);
+        WindowTitleTheme theme = factionTheme?.WindowTitleTheme;
+        return uiContext.GetAlphaTintedTexture(
+            active ? theme?.ActiveImagePath : theme?.InactiveImagePath,
+            active
+                ? factionTheme?.GetActiveWindowTitleColor() ?? Color.white
+                : factionTheme?.GetInactiveWindowTitleColor() ?? Color.white
+        );
     }
 
     /// <summary>

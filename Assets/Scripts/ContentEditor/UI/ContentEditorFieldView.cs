@@ -18,6 +18,9 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     private TMP_InputField input;
 
     [SerializeField]
+    private TextMeshProUGUI selectedMedia;
+
+    [SerializeField]
     private UICheckboxView checkbox;
 
     [SerializeField]
@@ -127,6 +130,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     /// <returns>The row height, including the complete wrapped caption.</returns>
     public int SetLayout(Rect bounds, float labelWidth)
     {
+        error.gameObject.SetActive(true);
         bool hasHelp = labelWidth > 0 && !string.IsNullOrWhiteSpace(field.HelpText);
         RectTransform helpRect = (RectTransform)help.transform;
         int helpSize = Mathf.RoundToInt(helpRect.rect.width);
@@ -158,6 +162,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             ),
             labelHeight + 24
         );
+        bool compactMedia = IsCompactMedia(field);
         bool multiline = field.IsMultiline || field.IsList && input.gameObject.activeSelf;
         int bodyHeight = height;
         int errorHeight = HasError
@@ -203,9 +208,9 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         bool stackedMedia = field.IsMedia && bounds.width < 600;
         float valueTop = stackedMedia ? 0 : 4 + labelExtra;
         float valueHeight =
-            field.IsMediaDirectory ? (field.IsList ? 96 : 32)
+            field.IsMediaDirectory ? (field.IsList ? 48 : 32)
             : multiline ? bodyHeight - valueTop - 20
-            : 32;
+            : 34;
         RectTransform value = (RectTransform)input.transform;
         value.anchorMin = new Vector2(0, 1);
         value.anchorMax = Vector2.one;
@@ -213,6 +218,16 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         value.offsetMin = new Vector2(valueLeft, -valueTop - valueHeight);
         float valueRight = field.IsMedia && !field.IsMediaDirectory && !stackedMedia ? 190 : 8;
         value.offsetMax = new Vector2(-valueRight, -valueTop);
+        if (compactMedia)
+        {
+            UILayout.SetSourceRect(
+                selectedMedia.rectTransform,
+                Mathf.RoundToInt(valueLeft + 8),
+                Mathf.RoundToInt(valueTop),
+                Mathf.Max(1, Mathf.RoundToInt(bounds.width - valueLeft - valueRight - 12)),
+                34
+            );
+        }
         if (field.IsNumber && !multiline)
         {
             value.anchorMin = value.anchorMax = value.pivot = Vector2.up;
@@ -229,7 +244,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         RectTransform choice = (RectTransform)choiceDropdown.transform;
         choice.anchorMin = new Vector2(0, 1);
         choice.anchorMax = Vector2.one;
-        float choiceTop = field.IsMediaDirectory ? (field.IsList ? 104 : 40) + valueTop : valueTop;
+        float choiceTop = field.IsMediaDirectory ? (field.IsList ? 56 : 40) + valueTop : valueTop;
         choice.offsetMin = new Vector2(valueLeft, -choiceTop - 32);
         choice.offsetMax = new Vector2(field.IsMediaDirectory ? -104 : -8, -choiceTop);
         UILayout.SetSourceRect(
@@ -299,6 +314,48 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     }
 
     /// <summary>
+    /// Reduces an image field already represented by a card preview to its only useful action.
+    /// </summary>
+    /// <param name="bounds">The content-space action bounds.</param>
+    /// <returns>The compact action-row height.</returns>
+    public int SetArtworkActionLayout(Rect bounds)
+    {
+        const int height = 40;
+        bounds.height = height;
+        UILayout.SetSourceRect(
+            (RectTransform)transform,
+            Mathf.RoundToInt(bounds.x),
+            Mathf.RoundToInt(bounds.y),
+            Mathf.RoundToInt(bounds.width),
+            height
+        );
+        label.gameObject.SetActive(false);
+        help.gameObject.SetActive(false);
+        input.gameObject.SetActive(false);
+        selectedMedia.gameObject.SetActive(false);
+        checkbox.gameObject.SetActive(false);
+        error.gameObject.SetActive(false);
+        revertButton.gameObject.SetActive(false);
+        selectItemsButton.gameObject.SetActive(false);
+        choiceDropdown.gameObject.SetActive(false);
+        previewButton.gameObject.SetActive(false);
+        importButton.gameObject.SetActive(true);
+        bool background = field.MemberName == "BackgroundImagePath";
+        importButton.GetComponentInChildren<TextMeshProUGUI>().text = background
+            ? string.IsNullOrWhiteSpace(field.Value)
+                ? "Override background..."
+                : "Change background..."
+            : string.IsNullOrWhiteSpace(field.Value)
+                ? "Choose image..."
+                : "Change image...";
+        RectTransform import = (RectTransform)importButton.transform;
+        import.anchorMin = import.anchorMax = import.pivot = new Vector2(0, 1);
+        import.anchoredPosition = new Vector2(0, -4);
+        import.sizeDelta = new Vector2(background ? 156 : 120, 32);
+        return height;
+    }
+
+    /// <summary>
     /// Measures the field's content at its actual available width before placing a row.
     /// </summary>
     /// <param name="width">The full row width.</param>
@@ -306,7 +363,9 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     /// <returns>The unadorned field height.</returns>
     private int PreferredHeight(float width, float labelWidth) =>
         field == null || selectItemsButton.gameObject.activeSelf ? 56
-        : field.IsMediaDirectory ? (field.IsList ? 160 : 96)
+        : field.IsMediaDirectory ? (field.IsList ? 104 : 80)
+        : IsCompactMedia(field) && width < 600 ? 88
+        : IsCompactMediaList(field) ? 64
         : field.IsList
         && (choiceValues.Count > 0 || field.IsFactionReference || field.IsTraitReference)
             ? Math.Max(
@@ -347,7 +406,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     {
         if (field == null)
             return;
-        input.SetTextWithoutNotify(field.IsList ? string.Join("\n", field.Values) : field.Value);
+        input.SetTextWithoutNotify(GetEditorText(field));
         input.GetComponent<TextInputHistory>()?.ClearHistory();
         error.text = string.Empty;
         canRevertError = false;
@@ -406,6 +465,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         if (
             label == null
             || input == null
+            || selectedMedia == null
             || checkbox == null
             || error == null
             || importButton == null
@@ -480,8 +540,13 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             previewRequested = onPreview;
             previewButton.GetComponentInChildren<TextMeshProUGUI>().text =
                 field.MediaType == ContentPackEditorMediaType.Audio ? "Play/stop" : "Preview";
+            importButton.GetComponentInChildren<TextMeshProUGUI>().text =
+                field.IsList ? "Add..."
+                : string.IsNullOrWhiteSpace(field.Value) ? "Choose..."
+                : "Change...";
             label.text = field.Caption;
             error.text = string.Empty;
+            error.gameObject.SetActive(true);
             canRevertError = false;
             hasRejectedDraft = false;
             revertButton.gameObject.SetActive(false);
@@ -541,13 +606,18 @@ public sealed class ContentEditorFieldView : MonoBehaviour
                 );
                 choiceDropdown.RefreshShownValue();
             }
-            input.gameObject.SetActive(!showBoolean && !isChoice && !isChecklist && !isPicker);
+            bool compactMedia = IsCompactMedia(field);
+            input.gameObject.SetActive(
+                !showBoolean && !isChoice && !isChecklist && !isPicker && !compactMedia
+            );
+            selectedMedia.text = GetMediaDisplayName(field.Value);
+            selectedMedia.gameObject.SetActive(compactMedia);
             selectItemsButton.gameObject.SetActive(isPicker);
             if (isPicker)
                 selectItemsButton.GetComponentInChildren<TMP_Text>().text =
                     field.Values.Count == 0
                         ? "Choose..."
-                        : field.Values.Distinct().Count() + " selected — choose...";
+                        : field.Values.Distinct().Count() + " selected: choose...";
             checkbox.gameObject.SetActive(showBoolean);
             foreach (UICheckboxView choice in choices)
                 choice.gameObject.SetActive(false);
@@ -600,7 +670,9 @@ public sealed class ContentEditorFieldView : MonoBehaviour
                         ? TMP_InputField.LineType.MultiLineNewline
                         : TMP_InputField.LineType.SingleLine;
                 bool multilineInput = input.lineType != TMP_InputField.LineType.SingleLine;
-                input.verticalScrollbar.gameObject.SetActive(multilineInput);
+                Scrollbar verticalScrollbar = input.GetComponentInChildren<Scrollbar>(true);
+                verticalScrollbar.gameObject.SetActive(multilineInput);
+                input.verticalScrollbar = multilineInput ? verticalScrollbar : null;
                 RectTransform viewport = input.textViewport;
                 viewport.offsetMin = new Vector2(10, 6);
                 viewport.offsetMax = new Vector2(multilineInput ? -28 : -10, -6);
@@ -612,9 +684,18 @@ public sealed class ContentEditorFieldView : MonoBehaviour
                     field.IsMultiline || field.IsList
                         ? TextAlignmentOptions.TopLeft
                         : TextAlignmentOptions.MidlineLeft;
-                input.SetTextWithoutNotify(
-                    field.IsList ? string.Join("\n", field.Values) : field.Value
-                );
+                input.SetTextWithoutNotify(GetEditorText(field));
+                if (!multilineInput)
+                {
+                    input.stringPosition = 0;
+                    input.selectionStringAnchorPosition = 0;
+                    input.selectionStringFocusPosition = 0;
+                    input.caretPosition = 0;
+                    input.selectionAnchorPosition = 0;
+                    input.selectionFocusPosition = 0;
+                    input.textComponent.rectTransform.anchoredPosition = Vector2.zero;
+                    input.ForceLabelUpdate();
+                }
                 RectTransform rect = (RectTransform)input.transform;
                 rect.offsetMin = new Vector2(244, 22);
                 rect.offsetMax = new Vector2(field.IsMedia ? -190 : -14, -8);
@@ -645,6 +726,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         help.Configure(null, input);
         help.gameObject.SetActive(false);
         input.GetComponent<TextInputHistory>()?.ClearHistory();
+        selectedMedia.gameObject.SetActive(false);
         gameObject.SetActive(false);
     }
 
@@ -686,7 +768,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             return;
         try
         {
-            bool modified = text != (field.IsList ? string.Join("\n", field.Values) : field.Value);
+            bool modified = text != GetEditorText(field);
             if (!modified)
             {
                 bool hadError = HasError;
@@ -699,13 +781,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
                 return;
             }
             if (field.IsList)
-                Submitted?.Invoke(
-                    field,
-                    text.Split('\n')
-                        .Select(value => value.TrimEnd('\r'))
-                        .Where(value => value.Length > 0)
-                        .ToArray()
-                );
+                Submitted?.Invoke(field, GetSubmittedListValues(field, text));
             else
                 Submitted?.Invoke(field, new[] { text });
             input.GetComponent<TextInputHistory>()?.ClearHistory();
@@ -852,4 +928,75 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     /// Requests named selection without exposing reference identifiers as free text.
     /// </summary>
     private void RequestSelection() => SelectionRequested?.Invoke(field);
+
+    /// <summary>
+    /// Reports whether one media field can use the compact chooser instead of an editable address.
+    /// </summary>
+    /// <param name="value">The field being presented.</param>
+    /// <returns>True for scalar media files whose address is owned by the importer.</returns>
+    private static bool IsCompactMedia(ContentPackEditorField value) =>
+        value?.IsMedia == true && !value.IsMediaDirectory && !value.IsList;
+
+    /// <summary>
+    /// Reports whether a media list should show compact clip names while retaining line removal.
+    /// </summary>
+    /// <param name="value">The field being presented.</param>
+    /// <returns>True for imported audio lists.</returns>
+    private static bool IsCompactMediaList(ContentPackEditorField value) =>
+        value?.MediaType == ContentPackEditorMediaType.Audio && value.IsList;
+
+    /// <summary>
+    /// Produces editable text without exposing importer-owned content addresses.
+    /// </summary>
+    /// <param name="value">The field being presented.</param>
+    /// <returns>The value displayed by the text control.</returns>
+    private static string GetEditorText(ContentPackEditorField value)
+    {
+        if (!value.IsList)
+            return value.Value;
+        IEnumerable<string> values = value.Values;
+        if (IsCompactMediaList(value))
+            values = values.Select(GetMediaDisplayName);
+        return string.Join("\n", values);
+    }
+
+    /// <summary>
+    /// Restores stored media addresses for unchanged compact names and preserves additions or removals.
+    /// </summary>
+    /// <param name="value">The list field being submitted.</param>
+    /// <param name="text">The visible line-oriented draft.</param>
+    /// <returns>The stored values represented by the draft.</returns>
+    private static IReadOnlyList<string> GetSubmittedListValues(
+        ContentPackEditorField value,
+        string text
+    )
+    {
+        string[] submitted = text.Split('\n')
+            .Select(item => item.TrimEnd('\r'))
+            .Where(item => item.Length > 0)
+            .ToArray();
+        if (!IsCompactMediaList(value))
+            return submitted;
+        IReadOnlyDictionary<string, string> storedByName = value
+            .Values.GroupBy(GetMediaDisplayName, StringComparer.Ordinal)
+            .Where(group => group.Count() == 1)
+            .ToDictionary(group => group.Key, group => group.Single(), StringComparer.Ordinal);
+        return submitted
+            .Select(item => storedByName.TryGetValue(item, out string stored) ? stored : item)
+            .ToArray();
+    }
+
+    /// <summary>
+    /// Reduces a stored content address to the selected asset name shown in a compact chooser.
+    /// </summary>
+    /// <param name="address">The stored content address.</param>
+    /// <returns>The selected asset name, or a concise empty state.</returns>
+    private static string GetMediaDisplayName(string address)
+    {
+        if (string.IsNullOrWhiteSpace(address))
+            return "No file selected";
+        string normalized = address.Replace('\\', '/').TrimEnd('/');
+        int separator = normalized.LastIndexOf('/');
+        return separator >= 0 ? normalized[(separator + 1)..] : normalized;
+    }
 }

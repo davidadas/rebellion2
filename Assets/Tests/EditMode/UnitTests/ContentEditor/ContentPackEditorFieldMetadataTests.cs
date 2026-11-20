@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
@@ -32,6 +33,54 @@ namespace Rebellion.Tests.ContentEditor
                 .ToArray();
 
             Assert.IsEmpty(undocumented, string.Join(", ", undocumented));
+        }
+
+        [Test]
+        public void GetExpectedImageDimensions_UnitArtwork_ReturnsEstablishedSizes()
+        {
+            string folder = Path.Combine(
+                Path.GetTempPath(),
+                "editor-artwork-sizes-" + Guid.NewGuid().ToString("N")
+            );
+            try
+            {
+                ContentPackEditorProject project = ContentEditorTestData.CreateProject(folder);
+                (string Kind, string Member, string Expected)[] cases =
+                {
+                    ("Officer", "BackgroundImagePath", "1800 × 900"),
+                    ("Officer", "DisplayImagePath", "360 × 360"),
+                    ("Officer", "SmallDisplayImagePath", "275 × 113"),
+                    ("SpecialForce", "DisplayImagePath", "549 × 225"),
+                    ("Regiment", "DisplayImagePath", "1373 × 563"),
+                    ("Building", "DisplayImagePath", "1373 × 563"),
+                    ("CapitalShip", "DisplayImagePath", "1485 × 563"),
+                    ("CapitalShip", "BackgroundImagePath", "1800 × 900"),
+                    ("CapitalShip", "DamagedImagePath", "549 × 225"),
+                    ("Starfighter", "InTransitSmallImagePath", "297 × 113"),
+                    ("Starfighter", "BackgroundImagePath", "1800 × 900"),
+                    ("SpecialForce", "InTransitImagePath", "549 × 225"),
+                    ("Regiment", "SmallDisplayImagePath", "275 × 113"),
+                };
+                foreach (var item in cases)
+                {
+                    ContentPackEditorRecord record = project
+                        .GetCatalogs()
+                        .SelectMany(catalog => catalog.Records)
+                        .First(candidate => candidate.Kind == item.Kind);
+                    Assert.AreEqual(
+                        item.Expected,
+                        ContentPackEditorFieldMetadata.GetExpectedImageDimensions(
+                            record.GetField(item.Member)
+                        ),
+                        item.Kind + "." + item.Member
+                    );
+                }
+            }
+            finally
+            {
+                if (Directory.Exists(folder))
+                    Directory.Delete(folder, true);
+            }
         }
     }
 }

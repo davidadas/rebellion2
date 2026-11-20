@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -38,6 +39,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.DeleteRequested += DeleteRecord;
         view.XmlSubmitted += ApplyXml;
         view.FieldSubmitted += ApplyField;
+        view.ArtworkPlacementSubmitted += ApplyArtworkPlacement;
         view.FieldValidationRequested += ValidateField;
         view.SectionInheritanceResetRequested += ResetSectionInheritance;
         view.CollectionAddRequested += AddCollectionEntry;
@@ -164,6 +166,27 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
             Project.SetFieldValues(field, values);
         else
             Project.SetField(field, values.Single());
+    }
+
+    /// <summary>
+    /// Applies every coordinate changed by one artwork drag as a single reversible edit.
+    /// </summary>
+    /// <param name="changes">The distinct authored source-coordinate replacements.</param>
+    internal void ApplyArtworkPlacement(IReadOnlyList<ContentEditorArtworkPlacementChange> changes)
+    {
+        if (changes == null)
+            throw new ArgumentNullException(nameof(changes));
+        if (changes.Count == 0)
+            return;
+
+        ContentPackEditorProject current =
+            Project ?? throw new InvalidOperationException("Open a content pack first.");
+        using (current.BeginEdit("Move interface artwork"))
+        {
+            foreach (ContentEditorArtworkPlacementChange change in changes)
+                current.SetField(change.Field, change.Value.ToString(CultureInfo.InvariantCulture));
+        }
+        view.RefreshInspector();
     }
 
     /// <summary>
@@ -428,6 +451,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.DeleteRequested -= DeleteRecord;
         view.XmlSubmitted -= ApplyXml;
         view.FieldSubmitted -= ApplyField;
+        view.ArtworkPlacementSubmitted -= ApplyArtworkPlacement;
         view.FieldValidationRequested -= ValidateField;
         view.SectionInheritanceResetRequested -= ResetSectionInheritance;
         view.CollectionAddRequested -= AddCollectionEntry;

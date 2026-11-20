@@ -75,6 +75,52 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void ReplaceAsset_PackOwnedImage_OverwritesFileAndPreservesAddress()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Starfighter")
+                .GetField("DisplayImagePath");
+            string target = Path.Combine(project.PackRootPath, "Assets", "current.png");
+            Directory.CreateDirectory(Path.GetDirectoryName(target));
+            File.WriteAllText(target, "old image");
+            project.SetField(field, "Pack/Assets/current.png");
+            string source = Path.Combine(Directory.GetParent(contentRoot).FullName, "new.png");
+            File.WriteAllText(source, "new image");
+
+            Assert.IsTrue(ContentPackEditorStorage.CanReplaceAsset(project, field));
+            ContentPackEditorStorage.ReplaceAsset(project, source, field);
+
+            Assert.AreEqual("new image", File.ReadAllText(target));
+            Assert.AreEqual("Pack/Assets/current.png", field.Value);
+        }
+
+        [Test]
+        public void ReplaceAsset_DifferentFileType_RejectsWithoutChangingCurrentFile()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Starfighter")
+                .GetField("DisplayImagePath");
+            string target = Path.Combine(project.PackRootPath, "Assets", "current.png");
+            Directory.CreateDirectory(Path.GetDirectoryName(target));
+            File.WriteAllText(target, "old image");
+            project.SetField(field, "Pack/Assets/current.png");
+            string source = Path.Combine(Directory.GetParent(contentRoot).FullName, "new.jpg");
+            File.WriteAllText(source, "new image");
+
+            Assert.Throws<ArgumentException>(() =>
+                ContentPackEditorStorage.ReplaceAsset(project, source, field)
+            );
+
+            Assert.AreEqual("old image", File.ReadAllText(target));
+        }
+
+        [Test]
         public void Create_DefaultLocation_UsesModsAndCanBeResolvedByTheGame()
         {
             ContentPackEditorProject project = CreateWorkingProject();

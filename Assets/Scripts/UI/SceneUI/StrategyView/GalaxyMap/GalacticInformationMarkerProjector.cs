@@ -51,10 +51,12 @@ internal static class GalacticInformationMarkerProjector
             );
         }
 
-        PlanetIcons icons = context
-            ?.GetTheme(marker.FactionInstanceId)
-            ?.GalaxyBackground?.PlanetIcons;
-        return context?.GetTexture(GetPlanetIconPath(icons, marker.Index));
+        FactionTheme factionTheme = context?.GetTheme(marker.FactionInstanceId);
+        PlanetIcons icons = factionTheme?.GalaxyBackground?.PlanetIcons;
+        return context?.GetAlphaTintedTexture(
+            GetPlanetIconPath(icons, marker.Index),
+            factionTheme?.GetPlanetMarkerColor() ?? Color.white
+        );
     }
 
     /// <summary>

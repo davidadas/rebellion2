@@ -467,7 +467,8 @@ public sealed class GameFlowController : MonoBehaviour
             encyclopediaCatalog,
             contentAssets.GetTexture,
             contentAssets.GetTextureContentBounds,
-            contentAssets.GetSmoothTexture
+            contentAssets.GetSmoothTexture,
+            contentAssets.GetAlphaTintedTexture
         );
 
         if (activeGameManager != null)

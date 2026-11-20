@@ -164,6 +164,43 @@ namespace Rebellion.Tests.UI.Runtime
         }
 
         [Test]
+        public void GetAlphaTintedTexture_ConfiguredResolver_ForwardsPathAndColor()
+        {
+            Texture2D expected = new Texture2D(1, 1);
+            string requestedPath = null;
+            Color32 requestedColor = default;
+            UIContext context = new UIContext(
+                _game,
+                _themeLibrary,
+                _encyclopediaCatalog,
+                TestContent.Assets.GetTexture,
+                null,
+                TestContent.Assets.GetSmoothTexture,
+                (path, color) =>
+                {
+                    requestedPath = path;
+                    requestedColor = color;
+                    return expected;
+                }
+            );
+            try
+            {
+                Texture2D actual = context.GetAlphaTintedTexture(
+                    "Pack/Shared/mask",
+                    new Color32(1, 2, 3, 4)
+                );
+
+                Assert.AreSame(expected, actual);
+                Assert.AreEqual("Pack/Shared/mask", requestedPath);
+                Assert.AreEqual(new Color32(1, 2, 3, 4), requestedColor);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(expected);
+            }
+        }
+
+        [Test]
         public void GetEntityTexture_NullOrUnmappedEntity_ReturnsNull()
         {
             Assert.IsNull(_context.GetEntityTexture(null, false));

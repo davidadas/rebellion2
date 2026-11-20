@@ -98,6 +98,12 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private Button artworkTab;
 
     [SerializeField]
+    private Button defaultBackgroundsTab;
+
+    [SerializeField]
+    private Button colorsTab;
+
+    [SerializeField]
     private Button audioTab;
 
     [SerializeField]
@@ -235,6 +241,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     internal event Action<ContentPackEditorRecord> DeleteRequested;
     internal event Action<ContentEditorXmlScope, string, int> XmlSubmitted;
     internal event Action<ContentPackEditorField, IReadOnlyList<string>> FieldSubmitted;
+    internal event Action<
+        IReadOnlyList<ContentEditorArtworkPlacementChange>
+    > ArtworkPlacementSubmitted;
     internal event Action<ContentPackEditorField> FieldValidationRequested;
     internal event Action<IReadOnlyList<ContentPackEditorField>> SectionInheritanceResetRequested;
     internal event Action<ContentPackEditorRecord> MapEditStarted;
@@ -370,6 +379,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || recordSubtitle == null
             || propertiesTab == null
             || artworkTab == null
+            || defaultBackgroundsTab == null
+            || colorsTab == null
             || audioTab == null
             || advancedTab == null
             || encyclopediaTab == null
@@ -415,7 +426,15 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         searchInput.onValueChanged.AddListener(HandleSearchChanged);
         clearSearchButton.onClick.AddListener(ClearSearch);
         propertiesTab.onClick.AddListener(() => ShowSection("General"));
-        artworkTab.onClick.AddListener(() => ShowSection("Artwork"));
+        colorsTab.onClick.AddListener(() => ShowSection("Colors"));
+        artworkTab.onClick.AddListener(() =>
+            ShowSection(
+                selectedPage?.Key.StartsWith("factions/", StringComparison.Ordinal) == true
+                    ? "Interfaces"
+                    : "Artwork"
+            )
+        );
+        defaultBackgroundsTab.onClick.AddListener(() => ShowSection("Default backgrounds"));
         audioTab.onClick.AddListener(() => ShowSection("Audio"));
         advancedTab.onClick.AddListener(() => ShowSection("Advanced"));
         encyclopediaTab.onClick.AddListener(() => ShowSection("Encyclopedia"));
@@ -435,6 +454,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         form.Changed += HandleFieldChanged;
         form.PresentationChanged += UpdateResetSectionPresentation;
         form.FieldSubmitted += SubmitField;
+        form.ArtworkPlacementSubmitted += SubmitArtworkPlacement;
         form.SelectionRequested += ShowFieldSelection;
         form.UnitSelectionRequested += ShowUnitSelection;
         form.CollectionAddRequested += ForwardCollectionAdd;
@@ -442,6 +462,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         form.FieldValidationRequested += ValidateField;
         form.ImportRequested += ImportMedia;
         form.PreviewRequested += PreviewMedia;
+        form.AssetEditRequested += OpenAssetEditor;
+        form.SectionRequested += ShowSection;
         form.ValidationFailed += ReportFieldError;
         expandAllButton.onClick.AddListener(() => SetTreeExpansion(true));
         collapseAllButton.onClick.AddListener(() => SetTreeExpansion(false));
@@ -515,6 +537,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             form.Changed -= HandleFieldChanged;
             form.PresentationChanged -= UpdateResetSectionPresentation;
             form.FieldSubmitted -= SubmitField;
+            form.ArtworkPlacementSubmitted -= SubmitArtworkPlacement;
             form.SelectionRequested -= ShowFieldSelection;
             form.UnitSelectionRequested -= ShowUnitSelection;
             form.CollectionAddRequested -= ForwardCollectionAdd;
@@ -522,6 +545,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             form.FieldValidationRequested -= ValidateField;
             form.ImportRequested -= ImportMedia;
             form.PreviewRequested -= PreviewMedia;
+            form.AssetEditRequested -= OpenAssetEditor;
+            form.SectionRequested -= ShowSection;
             form.ValidationFailed -= ReportFieldError;
             workbenchLayout.Changed -= HandleWorkbenchChanged;
             menu.CommandSelected -= HandleMenuSelection;
@@ -978,6 +1003,26 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     public void ConfirmDiscard(Action discard)
     {
         confirmation.Show("Discard unsaved changes?", "Discard", discard);
+    }
+
+    /// <summary>
+    /// Asks whether a selected media file should replace the current pack file or be imported separately.
+    /// </summary>
+    /// <param name="address">The current pack-owned content address.</param>
+    /// <param name="replace">The action that overwrites the current file.</param>
+    /// <param name="importNew">The action that imports a separate file and updates the field.</param>
+    public void ConfirmMediaReplacement(string address, Action replace, Action importNew)
+    {
+        confirmation.Show(
+            "This field already uses "
+                + address
+                + ". Replace that file, or import the selected image as a separate asset?",
+            "Replace current file",
+            replace,
+            "Import as new",
+            importNew,
+            title: "Existing media"
+        );
     }
 
     /// <summary>
@@ -1636,11 +1681,22 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         }
         bool faction = selectedPage?.Key.StartsWith("factions/", StringComparison.Ordinal) == true;
         bool generation = selectedRecord.Kind == "GameGenerationConfig";
+        artworkTab.GetComponentInChildren<TMP_Text>().text = faction ? "Interfaces" : "Artwork";
+        propertiesTab.GetComponentInChildren<TMP_Text>().text = faction ? "Faction" : "General";
+        defaultBackgroundsTab.GetComponentInChildren<TMP_Text>().text = "Default backgrounds";
         propertiesTab.gameObject.SetActive(!generation);
         if (faction)
             artworkTab.gameObject.SetActive(
-                selectedPage.Fields.Any(ContentEditorContentSections.IsFactionArtworkField)
+                selectedPage.Fields.Any(ContentEditorContentSections.IsFactionInterfaceField)
             );
+        defaultBackgroundsTab.gameObject.SetActive(
+            faction
+                && selectedPage.Fields.Any(ContentEditorContentSections.IsFactionBackgroundField)
+        );
+        colorsTab.gameObject.SetActive(
+            faction
+                && selectedPage.Fields.Any(field => field.Group == nameof(FactionTheme.ColorScheme))
+        );
         if (generation)
         {
             encyclopediaTab.gameObject.SetActive(false);
@@ -1675,10 +1731,12 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 ? new[]
                 {
                     propertiesTab,
+                    colorsTab,
                     rulesTab,
                     shipNamesTab,
                     factionMessagesTab,
                     artworkTab,
+                    defaultBackgroundsTab,
                     referenceTab,
                     advancedTab,
                 }
@@ -1692,10 +1750,12 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 ? new[]
                 {
                     "General",
+                    "Colors",
                     "Rules",
                     "Ship names",
                     "Messages",
-                    "Artwork",
+                    "Interfaces",
+                    "Default backgrounds",
                     "Encyclopedia",
                     "Advanced",
                 }
@@ -2479,6 +2539,22 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     }
 
     /// <summary>
+    /// Opens the owning record's artwork inspector and focuses a rendered asset's exact field.
+    /// </summary>
+    /// <param name="field">The field supplying the clicked preview image.</param>
+    private void OpenAssetEditor(ContentPackEditorField field)
+    {
+        if (field == null)
+            return;
+        SelectRecord(field.Record);
+        if (selectedRecord?.Element != field.Record.Element)
+            return;
+        ShowSection("Artwork");
+        if (section == "Artwork")
+            form.FocusField(field);
+    }
+
+    /// <summary>
     /// Opens named multi-selection, retaining repeated building quantities and destination weights.
     /// </summary>
     /// <param name="field">The authored reference list.</param>
@@ -2562,6 +2638,14 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <param name="values">The complete proposed values.</param>
     private void SubmitField(ContentPackEditorField field, IReadOnlyList<string> values) =>
         FieldSubmitted?.Invoke(field, values);
+
+    /// <summary>
+    /// Forwards one composed-preview placement to the project-owning controller.
+    /// </summary>
+    /// <param name="changes">The authored source-coordinate replacements.</param>
+    private void SubmitArtworkPlacement(
+        IReadOnlyList<ContentEditorArtworkPlacementChange> changes
+    ) => ArtworkPlacementSubmitted?.Invoke(changes);
 
     /// <summary>
     /// Forwards unchanged-field validation without mutating project data in the view.

@@ -192,6 +192,23 @@ internal static class ContentPackEditorFieldMetadata
         ["NextNameIndex"] = "The next name to use from this list. Zero starts with the first name.",
         ["SmallDisplayImagePath"] =
             "Compact artwork used in unit lists and other small-card views.",
+        ["BackgroundImagePath"] =
+            "Optional background override for this unit. Leave empty to retain the faction theme default.",
+        ["OfficerBackgroundImagePath"] =
+            "Optional theme background retained for officer artwork workflows.",
+        ["CapitalShipBackgroundImagePath"] =
+            "Optional theme background retained for capital-ship artwork workflows.",
+        ["StarfighterBackgroundImagePath"] =
+            "Optional theme background retained for starfighter artwork workflows.",
+        ["PrimaryColorHex"] = "Primary faction color used by strategy text and controls.",
+        ["SelectionColorHex"] = "Color applied to shared selection frames across faction windows.",
+        ["ActiveWindowTitleColorHex"] =
+            "Color applied to the shared title mask while a window has focus.",
+        ["InactiveWindowTitleColorHex"] =
+            "Color applied to the shared title mask while a window does not have focus.",
+        ["ActiveBuildingPaneColorHex"] = "Color applied to the active manufacturing-lane mask.",
+        ["InactiveBuildingPaneColorHex"] = "Color applied to inactive manufacturing-lane masks.",
+        ["PlanetMarkerColorHex"] = "Color applied to the faction's shared galaxy-map star masks.",
         ["FleetListIconImagePath"] =
             "The compact fleet image used in fleet lists and the idle bar.",
         ["FleetTileImagePath"] = "The larger fleet tile image.",
@@ -296,13 +313,22 @@ internal static class ContentPackEditorFieldMetadata
         if (field.MemberName == "LeadershipBonusPercent")
             return "Percentage added to the officer's base leadership while the trait is active.";
         if (_descriptions.TryGetValue(field.MemberName, out string text))
-            return text;
+        {
+            string expected = GetExpectedImageDimensions(field);
+            return expected == null ? text : "Expected size: " + expected + ". " + text;
+        }
         if (field.MemberName.EndsWith("Variance", StringComparison.Ordinal))
             return "The random starting variation applied to this rating during world generation.";
         if (field.IsMedia)
-            return field.IsMediaDirectory
+        {
+            string description = field.IsMediaDirectory
                 ? "Select a content folder. Its supported files are discovered automatically, including inherited files."
                 : "A Pack/ or Application/ asset address. Use Import to copy a file into this pack.";
+            string expected = GetExpectedImageDimensions(field);
+            return expected == null
+                ? description
+                : "Expected size: " + expected + ". " + description;
+        }
         return string.Empty;
     }
 
@@ -317,7 +343,7 @@ internal static class ContentPackEditorFieldMetadata
         if (IsAIDecisionInterval(field))
             return "Decision interval (ticks)";
 
-        return field.MemberName switch
+        string caption = field.MemberName switch
         {
             "GalaxySizes" => "Galaxy sizes (all if empty)",
             "FacilityTypeIDs" => "Buildings",
@@ -350,7 +376,101 @@ internal static class ContentPackEditorFieldMetadata
             "NamePoolID" => "Pool ID",
             "FallbackNamePoolID" => "Fallback pool",
             "Names" when field.XmlElement.Parent?.Name.LocalName == "NamePool" => "Ship names",
+            "BackgroundImagePath" => "Background override",
+            "PrimaryColorHex" => "Primary color",
+            "SelectionColorHex" => "Selection frames",
+            "ActiveWindowTitleColorHex" => "Window titles, active",
+            "InactiveWindowTitleColorHex" => "Window titles, inactive",
+            "ActiveBuildingPaneColorHex" => "Building pane, active",
+            "InactiveBuildingPaneColorHex" => "Building pane, inactive",
+            "PlanetMarkerColorHex" => "Galaxy star markers",
             _ => fallback,
+        };
+        if (field.MediaType == ContentPackEditorMediaType.Image)
+        {
+            if (caption.EndsWith(" path", StringComparison.OrdinalIgnoreCase))
+                caption = caption[..^5];
+            string expected = GetExpectedImageDimensions(field);
+            if (expected != null)
+                caption += " (" + expected + ")";
+        }
+        return caption;
+    }
+
+    /// <summary>
+    /// Returns the established pixel dimensions for image fields with one fixed authored size.
+    /// </summary>
+    /// <param name="field">The image field being presented.</param>
+    /// <returns>The width and height label, or null when the layout intentionally accepts several sizes.</returns>
+    internal static string GetExpectedImageDimensions(ContentPackEditorField field)
+    {
+        if (field.MediaType != ContentPackEditorMediaType.Image)
+            return null;
+        string member = field.MemberName;
+        string kind = field.Record.Kind;
+        if (kind == "FactionTheme" && field.Group == nameof(FactionTheme.ArtworkDefaults))
+            return "1800 × 900";
+        if (member is "MessageImagePath" or "EncyclopediaImagePath")
+            return "1800 × 900";
+        if (member is "CapturedOverlayImagePath" or "InjuredImagePath")
+            return "275 × 113";
+        if (kind == "Officer")
+            return member switch
+            {
+                "BackgroundImagePath" => "1800 × 900",
+                "DisplayImagePath" => "360 × 360",
+                "SmallDisplayImagePath" => "275 × 113",
+                _ => null,
+            };
+        if (kind == "SpecialForce")
+            return member switch
+            {
+                "DisplayImagePath" => "549 × 225",
+                "SmallDisplayImagePath" or "InTransitSmallImagePath" => "275 × 113",
+                "InTransitImagePath" => "549 × 225",
+                _ => null,
+            };
+        if (kind == "Regiment")
+            return member switch
+            {
+                "DisplayImagePath" => "1373 × 563",
+                "SmallDisplayImagePath" => "275 × 113",
+                _ => null,
+            };
+        if (kind == "Building")
+            return member switch
+            {
+                "DisplayImagePath" => "1373 × 563",
+                "SmallDisplayImagePath" or "InTransitSmallImagePath" => "275 × 113",
+                _ => null,
+            };
+        if (kind is "CapitalShip" or "Starfighter")
+            return member switch
+            {
+                "BackgroundImagePath" => "1800 × 900",
+                "DisplayImagePath" => "1485 × 563",
+                "SmallDisplayImagePath" or "InTransitSmallImagePath" or "DamagedSmallImagePath" =>
+                    "297 × 113",
+                "BattleResultImagePath"
+                or "InTransitImagePath"
+                or "BattleResultInTransitImagePath"
+                or "DamagedImagePath"
+                or "BattleResultDamagedImagePath" => "549 × 225",
+                _ => null,
+            };
+        return member switch
+        {
+            "SavedGameSlotIconImagePath" => "117 × 86",
+            "FleetListIconImagePath" => "297 × 113",
+            "FleetListEnrouteIconImagePath" or "FleetListDamagedIconImagePath" => "275 × 113",
+            "FleetListSelectionImagePath" => "329 × 212",
+            "FleetDetailSelectionImagePath" => "513 × 167",
+            "FleetConstructionSmallImagePath" => "275 × 113",
+            "FleetConstructionLargeImagePath" => "545 × 221",
+            "FleetStarfightersBadgeImagePath"
+            or "FleetTroopsBadgeImagePath"
+            or "FleetPersonnelBadgeImagePath" => "68 × 50",
+            _ => null,
         };
     }
 

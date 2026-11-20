@@ -14,11 +14,15 @@ public class FactionTheme
 
     public string FactionPrimaryColorHex { get; set; }
 
+    public FactionColorScheme ColorScheme { get; set; }
+
     public BattleParticipantTheme BattleParticipant { get; set; }
 
     public bool UseUpperButtonLayout { get; set; }
 
     public string SavedGameSlotIconImagePath { get; set; }
+
+    public FactionArtworkDefaults ArtworkDefaults { get; set; }
 
     public string IntroCutscenePath { get; set; }
 
@@ -77,12 +81,95 @@ public class FactionTheme
     {
         if (!colorParsed)
         {
-            primaryColor = ThemeColorParser.Parse(FactionPrimaryColorHex, Color.white);
+            primaryColor = ThemeColorParser.Parse(
+                ColorScheme?.PrimaryColorHex ?? FactionPrimaryColorHex,
+                Color.white
+            );
             colorParsed = true;
         }
 
         return primaryColor;
     }
+
+    /// <summary>
+    /// Gets the color applied to shared selection-frame masks.
+    /// </summary>
+    /// <returns>The configured selection color or the faction primary color.</returns>
+    public Color GetSelectionColor() =>
+        ThemeColorParser.Parse(ColorScheme?.SelectionColorHex, GetPrimaryColor());
+
+    /// <summary>
+    /// Gets the color applied to the shared active-window title mask.
+    /// </summary>
+    /// <returns>The configured active-title color or the faction primary color.</returns>
+    public Color GetActiveWindowTitleColor() =>
+        ThemeColorParser.Parse(ColorScheme?.ActiveWindowTitleColorHex, GetPrimaryColor());
+
+    /// <summary>
+    /// Gets the color applied to the shared inactive-window title mask.
+    /// </summary>
+    /// <returns>The configured inactive-title color or the active-title color.</returns>
+    public Color GetInactiveWindowTitleColor() =>
+        ThemeColorParser.Parse(
+            ColorScheme?.InactiveWindowTitleColorHex,
+            GetActiveWindowTitleColor()
+        );
+
+    /// <summary>
+    /// Gets the color applied to the shared active manufacturing-lane mask.
+    /// </summary>
+    /// <returns>The configured active-lane color or the faction primary color.</returns>
+    public Color GetActiveBuildingPaneColor() =>
+        ThemeColorParser.Parse(ColorScheme?.ActiveBuildingPaneColorHex, GetPrimaryColor());
+
+    /// <summary>
+    /// Gets the color applied to the shared inactive manufacturing-lane mask.
+    /// </summary>
+    /// <returns>The configured inactive-lane color or the active-lane color.</returns>
+    public Color GetInactiveBuildingPaneColor() =>
+        ThemeColorParser.Parse(
+            ColorScheme?.InactiveBuildingPaneColorHex,
+            GetActiveBuildingPaneColor()
+        );
+
+    /// <summary>
+    /// Gets the color applied to shared faction planet-marker masks.
+    /// </summary>
+    /// <returns>The configured planet-marker color or the faction primary color.</returns>
+    public Color GetPlanetMarkerColor() =>
+        ThemeColorParser.Parse(ColorScheme?.PlanetMarkerColorHex, GetPrimaryColor());
+}
+
+/// <summary>
+/// Defines faction colors applied to shared interface masks.
+/// </summary>
+[PersistableObject]
+public sealed class FactionColorScheme
+{
+    public string PrimaryColorHex { get; set; }
+
+    public string SelectionColorHex { get; set; }
+
+    public string ActiveWindowTitleColorHex { get; set; }
+
+    public string InactiveWindowTitleColorHex { get; set; }
+
+    public string ActiveBuildingPaneColorHex { get; set; }
+
+    public string InactiveBuildingPaneColorHex { get; set; }
+
+    public string PlanetMarkerColorHex { get; set; }
+}
+
+/// <summary>
+/// Defines optional faction backgrounds retained for unit artwork workflows.
+/// </summary>
+[PersistableObject]
+public sealed class FactionArtworkDefaults
+{
+    public string OfficerBackgroundImagePath { get; set; }
+    public string CapitalShipBackgroundImagePath { get; set; }
+    public string StarfighterBackgroundImagePath { get; set; }
 }
 
 /// <summary>

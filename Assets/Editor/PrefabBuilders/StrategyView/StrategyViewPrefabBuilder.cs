@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -8215,6 +8216,444 @@ public static class StrategyViewPrefabBuilder
         Object.DestroyImmediate(window.transform.Find("SwapButtonImage").gameObject);
         Object.DestroyImmediate(window.transform.Find("CloseButtonImage").gameObject);
         return window.GetComponent<PlanetSectorWindowView>();
+    }
+
+    /// <summary>
+    /// Authors inactive, connected instances of the exact gameplay-window prefabs used by the
+    /// content editor's faction-artwork browser.
+    /// </summary>
+    /// <param name="parent">The preview surface that owns every copied window.</param>
+    internal static void CreateArtworkWindowPreviews(Transform parent)
+    {
+        if (parent == null)
+            throw new System.ArgumentNullException(nameof(parent));
+
+        CreateArtworkWindowPreview(
+            _defenseWindowPrefabPath,
+            parent,
+            PreviewTheme?.StrategyWindows?.Defense,
+            "StrategyWindows.Defense"
+        );
+        CreateArtworkWindowPreview(
+            _fleetWindowPrefabPath,
+            parent,
+            PreviewTheme?.StrategyWindows?.Fleet,
+            "StrategyWindows.Fleet"
+        );
+        CreateArtworkWindowPreview(
+            _missionsWindowPrefabPath,
+            parent,
+            PreviewTheme?.StrategyWindows?.Missions,
+            "StrategyWindows.Missions"
+        );
+        CreateArtworkWindowPreview(
+            _missionCreateWindowPrefabPath,
+            parent,
+            PreviewTheme?.StrategyWindows?.MissionCreate,
+            "StrategyWindows.MissionCreate"
+        );
+        CreateArtworkWindowPreview(
+            _facilityWindowPrefabPath,
+            parent,
+            PreviewTheme?.StrategyWindows?.Facility,
+            "StrategyWindows.Facility"
+        );
+        CreateArtworkWindowPreview(_constructionWindowPrefabPath, parent, null, null);
+        CreateArtworkWindowPreview(
+            _statusWindowPrefabPath,
+            parent,
+            PreviewTheme?.StrategyWindows?.Status,
+            "StrategyWindows.Status"
+        );
+        CreateArtworkWindowPreview(
+            _messagesWindowPrefabPath,
+            parent,
+            PreviewTheme?.StrategyWindows?.Messages,
+            "StrategyWindows.Messages"
+        );
+        CreateArtworkWindowPreview(
+            _battleAlertWindowPrefabPath,
+            parent,
+            PreviewTheme?.StrategyWindows?.BattleAlert,
+            "StrategyWindows.BattleAlert"
+        );
+        CreateArtworkWindowPreview(
+            _encyclopediaWindowPrefabPath,
+            parent,
+            PreviewTheme?.StrategyWindows?.Encyclopedia,
+            "StrategyWindows.Encyclopedia"
+        );
+        CreateArtworkWindowPreview(
+            _finderWindowPrefabPath,
+            parent,
+            PreviewTheme?.StrategyWindows?.Finder,
+            "StrategyWindows.Finder"
+        );
+        CreateArtworkWindowPreview(
+            _advisorReportWindowPrefabPath,
+            parent,
+            PreviewTheme?.StrategyWindows?.AdvisorReport,
+            "StrategyWindows.AdvisorReport"
+        );
+        CreateArtworkWindowPreview(
+            _confirmDialogWindowPrefabPath,
+            parent,
+            PreviewTheme?.ConfirmDialogTheme,
+            "ConfirmDialogTheme"
+        );
+        CreateArtworkStrategyViewPreview(parent);
+    }
+
+    /// <summary>
+    /// Extracts the generated strategy backdrop, HUD, and its external view dependencies into a
+    /// clipped source-sized preview surface.
+    /// </summary>
+    /// <param name="parent">The preview surface that owns the strategy view.</param>
+    private static void CreateArtworkStrategyViewPreview(Transform parent)
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(_prefabPath);
+        if (prefab == null)
+            throw new System.InvalidOperationException(
+                $"Artwork preview source prefab is missing: {_prefabPath}"
+            );
+
+        GameObject wrapper = new GameObject(
+            "StrategyView",
+            typeof(RectTransform),
+            typeof(RectMask2D)
+        );
+        wrapper.transform.SetParent(parent, false);
+        SetSourceRect(
+            wrapper.GetComponent<RectTransform>(),
+            0,
+            0,
+            Mathf.RoundToInt(_screenWidth),
+            Mathf.RoundToInt(_screenHeight)
+        );
+        GameObject source = (GameObject)PrefabUtility.InstantiatePrefab(prefab, wrapper.transform);
+        source.name = "StrategyHudSource";
+        source.transform.localPosition = Vector3.zero;
+        source.transform.localRotation = Quaternion.identity;
+        source.transform.localScale = Vector3.one;
+        PrefabUtility.UnpackPrefabInstance(
+            source,
+            PrefabUnpackMode.Completely,
+            InteractionMode.AutomatedAction
+        );
+        StrategyHudView hud = source.GetComponentInChildren<StrategyHudView>(true);
+        if (hud == null)
+            throw new System.InvalidOperationException("Strategy HUD preview source is missing.");
+        GalaxyMapView galaxyMap = source.GetComponentInChildren<GalaxyMapView>(true);
+        if (galaxyMap == null)
+            throw new System.InvalidOperationException(
+                "Strategy galaxy-map preview source is missing."
+            );
+        RawImage galaxyBackground = galaxyMap
+            .GetComponentsInChildren<RawImage>(true)
+            .SingleOrDefault(image => image.name == "BackgroundImage");
+        if (galaxyBackground == null)
+            throw new System.InvalidOperationException(
+                "Strategy view preview galaxy background is missing."
+            );
+        ContextMenuView contextMenu = source.GetComponentInChildren<ContextMenuView>(true);
+        if (contextMenu == null)
+            throw new System.InvalidOperationException(
+                "Strategy view preview context menu is missing."
+            );
+
+        UIRequestNoticeView sessionNotice = source.GetComponentInChildren<UIRequestNoticeView>(
+            true
+        );
+        if (sessionNotice == null)
+            throw new System.InvalidOperationException(
+                "Strategy HUD preview session notice is missing."
+            );
+        string[] resourcePanelNames =
+        {
+            "RawMaterialsPanel",
+            "RefinedMaterialsPanel",
+            "MaintenancePanel",
+        };
+        RectTransform[] resourcePanels = resourcePanelNames
+            .Select(name =>
+                source
+                    .GetComponentsInChildren<RectTransform>(true)
+                    .Single(transform => transform.name == name)
+            )
+            .ToArray();
+
+        galaxyMap.transform.SetParent(wrapper.transform, false);
+        galaxyMap.transform.SetAsFirstSibling();
+        galaxyBackground.enabled = true;
+        galaxyBackground.raycastTarget = false;
+        hud.transform.SetParent(wrapper.transform, false);
+        sessionNotice.transform.SetParent(wrapper.transform, false);
+        contextMenu.transform.SetParent(wrapper.transform, false);
+        foreach (RectTransform resourcePanel in resourcePanels)
+            resourcePanel.SetParent(wrapper.transform, false);
+        Object.DestroyImmediate(source);
+
+        Dictionary<string, string> themePaths = new Dictionary<string, string>(
+            System.StringComparer.Ordinal
+        );
+        CollectThemeTexturePaths(
+            PreviewTheme?.TacticalHUDLayout,
+            "TacticalHUDLayout",
+            themePaths,
+            0
+        );
+        AttachThemeTextureBindings(hud.gameObject, themePaths);
+        SetThemeTextureBinding(
+            FindRequiredRawImage(hud.transform, "SpeedIndicatorImage"),
+            "TacticalHUDLayout.SpeedIndicators.MediumImagePath"
+        );
+        SetThemeTextureBinding(galaxyBackground, "GalaxyBackground.ImagePath");
+        foreach (MonoBehaviour behaviour in wrapper.GetComponentsInChildren<MonoBehaviour>(true))
+        {
+            if (
+                behaviour.transform != hud.transform
+                && !behaviour.transform.IsChildOf(hud.transform)
+                && behaviour.transform != galaxyMap.transform
+                && !behaviour.transform.IsChildOf(galaxyMap.transform)
+                && behaviour.transform != contextMenu.transform
+                && !behaviour.transform.IsChildOf(contextMenu.transform)
+                && behaviour is not UIBehaviour
+            )
+                behaviour.enabled = false;
+        }
+        StrategyContextMenuPresenter contextMenuPresenter =
+            contextMenu.GetComponent<StrategyContextMenuPresenter>();
+        if (contextMenuPresenter != null)
+            contextMenuPresenter.enabled = false;
+        wrapper.SetActive(false);
+    }
+
+    /// <summary>
+    /// Nests one generated gameplay-window prefab and adds selected-faction texture bindings as
+    /// prefab-instance overrides.
+    /// </summary>
+    /// <param name="prefabPath">The generated window-prefab path.</param>
+    /// <param name="parent">The preview surface that receives the copy.</param>
+    /// <param name="theme">The window-specific preview-theme branch.</param>
+    /// <param name="themePath">The dotted member path to the window-specific branch.</param>
+    private static void CreateArtworkWindowPreview(
+        string prefabPath,
+        Transform parent,
+        object theme,
+        string themePath
+    )
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+        if (prefab == null)
+            throw new System.InvalidOperationException(
+                $"Artwork preview window prefab is missing: {prefabPath}"
+            );
+
+        Dictionary<string, string> themePaths = new Dictionary<string, string>(
+            System.StringComparer.Ordinal
+        );
+        CollectThemeTexturePaths(PreviewTheme?.WindowTitleTheme, "WindowTitleTheme", themePaths, 0);
+        CollectThemeTexturePaths(theme, themePath, themePaths, 0);
+        if (prefabPath == _defenseWindowPrefabPath)
+        {
+            CollectThemeTexturePaths(
+                PreviewTheme?.PlanetWindowTheme?.GarrisonPanel,
+                "PlanetWindowTheme.GarrisonPanel",
+                themePaths,
+                0
+            );
+        }
+        if (prefabPath == _fleetWindowPrefabPath)
+        {
+            CollectThemeTexturePaths(
+                PreviewTheme?.PlanetWindowTheme?.FleetsPane,
+                "PlanetWindowTheme.FleetsPane",
+                themePaths,
+                0
+            );
+            CollectThemeTexturePaths(
+                PreviewTheme?.StrategyWindows?.Status,
+                "StrategyWindows.Status",
+                themePaths,
+                0
+            );
+        }
+        if (prefabPath is _missionsWindowPrefabPath or _missionCreateWindowPrefabPath)
+        {
+            CollectThemeTexturePaths(
+                PreviewTheme?.PlanetWindowTheme?.MissionsPane,
+                "PlanetWindowTheme.MissionsPane",
+                themePaths,
+                0
+            );
+        }
+        if (prefabPath is _facilityWindowPrefabPath or _constructionWindowPrefabPath)
+        {
+            CollectThemeTexturePaths(
+                PreviewTheme?.PlanetWindowTheme?.BuildingsPane,
+                "PlanetWindowTheme.BuildingsPane",
+                themePaths,
+                0
+            );
+        }
+
+        GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
+        instance.name = prefab.name;
+        AttachThemeTextureBindings(instance, themePaths);
+        AttachDynamicThemeTextureBindings(instance);
+        foreach (CanvasGroup group in instance.GetComponentsInChildren<CanvasGroup>(true))
+        {
+            group.interactable = true;
+            group.blocksRaycasts = true;
+        }
+        instance.SetActive(false);
+    }
+
+    /// <summary>
+    /// Adds semantic faction-theme bindings to images whose preview addresses identify a theme
+    /// member.
+    /// </summary>
+    /// <param name="root">The copied gameplay window.</param>
+    /// <param name="themePaths">Preview-theme texture addresses mapped to member paths.</param>
+    private static void AttachThemeTextureBindings(
+        GameObject root,
+        IReadOnlyDictionary<string, string> themePaths
+    )
+    {
+        foreach (RawImage image in root.GetComponentsInChildren<RawImage>(true))
+        {
+            string address = image.GetComponent<ContentTextureBinding>()?.Address;
+            if (string.IsNullOrWhiteSpace(address))
+                address = image.GetComponent<ContentPressVisualBinding>()?.UpAddress;
+            if (
+                !string.IsNullOrWhiteSpace(address)
+                && themePaths.TryGetValue(ToContentAddress(address), out string memberPath)
+            )
+            {
+                SetThemeTextureBinding(image, memberPath);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Binds theme images that are assigned only when a live window receives render data and are
+    /// therefore blank in its generated prefab.
+    /// </summary>
+    /// <param name="root">The copied gameplay window.</param>
+    private static void AttachDynamicThemeTextureBindings(GameObject root)
+    {
+        if (root.name == "FleetWindow")
+        {
+            SetThemeTextureBinding(
+                FindRequiredRawImage(root.transform, "DetailBackgroundImage"),
+                "StrategyWindows.Fleet.DetailBackgroundImagePath"
+            );
+        }
+        else if (root.name == "FacilityWindow")
+        {
+            SetThemeTextureBinding(
+                FindRequiredRawImage(root.transform, "ManufacturingTabButtonImage"),
+                "StrategyWindows.Facility.ControlTab.ActiveImagePath"
+            );
+            RawImage[] stateImages = root.GetComponentsInChildren<RawImage>(true)
+                .Where(image => image.name == "StateCardImage")
+                .ToArray();
+            for (int index = 0; index < stateImages.Length; index++)
+            {
+                SetThemeTextureBinding(
+                    stateImages[index],
+                    index == 0
+                        ? "PlanetWindowTheme.BuildingsPane.ManufacturingLaneState.ActiveImagePath"
+                        : "PlanetWindowTheme.BuildingsPane.ManufacturingLaneState.InactiveImagePath"
+                );
+            }
+        }
+    }
+
+    /// <summary>
+    /// Adds or updates one semantic faction-theme binding on a preview image.
+    /// </summary>
+    /// <param name="image">The image receiving the selected faction's texture.</param>
+    /// <param name="memberPath">The dotted member path from <see cref="FactionTheme"/>.</param>
+    private static void SetThemeTextureBinding(RawImage image, string memberPath)
+    {
+        ContentEditorThemeTextureBinding binding =
+            image.GetComponent<ContentEditorThemeTextureBinding>()
+            ?? image.gameObject.AddComponent<ContentEditorThemeTextureBinding>();
+        binding.SetMemberPath(memberPath);
+    }
+
+    /// <summary>
+    /// Finds one named image anywhere in an authored gameplay window.
+    /// </summary>
+    /// <param name="root">The window root.</param>
+    /// <param name="name">The exact image-object name.</param>
+    /// <returns>The required raw image.</returns>
+    private static RawImage FindRequiredRawImage(Transform root, string name)
+    {
+        foreach (RawImage image in root.GetComponentsInChildren<RawImage>(true))
+        {
+            if (image.name == name)
+                return image;
+        }
+        throw new System.InvalidOperationException($"{root.name}/{name} is missing.");
+    }
+
+    /// <summary>
+    /// Flattens the preview faction theme into stable content-address-to-member-path mappings.
+    /// </summary>
+    /// <param name="value">The current theme object.</param>
+    /// <param name="path">The current dotted member path.</param>
+    /// <param name="paths">The collected address mappings.</param>
+    /// <param name="depth">The current traversal depth.</param>
+    private static void CollectThemeTexturePaths(
+        object value,
+        string path,
+        IDictionary<string, string> paths,
+        int depth
+    )
+    {
+        if (value == null || depth > 12)
+            return;
+
+        foreach (
+            System.Reflection.PropertyInfo property in value
+                .GetType()
+                .GetProperties(
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
+                )
+        )
+        {
+            if (!property.CanRead || property.GetIndexParameters().Length != 0)
+                continue;
+            object child = property.GetValue(value);
+            string childPath = string.IsNullOrEmpty(path)
+                ? property.Name
+                : path + "." + property.Name;
+            if (child is string address)
+            {
+                if (
+                    (
+                        address.StartsWith("Application/", System.StringComparison.Ordinal)
+                        || address.StartsWith("Pack/", System.StringComparison.Ordinal)
+                    ) && !paths.ContainsKey(ToContentAddress(address))
+                )
+                {
+                    paths.Add(ToContentAddress(address), childPath);
+                }
+                continue;
+            }
+            if (
+                child == null
+                || child is System.Collections.IEnumerable
+                || property.PropertyType.IsPrimitive
+                || property.PropertyType.IsEnum
+            )
+            {
+                continue;
+            }
+            CollectThemeTexturePaths(child, childPath, paths, depth + 1);
+        }
     }
 
     /// <summary>

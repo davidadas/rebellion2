@@ -808,10 +808,12 @@ namespace Rebellion.Tests.ContentEditor.Integration
                 (string section, string tab) in new[]
                 {
                     ("General", "Tab0"),
+                    ("Colors", "Tab10"),
                     ("Rules", "Tab5"),
                     ("Ship names", "Tab6"),
                     ("Messages", "Tab7"),
-                    ("Artwork", "Tab1"),
+                    ("Interfaces", "Tab1"),
+                    ("Default backgrounds", "Tab9"),
                     ("Encyclopedia", "Tab8"),
                 }
             )
@@ -833,6 +835,16 @@ namespace Rebellion.Tests.ContentEditor.Integration
                             is not ("TypeID" or "Category" or "VisibleFactionInstanceID")
                     )
                     .ToArray();
+                if (section == "Interfaces")
+                {
+                    fields = fields
+                        .Where(field =>
+                            ContentEditorContentSections.IsFactionInterfaceField(field)
+                            && ContentEditorContentSections.FactionArtworkCategory(field)
+                                == "Planet sector"
+                        )
+                        .ToArray();
+                }
                 Assert.IsNotEmpty(fields);
                 if (section is "Ship names" or "Messages")
                 {
@@ -844,10 +856,16 @@ namespace Rebellion.Tests.ContentEditor.Integration
                         .Where(field => field.XmlElement.AncestorsAndSelf().Contains(selected))
                         .ToArray();
                 }
-                Assert.AreEqual(
-                    fields.Length,
-                    view.GetComponentsInChildren<ContentEditorFieldView>().Length
-                );
+                if (section == "Colors")
+                    Assert.AreEqual(
+                        fields.Length,
+                        view.GetComponentsInChildren<ContentEditorColorPickerView>().Length
+                    );
+                else
+                    Assert.AreEqual(
+                        fields.Length,
+                        view.GetComponentsInChildren<ContentEditorFieldView>().Length
+                    );
                 string[] headings = view.GetComponentsInChildren<TMP_Text>()
                     .Select(text => text.text)
                     .ToArray();
@@ -859,7 +877,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
                 if (section == "Ship names")
                 {
                     Assert.IsTrue(
-                        headings.Any(text => text.StartsWith("Pool ") && text.Contains(" — "))
+                        headings.Any(text => text.StartsWith("Pool ") && text.Contains(": "))
                     );
                     Assert.IsFalse(headings.Any(text => text.StartsWith("Name pool 1")));
                 }
@@ -1370,12 +1388,18 @@ namespace Rebellion.Tests.ContentEditor.Integration
                 window.GetComponentsInChildren<PlanetSectorPlanetView>();
             Assert.AreEqual(sector.Planets.Count, planets.Length);
             ContentPackEditorRecord[] records = sector.Planets.ToArray();
-            int maximumEnergy = project
+            XElement defaultResourceProfile = project
                 .GetCatalogs()
                 .SelectMany(catalog => catalog.Records)
                 .Where(record => record.Kind == "GameGenerationConfig")
-                .SelectMany(record => record.Element.Descendants("EnergyMax"))
-                .Max(element => int.Parse(element.Value));
+                .SelectMany(record => record.Element.Descendants(nameof(PlanetResourceProfile)))
+                .Single(element =>
+                    element.Element(nameof(PlanetResourceProfile.Availability))?.Value
+                    == GameResourceAvailability.Normal.ToString()
+                );
+            int defaultEnergy = int.Parse(
+                defaultResourceProfile.Element(nameof(PlanetResourceProfile.EnergyMax)).Value
+            );
             for (int i = 0; i < planets.Length; i++)
             {
                 Assert.IsTrue(
@@ -1390,9 +1414,15 @@ namespace Rebellion.Tests.ContentEditor.Integration
                     ContentEditorPresentation.GetNeutralTheme(project).GetPrimaryColor(),
                     support.color
                 );
+                Assert.IsFalse(
+                    planets[i].transform.Find("EnergyValueTextField").gameObject.activeSelf
+                );
                 Assert.AreEqual(
-                    $"0/{maximumEnergy}",
-                    planets[i].transform.Find("EnergyValueTextField").GetComponent<TMP_Text>().text
+                    defaultEnergy,
+                    planets[i]
+                        .transform.Find("EnergyBar")
+                        .GetComponentsInChildren<Image>()
+                        .Count(image => image.name.StartsWith("Segment", StringComparison.Ordinal))
                 );
                 RectInt imageRect = planets[i].GetRenderedPlanetImageSourceRect();
                 Vector2Int offset = window.UnprojectPlanetPosition(

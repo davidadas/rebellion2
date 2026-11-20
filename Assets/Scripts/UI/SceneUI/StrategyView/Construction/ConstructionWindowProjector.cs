@@ -64,13 +64,17 @@ internal sealed class ConstructionWindowProjector
         IManufacturable selected = GetSelectedItem(items, selectedIndex);
         ConstructionBuildEstimate selectedEstimate =
             selected == null ? null : GetSelectedEstimate(estimates, selectedIndex);
-        WindowTitleTheme titleTheme = uiContext.GetTheme(ownerFactionId)?.WindowTitleTheme;
+        FactionTheme factionTheme = uiContext.GetTheme(ownerFactionId);
+        WindowTitleTheme titleTheme = factionTheme?.WindowTitleTheme;
 
         return new ConstructionWindowRenderData(
             x,
             y,
-            uiContext.GetTexture(
-                active ? titleTheme?.ActiveImagePath : titleTheme?.InactiveImagePath
+            uiContext.GetAlphaTintedTexture(
+                active ? titleTheme?.ActiveImagePath : titleTheme?.InactiveImagePath,
+                active
+                    ? factionTheme?.GetActiveWindowTitleColor() ?? Color.white
+                    : factionTheme?.GetInactiveWindowTitleColor() ?? Color.white
             ),
             GetItemTexture(uiContext, selected),
             selected?.GetDisplayName(),

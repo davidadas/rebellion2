@@ -83,6 +83,32 @@ namespace Rebellion.Tests.ContentEditor
             Assert.IsFalse(unit.CanDestroyPlanets);
         }
 
+        [TestCase("Officer", typeof(Officer))]
+        [TestCase("CapitalShip", typeof(CapitalShip))]
+        [TestCase("Starfighter", typeof(Starfighter))]
+        public void Create_BackgroundCapableUnit_ExposesEmptyBackgroundOverride(
+            string kind,
+            Type type
+        )
+        {
+            XElement definition = ContentEditorUnitFactory.Create(kind);
+            using StringReader text = new StringReader(definition.ToString());
+            BaseSceneNode unit = (BaseSceneNode)new GameSerializer(type).Deserialize(text);
+
+            Assert.IsNotNull(definition.Element("BackgroundImagePath"));
+            Assert.IsTrue(
+                string.IsNullOrEmpty(
+                    unit switch
+                    {
+                        Officer officer => officer.BackgroundImagePath,
+                        CapitalShip ship => ship.BackgroundImagePath,
+                        Starfighter fighter => fighter.BackgroundImagePath,
+                        _ => throw new InvalidOperationException(),
+                    }
+                )
+            );
+        }
+
         [Test]
         public void Create_Building_OmitsUnsupportedWeaponStrength()
         {

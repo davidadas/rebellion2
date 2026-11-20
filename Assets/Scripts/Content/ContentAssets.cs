@@ -31,6 +31,10 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         string,
         Texture2D
     >(StringComparer.Ordinal);
+    private readonly Dictionary<string, Texture2D> alphaTintedTextures = new Dictionary<
+        string,
+        Texture2D
+    >(StringComparer.Ordinal);
     private readonly Dictionary<Texture2D, string> textureAddresses =
         new Dictionary<Texture2D, string>();
     private readonly Dictionary<Texture2D, RectInt> textureContentBounds =
@@ -162,6 +166,72 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     public Texture2D GetSmoothTexture(string path)
     {
         return GetTexture(path, smoothTextures, true, true, FilterMode.Trilinear);
+    }
+
+    /// <summary>
+    /// Resolves a shared alpha mask and caches a copy colored independently of its source RGB.
+    /// </summary>
+    /// <param name="path">The application or pack content address.</param>
+    /// <param name="color">The color applied to every visible mask pixel.</param>
+    /// <returns>The tinted mask texture, or null when the source cannot be loaded.</returns>
+    public Texture2D GetAlphaTintedTexture(string path, Color32 color)
+    {
+        ThrowIfDisposed();
+        string normalizedPath = NormalizeAddress(path);
+        if (string.IsNullOrEmpty(normalizedPath))
+            return null;
+        string key = FormattableString.Invariant(
+            $"{normalizedPath}|{color.r:X2}{color.g:X2}{color.b:X2}{color.a:X2}"
+        );
+        if (alphaTintedTextures.TryGetValue(key, out Texture2D tinted) && tinted != null)
+            return tinted;
+
+        alphaTintedTextures.Remove(key);
+        Texture2D source = GetTexture(normalizedPath, readableTextures, false);
+        if (source == null)
+            return null;
+        Color32[] pixels = source.GetPixels32();
+        for (int index = 0; index < pixels.Length; index++)
+        {
+            byte alpha = (byte)(pixels[index].a * color.a / 255);
+            pixels[index] = new Color32(color.r, color.g, color.b, alpha);
+        }
+        tinted = new Texture2D(source.width, source.height, TextureFormat.RGBA32, false)
+        {
+            name = source.name + "-tinted",
+            filterMode = source.filterMode,
+            wrapMode = source.wrapMode,
+        };
+        tinted.SetPixels32(pixels);
+        tinted.Apply(false, false);
+        alphaTintedTextures.Add(key, tinted);
+        return tinted;
+    }
+
+    /// <summary>
+    /// Normalizes an addressed texture without loading its file.
+    /// </summary>
+    /// <param name="address">The application- or pack-relative texture address.</param>
+    /// <returns>The normalized address used by the texture caches.</returns>
+    internal string GetNormalizedTextureAddress(string address)
+    {
+        ThrowIfDisposed();
+        return NormalizeAddress(address);
+    }
+
+    /// <summary>
+    /// Finds the normalized content address that supplied an already loaded texture.
+    /// </summary>
+    /// <param name="texture">A texture owned by this asset store.</param>
+    /// <param name="address">Receives its normalized content address.</param>
+    /// <returns>True when the texture was loaded by this asset store.</returns>
+    internal bool TryGetTextureAddress(Texture2D texture, out string address)
+    {
+        ThrowIfDisposed();
+        if (texture != null && textureAddresses.TryGetValue(texture, out address))
+            return true;
+        address = null;
+        return false;
     }
 
     /// <summary>
@@ -497,12 +567,15 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
             DestroyAsset(texture);
         foreach (Texture2D texture in smoothTextures.Values)
             DestroyAsset(texture);
+        foreach (Texture2D texture in alphaTintedTextures.Values)
+            DestroyAsset(texture);
 
         audioClips.Clear();
         audioLoads.Clear();
         textures.Clear();
         readableTextures.Clear();
         smoothTextures.Clear();
+        alphaTintedTextures.Clear();
         textureAddresses.Clear();
         textureContentBounds.Clear();
         sprites.Clear();
