@@ -8,7 +8,7 @@ using Unity.CompilationPipeline.Common.Diagnostics;
 using Unity.CompilationPipeline.Common.ILPostProcessing;
 
 /// <summary>
-/// Embeds the production source identity before Unity loads or builds the game-model assembly.
+/// Embeds the production source identity before Unity loads or builds the application assembly.
 /// </summary>
 internal sealed class SimulationBuildIdentityPostProcessor : ILPostProcessor
 {
@@ -21,17 +21,17 @@ internal sealed class SimulationBuildIdentityPostProcessor : ILPostProcessor
     public override ILPostProcessor GetInstance() => this;
 
     /// <summary>
-    /// Selects the assembly that owns the serialized game model used for compatibility admission.
+    /// Selects the root application assembly that recompiles after any runtime dependency changes.
     /// </summary>
     /// <param name="compiledAssembly">The compiler output under consideration.</param>
-    /// <returns>True for the game-model assembly.</returns>
+    /// <returns>True for the application assembly.</returns>
     public override bool WillProcess(ICompiledAssembly compiledAssembly) =>
-        compiledAssembly.Name == "Rebellion.Game";
+        compiledAssembly.Name == "Rebellion.App";
 
     /// <summary>
     /// Writes the source identity into assembly metadata while preserving debugging symbols.
     /// </summary>
-    /// <param name="compiledAssembly">The game-model assembly emitted by the compiler.</param>
+    /// <param name="compiledAssembly">The application assembly emitted by the compiler.</param>
     /// <returns>The assembly with exactly one simulation build identity.</returns>
     public override ILPostProcessResult Process(ICompiledAssembly compiledAssembly)
     {

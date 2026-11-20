@@ -1,7 +1,6 @@
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("Rebellion.App")]
-[assembly: InternalsVisibleTo("ContentPackEditorAssembly")]
 [assembly: InternalsVisibleTo("Rebellion.Generation")]
 [assembly: InternalsVisibleTo("Rebellion.Sessions")]
 [assembly: InternalsVisibleTo("UnitTests")]

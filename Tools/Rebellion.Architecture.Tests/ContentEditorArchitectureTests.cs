@@ -1,10 +1,10 @@
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using ArchUnitNET.Fluent;
 using ArchUnitNET.Loader;
 using ArchUnitNET.NUnit;
 using NUnit.Framework;
-using Rebellion.Game;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
 
 namespace Rebellion.Architecture.Tests
@@ -12,11 +12,11 @@ namespace Rebellion.Architecture.Tests
     [TestFixture]
     public sealed class ContentEditorArchitectureTests
     {
+        private static readonly Assembly[] _runtimeAssemblies = RuntimeAssemblyLoader.Load();
+
         private static readonly ArchUnitNET.Domain.Architecture _architecture = new ArchLoader()
             .LoadAssemblies(
-                typeof(AppBootstrap).Assembly,
-                typeof(GameRoot).Assembly,
-                typeof(ContentPackEditorProject).Assembly
+                _runtimeAssemblies.Append(typeof(ContentPackEditorProject).Assembly).ToArray()
             )
             .Build();
 
@@ -197,14 +197,21 @@ namespace Rebellion.Architecture.Tests
         }
 
         [Test]
-        public void ApplicationAssembly_InternalAccess_DoesNotExposeInternalsToContentEditor()
+        public void RuntimeAssemblies_InternalAccess_DoesNotExposeInternalsToContentEditor()
         {
-            string[] friends = typeof(AppBootstrap)
-                .Assembly.GetCustomAttributes(typeof(InternalsVisibleToAttribute), false)
-                .Cast<InternalsVisibleToAttribute>()
-                .Select(attribute => attribute.AssemblyName)
-                .ToArray();
-            CollectionAssert.DoesNotContain(friends, "ContentPackEditorAssembly");
+            foreach (Assembly assembly in _runtimeAssemblies)
+            {
+                string[] friends = assembly
+                    .GetCustomAttributes(typeof(InternalsVisibleToAttribute), false)
+                    .Cast<InternalsVisibleToAttribute>()
+                    .Select(attribute => attribute.AssemblyName)
+                    .ToArray();
+                CollectionAssert.DoesNotContain(
+                    friends,
+                    "ContentPackEditorAssembly",
+                    assembly.GetName().Name
+                );
+            }
         }
     }
 }

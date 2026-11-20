@@ -2,7 +2,6 @@
     "name": "Rebellion.Build.Editor",
     "references": [
         "Rebellion.App",
-        "Rebellion.Game",
         "Unity.Rebellion.Build.CodeGen"
     ],
     "includePlatforms": [

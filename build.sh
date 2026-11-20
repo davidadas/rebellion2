@@ -162,18 +162,41 @@ do_lint() {
             cp Library/ScriptAssemblies/*.dll Temp/bin/Debug/
         fi
 
-        echo "=== Rebellion.App ==="
         # Unity-generated projects share output/intermediate directories, so parallel MSBuild can
         # race dependencies and report missing metadata from another project still being compiled.
         dotnet build Rebellion.InputActions.csproj \
             -maxcpucount:1 \
             -verbosity:normal \
             "${extra_args[@]}"
-        dotnet build Rebellion.App.csproj \
-            --no-dependencies \
-            -maxcpucount:1 \
-            -verbosity:normal \
-            "${extra_args[@]}"
+        local runtime_projects=(
+            Rebellion.Util
+            Rebellion.SceneGraph
+            Rebellion.Game
+            Rebellion.UserSettings
+            Rebellion.Saves
+            Rebellion.Content
+            Rebellion.Generation
+            Rebellion.Analytics
+            Rebellion.Gameplay
+            Rebellion.AI
+            Rebellion.Sessions
+            Rebellion.Networking.Transport
+            Rebellion.Multiplayer
+            Rebellion.App
+        )
+        for runtime_project in "${runtime_projects[@]}"; do
+            if [ ! -f "$runtime_project.csproj" ]; then
+                echo "Missing Unity-generated runtime project: $runtime_project.csproj" >&2
+                exit 1
+            fi
+
+            echo "=== $runtime_project ==="
+            dotnet build "$runtime_project.csproj" \
+                --no-dependencies \
+                -maxcpucount:1 \
+                -verbosity:normal \
+                "${extra_args[@]}"
+        done
         echo ""
         for test_project in UnitTests.csproj PlayModeTests.csproj NativeAudit.csproj; do
             if [ ! -f "$test_project" ]; then
@@ -277,7 +300,7 @@ do_coverage() {
         -debugCodeOptimization \
         -enableCodeCoverage \
         -coverageResultsPath "$coverage_dir" \
-        -coverageOptions "generateHtmlReport;assemblyFilters:+Rebellion.*"
+        -coverageOptions "generateHtmlReport;assemblyFilters:+GameAssembly,+Rebellion.*,-Rebellion.InputActions,-Rebellion.Build.Editor"
     echo "Coverage report written to $coverage_dir/Report/index.html"
 
     # Keep thresholds in sync with .github/workflows/unity-tests.yml

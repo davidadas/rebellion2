@@ -13,7 +13,7 @@ namespace Rebellion.Architecture.Tests
     [TestFixture]
     public sealed class ArchitectureDependencyTests
     {
-        private static readonly Assembly[] _runtimeAssemblies = LoadRuntimeAssemblies();
+        private static readonly Assembly[] _runtimeAssemblies = RuntimeAssemblyLoader.Load();
 
         private static readonly ArchUnitNET.Domain.Architecture _architecture = new ArchLoader()
             .LoadAssemblies(
@@ -346,30 +346,6 @@ namespace Rebellion.Architecture.Tests
                 );
 
             rule.Check(_architecture);
-        }
-
-        private static Assembly[] LoadRuntimeAssemblies()
-        {
-            string[] assemblyNames =
-            [
-                "Rebellion.AI",
-                "Rebellion.Analytics",
-                "Rebellion.Content",
-                "Rebellion.Game",
-                "Rebellion.Gameplay",
-                "Rebellion.Generation",
-                "Rebellion.Multiplayer",
-                "Rebellion.Networking.Transport",
-                "Rebellion.Saves",
-                "Rebellion.SceneGraph",
-                "Rebellion.Sessions",
-                "Rebellion.UserSettings",
-                "Rebellion.Util",
-            ];
-            return assemblyNames
-                .Select(Assembly.Load)
-                .Append(typeof(AppBootstrap).Assembly)
-                .ToArray();
         }
     }
 }
