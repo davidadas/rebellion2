@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.UIState;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
 {
@@ -16,6 +17,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         private Func<string> _selectNextTrack;
         private StrategyMusicController _controller;
         private StrategyMusicTheme _theme;
+        private PlayerUIState _uiState;
         private int _stopMusicCalls;
         private readonly Queue<int> _randomIndices = new Queue<int>();
         private readonly List<Planet> _visiblePlanets = new List<Planet>();
@@ -43,14 +45,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             _visiblePlanets.Clear();
             _selectNextTrack = null;
             _stopMusicCalls = 0;
-            _controller = new StrategyMusicController(
-                () => _visiblePlanets,
-                () => _playerFactionId,
-                () => _theme,
-                GetRandomIndex,
-                selector => _selectNextTrack = selector,
-                () => _stopMusicCalls++
-            );
+            _uiState = new PlayerUIState();
+            _controller = CreateController();
         }
 
         [Test]
@@ -171,7 +167,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void Reset_Default_StopsMusicAndRestartsCadenceWithStrategicTrack()
+        public void Reset_Default_StopsMusicWithoutResettingRotation()
         {
             AddColonizedPlanets(_playerFactionId, 3);
             AddColonizedPlanets(_opponentFactionId, 1);
@@ -183,7 +179,98 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             _controller.Resume();
 
             Assert.AreEqual(1, _stopMusicCalls);
+            Assert.AreEqual("neutral-1", _selectNextTrack());
+            Assert.AreEqual("neutral-1", _selectNextTrack());
             Assert.AreEqual(_strongAdvantageTrack, _selectNextTrack());
+        }
+
+        [TestCase(1, false)]
+        [TestCase(2, false)]
+        [TestCase(3, false)]
+        [TestCase(4, false)]
+        [TestCase(1, true)]
+        [TestCase(2, true)]
+        [TestCase(3, true)]
+        [TestCase(4, true)]
+        public void Resume_LoadedSave_ContinuesRotation(int tracksPlayed, bool recreateController)
+        {
+            AddColonizedPlanets(_playerFactionId, 3);
+            AddColonizedPlanets(_opponentFactionId, 1);
+            _controller.Resume();
+            for (int i = 0; i < tracksPlayed; i++)
+                _selectNextTrack();
+
+            string saved = SerializationHelper.Serialize(_uiState);
+            _selectNextTrack();
+            _controller.Reset();
+            _uiState = SerializationHelper.Deserialize<PlayerUIState>(saved);
+            if (recreateController)
+                _controller = CreateController();
+            _controller.Resume();
+
+            for (int i = tracksPlayed; i < 4; i++)
+                Assert.AreEqual("neutral-1", _selectNextTrack());
+            Assert.AreEqual(_strongAdvantageTrack, _selectNextTrack());
+        }
+
+        [Test]
+        public void Resume_NewCampaign_StartsWithStrategicTrack()
+        {
+            AddColonizedPlanets(_playerFactionId, 3);
+            AddColonizedPlanets(_opponentFactionId, 1);
+            _controller.Resume();
+            _selectNextTrack();
+
+            _controller.Reset();
+            _uiState = new PlayerUIState();
+            _controller.Resume();
+
+            Assert.AreEqual(_strongAdvantageTrack, _selectNextTrack());
+        }
+
+        [TestCase("invalid")]
+        [TestCase("-1")]
+        [TestCase("2147483648")]
+        public void Resume_InvalidSavedRotation_StartsWithStrategicTrack(string saved)
+        {
+            AddColonizedPlanets(_playerFactionId, 3);
+            AddColonizedPlanets(_opponentFactionId, 1);
+            _uiState.GetOrCreateSection("Strategy").Values["MusicNeutralTracksRemaining"] = saved;
+            _controller.Resume();
+
+            Assert.AreEqual(_strongAdvantageTrack, _selectNextTrack());
+        }
+
+        [Test]
+        public void Resume_ReducedCadence_ClampsSavedRotation()
+        {
+            AddColonizedPlanets(_playerFactionId, 3);
+            AddColonizedPlanets(_opponentFactionId, 1);
+            _controller.Resume();
+            _selectNextTrack();
+
+            _theme.NeutralTracksBetweenStrategicTracks = 1;
+            _controller.Resume();
+
+            Assert.AreEqual("neutral-1", _selectNextTrack());
+            Assert.AreEqual(_strongAdvantageTrack, _selectNextTrack());
+        }
+
+        /// <summary>
+        /// Creates a music controller bound to the active player's strategy state.
+        /// </summary>
+        /// <returns>The configured music controller.</returns>
+        private StrategyMusicController CreateController()
+        {
+            return new StrategyMusicController(
+                () => _visiblePlanets,
+                () => _playerFactionId,
+                () => _theme,
+                () => _uiState.GetOrCreateSection("Strategy"),
+                GetRandomIndex,
+                selector => _selectNextTrack = selector,
+                () => _stopMusicCalls++
+            );
         }
 
         /// <summary>

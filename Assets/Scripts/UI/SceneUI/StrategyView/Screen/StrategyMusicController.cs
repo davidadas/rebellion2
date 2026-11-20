@@ -1,17 +1,20 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.UIState;
 
 internal sealed class StrategyMusicController
 {
+    private const string _neutralTracksRemainingStateID = "MusicNeutralTracksRemaining";
     private readonly Func<string> getPlayerFactionId;
     private readonly Func<int, int, int> getRandomIndex;
     private readonly Func<StrategyMusicTheme> getTheme;
+    private readonly Func<UIStateSection> getUIState;
     private readonly Func<IReadOnlyList<Planet>> getVisiblePlanets;
     private readonly Action<Func<string>> playDynamicPlaylist;
     private readonly Action stopMusic;
-    private int neutralTracksRemaining;
 
     /// <summary>
     /// Initializes a new instance of the StrategyMusicController class.
@@ -19,6 +22,7 @@ internal sealed class StrategyMusicController
     /// <param name="getVisiblePlanets">Returns planets from the current faction-visible snapshot.</param>
     /// <param name="getPlayerFactionId">Returns the viewing player's faction identifier.</param>
     /// <param name="getTheme">The get theme.</param>
+    /// <param name="getUIState">Returns the active player's saved strategy interface state.</param>
     /// <param name="getRandomIndex">The get random index.</param>
     /// <param name="playDynamicPlaylist">The play dynamic playlist.</param>
     /// <param name="stopMusic">The stop music.</param>
@@ -26,6 +30,7 @@ internal sealed class StrategyMusicController
         Func<IReadOnlyList<Planet>> getVisiblePlanets,
         Func<string> getPlayerFactionId,
         Func<StrategyMusicTheme> getTheme,
+        Func<UIStateSection> getUIState,
         Func<int, int, int> getRandomIndex,
         Action<Func<string>> playDynamicPlaylist,
         Action stopMusic
@@ -36,6 +41,7 @@ internal sealed class StrategyMusicController
         this.getPlayerFactionId =
             getPlayerFactionId ?? throw new ArgumentNullException(nameof(getPlayerFactionId));
         this.getTheme = getTheme ?? throw new ArgumentNullException(nameof(getTheme));
+        this.getUIState = getUIState ?? throw new ArgumentNullException(nameof(getUIState));
         this.getRandomIndex =
             getRandomIndex ?? throw new ArgumentNullException(nameof(getRandomIndex));
         this.playDynamicPlaylist =
@@ -52,11 +58,10 @@ internal sealed class StrategyMusicController
     }
 
     /// <summary>
-    /// Clears playlist state and stops strategy music.
+    /// Stops strategy music while preserving the saved rotation position.
     /// </summary>
     internal void Reset()
     {
-        neutralTracksRemaining = 0;
         stopMusic();
     }
 
@@ -72,15 +77,27 @@ internal sealed class StrategyMusicController
                 "The player faction has no strategy music theme."
             );
         ValidateTheme(theme);
-
-        if (neutralTracksRemaining > 0)
-        {
-            neutralTracksRemaining--;
-            return SelectNeutralTrack(theme);
-        }
-
-        neutralTracksRemaining = theme.NeutralTracksBetweenStrategicTracks;
-        return SelectStrategicTrack(theme);
+        UIStateSection state =
+            getUIState()
+            ?? throw new InvalidOperationException("Strategy music has no saved interface state.");
+        int neutralTracksRemaining =
+            state.Values.TryGetValue(_neutralTracksRemainingStateID, out string value)
+            && int.TryParse(
+                value,
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out int saved
+            )
+                ? Math.Clamp(saved, 0, theme.NeutralTracksBetweenStrategicTracks)
+                : 0;
+        string track =
+            neutralTracksRemaining > 0 ? SelectNeutralTrack(theme) : SelectStrategicTrack(theme);
+        state.Values[_neutralTracksRemainingStateID] = (
+            neutralTracksRemaining > 0
+                ? neutralTracksRemaining - 1
+                : theme.NeutralTracksBetweenStrategicTracks
+        ).ToString(CultureInfo.InvariantCulture);
+        return track;
     }
 
     /// <summary>
