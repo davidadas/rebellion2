@@ -214,6 +214,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     public event Action OpenRequested;
     public event Action<string> BrowseFolderRequested;
     public event Action<ContentPackEditorField> ImportRequested;
+    public event Action<
+        ContentPackEditorField,
+        IReadOnlyList<ContentPackEditorField>
+    > ArtworkCutsRequested;
     public event Action SaveRequested;
     public event Action ValidateRequested;
     public event Action<ContentEditorMapLayout> MapLayoutRequested;
@@ -461,6 +465,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         form.CollectionRemoveRequested += ConfirmCollectionRemove;
         form.FieldValidationRequested += ValidateField;
         form.ImportRequested += ImportMedia;
+        form.ArtworkCutsRequested += RequestArtworkCuts;
         form.PreviewRequested += PreviewMedia;
         form.AssetEditRequested += OpenAssetEditor;
         form.SectionRequested += ShowSection;
@@ -544,6 +549,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             form.CollectionRemoveRequested -= ConfirmCollectionRemove;
             form.FieldValidationRequested -= ValidateField;
             form.ImportRequested -= ImportMedia;
+            form.ArtworkCutsRequested -= RequestArtworkCuts;
             form.PreviewRequested -= PreviewMedia;
             form.AssetEditRequested -= OpenAssetEditor;
             form.SectionRequested -= ShowSection;
@@ -1976,6 +1982,36 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     {
         if (CommitFields())
             ImportRequested?.Invoke(field);
+    }
+
+    /// <summary>
+    /// Confirms replacement of selected output fields before requesting generated artwork cuts.
+    /// </summary>
+    /// <param name="source">The large image supplying the generated pixels.</param>
+    /// <param name="targets">The standard output fields to generate.</param>
+    private void RequestArtworkCuts(
+        ContentPackEditorField source,
+        IReadOnlyList<ContentPackEditorField> targets
+    )
+    {
+        if (!CommitFields())
+            return;
+        int replacements = targets.Count(field => !string.IsNullOrWhiteSpace(field.Value));
+        Action generate = () => ArtworkCutsRequested?.Invoke(source, targets);
+        if (replacements == 0)
+        {
+            generate();
+            return;
+        }
+        confirmation.Show(
+            "Generate the standard cuts from the selected large image? This will replace "
+                + replacements
+                + (replacements == 1 ? " current output selection." : " current output selections.")
+                + " Existing files will remain in the pack.",
+            "Generate cuts",
+            generate,
+            title: "Replace artwork outputs"
+        );
     }
 
     /// <summary>

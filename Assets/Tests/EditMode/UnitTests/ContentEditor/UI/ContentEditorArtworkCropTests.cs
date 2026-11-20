@@ -7,6 +7,28 @@ namespace Rebellion.Tests.ContentEditor.UI
     public sealed class ContentEditorArtworkCropTests
     {
         [Test]
+        public void GetCenteredFitRect_WideSourceInsideSquareTarget_PreservesCompleteSource()
+        {
+            RectInt fitted = ContentEditorArtworkCrop.GetCenteredFitRect(
+                new Vector2Int(200, 100),
+                new RectInt(10, 20, 100, 100)
+            );
+
+            Assert.AreEqual(new RectInt(10, 45, 100, 50), fitted);
+        }
+
+        [Test]
+        public void GetCenteredFitRect_SquareSourceInsideWideTarget_CentersCompleteSource()
+        {
+            RectInt fitted = ContentEditorArtworkCrop.GetCenteredFitRect(
+                new Vector2Int(77, 77),
+                new RectInt(10, 20, 200, 80)
+            );
+
+            Assert.AreEqual(new RectInt(70, 20, 80, 80), fitted);
+        }
+
+        [Test]
         public void GetCenteredUvRect_WideSourceForSquareOutput_CropsHorizontalCenter()
         {
             Rect crop = ContentEditorArtworkCrop.GetCenteredUvRect(

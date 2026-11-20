@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Missions;
+using UnityEngine;
 
 /// <summary>
 /// Supplies authoring guidance for serialized fields without changing their data names.
@@ -410,6 +411,11 @@ internal static class ContentPackEditorFieldMetadata
         string kind = field.Record.Kind;
         if (kind == "FactionTheme" && field.Group == nameof(FactionTheme.ArtworkDefaults))
             return "1800 × 900";
+        if (ContentEditorUnitArtworkLayout.IsHeadquartersIcon(field.Record))
+            return
+                member is "DisplayImagePath" or "SmallDisplayImagePath" or "InTransitSmallImagePath"
+                ? "77 × 77"
+                : null;
         if (member is "MessageImagePath" or "EncyclopediaImagePath")
             return "1800 × 900";
         if (member is "CapturedOverlayImagePath" or "InjuredImagePath")
@@ -472,6 +478,34 @@ internal static class ContentPackEditorFieldMetadata
             or "FleetPersonnelBadgeImagePath" => "68 × 50",
             _ => null,
         };
+    }
+
+    /// <summary>
+    /// Parses the established fixed output size for one image field.
+    /// </summary>
+    /// <param name="field">The image field whose authored output size is required.</param>
+    /// <param name="dimensions">Receives the parsed width and height.</param>
+    /// <returns>True when the field has one valid fixed output size.</returns>
+    internal static bool TryGetExpectedImageDimensions(
+        ContentPackEditorField field,
+        out Vector2Int dimensions
+    )
+    {
+        dimensions = default;
+        string expected = GetExpectedImageDimensions(field);
+        if (string.IsNullOrWhiteSpace(expected))
+            return false;
+        string[] values = expected.Split('×');
+        if (
+            values.Length != 2
+            || !int.TryParse(values[0].Trim(), out int width)
+            || !int.TryParse(values[1].Trim(), out int height)
+            || width <= 0
+            || height <= 0
+        )
+            return false;
+        dimensions = new Vector2Int(width, height);
+        return true;
     }
 
     /// <summary>

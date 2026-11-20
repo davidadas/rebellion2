@@ -134,6 +134,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
 
     private readonly List<CollectionEditorView> setupCollections = new();
     private readonly List<Button> setupUnitButtons = new();
+    private Button artworkCutsButton;
     private readonly Dictionary<string, int> setupTasks = new();
     private readonly Dictionary<string, int> setupEntries = new();
     private string selectedFactionArtworkCategory = _defaultFactionArtworkCategory;
@@ -152,6 +153,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
     public event Action<ContentPackEditorField> RemoveMessageRequested;
     public event Action<IReadOnlyList<ContentPackEditorField>> ClearFieldsRequested;
     public event Action<ContentPackEditorField> ImportRequested;
+    public event Action<
+        ContentPackEditorField,
+        IReadOnlyList<ContentPackEditorField>
+    > ArtworkCutsRequested;
     public event Action<ContentPackEditorField, string> PreviewRequested;
     public event Action<ContentPackEditorField> AssetEditRequested;
     public event Action<string> SectionRequested;
@@ -786,6 +791,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     .Where(field =>
                         field.MediaType == ContentPackEditorMediaType.Image
                         && !field.IsMediaDirectory
+                        && ContentEditorUnitArtworkLayout.SupportsMember(
+                            selectedRecord,
+                            field.MemberName
+                        )
                     )
                     .OrderBy(field =>
                         ContentEditorUnitArtworkLayout.GetOrder(
@@ -1023,6 +1032,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 width,
                 ref labelIndex
             );
+            y = PlaceArtworkCutsAction(normal, y, width);
             y = PlaceArtworkOutputGallery(
                 normal,
                 showOutputArtworkBackground ? background : null,
@@ -1134,6 +1144,70 @@ public sealed class ContentEditorFormView : MonoBehaviour
         toggle.SetIsCheckedWithoutNotify(isChecked);
         toggle.gameObject.SetActive(true);
         return y + toggleHeight + 6;
+    }
+
+    /// <summary>
+    /// Offers standard output generation after a usable large unit image has been selected.
+    /// </summary>
+    /// <param name="fields">The unit's ordinary output image fields.</param>
+    /// <param name="y">The first available position in the images card.</param>
+    /// <param name="width">The complete form width.</param>
+    /// <returns>The first position below the optional generation action.</returns>
+    private int PlaceArtworkCutsAction(
+        IReadOnlyList<ContentPackEditorField> fields,
+        int y,
+        float width
+    )
+    {
+        if (!ContentEditorUnitArtworkLayout.SupportsStandardCuts(selectedRecord))
+            return y;
+        ContentPackEditorField source = ContentEditorUnitArtworkLayout
+            .GetGenerationSourceMembers(selectedRecord.Kind)
+            .Select(member =>
+                fields.FirstOrDefault(field =>
+                    field.MemberName == member && ResolveArtworkTexture(field) != null
+                )
+            )
+            .FirstOrDefault(field => field != null);
+        if (source == null)
+            return y;
+        ContentPackEditorField[] targets = fields
+            .Where(field =>
+                field != source
+                && ContentPackEditorFieldMetadata.TryGetExpectedImageDimensions(field, out _)
+            )
+            .ToArray();
+        if (targets.Length == 0)
+            return y;
+
+        artworkCutsButton ??= Instantiate(setupUnitsTemplate, fieldScroll.ScrollArea.ContentRoot);
+        artworkCutsButton.name = "GenerateArtworkCuts";
+        artworkCutsButton.onClick.RemoveAllListeners();
+        ContentPackEditorField capturedSource = source;
+        IReadOnlyList<ContentPackEditorField> capturedTargets = targets;
+        artworkCutsButton.onClick.AddListener(() =>
+        {
+            if (Commit())
+                ArtworkCutsRequested?.Invoke(capturedSource, capturedTargets);
+        });
+        string sourceName = source.MemberName switch
+        {
+            "MessageImagePath" => "message",
+            "DisplayImagePath" => "display",
+            _ => "encyclopedia",
+        };
+        artworkCutsButton.GetComponentInChildren<TMP_Text>().text =
+            "Generate standard cuts from " + sourceName;
+        GetArtworkContentBounds(width, out float contentLeft, out float contentWidth);
+        SetFormRect(
+            (RectTransform)artworkCutsButton.transform,
+            contentLeft,
+            y,
+            Mathf.Min(380, contentWidth),
+            34
+        );
+        artworkCutsButton.gameObject.SetActive(true);
+        return y + 50;
     }
 
     /// <summary>
@@ -1504,9 +1578,9 @@ public sealed class ContentEditorFormView : MonoBehaviour
             1,
             fields.Count
         );
-        int columnWidth = Mathf.Max(
-            1,
-            Mathf.FloorToInt((contentWidth - gap * (columns - 1)) / columns)
+        int columnWidth = Mathf.Min(
+            320,
+            Mathf.Max(1, Mathf.FloorToInt((contentWidth - gap * (columns - 1)) / columns))
         );
         y += 4;
         for (int rowStart = 0; rowStart < fields.Count; rowStart += columns)
@@ -1768,6 +1842,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             name + "-Background",
             background,
             target,
+            false,
             x,
             y,
             width,
@@ -1778,6 +1853,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             name + "-Entity",
             entity,
             target,
+            ContentEditorUnitArtworkLayout.IsHeadquartersIcon(selectedRecord),
             x,
             y,
             width,
@@ -1790,6 +1866,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 name + "-Overlay-" + index,
                 overlays[index],
                 target,
+                ContentEditorUnitArtworkLayout.IsHeadquartersIcon(selectedRecord),
                 x,
                 y,
                 width,
@@ -1800,11 +1877,12 @@ public sealed class ContentEditorFormView : MonoBehaviour
     }
 
     /// <summary>
-    /// Places one optional texture across a composition frame using the output's centered cut.
+    /// Places one optional texture within a composition frame using its established fit policy.
     /// </summary>
     /// <param name="name">The stable layer name.</param>
     /// <param name="texture">The optional layer texture.</param>
     /// <param name="target">The output dimensions represented by the composition.</param>
+    /// <param name="fitEntireTexture">Whether the complete source must remain visible.</param>
     /// <param name="x">The left edge.</param>
     /// <param name="y">The top edge.</param>
     /// <param name="width">The displayed width.</param>
@@ -1814,6 +1892,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         string name,
         Texture2D texture,
         Vector2Int target,
+        bool fitEntireTexture,
         int x,
         int y,
         int width,
@@ -1826,10 +1905,18 @@ public sealed class ContentEditorFormView : MonoBehaviour
         RawImage image = GetArtworkPreviewImage(ref imageIndex, name);
         image.texture = texture;
         image.color = Color.white;
-        image.uvRect = ContentEditorArtworkCrop.GetCenteredUvRect(
-            new Vector2Int(texture.width, texture.height),
-            target
-        );
+        Vector2Int source = new(texture.width, texture.height);
+        if (fitEntireTexture)
+        {
+            image.uvRect = new Rect(0, 0, 1, 1);
+            RectInt fitted = ContentEditorArtworkCrop.GetCenteredFitRect(
+                source,
+                new RectInt(x, y, width, height)
+            );
+            SetFormRect(image.rectTransform, fitted.x, fitted.y, fitted.width, fitted.height);
+            return;
+        }
+        image.uvRect = ContentEditorArtworkCrop.GetCenteredUvRect(source, target);
         SetFormRect(image.rectTransform, x, y, width, height);
     }
 
@@ -1962,22 +2049,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private static bool TryGetArtworkDimensions(
         ContentPackEditorField field,
         out Vector2Int dimensions
-    )
-    {
-        dimensions = default;
-        string expected = ContentPackEditorFieldMetadata.GetExpectedImageDimensions(field);
-        if (string.IsNullOrWhiteSpace(expected))
-            return false;
-        string[] values = expected.Split('×');
-        if (
-            values.Length != 2
-            || !int.TryParse(values[0].Trim(), out int width)
-            || !int.TryParse(values[1].Trim(), out int height)
-        )
-            return false;
-        dimensions = new Vector2Int(width, height);
-        return true;
-    }
+    ) => ContentPackEditorFieldMetadata.TryGetExpectedImageDimensions(field, out dimensions);
 
     /// <summary>
     /// Resolves one authored artwork field without allowing a malformed path to break the form.
@@ -3624,6 +3696,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private void ClearSetupControls()
     {
         generationTask.gameObject.SetActive(false);
+        if (artworkCutsButton != null)
+        {
+            artworkCutsButton.onClick.RemoveAllListeners();
+            artworkCutsButton.gameObject.SetActive(false);
+        }
         foreach (var view in setupCollections)
             view.Clear();
         foreach (var button in setupUnitButtons)

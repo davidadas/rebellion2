@@ -1283,7 +1283,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 view.GetComponentsInChildren<ContentEditorFieldView>();
 
             CollectionAssert.IsSubsetOf(
-                ContentEditorUnitArtworkLayout.GetMembers(kind),
+                ContentEditorUnitArtworkLayout.GetMembers(unit),
                 fields.Select(field => field.Field.MemberName).ToArray()
             );
             Assert.IsTrue(fields.All(field => field.Field.Record.Element == unit.Element));
@@ -1325,7 +1325,13 @@ namespace Rebellion.Tests.ContentEditor.UI
             ContentPackEditorRecord unit = project
                 .GetCatalogs()
                 .SelectMany(catalog => catalog.Records)
-                .First(record => record.Kind == kind);
+                .First(record =>
+                    record.Kind == kind
+                    && (
+                        kind != "Building"
+                        || !ContentEditorUnitArtworkLayout.IsHeadquartersIcon(record)
+                    )
+                );
             SelectRecord(unit);
             RenderSection("Artwork");
             Canvas.ForceUpdateCanvases();
@@ -1435,6 +1441,115 @@ namespace Rebellion.Tests.ContentEditor.UI
                     .GetComponentsInChildren<TMP_Text>()
                     .Any(label => label.text is "display" or "encyclopedia")
             );
+        }
+
+        [Test]
+        public void Render_UnitArtworkWithLargeImage_OffersGenerationForOrdinaryOutputs()
+        {
+            ContentPackEditorRecord unit = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Officer" && record.Catalog.Faction == "Alliance");
+            ContentPackEditorField requestedSource = null;
+            IReadOnlyList<ContentPackEditorField> requestedTargets = null;
+            view.ArtworkCutsRequested += (source, targets) =>
+            {
+                requestedSource = source;
+                requestedTargets = targets;
+            };
+            SelectRecord(unit);
+            RenderSection("Artwork");
+
+            Button action = view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "GenerateArtworkCuts");
+            action.onClick.Invoke();
+
+            Assert.AreEqual(
+                "Generate standard cuts from message",
+                action.GetComponentInChildren<TMP_Text>().text
+            );
+            Assert.AreEqual("MessageImagePath", requestedSource.MemberName);
+            CollectionAssert.AreEquivalent(
+                new[] { "DisplayImagePath", "SmallDisplayImagePath", "EncyclopediaImagePath" },
+                requestedTargets.Select(field => field.MemberName).ToArray()
+            );
+        }
+
+        [Test]
+        public void Render_ShipArtworkWithoutMessage_UsesTransparentDisplayAsGenerationSource()
+        {
+            ContentPackEditorRecord unit = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record =>
+                    record.Kind == "CapitalShip" && record.Catalog.Faction == "Alliance"
+                );
+            ContentPackEditorField requestedSource = null;
+            IReadOnlyList<ContentPackEditorField> requestedTargets = null;
+            view.ArtworkCutsRequested += (source, targets) =>
+            {
+                requestedSource = source;
+                requestedTargets = targets;
+            };
+            SelectRecord(unit);
+            RenderSection("Artwork");
+
+            Button action = view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "GenerateArtworkCuts");
+            action.onClick.Invoke();
+
+            Assert.AreEqual(
+                "Generate standard cuts from display",
+                action.GetComponentInChildren<TMP_Text>().text
+            );
+            Assert.AreEqual("DisplayImagePath", requestedSource.MemberName);
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    "SmallDisplayImagePath",
+                    "BattleResultImagePath",
+                    "MessageImagePath",
+                    "EncyclopediaImagePath",
+                },
+                requestedTargets.Select(field => field.MemberName).ToArray()
+            );
+        }
+
+        [TestCase("SpecialForce")]
+        [TestCase("Building")]
+        [TestCase("CapitalShip")]
+        [TestCase("Starfighter")]
+        public void Render_NonOfficerArtworkWithMessage_UsesDisplayAsGenerationSource(string kind)
+        {
+            ContentPackEditorRecord unit = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record =>
+                    record.Kind == kind
+                    && (
+                        kind != "Building"
+                        || !ContentEditorUnitArtworkLayout.IsHeadquartersIcon(record)
+                    )
+                );
+            ContentPackEditorField display = unit.GetField("DisplayImagePath");
+            ContentPackEditorField message = unit.GetField("MessageImagePath");
+            if (string.IsNullOrWhiteSpace(message.Value))
+                project.SetField(message, display.Value);
+            ContentPackEditorField requestedSource = null;
+            view.ArtworkCutsRequested += (source, _) => requestedSource = source;
+            SelectRecord(unit);
+            RenderSection("Artwork");
+
+            Button action = view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "GenerateArtworkCuts");
+            action.onClick.Invoke();
+
+            Assert.AreEqual(
+                "Generate standard cuts from display",
+                action.GetComponentInChildren<TMP_Text>().text
+            );
+            Assert.AreEqual("DisplayImagePath", requestedSource.MemberName);
+            Assert.AreSame(display.XmlElement, requestedSource.XmlElement);
         }
 
         [Test]
@@ -1619,6 +1734,35 @@ namespace Rebellion.Tests.ContentEditor.UI
                     .Single(label => label.transform.parent.GetComponent<Button>() != null)
                     .text
             );
+        }
+
+        [Test]
+        public void Render_UnitArtworkMissingOutputs_PacksCompactActionsFromTheLeft()
+        {
+            ContentPackEditorRecord unit = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Regiment" && record.Catalog.Faction == "Alliance");
+            SelectRecord(unit);
+            RenderSection("Artwork");
+
+            RectInt message = UILayout.GetSourceRect(
+                (RectTransform)
+                    view.GetComponentsInChildren<ContentEditorFieldView>()
+                        .Single(field => field.Field.MemberName == "MessageImagePath")
+                        .transform
+            );
+            RectInt small = UILayout.GetSourceRect(
+                (RectTransform)
+                    view.GetComponentsInChildren<ContentEditorFieldView>()
+                        .Single(field => field.Field.MemberName == "SmallDisplayImagePath")
+                        .transform
+            );
+
+            Assert.AreEqual(message.y, small.y);
+            Assert.LessOrEqual(message.width, 320);
+            Assert.LessOrEqual(small.width, 320);
+            Assert.AreEqual(16, small.x - message.xMax);
         }
 
         [Test]
@@ -1864,6 +2008,57 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.IsTrue(
                 view.GetComponentsInChildren<TMP_Text>()
                     .Any(label => label.text.StartsWith("Display (", StringComparison.Ordinal))
+            );
+        }
+
+        [Test]
+        public void Render_HeadquartersArtwork_ShowsOnlyCompleteIconUses()
+        {
+            ContentPackEditorRecord headquarters = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(ContentEditorUnitArtworkLayout.IsHeadquartersIcon);
+            ContentPackEditorRecord facility = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record =>
+                    record.Kind == "Building"
+                    && !ContentEditorUnitArtworkLayout.IsHeadquartersIcon(record)
+                );
+            project.SetField(
+                headquarters.GetField("DisplayImagePath"),
+                facility.GetField("DisplayImagePath").Value
+            );
+            SelectRecord(headquarters);
+            RenderSection("Artwork");
+
+            ContentEditorFieldView[] fields =
+                view.GetComponentsInChildren<ContentEditorFieldView>();
+            CollectionAssert.AreEquivalent(
+                new[] { "DisplayImagePath", "SmallDisplayImagePath", "InTransitSmallImagePath" },
+                fields.Select(field => field.Field.MemberName).ToArray()
+            );
+            Assert.IsFalse(
+                view.GetComponentsInChildren<Button>()
+                    .Any(button => button.name == "GenerateArtworkCuts")
+            );
+            RawImage entity = view.GetComponentsInChildren<RawImage>()
+                .Single(image =>
+                    image.name.EndsWith("Output-DisplayImagePath-Entity", StringComparison.Ordinal)
+                );
+            RawImage backing = view.GetComponentsInChildren<RawImage>()
+                .Single(image =>
+                    image.name.EndsWith("Output-DisplayImagePath-Backing", StringComparison.Ordinal)
+                );
+            RectInt entityBounds = UILayout.GetSourceRect(entity.rectTransform);
+            RectInt backingBounds = UILayout.GetSourceRect(backing.rectTransform);
+
+            Assert.AreEqual(new Rect(0, 0, 1, 1), entity.uvRect);
+            Assert.AreEqual(backingBounds.width, entityBounds.width);
+            Assert.Less(entityBounds.height, backingBounds.height);
+            Assert.AreEqual(
+                backingBounds.y + (backingBounds.height - entityBounds.height) / 2,
+                entityBounds.y
             );
         }
 
@@ -2280,6 +2475,109 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .GetComponent<ContentEditorWindowControlHover>()
                 ?.OnPointerEnter(new PointerEventData(null));
             Assert.AreSame(disabledTexture, personnelTab.texture);
+        }
+
+        [TestCase("Alliance")]
+        [TestCase("Empire")]
+        public void Render_InstalledFactionDisabledPreviews_OnlyShowFormsWithVisibleDisabledArtwork(
+            string faction
+        )
+        {
+            project = ContentPackEditorStorage.Open(
+                TestContent.Pack.ContentRootPath,
+                TestContent.Pack.Definition.ID
+            );
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("factions/" + faction));
+            RenderSection("Interfaces");
+            TMP_Dropdown surfaces = view.GetComponentsInChildren<TMP_Dropdown>()
+                .Single(dropdown => dropdown.name == "ArtworkViewDropdown");
+            ContentPackEditorRecord theme = selectedPage.RelatedRecords.Single(record =>
+                record.Kind == "FactionTheme"
+            );
+            string[] configuredCategories = theme
+                .GetFields()
+                .Where(field => field.MemberName == "DisabledImagePath")
+                .Select(ContentEditorContentSections.FactionArtworkCategory)
+                .Distinct()
+                .OrderBy(category => category, StringComparer.Ordinal)
+                .ToArray();
+            List<string> visibleDisabledCategories = new();
+
+            foreach (string category in configuredCategories)
+            {
+                SelectArtworkSurface(category);
+                ContentEditorArtworkWindowPreview disabled =
+                    view.GetComponentsInChildren<ContentEditorArtworkWindowPreview>(true)
+                        .Single(preview => preview.name == "ArtworkDisabledWindowPreview");
+                if (!disabled.gameObject.activeInHierarchy)
+                    continue;
+                visibleDisabledCategories.Add(category);
+                Assert.IsTrue(
+                    disabled.RenderedFields.Any(field => field.MemberName == "DisabledImagePath"),
+                    category
+                );
+                Assert.IsTrue(
+                    disabled
+                        .GetComponentsInChildren<ContentEditorArtworkEditTarget>()
+                        .SelectMany(target => target.Fields)
+                        .Any(field => field.MemberName == "DisabledImagePath"),
+                    category
+                );
+            }
+
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    "Combat",
+                    "Defense window",
+                    "Facilities and construction",
+                    "Messages",
+                    "Missions",
+                },
+                configuredCategories
+            );
+            CollectionAssert.AreEquivalent(
+                new[] { "Combat", "Defense window", "Facilities and construction", "Messages" },
+                visibleDisabledCategories
+            );
+        }
+
+        [Test]
+        public void Render_FactionArtworkDisabledStateMatchingDefault_DoesNotDuplicateTheWindow()
+        {
+            ContentPackEditorRecord theme = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record =>
+                    record.Kind == "FactionTheme" && record.Catalog.Faction == "Alliance"
+                );
+            theme.Element.Add(
+                XElement.Parse(
+                    "<StrategyWindows><Defense><PersonnelTab>"
+                        + "<ActiveImagePath>Pack/Factions/Alliance/Strategy/UI/Windows/Defense/defense-window-tab-personnel-active-tab</ActiveImagePath>"
+                        + "<InactiveImagePath>Pack/Factions/Alliance/Strategy/UI/Windows/Defense/defense-tab</InactiveImagePath>"
+                        + "<DisabledImagePath>Pack/Factions/Alliance/Strategy/UI/Windows/Defense/defense-window-tab-personnel-active-tab</DisabledImagePath>"
+                        + "</PersonnelTab></Defense></StrategyWindows>"
+                )
+            );
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("factions/Alliance"));
+            RenderSection("Interfaces");
+            SelectArtworkSurface("Defense window");
+
+            ContentEditorArtworkWindowPreview disabled =
+                view.GetComponentsInChildren<ContentEditorArtworkWindowPreview>(true)
+                    .Single(preview => preview.name == "ArtworkDisabledWindowPreview");
+
+            Assert.IsFalse(disabled.gameObject.activeInHierarchy);
+            Assert.AreEqual(1, view.GetComponentsInChildren<DefenseWindowView>().Length);
+            Assert.IsFalse(
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Any(label => label.text is "Default" or "Disabled")
+            );
         }
 
         [Test]

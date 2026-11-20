@@ -66,7 +66,14 @@ namespace Rebellion.Tests.ContentEditor
                     ContentPackEditorRecord record = project
                         .GetCatalogs()
                         .SelectMany(catalog => catalog.Records)
-                        .First(candidate => candidate.Kind == item.Kind);
+                        .First(candidate =>
+                            candidate.Kind == item.Kind
+                            && (
+                                item.Kind != "Building"
+                                || candidate.Element.Element("BuildingType")?.Value
+                                    != "Headquarters"
+                            )
+                        );
                     Assert.AreEqual(
                         item.Expected,
                         ContentPackEditorFieldMetadata.GetExpectedImageDimensions(
@@ -75,6 +82,18 @@ namespace Rebellion.Tests.ContentEditor
                         item.Kind + "." + item.Member
                     );
                 }
+                ContentPackEditorRecord headquarters = project
+                    .GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Single(candidate =>
+                        ContentEditorUnitArtworkLayout.IsHeadquartersIcon(candidate)
+                    );
+                Assert.AreEqual(
+                    "77 × 77",
+                    ContentPackEditorFieldMetadata.GetExpectedImageDimensions(
+                        headquarters.GetField("DisplayImagePath")
+                    )
+                );
             }
             finally
             {

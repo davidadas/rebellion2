@@ -121,6 +121,39 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void WriteGeneratedPng_UnitOutput_UsesStablePackPathAndOverwritesIt()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Starfighter")
+                .GetField("DisplayImagePath");
+
+            string first = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                new byte[] { 1, 2, 3 }
+            );
+            string second = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                new byte[] { 4, 5 }
+            );
+
+            Assert.AreEqual(first, second);
+            StringAssert.StartsWith(
+                "Pack/Assets/Generated/starfighter/" + field.Record.ID.ToLowerInvariant() + "/",
+                first
+            );
+            StringAssert.EndsWith("/display.png", first);
+            CollectionAssert.AreEqual(
+                new byte[] { 4, 5 },
+                File.ReadAllBytes(Path.Combine(project.PackRootPath, first[5..]))
+            );
+        }
+
+        [Test]
         public void Create_DefaultLocation_UsesModsAndCanBeResolvedByTheGame()
         {
             ContentPackEditorProject project = CreateWorkingProject();

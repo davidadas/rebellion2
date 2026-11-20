@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 /// <summary>
 /// Defines the persisted output and state-specific artwork fields shown for each unit.
@@ -7,6 +8,25 @@ using System.Collections.Generic;
 internal static class ContentEditorUnitArtworkLayout
 {
     internal const string BackgroundMember = "BackgroundImagePath";
+
+    private static readonly IReadOnlyList<string> _officerGenerationSources = new[]
+    {
+        "MessageImagePath",
+        "DisplayImagePath",
+        "EncyclopediaImagePath",
+    };
+    private static readonly IReadOnlyList<string> _unitGenerationSources = new[]
+    {
+        "DisplayImagePath",
+        "MessageImagePath",
+        "EncyclopediaImagePath",
+    };
+    private static readonly IReadOnlyList<string> _headquartersIconMembers = new[]
+    {
+        "DisplayImagePath",
+        "SmallDisplayImagePath",
+        "InTransitSmallImagePath",
+    };
 
     private static readonly IReadOnlyDictionary<string, string[]> _membersByKind = new Dictionary<
         string,
@@ -62,6 +82,44 @@ internal static class ContentEditorUnitArtworkLayout
             : Array.Empty<string>();
 
     /// <summary>
+    /// Gets the artwork fields supported by one concrete unit record.
+    /// </summary>
+    /// <param name="record">The unit whose artwork workflow is being rendered.</param>
+    /// <returns>The ordered member names for the record's actual presentation.</returns>
+    internal static IReadOnlyList<string> GetMembers(ContentPackEditorRecord record) =>
+        IsHeadquartersIcon(record) ? _headquartersIconMembers : GetMembers(record?.Kind);
+
+    /// <summary>
+    /// Reports whether one unit member belongs in its concrete artwork workflow.
+    /// </summary>
+    /// <param name="record">The unit whose artwork workflow is being rendered.</param>
+    /// <param name="member">The serialized image member.</param>
+    /// <returns>True when the member has an established use for the unit.</returns>
+    internal static bool SupportsMember(ContentPackEditorRecord record, string member) =>
+        GetMembers(record).Contains(member);
+
+    /// <summary>
+    /// Reports whether a unit uses one complete icon instead of crop-based unit artwork.
+    /// </summary>
+    /// <param name="record">The unit whose artwork workflow is being rendered.</param>
+    /// <returns>True for the headquarters icon record.</returns>
+    internal static bool IsHeadquartersIcon(ContentPackEditorRecord record) =>
+        record?.Kind == "Building"
+        && string.Equals(
+            record.Element.Element("BuildingType")?.Value,
+            "Headquarters",
+            StringComparison.Ordinal
+        );
+
+    /// <summary>
+    /// Reports whether standard rescaled output cuts apply to one concrete unit.
+    /// </summary>
+    /// <param name="record">The unit whose artwork workflow is being rendered.</param>
+    /// <returns>False for icon-only records and true for ordinary unit artwork.</returns>
+    internal static bool SupportsStandardCuts(ContentPackEditorRecord record) =>
+        !IsHeadquartersIcon(record);
+
+    /// <summary>
     /// Gets the stable workflow position of one artwork member.
     /// </summary>
     /// <param name="kind">The serialized unit type.</param>
@@ -75,6 +133,14 @@ internal static class ContentEditorUnitArtworkLayout
                 return index;
         return int.MaxValue;
     }
+
+    /// <summary>
+    /// Gets the canonical source preference for deterministic standard artwork cuts.
+    /// </summary>
+    /// <param name="kind">The serialized unit type.</param>
+    /// <returns>The ordered source members, from the established transparent source to fallbacks.</returns>
+    internal static IReadOnlyList<string> GetGenerationSourceMembers(string kind) =>
+        kind == "Officer" ? _officerGenerationSources : _unitGenerationSources;
 
     /// <summary>
     /// Reports whether an output requires separately authored state artwork instead of a normal cut.

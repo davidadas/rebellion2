@@ -43,6 +43,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
         view.OpenRequested += ChooseOpenPack;
         view.BrowseFolderRequested += BrowsePackFolder;
         view.ImportRequested += ImportMedia;
+        view.ArtworkCutsRequested += GenerateArtworkCuts;
         view.SaveRequested += SavePack;
         view.ExportRequested += ExportPack;
         view.ValidateRequested += ValidatePack;
@@ -139,6 +140,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             view.OpenRequested -= ChooseOpenPack;
             view.BrowseFolderRequested -= BrowsePackFolder;
             view.ImportRequested -= ImportMedia;
+            view.ArtworkCutsRequested -= GenerateArtworkCuts;
             view.SaveRequested -= SavePack;
             view.ExportRequested -= ExportPack;
             view.ValidateRequested -= ValidatePack;
@@ -421,6 +423,75 @@ public sealed class ContentPackEditorController : MonoBehaviour
         else
             project.SetField(field, address);
         workspace.RenderProject(project, assets);
+    }
+
+    /// <summary>
+    /// Generates every standard unit output from one selected large image and refreshes media.
+    /// </summary>
+    /// <param name="source">The large source image field.</param>
+    /// <param name="targets">The ordinary output fields to replace with generated PNGs.</param>
+    private void GenerateArtworkCuts(
+        ContentPackEditorField source,
+        IReadOnlyList<ContentPackEditorField> targets
+    )
+    {
+        RunOperation(() =>
+        {
+            if (project == null || source == null || targets == null || targets.Count == 0)
+                return;
+            project.RequireOwnedRecord(source.Record);
+            if (string.IsNullOrWhiteSpace(source.Value))
+                throw new InvalidOperationException("Choose a large source image first.");
+            string sourceAddress = source.GetMediaAddress(source.Value);
+            string sourcePath =
+                assets.ResolveFile(sourceAddress, ".png")
+                ?? assets.ResolveFile(sourceAddress, ".jpg")
+                ?? assets.ResolveFile(sourceAddress, ".jpeg")
+                ?? throw new FileNotFoundException(
+                    "The selected source image could not be found.",
+                    sourceAddress
+                );
+
+            var outputs = targets
+                .Distinct()
+                .Select(field =>
+                {
+                    project.RequireOwnedRecord(field.Record);
+                    if (field.Record.Element != source.Record.Element)
+                        throw new ArgumentException("Artwork outputs must belong to one unit.");
+                    if (
+                        field == source
+                        || field.MemberName == ContentEditorUnitArtworkLayout.BackgroundMember
+                        || ContentEditorUnitArtworkLayout.IsStateSpecific(field.MemberName)
+                        || !ContentPackEditorFieldMetadata.TryGetExpectedImageDimensions(
+                            field,
+                            out Vector2Int dimensions
+                        )
+                    )
+                        throw new ArgumentException("Choose ordinary fixed-size artwork outputs.");
+                    return new { Field = field, Dimensions = dimensions };
+                })
+                .ToArray();
+            IReadOnlyDictionary<Vector2Int, byte[]> cuts =
+                ContentEditorArtworkCutGenerator.GeneratePngCuts(
+                    sourcePath,
+                    outputs.Select(output => output.Dimensions),
+                    source.MemberName == "DisplayImagePath"
+                );
+            using (project.BeginEdit("Generate standard artwork cuts"))
+            {
+                foreach (var output in outputs)
+                {
+                    string value = ContentPackEditorStorage.WriteGeneratedPng(
+                        project,
+                        output.Field,
+                        cuts[output.Dimensions]
+                    );
+                    project.SetField(output.Field, value);
+                }
+            }
+            OpenProject(project);
+        });
     }
 
     /// <summary>

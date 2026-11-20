@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Text;
 
 /// <summary>
 /// Persists authored pack documents and imported files without owning editing or presentation state.
@@ -465,6 +466,120 @@ public static class ContentPackEditorStorage
         {
             File.Copy(source, temporary);
             File.Replace(temporary, target, null);
+        }
+        finally
+        {
+            if (File.Exists(temporary))
+                File.Delete(temporary);
+        }
+    }
+
+    /// <summary>
+    /// Writes a generated PNG to the field's stable pack-owned output and returns its stored value.
+    /// </summary>
+    /// <param name="project">The project receiving the generated image.</param>
+    /// <param name="field">The unit image field represented by the output.</param>
+    /// <param name="pngBytes">The complete encoded PNG file.</param>
+    /// <returns>The pack-scoped or media-root-relative value to store in the field.</returns>
+    public static string WriteGeneratedPng(
+        ContentPackEditorProject project,
+        ContentPackEditorField field,
+        byte[] pngBytes
+    )
+    {
+        if (project == null)
+            throw new ArgumentNullException(nameof(project));
+        if (field == null)
+            throw new ArgumentNullException(nameof(field));
+        if (pngBytes == null || pngBytes.Length == 0)
+            throw new ArgumentException("Generated image data is required.", nameof(pngBytes));
+        project.RequireOwnedRecord(field.Record);
+        if (
+            field.MediaType != ContentPackEditorMediaType.Image
+            || field.IsMediaDirectory
+            || field.IsList
+        )
+            throw new ArgumentException("Choose one image field.", nameof(field));
+
+        string root = field.MediaRoot?.TrimEnd('/') ?? "Pack/Assets";
+        if (!root.StartsWith("Pack/", StringComparison.Ordinal))
+            throw new IOException("Generated images require a writable pack media folder.");
+        string address = string.Join(
+            "/",
+            root,
+            "Generated",
+            GetGeneratedPathSegment(field.Record.Kind),
+            GetGeneratedPathSegment(field.Record.ID),
+            GetGeneratedPathSegment(GetGeneratedMemberName(field.MemberName)) + ".png"
+        );
+        string target = Path.GetFullPath(address[5..], project.PackRootPath);
+        ContentEditorPaths.VerifyWritePath(project, target);
+        Directory.CreateDirectory(Path.GetDirectoryName(target));
+        WriteBytesAtomically(target, pngBytes);
+        return field.MediaRoot == null ? address : address[(root.Length + 1)..];
+    }
+
+    /// <summary>
+    /// Removes the conventional image suffix from a generated output member name.
+    /// </summary>
+    /// <param name="member">The serialized image member.</param>
+    /// <returns>The semantic portion used by the generated filename.</returns>
+    private static string GetGeneratedMemberName(string member)
+    {
+        const string suffix = "ImagePath";
+        return member.EndsWith(suffix, StringComparison.Ordinal)
+            ? member[..^suffix.Length]
+            : member;
+    }
+
+    /// <summary>
+    /// Converts an authored identifier into a stable readable directory or filename segment.
+    /// </summary>
+    /// <param name="value">The authored identifier.</param>
+    /// <returns>A lowercase path-safe segment.</returns>
+    private static string GetGeneratedPathSegment(string value)
+    {
+        StringBuilder result = new StringBuilder();
+        bool separator = false;
+        char previous = '\0';
+        foreach (char character in value ?? string.Empty)
+        {
+            if (!char.IsLetterOrDigit(character))
+            {
+                separator = result.Length > 0;
+                continue;
+            }
+            if (
+                result.Length > 0
+                && (separator || char.IsUpper(character) && char.IsLower(previous))
+                && result[^1] != '-'
+            )
+                result.Append('-');
+            result.Append(char.ToLowerInvariant(character));
+            separator = false;
+            previous = character;
+        }
+        return result.Length == 0 ? "item" : result.ToString();
+    }
+
+    /// <summary>
+    /// Replaces or creates one generated file without exposing a partially written image.
+    /// </summary>
+    /// <param name="target">The verified absolute pack path.</param>
+    /// <param name="bytes">The complete encoded file.</param>
+    private static void WriteBytesAtomically(string target, byte[] bytes)
+    {
+        string temporary = Path.Combine(
+            Path.GetDirectoryName(target),
+            "." + Path.GetFileName(target) + "." + Guid.NewGuid().ToString("N") + ".tmp"
+        );
+        try
+        {
+            File.WriteAllBytes(temporary, bytes);
+            if (File.Exists(target))
+                File.Replace(temporary, target, null);
+            else
+                File.Move(temporary, target);
         }
         finally
         {

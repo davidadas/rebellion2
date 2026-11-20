@@ -111,7 +111,11 @@ public sealed class ContentEditorArtworkWindowPreview
                     surfaceFields,
                     state
                 );
-                return stateField != field && ResolveFieldTexture(stateField, assets) != null;
+                Texture2D stateTexture = ResolveFieldTexture(stateField, assets);
+                Texture2D defaultTexture = ResolveFieldTexture(field, assets);
+                return stateField != field
+                    && stateTexture != null
+                    && stateTexture != defaultTexture;
             });
     }
 
