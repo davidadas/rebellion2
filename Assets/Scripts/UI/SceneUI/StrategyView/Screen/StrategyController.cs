@@ -343,6 +343,7 @@ public sealed class StrategyController
                 ?? Array.Empty<Planet>(),
             () => uiContext?.GetPlayerFactionInstanceID(),
             () => uiContext?.GetPlayerFactionTheme()?.StrategyMusic,
+            GetStrategyUIState,
             musicRandom.Next,
             audioManager.PlayDynamicPlaylist,
             audioManager.StopMusic
