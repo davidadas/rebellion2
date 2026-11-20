@@ -7,6 +7,7 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Gameplay.GameEvents;
 using Rebellion.Gameplay.Scripting;
+using Rebellion.Tactical;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Random;
 
@@ -50,7 +51,8 @@ namespace Rebellion.Gameplay
             GameDataCatalog gameData,
             IRandomNumberProvider random,
             MessageFactory messageFactory,
-            GameResultBus results
+            GameResultBus results,
+            TacticalCombatAudioFactory createTacticalAudio
         )
         {
             if (game == null)
@@ -63,6 +65,8 @@ namespace Rebellion.Gameplay
                 throw new ArgumentNullException(nameof(messageFactory));
             if (results == null)
                 throw new ArgumentNullException(nameof(results));
+            if (createTacticalAudio == null)
+                throw new ArgumentNullException(nameof(createTacticalAudio));
 
             ServiceContainer services = new();
             services.AddSingletonInstance(game);
@@ -152,7 +156,8 @@ namespace Rebellion.Gameplay
                 locator.GetService<GameRoot>(),
                 locator.GetService<GameDataCatalog>().TacticalCombat,
                 locator.GetService<SpaceCombatQueries>(),
-                TacticalCombatPlanner.Attach
+                TacticalCombatPlanner.Attach,
+                createTacticalAudio
             ));
             services.AddSingleton<SpaceCombatCommands>(locator => new SpaceCombatCommands(
                 locator.GetService<GameRoot>(),

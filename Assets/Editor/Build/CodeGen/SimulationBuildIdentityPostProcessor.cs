@@ -21,12 +21,12 @@ internal sealed class SimulationBuildIdentityPostProcessor : ILPostProcessor
     public override ILPostProcessor GetInstance() => this;
 
     /// <summary>
-    /// Selects the assembly containing gameplay and multiplayer admission.
+    /// Selects the assembly that owns the serialized game model used for compatibility admission.
     /// </summary>
     /// <param name="compiledAssembly">The compiler output under consideration.</param>
-    /// <returns>True for the game assembly.</returns>
+    /// <returns>True for the game-model assembly.</returns>
     public override bool WillProcess(ICompiledAssembly compiledAssembly) =>
-        compiledAssembly.Name == "GameAssembly";
+        compiledAssembly.Name == "Rebellion.Game";
 
     /// <summary>
     /// Writes the source identity into assembly metadata while preserving debugging symbols.
@@ -56,9 +56,6 @@ internal sealed class SimulationBuildIdentityPostProcessor : ILPostProcessor
             }
         );
         ModuleDefinition module = assembly.MainModule;
-        TypeReference attributeType = module
-            .GetTypeReferences()
-            .Single(type => type.FullName == _attributeTypeName);
         for (int index = assembly.CustomAttributes.Count - 1; index >= 0; index--)
         {
             CustomAttribute attribute = assembly.CustomAttributes[index];
@@ -69,6 +66,12 @@ internal sealed class SimulationBuildIdentityPostProcessor : ILPostProcessor
             )
                 assembly.CustomAttributes.RemoveAt(index);
         }
+        TypeReference attributeType = new(
+            "System.Reflection",
+            "AssemblyMetadataAttribute",
+            module,
+            module.TypeSystem.CoreLibrary
+        );
         MethodReference constructor = new(".ctor", module.TypeSystem.Void, attributeType)
         {
             HasThis = true,

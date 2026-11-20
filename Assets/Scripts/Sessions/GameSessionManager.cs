@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Gameplay;
 using Rebellion.PlayerRequests;
+using Rebellion.Tactical;
 using Rebellion.Util.Logging;
 using UnityEngine;
 
@@ -20,6 +21,7 @@ public sealed class GameSessionManager
     private readonly IAnalyticsEventSink _analyticsSink;
     private readonly Func<int> _getFrameCount;
     private readonly Func<Task> _presentSaveIndicator;
+    private readonly TacticalCombatAudioFactory _createTacticalAudio;
     private GameSession _activeGameSession;
     private GameManager _gameManager;
     private CampaignAnalyticsTracker _campaignAnalyticsTracker;
@@ -99,13 +101,15 @@ public sealed class GameSessionManager
     /// <param name="analyticsSink">Receives consented campaign analytics.</param>
     /// <param name="getFrameCount">Returns the presented frame number, or null to use Unity's frame count.</param>
     /// <param name="presentSaveIndicator">Presents local-save feedback before capture, or null for immediate headless execution.</param>
+    /// <param name="createTacticalAudio">Creates the presentation-owned tactical audio boundary.</param>
     internal GameSessionManager(
         ContentPack contentPack,
         SaveGameManager saveGameManager = null,
         Func<UserGameplaySettings> getGameplaySettings = null,
         IAnalyticsEventSink analyticsSink = null,
         Func<int> getFrameCount = null,
-        Func<Task> presentSaveIndicator = null
+        Func<Task> presentSaveIndicator = null,
+        TacticalCombatAudioFactory createTacticalAudio = null
     )
     {
         _contentPack = contentPack ?? throw new ArgumentNullException(nameof(contentPack));
@@ -115,6 +119,7 @@ public sealed class GameSessionManager
         _analyticsSink = analyticsSink;
         _getFrameCount = getFrameCount ?? (() => Time.frameCount);
         _presentSaveIndicator = presentSaveIndicator ?? (() => Task.CompletedTask);
+        _createTacticalAudio = createTacticalAudio;
     }
 
     /// <summary>
@@ -200,7 +205,8 @@ public sealed class GameSessionManager
         GameSession session = new GameSession(
             game,
             _contentPack.GameData,
-            () => _pendingAutosaveSettings == null && _pendingSaveCaptures == 0
+            () => _pendingAutosaveSettings == null && _pendingSaveCaptures == 0,
+            _createTacticalAudio
         );
         return BindSession(session, owner);
     }

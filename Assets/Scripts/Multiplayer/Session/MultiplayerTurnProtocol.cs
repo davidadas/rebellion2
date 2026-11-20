@@ -9,7 +9,7 @@ using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.PlayerRequests;
-using Rebellion.Tactical.Runtime;
+using Rebellion.Tactical;
 using UnityEngine;
 
 namespace Rebellion.Multiplayer

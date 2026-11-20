@@ -125,8 +125,8 @@ namespace Rebellion.Tests.Editor.Build.CodeGen
             WriteInput(projectDirectory, "Assets/Scripts/Example.cs", "class Example {}\n");
             WriteInput(
                 projectDirectory,
-                "Assets/Scripts/GameAssembly.asmdef",
-                "{\"name\":\"GameAssembly\"}"
+                "Assets/Scripts/Game/Rebellion.Game.asmdef",
+                "{\"name\":\"Rebellion.Game\"}"
             );
             WriteInput(
                 projectDirectory,

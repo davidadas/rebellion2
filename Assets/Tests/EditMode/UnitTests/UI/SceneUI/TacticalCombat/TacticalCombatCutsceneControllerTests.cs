@@ -9,8 +9,8 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Rendering;
-using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.UI.SceneUI.TacticalCombat;
+using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.UI.SceneUI.TacticalCombat

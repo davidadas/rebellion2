@@ -126,7 +126,7 @@ public sealed class DisplayManager
     /// <returns>True when the sixteen by nine condition is met; otherwise false.</returns>
     internal static bool IsSixteenByNine(int width, int height)
     {
-        return width > 0 && height > 0 && Math.Abs((long)width * 9L - (long)height * 16L) <= 8L;
+        return UserVideoSettings.IsSixteenByNine(width, height);
     }
 
     /// <summary>

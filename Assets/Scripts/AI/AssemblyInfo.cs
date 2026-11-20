@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("GameAssembly")]
+[assembly: InternalsVisibleTo("Rebellion.App")]
+[assembly: InternalsVisibleTo("Rebellion.Sessions")]
 [assembly: InternalsVisibleTo("UnitTests")]

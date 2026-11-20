@@ -15,7 +15,7 @@ public static class SimulationBuildIdentityInputs
     private const string _legacyGeneratedPath = "Assets/Scripts/AssemblyBuildIdentity.g.cs";
     private static readonly string[] _dependencyInputs =
     {
-        "Assets/Scripts/GameAssembly.asmdef",
+        "Assets/Scripts/Game/Rebellion.Game.asmdef",
         "Assets/Input/InputActions.asmdef",
         "Assets/Input/PlayerInputActions.cs",
         "Packages/manifest.json",

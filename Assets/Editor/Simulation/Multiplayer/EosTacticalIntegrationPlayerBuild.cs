@@ -10,7 +10,7 @@ using Rebellion.Game.SpaceCombat;
 using Rebellion.Input;
 using Rebellion.Multiplayer;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Runtime.Audio;
+using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
 using UnityEditor;
 using UnityEditor.Build;
@@ -342,8 +342,8 @@ public static class EosTacticalIntegrationPlayerBuild
     {
         string data = Path.Combine(outputDirectory, _playerName + "_Data");
         manifest.playerHash = HashFile(manifest.playerPath);
-        manifest.builtGameAssemblyHash = HashFile(
-            Path.Combine(data, "Managed", "GameAssembly.dll")
+        manifest.builtGameModelAssemblyHash = HashFile(
+            Path.Combine(data, "Managed", "Rebellion.Game.dll")
         );
         manifest.builtHarnessAssemblyHash = HashFile(
             Path.Combine(data, "Managed", _harnessAssemblyName + ".dll")
@@ -431,7 +431,7 @@ public static class EosTacticalIntegrationPlayerBuild
         public string gameAssemblyHash;
         public string harnessAssemblyHash;
         public string playerHash;
-        public string builtGameAssemblyHash;
+        public string builtGameModelAssemblyHash;
         public string builtHarnessAssemblyHash;
         public string nativeMathHash;
         public string eosSdkHash;

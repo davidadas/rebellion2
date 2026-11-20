@@ -13,6 +13,7 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using Rebellion.Tactical;
+using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
 using SystemRandomProvider = global::Rebellion.Util.Random.SystemRandomProvider;
 using Vector3 = global::System.Numerics.Vector3;
@@ -5426,6 +5427,7 @@ namespace Rebellion.Tests.Gameplay
                 TestContent.Data.TacticalCombat,
                 queries,
                 TacticalCombatPlanner.Attach,
+                TacticalCombatAudio.Create,
                 () => new LinearCongruentialRandomProvider(42)
             );
             SpaceCombatCommands commands = new(game, movement, queries, tacticalFactory: factory);

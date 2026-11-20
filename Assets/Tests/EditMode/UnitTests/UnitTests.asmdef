@@ -4,7 +4,7 @@
         "Editor"
     ],
     "references": [
-        "GameAssembly",
+        "Rebellion.App",
         "Unity.Rebellion.Build.CodeGen",
         "NativeAudit",
         "ContentPackEditorAssembly",
@@ -19,10 +19,16 @@
         "Rebellion.Util",
         "Rebellion.SceneGraph",
         "Rebellion.Game",
+        "Rebellion.UserSettings",
+        "Rebellion.Saves",
+        "Rebellion.Content",
+        "Rebellion.Generation",
+        "Rebellion.Analytics",
+        "Rebellion.Sessions",
+        "Rebellion.Multiplayer",
         "Rebellion.Gameplay",
         "Rebellion.AI",
         "Rebellion.Tactical.Core",
-        "Rebellion.Tactical.Runtime",
         "Rebellion.Networking.Transport"
     ],
     "overrideReferences": true,

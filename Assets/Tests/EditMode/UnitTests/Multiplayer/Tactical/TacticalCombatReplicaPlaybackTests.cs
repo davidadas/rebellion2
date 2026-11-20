@@ -10,8 +10,8 @@ using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
 using Rebellion.Multiplayer.Tactical;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Runtime.Audio;
 using Rebellion.Tactical.Synchronization;
+using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Multiplayer.Tactical
