@@ -181,13 +181,15 @@ internal sealed class ContentEditorArtworkPreviewContent
     {
         Texture2D display = Resolve(record, "DisplayImagePath");
         Texture2D small = Resolve(record, "SmallDisplayImagePath") ?? display;
+        int.TryParse(record.Element.Element("MaintenanceCost")?.Value, out int maintenanceCost);
         return new ContentEditorArtworkPreviewEntity(
             record.Name,
             small,
             display ?? small,
             Resolve(record, "MessageImagePath") ?? display ?? small,
             Resolve(record, "EncyclopediaImagePath") ?? display ?? small,
-            record.Element.Element("EncyclopediaDescription")?.Value
+            record.Element.Element("EncyclopediaDescription")?.Value,
+            maintenanceCost
         );
     }
 
@@ -223,7 +225,8 @@ internal sealed class ContentEditorArtworkPreviewEntity
         null,
         null,
         null,
-        string.Empty
+        string.Empty,
+        0
     );
 
     internal string Name { get; }
@@ -238,6 +241,8 @@ internal sealed class ContentEditorArtworkPreviewEntity
 
     internal string EncyclopediaDescription { get; }
 
+    internal int MaintenanceCost { get; }
+
     /// <summary>
     /// Creates one immutable authored-entity presentation.
     /// </summary>
@@ -247,13 +252,15 @@ internal sealed class ContentEditorArtworkPreviewEntity
     /// <param name="messageTexture">The message texture.</param>
     /// <param name="encyclopediaTexture">The encyclopedia texture.</param>
     /// <param name="encyclopediaDescription">The encyclopedia description.</param>
+    /// <param name="maintenanceCost">The authored maintenance cost for one instance.</param>
     internal ContentEditorArtworkPreviewEntity(
         string name,
         Texture2D smallTexture,
         Texture2D displayTexture,
         Texture2D messageTexture,
         Texture2D encyclopediaTexture,
-        string encyclopediaDescription
+        string encyclopediaDescription,
+        int maintenanceCost
     )
     {
         Name = name ?? string.Empty;
@@ -262,5 +269,6 @@ internal sealed class ContentEditorArtworkPreviewEntity
         MessageTexture = messageTexture;
         EncyclopediaTexture = encyclopediaTexture;
         EncyclopediaDescription = encyclopediaDescription ?? string.Empty;
+        MaintenanceCost = maintenanceCost;
     }
 }

@@ -338,6 +338,8 @@ public sealed class EncyclopediaWindowDetailRenderData
 
     public Texture Image { get; }
 
+    public Texture ImageBackground { get; }
+
     public bool PreviousDisabled { get; }
 
     public bool NextDisabled { get; }
@@ -350,17 +352,20 @@ public sealed class EncyclopediaWindowDetailRenderData
     /// <param name="image">The selected entry's resolved image.</param>
     /// <param name="previousDisabled">Whether previous-entry navigation is disabled.</param>
     /// <param name="nextDisabled">Whether next-entry navigation is disabled.</param>
+    /// <param name="imageBackground">The optional background underneath the entry artwork.</param>
     public EncyclopediaWindowDetailRenderData(
         string title,
         string text,
         Texture image,
         bool previousDisabled,
-        bool nextDisabled
+        bool nextDisabled,
+        Texture imageBackground = null
     )
     {
         Title = title ?? string.Empty;
         Text = text ?? string.Empty;
         Image = image;
+        ImageBackground = imageBackground;
         PreviousDisabled = previousDisabled;
         NextDisabled = nextDisabled;
     }

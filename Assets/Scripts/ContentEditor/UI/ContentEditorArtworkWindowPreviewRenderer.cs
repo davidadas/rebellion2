@@ -734,10 +734,17 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
                     "Galaxy overview",
                     new[]
                     {
-                        new AdvisorReportRowRenderData(galaxy, "Controlled systems", "12"),
-                        new AdvisorReportRowRenderData(galaxy, "Known systems", "24"),
-                        new AdvisorReportRowRenderData(galaxy, "Active fleets", "4"),
+                        content.GetFirst("CapitalShip"),
+                        content.GetFirst("Starfighter"),
+                        content.GetFirst("Regiment"),
                     }
+                        .Where(unit => unit.SmallTexture != null)
+                        .Select(unit => new AdvisorReportRowRenderData(
+                            unit.SmallTexture,
+                            "001",
+                            unit.MaintenanceCost.ToString("D4")
+                        ))
+                        .ToArray()
                 )
             );
             return;

@@ -64,7 +64,8 @@ internal static class EncyclopediaWindowProjector
                 uiContext.GetTexture(selectedEntry?.ImagePath),
                 session.SelectedIndex <= 0,
                 session.SelectedIndex < 0
-                    || session.SelectedIndex >= session.ProjectedEntries.Count - 1
+                    || session.SelectedIndex >= session.ProjectedEntries.Count - 1,
+                uiContext.GetTexture(selectedEntry?.BackgroundImagePath)
             )
         );
     }

@@ -458,7 +458,8 @@ public sealed class GameFlowController : MonoBehaviour
             gameData.Starfighters,
             gameData.Regiments,
             gameData.SpecialForces,
-            gameData.Officers
+            gameData.Officers,
+            themeLibrary
         );
         ContentAssets contentAssets = bootstrap.GetContentAssets();
         uiContext = new UIContext(

@@ -2867,6 +2867,8 @@ public static class StrategyViewPrefabBuilder
         nameText.color = Color.white;
         nameText.fontSize = 11;
         nameText.alignment = TextAlignmentOptions.TopLeft;
+        nameText.textWrappingMode = TextWrappingModes.NoWrap;
+        nameText.overflowMode = TextOverflowModes.Ellipsis;
         SetSourceRect(nameText.rectTransform, 7, 5, 78, 14);
 
         AssignReference(view, "hitAreaImage", hitArea);
@@ -5928,6 +5930,12 @@ public static class StrategyViewPrefabBuilder
             "Application/Strategy/UI/Windows/ui_strategyview_encyclopedia_window_topic_background"
         );
         SetSourceRect(detailBackground.rectTransform, 12, 13, 400, 306);
+        RawImage detailCardBackground = CreateRawButton(
+            "DetailCardBackgroundImage",
+            detailPanelRoot
+        );
+        SetSourceRect(detailCardBackground.rectTransform, 12, 31, 400, 200);
+        detailCardBackground.gameObject.SetActive(false);
         RawImage detailCard = CreateRawButton("DetailCardImage", detailPanelRoot);
         SetSourceRect(detailCard.rectTransform, 12, 31, 400, 200);
         RawImage detailPrevious = CreateRawButton(
@@ -6004,6 +6012,7 @@ public static class StrategyViewPrefabBuilder
         AssignInt(indexPanel, "contentBottomPadding", 1);
 
         AssignReference(detailPanel, "cardImage", detailCard);
+        AssignReference(detailPanel, "cardBackgroundImage", detailCardBackground);
         AssignReference(detailPanel, "previousButtonImage", detailPrevious);
         AssignReference(detailPanel, "previousButton", detailPreviousButton);
         AssignReference(detailPanel, "nextButtonImage", detailNext);

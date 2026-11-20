@@ -1137,7 +1137,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             if (selectedRecord.Kind == "Officer")
                 y +=
                     PlaceLabel(
-                        "Used for message and encyclopedia images.",
+                        "Visible through transparent message and encyclopedia artwork.",
                         labelIndex++,
                         left,
                         y,

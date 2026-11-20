@@ -50,6 +50,71 @@ namespace Rebellion.Tests.Game.Encyclopedia
         }
 
         [Test]
+        public void Build_WithOwnedUnits_UsesArtworkOverrideOrMatchingFactionDefault()
+        {
+            FactionThemeLibrary themes = new FactionThemeLibrary(
+                new FactionThemes
+                {
+                    new FactionTheme { FactionInstanceID = "DEFAULT" },
+                    new FactionTheme
+                    {
+                        FactionInstanceID = "RED",
+                        ArtworkDefaults = new FactionArtworkDefaults
+                        {
+                            OfficerBackgroundImagePath = "Pack/Red/officer-background",
+                            CapitalShipBackgroundImagePath = "Pack/Red/ship-background",
+                            StarfighterBackgroundImagePath = "Pack/Red/fighter-background",
+                        },
+                    },
+                }
+            );
+            Officer officer = new Officer
+            {
+                TypeID = "OFFICER",
+                EncyclopediaImagePath = "Pack/officer",
+                BackgroundImagePath = "Pack/officer-background",
+                RecruitingFactionInstanceIDs = new List<string> { "RED" },
+            };
+            CapitalShip ship = new CapitalShip
+            {
+                TypeID = "SHIP",
+                EncyclopediaImagePath = "Pack/ship",
+                ManufacturingFactionInstanceIDs = new List<string> { "RED" },
+            };
+            Starfighter fighter = new Starfighter
+            {
+                TypeID = "FIGHTER",
+                EncyclopediaImagePath = "Pack/fighter",
+                ManufacturingFactionInstanceIDs = new List<string> { "RED" },
+            };
+
+            EncyclopediaCatalog catalog = new EncyclopediaCatalogBuilder().Build(
+                new EncyclopediaEntries(),
+                null,
+                null,
+                new[] { ship },
+                new[] { fighter },
+                null,
+                null,
+                new[] { officer },
+                themes
+            );
+
+            Assert.AreEqual(
+                "Pack/officer-background",
+                catalog.FindEntry("OFFICER", "RED").BackgroundImagePath
+            );
+            Assert.AreEqual(
+                "Pack/Red/ship-background",
+                catalog.FindEntry("SHIP", "RED").BackgroundImagePath
+            );
+            Assert.AreEqual(
+                "Pack/Red/fighter-background",
+                catalog.FindEntry("FIGHTER", "RED").BackgroundImagePath
+            );
+        }
+
+        [Test]
         public void Build_WithEntityWithoutEncyclopediaData_OmitsEntry()
         {
             Building building = new Building
