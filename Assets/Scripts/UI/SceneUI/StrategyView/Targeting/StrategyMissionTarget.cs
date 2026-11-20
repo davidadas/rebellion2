@@ -35,6 +35,7 @@ public sealed class StrategyMissionTarget : ITargetable
 
     /// <summary>
     /// Resolves the concrete fleet, ship, or planet that can receive movement.
+    /// Embarked units select their containing fleet so available ships can receive the move.
     /// </summary>
     /// <returns>The movement destination, or null when the planet is unavailable.</returns>
     public ISceneNode GetMoveDestination()
@@ -47,6 +48,10 @@ public sealed class StrategyMissionTarget : ITargetable
 
         if (Item is Fleet or CapitalShip)
             return Item;
+
+        Fleet fleet = Item.GetParentOfType<Fleet>();
+        if (fleet != null)
+            return fleet;
 
         ISceneNode parent = Item.GetParent();
         if (parent is Fleet or CapitalShip)

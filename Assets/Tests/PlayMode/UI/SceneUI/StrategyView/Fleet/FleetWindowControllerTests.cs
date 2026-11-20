@@ -235,6 +235,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void OnDrop_EmbarkedUnitCard_SelectsContainingFleet()
+        {
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            _controller.SelectTarget(view, _officer);
+            _controller.RenderWindow(view, window, true);
+            StrategyUnitCardView card = view.GetComponentsInChildren<StrategyUnitCardView>()
+                .Single();
+            RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
+            _targetingController.Begin(
+                CreateTargetingRequest(window, StrategyMenuAction.Move, receiver)
+            );
+
+            card.GetComponent<UIPointerGestureRelay>().OnDrop(new PointerEventData(null));
+
+            Assert.IsFalse(_targetingController.IsTargeting);
+            StrategyMissionTarget target = receiver.Target as StrategyMissionTarget;
+            Assert.IsNotNull(target);
+            Assert.AreSame(_officer, target.Item);
+            Assert.AreSame(_fleet, target.GetMoveDestination());
+        }
+
+        [Test]
         public void TrySelectTarget_FleetRowPointer_SelectsExactFleet()
         {
             FleetWindowView view = OpenWindow(out UIWindow window);

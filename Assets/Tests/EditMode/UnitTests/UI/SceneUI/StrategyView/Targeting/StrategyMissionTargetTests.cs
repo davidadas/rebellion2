@@ -76,6 +76,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreSame(ship, shipDestination);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void GetMoveDestination_EmbarkedUnit_ReturnsContainingFleet(bool starfighter)
+        {
+            GalaxyMapPlanet mapPlanet = CreateMapPlanet("planet", "player");
+            GameFleet fleet = new GameFleet("player", "fleet");
+            CapitalShip ship = new CapitalShip();
+            ISceneNode unit = starfighter ? new Starfighter() : new Regiment();
+            ship.SetParent(fleet);
+            unit.SetParent(ship);
+            StrategyMissionTarget target = new StrategyMissionTarget(mapPlanet, unit);
+
+            ISceneNode destination = target.GetMoveDestination();
+
+            Assert.AreSame(fleet, destination);
+            Assert.AreSame(unit, target.GetMissionTarget(MissionTargetKind.Manufacturable));
+        }
+
         [Test]
         public void GetMoveDestination_OtherItem_ReturnsPlanet()
         {
