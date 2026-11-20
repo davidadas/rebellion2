@@ -218,6 +218,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         ContentPackEditorField,
         IReadOnlyList<ContentPackEditorField>
     > ArtworkCutsRequested;
+    internal event Action<
+        ContentPackEditorRecord,
+        ContentEditorArtworkEffect
+    > ArtworkEffectRequested;
     public event Action SaveRequested;
     public event Action ValidateRequested;
     public event Action<ContentEditorMapLayout> MapLayoutRequested;
@@ -483,6 +487,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         form.FieldValidationRequested += ValidateField;
         form.ImportRequested += ImportMedia;
         form.ArtworkCutsRequested += RequestArtworkCuts;
+        form.ArtworkEffectRequested += RequestArtworkEffect;
         form.PreviewRequested += PreviewMedia;
         form.AssetEditRequested += OpenAssetEditor;
         form.SectionRequested += ShowSection;
@@ -568,6 +573,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             form.FieldValidationRequested -= ValidateField;
             form.ImportRequested -= ImportMedia;
             form.ArtworkCutsRequested -= RequestArtworkCuts;
+            form.ArtworkEffectRequested -= RequestArtworkEffect;
             form.PreviewRequested -= PreviewMedia;
             form.AssetEditRequested -= OpenAssetEditor;
             form.SectionRequested -= ShowSection;
@@ -2000,6 +2006,30 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <param name="address">The content address shown in the preview caption.</param>
     public void ShowImagePreview(Texture2D texture, string address) =>
         imagePreview.Show(texture, address);
+
+    /// <summary>
+    /// Shows a generated variation before assigning any of its image files.
+    /// </summary>
+    /// <param name="caption">The unit and effect name.</param>
+    /// <param name="previews">The composed textures whose lifetime transfers to the preview.</param>
+    /// <param name="reroll">Regenerates the current effect with the next seed.</param>
+    /// <param name="apply">Keeps the displayed variation.</param>
+    internal void ShowGeneratedArtwork(
+        string caption,
+        IReadOnlyList<(string Caption, Texture2D Texture)> previews,
+        Action reroll,
+        Action apply
+    ) => imagePreview.ShowGenerated(caption, previews, reroll, apply);
+
+    /// <summary>
+    /// Requests an effect preview for the selected unit artwork.
+    /// </summary>
+    /// <param name="record">The unit supplying source artwork.</param>
+    /// <param name="effect">The requested gameplay effect.</param>
+    private void RequestArtworkEffect(
+        ContentPackEditorRecord record,
+        ContentEditorArtworkEffect effect
+    ) => ArtworkEffectRequested?.Invoke(record, effect);
 
     /// <summary>
     /// Plays a clip whose loading and lifetime are owned by the application controller.

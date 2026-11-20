@@ -1389,10 +1389,67 @@ public static class ContentPackEditorPrefabBuilder
         ((RectTransform)close.transform).anchorMin = ((RectTransform)close.transform).anchorMax =
             Vector2.one;
         ((RectTransform)close.transform).anchoredPosition = new Vector2(-134, -18);
+        Button nextSize = BuildImagePreviewAction(
+            panel.transform,
+            "NextSize",
+            "Next size",
+            Vector2.zero,
+            24,
+            110
+        );
+        Button reroll = BuildImagePreviewAction(
+            panel.transform,
+            "Reroll",
+            "Try another",
+            Vector2.right,
+            -256,
+            110
+        );
+        Button apply = BuildImagePreviewAction(
+            panel.transform,
+            "UseArtwork",
+            "Use artwork",
+            Vector2.right,
+            -134,
+            110
+        );
         Assign(preview, "image", image);
         Assign(preview, "caption", caption);
         Assign(preview, "closeButton", close);
+        Assign(preview, "artworkSlot", slot);
+        Assign(preview, "previewPanel", panel.rectTransform);
+        Assign(preview, "nextSizeButton", nextSize);
+        Assign(preview, "rerollButton", reroll);
+        Assign(preview, "applyButton", apply);
         Assign(view, "imagePreview", preview);
         overlay.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Places one optional control in the space beneath the generated image.
+    /// </summary>
+    /// <param name="parent">The image viewer panel.</param>
+    /// <param name="name">The button hierarchy name.</param>
+    /// <param name="text">The visible button label.</param>
+    /// <param name="anchor">The bottom corner supplying the horizontal origin.</param>
+    /// <param name="x">The horizontal offset from that corner.</param>
+    /// <param name="width">The width reserved for the button label.</param>
+    /// <returns>The initially hidden optional button.</returns>
+    private static Button BuildImagePreviewAction(
+        Transform parent,
+        string name,
+        string text,
+        Vector2 anchor,
+        float x,
+        float width
+    )
+    {
+        Button button = Button(name, parent, text);
+        RectTransform rect = (RectTransform)button.transform;
+        Rect(rect, 0, 0, width, 36);
+        rect.anchorMin = rect.anchorMax = anchor;
+        rect.anchoredPosition = new Vector2(x, 60);
+        button.gameObject.SetActive(false);
+        return button;
     }
 }

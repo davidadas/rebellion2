@@ -154,6 +154,47 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void WriteGeneratedPng_PreservedVariations_KeepsPreviousBytesAtTheirAddress()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Starfighter")
+                .GetField("DamagedSmallImagePath");
+            byte[] firstImage = { 1, 2, 3 };
+            byte[] nextImage = { 4, 5 };
+
+            string first = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                firstImage,
+                preservePrevious: true
+            );
+            string second = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                nextImage,
+                preservePrevious: true
+            );
+
+            Assert.AreNotEqual(first, second);
+            CollectionAssert.AreEqual(
+                firstImage,
+                File.ReadAllBytes(Path.Combine(project.PackRootPath, first[5..]))
+            );
+            Assert.AreEqual(
+                first,
+                ContentPackEditorStorage.WriteGeneratedPng(
+                    project,
+                    field,
+                    firstImage,
+                    preservePrevious: true
+                )
+            );
+        }
+
+        [Test]
         public void Create_DefaultLocation_UsesModsAndCanBeResolvedByTheGame()
         {
             ContentPackEditorProject project = CreateWorkingProject();

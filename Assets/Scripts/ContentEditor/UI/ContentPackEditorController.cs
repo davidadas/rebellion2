@@ -44,6 +44,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
         view.BrowseFolderRequested += BrowsePackFolder;
         view.ImportRequested += ImportMedia;
         view.ArtworkCutsRequested += GenerateArtworkCuts;
+        view.ArtworkEffectRequested += PreviewArtworkEffect;
         view.SaveRequested += SavePack;
         view.ExportRequested += ExportPack;
         view.ValidateRequested += ValidatePack;
@@ -141,6 +142,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             view.BrowseFolderRequested -= BrowsePackFolder;
             view.ImportRequested -= ImportMedia;
             view.ArtworkCutsRequested -= GenerateArtworkCuts;
+            view.ArtworkEffectRequested -= PreviewArtworkEffect;
             view.SaveRequested -= SavePack;
             view.ExportRequested -= ExportPack;
             view.ValidateRequested -= ValidatePack;
@@ -442,15 +444,9 @@ public sealed class ContentPackEditorController : MonoBehaviour
             project.RequireOwnedRecord(source.Record);
             if (string.IsNullOrWhiteSpace(source.Value))
                 throw new InvalidOperationException("Choose a large source image first.");
-            string sourceAddress = source.GetMediaAddress(source.Value);
             string sourcePath =
-                assets.ResolveFile(sourceAddress, ".png")
-                ?? assets.ResolveFile(sourceAddress, ".jpg")
-                ?? assets.ResolveFile(sourceAddress, ".jpeg")
-                ?? throw new FileNotFoundException(
-                    "The selected source image could not be found.",
-                    sourceAddress
-                );
+                ResolveArtworkFile(source)
+                ?? throw new FileNotFoundException("The selected source image could not be found.");
 
             var outputs = targets
                 .Distinct()
@@ -478,20 +474,221 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     outputs.Select(output => output.Dimensions),
                     source.MemberName == "DisplayImagePath"
                 );
-            using (project.BeginEdit("Generate standard artwork cuts"))
-            {
-                foreach (var output in outputs)
+            var references = outputs
+                .Select(output =>
                 {
                     string value = ContentPackEditorStorage.WriteGeneratedPng(
                         project,
                         output.Field,
-                        cuts[output.Dimensions]
+                        cuts[output.Dimensions],
+                        preservePrevious: true
                     );
-                    project.SetField(output.Field, value);
-                }
+                    return (output.Field, Value: value);
+                })
+                .ToArray();
+            using (project.BeginEdit("Generate standard artwork cuts"))
+            {
+                foreach (var reference in references)
+                    project.SetField(reference.Field, reference.Value);
             }
             OpenProject(project);
         });
+    }
+
+    /// <summary>
+    /// Resolves readable artwork from the pack or one of its inherited layers.
+    /// </summary>
+    /// <param name="field">The image field holding the source reference.</param>
+    /// <returns>The file path, or null if the field has no readable source.</returns>
+    private string ResolveArtworkFile(ContentPackEditorField field)
+    {
+        if (field == null || string.IsNullOrWhiteSpace(field.Value))
+            return null;
+        string address = field.GetMediaAddress(field.Value);
+        return assets.ResolveFile(address, ".png")
+            ?? assets.ResolveFile(address, ".jpg")
+            ?? assets.ResolveFile(address, ".jpeg");
+    }
+
+    /// <summary>
+    /// Begins a repeatable preview of the applicable gameplay images for one unit.
+    /// </summary>
+    /// <param name="record">The unit whose artwork supplies the silhouette.</param>
+    /// <param name="effect">The gameplay effect to generate.</param>
+    private void PreviewArtworkEffect(
+        ContentPackEditorRecord record,
+        ContentEditorArtworkEffect effect
+    )
+    {
+        RunOperation(() =>
+        {
+            project.RequireOwnedRecord(record);
+            ContentEditorArtworkEffectStyle style = (record.Kind, effect) switch
+            {
+                ("CapitalShip" or "Starfighter", ContentEditorArtworkEffect.Damage) =>
+                    ContentEditorArtworkEffectStyle.Damage,
+                ("CapitalShip" or "Starfighter", ContentEditorArtworkEffect.Travel) =>
+                    ContentEditorArtworkEffectStyle.ShipTravel,
+                ("SpecialForce", ContentEditorArtworkEffect.Travel) =>
+                    ContentEditorArtworkEffectStyle.PersonnelTravel,
+                ("Building", ContentEditorArtworkEffect.Travel)
+                    when !ContentEditorUnitArtworkLayout.IsHeadquartersIcon(record) =>
+                    ContentEditorArtworkEffectStyle.FacilityTravel,
+                _ => throw new ArgumentException(
+                    "This unit has no artwork slot for that effect.",
+                    nameof(effect)
+                ),
+            };
+            string prefix = effect == ContentEditorArtworkEffect.Travel ? "InTransit" : "Damaged";
+            var fields = ContentEditorUnitArtworkLayout
+                .GetMembers(record)
+                .ToDictionary(
+                    member => member,
+                    member => record.GetField(member),
+                    StringComparer.Ordinal
+                );
+            string display = ResolveArtworkFile(fields.GetValueOrDefault("DisplayImagePath"));
+            string compact = ResolveArtworkFile(fields.GetValueOrDefault("SmallDisplayImagePath"));
+            string battle = ResolveArtworkFile(fields.GetValueOrDefault("BattleResultImagePath"));
+            var outputs = new[]
+            {
+                (
+                    Member: prefix + "SmallImagePath",
+                    Caption: "Small",
+                    Source: compact ?? display,
+                    MatchSource: style == ContentEditorArtworkEffectStyle.FacilityTravel
+                        && compact != null
+                ),
+                (
+                    Member: prefix + "ImagePath",
+                    Caption: "Large",
+                    Source: display ?? compact,
+                    MatchSource: false
+                ),
+                (
+                    Member: "BattleResult" + prefix + "ImagePath",
+                    Caption: "Battle result",
+                    Source: battle ?? compact ?? display,
+                    MatchSource: false
+                ),
+            }
+                .Where(output => fields.ContainsKey(output.Member))
+                .Select(output =>
+                {
+                    ContentPackEditorField field = fields[output.Member];
+                    if (
+                        !ContentPackEditorFieldMetadata.TryGetExpectedImageDimensions(
+                            field,
+                            out Vector2Int dimensions
+                        )
+                    )
+                        throw new InvalidOperationException(
+                            "The gameplay image has no configured output size."
+                        );
+                    return (
+                        Field: field,
+                        output.Caption,
+                        output.Source,
+                        Size: output.MatchSource ? (Vector2Int?)null : dimensions,
+                        ExpectedSize: dimensions,
+                        StretchSource: record.Kind == "CapitalShip"
+                            && output.Member == prefix + "ImagePath"
+                    );
+                })
+                .ToArray();
+            if (outputs.Length == 0 || outputs.Any(output => output.Source == null))
+                throw new InvalidOperationException(
+                    "Choose a display image or a small image first."
+                );
+
+            int seed = ContentEditorArtworkEffectGenerator.GetSeed(record.ID, effect);
+            ShowVariation(seed);
+
+            void ShowVariation(int variation)
+            {
+                List<(string Caption, Texture2D Texture)> previews = new();
+                List<(ContentPackEditorField Field, byte[] Png)> images = new();
+                try
+                {
+                    foreach (var output in outputs)
+                    {
+                        string caption = output.Caption;
+                        (byte[] Png, Texture2D Preview) image;
+                        try
+                        {
+                            image = ContentEditorArtworkEffectGenerator.Generate(
+                                output.Source,
+                                output.Size,
+                                style,
+                                variation,
+                                includePreview: true,
+                                stretchSource: output.StretchSource
+                            );
+                        }
+                        catch (InvalidDataException)
+                            when (style == ContentEditorArtworkEffectStyle.FacilityTravel
+                                && output.Source == compact
+                                && display != null
+                                && display != compact
+                            )
+                        {
+                            image = ContentEditorArtworkEffectGenerator.Generate(
+                                display,
+                                output.ExpectedSize,
+                                style,
+                                variation,
+                                includePreview: true
+                            );
+                            caption = "Small from display art";
+                        }
+                        previews.Add((caption, image.Preview));
+                        images.Add((output.Field, image.Png));
+                    }
+                    view.ShowGeneratedArtwork(
+                        $"{effect} artwork for {record.Name}",
+                        previews,
+                        () => RunOperation(() => ShowVariation(unchecked(variation + 1))),
+                        () => RunOperation(() => ApplyArtworkEffect(effect, images))
+                    );
+                }
+                catch
+                {
+                    foreach (var preview in previews)
+                        Destroy(preview.Texture);
+                    throw;
+                }
+            }
+        });
+    }
+
+    /// <summary>
+    /// Writes the approved variation before replacing its unit references in one undo step.
+    /// </summary>
+    /// <param name="effect">The approved gameplay effect.</param>
+    /// <param name="images">The previewed state images and their destination fields.</param>
+    private void ApplyArtworkEffect(
+        ContentEditorArtworkEffect effect,
+        IReadOnlyList<(ContentPackEditorField Field, byte[] Png)> images
+    )
+    {
+        var references = images
+            .Select(image =>
+            {
+                string value = ContentPackEditorStorage.WriteGeneratedPng(
+                    project,
+                    image.Field,
+                    image.Png,
+                    preservePrevious: true
+                );
+                return (image.Field, Value: value);
+            })
+            .ToArray();
+        using (project.BeginEdit($"Generate {effect.ToString().ToLowerInvariant()} artwork"))
+        {
+            foreach (var reference in references)
+                project.SetField(reference.Field, reference.Value);
+        }
+        OpenProject(project);
     }
 
     /// <summary>

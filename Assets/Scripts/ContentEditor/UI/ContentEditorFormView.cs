@@ -85,6 +85,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private readonly List<TextMeshProUGUI> groupLabels = new List<TextMeshProUGUI>();
 
     private readonly List<ContentEditorFieldView> fieldViews = new List<ContentEditorFieldView>();
+    private readonly Dictionary<XElement, int> factionArtworkFieldTops = new();
 
     private readonly List<ContentEditorColorPickerView> colorPickers = new();
 
@@ -136,6 +137,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private readonly List<CollectionEditorView> setupCollections = new();
     private readonly List<Button> setupUnitButtons = new();
     private Button artworkCutsButton;
+    private Button artworkTravelButton;
+    private Button artworkDamageButton;
     private readonly Dictionary<string, int> setupTasks = new();
     private readonly Dictionary<string, int> setupEntries = new();
     private string selectedFactionArtworkCategory = _defaultFactionArtworkCategory;
@@ -163,6 +166,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
         ContentPackEditorField,
         IReadOnlyList<ContentPackEditorField>
     > ArtworkCutsRequested;
+    internal event Action<
+        ContentPackEditorRecord,
+        ContentEditorArtworkEffect
+    > ArtworkEffectRequested;
     public event Action<ContentPackEditorField, string> PreviewRequested;
     public event Action<ContentPackEditorField> AssetEditRequested;
     public event Action<string> SectionRequested;
@@ -455,7 +462,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
             RenderFields(false);
         }
         RectTransform rect = (RectTransform)row.transform;
-        fieldScroll.ScrollArea.AlignContentTop(-rect.anchoredPosition.y);
+        float top = factionArtworkFieldTops.TryGetValue(field.XmlElement, out int artworkTop)
+            ? artworkTop
+            : -rect.anchoredPosition.y;
+        fieldScroll.ScrollArea.AlignContentTop(top);
         row.Focus();
         return true;
     }
@@ -1026,6 +1036,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
         );
         Texture2D background = ResolveEffectiveUnitBackground(backgroundField);
         Texture2D compactBackground = ResolveUnitCompactBackground();
+        Texture2D travelBackground =
+            selectedRecord.Kind == "SpecialForce"
+                ? ResolveUnitCompactBackground(inTransit: true)
+                : null;
         ContentPackEditorField[] normal = fields
             .Where(field =>
                 field != backgroundField
@@ -1036,56 +1050,13 @@ public sealed class ContentEditorFormView : MonoBehaviour
             .Where(field => ContentEditorUnitArtworkLayout.IsStateSpecific(field.MemberName))
             .ToArray();
 
-        if (backgroundField != null)
-        {
-            int panelStart = y;
-            y = BeginArtworkPanel(ref panelIndex, "Background", y, width);
-            y += PlaceLabel(panelIndex + ". Background", labelIndex++, 0, y, width, true) + 6;
-            GetArtworkContentBounds(
-                width,
-                out float backgroundLeft,
-                out float backgroundAvailableWidth
-            );
-            float backgroundWidth = Mathf.Min(440, backgroundAvailableWidth);
-            if (selectedRecord.Kind == "Officer")
-                y +=
-                    PlaceLabel(
-                        "Used only for Large message and encyclopedia images.",
-                        labelIndex++,
-                        backgroundLeft,
-                        y,
-                        backgroundWidth,
-                        false
-                    ) + 8;
-            if (string.IsNullOrWhiteSpace(backgroundField.Value) && background != null)
-                y = PlaceEffectiveBackgroundPreview(
-                    backgroundField,
-                    background,
-                    y,
-                    backgroundWidth + 8,
-                    ref imageIndex,
-                    ref labelIndex
-                );
-            y += PlaceField(
-                backgroundField,
-                fieldIndex++,
-                backgroundLeft,
-                y,
-                backgroundWidth,
-                0,
-                0,
-                true
-            );
-            y = CompleteArtworkPanel(panelStart, y);
-        }
-
         if (normal.Length > 0)
         {
             int panelStart = y;
             y = BeginArtworkPanel(ref panelIndex, "Images", y, width);
             y = PlaceArtworkSectionHeader(
-                panelIndex + ". Images",
-                outputBackgroundToggle,
+                "Images",
+                background != null || compactBackground != null ? outputBackgroundToggle : null,
                 showOutputArtworkBackground,
                 y,
                 width,
@@ -1110,19 +1081,25 @@ public sealed class ContentEditorFormView : MonoBehaviour
             int panelStart = y;
             y = BeginArtworkPanel(ref panelIndex, "GameplayStates", y, width);
             y = PlaceArtworkSectionHeader(
-                panelIndex + ". Gameplay states",
-                stateBackgroundToggle,
+                "Gameplay states",
+                compactBackground != null
+                || travelBackground != null
+                || background != null && selectedRecord.Kind is "CapitalShip" or "Starfighter"
+                    ? stateBackgroundToggle
+                    : null,
                 showStateArtworkBackground,
                 y,
                 width,
                 ref labelIndex
             );
+            y = PlaceArtworkEffectActions(normal, y, width);
             HashSet<string> inlineStateMembers = new(StringComparer.Ordinal);
             y = PlaceArtworkStateGallery(
                 normal,
                 states,
                 showStateArtworkBackground ? background : null,
                 showStateArtworkBackground ? compactBackground : null,
+                showStateArtworkBackground ? travelBackground : null,
                 y,
                 width,
                 ref fieldIndex,
@@ -1149,14 +1126,123 @@ public sealed class ContentEditorFormView : MonoBehaviour
             }
             y = CompleteArtworkPanel(panelStart, y);
         }
+
+        if (backgroundField != null)
+        {
+            int panelStart = y;
+            y = BeginArtworkPanel(ref panelIndex, "Background", y, width);
+            GetArtworkContentBounds(width, out float left, out float availableWidth);
+            float backgroundWidth = Mathf.Min(232, availableWidth);
+            y += PlaceLabel("Background", labelIndex++, left, y, availableWidth, true) + 6;
+            if (selectedRecord.Kind == "Officer")
+                y +=
+                    PlaceLabel(
+                        "Used for message and encyclopedia images.",
+                        labelIndex++,
+                        left,
+                        y,
+                        availableWidth,
+                        false
+                    ) + 6;
+            if (background != null)
+                y = PlaceEffectiveBackgroundPreview(
+                    backgroundField,
+                    background,
+                    left,
+                    y,
+                    backgroundWidth,
+                    ref imageIndex,
+                    ref labelIndex
+                );
+            y += PlaceField(backgroundField, fieldIndex++, left, y, backgroundWidth, 0, 0, true);
+            y = CompleteArtworkPanel(panelStart, y);
+        }
         fieldScroll.SetContentHeight(y + 24, !reflowingFields);
+    }
+
+    /// <summary>
+    /// Offers gameplay effect previews for units with their own effect slots and source artwork.
+    /// </summary>
+    /// <param name="normal">The normal artwork fields used as effect sources.</param>
+    /// <param name="y">The first available position in the gameplay states card.</param>
+    /// <param name="width">The complete form width.</param>
+    /// <returns>The first position below the actions, when available.</returns>
+    private int PlaceArtworkEffectActions(
+        IReadOnlyList<ContentPackEditorField> normal,
+        int y,
+        float width
+    )
+    {
+        ContentPackEditorRecord unit = selectedRecord;
+        if (
+            unit.Kind is not ("CapitalShip" or "Starfighter" or "Building" or "SpecialForce")
+            || ContentEditorUnitArtworkLayout.IsHeadquartersIcon(unit)
+            || !normal.Any(field =>
+                field.MemberName is "SmallDisplayImagePath" or "DisplayImagePath"
+                && ResolveArtworkTexture(field) != null
+            )
+        )
+            return y;
+
+        GetArtworkContentBounds(width, out float left, out float available);
+        const int actionWidth = 192;
+        const int gap = 8;
+        const int height = 34;
+        bool stacked = available < actionWidth * 2 + gap;
+        Configure(
+            ref artworkTravelButton,
+            ContentEditorArtworkEffect.Travel,
+            "Generate travel art",
+            left,
+            y
+        );
+        if (unit.Kind is "CapitalShip" or "Starfighter")
+        {
+            Configure(
+                ref artworkDamageButton,
+                ContentEditorArtworkEffect.Damage,
+                "Generate damage art",
+                stacked ? left : left + actionWidth + gap,
+                stacked ? y + height + gap : y
+            );
+            if (stacked)
+                y += height + gap;
+        }
+        return y + height + gap;
+
+        void Configure(
+            ref Button button,
+            ContentEditorArtworkEffect effect,
+            string caption,
+            float x,
+            int top
+        )
+        {
+            button ??= Instantiate(setupUnitsTemplate, fieldScroll.ScrollArea.ContentRoot);
+            button.name = "Generate" + effect + "Artwork";
+            button.GetComponentInChildren<TMP_Text>().text = caption;
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(() =>
+            {
+                if (Commit())
+                    ArtworkEffectRequested?.Invoke(unit, effect);
+            });
+            SetFormRect(
+                (RectTransform)button.transform,
+                x,
+                top,
+                Mathf.Min(actionWidth, available),
+                height
+            );
+            button.gameObject.SetActive(true);
+        }
     }
 
     /// <summary>
     /// Places a compact artwork section title with its preview-only background control.
     /// </summary>
-    /// <param name="caption">The numbered section caption.</param>
-    /// <param name="toggle">The preview control owned by the section.</param>
+    /// <param name="caption">The section caption.</param>
+    /// <param name="toggle">The preview control owned by the section, if a background can be shown.</param>
     /// <param name="isChecked">Whether this section currently composites its background.</param>
     /// <param name="y">The section's top edge.</param>
     /// <param name="width">The available form width.</param>
@@ -1172,6 +1258,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
     )
     {
         GetArtworkContentBounds(width, out float contentLeft, out float contentWidth);
+        if (toggle == null)
+            return y + PlaceLabel(caption, labelIndex++, contentLeft, y, contentWidth, true) + 6;
         const int toggleWidth = 174;
         const int toggleHeight = 26;
         int headingHeight;
@@ -1515,12 +1603,13 @@ public sealed class ContentEditorFormView : MonoBehaviour
             return y;
 
         const int gap = 16;
-        const int minimumColumnWidth = 240;
+        bool ship = selectedRecord.Kind is "CapitalShip" or "Starfighter";
+        int minimumColumnWidth = ship ? 218 : 240;
         GetArtworkContentBounds(width, out float contentLeft, out float contentWidth);
         int columns = Mathf.Clamp(
             Mathf.FloorToInt((contentWidth + gap) / (minimumColumnWidth + gap)),
             1,
-            Mathf.Min(4, outputs.Length)
+            Mathf.Max(1, Mathf.Min(ship ? 5 : 4, outputs.Length))
         );
         int columnWidth = Mathf.Max(
             1,
@@ -1706,17 +1795,20 @@ public sealed class ContentEditorFormView : MonoBehaviour
     }
 
     /// <summary>
-    /// Orders ordinary officer-facing uses before specialized report variants.
+    /// Places the main ship art and its gameplay cuts before the report images.
     /// </summary>
     /// <param name="field">The image field being placed.</param>
     /// <returns>The semantic card order.</returns>
     private static int GetArtworkOutputOrder(ContentPackEditorField field) =>
-        field.MemberName switch
+        (field.Record.Kind, field.MemberName) switch
         {
-            "MessageImagePath" => 0,
-            "EncyclopediaImagePath" => 1,
-            "DisplayImagePath" => 2,
-            "SmallDisplayImagePath" => 3,
+            ("CapitalShip" or "Starfighter", "DisplayImagePath") => -3,
+            ("CapitalShip" or "Starfighter", "SmallDisplayImagePath") => -2,
+            ("CapitalShip" or "Starfighter", "BattleResultImagePath") => -1,
+            (_, "MessageImagePath") => 0,
+            (_, "EncyclopediaImagePath") => 1,
+            (_, "DisplayImagePath") => 2,
+            (_, "SmallDisplayImagePath") => 3,
             _ => 10,
         };
 
@@ -1727,6 +1819,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="stateFields">The separately authored status fields.</param>
     /// <param name="background">The optional effective faction background.</param>
     /// <param name="compactBackground">The gameplay card background for compact personnel artwork.</param>
+    /// <param name="travelBackground">The faction's shared background for personnel in transit.</param>
     /// <param name="y">The initial vertical position.</param>
     /// <param name="width">The available form width.</param>
     /// <param name="fieldIndex">The next reusable field view.</param>
@@ -1739,6 +1832,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         IReadOnlyList<ContentPackEditorField> stateFields,
         Texture2D background,
         Texture2D compactBackground,
+        Texture2D travelBackground,
         int y,
         float width,
         ref int fieldIndex,
@@ -1748,7 +1842,9 @@ public sealed class ContentEditorFormView : MonoBehaviour
     )
     {
         ContentPackEditorField baseField =
-            normalFields.FirstOrDefault(field => field.MemberName == "SmallDisplayImagePath")
+            normalFields.FirstOrDefault(field =>
+                field.MemberName == "SmallDisplayImagePath" && ResolveArtworkTexture(field) != null
+            )
             ?? normalFields.FirstOrDefault(field => field.MemberName == "DisplayImagePath")
             ?? normalFields.FirstOrDefault();
         if (baseField == null || !TryGetArtworkDimensions(baseField, out Vector2Int dimensions))
@@ -1810,10 +1906,12 @@ public sealed class ContentEditorFormView : MonoBehaviour
 
         const int gap = 16;
         GetArtworkContentBounds(width, out float contentLeft, out float contentWidth);
-        int columnCount = states.Count == 3 ? 3 : Mathf.Min(2, states.Count);
+        int columnCount = Mathf.Clamp(
+            Mathf.FloorToInt((contentWidth + gap) / (220 + gap)),
+            1,
+            states.Count
+        );
         float columnWidth = (contentWidth - (columnCount - 1) * gap) / columnCount;
-        if (columnWidth < 220)
-            columnWidth = contentWidth;
         Vector2Int size = GetArtworkGallerySize(columnWidth, dimensions);
         float x = contentLeft;
         int rowHeight = 0;
@@ -1838,6 +1936,25 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 .Select(ResolveArtworkTexture)
                 .Where(texture => texture != null)
                 .ToArray();
+            Texture2D stateBackground = GetArtworkBackground(
+                new[] { baseField },
+                background,
+                compactBackground
+            );
+            Texture2D stateEntity = baseTexture;
+            if (action == transit && transit != null)
+            {
+                if (selectedRecord.Kind == "Building" && overlays.Length > 0)
+                {
+                    stateEntity = overlays[0];
+                    overlays = Array.Empty<Texture2D>();
+                }
+                else if (selectedRecord.Kind == "SpecialForce")
+                {
+                    stateBackground = overlays.FirstOrDefault() ?? travelBackground;
+                    overlays = Array.Empty<Texture2D>();
+                }
+            }
             PlaceArtworkComposition(
                 "State-" + caption.Replace(' ', '-'),
                 Mathf.RoundToInt(x),
@@ -1845,10 +1962,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 size.x,
                 size.y,
                 dimensions,
-                baseTexture == null && overlays.Length == 0
-                    ? null
-                    : GetArtworkBackground(new[] { baseField }, background, compactBackground),
-                baseTexture,
+                stateBackground,
+                stateEntity,
                 overlays,
                 ref imageIndex
             );
@@ -1912,7 +2027,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             name + "-Entity",
             entity,
             target,
-            ContentEditorUnitArtworkLayout.IsHeadquartersIcon(selectedRecord),
+            selectedRecord?.Kind == "Building",
             x,
             y,
             width,
@@ -2029,6 +2144,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// </summary>
     /// <param name="field">The empty background-override field.</param>
     /// <param name="texture">The effective faction background.</param>
+    /// <param name="x">The left edge shared with the override action.</param>
     /// <param name="y">The next vertical form position.</param>
     /// <param name="width">The available form width.</param>
     /// <param name="imageIndex">The next reusable inline artwork preview.</param>
@@ -2037,6 +2153,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private int PlaceEffectiveBackgroundPreview(
         ContentPackEditorField field,
         Texture2D texture,
+        float x,
         int y,
         float width,
         ref int imageIndex,
@@ -2045,7 +2162,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     {
         if (!TryGetArtworkDimensions(field, out Vector2Int target))
             target = new Vector2Int(texture.width, texture.height);
-        int imageWidth = Mathf.Max(1, Mathf.Min(Mathf.RoundToInt(width - 8), 440));
+        int imageWidth = Mathf.Max(1, Mathf.RoundToInt(width));
         int imageHeight = Mathf.Max(1, Mathf.RoundToInt((float)imageWidth * target.y / target.x));
         if (imageHeight > 220)
         {
@@ -2061,11 +2178,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
             new Vector2Int(texture.width, texture.height),
             target
         );
-        GetArtworkContentBounds(width, out float contentLeft, out _);
-        float imageX = contentLeft;
-        SetFormRect(preview.rectTransform, imageX, y, imageWidth, imageHeight);
+        SetFormRect(preview.rectTransform, x, y, imageWidth, imageHeight);
         y += imageHeight + 8;
-        y += PlaceLabel("Using faction default.", labelIndex++, imageX, y, imageWidth, false) + 8;
+        if (string.IsNullOrWhiteSpace(field.Value))
+            y += PlaceLabel("Using faction default.", labelIndex++, x, y, imageWidth, false) + 4;
         return y;
     }
 
@@ -2167,12 +2283,18 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <summary>
     /// Resolves the card background used behind compact personnel and regiment artwork in gameplay.
     /// </summary>
+    /// <param name="inTransit">Whether to use the shared travel background for personnel.</param>
     /// <returns>The configured card background, or null when the selected unit is presented without one.</returns>
-    private Texture2D ResolveUnitCompactBackground()
+    private Texture2D ResolveUnitCompactBackground(bool inTransit = false)
     {
         FactionTheme theme = ResolveUnitFactionTheme();
         string address = selectedRecord.Kind switch
         {
+            "Officer" or "SpecialForce" when inTransit => theme
+                ?.StrategyWindows
+                ?.Defense
+                ?.EnrouteBackgroundImagePath
+                ?? theme?.StrategyWindows?.Fleet?.PersonnelEnrouteBackgroundImagePath,
             "Officer" or "SpecialForce" => theme
                 ?.StrategyWindows
                 ?.Defense
@@ -3306,6 +3428,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// </summary>
     private void ClearArtworkViewControls()
     {
+        factionArtworkFieldTops.Clear();
         artworkViewDropdown.gameObject.SetActive(false);
         artworkViewDropdown.ClearOptions();
         artworkSectorPreview.Clear();
@@ -3336,6 +3459,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         ref int imageIndex
     )
     {
+        factionArtworkFieldTops[field.XmlElement] = y;
         y += PlaceLabel(field.Caption, labelIndex++, 4, y, width - 8, false, field.HelpText);
         if (width >= 900 && !field.IsMediaDirectory)
         {
@@ -3933,6 +4057,16 @@ public sealed class ContentEditorFormView : MonoBehaviour
             artworkCutsButton.onClick.RemoveAllListeners();
             artworkCutsButton.gameObject.SetActive(false);
         }
+        if (artworkTravelButton != null)
+        {
+            artworkTravelButton.onClick.RemoveAllListeners();
+            artworkTravelButton.gameObject.SetActive(false);
+        }
+        if (artworkDamageButton != null)
+        {
+            artworkDamageButton.onClick.RemoveAllListeners();
+            artworkDamageButton.gameObject.SetActive(false);
+        }
         foreach (var view in setupCollections)
             view.Clear();
         foreach (var button in setupUnitButtons)
@@ -4285,7 +4419,32 @@ public sealed class ContentEditorFormView : MonoBehaviour
         int columns = Mathf.Clamp(Mathf.FloorToInt((viewportWidth + 24) / 324), 1, 3);
         float width = (viewportWidth - (columns - 1) * 24) / columns;
         float[] top = new float[columns];
-        top[0] = RenderPreview(selectedRecord.ImageAddress, width, columns == 1 ? 160 : 280);
+        if (ContentEditorUnitArtworkLayout.IsHeadquartersIcon(selectedRecord))
+        {
+            previewPane.SetActive(false);
+            fields = fields.Where(field => field.MemberName is "TypeID" or "DisplayName").ToArray();
+            ContentPackEditorField display = selectedRecord.GetField("DisplayImagePath");
+            Texture2D icon = ResolveArtworkTexture(display);
+            if (icon != null && TryGetArtworkDimensions(display, out Vector2Int size))
+            {
+                int imageIndex = 0;
+                PlaceArtworkComposition(
+                    "Headquarters",
+                    4,
+                    4,
+                    size.x,
+                    size.y,
+                    size,
+                    null,
+                    icon,
+                    Array.Empty<Texture2D>(),
+                    ref imageIndex
+                );
+                top[0] = size.y + 12;
+            }
+        }
+        else
+            top[0] = RenderPreview(selectedRecord.ImageAddress, width, columns == 1 ? 160 : 280);
         int fieldIndex = 0,
             groupIndex = 0;
         foreach (

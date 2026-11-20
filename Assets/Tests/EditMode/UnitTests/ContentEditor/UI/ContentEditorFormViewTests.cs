@@ -520,7 +520,12 @@ namespace Rebellion.Tests.ContentEditor.UI
         )
         {
             SelectRecord(
-                project.GetCatalogs().First(catalog => catalog.Name == catalogName).Records.First()
+                project
+                    .GetCatalogs()
+                    .First(catalog => catalog.Name == catalogName)
+                    .Records.First(record =>
+                        !ContentEditorUnitArtworkLayout.IsHeadquartersIcon(record)
+                    )
             );
 
             string[] headings = view.GetComponentsInChildren<TMP_Text>()
@@ -1456,7 +1461,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 );
             }
             Assert.IsTrue(
-                results.GetComponentsInChildren<TMP_Text>().Any(label => label.text == "2. Images")
+                results.GetComponentsInChildren<TMP_Text>().Any(label => label.text == "Images")
             );
             Assert.IsFalse(
                 results
@@ -2034,6 +2039,30 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
+        public void Render_HeadquartersGeneral_ShowsIconAndIdentityFields()
+        {
+            ContentPackEditorRecord headquarters = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(ContentEditorUnitArtworkLayout.IsHeadquartersIcon);
+            SelectRecord(headquarters);
+            RenderSection("General");
+
+            CollectionAssert.AreEquivalent(
+                new[] { "TypeID", "DisplayName" },
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Select(field => field.Field.MemberName)
+            );
+            Assert.IsTrue(
+                view.GetComponentsInChildren<RawImage>()
+                    .Any(image =>
+                        image.texture != null
+                        && image.name.EndsWith("Headquarters-Entity", StringComparison.Ordinal)
+                    )
+            );
+        }
+
+        [Test]
         public void Render_HeadquartersArtwork_ShowsOnlyCompleteIconUses()
         {
             ContentPackEditorRecord headquarters = project
@@ -2365,11 +2394,19 @@ namespace Rebellion.Tests.ContentEditor.UI
                                     item.Field.XmlElement == expected.XmlElement
                                     && item.Field.XmlAttributeName == expected.XmlAttributeName
                                 );
+                        float fieldTop = ((RectTransform)fieldView.transform).anchoredPosition.y;
+                        float captionTop = view.GetComponentsInChildren<TMP_Text>()
+                            .Where(label =>
+                                label.text == expected.Caption
+                                && label.transform.parent == fields.ScrollArea.ContentRoot
+                                && label.rectTransform.anchoredPosition.y >= fieldTop
+                            )
+                            .Min(label => label.rectTransform.anchoredPosition.y);
                         Assert.AreEqual(
-                            -((RectTransform)fieldView.transform).anchoredPosition.y,
+                            -captionTop,
                             fields.ScrollArea.ContentRoot.anchoredPosition.y,
                             0.01f,
-                            target.name + " must align its field with the viewport top."
+                            target.name + " must align its image caption with the viewport top."
                         );
                     }
                 }
@@ -3085,7 +3122,16 @@ namespace Rebellion.Tests.ContentEditor.UI
                     AssetDatabase.GetAssetPath(fleetPrefab)
                 );
             }
-            Assert.AreEqual(3f, fleetWindow.transform.localScale.x, 0.01f);
+            Assert.That(fleetWindow.transform.localScale.x, Is.InRange(1f, 3f));
+            var fleetSurface =
+                fleetWindow.GetComponentInParent<ContentEditorArtworkWindowPreview>();
+            RectInt fleetSurfaceRect = UILayout.GetSourceRect(
+                (RectTransform)fleetSurface.transform
+            );
+            Assert.LessOrEqual(
+                fleetSurfaceRect.yMax,
+                fleetSurface.GetComponentInParent<ScrollAreaView>().ViewportHeight + 1f
+            );
             Assert.AreSame(
                 assets.GetTexture(factionTheme.StrategyWindows.Fleet.DetailBackgroundImagePath),
                 fleetWindow

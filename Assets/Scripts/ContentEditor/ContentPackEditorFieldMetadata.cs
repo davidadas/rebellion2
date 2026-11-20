@@ -467,6 +467,14 @@ internal static class ContentPackEditorFieldMetadata
             return member switch
             {
                 "DisplayImagePath" => "1373 × 563",
+                "SmallDisplayImagePath"
+                or "InTransitSmallImagePath"
+                    when field.Record.Element.Element("BuildingType")?.Value
+                        is "ConstructionFacility"
+                            or "TrainingFacility"
+                            or "Shipyard"
+                            or "Mine"
+                            or "Refinery" => "302 × 158",
                 "SmallDisplayImagePath" or "InTransitSmallImagePath" => "275 × 113",
                 _ => null,
             };

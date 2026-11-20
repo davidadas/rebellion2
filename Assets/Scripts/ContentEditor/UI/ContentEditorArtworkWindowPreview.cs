@@ -120,11 +120,11 @@ public sealed class ContentEditorArtworkWindowPreview
     }
 
     /// <summary>
-    /// Measures the enlarged window gallery within the available browser width.
+    /// Fits the full gameplay window gallery within the available browser space.
     /// </summary>
     /// <param name="category">The faction-artwork category.</param>
     /// <param name="availableWidth">The available browser width.</param>
-    /// <param name="availableHeight">The available browser height for full-screen surfaces.</param>
+    /// <param name="availableHeight">The available height for the gallery.</param>
     /// <returns>The preferred displayed surface size.</returns>
     public Vector2Int GetPreferredSize(
         string category,
@@ -138,10 +138,7 @@ public sealed class ContentEditorArtworkWindowPreview
 
         GetSourceBounds(windows, out int sourceWidth, out int sourceHeight);
         float widthScale = (availableWidth - _surfacePadding * 2f) / sourceWidth;
-        float heightScale =
-            category == "Strategy view"
-                ? (availableHeight - _surfacePadding * 2f) / sourceHeight
-                : _maximumScale;
+        float heightScale = (availableHeight - _surfacePadding * 2f) / sourceHeight;
         float scale = Mathf.Min(
             _maximumScale,
             Mathf.Max(0.1f, widthScale),

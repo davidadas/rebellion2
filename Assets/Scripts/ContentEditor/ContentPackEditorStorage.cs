@@ -488,16 +488,18 @@ public static class ContentPackEditorStorage
     }
 
     /// <summary>
-    /// Writes a generated PNG to the field's stable pack-owned output and returns its stored value.
+    /// Writes a generated PNG to a pack-owned output and returns its stored value.
     /// </summary>
     /// <param name="project">The project receiving the generated image.</param>
     /// <param name="field">The unit image field represented by the output.</param>
     /// <param name="pngBytes">The complete encoded PNG file.</param>
+    /// <param name="preservePrevious">Whether to give each distinct image a reusable address for undo.</param>
     /// <returns>The pack-scoped or media-root-relative value to store in the field.</returns>
     public static string WriteGeneratedPng(
         ContentPackEditorProject project,
         ContentPackEditorField field,
-        byte[] pngBytes
+        byte[] pngBytes,
+        bool preservePrevious = false
     )
     {
         if (project == null)
@@ -517,13 +519,24 @@ public static class ContentPackEditorStorage
         string root = field.MediaRoot?.TrimEnd('/') ?? "Pack/Assets";
         if (!root.StartsWith("Pack/", StringComparison.Ordinal))
             throw new IOException("Generated images require a writable pack media folder.");
+        string fileName = GetGeneratedPathSegment(GetGeneratedMemberName(field.MemberName));
+        if (preservePrevious)
+        {
+            using var hash = System.Security.Cryptography.SHA256.Create();
+            fileName +=
+                "-"
+                + BitConverter
+                    .ToString(hash.ComputeHash(pngBytes), 0, 12)
+                    .Replace("-", "")
+                    .ToLowerInvariant();
+        }
         string address = string.Join(
             "/",
             root,
             "Generated",
             GetGeneratedPathSegment(field.Record.Kind),
             GetGeneratedPathSegment(field.Record.ID),
-            GetGeneratedPathSegment(GetGeneratedMemberName(field.MemberName)) + ".png"
+            fileName + ".png"
         );
         string target = Path.GetFullPath(address[5..], project.PackRootPath);
         ContentEditorPaths.VerifyWritePath(project, target);
