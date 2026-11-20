@@ -15,11 +15,38 @@ internal static class ContentEditorArtworkCutGenerator
     /// <param name="sourcePath">The absolute source image path.</param>
     /// <param name="sizes">The fixed output dimensions to create.</param>
     /// <param name="fitEntireSource">Whether to letterbox the complete source canvas instead of cover-cropping it.</param>
+    /// <param name="preserveVisibleSubject">Whether to fit the visible subject when a cover crop would clip it.</param>
     /// <returns>PNG bytes keyed by their distinct output dimensions.</returns>
     internal static IReadOnlyDictionary<Vector2Int, byte[]> GeneratePngCuts(
         string sourcePath,
         IEnumerable<Vector2Int> sizes,
-        bool fitEntireSource = false
+        bool fitEntireSource = false,
+        bool preserveVisibleSubject = false
+    ) =>
+        GeneratePlacedPngCuts(
+                sourcePath,
+                sizes?.Select(size => (Size: size, Offset: Vector2.zero)),
+                fitEntireSource,
+                preserveVisibleSubject
+            )
+            .ToDictionary(cut => cut.Key.Size, cut => cut.Value);
+
+    /// <summary>
+    /// Creates the requested output sizes with independently placed artwork from one decoded source.
+    /// </summary>
+    /// <param name="sourcePath">The absolute source image path.</param>
+    /// <param name="placements">The output sizes and normalized offsets.</param>
+    /// <param name="fitEntireSource">Whether to fit the whole source before applying each offset.</param>
+    /// <param name="preserveVisibleSubject">Whether to fit the visible subject before applying each offset.</param>
+    /// <returns>PNG bytes keyed by each distinct size and placement.</returns>
+    internal static IReadOnlyDictionary<
+        (Vector2Int Size, Vector2 Offset),
+        byte[]
+    > GeneratePlacedPngCuts(
+        string sourcePath,
+        IEnumerable<(Vector2Int Size, Vector2 Offset)> placements,
+        bool fitEntireSource,
+        bool preserveVisibleSubject
     )
     {
         if (string.IsNullOrWhiteSpace(sourcePath))
@@ -27,21 +54,33 @@ internal static class ContentEditorArtworkCutGenerator
         string source = Path.GetFullPath(sourcePath);
         if (!File.Exists(source))
             throw new FileNotFoundException("The source image does not exist.", source);
-        if (sizes == null)
-            throw new ArgumentNullException(nameof(sizes));
-        Vector2Int[] targets = sizes.Distinct().ToArray();
-        if (targets.Length == 0 || targets.Any(size => size.x <= 0 || size.y <= 0))
-            throw new ArgumentException("Choose at least one positive output size.", nameof(sizes));
+        if (placements == null)
+            throw new ArgumentNullException(nameof(placements));
+        var targets = placements.Distinct().ToArray();
+        if (targets.Length == 0 || targets.Any(target => target.Size.x <= 0 || target.Size.y <= 0))
+            throw new ArgumentException(
+                "Choose at least one positive output size.",
+                nameof(placements)
+            );
 
         Texture2D sourceTexture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
         try
         {
             if (!ImageConversion.LoadImage(sourceTexture, File.ReadAllBytes(source), false))
                 throw new InvalidDataException("The source image could not be decoded.");
+            sourceTexture.wrapMode = TextureWrapMode.Clamp;
             RectInt contentBounds = GetVisibleContentBounds(sourceTexture);
             return targets.ToDictionary(
-                size => size,
-                size => CreatePngCut(sourceTexture, contentBounds, size, fitEntireSource)
+                target => target,
+                target =>
+                    CreatePngCut(
+                        sourceTexture,
+                        contentBounds,
+                        target.Size,
+                        target.Offset,
+                        fitEntireSource,
+                        preserveVisibleSubject
+                    )
             );
         }
         finally
@@ -56,31 +95,37 @@ internal static class ContentEditorArtworkCutGenerator
     /// <param name="source">The readable decoded source texture.</param>
     /// <param name="contentBounds">The visible subject bounds used to preserve framing.</param>
     /// <param name="target">The exact output size.</param>
+    /// <param name="offset">The artwork displacement in output proportions.</param>
     /// <param name="fitEntireSource">Whether the complete source canvas must remain visible.</param>
+    /// <param name="preserveVisibleSubject">Whether to fit artwork that would be clipped by the cover crop.</param>
     /// <returns>The encoded PNG bytes.</returns>
     private static byte[] CreatePngCut(
         Texture2D source,
         RectInt contentBounds,
         Vector2Int target,
-        bool fitEntireSource
+        Vector2 offset,
+        bool fitEntireSource,
+        bool preserveVisibleSubject
     )
     {
-        Rect crop = GetSubjectCenteredUvRect(source, contentBounds, target);
-        float fittedWidth = target.x;
-        float fittedHeight = target.y;
-        float fittedX = 0;
-        float fittedY = 0;
+        Rect crop = GetSubjectCenteredCrop(source, contentBounds, target);
         if (fitEntireSource)
+            crop = new Rect(0, 0, source.width, source.height);
+        else if (
+            preserveVisibleSubject
+            && (
+                contentBounds.xMin < crop.xMin
+                || contentBounds.xMax > crop.xMax
+                || contentBounds.yMin < crop.yMin
+                || contentBounds.yMax > crop.yMax
+            )
+        )
         {
-            float scale = Mathf.Min(
-                (float)target.x / source.width,
-                (float)target.y / source.height
-            );
-            fittedWidth = source.width * scale;
-            fittedHeight = source.height * scale;
-            fittedX = (target.x - fittedWidth) * 0.5f;
-            fittedY = (target.y - fittedHeight) * 0.5f;
+            crop = new Rect(contentBounds.min, contentBounds.size);
         }
+        float scale = Mathf.Min(target.x / crop.width, target.y / crop.height);
+        float fittedX = (target.x - crop.width * scale) * 0.5f + target.x * offset.x;
+        float fittedY = (target.y - crop.height * scale) * 0.5f + target.y * offset.y;
         Texture2D output = new Texture2D(target.x, target.y, TextureFormat.RGBA32, false);
         try
         {
@@ -88,28 +133,17 @@ internal static class ContentEditorArtworkCutGenerator
             for (int y = 0; y < target.y; y++)
             {
                 int row = y * target.x;
+                float sampleY = (y + 0.5f - fittedY) / scale;
+                if (sampleY < 0 || sampleY > crop.height)
+                    continue;
                 for (int x = 0; x < target.x; x++)
                 {
-                    if (
-                        fitEntireSource
-                        && (
-                            x + 0.5f < fittedX
-                            || x + 0.5f > fittedX + fittedWidth
-                            || y + 0.5f < fittedY
-                            || y + 0.5f > fittedY + fittedHeight
-                        )
-                    )
-                    {
-                        pixels[row + x] = Color.clear;
-                        continue;
-                    }
-                    float u = fitEntireSource
-                        ? (x + 0.5f - fittedX) / fittedWidth
-                        : crop.x + ((x + 0.5f) / target.x) * crop.width;
-                    float v = fitEntireSource
-                        ? (y + 0.5f - fittedY) / fittedHeight
-                        : crop.y + ((y + 0.5f) / target.y) * crop.height;
-                    pixels[row + x] = source.GetPixelBilinear(u, v);
+                    float sampleX = (x + 0.5f - fittedX) / scale;
+                    if (sampleX >= 0 && sampleX <= crop.width)
+                        pixels[row + x] = source.GetPixelBilinear(
+                            (crop.x + sampleX - 0.5f) / source.width,
+                            (crop.y + sampleY - 0.5f) / source.height
+                        );
                 }
             }
             output.SetPixels(pixels);
@@ -156,8 +190,8 @@ internal static class ContentEditorArtworkCutGenerator
     /// <param name="source">The complete source texture.</param>
     /// <param name="contentBounds">The visible subject bounds.</param>
     /// <param name="target">The requested output size.</param>
-    /// <returns>The normalized source UV rectangle.</returns>
-    private static Rect GetSubjectCenteredUvRect(
+    /// <returns>The crop in source pixels.</returns>
+    private static Rect GetSubjectCenteredCrop(
         Texture2D source,
         RectInt contentBounds,
         Vector2Int target
@@ -176,12 +210,7 @@ internal static class ContentEditorArtworkCutGenerator
         float centerY = contentBounds.y + contentBounds.height * 0.5f;
         float cropX = Mathf.Clamp(centerX - cropWidth * 0.5f, 0, source.width - cropWidth);
         float cropY = Mathf.Clamp(centerY - cropHeight * 0.5f, 0, source.height - cropHeight);
-        return new Rect(
-            cropX / source.width,
-            cropY / source.height,
-            cropWidth / source.width,
-            cropHeight / source.height
-        );
+        return new Rect(cropX, cropY, cropWidth, cropHeight);
     }
 
     /// <summary>

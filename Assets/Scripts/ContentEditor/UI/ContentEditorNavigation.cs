@@ -352,16 +352,14 @@ public sealed class ContentEditorNavigation
                     )
                     .ToArray();
                 assignedMissionArticles.UnionWith(factionArticles);
-                faction.Children.Add(
-                    CreateFactionMissionPresentation(
-                        group.Key,
-                        theme,
-                        articleCatalog,
-                        factionArticles,
-                        gameplayFaction,
-                        messageDefinitions
-                    )
-                );
+                faction.MissionPages = CreateFactionMissionPresentation(
+                    group.Key,
+                    theme,
+                    articleCatalog,
+                    factionArticles,
+                    gameplayFaction,
+                    messageDefinitions
+                ).Children;
             }
             root.Children.Add(faction);
         }
@@ -576,7 +574,9 @@ public sealed class ContentEditorNavigation
         {
             ContentEditorTreeNode node = pending.Pop();
             yield return node;
-            foreach (ContentEditorTreeNode child in node.Children.AsEnumerable().Reverse())
+            foreach (
+                ContentEditorTreeNode child in node.Children.Concat(node.MissionPages).Reverse()
+            )
                 pending.Push(child);
         }
     }
@@ -746,6 +746,7 @@ public sealed class ContentEditorNavigation
         ContentEditorTreeNode root = new(key, caption, depth);
         ContentPackEditorRecord[] records = catalogs
             .SelectMany(catalog => catalog.Records)
+            .Where(record => !ContentEditorUnitArtworkLayout.IsHeadquartersIcon(record))
             .ToArray();
         ContentPackEditorCatalog destinationCatalog = catalogs.First(catalog => catalog.CanAddUnit);
         var factions = catalogs
@@ -1020,6 +1021,8 @@ public sealed class ContentEditorTreeNode
     public string CreationFactionInstanceID { get; }
     public string MissionID { get; }
     internal ContentPackEditorCatalog MissionArticleCatalog { get; }
+    internal IReadOnlyList<ContentEditorTreeNode> MissionPages { get; set; } =
+        Array.Empty<ContentEditorTreeNode>();
     internal IReadOnlyList<ContentEditorMissionReport> MissionReports { get; set; } =
         Array.Empty<ContentEditorMissionReport>();
     internal bool IsMissionPresentation =>

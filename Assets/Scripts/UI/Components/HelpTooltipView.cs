@@ -15,16 +15,23 @@ public sealed class HelpTooltipView : MonoBehaviour, IPointerEnterHandler, IPoin
     private HoverTooltip tooltip;
     private RectTransform surface;
     private Vector2 pointerPosition;
+    private TMP_FontAsset font;
 
     /// <summary>
     /// Rebinds a pooled field or caption without retaining a previous field's guidance.
     /// </summary>
     /// <param name="description">The explanation to show.</param>
     /// <param name="textInput">The input whose editing should suppress the tooltip.</param>
-    public void Configure(string description, TMP_InputField textInput = null)
+    /// <param name="captionFont">The font used by the adjacent editor caption.</param>
+    public void Configure(
+        string description,
+        TMP_InputField textInput = null,
+        TMP_FontAsset captionFont = null
+    )
     {
         text = description;
         input = textInput;
+        font = captionFont ?? textInput?.textComponent.font;
         tooltip?.Cancel();
     }
 
@@ -42,7 +49,9 @@ public sealed class HelpTooltipView : MonoBehaviour, IPointerEnterHandler, IPoin
             if (canvas == null)
                 return;
             surface = (RectTransform)canvas.transform;
-            tooltip = new HoverTooltip(surface, "Field help", 400, true, 15);
+            float zoom = transform.lossyScale.y / surface.lossyScale.y;
+            int fontSize = Mathf.Clamp(Mathf.RoundToInt(16 * zoom), 12, 20);
+            tooltip = new HoverTooltip(surface, "Field help", 400, true, fontSize, font);
         }
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
             surface,
@@ -51,6 +60,32 @@ public sealed class HelpTooltipView : MonoBehaviour, IPointerEnterHandler, IPoin
             out pointerPosition
         );
         tooltip.Begin(GetContent, Time.unscaledTime);
+    }
+
+    /// <summary>
+    /// Centers the help marker next to the first visible caption line.
+    /// </summary>
+    /// <param name="caption">The laid-out caption beside the marker.</param>
+    /// <param name="left">The caption's horizontal offset in the marker parent.</param>
+    /// <param name="top">The caption's vertical offset in the marker parent.</param>
+    internal void PositionBeside(TMP_Text caption, int left = 0, int top = 0)
+    {
+        RectTransform marker = (RectTransform)transform;
+        int size = Mathf.RoundToInt(marker.rect.width);
+        caption.ForceMeshUpdate(ignoreActiveState: true);
+        bool hasLine = caption.textInfo.lineCount > 0;
+        TMP_LineInfo line = hasLine ? caption.textInfo.lineInfo[0] : default;
+        float end = hasLine ? line.maxAdvance : caption.preferredWidth;
+        float center = hasLine
+            ? -(line.ascender + line.descender) * 0.5f
+            : caption.fontSize * 0.55f;
+        UILayout.SetSourceRect(
+            marker,
+            left + Mathf.RoundToInt(Mathf.Min(end, caption.rectTransform.rect.width) + 4),
+            top + Mathf.RoundToInt(center - size * 0.5f),
+            size,
+            size
+        );
     }
 
     /// <summary>

@@ -206,24 +206,6 @@ public sealed class ContentEditorArtworkWindowPreview
             ContentEditorArtworkWindowPreviewRenderer.Render(window, content, theme, assets);
             DisableGameplayInput(window);
             AttachEditCommands(window, themeFields, surfaceFields, assets, state);
-            foreach (
-                RawImagePressVisual visual in window.GetComponentsInChildren<RawImagePressVisual>(
-                    true
-                )
-            )
-            {
-                ContentEditorArtworkEditTarget target =
-                    visual.GetComponent<ContentEditorArtworkEditTarget>();
-                ContentEditorWindowControlHover hover =
-                    visual.GetComponent<ContentEditorWindowControlHover>();
-                if (target?.Field != null && state == ContentEditorArtworkPreviewState.Default)
-                {
-                    hover ??= visual.gameObject.AddComponent<ContentEditorWindowControlHover>();
-                    hover.Bind(visual);
-                }
-                else
-                    hover?.Clear();
-            }
         }
         activeCategory = category;
         Layout(windows);
@@ -339,12 +321,6 @@ public sealed class ContentEditorArtworkWindowPreview
             )
         )
             target.SetHovered(false);
-        foreach (
-            ContentEditorWindowControlHover hover in GetComponentsInChildren<ContentEditorWindowControlHover>(
-                true
-            )
-        )
-            hover.SetHovered(false);
     }
 
     /// <summary>
@@ -372,6 +348,11 @@ public sealed class ContentEditorArtworkWindowPreview
                 continue;
             Texture releasedTexture = image.texture;
             ContentPackEditorField releasedField = ResolveBoundField(image, surfaceFields);
+            ContentEditorArtworkPlacement advisorPlacement = ResolveAdvisorPlacement(
+                image,
+                surfaceFields
+            );
+            releasedField ??= advisorPlacement?.XField;
             releasedField ??= ResolveTextureField(releasedTexture, fieldsByAddress, assets);
             RawImagePressVisual visual = image.GetComponent<RawImagePressVisual>();
             Texture authoredHoverTexture = visual?.PressedTexture;
@@ -439,9 +420,14 @@ public sealed class ContentEditorArtworkWindowPreview
                 assets.GetTextureContentBounds(releasedTexture as Texture2D),
                 assets.GetTextureContentBounds(hoverTexture as Texture2D),
                 visual == null && hoverTexture != releasedTexture ? hoverTexture : null,
-                ResolvePlacementFields(releasedField, hoverField, themeFields),
-                ResolveInteractionArea(image, window)
+                advisorPlacement == null
+                    ? ResolvePlacementFields(releasedField, hoverField, themeFields)
+                    : new[] { advisorPlacement },
+                ResolveInteractionArea(image, window),
+                requiresPress: visual != null
             );
+            if (advisorPlacement != null && !renderedFields.Contains(advisorPlacement.YField))
+                renderedFields.Add(advisorPlacement.YField);
             foreach (ContentPackEditorField field in target.Fields)
                 if (!renderedFields.Contains(field))
                     renderedFields.Add(field);
@@ -521,6 +507,38 @@ public sealed class ContentEditorArtworkWindowPreview
         return window
             .GetComponentsInChildren<RectTransform>(true)
             .FirstOrDefault(rect => rect.name == "GameSpeedButton");
+    }
+
+    /// <summary>
+    /// Binds the animated strategy portraits to the coordinates used to place them in gameplay.
+    /// </summary>
+    /// <param name="image">The rendered preview image.</param>
+    /// <param name="fields">The selected surface's fields.</param>
+    /// <returns>The portrait's coordinates, or null for other images.</returns>
+    private static ContentEditorArtworkPlacement ResolveAdvisorPlacement(
+        RawImage image,
+        IReadOnlyList<ContentPackEditorField> fields
+    )
+    {
+        string layout = image.name switch
+        {
+            "ProtocolImage" => nameof(StrategyAdvisorTheme.ProtocolSourceLayout),
+            "DroidImage" => nameof(StrategyAdvisorTheme.DroidSourceLayout),
+            _ => null,
+        };
+        if (layout == null)
+            return null;
+        var coordinates = fields.Where(field =>
+            ContentEditorContentSections.IsAdvisorPlacementField(field)
+            && field.XmlElement.Parent.Name.LocalName == layout
+        );
+        ContentPackEditorField x = coordinates.FirstOrDefault(field =>
+            field.MemberName == nameof(SourceRectLayout.X)
+        );
+        ContentPackEditorField y = coordinates.FirstOrDefault(field =>
+            field.MemberName == nameof(SourceRectLayout.Y)
+        );
+        return x != null && y != null ? new ContentEditorArtworkPlacement(x, y) : null;
     }
 
     /// <summary>
@@ -721,7 +739,10 @@ public sealed class ContentEditorArtworkWindowPreview
     /// <returns>The texture, or null when the field is empty or invalid.</returns>
     private static Texture2D ResolveFieldTexture(ContentPackEditorField field, ContentAssets assets)
     {
-        if (field == null || string.IsNullOrWhiteSpace(field.Value))
+        if (
+            field?.MediaType != ContentPackEditorMediaType.Image
+            || string.IsNullOrWhiteSpace(field.Value)
+        )
             return null;
         try
         {

@@ -154,6 +154,51 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void WriteGeneratedPng_LayerRecipe_ReopensWithTheSelectedArtworkVersion()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Starfighter")
+                .GetField("DamagedSmallImagePath");
+            const string firstRecipe = "{\"Version\":1,\"Seed\":8}";
+            const string nextRecipe = "{\"Version\":1,\"Seed\":9}";
+            byte[] image = { 1, 2, 3 };
+            string first = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                image,
+                preservePrevious: true,
+                layerRecipe: firstRecipe
+            );
+            string next = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                image,
+                preservePrevious: true,
+                layerRecipe: nextRecipe
+            );
+            Assert.AreNotEqual(first, next);
+
+            project.SetField(field, first);
+            ContentPackEditorStorage.Save(project);
+            ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
+                project.ContentRootPath,
+                project.PackRootPath
+            );
+            ContentPackEditorField saved = reopened
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.Kind == "Starfighter" && record.ID == field.Record.ID)
+                .GetField("DamagedSmallImagePath");
+            Assert.AreEqual(
+                firstRecipe,
+                ContentPackEditorStorage.ReadGeneratedLayers(reopened, saved)
+            );
+        }
+
+        [Test]
         public void WriteGeneratedPng_PreservedVariations_KeepsPreviousBytesAtTheirAddress()
         {
             ContentPackEditorProject project = CreateLoadableProject();

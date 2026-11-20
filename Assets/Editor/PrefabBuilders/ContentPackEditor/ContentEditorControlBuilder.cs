@@ -336,6 +336,9 @@ internal static class ContentEditorControlBuilder
         rect.offsetMax = new Vector2(-4, -4);
         Scrollbar bar = root.GetComponent<Scrollbar>();
         bar.direction = Scrollbar.Direction.TopToBottom;
+        RectTransform thumbArea = (RectTransform)bar.handleRect.parent;
+        Stretch(thumbArea, 3, 3, 3, 3);
+        bar.handleRect.sizeDelta = Vector2.zero;
         StyleScrollbar(bar);
         Stretch(input.textViewport, 10, 6, 28, 6);
         input.verticalScrollbar = bar;
@@ -362,11 +365,11 @@ internal static class ContentEditorControlBuilder
         Image target = Surface("Info", parent, Color.clear);
         target.raycastTarget = true;
         target.canvasRenderer.cullTransparentMesh = false;
-        Rect(target.rectTransform, 0, 0, 32, 32);
+        Rect(target.rectTransform, 0, 0, 24, 24);
         Image icon = Surface("Glyph", target.transform, ContentEditorColorRole.Muted);
         icon.sprite = LoadIcon("Information");
         icon.preserveAspect = true;
-        Rect(icon.rectTransform, 4, 4, 24, 24);
+        Stretch(icon.rectTransform);
         HelpTooltipView help = target.gameObject.AddComponent<HelpTooltipView>();
         target.gameObject.SetActive(false);
         return help;

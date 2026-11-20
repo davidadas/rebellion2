@@ -159,6 +159,13 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     }
 
     /// <summary>
+    /// Resolves a cached image for software compositing.
+    /// </summary>
+    /// <param name="path">The application or pack content address.</param>
+    /// <returns>The readable texture, or null if the image is unavailable.</returns>
+    internal Texture2D GetReadableTexture(string path) => GetTexture(path, readableTextures, false);
+
+    /// <summary>
     /// Resolves and caches a mipmapped texture for artwork that is substantially reduced on screen.
     /// </summary>
     /// <param name="path">The application or pack content address.</param>

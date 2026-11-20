@@ -1051,7 +1051,13 @@ namespace Rebellion.Tests.ContentEditor.UI
             HelpTooltipView info = caption.GetComponentInChildren<HelpTooltipView>();
             Assert.IsNotNull(info);
             Assert.IsTrue(info.gameObject.activeSelf);
-            Assert.GreaterOrEqual(UILayout.GetSourceRect((RectTransform)info.transform).yMin, 0);
+            TMP_LineInfo line = caption.textInfo.lineInfo[0];
+            float lineCenter = -(line.ascender + line.descender) * 0.5f;
+            Assert.AreEqual(
+                lineCenter,
+                UILayout.GetSourceRect((RectTransform)info.transform).center.y,
+                1f
+            );
             Assert.IsFalse(project.IsDirty);
         }
 
@@ -1306,14 +1312,20 @@ namespace Rebellion.Tests.ContentEditor.UI
             SelectRecord(unit);
             RenderSection("Artwork");
 
-            ContentEditorFieldView[] fields =
-                view.GetComponentsInChildren<ContentEditorFieldView>();
-
-            CollectionAssert.IsSubsetOf(
-                ContentEditorUnitArtworkLayout.GetMembers(unit),
-                fields.Select(field => field.Field.MemberName).ToArray()
-            );
-            Assert.IsTrue(fields.All(field => field.Field.Record.Element == unit.Element));
+            HashSet<string> members = new(StringComparer.Ordinal);
+            TMP_Dropdown size = view.GetComponentsInChildren<TMP_Dropdown>()
+                .SingleOrDefault(dropdown => dropdown.name == "ArtworkStateSizeDropdown");
+            int count = size?.options.Count ?? 1;
+            for (int index = 0; index < count; index++)
+            {
+                if (size != null)
+                    size.value = index;
+                ContentEditorFieldView[] fields =
+                    view.GetComponentsInChildren<ContentEditorFieldView>();
+                Assert.IsTrue(fields.All(field => field.Field.Record.Element == unit.Element));
+                members.UnionWith(fields.Select(field => field.Field.MemberName));
+            }
+            CollectionAssert.IsSubsetOf(ContentEditorUnitArtworkLayout.GetMembers(unit), members);
         }
 
         [Test]
@@ -1492,7 +1504,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             action.onClick.Invoke();
 
             Assert.AreEqual(
-                "Generate standard cuts from message",
+                "Generate cuts from message image",
                 action.GetComponentInChildren<TMP_Text>().text
             );
             Assert.AreEqual("MessageImagePath", requestedSource.MemberName);
@@ -1526,7 +1538,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             action.onClick.Invoke();
 
             Assert.AreEqual(
-                "Generate standard cuts from display",
+                "Generate cuts from display image",
                 action.GetComponentInChildren<TMP_Text>().text
             );
             Assert.AreEqual("DisplayImagePath", requestedSource.MemberName);
@@ -1572,7 +1584,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             action.onClick.Invoke();
 
             Assert.AreEqual(
-                "Generate standard cuts from display",
+                "Generate cuts from display image",
                 action.GetComponentInChildren<TMP_Text>().text
             );
             Assert.AreEqual("DisplayImagePath", requestedSource.MemberName);
@@ -1730,7 +1742,30 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
-        public void Render_UnitArtworkMissingOutput_ShowsCompactActionWithoutBlankPreview()
+        public void Render_ShipStateSize_ShowsOnlyTheSelectedTravelOutput()
+        {
+            ContentPackEditorRecord unit = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record =>
+                    record.Kind == "CapitalShip" && record.Catalog.Faction == "Alliance"
+                );
+            SelectRecord(unit);
+            RenderSection("Artwork");
+            TMP_Dropdown size = view.GetComponentsInChildren<TMP_Dropdown>()
+                .Single(dropdown => dropdown.name == "ArtworkStateSizeDropdown");
+            size.value = size.options.FindIndex(option => option.text == "Battle result");
+
+            string[] fields = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Select(field => field.Field.MemberName)
+                .ToArray();
+            CollectionAssert.Contains(fields, "BattleResultInTransitImagePath");
+            CollectionAssert.DoesNotContain(fields, "InTransitSmallImagePath");
+            CollectionAssert.DoesNotContain(fields, "InTransitImagePath");
+        }
+
+        [Test]
+        public void Render_UnitArtworkMissingOutput_ShowsAnEmptyImageSlot()
         {
             ContentPackEditorRecord unit = project
                 .GetCatalogs()
@@ -1742,7 +1777,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             SelectRecord(unit);
             RenderSection("Artwork");
 
-            Assert.IsFalse(
+            Assert.IsTrue(
                 view.GetComponentsInChildren<RawImage>()
                     .Any(image =>
                         image.name.Contains(
@@ -1764,7 +1799,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
-        public void Render_UnitArtworkMissingOutputs_PacksCompactActionsFromTheLeft()
+        public void Render_UnitArtworkMissingOutputs_PlacesActionsBelowTheEmptySlots()
         {
             ContentPackEditorRecord unit = project
                 .GetCatalogs()
@@ -1786,10 +1821,29 @@ namespace Rebellion.Tests.ContentEditor.UI
                         .transform
             );
 
-            Assert.AreEqual(message.y, small.y);
-            Assert.LessOrEqual(message.width, 320);
-            Assert.LessOrEqual(small.width, 320);
-            Assert.AreEqual(16, small.x - message.xMax);
+            RawImage[] slots = view.GetComponentsInChildren<RawImage>();
+            RectInt messageSlot = UILayout.GetSourceRect(
+                slots
+                    .Single(image =>
+                        image.name.EndsWith(
+                            "Output-MessageImagePath-Backing",
+                            StringComparison.Ordinal
+                        )
+                    )
+                    .rectTransform
+            );
+            RectInt smallSlot = UILayout.GetSourceRect(
+                slots
+                    .Single(image =>
+                        image.name.EndsWith(
+                            "Output-SmallDisplayImagePath-Backing",
+                            StringComparison.Ordinal
+                        )
+                    )
+                    .rectTransform
+            );
+            Assert.GreaterOrEqual(message.y, messageSlot.yMax);
+            Assert.GreaterOrEqual(small.y, smallSlot.yMax);
         }
 
         [Test]
@@ -2016,13 +2070,8 @@ namespace Rebellion.Tests.ContentEditor.UI
                         StringComparison.Ordinal
                     )
                 );
-            Rect expected = ContentEditorArtworkCrop.GetCenteredUvRect(
-                new Vector2Int(smallTexture.width, smallTexture.height),
-                new Vector2Int(297, 113)
-            );
-
             Assert.AreSame(smallTexture, small.texture);
-            Assert.AreEqual(expected, small.uvRect);
+            Assert.AreEqual(new Rect(0, 0, 1, 1), small.uvRect);
             Assert.IsNotNull(background.texture);
             Assert.IsTrue(
                 view.GetComponentsInChildren<TMP_Text>()
@@ -2157,6 +2206,32 @@ namespace Rebellion.Tests.ContentEditor.UI
             );
         }
 
+        [TestCase(false, "In transit")]
+        [TestCase(true, "In transit (Defense)")]
+        public void Render_RegimentTransit_ShowsSeparateCardsOnlyForDifferentArtwork(
+            bool addOverlay,
+            string expectedCaption
+        )
+        {
+            ContentPackEditorRecord troop = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Regiment" && record.Catalog.Faction == "Alliance");
+            if (addOverlay)
+                project.SetField(
+                    troop.GetField("InTransitSmallImagePath"),
+                    troop.GetField("DisplayImagePath").Value
+                );
+            SelectRecord(troop);
+            RenderSection("Artwork");
+
+            string[] captions = view.GetComponentsInChildren<TMP_Text>()
+                .Select(label => label.text)
+                .ToArray();
+            CollectionAssert.Contains(captions, expectedCaption);
+            Assert.AreEqual(addOverlay, captions.Contains("In transit (Fleet)"));
+        }
+
         [Test]
         public void Render_OfficerArtworkStates_PlacesActionsBelowMatchingPreviews()
         {
@@ -2169,7 +2244,7 @@ namespace Rebellion.Tests.ContentEditor.UI
 
             AssertStateActionAligned("Injured", "InjuredImagePath");
             AssertStateActionAligned("Captured", "CapturedOverlayImagePath");
-            RectInt[] stateBounds = new[] { "Normal", "Injured", "Captured" }
+            RectInt[] stateBounds = new[] { "Normal", "In-transit", "Injured", "Captured" }
                 .Select(state =>
                     UILayout.GetSourceRect(
                         view.GetComponentsInChildren<RawImage>()
@@ -2183,7 +2258,8 @@ namespace Rebellion.Tests.ContentEditor.UI
                     )
                 )
                 .ToArray();
-            Assert.IsTrue(stateBounds.All(bounds => bounds.y == stateBounds[0].y));
+            Assert.IsTrue(stateBounds.Take(3).All(bounds => bounds.y == stateBounds[0].y));
+            Assert.Greater(stateBounds[3].y, stateBounds[0].y);
             Assert.IsFalse(
                 view.GetComponentsInChildren<TMP_Text>()
                     .Any(label => label.text == "Additional state images")
@@ -2197,15 +2273,12 @@ namespace Rebellion.Tests.ContentEditor.UI
             navigation.Render(project.GetCatalogs());
             SelectPage(navigation.Find("factions/Alliance"));
             RenderSection("Interfaces");
-            TMP_Dropdown surfaces = view.GetComponentsInChildren<TMP_Dropdown>()
-                .Single(dropdown => dropdown.name == "ArtworkViewDropdown");
             List<string> gaps = new();
 
-            for (int index = 0; index < surfaces.options.Count; index++)
+            for (int index = 0; index < view.ArtworkViewOptions.Count; index++)
             {
-                string category = surfaces.options[index].text;
-                surfaces.SetValueWithoutNotify(index);
-                surfaces.onValueChanged.Invoke(index);
+                string category = view.ArtworkViewOptions[index];
+                SelectArtworkSurface(category);
                 ContentPackEditorField[] represented =
                     view.GetComponentsInChildren<ContentEditorArtworkEditTarget>()
                         .SelectMany(target => target.Fields)
@@ -2494,13 +2567,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             navigation.Render(project.GetCatalogs());
             SelectPage(navigation.Find("factions/Alliance"));
             RenderSection("Interfaces");
-            TMP_Dropdown surfaces = view.GetComponentsInChildren<TMP_Dropdown>()
-                .Single(dropdown => dropdown.name == "ArtworkViewDropdown");
-            int defenseIndex = surfaces.options.FindIndex(option =>
-                option.text == "Defense window"
-            );
-            surfaces.SetValueWithoutNotify(defenseIndex);
-            surfaces.onValueChanged.Invoke(defenseIndex);
+            SelectArtworkSurface("Defense window");
             DefenseWindowView[] windows = view.GetComponentsInChildren<DefenseWindowView>();
             RawImage personnelTab = windows
                 .Select(window =>
@@ -2530,9 +2597,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                         && field.gameObject.activeSelf
                     )
             );
-            personnelTab
-                .GetComponent<ContentEditorWindowControlHover>()
-                ?.OnPointerEnter(new PointerEventData(null));
+            target.SetHovered(true);
             Assert.AreSame(disabledTexture, personnelTab.texture);
         }
 
@@ -2550,8 +2615,6 @@ namespace Rebellion.Tests.ContentEditor.UI
             navigation.Render(project.GetCatalogs());
             SelectPage(navigation.Find("factions/" + faction));
             RenderSection("Interfaces");
-            TMP_Dropdown surfaces = view.GetComponentsInChildren<TMP_Dropdown>()
-                .Single(dropdown => dropdown.name == "ArtworkViewDropdown");
             ContentPackEditorRecord theme = selectedPage.RelatedRecords.Single(record =>
                 record.Kind == "FactionTheme"
             );
@@ -2710,13 +2773,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             navigation.Render(project.GetCatalogs());
             SelectPage(navigation.Find("factions/Alliance"));
             RenderSection("Interfaces");
-            TMP_Dropdown surfaces = view.GetComponentsInChildren<TMP_Dropdown>()
-                .Single(dropdown => dropdown.name == "ArtworkViewDropdown");
-            int defenseIndex = surfaces.options.FindIndex(option =>
-                option.text == "Defense window"
-            );
-            surfaces.SetValueWithoutNotify(defenseIndex);
-            surfaces.onValueChanged.Invoke(defenseIndex);
+            SelectArtworkSurface("Defense window");
 
             ContentEditorArtworkEditTarget[] targets =
                 view.GetComponentsInChildren<ContentEditorArtworkEditTarget>()
@@ -2843,15 +2900,12 @@ namespace Rebellion.Tests.ContentEditor.UI
             navigation.Render(project.GetCatalogs());
             SelectPage(navigation.Find("factions/Alliance"));
             RenderSection("Interfaces");
-            TMP_Dropdown surfaces = view.GetComponentsInChildren<TMP_Dropdown>()
-                .Single(dropdown => dropdown.name == "ArtworkViewDropdown");
-            string[] options = surfaces.options.Select(option => option.text).ToArray();
+            string[] options = view.ArtworkViewOptions.ToArray();
 
             foreach (string option in options)
             {
-                int index = surfaces.options.FindIndex(candidate => candidate.text == option);
                 Assert.DoesNotThrow(
-                    () => surfaces.onValueChanged.Invoke(index),
+                    () => SelectArtworkSurface(option),
                     "Failed surface: " + option
                 );
                 Assert.IsFalse(
@@ -2923,8 +2977,8 @@ namespace Rebellion.Tests.ContentEditor.UI
 
             RenderSection("Interfaces");
 
-            TMP_Dropdown artworkSurface = view.GetComponentsInChildren<TMP_Dropdown>()
-                .Single(dropdown => dropdown.name == "ArtworkViewDropdown");
+            RectTransform artworkSurface = view.GetComponentsInChildren<RectTransform>()
+                .Single(rect => rect.name == "ArtworkViewSelector");
             CollectionAssert.IsSubsetOf(
                 new[]
                 {
@@ -2934,9 +2988,9 @@ namespace Rebellion.Tests.ContentEditor.UI
                     "Fleet window",
                     "Facilities and construction",
                 },
-                artworkSurface.options.Select(option => option.text).ToArray()
+                view.ArtworkViewOptions.ToArray()
             );
-            Assert.AreEqual("Planet sector", artworkSurface.options[artworkSurface.value].text);
+            Assert.AreEqual("Planet sector", view.ArtworkViewSelection);
             RectInt selectorRect = UILayout.GetSourceRect((RectTransform)artworkSurface.transform);
             float selectorViewportWidth = artworkSurface
                 .GetComponentInParent<ScrollAreaView>()
@@ -2951,12 +3005,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 view.GetComponentsInChildren<TMP_Text>()
                     .Any(label => label.text.StartsWith("Planet sector ("))
             );
-            ScrollRect artworkSurfaceScroll = artworkSurface.template.GetComponent<ScrollRect>();
-            Assert.IsNotNull(artworkSurfaceScroll.verticalScrollbar);
-            Assert.AreEqual(
-                ScrollRect.ScrollbarVisibility.Permanent,
-                artworkSurfaceScroll.verticalScrollbarVisibility
-            );
+            Assert.AreEqual(2, artworkSurface.GetComponentsInChildren<Button>().Length);
             ContentEditorSectorPreview sectorPreview =
                 view.GetComponentInChildren<ContentEditorSectorPreview>();
             Assert.IsNotNull(sectorPreview);
@@ -3092,11 +3141,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             CollectionAssert.DoesNotContain(visibleMembers, "CapitalShipBackgroundImagePath");
             CollectionAssert.DoesNotContain(visibleMembers, "AnimationImageRoot");
 
-            int fleetWindowIndex = artworkSurface.options.FindIndex(option =>
-                option.text == "Fleet window"
-            );
-            artworkSurface.SetValueWithoutNotify(fleetWindowIndex);
-            artworkSurface.onValueChanged.Invoke(fleetWindowIndex);
+            SelectArtworkSurface("Fleet window");
             ContentEditorFieldView fleetIcon =
                 view.GetComponentsInChildren<ContentEditorFieldView>()
                     .Single(field => field.Field.MemberName == "FleetListIconImagePath");
@@ -3353,11 +3398,14 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.AreEqual("InactiveImagePath", starfighterTabTarget.Field.MemberName);
             Texture releasedTabTexture = starfighterTab.texture;
             starfighterTabTarget.SetHovered(true);
-            starfighterTab
-                .GetComponent<ContentEditorWindowControlHover>()
-                .OnPointerEnter(new PointerEventData(null));
-            Assert.AreEqual("ActiveImagePath", starfighterTabTarget.Field.MemberName);
+            Assert.AreEqual("InactiveImagePath", starfighterTabTarget.Field.MemberName);
+            Assert.AreSame(releasedTabTexture, starfighterTab.texture);
+            RawImagePressVisual tabVisual = starfighterTab.GetComponent<RawImagePressVisual>();
+            PointerEventData press = new(null) { button = PointerEventData.InputButton.Left };
+            tabVisual.OnPointerDown(press);
             Assert.AreNotSame(releasedTabTexture, starfighterTab.texture);
+            tabVisual.OnPointerUp(press);
+            Assert.AreSame(releasedTabTexture, starfighterTab.texture);
             starfighterTabTarget.OnPointerClick(
                 new PointerEventData(null)
                 {
@@ -3373,9 +3421,6 @@ namespace Rebellion.Tests.ContentEditor.UI
                         && field.gameObject.activeSelf
                     )
             );
-            starfighterTab
-                .GetComponent<ContentEditorWindowControlHover>()
-                .OnPointerExit(new PointerEventData(null));
             starfighterTabTarget.SetHovered(false);
             requestedAsset = null;
             entityEditTarget?.OnPointerClick(
@@ -3391,31 +3436,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                     .GetComponentsInChildren<ContentEditorArtworkEditTarget>()
                     .Any(target => target.transform.Find("ContentEditorAssetEditButton") != null)
             );
-            bool exercisedHoverArtwork = false;
-            foreach (
-                ContentEditorWindowControlHover hover in fleetWindow.GetComponentsInChildren<ContentEditorWindowControlHover>()
-            )
-            {
-                RawImage image = hover.GetComponent<RawImage>();
-                Texture before = image.texture;
-                hover.OnPointerEnter(new PointerEventData(null));
-                exercisedHoverArtwork |= image.texture != before;
-                hover.OnPointerExit(new PointerEventData(null));
-                Assert.AreSame(before, image.texture);
-            }
-            Assert.IsTrue(exercisedHoverArtwork);
-
-            int encyclopediaIndex = artworkSurface.options.FindIndex(option =>
-                option.text == "Encyclopedia"
-            );
-            Assert.GreaterOrEqual(
-                encyclopediaIndex,
-                0,
-                "Available faction interface surfaces: "
-                    + string.Join(", ", artworkSurface.options.Select(option => option.text))
-            );
-            artworkSurface.SetValueWithoutNotify(encyclopediaIndex);
-            artworkSurface.onValueChanged.Invoke(encyclopediaIndex);
+            SelectArtworkSurface("Encyclopedia");
             EncyclopediaWindowView encyclopediaWindow =
                 view.GetComponentInChildren<EncyclopediaWindowView>();
             Assert.IsNotNull(encyclopediaWindow);
@@ -3437,11 +3458,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                     )
             );
 
-            int facilitiesIndex = artworkSurface.options.FindIndex(option =>
-                option.text == "Facilities and construction"
-            );
-            artworkSurface.SetValueWithoutNotify(facilitiesIndex);
-            artworkSurface.onValueChanged.Invoke(facilitiesIndex);
+            SelectArtworkSurface("Facilities and construction");
             FacilityWindowView facilityWindow = view.GetComponentInChildren<FacilityWindowView>();
             ConstructionWindowView constructionWindow =
                 view.GetComponentInChildren<ConstructionWindowView>();
@@ -3449,11 +3466,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.IsNull(constructionWindow);
             Assert.Greater(facilityWindow.transform.localScale.x, 1f);
 
-            int strategyViewIndex = artworkSurface.options.FindIndex(option =>
-                option.text == "Strategy view"
-            );
-            artworkSurface.SetValueWithoutNotify(strategyViewIndex);
-            artworkSurface.onValueChanged.Invoke(strategyViewIndex);
+            SelectArtworkSurface("Strategy view");
             StrategyHudView strategyHud = view.GetComponentInChildren<StrategyHudView>();
             Assert.IsNotNull(strategyHud);
             RectTransform strategySurface = (RectTransform)strategyHud.transform.parent;
@@ -3795,12 +3808,16 @@ namespace Rebellion.Tests.ContentEditor.UI
         /// <param name="caption">The exact interface surface caption.</param>
         private void SelectArtworkSurface(string caption)
         {
-            TMP_Dropdown surfaces = view.GetComponentsInChildren<TMP_Dropdown>()
-                .Single(dropdown => dropdown.name == "ArtworkViewDropdown");
-            int index = surfaces.options.FindIndex(option => option.text == caption);
-            Assert.GreaterOrEqual(index, 0, caption);
-            surfaces.SetValueWithoutNotify(index);
-            surfaces.onValueChanged.Invoke(index);
+            CollectionAssert.Contains(view.ArtworkViewOptions, caption);
+            for (
+                int attempt = 0;
+                attempt < view.ArtworkViewOptions.Count && view.ArtworkViewSelection != caption;
+                attempt++
+            )
+                view.GetComponentsInChildren<Button>()
+                    .Single(button => button.name == "NextArtworkView")
+                    .onClick.Invoke();
+            Assert.AreEqual(caption, view.ArtworkViewSelection);
             Canvas.ForceUpdateCanvases();
         }
 

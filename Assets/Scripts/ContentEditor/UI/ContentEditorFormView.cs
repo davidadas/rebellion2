@@ -31,6 +31,38 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private TMP_Dropdown collectionDropdown;
 
     [SerializeField]
+    private TMP_Dropdown shipDesignDropdown;
+
+    [SerializeField]
+    private TMP_Dropdown artworkStateSizeDropdown;
+
+    private int artworkStateSize;
+    private readonly List<int> artworkStateChoices = new();
+
+    private ContentPackEditorRecord[] shipNameDesigns = Array.Empty<ContentPackEditorRecord>();
+    private string selectedShipNameDesignID;
+
+    [SerializeField]
+    private TMP_Dropdown missionPresentationDropdown;
+
+    [SerializeField]
+    private Button missionReportsToggle;
+
+    private string missionPresentationKey;
+    private bool showMissionReports;
+
+    internal ContentEditorTreeNode ActiveMissionPage =>
+        selectedPage?.IsMissionPresentation == true ? selectedPage
+        : section == "Mission presentation"
+            ? selectedPage?.MissionPages.FirstOrDefault(page => page.Key == missionPresentationKey)
+                ?? selectedPage?.MissionPages.FirstOrDefault()
+        : null;
+
+    private bool IsMissionReportSection =>
+        section == ContentEditorMissionReport.Section
+        || section == "Mission presentation" && showMissionReports;
+
+    [SerializeField]
     private Button removeMessageButton;
 
     [SerializeField]
@@ -123,7 +155,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private Button setupUnitsTemplate;
 
     [SerializeField]
-    private TMP_Dropdown artworkViewDropdown;
+    private OptionsChoiceFieldView artworkViewSelector;
+
+    internal IReadOnlyList<string> ArtworkViewOptions { get; private set; } = Array.Empty<string>();
+
+    internal string ArtworkViewSelection => selectedFactionArtworkCategory;
 
     [SerializeField]
     private ContentEditorSectorPreview artworkSectorPreview;
@@ -137,8 +173,6 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private readonly List<CollectionEditorView> setupCollections = new();
     private readonly List<Button> setupUnitButtons = new();
     private Button artworkCutsButton;
-    private Button artworkTravelButton;
-    private Button artworkDamageButton;
     private readonly Dictionary<string, int> setupTasks = new();
     private readonly Dictionary<string, int> setupEntries = new();
     private string selectedFactionArtworkCategory = _defaultFactionArtworkCategory;
@@ -167,7 +201,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         IReadOnlyList<ContentPackEditorField>
     > ArtworkCutsRequested;
     internal event Action<
-        ContentPackEditorRecord,
+        ContentPackEditorField,
         ContentEditorArtworkEffect
     > ArtworkEffectRequested;
     public event Action<ContentPackEditorField, string> PreviewRequested;
@@ -179,9 +213,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
     public event Action<string> ValidationFailed;
     public bool HasOpenChoice =>
         generationTask.IsExpanded
-        || artworkViewDropdown.IsExpanded
         || setupCollections.Any(view => view.gameObject.activeSelf && view.HasOpenChoice)
         || collectionDropdown.IsExpanded
+        || shipDesignDropdown.IsExpanded
+        || artworkStateSizeDropdown.IsExpanded
+        || missionPresentationDropdown.IsExpanded
         || curveDropdown.IsExpanded
         || fieldViews.Any(view => view.gameObject.activeSelf && view.HasOpenChoice);
     public TextInputHistory InvalidTextHistory =>
@@ -206,7 +242,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             generationTask == null
             || setupCollectionTemplate == null
             || setupUnitsTemplate == null
-            || artworkViewDropdown == null
+            || artworkViewSelector == null
             || artworkSectorPreview == null
             || artworkWindowPreview == null
             || artworkDisabledWindowPreview == null
@@ -214,6 +250,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
             || previewImage == null
             || addMessageButton == null
             || collectionDropdown == null
+            || shipDesignDropdown == null
+            || artworkStateSizeDropdown == null
+            || missionPresentationDropdown == null
+            || missionReportsToggle == null
             || removeMessageButton == null
             || curveGraphic == null
             || curveDropdown == null
@@ -236,10 +276,14 @@ public sealed class ContentEditorFormView : MonoBehaviour
         fieldScroll.WidthChanged += HandleWidthChanged;
         addMessageButton.onClick.AddListener(RequestAddMessage);
         collectionDropdown.onValueChanged.AddListener(SelectCollectionItem);
+        shipDesignDropdown.onValueChanged.AddListener(SelectShipNameDesign);
+        artworkStateSizeDropdown.onValueChanged.AddListener(SelectArtworkStateSize);
+        missionPresentationDropdown.onValueChanged.AddListener(SelectMissionPresentation);
+        missionReportsToggle.onClick.AddListener(ToggleMissionReports);
         removeMessageButton.onClick.AddListener(RequestRemoveMessage);
         curveDropdown.onValueChanged.AddListener(SelectCurve);
         addScoreButton.onClick.AddListener(AddScore);
-        artworkViewDropdown.onValueChanged.AddListener(SelectFactionArtworkCategory);
+        artworkViewSelector.StepRequested += SelectRelativeFactionArtworkCategory;
         artworkSectorPreview.ArtworkOpened += OpenWindowArtwork;
         artworkWindowPreview.ArtworkOpened += OpenWindowArtwork;
         artworkWindowPreview.ArtworkMoved += MoveWindowArtwork;
@@ -264,10 +308,14 @@ public sealed class ContentEditorFormView : MonoBehaviour
         fieldScroll.WidthChanged -= HandleWidthChanged;
         addMessageButton.onClick.RemoveListener(RequestAddMessage);
         collectionDropdown.onValueChanged.RemoveListener(SelectCollectionItem);
+        shipDesignDropdown.onValueChanged.RemoveListener(SelectShipNameDesign);
+        artworkStateSizeDropdown.onValueChanged.RemoveListener(SelectArtworkStateSize);
+        missionPresentationDropdown.onValueChanged.RemoveListener(SelectMissionPresentation);
+        missionReportsToggle.onClick.RemoveListener(ToggleMissionReports);
         removeMessageButton.onClick.RemoveListener(RequestRemoveMessage);
         curveDropdown.onValueChanged.RemoveListener(SelectCurve);
         addScoreButton.onClick.RemoveListener(AddScore);
-        artworkViewDropdown.onValueChanged.RemoveListener(SelectFactionArtworkCategory);
+        artworkViewSelector.StepRequested -= SelectRelativeFactionArtworkCategory;
         artworkSectorPreview.ArtworkOpened -= OpenWindowArtwork;
         artworkWindowPreview.ArtworkOpened -= OpenWindowArtwork;
         artworkWindowPreview.ArtworkMoved -= MoveWindowArtwork;
@@ -311,6 +359,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         {
             showOutputArtworkBackground = true;
             showStateArtworkBackground = true;
+            artworkStateSize = 0;
         }
         project = value;
         assets = contentAssets;
@@ -393,6 +442,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
         HidePreview();
         addMessageButton.gameObject.SetActive(false);
         collectionDropdown.gameObject.SetActive(false);
+        shipDesignDropdown.gameObject.SetActive(false);
+        artworkStateSizeDropdown.gameObject.SetActive(false);
+        missionPresentationDropdown.gameObject.SetActive(false);
+        missionReportsToggle.gameObject.SetActive(false);
         removeMessageButton.gameObject.SetActive(false);
         collectionItems = Array.Empty<XElement>();
         selectedCollection = null;
@@ -430,10 +483,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <returns>Whether the field has a visible control in the current form.</returns>
     public bool FocusField(ContentPackEditorField field, string validationError = null)
     {
-        if (section == ContentEditorMissionReport.Section)
+        if (IsMissionReportSection)
         {
-            ContentEditorMissionReport report = selectedPage.MissionReports.FirstOrDefault(report =>
-                report.Fields.Any(candidate => SameField(candidate, field))
+            ContentEditorMissionReport report = ActiveMissionPage.MissionReports.FirstOrDefault(
+                report => report.Fields.Any(candidate => SameField(candidate, field))
             );
             if (report != null && report.Key != selectedMissionReportKey)
             {
@@ -498,14 +551,14 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// </summary>
     private void RequestAddMessage()
     {
-        if (section == ContentEditorMissionReport.Section)
+        if (IsMissionReportSection)
         {
-            ContentEditorMissionReport report = selectedPage.MissionReports.First(report =>
+            ContentEditorMissionReport report = ActiveMissionPage.MissionReports.First(report =>
                 report.Key == selectedMissionReportKey
             );
             if (report.Shared != null && Commit())
                 MissionReportOverrideRequested?.Invoke(
-                    selectedPage.RelatedRecords.Single(),
+                    ActiveMissionPage.RelatedRecords.Single(),
                     report,
                     report.Custom == null
                 );
@@ -522,9 +575,9 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="index">The entry selected in the standard dropdown.</param>
     private void SelectCollectionItem(int index)
     {
-        if (section == ContentEditorMissionReport.Section)
+        if (IsMissionReportSection)
         {
-            IReadOnlyList<ContentEditorMissionReport> reports = selectedPage.MissionReports;
+            IReadOnlyList<ContentEditorMissionReport> reports = ActiveMissionPage.MissionReports;
             if (!Commit())
             {
                 collectionDropdown.SetValueWithoutNotify(
@@ -747,6 +800,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
         ClearArtworkViewControls();
         addMessageButton.gameObject.SetActive(false);
         collectionDropdown.gameObject.SetActive(false);
+        shipDesignDropdown.gameObject.SetActive(false);
+        artworkStateSizeDropdown.gameObject.SetActive(false);
+        missionPresentationDropdown.gameObject.SetActive(false);
+        missionReportsToggle.gameObject.SetActive(false);
         removeMessageButton.gameObject.SetActive(false);
         curveGraphic.gameObject.SetActive(false);
         curveDropdown.gameObject.SetActive(false);
@@ -799,6 +856,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
         )
         {
             RenderMissionReportText();
+            return;
+        }
+        if (section == "Mission presentation" && ActiveMissionPage != null)
+        {
+            RenderMissionPresentationTab();
             return;
         }
         if (selectedPage?.IsMissionPresentation == true && section == "General")
@@ -1026,7 +1088,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private void RenderArtworkFields(ContentPackEditorField[] fields)
     {
         float width = fieldScroll.ScrollArea.ViewportWidth;
-        int y = 0;
+        int y = 6;
         int fieldIndex = 0,
             labelIndex = 0,
             imageIndex = 0,
@@ -1036,10 +1098,12 @@ public sealed class ContentEditorFormView : MonoBehaviour
         );
         Texture2D background = ResolveEffectiveUnitBackground(backgroundField);
         Texture2D compactBackground = ResolveUnitCompactBackground();
-        Texture2D travelBackground =
-            selectedRecord.Kind == "SpecialForce"
-                ? ResolveUnitCompactBackground(inTransit: true)
-                : null;
+        Texture2D travelBackground = selectedRecord.Kind
+            is "Officer"
+                or "SpecialForce"
+                or "Regiment"
+            ? ResolveUnitCompactBackground(inTransit: true)
+            : null;
         ContentPackEditorField[] normal = fields
             .Where(field =>
                 field != backgroundField
@@ -1092,8 +1156,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 width,
                 ref labelIndex
             );
-            y = PlaceArtworkEffectActions(normal, y, width);
-            HashSet<string> inlineStateMembers = new(StringComparer.Ordinal);
+            y = PlaceArtworkStateSize(states, y, width, ref labelIndex);
             y = PlaceArtworkStateGallery(
                 normal,
                 states,
@@ -1104,26 +1167,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 width,
                 ref fieldIndex,
                 ref imageIndex,
-                ref labelIndex,
-                inlineStateMembers
+                ref labelIndex
             );
-            ContentPackEditorField[] additionalStates = states
-                .Where(field => !inlineStateMembers.Contains(field.MemberName))
-                .ToArray();
-            if (additionalStates.Length > 0)
-            {
-                y += 8;
-                y += PlaceLabel("Additional state images", labelIndex++, 4, y, width - 8, true) + 4;
-                y = PlaceArtworkFieldGroup(
-                    additionalStates,
-                    y,
-                    width,
-                    ref fieldIndex,
-                    ref labelIndex,
-                    ref imageIndex,
-                    true
-                );
-            }
             y = CompleteArtworkPanel(panelStart, y);
         }
 
@@ -1158,84 +1203,6 @@ public sealed class ContentEditorFormView : MonoBehaviour
             y = CompleteArtworkPanel(panelStart, y);
         }
         fieldScroll.SetContentHeight(y + 24, !reflowingFields);
-    }
-
-    /// <summary>
-    /// Offers gameplay effect previews for units with their own effect slots and source artwork.
-    /// </summary>
-    /// <param name="normal">The normal artwork fields used as effect sources.</param>
-    /// <param name="y">The first available position in the gameplay states card.</param>
-    /// <param name="width">The complete form width.</param>
-    /// <returns>The first position below the actions, when available.</returns>
-    private int PlaceArtworkEffectActions(
-        IReadOnlyList<ContentPackEditorField> normal,
-        int y,
-        float width
-    )
-    {
-        ContentPackEditorRecord unit = selectedRecord;
-        if (
-            unit.Kind is not ("CapitalShip" or "Starfighter" or "Building" or "SpecialForce")
-            || ContentEditorUnitArtworkLayout.IsHeadquartersIcon(unit)
-            || !normal.Any(field =>
-                field.MemberName is "SmallDisplayImagePath" or "DisplayImagePath"
-                && ResolveArtworkTexture(field) != null
-            )
-        )
-            return y;
-
-        GetArtworkContentBounds(width, out float left, out float available);
-        const int actionWidth = 192;
-        const int gap = 8;
-        const int height = 34;
-        bool stacked = available < actionWidth * 2 + gap;
-        Configure(
-            ref artworkTravelButton,
-            ContentEditorArtworkEffect.Travel,
-            "Generate travel art",
-            left,
-            y
-        );
-        if (unit.Kind is "CapitalShip" or "Starfighter")
-        {
-            Configure(
-                ref artworkDamageButton,
-                ContentEditorArtworkEffect.Damage,
-                "Generate damage art",
-                stacked ? left : left + actionWidth + gap,
-                stacked ? y + height + gap : y
-            );
-            if (stacked)
-                y += height + gap;
-        }
-        return y + height + gap;
-
-        void Configure(
-            ref Button button,
-            ContentEditorArtworkEffect effect,
-            string caption,
-            float x,
-            int top
-        )
-        {
-            button ??= Instantiate(setupUnitsTemplate, fieldScroll.ScrollArea.ContentRoot);
-            button.name = "Generate" + effect + "Artwork";
-            button.GetComponentInChildren<TMP_Text>().text = caption;
-            button.onClick.RemoveAllListeners();
-            button.onClick.AddListener(() =>
-            {
-                if (Commit())
-                    ArtworkEffectRequested?.Invoke(unit, effect);
-            });
-            SetFormRect(
-                (RectTransform)button.transform,
-                x,
-                top,
-                Mathf.Min(actionWidth, available),
-                height
-            );
-            button.gameObject.SetActive(true);
-        }
     }
 
     /// <summary>
@@ -1323,6 +1290,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 field != source
                 && ContentPackEditorFieldMetadata.TryGetExpectedImageDimensions(field, out _)
             )
+            .OrderBy(GetArtworkOutputOrder)
             .ToArray();
         if (targets.Length == 0)
             return y;
@@ -1344,7 +1312,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             _ => "encyclopedia",
         };
         artworkCutsButton.GetComponentInChildren<TMP_Text>().text =
-            "Generate standard cuts from " + sourceName;
+            "Generate cuts from " + sourceName + " image";
         GetArtworkContentBounds(width, out float contentLeft, out float contentWidth);
         SetFormRect(
             (RectTransform)artworkCutsButton.transform,
@@ -1579,7 +1547,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         ref int labelIndex
     )
     {
-        var outputCandidates = fields
+        var outputs = fields
             .Select(field =>
             {
                 bool found = TryGetArtworkDimensions(field, out Vector2Int dimensions);
@@ -1594,12 +1562,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             .Where(output => output.Found)
             .OrderBy(output => GetArtworkOutputOrder(output.Field))
             .ToArray();
-        var outputs = outputCandidates.Where(output => output.Texture != null).ToArray();
-        ContentPackEditorField[] missingOutputs = outputCandidates
-            .Where(output => output.Texture == null)
-            .Select(output => output.Field)
-            .ToArray();
-        if (outputs.Length == 0 && missingOutputs.Length == 0)
+        if (outputs.Length == 0)
             return y;
 
         const int gap = 16;
@@ -1662,8 +1625,19 @@ public sealed class ContentEditorFormView : MonoBehaviour
                         ),
                     entity,
                     Array.Empty<Texture2D>(),
-                    ref imageIndex
+                    ref imageIndex,
+                    fitEntity: true
                 );
+                if (entity == null)
+                    PlaceArtworkPlaceholder(
+                        string.IsNullOrWhiteSpace(output.Field.Value)
+                            ? "Empty image slot"
+                            : "Image unavailable",
+                        labelIndex++,
+                        x,
+                        imageY,
+                        size.x
+                    );
                 imageBottom = Mathf.Max(imageBottom, imageY + size.y);
                 x += cardWidths[index] + gap;
             }
@@ -1691,89 +1665,6 @@ public sealed class ContentEditorFormView : MonoBehaviour
             }
             y = rowBottom + (outputIndex < outputs.Length ? gap : 8);
         }
-        return PlaceMissingArtworkOutputActions(
-            missingOutputs,
-            y,
-            width,
-            ref fieldIndex,
-            ref labelIndex
-        );
-    }
-
-    /// <summary>
-    /// Places empty optional outputs as compact choose-image actions without a fake blank preview.
-    /// </summary>
-    /// <param name="fields">The output fields that have no selected image.</param>
-    /// <param name="y">The first available vertical position.</param>
-    /// <param name="width">The available form width.</param>
-    /// <param name="fieldIndex">The next reusable field view.</param>
-    /// <param name="labelIndex">The next reusable label.</param>
-    /// <returns>The first position below the compact output actions.</returns>
-    private int PlaceMissingArtworkOutputActions(
-        IReadOnlyList<ContentPackEditorField> fields,
-        int y,
-        float width,
-        ref int fieldIndex,
-        ref int labelIndex
-    )
-    {
-        if (fields.Count == 0)
-            return y;
-        const int gap = 16;
-        GetArtworkContentBounds(width, out float contentLeft, out float contentWidth);
-        int columns = Mathf.Clamp(
-            Mathf.FloorToInt((contentWidth + gap) / (220 + gap)),
-            1,
-            fields.Count
-        );
-        int columnWidth = Mathf.Min(
-            320,
-            Mathf.Max(1, Mathf.FloorToInt((contentWidth - gap * (columns - 1)) / columns))
-        );
-        y += 4;
-        for (int rowStart = 0; rowStart < fields.Count; rowStart += columns)
-        {
-            int rowCount = Mathf.Min(columns, fields.Count - rowStart);
-            int headingHeight = 0;
-            for (int column = 0; column < rowCount; column++)
-            {
-                ContentPackEditorField field = fields[rowStart + column];
-                float x = contentLeft + column * (columnWidth + gap);
-                TryGetArtworkDimensions(field, out Vector2Int dimensions);
-                headingHeight = Mathf.Max(
-                    headingHeight,
-                    PlaceLabel(
-                        GetArtworkOutputCaption(field, dimensions),
-                        labelIndex++,
-                        x,
-                        y,
-                        columnWidth,
-                        false
-                    )
-                );
-            }
-            int controlY = y + headingHeight + 4;
-            int rowBottom = controlY;
-            for (int column = 0; column < rowCount; column++)
-            {
-                float x = contentLeft + column * (columnWidth + gap);
-                rowBottom = Mathf.Max(
-                    rowBottom,
-                    controlY
-                        + PlaceField(
-                            fields[rowStart + column],
-                            fieldIndex++,
-                            x,
-                            controlY,
-                            columnWidth,
-                            0,
-                            0,
-                            true
-                        )
-                );
-            }
-            y = rowBottom + gap;
-        }
         return y;
     }
 
@@ -1783,7 +1674,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="field">The independently editable image.</param>
     /// <param name="dimensions">Its expected pixel dimensions.</param>
     /// <returns>The semantic card title and dimensions.</returns>
-    private static string GetArtworkOutputCaption(
+    internal static string GetArtworkOutputCaption(
         ContentPackEditorField field,
         Vector2Int dimensions
     )
@@ -1813,7 +1704,81 @@ public sealed class ContentEditorFormView : MonoBehaviour
         };
 
     /// <summary>
-    /// Places the unit's normal and combined status layers using the compact gameplay cut.
+    /// Switches the gameplay gallery between the supported card sizes.
+    /// </summary>
+    /// <param name="states">The authored state outputs.</param>
+    /// <param name="y">The next vertical position.</param>
+    /// <param name="width">The available form width.</param>
+    /// <param name="labelIndex">The next layout label.</param>
+    /// <returns>The first position below the optional size selector.</returns>
+    private int PlaceArtworkStateSize(
+        IReadOnlyList<ContentPackEditorField> states,
+        int y,
+        float width,
+        ref int labelIndex
+    )
+    {
+        artworkStateChoices.Clear();
+        artworkStateChoices.Add(0);
+        if (states.Any(field => field.MemberName is "InTransitImagePath" or "DamagedImagePath"))
+            artworkStateChoices.Add(1);
+        if (
+            states.Any(field =>
+                field.MemberName
+                    is "BattleResultInTransitImagePath"
+                        or "BattleResultDamagedImagePath"
+            )
+        )
+            artworkStateChoices.Add(2);
+        if (!artworkStateChoices.Contains(artworkStateSize))
+            artworkStateSize = 0;
+        if (artworkStateChoices.Count == 1)
+            return y;
+
+        GetArtworkContentBounds(width, out float left, out float available);
+        y += PlaceLabel("Preview size", labelIndex++, left, y, available, false);
+        RectTransform control = (RectTransform)artworkStateSizeDropdown.transform;
+        SetFormRect(control, left, y, Mathf.Min(240, available), 34);
+        artworkStateSizeDropdown.ClearOptions();
+        artworkStateSizeDropdown.AddOptions(
+            artworkStateChoices
+                .Select(size =>
+                    size switch
+                    {
+                        1 => "Large card",
+                        2 => "Battle result",
+                        _ => "Small card",
+                    }
+                )
+                .ToList()
+        );
+        artworkStateSizeDropdown.SetValueWithoutNotify(
+            artworkStateChoices.IndexOf(artworkStateSize)
+        );
+        artworkStateSizeDropdown.RefreshShownValue();
+        artworkStateSizeDropdown.gameObject.SetActive(true);
+        return y + 46;
+    }
+
+    /// <summary>
+    /// Shows the exact artwork fields that supply the selected runtime card.
+    /// </summary>
+    /// <param name="index">The size option selected by the author.</param>
+    private void SelectArtworkStateSize(int index)
+    {
+        if (!Commit())
+        {
+            artworkStateSizeDropdown.SetValueWithoutNotify(
+                artworkStateChoices.IndexOf(artworkStateSize)
+            );
+            return;
+        }
+        artworkStateSize = artworkStateChoices[index];
+        RenderFields(true);
+    }
+
+    /// <summary>
+    /// Places the normal and combined status layers for the selected gameplay card.
     /// </summary>
     /// <param name="normalFields">The normal output fields.</param>
     /// <param name="stateFields">The separately authored status fields.</param>
@@ -1825,7 +1790,6 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="fieldIndex">The next reusable field view.</param>
     /// <param name="imageIndex">The next reusable preview image.</param>
     /// <param name="labelIndex">The next reusable label.</param>
-    /// <param name="inlineMembers">The state fields placed directly below their previews.</param>
     /// <returns>The first position below the complete state gallery.</returns>
     private int PlaceArtworkStateGallery(
         IReadOnlyList<ContentPackEditorField> normalFields,
@@ -1837,39 +1801,77 @@ public sealed class ContentEditorFormView : MonoBehaviour
         float width,
         ref int fieldIndex,
         ref int imageIndex,
-        ref int labelIndex,
-        ISet<string> inlineMembers
+        ref int labelIndex
     )
     {
+        var members = artworkStateSize switch
+        {
+            1 => (
+                Normal: "DisplayImagePath",
+                Travel: "InTransitImagePath",
+                Damage: "DamagedImagePath"
+            ),
+            2 => (
+                Normal: "BattleResultImagePath",
+                Travel: "BattleResultInTransitImagePath",
+                Damage: "BattleResultDamagedImagePath"
+            ),
+            _ => (
+                Normal: "SmallDisplayImagePath",
+                Travel: "InTransitSmallImagePath",
+                Damage: "DamagedSmallImagePath"
+            ),
+        };
+        ContentPackEditorField preferredBase = normalFields.FirstOrDefault(field =>
+            field.MemberName == members.Normal
+        );
         ContentPackEditorField baseField =
-            normalFields.FirstOrDefault(field =>
-                field.MemberName == "SmallDisplayImagePath" && ResolveArtworkTexture(field) != null
-            )
-            ?? normalFields.FirstOrDefault(field => field.MemberName == "DisplayImagePath")
-            ?? normalFields.FirstOrDefault();
-        if (baseField == null || !TryGetArtworkDimensions(baseField, out Vector2Int dimensions))
+            preferredBase != null && ResolveArtworkTexture(preferredBase) != null
+                ? preferredBase
+                : normalFields.FirstOrDefault(field => field.MemberName == "DisplayImagePath")
+                    ?? normalFields.FirstOrDefault();
+        if (
+            baseField == null
+            || !TryGetArtworkDimensions(preferredBase ?? baseField, out Vector2Int dimensions)
+        )
             return y;
 
         ContentPackEditorField transit = stateFields.FirstOrDefault(field =>
-            field.MemberName == "InTransitSmallImagePath"
+            field.MemberName == members.Travel
         );
-        transit ??= stateFields.FirstOrDefault(field => field.MemberName == "InTransitImagePath");
         ContentPackEditorField damage = stateFields.FirstOrDefault(field =>
-            field.MemberName == "DamagedSmallImagePath"
+            field.MemberName == members.Damage
         );
-        damage ??= stateFields.FirstOrDefault(field => field.MemberName == "DamagedImagePath");
         damage ??= stateFields.FirstOrDefault(field => field.MemberName == "InjuredImagePath");
         ContentPackEditorField captured = stateFields.FirstOrDefault(field =>
             field.MemberName == "CapturedOverlayImagePath"
         );
 
+        bool regiment = selectedRecord.Kind == "Regiment";
+        Texture2D defenseTravel =
+            regiment && showStateArtworkBackground
+                ? ResolveUnitCompactBackground(inTransit: true, defense: true)
+                : null;
+        bool splitTransit =
+            regiment
+            && (defenseTravel != travelBackground || ResolveArtworkTexture(transit) != null);
         List<(
             string Caption,
             ContentPackEditorField[] Layers,
             ContentPackEditorField Action
         )> states = new() { ("Normal", Array.Empty<ContentPackEditorField>(), null) };
+        if (selectedRecord.Kind == "Officer")
+            states.Add(("In transit", Array.Empty<ContentPackEditorField>(), null));
+        if (splitTransit)
+            states.Add(("In transit (Fleet)", Array.Empty<ContentPackEditorField>(), null));
         if (transit != null)
-            states.Add(("Travel", new[] { transit }, transit));
+        {
+            string caption =
+                splitTransit ? "In transit (Defense)"
+                : regiment ? "In transit"
+                : "Travel";
+            states.Add((caption, new[] { transit }, transit));
+        }
         if (damage != null)
             states.Add(
                 (
@@ -1892,18 +1894,6 @@ public sealed class ContentEditorFormView : MonoBehaviour
             states.Add(("Captured", new[] { captured }, captured));
 
         Texture2D baseTexture = ResolveArtworkTexture(baseField);
-        if (baseTexture == null)
-            return y
-                + PlaceLabel(
-                    "No state preview is available until a normal image is selected.",
-                    labelIndex++,
-                    0,
-                    y,
-                    width,
-                    false
-                )
-                + 12;
-
         const int gap = 16;
         GetArtworkContentBounds(width, out float contentLeft, out float contentWidth);
         int columnCount = Mathf.Clamp(
@@ -1933,15 +1923,18 @@ public sealed class ContentEditorFormView : MonoBehaviour
             int labelHeight = PlaceLabel(caption, labelIndex++, x, y, size.x, false);
             int imageY = y + labelHeight + 4;
             Texture2D[] overlays = layers
-                .Select(ResolveArtworkTexture)
+                .Select(field => ResolveArtworkTexture(field))
                 .Where(texture => texture != null)
                 .ToArray();
+            bool hasStateArtwork = overlays.Length > 0;
             Texture2D stateBackground = GetArtworkBackground(
                 new[] { baseField },
                 background,
                 compactBackground
             );
             Texture2D stateEntity = baseTexture;
+            if (caption is "In transit" or "In transit (Fleet)")
+                stateBackground = travelBackground;
             if (action == transit && transit != null)
             {
                 if (selectedRecord.Kind == "Building" && overlays.Length > 0)
@@ -1954,6 +1947,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     stateBackground = overlays.FirstOrDefault() ?? travelBackground;
                     overlays = Array.Empty<Texture2D>();
                 }
+                else if (regiment)
+                    stateBackground = defenseTravel;
             }
             PlaceArtworkComposition(
                 "State-" + caption.Replace(' ', '-'),
@@ -1965,20 +1960,66 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 stateBackground,
                 stateEntity,
                 overlays,
-                ref imageIndex
+                ref imageIndex,
+                fitEntity: selectedRecord.Kind == "Officer"
             );
+            if (stateEntity == null && stateBackground == null && overlays.Length == 0)
+                PlaceArtworkPlaceholder("Empty image slot", labelIndex++, x, imageY, size.x);
             int cardHeight = labelHeight + 4 + size.y;
             if (action != null)
             {
+                bool canEditEffect = ContentEditorArtworkEffectGenerator.TryGetStyle(
+                    action.Record,
+                    action == transit
+                        ? ContentEditorArtworkEffect.Travel
+                        : ContentEditorArtworkEffect.Damage,
+                    out _
+                );
+                Action edit = null;
+                if (canEditEffect)
+                    edit = () =>
+                    {
+                        if (Commit())
+                            ArtworkEffectRequested?.Invoke(
+                                action,
+                                action == transit
+                                    ? ContentEditorArtworkEffect.Travel
+                                    : ContentEditorArtworkEffect.Damage
+                            );
+                    };
                 cardHeight +=
                     4
-                    + PlaceField(action, fieldIndex++, x, imageY + size.y + 4, size.x, 0, 0, true);
-                inlineMembers.Add(action.MemberName);
+                    + PlaceField(
+                        action,
+                        fieldIndex++,
+                        x,
+                        imageY + size.y + 4,
+                        size.x,
+                        0,
+                        0,
+                        true,
+                        editArtwork: edit,
+                        hasEffectArtwork: hasStateArtwork
+                    );
             }
             rowHeight = Mathf.Max(rowHeight, cardHeight);
             x += size.x + gap;
         }
         return y + rowHeight + 8;
+    }
+
+    /// <summary>
+    /// Draws the image status over its frame, regardless of the pooled controls' creation order.
+    /// </summary>
+    /// <param name="text">The empty or unavailable image status.</param>
+    /// <param name="index">The pooled label slot.</param>
+    /// <param name="x">The left edge of the preview frame.</param>
+    /// <param name="y">The top edge of the preview frame.</param>
+    /// <param name="width">The preview frame width.</param>
+    private void PlaceArtworkPlaceholder(string text, int index, float x, int y, int width)
+    {
+        PlaceLabel(text, index, x + 8, y + 8, Mathf.Max(1, width - 16), false);
+        groupLabels[index].transform.SetAsLastSibling();
     }
 
     /// <summary>
@@ -1994,6 +2035,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="entity">The normal entity layer.</param>
     /// <param name="overlays">The travel, damage, injury, or captured layers in render order.</param>
     /// <param name="imageIndex">The next reusable preview image.</param>
+    /// <param name="fitEntity">Whether the normal image must fit entirely within the preview.</param>
     private void PlaceArtworkComposition(
         string name,
         int x,
@@ -2004,12 +2046,20 @@ public sealed class ContentEditorFormView : MonoBehaviour
         Texture2D background,
         Texture2D entity,
         IReadOnlyList<Texture2D> overlays,
-        ref int imageIndex
+        ref int imageIndex,
+        bool fitEntity = false
     )
     {
         RawImage backing = GetArtworkPreviewImage(ref imageIndex, name + "-Backing");
         backing.texture = null;
-        backing.color = new Color(0.035f, 0.04f, 0.05f, 1f);
+        backing.color =
+            entity == null && background == null && overlays.Count == 0
+                ? ContentEditorAppearance.ColorFor(
+                    GetComponentInParent<ContentEditorAppearance>()?.Mode
+                        ?? ContentEditorColorMode.Dark,
+                    ContentEditorColorRole.ScrollTrack
+                )
+                : new Color(0.035f, 0.04f, 0.05f, 1f);
         backing.uvRect = new Rect(0, 0, 1, 1);
         SetFormRect(backing.rectTransform, x, y, width, height);
         PlaceArtworkCompositionLayer(
@@ -2027,7 +2077,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             name + "-Entity",
             entity,
             target,
-            selectedRecord?.Kind == "Building",
+            fitEntity || selectedRecord?.Kind == "Building",
             x,
             y,
             width,
@@ -2140,6 +2190,41 @@ public sealed class ContentEditorFormView : MonoBehaviour
     }
 
     /// <summary>
+    /// Resolves the background and crop used by one generated output in the artwork gallery.
+    /// </summary>
+    /// <param name="field">The output whose preview is being prepared.</param>
+    /// <param name="dimensions">The exact generated output dimensions.</param>
+    /// <returns>The optional background texture and its normalized sample rectangle.</returns>
+    internal (Texture2D Texture, Rect Uv) GetArtworkCutBackground(
+        ContentPackEditorField field,
+        Vector2Int dimensions
+    )
+    {
+        if (!showOutputArtworkBackground)
+            return (null, default);
+        ContentPackEditorField overrideField = selectedRecord.Kind
+            is "Officer"
+                or "CapitalShip"
+                or "Starfighter"
+            ? selectedRecord.GetField(ContentEditorUnitArtworkLayout.BackgroundMember)
+            : null;
+        Texture2D texture = GetArtworkBackground(
+            new[] { field },
+            ResolveEffectiveUnitBackground(overrideField),
+            ResolveUnitCompactBackground()
+        );
+        return texture == null
+            ? (null, default)
+            : (
+                texture,
+                ContentEditorArtworkCrop.GetCenteredUvRect(
+                    new Vector2Int(texture.width, texture.height),
+                    dimensions
+                )
+            );
+    }
+
+    /// <summary>
     /// Shows the theme background used while the unit's optional override remains empty.
     /// </summary>
     /// <param name="field">The empty background-override field.</param>
@@ -2231,13 +2316,15 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// </summary>
     /// <param name="field">The optional image field.</param>
     /// <returns>The resolved texture, or null when the field is empty or invalid.</returns>
-    private Texture2D ResolveArtworkTexture(ContentPackEditorField field)
+    /// <param name="readable">Whether a CPU-readable copy is required for software compositing.</param>
+    private Texture2D ResolveArtworkTexture(ContentPackEditorField field, bool readable = false)
     {
         if (field == null || string.IsNullOrWhiteSpace(field.Value))
             return null;
         try
         {
-            return assets.GetTexture(field.GetMediaAddress(field.Value));
+            string address = field.GetMediaAddress(field.Value);
+            return readable ? assets.GetReadableTexture(address) : assets.GetTexture(address);
         }
         catch (ArgumentException exception)
         {
@@ -2251,14 +2338,14 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// </summary>
     /// <param name="overrideField">The unit's optional background field.</param>
     /// <returns>The effective background texture, or null when no background applies.</returns>
-    private Texture2D ResolveEffectiveUnitBackground(ContentPackEditorField overrideField)
+    /// <param name="readable">Whether a CPU-readable copy is required for software compositing.</param>
+    private Texture2D ResolveEffectiveUnitBackground(
+        ContentPackEditorField overrideField,
+        bool readable = false
+    )
     {
-        Texture2D overridden = ResolveArtworkTexture(overrideField);
-        if (
-            overridden != null
-            || overrideField != null && !string.IsNullOrWhiteSpace(overrideField.Value)
-        )
-            return overridden;
+        if (!string.IsNullOrWhiteSpace(overrideField?.Value))
+            return ResolveArtworkTexture(overrideField, readable);
         FactionTheme theme = ResolveUnitFactionTheme();
         string address = selectedRecord.Kind switch
         {
@@ -2271,7 +2358,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             return null;
         try
         {
-            return assets.GetTexture(address);
+            return readable ? assets.GetReadableTexture(address) : assets.GetTexture(address);
         }
         catch (ArgumentException exception)
         {
@@ -2281,16 +2368,67 @@ public sealed class ContentEditorFormView : MonoBehaviour
     }
 
     /// <summary>
+    /// Resolves the optional gameplay backdrop for a generated ship state preview.
+    /// </summary>
+    /// <returns>A readable ship backdrop, or null when the author has hidden it.</returns>
+    internal Texture2D GetShipEffectBackground() =>
+        showStateArtworkBackground
+            ? ResolveEffectiveUnitBackground(
+                selectedRecord.GetField(ContentEditorUnitArtworkLayout.BackgroundMember),
+                readable: true
+            )
+            : null;
+
+    /// <summary>
     /// Resolves the card background used behind compact personnel and regiment artwork in gameplay.
     /// </summary>
     /// <param name="inTransit">Whether to use the shared travel background for personnel.</param>
     /// <returns>The configured card background, or null when the selected unit is presented without one.</returns>
-    private Texture2D ResolveUnitCompactBackground(bool inTransit = false)
+    /// <param name="readable">Whether a CPU-readable copy is required for software compositing.</param>
+    /// <param name="defense">Whether to use the Defense window's troop transit backdrop.</param>
+    internal Texture2D ResolveUnitCompactBackground(
+        bool inTransit = false,
+        bool readable = false,
+        bool defense = false
+    )
+    {
+        string address = GetUnitCompactBackgroundAddress(inTransit, defense);
+        if (string.IsNullOrWhiteSpace(address))
+            return null;
+        try
+        {
+            return readable ? assets.GetReadableTexture(address) : assets.GetTexture(address);
+        }
+        catch (ArgumentException exception)
+        {
+            GameLogger.Warning("Invalid compact unit background path: " + exception.Message);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Identifies the pack artwork used for a unit's matching gameplay backdrop.
+    /// </summary>
+    /// <param name="inTransit">Whether to select the travel state.</param>
+    /// <param name="defense">Whether the override targets the defense card.</param>
+    /// <returns>The effective media address, if configured.</returns>
+    internal string GetUnitCompactBackgroundAddress(bool inTransit, bool defense)
     {
         FactionTheme theme = ResolveUnitFactionTheme();
-        string address = selectedRecord.Kind switch
+        if (
+            theme == null
+            && selectedRecord.Kind == "Building"
+            && inTransit
+            && !string.IsNullOrEmpty(project.Definition.NeutralThemePath)
+        )
+            theme = ContentEditorPresentation.GetNeutralTheme(project);
+        return selectedRecord.Kind switch
         {
-            "Officer" or "SpecialForce" when inTransit => theme
+            "Officer" when inTransit => theme
+                ?.StrategyWindows
+                ?.Fleet
+                ?.PersonnelEnrouteBackgroundImagePath,
+            "SpecialForce" when inTransit => theme
                 ?.StrategyWindows
                 ?.Defense
                 ?.EnrouteBackgroundImagePath
@@ -2300,20 +2438,21 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 ?.Defense
                 ?.PersonnelBackgroundImagePath
                 ?? theme?.StrategyWindows?.Fleet?.PersonnelBackgroundImagePath,
+            "Regiment" when inTransit && defense => theme
+                ?.StrategyWindows
+                ?.Defense
+                ?.EnrouteBackgroundImagePath,
+            "Regiment" when inTransit => theme
+                ?.StrategyWindows
+                ?.Fleet
+                ?.PersonnelEnrouteBackgroundImagePath,
             "Regiment" => theme?.StrategyWindows?.Fleet?.PersonnelBackgroundImagePath,
+            "Building" when inTransit => theme
+                ?.StrategyWindows
+                ?.Defense
+                ?.EnrouteBackgroundImagePath,
             _ => null,
         };
-        if (string.IsNullOrWhiteSpace(address))
-            return null;
-        try
-        {
-            return assets.GetTexture(address);
-        }
-        catch (ArgumentException exception)
-        {
-            GameLogger.Warning("Invalid compact unit background path: " + exception.Message);
-            return null;
-        }
     }
 
     /// <summary>
@@ -2452,10 +2591,38 @@ public sealed class ContentEditorFormView : MonoBehaviour
             preview.gameObject.SetActive(true);
             y += imageHeight + 8;
         }
-        string status =
-            invalid ? "Image could not be loaded."
-            : texture == null ? "No image selected."
-            : GetArtworkDimensionWarning(field, current);
+        if (texture == null)
+        {
+            Vector2Int dimensions = TryGetArtworkDimensions(field, out Vector2Int expected)
+                ? expected
+                : new Vector2Int(2, 1);
+            Vector2Int size = GetArtworkGallerySize(
+                Mathf.Max(1, Mathf.Min(width - 8, maximumWidth)),
+                dimensions
+            );
+            int height = Mathf.Min(size.y, maximumHeight);
+            PlaceArtworkComposition(
+                "Empty-" + field.MemberName,
+                Mathf.RoundToInt(x),
+                y,
+                size.x,
+                height,
+                dimensions,
+                null,
+                null,
+                Array.Empty<Texture2D>(),
+                ref imageIndex
+            );
+            PlaceArtworkPlaceholder(
+                invalid || address != null ? "Image unavailable" : "Empty image slot",
+                labelIndex++,
+                x,
+                y,
+                size.x
+            );
+            return y + height + 8;
+        }
+        string status = GetArtworkDimensionWarning(field, current);
         if (!string.IsNullOrEmpty(status))
             y += PlaceLabel(status, labelIndex++, x, y, width - 8, false) + 8;
         return y;
@@ -2728,18 +2895,98 @@ public sealed class ContentEditorFormView : MonoBehaviour
         };
 
     /// <summary>
+    /// Chooses one mission within the current faction and offers its available report editor.
+    /// </summary>
+    private void RenderMissionPresentationTab()
+    {
+        IReadOnlyList<ContentEditorTreeNode> pages = selectedPage.MissionPages;
+        ContentEditorTreeNode page = ActiveMissionPage;
+        if (missionPresentationKey != page.Key)
+            showMissionReports = false;
+        missionPresentationKey = page.Key;
+        missionPresentationDropdown.ClearOptions();
+        missionPresentationDropdown.AddOptions(pages.Select(item => item.Caption).ToList());
+        missionPresentationDropdown.SetValueWithoutNotify(pages.ToList().IndexOf(page));
+        missionPresentationDropdown.RefreshShownValue();
+        int width = Mathf.FloorToInt(fieldScroll.ScrollArea.ViewportWidth);
+        bool reports = page.MissionReports.Count > 0;
+        int pickerWidth = Mathf.Min(380, width - 8);
+        bool split = reports && width >= pickerWidth + 194;
+        UILayout.SetSourceRect(
+            (RectTransform)missionPresentationDropdown.transform,
+            4,
+            4,
+            pickerWidth,
+            34
+        );
+        missionPresentationDropdown.gameObject.SetActive(true);
+        int top = 50;
+        if (reports)
+        {
+            missionReportsToggle.GetComponentInChildren<TMP_Text>().text = showMissionReports
+                ? "Show presentation"
+                : "Show reports";
+            UILayout.SetSourceRect(
+                (RectTransform)missionReportsToggle.transform,
+                split ? pickerWidth + 12 : 4,
+                split ? 4 : top,
+                170,
+                34
+            );
+            missionReportsToggle.gameObject.SetActive(true);
+            if (!split)
+                top += 44;
+        }
+        if (reports && showMissionReports)
+            RenderMissionReportText(top);
+        else
+            RenderFactionMissionPresentation(top);
+    }
+
+    /// <summary>
+    /// Opens the selected mission while keeping the same faction and inspector tab.
+    /// </summary>
+    /// <param name="index">The selected mission option.</param>
+    private void SelectMissionPresentation(int index)
+    {
+        var pages = selectedPage.MissionPages;
+        if (!Commit())
+        {
+            missionPresentationDropdown.SetValueWithoutNotify(
+                pages.ToList().IndexOf(ActiveMissionPage)
+            );
+            return;
+        }
+        missionPresentationKey = pages[index].Key;
+        showMissionReports = false;
+        RenderFields(true);
+    }
+
+    /// <summary>
+    /// Switches between the selected mission's presentation and report text.
+    /// </summary>
+    private void ToggleMissionReports()
+    {
+        if (!Commit())
+            return;
+        showMissionReports = !showMissionReports;
+        RenderFields(true);
+    }
+
+    /// <summary>
     /// Shows a faction's two gameplay mission icons and its authored encyclopedia presentation.
     /// </summary>
-    private void RenderFactionMissionPresentation()
+    /// <param name="top">The starting offset below the mission picker.</param>
+    private void RenderFactionMissionPresentation(int top = 0)
     {
         previewPane.SetActive(false);
         float width = fieldScroll.ScrollArea.ViewportWidth;
-        int y = 0,
+        int y = top,
             fieldIndex = 0,
             imageIndex = 0,
             labelIndex = 0,
             panelIndex = 0;
-        ContentPackEditorField[] icons = selectedPage
+        ContentPackEditorField[] icons = ActiveMissionPage
             .Fields.Where(ContentEditorContentSections.IsFactionMissionIcon)
             .ToArray();
         if (icons.Length > 0)
@@ -2757,13 +3004,13 @@ public sealed class ContentEditorFormView : MonoBehaviour
             {
                 ContentPackEditorField icon = icons[index];
                 float x = left + (sideBySide ? index * (columnWidth + gap) : 0);
-                int top = sideBySide ? y : iconBottom;
-                top += PlaceLabel(icon.Caption, labelIndex++, x, top, columnWidth, true) + 6;
+                int rowTop = sideBySide ? y : iconBottom;
+                rowTop += PlaceLabel(icon.Caption, labelIndex++, x, rowTop, columnWidth, true) + 6;
                 if (!string.IsNullOrWhiteSpace(icon.Value))
-                    top = PlaceArtworkImagePreview(
+                    rowTop = PlaceArtworkImagePreview(
                         icon,
                         x,
-                        top,
+                        rowTop,
                         columnWidth,
                         columnWidth - 8,
                         115,
@@ -2772,12 +3019,12 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     );
                 iconBottom = Mathf.Max(
                     iconBottom,
-                    top + PlaceField(icon, fieldIndex++, x, top, columnWidth, 0, 0, true) + 8
+                    rowTop + PlaceField(icon, fieldIndex++, x, rowTop, columnWidth, 0, 0, true) + 8
                 );
             }
-            y = CompleteArtworkPanel(0, iconBottom);
+            y = CompleteArtworkPanel(top, iconBottom);
         }
-        ContentPackEditorField[] article = selectedPage
+        ContentPackEditorField[] article = ActiveMissionPage
             .Fields.Where(field => field.Record.Kind == "EncyclopediaEntry")
             .ToArray();
         if (article.Length > 0)
@@ -2795,7 +3042,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             );
             y = CompleteArtworkPanel(start, y);
         }
-        else if (selectedPage.MissionArticleCatalog != null)
+        else if (ActiveMissionPage.MissionArticleCatalog != null)
         {
             addMessageButton.gameObject.SetActive(true);
             addMessageButton.name = "AddMissionArticle";
@@ -2815,11 +3062,12 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <summary>
     /// Displays the shared report and the editor for an optional faction-specific copy.
     /// </summary>
-    private void RenderMissionReportText()
+    /// <param name="top">The starting offset below the mission picker.</param>
+    private void RenderMissionReportText(int top = 4)
     {
         previewPane.SetActive(false);
         float width = Mathf.Min(1024, fieldScroll.ScrollArea.ViewportWidth);
-        ContentEditorMissionReport[] reports = selectedPage.MissionReports.ToArray();
+        ContentEditorMissionReport[] reports = ActiveMissionPage.MissionReports.ToArray();
         int index = Math.Max(
             0,
             Array.FindIndex(reports, report => report.Key == selectedMissionReportKey)
@@ -2828,7 +3076,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         selectedMissionReportKey = selected.Key;
         int heading = 0,
             fieldIndex = 0;
-        int y = 4;
+        int y = top;
         y += PlaceLabel("Outcome", heading++, 4, y, width - 8, true);
         int dropdownWidth = Mathf.FloorToInt(Mathf.Min(350, width - 8));
         bool actionAlongside = width >= dropdownWidth + 256;
@@ -2940,8 +3188,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
 
         if (!categories.Any(category => category.Name == selectedFactionArtworkCategory))
             selectedFactionArtworkCategory = categories[0].Name;
-        y += PlaceLabel("Interface preview", labelIndex++, 4, y, width - 8, true) + 4;
-        y = PlaceFactionArtworkViewDropdown(
+        y = PlaceFactionArtworkViewSelector(
             categories.Select(category => category.Name).ToArray(),
             y,
             width
@@ -2958,6 +3205,15 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 width - 8,
                 false
             ) + 12;
+        y +=
+            PlaceLabel(
+                "Double-click outlined artwork to edit it. Drag artwork with placement controls to move it. Press and hold a control to see its pressed artwork.",
+                labelIndex++,
+                4,
+                y,
+                width - 8,
+                false
+            ) + 10;
         IReadOnlyList<ContentPackEditorField> renderedFields;
         if (category.Name == _defaultFactionArtworkCategory)
         {
@@ -3031,7 +3287,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="y">The selector position.</param>
     /// <param name="width">The available browser width.</param>
     /// <returns>The first position below the selector.</returns>
-    private int PlaceFactionArtworkViewDropdown(
+    private int PlaceFactionArtworkViewSelector(
         IReadOnlyList<string> categories,
         int y,
         float width
@@ -3041,21 +3297,15 @@ public sealed class ContentEditorFormView : MonoBehaviour
         int selectorWidth = Mathf.Min(520, Mathf.Max(1, Mathf.FloorToInt(width - 8)));
         int selectorX = Mathf.Max(4, Mathf.RoundToInt((width - selectorWidth) * 0.5f));
         UILayout.SetSourceRect(
-            (RectTransform)artworkViewDropdown.transform,
+            (RectTransform)artworkViewSelector.transform,
             selectorX,
             y,
             selectorWidth,
             height
         );
-        artworkViewDropdown.ClearOptions();
-        artworkViewDropdown.AddOptions(categories.ToList());
-        int selectedIndex = categories
-            .Select((category, index) => new { category, index })
-            .First(item => item.category == selectedFactionArtworkCategory)
-            .index;
-        artworkViewDropdown.SetValueWithoutNotify(selectedIndex);
-        artworkViewDropdown.RefreshShownValue();
-        artworkViewDropdown.gameObject.SetActive(true);
+        ArtworkViewOptions = categories;
+        artworkViewSelector.Render(selectedFactionArtworkCategory);
+        artworkViewSelector.gameObject.SetActive(true);
         return y + height + 8;
     }
 
@@ -3318,7 +3568,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
 
         return y
             + PlaceLabel(
-                "Hover default controls to preview active artwork. Drag outlined artwork to place it, or double-click it to edit the asset.",
+                "Choose an image to copy it into this pack.",
                 labelIndex++,
                 4,
                 y,
@@ -3360,27 +3610,14 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <summary>
     /// Switches the lazy artwork surface after accepting edits in the current one.
     /// </summary>
-    /// <param name="index">The selected dropdown-option index.</param>
-    private void SelectFactionArtworkCategory(int index)
+    /// <param name="offset">The amount to advance in the ordered interface list.</param>
+    private void SelectRelativeFactionArtworkCategory(int offset)
     {
-        if (index < 0 || index >= artworkViewDropdown.options.Count)
+        int count = ArtworkViewOptions.Count;
+        if (count < 2 || !Commit())
             return;
-        string category = artworkViewDropdown.options[index].text;
-        if (category == selectedFactionArtworkCategory)
-            return;
-        if (!Commit())
-        {
-            int previous = artworkViewDropdown.options.FindIndex(option =>
-                option.text == selectedFactionArtworkCategory
-            );
-            if (previous >= 0)
-            {
-                artworkViewDropdown.SetValueWithoutNotify(previous);
-                artworkViewDropdown.RefreshShownValue();
-            }
-            return;
-        }
-        selectedFactionArtworkCategory = category;
+        int current = ArtworkViewOptions.ToList().IndexOf(selectedFactionArtworkCategory);
+        selectedFactionArtworkCategory = ArtworkViewOptions[(current + offset + count) % count];
         RenderFields(true);
     }
 
@@ -3429,8 +3666,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private void ClearArtworkViewControls()
     {
         factionArtworkFieldTops.Clear();
-        artworkViewDropdown.gameObject.SetActive(false);
-        artworkViewDropdown.ClearOptions();
+        artworkViewSelector.gameObject.SetActive(false);
+        ArtworkViewOptions = Array.Empty<string>();
         artworkSectorPreview.Clear();
         RawImage backdrop = artworkSectorPreview.GetComponent<RawImage>();
         backdrop.texture = null;
@@ -3460,6 +3697,25 @@ public sealed class ContentEditorFormView : MonoBehaviour
     )
     {
         factionArtworkFieldTops[field.XmlElement] = y;
+        if (ContentEditorContentSections.IsAdvisorPlacementField(field))
+        {
+            string portrait =
+                field.XmlElement.Parent.Name.LocalName
+                == nameof(StrategyAdvisorTheme.ProtocolSourceLayout)
+                    ? "Advisor"
+                    : "Droid";
+            string coordinate =
+                field.MemberName == nameof(SourceRectLayout.X) ? "horizontal" : "vertical";
+            y += PlaceLabel(
+                $"{portrait} {coordinate} position",
+                labelIndex++,
+                4,
+                y,
+                width - 8,
+                false
+            );
+            return y + PlaceField(field, fieldIndex++, 4, y, Mathf.Min(200, width - 8), 0) + 10;
+        }
         y += PlaceLabel(field.Caption, labelIndex++, 4, y, width - 8, false, field.HelpText);
         if (width >= 900 && !field.IsMediaDirectory)
         {
@@ -3608,12 +3864,6 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 : section;
             if (article || record.Kind != "Faction")
                 y += PlaceLabel(title, headingIndex++, 4, y, width - 8, true) + 8;
-            if (
-                collection
-                && itemName == "NamePool"
-                && GetNamePoolTitles(record).TryGetValue(selectedCollection, out string usage)
-            )
-                y += PlaceLabel(usage, headingIndex++, 4, y, width - 8, false) + 8;
             if (article && !string.IsNullOrEmpty(record.ImageAddress))
             {
                 Texture2D texture = assets.GetTexture(record.ImageAddress);
@@ -3692,9 +3942,140 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     stacked ? 0 : Mathf.Min(280, width * 0.45f)
                 );
             }
+            if (collection && itemName == "NamePool")
+                y = PlaceShipNameAssignment(
+                    record,
+                    y + 12,
+                    width,
+                    ref fieldIndex,
+                    ref headingIndex
+                );
             y += 24;
         }
         fieldScroll.SetContentHeight(y, !reflowingFields);
+    }
+
+    /// <summary>
+    /// Selects a ship design and edits its assigned naming pool in the faction inspector.
+    /// </summary>
+    /// <param name="faction">The faction that owns the visible pools.</param>
+    /// <param name="y">The next vertical position.</param>
+    /// <param name="width">The available form width.</param>
+    /// <param name="fieldIndex">The next pooled editor field.</param>
+    /// <param name="headingIndex">The next pooled label.</param>
+    /// <returns>The next vertical position below the assignment controls.</returns>
+    private int PlaceShipNameAssignment(
+        ContentPackEditorRecord faction,
+        int y,
+        float width,
+        ref int fieldIndex,
+        ref int headingIndex
+    )
+    {
+        shipNameDesigns = GetNamePoolDesigns(faction)
+            .OrderBy(ship => ship.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (shipNameDesigns.Length == 0)
+            return y;
+
+        int index = Array.FindIndex(shipNameDesigns, ship => ship.ID == selectedShipNameDesignID);
+        if (index < 0)
+        {
+            string poolID = (string)selectedCollection.Element("NamePoolID");
+            index = Math.Max(
+                0,
+                Array.FindIndex(
+                    shipNameDesigns,
+                    ship => (string)ship.Element.Element("ShipNamePoolID") == poolID
+                )
+            );
+        }
+        ContentPackEditorRecord design = shipNameDesigns[index];
+        selectedShipNameDesignID = design.ID;
+
+        y += PlaceLabel("Ship assignments", headingIndex++, 4, y, width - 8, true) + 8;
+        const int gap = 16;
+        bool split = width >= 620;
+        int column = Mathf.FloorToInt(split ? Mathf.Min(440, (width - gap - 8) * 0.5f) : width - 8);
+        int caption = PlaceLabel("Ship design", headingIndex++, 4, y, column, false);
+        UILayout.SetSourceRect(
+            (RectTransform)shipDesignDropdown.transform,
+            4,
+            y + caption + 4,
+            column,
+            32
+        );
+        shipDesignDropdown.ClearOptions();
+        shipDesignDropdown.AddOptions(shipNameDesigns.Select(ship => ship.Name).ToList());
+        shipDesignDropdown.SetValueWithoutNotify(index);
+        shipDesignDropdown.RefreshShownValue();
+        shipDesignDropdown.gameObject.SetActive(true);
+
+        int poolX = split ? 4 + column + gap : 4;
+        int poolY = split ? y : y + caption + 46;
+        ContentPackEditorField assignment = design.GetField("ShipNamePoolID");
+        poolY += PlaceLabel(
+            "Name pool",
+            headingIndex++,
+            poolX,
+            poolY,
+            column,
+            false,
+            assignment.HelpText
+        );
+        Dictionary<string, string> poolChoices = new(StringComparer.Ordinal)
+        {
+            [string.Empty] = "None",
+        };
+        foreach (XElement pool in collectionItems)
+            if ((string)pool.Element("NamePoolID") is { Length: > 0 } id)
+                poolChoices[id] = "Pool " + id;
+        return poolY
+            + PlaceField(
+                assignment,
+                fieldIndex++,
+                poolX - 4,
+                poolY,
+                column + 8,
+                0,
+                referenceLabels: poolChoices
+            );
+    }
+
+    /// <summary>
+    /// Binds the inline assignment field to the selected ship design.
+    /// </summary>
+    /// <param name="index">The ship selected in the assignment controls.</param>
+    private void SelectShipNameDesign(int index)
+    {
+        if (!Commit())
+        {
+            shipDesignDropdown.SetValueWithoutNotify(
+                Array.FindIndex(shipNameDesigns, ship => ship.ID == selectedShipNameDesignID)
+            );
+            return;
+        }
+        selectedShipNameDesignID = shipNameDesigns[index].ID;
+        RenderFields(true);
+    }
+
+    /// <summary>
+    /// Lists the ship designs eligible to use naming pools from this faction.
+    /// </summary>
+    /// <param name="faction">The faction that supplies the names.</param>
+    /// <returns>The designs available to this faction.</returns>
+    private IEnumerable<ContentPackEditorRecord> GetNamePoolDesigns(ContentPackEditorRecord faction)
+    {
+        string owner = (string)faction.Element.Element("InstanceID");
+        return catalogs
+            .Where(catalog => catalog.Name == "Capital ships")
+            .SelectMany(catalog => catalog.Records)
+            .Where(ship =>
+            {
+                XElement manufacturing = ship.Element.Element("ManufacturingFactionInstanceIDs");
+                return manufacturing?.HasElements != true
+                    || manufacturing.Elements().Any(id => id.Value == owner);
+            });
     }
 
     /// <summary>
@@ -3707,19 +4088,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
         XElement[] pools =
             record.Element.Element("ShipNamePools")?.Elements().ToArray()
             ?? Array.Empty<XElement>();
-        string owner = record.Element.Element("InstanceID")?.Value;
         ContentPackEditorRecord[] ships =
             pools.Length == 0
                 ? Array.Empty<ContentPackEditorRecord>()
-                : catalogs
-                    .Where(catalog => catalog.Name == "Capital ships")
-                    .SelectMany(catalog => catalog.Records)
-                    .Where(ship =>
-                        ship.Element.Element("ManufacturingFactionInstanceIDs")
-                            ?.Elements()
-                            .Any(id => id.Value == owner) == true
-                    )
-                    .ToArray();
+                : GetNamePoolDesigns(record).ToArray();
         return pools.ToDictionary(
             pool => pool,
             pool =>
@@ -3736,7 +4108,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     .Where(value => !string.IsNullOrEmpty(value))
                     .ToArray();
                 string usage =
-                    names.Length > 0 ? string.Join(", ", names)
+                    names.Length > 0
+                        ? $"{names.Length} {(names.Length == 1 ? "ship design" : "ship designs")}"
                     : fallbacks.Length > 0
                         ? "Fallback for "
                             + string.Join(", ", fallbacks.Select(value => "pool " + value))
@@ -4056,16 +4429,6 @@ public sealed class ContentEditorFormView : MonoBehaviour
         {
             artworkCutsButton.onClick.RemoveAllListeners();
             artworkCutsButton.gameObject.SetActive(false);
-        }
-        if (artworkTravelButton != null)
-        {
-            artworkTravelButton.onClick.RemoveAllListeners();
-            artworkTravelButton.gameObject.SetActive(false);
-        }
-        if (artworkDamageButton != null)
-        {
-            artworkDamageButton.onClick.RemoveAllListeners();
-            artworkDamageButton.gameObject.SetActive(false);
         }
         foreach (var view in setupCollections)
             view.Clear();
@@ -4582,6 +4945,9 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="height">An optional compact height.</param>
     /// <param name="artworkAction">Whether an existing card preview replaces the normal media controls.</param>
     /// <returns>The occupied vertical space.</returns>
+    /// <param name="referenceLabels">Optional reference choices scoped to the surrounding editor.</param>
+    /// <param name="editArtwork">Opens the gameplay artwork editor when one is available.</param>
+    /// <param name="hasEffectArtwork">Whether the associated effect image could be loaded.</param>
     private int PlaceField(
         ContentPackEditorField field,
         int index,
@@ -4590,7 +4956,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
         float width,
         float labelWidth,
         int height = 0,
-        bool artworkAction = false
+        bool artworkAction = false,
+        IReadOnlyDictionary<string, string> referenceLabels = null,
+        Action editArtwork = null,
+        bool hasEffectArtwork = false
     )
     {
         while (fieldViews.Count <= index)
@@ -4627,13 +4996,15 @@ public sealed class ContentEditorFormView : MonoBehaviour
             || view.Field.XmlElement != field.XmlElement && view.Field.Value != field.Value
         )
             view.Render(
-                ContentPackEditorProjector.BuildField(project, field),
+                ContentPackEditorProjector.BuildField(project, field, referenceLabels),
                 HandleFieldChanged,
                 RequestImport,
                 RequestPreview
             );
         Rect rect = PrepareFormRect((RectTransform)view.transform, x, y, width, height);
-        return artworkAction ? view.SetArtworkActionLayout(rect) : view.SetLayout(rect, labelWidth);
+        return artworkAction
+            ? view.SetArtworkActionLayout(rect, editArtwork, hasEffectArtwork)
+            : view.SetLayout(rect, labelWidth);
     }
 
     /// <summary>
@@ -4678,7 +5049,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         TextMeshProUGUI label = groupLabels[index];
         label.text = text;
         HelpTooltipView help = label.GetComponentInChildren<HelpTooltipView>(true);
-        help.Configure(helpText);
+        help.Configure(helpText, captionFont: label.font);
         bool hasHelp = !string.IsNullOrWhiteSpace(helpText);
         help.gameObject.SetActive(hasHelp);
         RectTransform helpRect = (RectTransform)help.transform;
@@ -4697,18 +5068,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
             Mathf.CeilToInt(label.GetPreferredValues(text, captionWidth, float.PositiveInfinity).y)
                 + 2
         );
-        RectInt labelRect = SetFormRect(label.rectTransform, x, y, captionWidth, height);
-        if (hasHelp)
-        {
-            UILayout.SetSourceRect(
-                helpRect,
-                Mathf.RoundToInt(Mathf.Min(label.preferredWidth, labelRect.width) + 4),
-                Mathf.Max(0, Mathf.RoundToInt((label.fontSize - helpSize) / 2)),
-                helpSize,
-                helpSize
-            );
-        }
+        SetFormRect(label.rectTransform, x, y, captionWidth, height);
         label.gameObject.SetActive(true);
+        if (hasHelp)
+            help.PositionBeside(label);
         return height;
     }
 

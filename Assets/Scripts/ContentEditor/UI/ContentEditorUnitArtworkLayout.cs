@@ -58,6 +58,7 @@ internal static class ContentEditorUnitArtworkLayout
             "SmallDisplayImagePath",
             "MessageImagePath",
             "EncyclopediaImagePath",
+            "InTransitSmallImagePath",
         },
         ["Building"] = new[]
         {

@@ -203,6 +203,16 @@ internal static class ContentPackEditorFieldMetadata
         ["NextNameIndex"] = "The next name to use from this list. Zero starts with the first name.",
         ["SmallDisplayImagePath"] =
             "Compact artwork used in unit lists and other small-card views.",
+        ["DisplayImagePath"] = "Primary illustration shown on the large unit card.",
+        ["MessageImagePath"] = "Illustration attached to reports about this unit.",
+        ["EncyclopediaImagePath"] = "Illustration shown when the unit's encyclopedia entry opens.",
+        ["BattleResultImagePath"] = "Unit artwork shown in battle results.",
+        ["InTransitSmallImagePath"] = "Travel artwork for the unit's compact gameplay card.",
+        ["InTransitImagePath"] = "Travel artwork for the large unit view.",
+        ["BattleResultInTransitImagePath"] = "Travel layer shown for this unit in battle results.",
+        ["DamagedSmallImagePath"] = "Damage overlay drawn on the compact unit card.",
+        ["DamagedImagePath"] = "Damage overlay drawn on the large unit card.",
+        ["BattleResultDamagedImagePath"] = "Damage overlay shown on this unit in battle results.",
         ["BackgroundImagePath"] =
             "Optional background override for this unit. Leave empty to retain the faction theme default.",
         ["OfficerBackgroundImagePath"] =
@@ -323,6 +333,8 @@ internal static class ContentPackEditorFieldMetadata
             return "Percentage of normal personnel travel time: 100 is unchanged; 50 halves the duration.";
         if (field.MemberName == "LeadershipBonusPercent")
             return "Percentage added to the officer's base leadership while the trait is active.";
+        if (field.Record.Kind == "Regiment" && field.MemberName == "InTransitSmallImagePath")
+            return "An optional effect drawn over this troop in the Defense window while it is in transit.";
         if (_descriptions.TryGetValue(field.MemberName, out string text))
         {
             string expected = GetExpectedImageDimensions(field);
@@ -330,20 +342,35 @@ internal static class ContentPackEditorFieldMetadata
         }
         if (field.MemberName.EndsWith("Variance", StringComparison.Ordinal))
             return "The random starting variation applied to this rating during world generation.";
-        if (field.IsMedia)
-        {
-            string description =
-                field.IsMediaDirectory
-                    ? "Select a content folder. Its supported files are discovered automatically, including inherited files."
-                : field.MediaType == ContentPackEditorMediaType.Image
-                    ? "Choose an image from your computer. The editor copies it into this pack."
-                : "Choose a file from your computer. The editor copies it into this pack.";
-            string expected = GetExpectedImageDimensions(field);
-            return expected == null
-                ? description
-                : "Expected size: " + expected + ". " + description;
-        }
+        if (
+            field.Record.Kind == "FactionTheme"
+            && field.MediaType == ContentPackEditorMediaType.Image
+        )
+            return GetInterfaceImageDescription(field);
         return string.Empty;
+    }
+
+    /// <summary>
+    /// Describes the authored visual state when one image belongs to a named interface control.
+    /// </summary>
+    /// <param name="field">The faction image slot.</param>
+    /// <returns>Guidance for recognized control states.</returns>
+    private static string GetInterfaceImageDescription(ContentPackEditorField field)
+    {
+        string control = field.SectionPath.LastOrDefault();
+        if (string.IsNullOrWhiteSpace(control))
+            return string.Empty;
+        string state = field.MemberName switch
+        {
+            "UpImagePath" or "NormalImagePath" => "at rest",
+            "DownImagePath" or "PressedImagePath" => "while the control is pressed",
+            "HoverImagePath" => "while the pointer is over the control",
+            "ActiveImagePath" or "SelectedImagePath" => "when selected",
+            "InactiveImagePath" => "when unselected",
+            "DisabledImagePath" => "when the control is unavailable",
+            _ => null,
+        };
+        return state == null ? string.Empty : $"{control} artwork shown {state}.";
     }
 
     /// <summary>
@@ -460,7 +487,7 @@ internal static class ContentPackEditorFieldMetadata
             return member switch
             {
                 "DisplayImagePath" => "1373 × 563",
-                "SmallDisplayImagePath" => "275 × 113",
+                "SmallDisplayImagePath" or "InTransitSmallImagePath" => "275 × 113",
                 _ => null,
             };
         if (kind == "Building")

@@ -92,13 +92,10 @@ internal sealed class MissionsWindowProjector
         {
             Mission mission = missions[index];
             string iconKey = GetMissionIconKey(mission);
-            string iconPath = uiContext
-                .GetTheme(mission.OwnerInstanceID)
-                ?.MissionIcons?.GetImagePath(iconKey, true);
             rows.Add(
                 new MissionListRowRenderData(
                     mission.GetDisplayName(),
-                    uiContext.GetTexture(iconPath),
+                    uiContext.GetMissionIconTexture(mission.OwnerInstanceID, iconKey, small: true),
                     index == selectedMissionIndex ? selectionTexture : null
                 )
             );

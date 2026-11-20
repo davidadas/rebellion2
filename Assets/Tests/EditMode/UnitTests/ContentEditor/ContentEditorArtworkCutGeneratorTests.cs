@@ -29,6 +29,33 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void GeneratePlacedPngCuts_SameSizeWithDifferentOffsets_RendersEachPlacement()
+        {
+            string source = WriteSolidPng(Color.green, 8, 4);
+            Vector2Int size = new(8, 4);
+            Vector2 shifted = new(0.25f, 0);
+            var outputs = ContentEditorArtworkCutGenerator.GeneratePlacedPngCuts(
+                source,
+                new[] { (size, Vector2.zero), (size, shifted) },
+                fitEntireSource: true,
+                preserveVisibleSubject: true
+            );
+            Texture2D centered = Decode(outputs[(size, Vector2.zero)]);
+            Texture2D moved = Decode(outputs[(size, shifted)]);
+            try
+            {
+                Assert.AreEqual(1f, centered.GetPixel(0, 1).a);
+                Assert.AreEqual(0f, moved.GetPixel(0, 1).a);
+                Assert.AreEqual(1f, moved.GetPixel(2, 1).a);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(centered);
+                UnityEngine.Object.DestroyImmediate(moved);
+            }
+        }
+
+        [Test]
         public void GeneratePngCuts_MultipleOutputs_CreatesExactSizesAndPreservesAlpha()
         {
             string source = WriteSolidPng(new Color(0.2f, 0.4f, 0.6f, 0.25f), 8, 4);
@@ -126,6 +153,45 @@ namespace Rebellion.Tests.ContentEditor
             finally
             {
                 UnityEngine.Object.DestroyImmediate(source);
+            }
+        }
+
+        [Test]
+        public void GeneratePngCuts_PortraitInWideFrame_PreservesBothEndsOfTheSubject()
+        {
+            Texture2D source = new(8, 8, TextureFormat.RGBA32, false);
+            string path = Path.Combine(folder, "portrait.png");
+            try
+            {
+                source.SetPixels(new Color[64]);
+                for (int y = 0; y < 8; y++)
+                for (int x = 2; x < 6; x++)
+                    source.SetPixel(x, y, y < 4 ? Color.red : Color.green);
+                source.Apply();
+                File.WriteAllBytes(path, source.EncodeToPNG());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(source);
+            }
+
+            Vector2Int size = new(20, 8);
+            Texture2D output = Decode(
+                ContentEditorArtworkCutGenerator.GeneratePngCuts(
+                    path,
+                    new[] { size },
+                    preserveVisibleSubject: true
+                )[size]
+            );
+            try
+            {
+                Assert.Greater(output.GetPixel(10, 0).r, 0.95f);
+                Assert.Greater(output.GetPixel(10, 7).g, 0.95f);
+                Assert.AreEqual(0, output.GetPixel(2, 4).a);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(output);
             }
         }
 

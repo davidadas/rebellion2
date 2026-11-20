@@ -49,6 +49,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     private Action<ContentPackEditorField> importRequested;
     private readonly List<UICheckboxView> choices = new List<UICheckboxView>();
     private Action<ContentPackEditorField, string> previewRequested;
+    private Action editArtwork;
     private bool bound;
     private bool rendering;
     private float lastLabelWidth;
@@ -198,13 +199,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         );
         help.gameObject.SetActive(hasHelp);
         if (hasHelp)
-            UILayout.SetSourceRect(
-                helpRect,
-                Mathf.RoundToInt(8 + Mathf.Min(label.preferredWidth, captionWidth)),
-                4 + (labelHeight - helpSize) / 2,
-                helpSize,
-                helpSize
-            );
+            help.PositionBeside(label, 4, 4);
         bool stackedMedia = field.IsMedia && bounds.width < 600;
         float valueTop = stackedMedia ? 0 : 4 + labelExtra;
         float valueHeight =
@@ -314,13 +309,20 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     }
 
     /// <summary>
-    /// Reduces an image field already represented by a card preview to its only useful action.
+    /// Places the image import and optional layer editor below an artwork preview.
     /// </summary>
     /// <param name="bounds">The content-space action bounds.</param>
+    /// <param name="edit">Opens the layer editor for a gameplay effect, when supported.</param>
+    /// <param name="hasEffectArtwork">Whether the associated effect image could be loaded.</param>
     /// <returns>The compact action-row height.</returns>
-    public int SetArtworkActionLayout(Rect bounds)
+    public int SetArtworkActionLayout(
+        Rect bounds,
+        Action edit = null,
+        bool hasEffectArtwork = false
+    )
     {
-        const int height = 40;
+        bool stacked = edit != null && bounds.width < 200;
+        int height = stacked ? 76 : 40;
         bounds.height = height;
         UILayout.SetSourceRect(
             (RectTransform)transform,
@@ -338,7 +340,8 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         revertButton.gameObject.SetActive(false);
         selectItemsButton.gameObject.SetActive(false);
         choiceDropdown.gameObject.SetActive(false);
-        previewButton.gameObject.SetActive(false);
+        editArtwork = edit;
+        previewButton.gameObject.SetActive(edit != null);
         importButton.gameObject.SetActive(true);
         bool background = field.MemberName == "BackgroundImagePath";
         importButton.GetComponentInChildren<TextMeshProUGUI>().text = background
@@ -351,7 +354,30 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         RectTransform import = (RectTransform)importButton.transform;
         import.anchorMin = import.anchorMax = import.pivot = new Vector2(0, 1);
         import.anchoredPosition = new Vector2(0, -4);
-        import.sizeDelta = new Vector2(background ? 156 : 120, 32);
+        import.sizeDelta = new Vector2(Mathf.Min(bounds.width, background ? 156 : 120), 32);
+        if (edit != null)
+        {
+            int actionWidth = Mathf.Max(
+                1,
+                Mathf.RoundToInt(stacked ? bounds.width : (bounds.width - 6) * 0.5f)
+            );
+            previewButton.interactable = true;
+            importButton.GetComponentInChildren<TextMeshProUGUI>().text =
+                hasEffectArtwork ? "Edit layers"
+                : field.MemberName.StartsWith("InTransit", StringComparison.Ordinal)
+                || field.MemberName == "BattleResultInTransitImagePath"
+                    ? "Generate travel art"
+                : "Create artwork";
+            previewButton.GetComponentInChildren<TextMeshProUGUI>().text = "Import image...";
+            UILayout.SetSourceRect(import, 0, 4, actionWidth, 32);
+            UILayout.SetSourceRect(
+                (RectTransform)previewButton.transform,
+                stacked ? 0 : actionWidth + 6,
+                stacked ? 40 : 4,
+                actionWidth,
+                32
+            );
+        }
         return height;
     }
 
@@ -480,7 +506,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         selectItemsButton.onClick.AddListener(RequestSelection);
         bound = true;
         input.onEndEdit.AddListener(ApplyText);
-        importButton.onClick.AddListener(() => importRequested?.Invoke(field));
+        importButton.onClick.AddListener(InvokePrimaryMediaAction);
         choiceDropdown.onValueChanged.AddListener(index =>
         {
             if (!rendering && field?.IsMediaDirectory == false && index < choiceValues.Count)
@@ -524,7 +550,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             presentation = value;
             field = value.Field;
             backgroundRole = ContentEditorColorRole.Input;
-            help.Configure(field.HelpText, input);
+            help.Configure(field.HelpText, input, label.font);
             IReadOnlyDictionary<string, string> referenceLabels = value.ReferenceLabels;
             choiceValues =
                 referenceLabels != null
@@ -538,6 +564,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             changed = onChanged;
             importRequested = onImport;
             previewRequested = onPreview;
+            editArtwork = null;
             previewButton.GetComponentInChildren<TextMeshProUGUI>().text =
                 field.MediaType == ContentPackEditorMediaType.Audio ? "Play/stop" : "Preview";
             importButton.GetComponentInChildren<TextMeshProUGUI>().text =
@@ -720,6 +747,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         changed = null;
         importRequested = null;
         previewRequested = null;
+        editArtwork = null;
         choiceValues = mediaFiles = Array.Empty<string>();
         help.Configure(null, input);
         help.gameObject.SetActive(false);
@@ -888,10 +916,26 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     }
 
     /// <summary>
+    /// Opens the visible primary action for the current media field.
+    /// </summary>
+    private void InvokePrimaryMediaAction()
+    {
+        if (editArtwork != null)
+            editArtwork();
+        else
+            importRequested?.Invoke(field);
+    }
+
+    /// <summary>
     /// Previews the media line containing the caret, retaining punctuation within file names.
     /// </summary>
     private void PreviewSelectedMedia()
     {
+        if (editArtwork != null)
+        {
+            importRequested?.Invoke(field);
+            return;
+        }
         if (field?.IsMedia != true)
             return;
         Commit();

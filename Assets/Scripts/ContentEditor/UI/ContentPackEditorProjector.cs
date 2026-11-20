@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 
 /// <summary>
@@ -43,13 +44,15 @@ internal static class ContentPackEditorProjector
     /// <param name="project">The source authoring project.</param>
     /// <param name="field">The field being presented.</param>
     /// <returns>The field presentation and its read-only directory query.</returns>
+    /// <param name="referenceLabels">An optional set of choices supplied by the editing context.</param>
     internal static ContentPackEditorFieldRenderData BuildField(
         ContentPackEditorProject project,
-        ContentPackEditorField field
+        ContentPackEditorField field,
+        IReadOnlyDictionary<string, string> referenceLabels = null
     ) =>
         new ContentPackEditorFieldRenderData(
             field,
-            project.GetReferenceOptions(field),
+            referenceLabels ?? project.GetReferenceOptions(field),
             () => project.GetMediaFiles(field)
         );
 

@@ -45,6 +45,7 @@ public sealed class HoverTooltip
 
     private readonly int _maximumWidth;
     private readonly int _fontSize;
+    private readonly TMP_FontAsset _font;
     private readonly string _name;
     private readonly RectTransform _parent;
     private readonly bool _wrapText;
@@ -67,12 +68,14 @@ public sealed class HoverTooltip
     /// <param name="maximumWidth">The maximum width within the supplied parent.</param>
     /// <param name="wrapText">Whether long content may expand onto multiple lines.</param>
     /// <param name="fontSize">The text size in the parent's coordinate space.</param>
+    /// <param name="font">The optional font used by the surrounding interface.</param>
     public HoverTooltip(
         RectTransform parent,
         string name,
         int maximumWidth = 160,
         bool wrapText = false,
-        int fontSize = 8
+        int fontSize = 8,
+        TMP_FontAsset font = null
     )
     {
         _parent = parent != null ? parent : throw new ArgumentNullException(nameof(parent));
@@ -84,6 +87,7 @@ public sealed class HoverTooltip
                 ? maximumWidth
                 : throw new ArgumentOutOfRangeException(nameof(maximumWidth));
         _wrapText = wrapText;
+        _font = font;
         _fontSize =
             fontSize > 0 ? fontSize : throw new ArgumentOutOfRangeException(nameof(fontSize));
     }
@@ -188,8 +192,12 @@ public sealed class HoverTooltip
         textObject.transform.SetParent(rootObject.transform, false);
         _text = textObject.GetComponent<TextMeshProUGUI>();
         _text.color = Color.black;
+        if (_font != null)
+            _text.font = _font;
         _text.fontSize = _fontSize;
-        _text.alignment = TextAlignmentOptions.Center;
+        _text.alignment = _wrapText
+            ? TextAlignmentOptions.MidlineLeft
+            : TextAlignmentOptions.Center;
         _text.textWrappingMode = _wrapText ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
         _text.overflowMode = _wrapText ? TextOverflowModes.Overflow : TextOverflowModes.Ellipsis;
         _text.raycastTarget = false;

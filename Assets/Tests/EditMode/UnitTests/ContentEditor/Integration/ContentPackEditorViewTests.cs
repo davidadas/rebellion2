@@ -142,7 +142,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
             ContentEditorTreeNode page = navigation.Find(
                 "mission-presentation/" + faction.Catalog.Faction + "/Espionage"
             );
-            SelectPage(page);
+            SelectFactionMission(navigation, page);
 
             ContentEditorFieldView[] fields =
                 view.GetComponentsInChildren<ContentEditorFieldView>();
@@ -208,7 +208,8 @@ namespace Rebellion.Tests.ContentEditor.Integration
             workspace.RenderProject(project, assets);
             ContentEditorNavigation navigation = new();
             navigation.Render(project.GetCatalogs());
-            SelectPage(
+            SelectFactionMission(
+                navigation,
                 navigation.Find("mission-presentation/" + faction.Catalog.Faction + "/Espionage")
             );
 
@@ -253,11 +254,12 @@ namespace Rebellion.Tests.ContentEditor.Integration
             workspace.RenderProject(project, assets);
             ContentEditorNavigation navigation = new();
             navigation.Render(project.GetCatalogs());
-            SelectPage(
+            SelectFactionMission(
+                navigation,
                 navigation.Find("mission-presentation/" + faction.Catalog.Faction + "/Espionage")
             );
             view.GetComponentsInChildren<Button>()
-                .Single(button => button.GetComponentInChildren<TMP_Text>()?.text == "Report text")
+                .Single(button => button.GetComponentInChildren<TMP_Text>()?.text == "Show reports")
                 .onClick.Invoke();
             TMP_Dropdown outcomes = view.GetComponentsInChildren<TMP_Dropdown>()
                 .Single(dropdown => dropdown.name == "CollectionSelection");
@@ -763,7 +765,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
                     .Fields.Single(field => field.MemberName == "Description")
                     .Record;
                 Assert.AreEqual(faction, article.Catalog.Faction);
-                SelectPage(presentation);
+                SelectFactionMission(navigation, presentation);
                 Assert.IsTrue(
                     view.GetComponentsInChildren<RawImage>()
                         .Any(image => image.texture == assets.GetTexture(article.ImageAddress))
@@ -975,6 +977,38 @@ namespace Rebellion.Tests.ContentEditor.Integration
         }
 
         [Test]
+        public void RenderProject_ShipNames_ChangesTheSelectedDesignPoolInline()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("factions/Alliance"));
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.GetComponentInChildren<TMP_Text>()?.text == "Ship names")
+                .onClick.Invoke();
+
+            TMP_Dropdown designs = view.GetComponentsInChildren<TMP_Dropdown>()
+                .Single(dropdown => dropdown.name == "ShipDesignDropdown");
+            Assert.Greater(designs.options.Count, 1);
+            int selected = (designs.value + 1) % designs.options.Count;
+            string selectedName = designs.options[selected].text;
+            designs.value = selected;
+            ContentEditorFieldView pool = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.Field.MemberName == "ShipNamePoolID");
+            Assert.AreEqual(selectedName, pool.Field.Record.Name);
+            TMP_Dropdown choices = pool.GetComponentInChildren<TMP_Dropdown>();
+            int target = choices.options.FindIndex(option =>
+                option.text.StartsWith("Pool ", StringComparison.Ordinal)
+                && option.text != choices.options[choices.value].text
+            );
+            Assert.GreaterOrEqual(target, 0);
+            string expected = choices.options[target].text["Pool ".Length..];
+            choices.value = target;
+
+            Assert.AreEqual(expected, pool.Field.Value);
+            Assert.IsTrue(designs.gameObject.activeInHierarchy);
+        }
+
+        [Test]
         public void RenderProject_FactionTabs_SeparateAuthoringTasks()
         {
             foreach (
@@ -1037,7 +1071,11 @@ namespace Rebellion.Tests.ContentEditor.Integration
                 else
                     Assert.AreEqual(
                         fields.Length,
-                        view.GetComponentsInChildren<ContentEditorFieldView>().Length
+                        view.GetComponentsInChildren<ContentEditorFieldView>()
+                            .Count(field =>
+                                section != "Ship names"
+                                || field.Field.MemberName != "ShipNamePoolID"
+                            )
                     );
                 string[] headings = view.GetComponentsInChildren<TMP_Text>()
                     .Select(text => text.text)
@@ -1049,9 +1087,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
                 );
                 if (section == "Ship names")
                 {
-                    Assert.IsTrue(
-                        headings.Any(text => text.StartsWith("Pool ") && text.Contains(": "))
-                    );
+                    CollectionAssert.Contains(headings, "Ship assignments");
                     Assert.IsFalse(headings.Any(text => text.StartsWith("Name pool 1")));
                 }
                 if (section == "Encyclopedia")
@@ -2037,7 +2073,12 @@ namespace Rebellion.Tests.ContentEditor.Integration
                 .GetCatalogs()
                 .First(catalog => catalog.Name == "Officers");
             SelectRecord(
-                project.GetCatalogs().First(catalog => catalog.Name == "Buildings").Records.First()
+                project
+                    .GetCatalogs()
+                    .First(catalog => catalog.Name == "Buildings")
+                    .Records.First(record =>
+                        !ContentEditorUnitArtworkLayout.IsHeadquartersIcon(record)
+                    )
             );
             int count = roster.Records.Count;
             ChooseUnitCategory(roster);
@@ -2552,15 +2593,39 @@ namespace Rebellion.Tests.ContentEditor.Integration
                 catalog.Faction == "Shared"
                     ? "missions/reference-only-mission"
                     : "mission-presentation/" + catalog.Faction + "/reference-only-mission";
-            SelectPage(navigation.Find(key));
-            Assert.IsFalse(
-                view.GetComponentsInChildren<Button>()
-                    .Any(button => button.GetComponentInChildren<TMP_Text>()?.text == "Rules")
-            );
+            if (catalog.Faction == "Shared")
+            {
+                SelectPage(navigation.Find(key));
+                Assert.IsFalse(
+                    view.GetComponentsInChildren<Button>()
+                        .Any(button => button.GetComponentInChildren<TMP_Text>()?.text == "Rules")
+                );
+            }
+            else
+                SelectFactionMission(navigation, navigation.Find(key));
             Assert.IsTrue(
                 view.GetComponentsInChildren<ContentEditorFieldView>()
                     .Any(field => field.Field.MemberName == "Description")
             );
+        }
+
+        private void SelectFactionMission(
+            ContentEditorNavigation navigation,
+            ContentEditorTreeNode mission
+        )
+        {
+            string factionKey = "factions/" + mission.Key.Split('/')[1];
+            SelectPage(navigation.Find(factionKey));
+            view.GetComponentsInChildren<Button>()
+                .Single(button =>
+                    button.GetComponentInChildren<TMP_Text>()?.text == "Mission presentation"
+                )
+                .onClick.Invoke();
+            TMP_Dropdown selector = view.GetComponentsInChildren<TMP_Dropdown>()
+                .Single(dropdown => dropdown.name == "MissionPresentationDropdown");
+            int index = selector.options.FindIndex(item => item.text == mission.Caption);
+            Assert.GreaterOrEqual(index, 0, mission.Key);
+            selector.value = index;
         }
     }
 }

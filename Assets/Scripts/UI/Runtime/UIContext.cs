@@ -101,6 +101,21 @@ public sealed class UIContext
     }
 
     /// <summary>
+    /// Gets mission artwork from the theme responsible for the icon.
+    /// </summary>
+    /// <param name="factionInstanceId">The faction displaying the mission.</param>
+    /// <param name="key">The mission icon key.</param>
+    /// <param name="small">Whether the compact icon is requested.</param>
+    /// <returns>The resolved mission texture, when available.</returns>
+    public Texture2D GetMissionIconTexture(string factionInstanceId, string key, bool small)
+    {
+        FactionTheme theme = GetTheme(
+            MissionIconKeys.UsesSharedArtwork(key) ? null : factionInstanceId
+        );
+        return GetTexture(theme?.MissionIcons?.GetImagePath(key, small));
+    }
+
+    /// <summary>
     /// Gets the current player faction identifier.
     /// </summary>
     /// <returns>The current player faction identifier.</returns>

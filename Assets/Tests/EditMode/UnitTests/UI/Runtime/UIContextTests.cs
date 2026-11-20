@@ -151,6 +151,21 @@ namespace Rebellion.Tests.UI.Runtime
             Assert.AreEqual(TextureWrapMode.Clamp, first.wrapMode);
         }
 
+        [TestCase("FNALL1", false)]
+        [TestCase("FNEMP1", true)]
+        public void GetMissionIconTexture_FacilityResearch_SelectsTheNeutralTheme(
+            string faction,
+            bool small
+        )
+        {
+            const string key = MissionIconKeys.ResearchFacilityDesign;
+            string expected = _themeLibrary.GetTheme(null).MissionIcons.GetImagePath(key, small);
+            Texture2D icon = _context.GetMissionIconTexture(faction, key, small);
+
+            Assert.IsNotNull(icon);
+            Assert.AreSame(_context.GetTexture(expected), icon);
+        }
+
         [Test]
         public void GetSmoothTexture_ConfiguredPath_ReturnsSmoothContentTexture()
         {

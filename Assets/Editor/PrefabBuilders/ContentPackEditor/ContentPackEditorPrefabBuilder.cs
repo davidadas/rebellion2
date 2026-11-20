@@ -265,6 +265,7 @@ public static class ContentPackEditorPrefabBuilder
             "Encyclopedia",
             "Default backgrounds",
             "Colors",
+            "Mission presentation",
         };
         Button[] tabButtons = new Button[sections.Length];
         for (int i = 0; i < sections.Length; i++)
@@ -293,6 +294,7 @@ public static class ContentPackEditorPrefabBuilder
         Assign(view, "referenceTab", tabButtons[8]);
         Assign(view, "defaultBackgroundsTab", tabButtons[9]);
         Assign(view, "colorsTab", tabButtons[10]);
+        Assign(view, "missionPresentationTab", tabButtons[11]);
         Button[] generationTabs = ContentPackEditorView
             .GenerationSections.Select(
                 (caption, index) =>
@@ -379,12 +381,36 @@ public static class ContentPackEditorPrefabBuilder
         );
         units.gameObject.SetActive(false);
         Assign(form, "setupUnitsTemplate", units);
-        TMP_Dropdown artworkViewDropdown = Dropdown(
-            "ArtworkViewDropdown",
+        RectTransform artworkViewSelector = Layer(
+            "ArtworkViewSelector",
             fields.ScrollArea.ContentRoot
         );
-        artworkViewDropdown.gameObject.SetActive(false);
-        Assign(form, "artworkViewDropdown", artworkViewDropdown);
+        Image selectorFrame = artworkViewSelector.gameObject.AddComponent<Image>();
+        BindColor(selectorFrame, ContentEditorColorRole.Panel);
+        selectorFrame.raycastTarget = false;
+        Button previousArtworkView = Button("PreviousArtworkView", artworkViewSelector, "<");
+        Rect((RectTransform)previousArtworkView.transform, 0, 0, 52, 38);
+        Button nextArtworkView = Button("NextArtworkView", artworkViewSelector, ">");
+        RectTransform nextArtworkRect = (RectTransform)nextArtworkView.transform;
+        nextArtworkRect.anchorMin = nextArtworkRect.anchorMax = nextArtworkRect.pivot = Vector2.one;
+        nextArtworkRect.anchoredPosition = Vector2.zero;
+        nextArtworkRect.sizeDelta = new Vector2(52, 38);
+        TextMeshProUGUI artworkViewCaption = Label(
+            "ArtworkViewCaption",
+            artworkViewSelector,
+            "",
+            17
+        );
+        artworkViewCaption.alignment = TextAlignmentOptions.Center;
+        Stretch(artworkViewCaption.rectTransform, 58, 0, 58, 0);
+        artworkViewCaption.raycastTarget = false;
+        OptionsChoiceFieldView artworkChoice =
+            artworkViewSelector.gameObject.AddComponent<OptionsChoiceFieldView>();
+        Assign(artworkChoice, "valueField", artworkViewCaption);
+        Assign(artworkChoice, "previousButton", previousArtworkView);
+        Assign(artworkChoice, "nextButton", nextArtworkView);
+        artworkViewSelector.gameObject.SetActive(false);
+        Assign(form, "artworkViewSelector", artworkChoice);
         RawImage artworkSectorSurface = Layer("ArtworkSectorPreview", fields.ScrollArea.ContentRoot)
             .gameObject.AddComponent<RawImage>();
         BindColor(artworkSectorSurface, ContentEditorColorRole.Panel);
@@ -433,6 +459,28 @@ public static class ContentPackEditorPrefabBuilder
         TMP_Dropdown collection = Dropdown("CollectionSelection", fields.ScrollArea.ContentRoot);
         collection.gameObject.SetActive(false);
         Assign(form, "collectionDropdown", collection);
+        TMP_Dropdown shipDesign = Dropdown("ShipDesignDropdown", fields.ScrollArea.ContentRoot);
+        shipDesign.gameObject.SetActive(false);
+        Assign(form, "shipDesignDropdown", shipDesign);
+        TMP_Dropdown artworkStateSize = Dropdown(
+            "ArtworkStateSizeDropdown",
+            fields.ScrollArea.ContentRoot
+        );
+        artworkStateSize.gameObject.SetActive(false);
+        Assign(form, "artworkStateSizeDropdown", artworkStateSize);
+        TMP_Dropdown missionPresentation = Dropdown(
+            "MissionPresentationDropdown",
+            fields.ScrollArea.ContentRoot
+        );
+        missionPresentation.gameObject.SetActive(false);
+        Assign(form, "missionPresentationDropdown", missionPresentation);
+        Button missionReports = Button(
+            "MissionReportsToggle",
+            fields.ScrollArea.ContentRoot,
+            "Show reports"
+        );
+        missionReports.gameObject.SetActive(false);
+        Assign(form, "missionReportsToggle", missionReports);
         Button removeMessage = PlainButton(
             "RemoveStartingMessage",
             fields.ScrollArea.ContentRoot,
@@ -1400,19 +1448,93 @@ public static class ContentPackEditorPrefabBuilder
         Button reroll = BuildImagePreviewAction(
             panel.transform,
             "Reroll",
-            "Try another",
+            "Generate full card",
             Vector2.right,
-            -256,
-            110
+            -313,
+            171
         );
         Button apply = BuildImagePreviewAction(
             panel.transform,
             "UseArtwork",
-            "Use artwork",
+            "Save",
             Vector2.right,
             -134,
             110
         );
+        image.gameObject.AddComponent<RectMask2D>();
+        RectTransform layerMarker = Layer("LayerSelection", image.transform);
+        foreach (string edge in new[] { "Top", "Bottom", "Left", "Right" })
+        {
+            Image line = Surface(edge, layerMarker, ContentEditorColorRole.Accent);
+            RectTransform rect = line.rectTransform;
+            const int strokeWidth = 2;
+            rect.anchorMin =
+                edge == "Top" ? Vector2.up
+                : edge == "Right" ? Vector2.right
+                : Vector2.zero;
+            rect.anchorMax =
+                edge == "Bottom" ? Vector2.right
+                : edge == "Left" ? Vector2.up
+                : Vector2.one;
+            rect.offsetMin = new Vector2(
+                edge == "Right" ? -strokeWidth : 0,
+                edge == "Top" ? -strokeWidth : 0
+            );
+            rect.offsetMax = new Vector2(
+                edge == "Left" ? strokeWidth : 0,
+                edge == "Bottom" ? strokeWidth : 0
+            );
+        }
+        layerMarker.gameObject.SetActive(false);
+        TextMeshProUGUI layerInstructions = Label("LayerInstructions", panel.transform, "", 15);
+        Stretch(layerInstructions.rectTransform, 24, 67, 500, 0);
+        layerInstructions.rectTransform.anchorMax = Vector2.right;
+        layerInstructions.rectTransform.offsetMin = new Vector2(24, 67);
+        layerInstructions.rectTransform.offsetMax = new Vector2(-500, 102);
+        layerInstructions.gameObject.SetActive(false);
+        Button nextLayer = BuildImagePreviewAction(
+            panel.transform,
+            "NextLayer",
+            "Next layer",
+            Vector2.right,
+            -488,
+            106
+        );
+        Button addLayer = BuildImagePreviewAction(
+            panel.transform,
+            "AddEffect",
+            "Add streaks",
+            Vector2.right,
+            -372,
+            106
+        );
+        Button duplicateLayer = BuildImagePreviewAction(
+            panel.transform,
+            "DuplicateLayer",
+            "Duplicate layer",
+            Vector2.right,
+            -256,
+            120
+        );
+        Button removeLayer = BuildImagePreviewAction(
+            panel.transform,
+            "RemoveEffect",
+            "Remove layer",
+            Vector2.right,
+            -128,
+            104
+        );
+        foreach (Button control in new[] { nextLayer, addLayer, duplicateLayer, removeLayer })
+        {
+            RectTransform rect = (RectTransform)control.transform;
+            rect.anchoredPosition += new Vector2(0, 42);
+        }
+        Assign(preview, "layerMarker", layerMarker);
+        Assign(preview, "layerInstructions", layerInstructions);
+        Assign(preview, "addLayerButton", addLayer);
+        Assign(preview, "nextLayerButton", nextLayer);
+        Assign(preview, "duplicateLayerButton", duplicateLayer);
+        Assign(preview, "removeLayerButton", removeLayer);
         Assign(preview, "image", image);
         Assign(preview, "caption", caption);
         Assign(preview, "closeButton", close);

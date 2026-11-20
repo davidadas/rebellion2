@@ -15,6 +15,9 @@ public sealed class ContentEditorArtworkEditTarget
         IPointerEnterHandler,
         IPointerExitHandler,
         IPointerClickHandler,
+        IBeginDragHandler,
+        IDragHandler,
+        IEndDragHandler,
         ICanvasRaycastFilter
 {
     private static readonly Color _accentColor = new(1f, 0.72f, 0.15f, 1f);
@@ -30,6 +33,7 @@ public sealed class ContentEditorArtworkEditTarget
     private RectTransform interactionArea;
     private bool? originalRaycastTarget;
     private bool hovered;
+    private bool requiresPress;
     private bool moving;
     private Vector2 movementOrigin;
     private IReadOnlyList<Vector2Int> placementOrigins = Array.Empty<Vector2Int>();
@@ -42,7 +46,7 @@ public sealed class ContentEditorArtworkEditTarget
     /// Gets the exact authored field represented by the hover frame.
     /// </summary>
     internal ContentPackEditorField Field =>
-        hovered ? hoverField ?? releasedField : releasedField ?? hoverField;
+        hovered && !requiresPress ? hoverField ?? releasedField : releasedField ?? hoverField;
 
     /// <summary>
     /// Gets every authored image state represented by this rendered target.
@@ -81,6 +85,7 @@ public sealed class ContentEditorArtworkEditTarget
     /// <param name="previewHoverTexture">The hover texture to exercise when the gameplay control uses a separate hit area.</param>
     /// <param name="placementBindings">The authored coordinate pairs moved with this image.</param>
     /// <param name="pointerInteractionArea">The optional gameplay hit area that may begin interaction with this image.</param>
+    /// <param name="requiresPress">Whether the alternate texture is shown by the gameplay press handler.</param>
     internal void Bind(
         ContentPackEditorField releasedValue,
         ContentPackEditorField hoverValue,
@@ -89,7 +94,8 @@ public sealed class ContentEditorArtworkEditTarget
         RectInt hoverContentBounds,
         Texture previewHoverTexture,
         IReadOnlyList<ContentEditorArtworkPlacement> placementBindings = null,
-        RectTransform pointerInteractionArea = null
+        RectTransform pointerInteractionArea = null,
+        bool requiresPress = false
     )
     {
         if (releasedValue == null && hoverValue == null)
@@ -103,6 +109,7 @@ public sealed class ContentEditorArtworkEditTarget
         releasedTexture = image.texture;
         hoverTexture = previewHoverTexture;
         interactionArea = pointerInteractionArea;
+        this.requiresPress = requiresPress;
         placements = placementBindings ?? Array.Empty<ContentEditorArtworkPlacement>();
         placementOrigins = Array.Empty<Vector2Int>();
         moving = false;
@@ -230,6 +237,27 @@ public sealed class ContentEditorArtworkEditTarget
     }
 
     /// <summary>
+    /// Routes a grab through the preview even when an image has its own gameplay drag handler.
+    /// </summary>
+    /// <param name="eventData">The initial drag event.</param>
+    public void OnBeginDrag(PointerEventData eventData) =>
+        GetComponentInParent<ContentEditorArtworkWindowPreview>()?.OnBeginDrag(eventData);
+
+    /// <summary>
+    /// Routes movement of the current artwork to the preview.
+    /// </summary>
+    /// <param name="eventData">The current drag event.</param>
+    public void OnDrag(PointerEventData eventData) =>
+        GetComponentInParent<ContentEditorArtworkWindowPreview>()?.OnDrag(eventData);
+
+    /// <summary>
+    /// Routes the completed placement gesture to the preview.
+    /// </summary>
+    /// <param name="eventData">The final drag event.</param>
+    public void OnEndDrag(PointerEventData eventData) =>
+        GetComponentInParent<ContentEditorArtworkWindowPreview>()?.OnEndDrag(eventData);
+
+    /// <summary>
     /// Applies hover state from direct pointer events or a composed-preview router.
     /// </summary>
     /// <param name="hovered">Whether this image is the current edit target.</param>
@@ -246,8 +274,8 @@ public sealed class ContentEditorArtworkEditTarget
             ConfigureFrameGeometry(
                 hoverFrame,
                 transform,
-                hoverField == releasedField ? frameAnchorMin : hoverFrameAnchorMin,
-                hoverField == releasedField ? frameAnchorMax : hoverFrameAnchorMax
+                Field == releasedField ? frameAnchorMin : hoverFrameAnchorMin,
+                Field == releasedField ? frameAnchorMax : hoverFrameAnchorMax
             );
         }
         hoverFrame.gameObject.SetActive(hovered);

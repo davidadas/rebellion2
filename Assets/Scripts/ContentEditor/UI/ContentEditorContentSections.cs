@@ -16,12 +16,7 @@ internal static class ContentEditorContentSections
             .MissionIDs.Where(id => id != MissionTypeIDs.Research)
             .Select(id => MissionIconKeys.GetMissionIconKey(id))
             .Concat(
-                new[]
-                {
-                    MissionIconKeys.ResearchShipDesign,
-                    MissionIconKeys.ResearchFacilityDesign,
-                    MissionIconKeys.ResearchTroopTraining,
-                }
+                new[] { MissionIconKeys.ResearchShipDesign, MissionIconKeys.ResearchTroopTraining }
             )
             .OrderBy(key => key, StringComparer.Ordinal)
             .ToArray();
@@ -81,7 +76,7 @@ internal static class ContentEditorContentSections
         field.Record.Kind == "EncyclopediaEntry" ? "Encyclopedia"
         : IsFactionBackgroundField(field) ? "Default backgrounds"
         : field.Group == nameof(FactionTheme.ColorScheme) ? "Colors"
-        : IsFactionArtworkField(field) ? "Interfaces"
+        : IsFactionArtworkField(field) || IsAdvisorPlacementField(field) ? "Interfaces"
         : field.IsMediaDirectory ? "Advanced"
         : field.Record.Element.Element("FactionDataPath") != null ? "Advanced"
         : field.MemberName == "DisallowedMissionTypeIDs" ? "Rules"
@@ -101,7 +96,17 @@ internal static class ContentEditorContentSections
     internal static bool IsFactionArtworkField(ContentPackEditorField field) =>
         field.Record.Kind == "FactionTheme"
         && field.MediaType == ContentPackEditorMediaType.Image
-        && !field.IsMediaDirectory;
+        && !field.IsMediaDirectory
+        && (
+            field.Group != nameof(FactionTheme.MissionIcons)
+            || !MissionIconKeys.UsesSharedArtwork(
+                field
+                    .XmlElement.Ancestors(nameof(MissionIconTheme))
+                    .FirstOrDefault()
+                    ?.Element(nameof(MissionIconTheme.Key))
+                    ?.Value
+            )
+        );
 
     /// <summary>
     /// Identifies faction backgrounds retained for unit artwork workflows.
@@ -206,11 +211,25 @@ internal static class ContentEditorContentSections
     /// <param name="field">A faction-theme image field.</param>
     /// <returns>Whether the field belongs to the interface browser.</returns>
     internal static bool IsFactionInterfaceField(ContentPackEditorField field) =>
-        IsFactionArtworkField(field)
-        && !IsFactionBackgroundField(field)
-        && !IsUnusedUnitTileField(field)
-        && !IsRemovedMixedPlanetMarker(field)
-        && IsFactionOwnedArtworkAddress(field.Value);
+        IsAdvisorPlacementField(field)
+        || IsFactionArtworkField(field)
+            && !IsFactionBackgroundField(field)
+            && !IsUnusedUnitTileField(field)
+            && !IsRemovedMixedPlanetMarker(field)
+            && IsFactionOwnedArtworkAddress(field.Value);
+
+    /// <summary>
+    /// Identifies a coordinate stored in one of the strategy advisor's placement rectangles.
+    /// </summary>
+    /// <param name="field">The theme field to inspect.</param>
+    /// <returns>Whether this coordinate can be edited on the strategy surface.</returns>
+    internal static bool IsAdvisorPlacementField(ContentPackEditorField field) =>
+        field.Record.Kind == "FactionTheme"
+        && field.MemberName is nameof(SourceRectLayout.X) or nameof(SourceRectLayout.Y)
+        && field.XmlElement.Parent?.Name.LocalName
+            is nameof(StrategyAdvisorTheme.ProtocolSourceLayout)
+                or nameof(StrategyAdvisorTheme.DroidSourceLayout)
+        && field.XmlElement.Parent.Parent?.Name.LocalName == nameof(FactionTheme.StrategyAdvisor);
 
     /// <summary>
     /// Reports whether an image address belongs to one faction instead of shared or application
@@ -268,7 +287,9 @@ internal static class ContentEditorContentSections
         List<ContentPackEditorField> fields = theme
             .GetFields()
             .Where(field =>
-                IsFactionArtworkField(field) || field.Group == nameof(FactionTheme.ColorScheme)
+                IsFactionArtworkField(field)
+                || IsAdvisorPlacementField(field)
+                || field.Group == nameof(FactionTheme.ColorScheme)
             )
             .ToList();
         XElement defaults = theme.Element.Element(nameof(FactionTheme.ArtworkDefaults));
@@ -359,6 +380,8 @@ internal static class ContentEditorContentSections
                     )
                     ?.Name.LocalName
                 : null;
+        if (IsAdvisorPlacementField(field))
+            return "Strategy view";
         if (root == nameof(FactionTheme.GalaxyBackground))
             return field.MemberName == nameof(GalaxyBackground.DestroyedPlanetIconPath)
                 ? "Planet sector"
@@ -454,6 +477,8 @@ internal static class ContentEditorContentSections
     /// <returns>At most one heading naming the related view and state group.</returns>
     internal static IReadOnlyList<string> FactionArtworkSections(ContentPackEditorField field)
     {
+        if (IsAdvisorPlacementField(field))
+            return new[] { "Advisor placement" };
         XElement top = field
             .XmlElement.AncestorsAndSelf()
             .FirstOrDefault(element => element.Parent == field.Record.Element);

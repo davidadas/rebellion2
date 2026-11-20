@@ -495,11 +495,13 @@ public static class ContentPackEditorStorage
     /// <param name="pngBytes">The complete encoded PNG file.</param>
     /// <param name="preservePrevious">Whether to give each distinct image a reusable address for undo.</param>
     /// <returns>The pack-scoped or media-root-relative value to store in the field.</returns>
+    /// <param name="layerRecipe">Optional editor layer data that belongs to this exact output.</param>
     public static string WriteGeneratedPng(
         ContentPackEditorProject project,
         ContentPackEditorField field,
         byte[] pngBytes,
-        bool preservePrevious = false
+        bool preservePrevious = false,
+        string layerRecipe = null
     )
     {
         if (project == null)
@@ -522,11 +524,16 @@ public static class ContentPackEditorStorage
         string fileName = GetGeneratedPathSegment(GetGeneratedMemberName(field.MemberName));
         if (preservePrevious)
         {
-            using var hash = System.Security.Cryptography.SHA256.Create();
+            using var hash = System.Security.Cryptography.IncrementalHash.CreateHash(
+                System.Security.Cryptography.HashAlgorithmName.SHA256
+            );
+            hash.AppendData(pngBytes);
+            if (layerRecipe != null)
+                hash.AppendData(System.Text.Encoding.UTF8.GetBytes(layerRecipe));
             fileName +=
                 "-"
                 + BitConverter
-                    .ToString(hash.ComputeHash(pngBytes), 0, 12)
+                    .ToString(hash.GetHashAndReset(), 0, 12)
                     .Replace("-", "")
                     .ToLowerInvariant();
         }
@@ -542,7 +549,66 @@ public static class ContentPackEditorStorage
         ContentEditorPaths.VerifyWritePath(project, target);
         Directory.CreateDirectory(Path.GetDirectoryName(target));
         WriteBytesAtomically(target, pngBytes);
+        if (layerRecipe != null)
+            WriteBytesAtomically(
+                target + ".layers.json",
+                System.Text.Encoding.UTF8.GetBytes(layerRecipe)
+            );
         return field.MediaRoot == null ? address : address[(root.Length + 1)..];
+    }
+
+    /// <summary>
+    /// Stores the exact source image needed to reconstruct imported layers after reopening a pack.
+    /// </summary>
+    /// <param name="project">The pack receiving the layer source.</param>
+    /// <param name="sourcePath">The resolved original state image.</param>
+    /// <returns>The immutable pack address of the captured source image.</returns>
+    internal static string StoreArtworkLayerSource(
+        ContentPackEditorProject project,
+        string sourcePath
+    )
+    {
+        byte[] image = File.ReadAllBytes(sourcePath);
+        using SHA256 hash = SHA256.Create();
+        string key = BitConverter
+            .ToString(hash.ComputeHash(image))
+            .Replace("-", "")
+            .ToLowerInvariant();
+        string address =
+            "Pack/Assets/ArtworkSources/" + key + Path.GetExtension(sourcePath).ToLowerInvariant();
+        string target = Path.GetFullPath(address[5..], project.PackRootPath);
+        ContentEditorPaths.VerifyWritePath(project, target);
+        if (!File.Exists(target))
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(target));
+            WriteBytesAtomically(target, image);
+        }
+        return address;
+    }
+
+    /// <summary>
+    /// Reads editable layers associated with a current generated artwork reference.
+    /// </summary>
+    /// <param name="project">The writable project being edited.</param>
+    /// <param name="field">The field containing the current runtime artwork path.</param>
+    /// <returns>The sidecar data, or null for artwork without editable layers.</returns>
+    internal static string ReadGeneratedLayers(
+        ContentPackEditorProject project,
+        ContentPackEditorField field
+    )
+    {
+        if (string.IsNullOrWhiteSpace(field.Value))
+            return null;
+        string address = field.GetMediaAddress(field.Value);
+        if (
+            !address.StartsWith("Pack/", StringComparison.Ordinal)
+            || !address.Contains("/Generated/", StringComparison.Ordinal)
+            || !address.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
+        )
+            return null;
+        string path = Path.GetFullPath(address[5..], project.PackRootPath) + ".layers.json";
+        ContentEditorPaths.VerifyWritePath(project, path);
+        return File.Exists(path) ? File.ReadAllText(path) : null;
     }
 
     /// <summary>

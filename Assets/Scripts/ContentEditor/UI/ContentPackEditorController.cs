@@ -20,6 +20,10 @@ public sealed class ContentPackEditorController : MonoBehaviour
     private ContentPackEditorWorkspaceController workspace;
     private ContentAssets assets;
     private ContentAssets applicationAssets;
+    private readonly Dictionary<
+        (System.Xml.Linq.XElement Unit, ContentEditorArtworkEffect Effect),
+        (string References, string Layers)
+    > artworkDrafts = new();
     private bool quitApproved;
     private CancellationTokenSource operationCancellation;
     private bool quitAfterOperation;
@@ -43,11 +47,13 @@ public sealed class ContentPackEditorController : MonoBehaviour
         view.OpenRequested += ChooseOpenPack;
         view.BrowseFolderRequested += BrowsePackFolder;
         view.ImportRequested += ImportMedia;
-        view.ArtworkCutsRequested += GenerateArtworkCuts;
+        view.ArtworkCutsRequested += PreviewArtworkCuts;
         view.ArtworkEffectRequested += PreviewArtworkEffect;
         view.SaveRequested += SavePack;
+        view.RestoreTravelArtworkRequested += RestoreTravelArtwork;
         view.ExportRequested += ExportPack;
         view.ValidateRequested += ValidatePack;
+        view.QuickValidationRequested += QuickValidatePack;
         view.MapLayoutRequested += ArrangeMap;
         view.UndoRequested += Undo;
         view.RedoRequested += Redo;
@@ -141,11 +147,13 @@ public sealed class ContentPackEditorController : MonoBehaviour
             view.OpenRequested -= ChooseOpenPack;
             view.BrowseFolderRequested -= BrowsePackFolder;
             view.ImportRequested -= ImportMedia;
-            view.ArtworkCutsRequested -= GenerateArtworkCuts;
+            view.ArtworkCutsRequested -= PreviewArtworkCuts;
             view.ArtworkEffectRequested -= PreviewArtworkEffect;
             view.SaveRequested -= SavePack;
+            view.RestoreTravelArtworkRequested -= RestoreTravelArtwork;
             view.ExportRequested -= ExportPack;
             view.ValidateRequested -= ValidatePack;
+            view.QuickValidationRequested -= QuickValidatePack;
             view.MapLayoutRequested -= ArrangeMap;
             view.UndoRequested -= Undo;
             view.RedoRequested -= Redo;
@@ -381,7 +389,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             if (project == null || !view.CommitFields())
                 return;
             string source = ContentEditorFileDialog.OpenFile(
-                project.PackRootPath,
+                GetAssetPickerDirectory(field),
                 field.MediaExtensions
             );
             if (string.IsNullOrEmpty(source))
@@ -397,6 +405,31 @@ public sealed class ContentPackEditorController : MonoBehaviour
             }
             ApplyMediaImport(field, source, false);
         });
+    }
+
+    /// <summary>
+    /// Opens replacement imports beside the image currently resolved by the pack.
+    /// </summary>
+    /// <param name="field">The field being changed.</param>
+    /// <returns>The current file's folder, or the pack folder for a new image.</returns>
+    private string GetAssetPickerDirectory(ContentPackEditorField field)
+    {
+        if (!string.IsNullOrWhiteSpace(field.Value))
+            try
+            {
+                string address = field.GetMediaAddress(field.Value);
+                foreach (string extension in field.MediaExtensions)
+                {
+                    string file = assets.ResolveFile(address, extension);
+                    if (file != null)
+                        return Path.GetDirectoryName(file);
+                }
+            }
+            catch (ArgumentException)
+            {
+                // An unresolved address can still be repaired through the file picker.
+            }
+        return project.PackRootPath;
     }
 
     /// <summary>
@@ -428,11 +461,11 @@ public sealed class ContentPackEditorController : MonoBehaviour
     }
 
     /// <summary>
-    /// Generates every standard unit output from one selected large image and refreshes media.
+    /// Generates preview textures from the exact PNGs the author can choose to save.
     /// </summary>
     /// <param name="source">The large source image field.</param>
     /// <param name="targets">The ordinary output fields to replace with generated PNGs.</param>
-    private void GenerateArtworkCuts(
+    private void PreviewArtworkCuts(
         ContentPackEditorField source,
         IReadOnlyList<ContentPackEditorField> targets
     )
@@ -468,30 +501,60 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     return new { Field = field, Dimensions = dimensions };
                 })
                 .ToArray();
-            IReadOnlyDictionary<Vector2Int, byte[]> cuts =
-                ContentEditorArtworkCutGenerator.GeneratePngCuts(
-                    sourcePath,
-                    outputs.Select(output => output.Dimensions),
-                    source.MemberName == "DisplayImagePath"
-                );
-            var references = outputs
-                .Select(output =>
-                {
-                    string value = ContentPackEditorStorage.WriteGeneratedPng(
-                        project,
-                        output.Field,
-                        cuts[output.Dimensions],
-                        preservePrevious: true
-                    );
-                    return (output.Field, Value: value);
-                })
-                .ToArray();
-            using (project.BeginEdit("Generate standard artwork cuts"))
+            Vector2[] offsets = new Vector2[outputs.Length];
+            ShowCuts();
+
+            void ShowCuts()
             {
-                foreach (var reference in references)
-                    project.SetField(reference.Field, reference.Value);
+                var placements = outputs
+                    .Select((output, index) => (output.Dimensions, offsets[index]))
+                    .ToArray();
+                var cuts = ContentEditorArtworkCutGenerator.GeneratePlacedPngCuts(
+                    sourcePath,
+                    placements,
+                    fitEntireSource: source.MemberName == "DisplayImagePath",
+                    preserveVisibleSubject: true
+                );
+                var images = outputs
+                    .Select((output, index) => (output.Field, Png: cuts[placements[index]]))
+                    .ToArray();
+                List<(ContentPackEditorField Field, Texture2D Texture)> previews = new();
+                try
+                {
+                    foreach (var image in images)
+                    {
+                        Texture2D preview = new(2, 2, TextureFormat.RGBA32, false);
+                        previews.Add((image.Field, preview));
+                        if (!ImageConversion.LoadImage(preview, image.Png, true))
+                            throw new InvalidDataException(
+                                "A generated cut could not be displayed."
+                            );
+                    }
+                    view.ShowArtworkCuts(
+                        previews,
+                        () =>
+                            RunOperation(() =>
+                                ApplyGeneratedArtwork("Generate standard artwork cuts", images)
+                            ),
+                        (index, delta) =>
+                            RunOperation(() =>
+                            {
+                                Vector2 offset = offsets[index] + delta;
+                                offsets[index] = new Vector2(
+                                    Mathf.Clamp(offset.x, -0.5f, 0.5f),
+                                    Mathf.Clamp(offset.y, -0.5f, 0.5f)
+                                );
+                                ShowCuts();
+                            })
+                    );
+                }
+                catch
+                {
+                    foreach (var preview in previews)
+                        Destroy(preview.Texture);
+                    throw;
+                }
             }
-            OpenProject(project);
         });
     }
 
@@ -504,41 +567,108 @@ public sealed class ContentPackEditorController : MonoBehaviour
     {
         if (field == null || string.IsNullOrWhiteSpace(field.Value))
             return null;
-        string address = field.GetMediaAddress(field.Value);
+        return ResolveArtworkAddress(field.GetMediaAddress(field.Value));
+    }
+
+    /// <summary>
+    /// Resolves a pack artwork address to its readable source file.
+    /// </summary>
+    /// <param name="address">The pack or application image address.</param>
+    /// <returns>The readable source file, when available.</returns>
+    private string ResolveArtworkAddress(string address)
+    {
+        if (string.IsNullOrWhiteSpace(address))
+            return null;
         return assets.ResolveFile(address, ".png")
             ?? assets.ResolveFile(address, ".jpg")
             ?? assets.ResolveFile(address, ".jpeg");
     }
 
     /// <summary>
+    /// Resolves the authored travel artwork with the display image it was registered against.
+    /// </summary>
+    /// <param name="record">The unit defining the pattern.</param>
+    /// <param name="member">The exact gameplay image slot being built.</param>
+    /// <param name="displayMember">The matching normal artwork slot.</param>
+    /// <returns>The authored pair, or an empty pattern for procedural artwork.</returns>
+    private ContentEditorTravelPattern GetRegisteredTravelPattern(
+        ContentPackEditorRecord record,
+        string member,
+        string displayMember
+    )
+    {
+        ContentPackEditorField field = record.GetField(member);
+        string authored = field.Value;
+        string image =
+            string.IsNullOrWhiteSpace(authored)
+            || authored.Contains("/Generated/", StringComparison.Ordinal)
+                ? null
+                : ResolveArtworkAddress(field.GetMediaAddress(authored));
+        bool inherited = image == null || field.IsInherited;
+        if (image == null)
+        {
+            authored = field.Document.GetInheritedRecordMember(record.Element, member);
+            if (
+                string.IsNullOrWhiteSpace(authored)
+                || authored.Contains("/Generated/", StringComparison.Ordinal)
+            )
+                return default;
+            image = ResolveArtworkAddress(field.GetMediaAddress(authored));
+            if (image == null)
+                return default;
+        }
+
+        foreach (
+            string name in new[]
+            {
+                displayMember,
+                "DisplayImagePath",
+                "SmallDisplayImagePath",
+            }.Distinct()
+        )
+        {
+            ContentPackEditorField subject = record.GetField(name);
+            string value = inherited
+                ? field.Document.GetInheritedRecordMember(record.Element, name) ?? subject.Value
+                : subject.Value;
+            if (string.IsNullOrWhiteSpace(value))
+                continue;
+            string path = ResolveArtworkAddress(subject.GetMediaAddress(value));
+            if (path != null)
+                return new ContentEditorTravelPattern(image, path);
+        }
+        return default;
+    }
+
+    /// <summary>
+    /// Captures template files with the generated draft so its geometry survives pack edits.
+    /// </summary>
+    /// <param name="path">The resolved location of the pattern or hull.</param>
+    /// <returns>The portable address of the copy stored in the pack.</returns>
+    private string StoreTravelPatternSource(string path) =>
+        string.IsNullOrEmpty(path)
+            ? null
+            : ContentPackEditorStorage.StoreArtworkLayerSource(project, path);
+
+    /// <summary>
     /// Begins a repeatable preview of the applicable gameplay images for one unit.
     /// </summary>
-    /// <param name="record">The unit whose artwork supplies the silhouette.</param>
-    /// <param name="effect">The gameplay effect to generate.</param>
+    /// <param name="selectedField">The state image selected on the artwork page.</param>
+    /// <param name="effect">The gameplay effect to edit or generate.</param>
     private void PreviewArtworkEffect(
-        ContentPackEditorRecord record,
+        ContentPackEditorField selectedField,
         ContentEditorArtworkEffect effect
     )
     {
         RunOperation(() =>
         {
+            ContentPackEditorRecord record = selectedField.Record;
             project.RequireOwnedRecord(record);
-            ContentEditorArtworkEffectStyle style = (record.Kind, effect) switch
-            {
-                ("CapitalShip" or "Starfighter", ContentEditorArtworkEffect.Damage) =>
-                    ContentEditorArtworkEffectStyle.Damage,
-                ("CapitalShip" or "Starfighter", ContentEditorArtworkEffect.Travel) =>
-                    ContentEditorArtworkEffectStyle.ShipTravel,
-                ("SpecialForce", ContentEditorArtworkEffect.Travel) =>
-                    ContentEditorArtworkEffectStyle.PersonnelTravel,
-                ("Building", ContentEditorArtworkEffect.Travel)
-                    when !ContentEditorUnitArtworkLayout.IsHeadquartersIcon(record) =>
-                    ContentEditorArtworkEffectStyle.FacilityTravel,
-                _ => throw new ArgumentException(
+            if (!ContentEditorArtworkEffectGenerator.TryGetStyle(record, effect, out var style))
+                throw new ArgumentException(
                     "This unit has no artwork slot for that effect.",
                     nameof(effect)
-                ),
-            };
+                );
             string prefix = effect == ContentEditorArtworkEffect.Travel ? "InTransit" : "Damaged";
             var fields = ContentEditorUnitArtworkLayout
                 .GetMembers(record)
@@ -555,6 +685,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 (
                     Member: prefix + "SmallImagePath",
                     Caption: "Small",
+                    SubjectMember: "SmallDisplayImagePath",
                     Source: compact ?? display,
                     MatchSource: style == ContentEditorArtworkEffectStyle.FacilityTravel
                         && compact != null
@@ -562,12 +693,14 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 (
                     Member: prefix + "ImagePath",
                     Caption: "Large",
+                    SubjectMember: "DisplayImagePath",
                     Source: display ?? compact,
                     MatchSource: false
                 ),
                 (
                     Member: "BattleResult" + prefix + "ImagePath",
                     Caption: "Battle result",
+                    SubjectMember: "BattleResultImagePath",
                     Source: battle ?? compact ?? display,
                     MatchSource: false
                 ),
@@ -588,7 +721,9 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     return (
                         Field: field,
                         output.Caption,
+                        output.SubjectMember,
                         output.Source,
+                        Existing: ResolveArtworkFile(field),
                         Size: output.MatchSource ? (Vector2Int?)null : dimensions,
                         ExpectedSize: dimensions,
                         StretchSource: record.Kind == "CapitalShip"
@@ -596,33 +731,281 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     );
                 })
                 .ToArray();
-            if (outputs.Length == 0 || outputs.Any(output => output.Source == null))
+            if (outputs.Length == 0)
+                throw new InvalidOperationException(
+                    "This unit has no output for that gameplay effect."
+                );
+
+            bool shipEffects =
+                style
+                is ContentEditorArtworkEffectStyle.ShipTravel
+                    or ContentEditorArtworkEffectStyle.Damage;
+            Texture2D previewBackground =
+                shipEffects ? view.GetShipEffectBackground()
+                : style == ContentEditorArtworkEffectStyle.RegimentTravel
+                    ? view.GetTroopTransitBackground()
+                : style == ContentEditorArtworkEffectStyle.PersonnelTravel
+                    ? view.GetPersonnelTransitBackground()
+                : null;
+            var key = (record.Element, effect);
+            string references = string.Join("\n", outputs.Select(output => output.Field.Value));
+            int initialFrame = Math.Max(
+                0,
+                Array.FindIndex(
+                    outputs,
+                    output => output.Field.MemberName == selectedField.MemberName
+                )
+            );
+            string stored;
+            if (outputs[initialFrame].Existing == null)
+                stored = null;
+            else if (
+                artworkDrafts.TryGetValue(key, out var previous)
+                && previous.References == references
+            )
+                stored = previous.Layers;
+            else
+            {
+                var sidecars = outputs
+                    .Select(output =>
+                        ContentPackEditorStorage.ReadGeneratedLayers(project, output.Field)
+                    )
+                    .ToArray();
+                stored = sidecars.All(data => data == sidecars[0]) ? sidecars[0] : null;
+            }
+            int defaultSeed = ContentEditorArtworkEffectGenerator.GetSeed(record.ID, effect);
+            ContentEditorArtworkRecipe recipe =
+                stored == null ? null : JsonUtility.FromJson<ContentEditorArtworkRecipe>(stored);
+            if (
+                recipe?.Layers == null
+                || (
+                    recipe.Version != ContentEditorArtworkRecipe.CurrentVersion
+                    && recipe.Version != 5
+                    && recipe.Version != 4
+                    && recipe.Version != 3
+                    && recipe.Version != 2
+                    && !(recipe.Version == 1 && shipEffects)
+                )
+                || (recipe.HasStoredSources && recipe.ExistingSources.Length != outputs.Length)
+            )
+                recipe = null;
+            if (outputs[initialFrame].Source == null && outputs[initialFrame].Existing == null)
                 throw new InvalidOperationException(
                     "Choose a display image or a small image first."
                 );
-
-            int seed = ContentEditorArtworkEffectGenerator.GetSeed(record.ID, effect);
-            ShowVariation(seed);
-
-            void ShowVariation(int variation)
+            var frames = new List<ContentEditorArtworkEffectGenerator.EditableFrame>();
+            ContentEditorTravelPattern[] travelPatterns = null;
+            Stack<string> undo = new();
+            Stack<string> redo = new();
+            int selected = -1;
+            try
             {
-                List<(string Caption, Texture2D Texture)> previews = new();
-                List<(ContentPackEditorField Field, byte[] Png)> images = new();
+                bool initialize = recipe == null;
+                recipe ??= new ContentEditorArtworkRecipe
+                {
+                    Seed = defaultSeed,
+                    UsesExisting = outputs[initialFrame].Existing != null,
+                };
+                RebuildFrames(recipe);
+                if (initialize)
+                    CreateDefaultLayers();
+                selected = recipe.Layers.Count == 0 ? -1 : 0;
+                Refresh();
+            }
+            catch
+            {
+                DisposeFrames();
+                throw;
+            }
+
+            void DisposeFrames()
+            {
+                foreach (var frame in frames)
+                    frame.Dispose();
+                frames.Clear();
+            }
+
+            string ExistingSource(ContentEditorArtworkRecipe draft, int index)
+            {
+                if (!draft.UsesExisting)
+                    return null;
+                return draft.HasStoredSources
+                    ? ResolveArtworkAddress(draft.ExistingSources[index])
+                    : outputs[index].Existing;
+            }
+
+            ContentEditorTravelPattern[] ResolveTravelPatterns()
+            {
+                ContentEditorTravelPattern shared = new(
+                    ResolveArtworkAddress(view.GetUnitTravelBackgroundAddress()),
+                    null
+                );
+                var candidates = project
+                    .GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Where(candidate =>
+                        candidate.Kind == record.Kind && candidate.Element != record.Element
+                    )
+                    .OrderByDescending(candidate =>
+                        candidate.Element.Element("BuildingType")?.Value
+                        == record.Element.Element("BuildingType")?.Value
+                    )
+                    .ThenByDescending(candidate =>
+                        candidate.Catalog.Faction == record.Catalog.Faction
+                    )
+                    .ToArray();
+                ContentPackEditorRecord shipDonor = null;
+                bool selectedDonor = false;
+                return outputs
+                    .Select(output =>
+                    {
+                        if (style == ContentEditorArtworkEffectStyle.RegimentTravel)
+                            return shared;
+                        string member = output.Field.MemberName;
+                        ContentEditorTravelPattern exact = GetRegisteredTravelPattern(
+                            record,
+                            member,
+                            output.SubjectMember
+                        );
+                        if (exact.Image == null)
+                            exact = ContentEditorTravelRestoration.ResolveUnitPattern(
+                                project,
+                                record,
+                                member,
+                                output.SubjectMember
+                            );
+                        if (exact.Image != null)
+                            return exact;
+                        if (style == ContentEditorArtworkEffectStyle.ShipTravel)
+                        {
+                            if (!selectedDonor)
+                            {
+                                var examples = candidates
+                                    .Select(candidate =>
+                                        (
+                                            Record: candidate,
+                                            Pattern: GetRegisteredTravelPattern(
+                                                candidate,
+                                                "InTransitSmallImagePath",
+                                                "SmallDisplayImagePath"
+                                            )
+                                        )
+                                    )
+                                    .Where(candidate => candidate.Pattern.Image != null)
+                                    .ToArray();
+                                var donor =
+                                    ContentEditorArtworkEffectGenerator.SelectShipTravelPattern(
+                                        compact ?? display,
+                                        examples.Select(candidate => candidate.Pattern).ToArray()
+                                    );
+                                shipDonor = examples
+                                    .FirstOrDefault(candidate => candidate.Pattern.Equals(donor))
+                                    .Record;
+                                selectedDonor = true;
+                            }
+                            return shipDonor == null
+                                ? default
+                                : GetRegisteredTravelPattern(
+                                    shipDonor,
+                                    member,
+                                    output.SubjectMember
+                                );
+                        }
+                        if (style == ContentEditorArtworkEffectStyle.FacilityTravel)
+                        {
+                            var facility = candidates
+                                .Where(candidate =>
+                                    ContentPackEditorFieldMetadata.TryGetExpectedImageDimensions(
+                                        candidate.GetField(member),
+                                        out Vector2Int dimensions
+                                    )
+                                    && dimensions == output.ExpectedSize
+                                )
+                                .Select(candidate =>
+                                    GetRegisteredTravelPattern(
+                                        candidate,
+                                        member,
+                                        output.SubjectMember
+                                    )
+                                )
+                                .FirstOrDefault(candidate => candidate.Image != null);
+                            if (facility.Image != null)
+                                return facility;
+                        }
+                        return shared;
+                    })
+                    .ToArray();
+            }
+
+            ContentEditorTravelPattern GetTravelPattern(ContentEditorArtworkRecipe draft, int index)
+            {
+                if (
+                    draft.TravelPatterns?.Length == outputs.Length
+                    && draft.TravelSubjects?.Length == outputs.Length
+                )
+                {
+                    return new ContentEditorTravelPattern(
+                        ResolveArtworkAddress(draft.TravelPatterns[index]),
+                        ResolveArtworkAddress(draft.TravelSubjects[index])
+                    );
+                }
+                return (travelPatterns ??= ResolveTravelPatterns())[index];
+            }
+
+            void RebuildFrames(ContentEditorArtworkRecipe draft)
+            {
+                var replacement = new List<ContentEditorArtworkEffectGenerator.EditableFrame>();
                 try
                 {
-                    foreach (var output in outputs)
+                    for (int index = 0; index < outputs.Length; index++)
                     {
-                        string caption = output.Caption;
-                        (byte[] Png, Texture2D Preview) image;
+                        var output = outputs[index];
+                        string existing = ExistingSource(draft, index);
+                        bool completeTravel =
+                            effect == ContentEditorArtworkEffect.Travel
+                            && draft.Version >= 5
+                            && !draft.UsesExisting;
+                        ContentEditorTravelPattern pattern =
+                            completeTravel
+                            || (
+                                effect == ContentEditorArtworkEffect.Travel
+                                && draft.Version >= 5
+                                && style == ContentEditorArtworkEffectStyle.FacilityTravel
+                            )
+                                ? GetTravelPattern(draft, index)
+                                : default;
+                        bool facilityCard =
+                            style == ContentEditorArtworkEffectStyle.FacilityTravel
+                            && output.ExpectedSize == new Vector2Int(302, 158);
+                        int? clearance =
+                            draft.Version < 4 || !facilityCard ? 0
+                            : draft.FacilityClearance >= 0 ? draft.FacilityClearance
+                            : null;
+                        string reference =
+                            clearance == null
+                            && !(output.Field.Value?.Contains("/Generated/") ?? false)
+                                ? output.Existing
+                            : clearance == null && pattern.Subject == output.Source ? pattern.Image
+                            : null;
                         try
                         {
-                            image = ContentEditorArtworkEffectGenerator.Generate(
-                                output.Source,
-                                output.Size,
-                                style,
-                                variation,
-                                includePreview: true,
-                                stretchSource: output.StretchSource
+                            replacement.Add(
+                                ContentEditorArtworkEffectGenerator.CreateEditableFrame(
+                                    output.Source,
+                                    completeTravel ? output.ExpectedSize : output.Size,
+                                    style,
+                                    draft.Seed,
+                                    output.StretchSource,
+                                    previewBackground,
+                                    existing,
+                                    draft.Variant,
+                                    legacyStreaks: draft.Version == 2,
+                                    facilityClearance: clearance,
+                                    facilityReferencePath: reference,
+                                    completeTravel: completeTravel,
+                                    travelPattern: pattern,
+                                    preserveRegisteredTravel: completeTravel && draft.Version >= 6
+                                )
                             );
                         }
                         catch (InvalidDataException)
@@ -632,43 +1015,328 @@ public sealed class ContentPackEditorController : MonoBehaviour
                                 && display != compact
                             )
                         {
-                            image = ContentEditorArtworkEffectGenerator.Generate(
-                                display,
-                                output.ExpectedSize,
-                                style,
-                                variation,
-                                includePreview: true
+                            ContentEditorTravelPattern fallback =
+                                pattern.Subject == null
+                                    ? pattern
+                                    : new ContentEditorTravelPattern(
+                                        ResolveArtworkAddress(
+                                            view.GetUnitTravelBackgroundAddress()
+                                        ),
+                                        null
+                                    );
+                            if (
+                                completeTravel
+                                && travelPatterns != null
+                                && draft.TravelPatterns?.Length != outputs.Length
+                            )
+                                travelPatterns[index] = fallback;
+                            replacement.Add(
+                                ContentEditorArtworkEffectGenerator.CreateEditableFrame(
+                                    display,
+                                    output.ExpectedSize,
+                                    style,
+                                    draft.Seed,
+                                    false,
+                                    previewBackground,
+                                    existing,
+                                    draft.Variant,
+                                    legacyStreaks: draft.Version == 2,
+                                    facilityClearance: clearance,
+                                    completeTravel: completeTravel,
+                                    travelPattern: fallback
+                                )
                             );
-                            caption = "Small from display art";
                         }
-                        previews.Add((caption, image.Preview));
-                        images.Add((output.Field, image.Png));
                     }
-                    view.ShowGeneratedArtwork(
-                        $"{effect} artwork for {record.Name}",
-                        previews,
-                        () => RunOperation(() => ShowVariation(unchecked(variation + 1))),
-                        () => RunOperation(() => ApplyArtworkEffect(effect, images))
-                    );
                 }
                 catch
                 {
-                    foreach (var preview in previews)
-                        Destroy(preview.Texture);
+                    foreach (var frame in replacement)
+                        frame.Dispose();
                     throw;
                 }
+                if (draft.Version >= 4 && draft.FacilityClearance < 0)
+                    draft.FacilityClearance = replacement[0].FacilityClearance;
+                DisposeFrames();
+                frames.AddRange(replacement);
+            }
+
+            void CreateDefaultLayers()
+            {
+                int count = frames.Max(frame => frame.DefaultLayerCount);
+                recipe.Layers = Enumerable
+                    .Range(0, count)
+                    .Select(index => new ContentEditorArtworkLayer { Source = index })
+                    .ToList();
+            }
+
+            void RememberEdit()
+            {
+                undo.Push(JsonUtility.ToJson(recipe));
+                redo.Clear();
+            }
+
+            void RestoreEdit(Stack<string> from, Stack<string> to)
+            {
+                if (from.Count == 0)
+                    return;
+                var restored = JsonUtility.FromJson<ContentEditorArtworkRecipe>(from.Peek());
+                if (
+                    recipe.Seed != restored.Seed
+                    || recipe.Variant != restored.Variant
+                    || recipe.Version != restored.Version
+                    || recipe.FacilityClearance != restored.FacilityClearance
+                    || recipe.UsesExisting != restored.UsesExisting
+                )
+                    RebuildFrames(restored);
+                to.Push(JsonUtility.ToJson(recipe));
+                from.Pop();
+                recipe = restored;
+                selected = Mathf.Min(selected < 0 ? 0 : selected, recipe.Layers.Count - 1);
+                Refresh();
+            }
+
+            void MoveLayer(int index, Vector2 offset)
+            {
+                if (
+                    index < 0
+                    || index >= recipe.Layers.Count
+                    || offset.sqrMagnitude < float.Epsilon
+                )
+                    return;
+                selected = index;
+                RememberEdit();
+                ContentEditorArtworkLayer layer = recipe.Layers[index];
+                layer.Offset += offset;
+                recipe.Layers[index] = layer;
+                Refresh();
+            }
+
+            void RemoveLayer()
+            {
+                if (selected < 0)
+                    return;
+                RememberEdit();
+                recipe.Layers.RemoveAt(selected);
+                selected = Mathf.Min(selected, recipe.Layers.Count - 1);
+                Refresh();
+            }
+
+            void AddLayer()
+            {
+                RememberEdit();
+                var layer = new ContentEditorArtworkLayer
+                {
+                    Source = -1,
+                    Seed = unchecked(recipe.Seed + ++recipe.NextAddition * 7919),
+                    MeasuredStreaks = true,
+                    VisibleStreakGroup = true,
+                };
+                int facility = frames[0].FacilityLayerIndex;
+                int foreground =
+                    facility < 0 ? -1 : recipe.Layers.FindIndex(item => item.Source == facility);
+                selected = foreground < 0 ? recipe.Layers.Count : foreground;
+                recipe.Layers.Insert(selected, layer);
+                Refresh();
+            }
+
+            void DuplicateLayer()
+            {
+                if (selected < 0 || selected >= recipe.Layers.Count)
+                    return;
+                RememberEdit();
+                ContentEditorArtworkLayer copy = recipe.Layers[selected];
+                recipe.Layers.Insert(++selected, copy);
+                Refresh();
+            }
+
+            void Regenerate()
+            {
+                if (outputs.All(output => output.Source == null))
+                    throw new InvalidOperationException(
+                        "Choose a display image or a small image first."
+                    );
+                var replacement = new ContentEditorArtworkRecipe
+                {
+                    Seed = unchecked(recipe.Seed + 104729),
+                    Variant =
+                        recipe.UsesExisting
+                        || style == ContentEditorArtworkEffectStyle.FacilityTravel
+                            ? 0
+                            : (recipe.Variant + 1) % 3,
+                };
+                RebuildFrames(replacement);
+                RememberEdit();
+                recipe = replacement;
+                CreateDefaultLayers();
+                selected = recipe.Layers.Count == 0 ? -1 : 0;
+                Refresh();
+            }
+
+            void Save()
+            {
+                if (recipe.UsesExisting && !recipe.HasStoredSources)
+                    recipe.ExistingSources = outputs
+                        .Select(output =>
+                            output.Existing == null
+                                ? null
+                                : ContentPackEditorStorage.StoreArtworkLayerSource(
+                                    project,
+                                    output.Existing
+                                )
+                        )
+                        .ToArray();
+                if (
+                    effect == ContentEditorArtworkEffect.Travel
+                    && recipe.Version >= 5
+                    && !recipe.UsesExisting
+                    && travelPatterns != null
+                    && recipe.TravelPatterns?.Length != outputs.Length
+                )
+                {
+                    recipe.TravelPatterns = travelPatterns
+                        .Select(pattern => StoreTravelPatternSource(pattern.Image))
+                        .ToArray();
+                    recipe.TravelSubjects = travelPatterns
+                        .Select(pattern => StoreTravelPatternSource(pattern.Subject))
+                        .ToArray();
+                }
+                string serialized = JsonUtility.ToJson(recipe);
+                var images = outputs
+                    .Select(
+                        (output, index) => (output.Field, Png: frames[index].Bake(recipe.Layers))
+                    )
+                    .ToArray();
+                ApplyGeneratedArtwork(
+                    $"Save {effect.ToString().ToLowerInvariant()} artwork",
+                    images,
+                    serialized
+                );
+                references = string.Join("\n", outputs.Select(output => output.Field.Value));
+                view.CloseArtworkDraft();
+            }
+
+            void Refresh()
+            {
+                var previews = frames
+                    .Select(
+                        (frame, frameIndex) =>
+                        {
+                            var layers = new List<ArtworkEffectLayerPreview>();
+                            for (int index = 0; index < recipe.Layers.Count; index++)
+                            {
+                                var definition = recipe.Layers[index];
+                                var piece = frame.GetLayer(definition);
+                                if (piece.Texture == null)
+                                    continue;
+                                Vector2 size = frame.Size;
+                                Rect bounds = new(
+                                    (Vector2)piece.Bounds.min / size + definition.Offset,
+                                    (Vector2)piece.Bounds.size / size
+                                );
+                                string name = style switch
+                                {
+                                    ContentEditorArtworkEffectStyle.ShipTravel =>
+                                        $"Wake {index + 1}",
+                                    ContentEditorArtworkEffectStyle.Damage =>
+                                        $"Explosion {index + 1}",
+                                    ContentEditorArtworkEffectStyle.FacilityTravel
+                                        when definition.Source == frame.FacilityLayerIndex
+                                            && definition.Source >= 0 => "Facility",
+                                    ContentEditorArtworkEffectStyle.FacilityTravel
+                                        when recipe.Version >= 6
+                                            && !recipe.UsesExisting
+                                            && definition.Source == 0 => "Travel field",
+                                    ContentEditorArtworkEffectStyle.PersonnelTravel
+                                        when recipe.UsesExisting && definition.Source >= 3 =>
+                                        $"Existing accent {definition.Source - 2}",
+                                    _ => $"Streaks {index + 1}",
+                                };
+                                layers.Add(
+                                    new ArtworkEffectLayerPreview(
+                                        index,
+                                        name,
+                                        piece.Texture,
+                                        bounds
+                                    )
+                                );
+                            }
+                            return new ArtworkEffectPreviewFrame(
+                                outputs[frameIndex].Caption,
+                                frame.BaseImage,
+                                frame.SubjectOverlay,
+                                layers
+                            );
+                        }
+                    )
+                    .ToArray();
+                string variation = recipe.UsesExisting
+                    ? "Existing artwork"
+                    : style switch
+                    {
+                        ContentEditorArtworkEffectStyle.ShipTravel => recipe.Variant switch
+                        {
+                            1 => "Long wake",
+                            2 => "Wide wake",
+                            _ => "Compact wake",
+                        },
+                        ContentEditorArtworkEffectStyle.Damage => "Generated damage",
+                        _ when recipe.Version >= 5 => recipe.Variant switch
+                        {
+                            1 => "Shifted streak field",
+                            2 => "Offset streak field",
+                            _ => "Travel streaks",
+                        },
+                        _ => recipe.Variant switch
+                        {
+                            1 => "Long streaks",
+                            2 => "Dense streaks",
+                            _ => "Blue streaks",
+                        },
+                    };
+                view.ShowGeneratedArtwork(
+                    $"{effect} artwork for {record.Name} / {variation}",
+                    previews,
+                    initialFrame,
+                    selected,
+                    index => selected = index,
+                    (index, offset) => RunOperation(() => MoveLayer(index, offset)),
+                    () => RunOperation(AddLayer),
+                    () => RunOperation(DuplicateLayer),
+                    () => RunOperation(RemoveLayer),
+                    () => RunOperation(Regenerate),
+                    style switch
+                    {
+                        ContentEditorArtworkEffectStyle.ShipTravel => "Add wake",
+                        ContentEditorArtworkEffectStyle.Damage => "Add explosion",
+                        _ => "Add streaks",
+                    },
+                    style == ContentEditorArtworkEffectStyle.FacilityTravel
+                        ? "Generate full card"
+                        : "Try variant",
+                    () => RunOperation(Save),
+                    () => RunOperation(() => RestoreEdit(undo, redo)),
+                    () => RunOperation(() => RestoreEdit(redo, undo)),
+                    () =>
+                    {
+                        artworkDrafts[key] = (references, JsonUtility.ToJson(recipe));
+                        DisposeFrames();
+                    }
+                );
             }
         });
     }
 
     /// <summary>
-    /// Writes the approved variation before replacing its unit references in one undo step.
+    /// Writes approved artwork before replacing its unit references in one undo step.
     /// </summary>
-    /// <param name="effect">The approved gameplay effect.</param>
-    /// <param name="images">The previewed state images and their destination fields.</param>
-    private void ApplyArtworkEffect(
-        ContentEditorArtworkEffect effect,
-        IReadOnlyList<(ContentPackEditorField Field, byte[] Png)> images
+    /// <param name="description">The description of the operation in the undo history.</param>
+    /// <param name="images">The previewed images and their destination fields.</param>
+    /// <param name="layers">The optional editor layer data for these outputs.</param>
+    private void ApplyGeneratedArtwork(
+        string description,
+        IReadOnlyList<(ContentPackEditorField Field, byte[] Png)> images,
+        string layers = null
     )
     {
         var references = images
@@ -678,12 +1346,13 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     project,
                     image.Field,
                     image.Png,
-                    preservePrevious: true
+                    preservePrevious: true,
+                    layerRecipe: layers
                 );
                 return (image.Field, Value: value);
             })
             .ToArray();
-        using (project.BeginEdit($"Generate {effect.ToString().ToLowerInvariant()} artwork"))
+        using (project.BeginEdit(description))
         {
             foreach (var reference in references)
                 project.SetField(reference.Field, reference.Value);
@@ -721,6 +1390,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
             }
             throw;
         }
+        if (project != value)
+            artworkDrafts.Clear();
         project = value;
         assets = replacement;
         previous?.Dispose();
@@ -758,6 +1429,57 @@ public sealed class ContentPackEditorController : MonoBehaviour
         else
             view.RefreshProjectState();
         view.RenderStatus("Content pack saved.", false);
+    }
+
+    /// <summary>
+    /// Restores an installed reference pack's missing transit artwork in one operation.
+    /// </summary>
+    private void RestoreTravelArtwork()
+    {
+        RunOperation(() =>
+        {
+            if (project == null || !view.CommitFields())
+                return;
+            bool clean = !project.IsDirty;
+            var restored = ContentEditorTravelRestoration.Restore(project);
+            if (restored.Files == 0 && restored.References == 0)
+            {
+                view.RenderStatus("Travel artwork is already present.", false);
+                return;
+            }
+            if (clean && restored.References > 0)
+                ContentPackEditorStorage.Save(project);
+            OpenProject(project);
+            string saveMessage =
+                !clean && restored.References > 0
+                    ? " Save pack to write the updated references."
+                    : string.Empty;
+            view.RenderStatus(
+                $"Restored {restored.Files} travel images and {restored.References} assignments."
+                    + saveMessage,
+                false
+            );
+        });
+    }
+
+    /// <summary>
+    /// Checks the current document fields and references without saving or loading gameplay.
+    /// </summary>
+    private void QuickValidatePack()
+    {
+        RunOperation(() =>
+        {
+            if (project == null || !view.CommitFields())
+                return;
+            var issues = ContentEditorPackValidator.GetFieldErrors(project);
+            if (issues.Count == 0)
+                view.RenderStatus(
+                    "Quick validation passed. Pack fields and references are valid.",
+                    false
+                );
+            else
+                view.RenderValidationErrors(issues);
+        });
     }
 
     /// <summary>

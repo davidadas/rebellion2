@@ -119,6 +119,7 @@ public sealed class RenderPipelineConfigurationTests
     [TestCase("Custom/PlanetDayNightShade", true)]
     [TestCase("Custom/PlanetSurface", true)]
     [TestCase("Custom/PremultipliedTexture", false)]
+    [TestCase("UI/Crisp Sprite", false)]
     public void ProjectShader_ActiveBackend_HasExpectedSupport(
         string shaderName,
         bool requiresHdrpBackend
