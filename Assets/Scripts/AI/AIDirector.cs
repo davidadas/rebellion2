@@ -69,7 +69,7 @@ namespace Rebellion.AI
         /// <param name="headquarters">Headquarters system used by relocation proposals.</param>
         /// <param name="officerCommands">Officer command appointment operations.</param>
         /// <param name="results">Completed game changes that can invalidate incremental execution state.</param>
-        /// <param name="gameData">The active content catalog supplying officer AI configuration.</param>
+        /// <param name="officers">The authored officers supplying AI behavior configuration.</param>
         public AIDirector(
             GameRoot game,
             MissionCommands missions,
@@ -82,13 +82,13 @@ namespace Rebellion.AI
             HeadquartersCommands headquarters = null,
             PersonnelCommands officerCommands = null,
             GameResultBus results = null,
-            GameDataCatalog gameData = null
+            IReadOnlyList<Officer> officers = null
         )
         {
             _game = game;
             _officerBehaviors =
-                gameData
-                    ?.Officers.Where(officer => officer.AIBehavior != null)
+                officers
+                    ?.Where(officer => officer.AIBehavior != null)
                     .ToDictionary(
                         officer => officer.InstanceID,
                         officer => officer.AIBehavior,

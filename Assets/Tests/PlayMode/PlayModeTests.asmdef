@@ -1,13 +1,25 @@
 {
     "name": "PlayModeTests",
     "references": [
-        "GameAssembly",
+        "Rebellion.App",
         "UnitTests",
         "Unity.InputSystem",
         "Unity.InputSystem.TestFramework",
         "Unity.TextMeshPro",
         "UnityEngine.TestRunner",
-        "UnityEditor.TestRunner"
+        "UnityEditor.TestRunner",
+        "Rebellion.Util",
+        "Rebellion.SceneGraph",
+        "Rebellion.Game",
+        "Rebellion.UserSettings",
+        "Rebellion.Saves",
+        "Rebellion.Content",
+        "Rebellion.Generation",
+        "Rebellion.Analytics",
+        "Rebellion.Sessions",
+        "Rebellion.Multiplayer",
+        "Rebellion.Gameplay",
+        "Rebellion.AI"
     ],
     "includePlatforms": [],
     "overrideReferences": true,

@@ -75,7 +75,12 @@ namespace Rebellion.Tests.Gameplay
                 new ManufacturingQueries(_game),
                 _movement
             );
-            _automation = new AdvisorAutomationCommands(_game, _gameData, _manufacturing);
+            _automation = new AdvisorAutomationCommands(
+                _game,
+                _gameData.Buildings,
+                _gameData.Regiments,
+                _manufacturing
+            );
         }
 
         [Test]

@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using ArchUnitNET.Fluent;
 using ArchUnitNET.Loader;
 using ArchUnitNET.NUnit;
@@ -10,9 +13,103 @@ namespace Rebellion.Architecture.Tests
     [TestFixture]
     public sealed class ArchitectureDependencyTests
     {
+        private static readonly Assembly[] _runtimeAssemblies = LoadRuntimeAssemblies();
+
         private static readonly ArchUnitNET.Domain.Architecture _architecture = new ArchLoader()
-            .LoadAssemblies(typeof(GameRoot).Assembly, typeof(ContentPackEditorProject).Assembly)
+            .LoadAssemblies(
+                _runtimeAssemblies.Append(typeof(ContentPackEditorProject).Assembly).ToArray()
+            )
             .Build();
+
+        [Test]
+        public void RuntimeAssemblies_Dependencies_FollowModuleDirection()
+        {
+            Dictionary<string, string[]> allowedReferences = new()
+            {
+                ["Rebellion.Util"] = [],
+                ["Rebellion.SceneGraph"] = ["Rebellion.Util"],
+                ["Rebellion.Game"] = ["Rebellion.SceneGraph", "Rebellion.Util"],
+                ["Rebellion.UserSettings"] = [],
+                ["Rebellion.Content"] =
+                [
+                    "Rebellion.Game",
+                    "Rebellion.SceneGraph",
+                    "Rebellion.Util",
+                ],
+                ["Rebellion.Generation"] =
+                [
+                    "Rebellion.Content",
+                    "Rebellion.Game",
+                    "Rebellion.SceneGraph",
+                    "Rebellion.Util",
+                ],
+                ["Rebellion.Saves"] =
+                [
+                    "Rebellion.Game",
+                    "Rebellion.UserSettings",
+                    "Rebellion.Util",
+                ],
+                ["Rebellion.Analytics"] =
+                [
+                    "Rebellion.Game",
+                    "Rebellion.SceneGraph",
+                    "Rebellion.UserSettings",
+                    "Rebellion.Util",
+                ],
+                ["Rebellion.Gameplay"] =
+                [
+                    "Rebellion.Game",
+                    "Rebellion.SceneGraph",
+                    "Rebellion.Util",
+                ],
+                ["Rebellion.AI"] =
+                [
+                    "Rebellion.Game",
+                    "Rebellion.Gameplay",
+                    "Rebellion.SceneGraph",
+                    "Rebellion.Util",
+                ],
+                ["Rebellion.Sessions"] =
+                [
+                    "Rebellion.AI",
+                    "Rebellion.Analytics",
+                    "Rebellion.Content",
+                    "Rebellion.Game",
+                    "Rebellion.Gameplay",
+                    "Rebellion.Saves",
+                    "Rebellion.SceneGraph",
+                    "Rebellion.UserSettings",
+                    "Rebellion.Util",
+                ],
+                ["Rebellion.Networking.Transport"] = [],
+                ["Rebellion.Multiplayer"] =
+                [
+                    "Rebellion.Analytics",
+                    "Rebellion.Content",
+                    "Rebellion.Game",
+                    "Rebellion.Gameplay",
+                    "Rebellion.Networking.Transport",
+                    "Rebellion.Saves",
+                    "Rebellion.SceneGraph",
+                    "Rebellion.Sessions",
+                    "Rebellion.UserSettings",
+                    "Rebellion.Util",
+                ],
+            };
+
+            foreach ((string assemblyName, string[] allowed) in allowedReferences)
+            {
+                Assembly assembly = _runtimeAssemblies.Single(candidate =>
+                    candidate.GetName().Name == assemblyName
+                );
+                string[] projectReferences = assembly
+                    .GetReferencedAssemblies()
+                    .Select(reference => reference.Name)
+                    .Where(reference => reference.StartsWith("Rebellion."))
+                    .ToArray();
+                CollectionAssert.IsSubsetOf(projectReferences, allowed, assemblyName);
+            }
+        }
 
         [Test]
         public void GameDomain_Dependencies_ReferenceOnlyGameDomain()
@@ -107,7 +204,10 @@ namespace Rebellion.Architecture.Tests
         [TestCase("Rebellion.Multiplayer.MultiplayerCoordinator")]
         public void OwnershipBoundary_TypeName_ExistsInInspectedAssembly(string typeName)
         {
-            Assert.That(typeof(GameRoot).Assembly.GetType(typeName, false), Is.Not.Null);
+            Assert.That(
+                _runtimeAssemblies.Any(assembly => assembly.GetType(typeName, false) != null),
+                Is.True
+            );
         }
 
         [Test]
@@ -246,6 +346,30 @@ namespace Rebellion.Architecture.Tests
                 );
 
             rule.Check(_architecture);
+        }
+
+        private static Assembly[] LoadRuntimeAssemblies()
+        {
+            string[] assemblyNames =
+            [
+                "Rebellion.AI",
+                "Rebellion.Analytics",
+                "Rebellion.Content",
+                "Rebellion.Game",
+                "Rebellion.Gameplay",
+                "Rebellion.Generation",
+                "Rebellion.Multiplayer",
+                "Rebellion.Networking.Transport",
+                "Rebellion.Saves",
+                "Rebellion.SceneGraph",
+                "Rebellion.Sessions",
+                "Rebellion.UserSettings",
+                "Rebellion.Util",
+            ];
+            return assemblyNames
+                .Select(Assembly.Load)
+                .Append(typeof(AppBootstrap).Assembly)
+                .ToArray();
         }
     }
 }

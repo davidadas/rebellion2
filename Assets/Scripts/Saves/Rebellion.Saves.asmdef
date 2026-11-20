@@ -1,0 +1,11 @@
+{
+    "name": "Rebellion.Saves",
+    "rootNamespace": "Rebellion.Saves",
+    "references": [
+        "Rebellion.Game",
+        "Rebellion.UserSettings",
+        "Rebellion.Util"
+    ],
+    "autoReferenced": true,
+    "noEngineReferences": false
+}

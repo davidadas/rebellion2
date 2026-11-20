@@ -108,7 +108,16 @@ namespace Rebellion.Gameplay
             services.AddSingleton<ResourceProductionQueries>();
             services.AddSingleton<NamingCommands>();
             services.AddSingleton<CaptiveCommands>();
-            services.AddSingleton<AdvisorAutomationCommands>();
+            services.AddSingleton<AdvisorAutomationCommands>(locator =>
+            {
+                GameDataCatalog catalog = locator.GetService<GameDataCatalog>();
+                return new AdvisorAutomationCommands(
+                    locator.GetService<GameRoot>(),
+                    catalog.Buildings,
+                    catalog.Regiments,
+                    locator.GetService<ManufacturingCommands>()
+                );
+            });
             services.AddSingleton<MaintenanceCommands>();
             services.AddSingleton<SmugglingCommands>();
             services.AddSingleton<PlanetaryControlQueries>();
@@ -148,7 +157,20 @@ namespace Rebellion.Gameplay
             services.AddSingleton<PlanetaryAssaultCommands>();
             services.AddSingleton<VictoryQueries>();
             services.AddSingleton<VictoryCommands>();
-            services.AddSingleton<AIDirector>();
+            services.AddSingleton<AIDirector>(locator => new AIDirector(
+                locator.GetService<GameRoot>(),
+                locator.GetService<MissionCommands>(),
+                locator.GetService<MovementCommands>(),
+                locator.GetService<ManufacturingCommands>(),
+                locator.GetService<BombardmentCommands>(),
+                locator.GetService<PlanetaryAssaultCommands>(),
+                locator.GetService<IRandomNumberProvider>(),
+                locator.GetService<MaintenanceCommands>(),
+                locator.GetService<HeadquartersCommands>(),
+                locator.GetService<PersonnelCommands>(),
+                locator.GetService<GameResultBus>(),
+                locator.GetService<GameDataCatalog>().Officers
+            ));
             services.AddSingleton<MessageObserver>();
             foreach (Type observerType in _resultObserverTypes)
                 services.AddSingleton(observerType);

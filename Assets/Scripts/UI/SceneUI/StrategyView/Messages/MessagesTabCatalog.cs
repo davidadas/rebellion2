@@ -3,32 +3,6 @@ using System.Collections.Generic;
 using Rebellion.Game.Messages;
 
 /// <summary>
-/// Identifies a semantic tab in the authored Messages window order.
-/// </summary>
-public enum MessagesTab
-{
-    All = 0,
-
-    Support = 1,
-
-    Fleet = 2,
-
-    Mission = 3,
-
-    Resource = 4,
-
-    Manufacturing = 5,
-
-    Defense = 6,
-
-    Conflict = 7,
-
-    Chat = 8,
-
-    Advice = 9,
-}
-
-/// <summary>
 /// Defines the single ordered catalog used to validate, project, and route Messages tabs.
 /// </summary>
 internal static class MessagesTabCatalog

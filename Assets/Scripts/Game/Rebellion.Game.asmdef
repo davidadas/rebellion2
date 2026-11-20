@@ -1,0 +1,17 @@
+{
+    "name": "Rebellion.Game",
+    "rootNamespace": "Rebellion.Game",
+    "references": [
+        "Rebellion.SceneGraph",
+        "Rebellion.Util"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

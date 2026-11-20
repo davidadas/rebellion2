@@ -43,7 +43,7 @@ internal sealed class SimulationBuildIdentityInvalidator : IPreprocessBuildWithR
     }
 
     /// <summary>
-    /// Blocks player builds until the loaded game assembly matches every fingerprint input.
+    /// Blocks player builds until the loaded game-model assembly matches every fingerprint input.
     /// </summary>
     /// <param name="report">The pending player build.</param>
     public void OnPreprocessBuild(BuildReport report)
@@ -83,7 +83,7 @@ internal sealed class SimulationBuildIdentityInvalidator : IPreprocessBuildWithR
     /// <summary>
     /// Requests a complete compilation only when the loaded fingerprint no longer matches its inputs.
     /// </summary>
-    /// <returns>True while a matching game assembly still needs to be compiled.</returns>
+    /// <returns>True while a matching game-model assembly still needs to be compiled.</returns>
     private static bool RecompileIfStale()
     {
         if (_compilationRequested)
@@ -92,7 +92,9 @@ internal sealed class SimulationBuildIdentityInvalidator : IPreprocessBuildWithR
             .Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
             .FirstOrDefault(attribute => attribute.Key == SimulationBuildIdentityInputs.MetadataKey)
             ?.Value;
-        if (actual == SimulationBuildIdentityInputs.ComputeIdentity())
+        if (
+            actual == SimulationBuildIdentityInputs.ComputeIdentity(Directory.GetCurrentDirectory())
+        )
             return false;
         _compilationRequested = true;
         CompilationPipeline.RequestScriptCompilation(

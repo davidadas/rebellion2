@@ -13,7 +13,11 @@ namespace Rebellion.Architecture.Tests
     public sealed class ContentEditorArchitectureTests
     {
         private static readonly ArchUnitNET.Domain.Architecture _architecture = new ArchLoader()
-            .LoadAssemblies(typeof(GameRoot).Assembly, typeof(ContentPackEditorProject).Assembly)
+            .LoadAssemblies(
+                typeof(AppBootstrap).Assembly,
+                typeof(GameRoot).Assembly,
+                typeof(ContentPackEditorProject).Assembly
+            )
             .Build();
 
         [Test]
@@ -133,7 +137,7 @@ namespace Rebellion.Architecture.Tests
                 .That()
                 .Are(controls)
                 .Should()
-                .Be(Types().That().ResideInAssembly(typeof(GameRoot).Assembly.FullName))
+                .Be(Types().That().ResideInAssembly(typeof(AppBootstrap).Assembly.FullName))
                 .And(
                     Types()
                         .That()
@@ -193,9 +197,9 @@ namespace Rebellion.Architecture.Tests
         }
 
         [Test]
-        public void GameAssembly_InternalAccess_DoesNotExposeInternalsToContentEditor()
+        public void ApplicationAssembly_InternalAccess_DoesNotExposeInternalsToContentEditor()
         {
-            string[] friends = typeof(GameRoot)
+            string[] friends = typeof(AppBootstrap)
                 .Assembly.GetCustomAttributes(typeof(InternalsVisibleToAttribute), false)
                 .Cast<InternalsVisibleToAttribute>()
                 .Select(attribute => attribute.AssemblyName)
