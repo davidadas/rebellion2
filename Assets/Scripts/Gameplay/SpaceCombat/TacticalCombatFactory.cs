@@ -187,7 +187,6 @@ namespace Rebellion.Gameplay
             {
                 Kind = BattleKind.Space,
                 PlanetInstanceID = planet.InstanceID,
-                FlightRandomSeed = unchecked((int)(seed ?? 0)),
             };
             IReadOnlyList<Fleet>[] fleets =
             {

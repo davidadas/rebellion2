@@ -16,7 +16,6 @@ namespace Rebellion.Game.Combat
         private List<CombatUnit> _combatants = new List<CombatUnit>();
 
         public string FactionInstanceID { get; set; }
-        public string BattleMapSlotID { get; set; }
 
         public List<CombatUnit> GetCombatants() => _combatants;
     }
@@ -30,11 +29,8 @@ namespace Rebellion.Game.Combat
         [PersistableMember(Name = "Participants")]
         private List<BattleParticipant> _participants = new List<BattleParticipant>();
 
-        public string BattleMapInstanceID { get; set; }
         public BattleKind Kind { get; set; }
         public string PlanetInstanceID { get; set; }
-        public int FlightRandomSeed { get; set; }
-        public long FlightRandomIndex { get; set; }
 
         public List<BattleParticipant> GetParticipants() => _participants;
 

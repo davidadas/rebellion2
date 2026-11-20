@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Campaign.AI;
+using Rebellion.AI;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;

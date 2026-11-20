@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using Rebellion.Campaign.AI.Planners;
+using Rebellion.AI.Planners;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;

@@ -154,7 +154,6 @@ namespace Rebellion.Tactical
             foreach (TacticalCombatUnit unit in _units)
             {
                 bool withdrawn = HasDeparted(unit);
-                unit.Combatant.HasRetreated = withdrawn;
                 if (!unit.IsFighter)
                 {
                     int hull = GetCapitalResultHull(unit);
@@ -162,7 +161,7 @@ namespace Rebellion.Tactical
                         unit.HasPrimaryHyperdrive,
                         unit.Definition?.BackupHyperdrive > 0
                     );
-                    unit.Combatant.ApplyCapitalShipState(hull, (int)unit.Systems.Shields, damage);
+                    unit.Combatant.ApplyCapitalShipState(hull, damage);
                     ships.Add(
                         new TacticalCombatShipOutcome
                         {

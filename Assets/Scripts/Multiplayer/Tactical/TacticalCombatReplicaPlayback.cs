@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Runtime.Presentation;
 using Rebellion.Tactical.Synchronization;
 
 namespace Rebellion.Multiplayer.Tactical
@@ -14,11 +13,11 @@ namespace Rebellion.Multiplayer.Tactical
         : ITacticalCombatPresentationTimeline,
             IDisposable
     {
-        private TacticalCombatPresentationBuffer _networkPresentation;
+        private TacticalCombatReplicaBuffer _replicaBuffer;
         private bool _disposed;
 
         public TacticalCombatSession Session { get; }
-        public double TimestampMilliseconds => _networkPresentation?.TimestampMilliseconds ?? 0;
+        public double TimestampMilliseconds => _replicaBuffer?.TimestampMilliseconds ?? 0;
 
         /// <summary>
         /// Observes validated replica projections before they update participant state.
@@ -39,7 +38,7 @@ namespace Rebellion.Multiplayer.Tactical
         public void Advance(float elapsedMilliseconds)
         {
             if (!_disposed)
-                _networkPresentation?.Advance(elapsedMilliseconds);
+                _replicaBuffer?.Advance(elapsedMilliseconds);
         }
 
         /// <summary>
@@ -93,10 +92,10 @@ namespace Rebellion.Multiplayer.Tactical
             status = default;
             isAlive = false;
             if (
-                _networkPresentation == null
-                || !_networkPresentation.TryGetPose(
+                _replicaBuffer == null
+                || !_replicaBuffer.TryGetPose(
                     unitID,
-                    out TacticalCombatPresentationBuffer.Pose pose
+                    out TacticalCombatReplicaBuffer.Pose pose
                 )
             )
                 return false;
@@ -138,14 +137,14 @@ namespace Rebellion.Multiplayer.Tactical
         /// <param name="snapshot">The identity-validated complete authority projection.</param>
         private void CaptureSnapshotPresentation(TacticalCombatSnapshot snapshot)
         {
-            Dictionary<string, TacticalCombatPresentationBuffer.Pose> poses = new(
+            Dictionary<string, TacticalCombatReplicaBuffer.Pose> poses = new(
                 snapshot.Units.Length,
                 StringComparer.Ordinal
             );
             foreach (TacticalCombatUnitSnapshot state in snapshot.Units)
                 poses.Add(
                     state.UnitID,
-                    new TacticalCombatPresentationBuffer.Pose(
+                    new TacticalCombatReplicaBuffer.Pose(
                         state.Position.ToVector(),
                         state.Heading.ToVector(),
                         state.Status,
@@ -155,8 +154,8 @@ namespace Rebellion.Multiplayer.Tactical
                         state.Hull > 0
                     )
                 );
-            _networkPresentation ??= new TacticalCombatPresentationBuffer();
-            if (!_networkPresentation.Add(snapshot.Sequence, snapshot.TimestampMilliseconds, poses))
+            _replicaBuffer ??= new TacticalCombatReplicaBuffer();
+            if (!_replicaBuffer.Add(snapshot.Sequence, snapshot.TimestampMilliseconds, poses))
                 throw new ArgumentException(
                     "The combat presentation timestamp or pose is invalid.",
                     nameof(snapshot)

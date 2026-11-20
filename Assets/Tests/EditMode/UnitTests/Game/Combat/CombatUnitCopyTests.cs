@@ -82,7 +82,7 @@ namespace Rebellion.Tests.Game.Combat
         {
             CapitalShip source = new CapitalShip { InstanceID = "ship", CurrentHullStrength = 100 };
             CombatUnit combatant = CombatUnit.Create(source);
-            combatant.ApplyCapitalShipState(35, 0, new CapitalShipSystemDamage { Engines = 2 });
+            combatant.ApplyCapitalShipState(35, new CapitalShipSystemDamage { Engines = 2 });
 
             BattleResultReconciler.Apply(combatant, source);
 

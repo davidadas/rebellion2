@@ -82,8 +82,6 @@ namespace Rebellion.Tests.Game.Combat
                     CurrentHullStrength = 75,
                 }
             );
-            combatant.Position.X = 10;
-
             ActiveBattle restored = SerializationHelper.Deserialize<ActiveBattle>(
                 SerializationHelper.Serialize(battle)
             );
@@ -91,7 +89,6 @@ namespace Rebellion.Tests.Game.Combat
 
             Assert.IsNotNull(restoredCombatant);
             Assert.AreEqual("planet", restored.PlanetInstanceID);
-            Assert.AreEqual(10, restoredCombatant.Position.X);
             Assert.AreEqual(75, ((CapitalShip)restoredCombatant.GetUnit()).CurrentHullStrength);
         }
 

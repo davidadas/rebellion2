@@ -67,10 +67,8 @@ namespace Rebellion.Gameplay
                     throw new InvalidDataException("A tactical ship outcome is invalid.");
                 unit.Combatant.ApplyCapitalShipState(
                     shipOutcome.Hull,
-                    (int)unit.Systems.Shields,
                     shipOutcome.SystemDamage
                 );
-                unit.Combatant.HasRetreated = shipOutcome.Withdrawn;
                 result.ShipDamage.Add(
                     new ShipDamageResult
                     {
@@ -111,7 +109,6 @@ namespace Rebellion.Gameplay
                     fighterOutcome.SquadronSize,
                     fighterOutcome.CarrierID
                 );
-                unit.Combatant.HasRetreated = fighterOutcome.Withdrawn;
                 result.FighterLosses.Add(
                     new FighterLossResult
                     {

@@ -1,5 +1,5 @@
 using System;
-using Rebellion.Campaign.AI;
+using Rebellion.AI;
 using Rebellion.Game;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Units;
