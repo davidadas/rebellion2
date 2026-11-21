@@ -463,7 +463,7 @@ public static class ContentPackEditorPrefabBuilder
         shipDesign.gameObject.SetActive(false);
         Assign(form, "shipDesignDropdown", shipDesign);
         string[] stateCaptions = { "Small card", "Large card", "Battle result" };
-        var artworkStateSizes = new Button[stateCaptions.Length];
+        Button[] artworkStateSizes = new Button[stateCaptions.Length];
         for (int i = 0; i < stateCaptions.Length; i++)
         {
             Button size = Button(

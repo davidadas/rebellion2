@@ -18,7 +18,8 @@ internal static class ContentEditorArtworkWorkspaceBuilder
         Image root = Surface("ArtworkWorkspace", parent, ContentEditorColorRole.Background);
         root.raycastTarget = true;
         Stretch(root.rectTransform);
-        var view = root.gameObject.AddComponent<ContentEditorArtworkWorkspace>();
+        ContentEditorArtworkWorkspace view =
+            root.gameObject.AddComponent<ContentEditorArtworkWorkspace>();
         RectTransform panel = Layer("Workspace", root.transform);
         Stretch(panel, 17, 14, 17, 14);
         RectTransform header = Surface(
@@ -57,7 +58,7 @@ internal static class ContentEditorArtworkWorkspaceBuilder
         Assign(view, "undo", Secondary("UndoArtwork", header, "Undo"));
         Assign(view, "redo", Secondary("RedoArtwork", header, "Redo"));
 
-        var tabs = new Button[3];
+        Button[] tabs = new Button[3];
         for (int i = 0; i < tabs.Length; i++)
             tabs[i] = Secondary("ArtworkOutput" + i, outputs, "");
         Assign(view, "outputButtons", tabs);
@@ -74,7 +75,7 @@ internal static class ContentEditorArtworkWorkspaceBuilder
 
         Assign(view, "layerCaption", Label("LayersHeading", sidebar, "Layers", 18));
         Assign(view, "add", Secondary("AddArtworkLayer", sidebar, "Add layer"));
-        var scroll = Scroll("ArtworkLayers", sidebar);
+        ScrollAreaLayout scroll = Scroll("ArtworkLayers", sidebar);
         Assign(view, "layerScroll", scroll);
         Assign(view, "rowTemplate", BuildLayerRow(sidebar));
         Assign(view, "duplicate", Secondary("DuplicateArtworkLayer", layerActions, "Duplicate"));
@@ -109,7 +110,8 @@ internal static class ContentEditorArtworkWorkspaceBuilder
         Image viewport = Surface("ArtworkCanvas", parent, new Color32(40, 37, 42, 255));
         viewport.raycastTarget = true;
         viewport.gameObject.AddComponent<RectMask2D>();
-        var view = viewport.gameObject.AddComponent<ContentEditorArtworkCanvas>();
+        ContentEditorArtworkCanvas view =
+            viewport.gameObject.AddComponent<ContentEditorArtworkCanvas>();
         RectTransform art = Layer("Artwork", viewport.transform);
         art.anchorMin = art.anchorMax = art.pivot = new Vector2(0.5f, 0.5f);
         art.gameObject.AddComponent<RectMask2D>();
@@ -172,7 +174,8 @@ internal static class ContentEditorArtworkWorkspaceBuilder
     private static ContentEditorArtworkLayerRow BuildLayerRow(Transform parent)
     {
         RectTransform root = Layer("ArtworkLayerRow", parent);
-        var row = root.gameObject.AddComponent<ContentEditorArtworkLayerRow>();
+        ContentEditorArtworkLayerRow row =
+            root.gameObject.AddComponent<ContentEditorArtworkLayerRow>();
         Button visibility = Secondary("LayerVisibility", root, "Hide");
         RectTransform visibleRect = (RectTransform)visibility.transform;
         Stretch(visibleRect);
@@ -189,7 +192,7 @@ internal static class ContentEditorArtworkWorkspaceBuilder
         chipRect.anchorMax = Vector2.up;
         chipRect.offsetMax = new Vector2(60, -7);
         RawImage thumb = CanvasImage("Thumbnail", chip.transform);
-        var fitter = thumb.gameObject.AddComponent<AspectRatioFitter>();
+        AspectRatioFitter fitter = thumb.gameObject.AddComponent<AspectRatioFitter>();
         fitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
         Assign(row, "select", select);
         Assign(row, "visibility", visibility);
