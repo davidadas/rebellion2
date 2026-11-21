@@ -1064,22 +1064,36 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <summary>
     /// Asks whether a selected media file should replace the current pack file or be imported separately.
     /// </summary>
-    /// <param name="address">The current pack-owned content address.</param>
+    /// <param name="fileName">The current pack-owned file name.</param>
     /// <param name="replace">The action that overwrites the current file.</param>
     /// <param name="importNew">The action that imports a separate file and updates the field.</param>
-    public void ConfirmMediaReplacement(string address, Action replace, Action importNew)
+    public void ConfirmMediaReplacement(string fileName, Action replace, Action importNew)
     {
         confirmation.Show(
-            "This field already uses "
-                + address
-                + ". Replace that file, or import the selected image as a separate asset?",
-            "Replace current file",
-            replace,
-            "Import as new",
-            importNew,
+            replace == null
+                ? $"The selected file uses a different format from {fileName}. Import it for this field?"
+                : $"Replace {fileName} everywhere this pack uses it, or import the selected file for this field only?",
+            replace == null ? "Import as new" : "Replace file",
+            replace ?? importNew,
+            replace == null ? null : "Import as new",
+            replace == null ? null : importNew,
             title: "Existing media"
         );
     }
+
+    /// <summary>
+    /// Offers to generate the remaining standard artwork from the first imported image.
+    /// </summary>
+    /// <param name="count">The number of empty slots the cuts will fill.</param>
+    /// <param name="generate">The action that opens the generated previews.</param>
+    internal void ConfirmFirstArtworkCuts(int count, Action generate) =>
+        confirmation.Show(
+            $"Fill the remaining artwork slots ({count}) from this image? You can adjust the crops before saving.",
+            "Preview cuts",
+            generate,
+            title: "Generate artwork cuts",
+            cancelText: "Skip"
+        );
 
     /// <summary>
     /// Clears project-owned forms before the controller releases their assets.

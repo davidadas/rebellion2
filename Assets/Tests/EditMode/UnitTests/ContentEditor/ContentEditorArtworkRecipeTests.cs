@@ -44,6 +44,22 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void ReadForOutput_ScaledWake_RestoresSavedSize()
+        {
+            var saved = new ContentEditorArtworkRecipe { OutputMember = "InTransitImagePath" };
+            saved.Layers.Add(new ContentEditorArtworkLayer { Source = 0, ScalePercent = 60 });
+            var reopened = ContentEditorArtworkRecipe.ReadForOutput(
+                JsonUtility.ToJson(saved),
+                "InTransitImagePath",
+                0,
+                1,
+                true
+            );
+
+            Assert.That(reopened.Layers[0].EffectiveScalePercent, Is.EqualTo(60));
+        }
+
+        [Test]
         public void ReadForOutput_SidecarBelongsToAnotherOutput_OpensAsImportedArtwork()
         {
             var saved = new ContentEditorArtworkRecipe { OutputMember = "InTransitSmallImagePath" };

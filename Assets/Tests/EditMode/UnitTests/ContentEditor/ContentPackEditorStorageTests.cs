@@ -79,8 +79,9 @@ namespace Rebellion.Tests.ContentEditor
             Assert.DoesNotThrow(() => project.SetFieldValues(field, new[] { stored }));
         }
 
-        [Test]
-        public void ReplaceAsset_PackOwnedImage_OverwritesFileAndPreservesAddress()
+        [TestCase("Pack/Assets/current.png")]
+        [TestCase("Pack/Assets/current")]
+        public void ReplaceAsset_PackOwnedImage_OverwritesFileAndPreservesAddress(string address)
         {
             ContentPackEditorProject project = CreateLoadableProject();
             ContentPackEditorField field = project
@@ -91,7 +92,7 @@ namespace Rebellion.Tests.ContentEditor
             string target = Path.Combine(project.PackRootPath, "Assets", "current.png");
             Directory.CreateDirectory(Path.GetDirectoryName(target));
             File.WriteAllText(target, "old image");
-            project.SetField(field, "Pack/Assets/current.png");
+            project.SetField(field, address);
             string source = Path.Combine(Directory.GetParent(contentRoot).FullName, "new.png");
             File.WriteAllText(source, "new image");
 
@@ -99,7 +100,32 @@ namespace Rebellion.Tests.ContentEditor
             ContentPackEditorStorage.ReplaceAsset(project, source, field);
 
             Assert.AreEqual("new image", File.ReadAllText(target));
-            Assert.AreEqual("Pack/Assets/current.png", field.Value);
+            Assert.AreEqual(address, field.Value);
+        }
+
+        [Test]
+        public void ReadGeneratedLayers_ReplacedImage_IgnoresThePreviousRecipe()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Starfighter")
+                .GetField("DamagedSmallImagePath");
+            string address = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                new byte[] { 1, 2, 3 },
+                preservePrevious: true,
+                layerRecipe: "{}"
+            );
+            project.SetField(field, address);
+            string source = Path.Combine(Directory.GetParent(contentRoot).FullName, "new.png");
+            File.WriteAllBytes(source, new byte[] { 4, 5, 6 });
+
+            ContentPackEditorStorage.ReplaceAsset(project, source, field);
+
+            Assert.IsNull(ContentPackEditorStorage.ReadGeneratedLayers(project, field));
         }
 
         [Test]

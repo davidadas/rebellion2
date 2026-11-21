@@ -390,11 +390,15 @@ public sealed class ContentPackEditorController : MonoBehaviour
             );
             if (string.IsNullOrEmpty(source))
                 return;
-            if (ContentPackEditorStorage.CanReplaceAsset(project, field))
+            string current = ContentPackEditorStorage.GetReplaceableAssetPath(project, field);
+            if (current != null)
             {
+                Action replace = ContentPackEditorStorage.HasMatchingMediaFormat(source, current)
+                    ? () => RunOperation(() => ApplyMediaImport(field, source, true))
+                    : null;
                 view.ConfirmMediaReplacement(
-                    field.GetMediaAddress(field.Value),
-                    () => RunOperation(() => ApplyMediaImport(field, source, true)),
+                    Path.GetFileName(current),
+                    replace,
                     () => RunOperation(() => ApplyMediaImport(field, source, false))
                 );
                 return;
@@ -445,6 +449,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             return;
         }
 
+        ContentPackEditorField[] emptyCuts = GetFirstArtworkCutTargets(field);
         string address = ContentPackEditorStorage.ImportAsset(project, source, field);
         if (field.IsList)
             project.SetFieldValues(
@@ -454,6 +459,34 @@ public sealed class ContentPackEditorController : MonoBehaviour
         else
             project.SetField(field, address);
         workspace.RenderProject(project, assets);
+        if (emptyCuts.Length > 0)
+            view.ConfirmFirstArtworkCuts(
+                emptyCuts.Length,
+                () => PreviewArtworkCuts(field, emptyCuts)
+            );
+    }
+
+    /// <summary>
+    /// Finds the empty standard slots to offer after importing a unit's first image.
+    /// </summary>
+    /// <param name="source">The field receiving the image.</param>
+    /// <returns>The empty cut destinations, when the unit has no previous artwork.</returns>
+    private ContentPackEditorField[] GetFirstArtworkCutTargets(ContentPackEditorField source)
+    {
+        if (
+            !ContentEditorUnitArtworkLayout.IsStandardCut(source)
+            || ResolveArtworkFile(source) != null
+        )
+            return Array.Empty<ContentPackEditorField>();
+        var others = ContentEditorUnitArtworkLayout
+            .GetMembers(source.Record)
+            .Where(member => member != source.MemberName)
+            .Select(source.Record.GetField)
+            .Where(ContentEditorUnitArtworkLayout.IsStandardCut)
+            .ToArray();
+        return others.Any(field => ResolveArtworkFile(field) != null)
+            ? Array.Empty<ContentPackEditorField>()
+            : others.Where(field => string.IsNullOrWhiteSpace(field.Value)).ToArray();
     }
 
     /// <summary>
@@ -485,15 +518,14 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     if (field.Record.Element != source.Record.Element)
                         throw new ArgumentException("Artwork outputs must belong to one unit.");
                     if (
-                        field == source
-                        || field.MemberName == ContentEditorUnitArtworkLayout.BackgroundMember
-                        || ContentEditorUnitArtworkLayout.IsStateSpecific(field.MemberName)
-                        || !ContentPackEditorFieldMetadata.TryGetExpectedImageDimensions(
-                            field,
-                            out Vector2Int dimensions
-                        )
+                        field.MemberName == source.MemberName
+                        || !ContentEditorUnitArtworkLayout.IsStandardCut(field)
                     )
                         throw new ArgumentException("Choose ordinary fixed-size artwork outputs.");
+                    ContentPackEditorFieldMetadata.TryGetExpectedImageDimensions(
+                        field,
+                        out Vector2Int dimensions
+                    );
                     return new { Field = field, Dimensions = dimensions };
                 })
                 .ToArray();
@@ -509,7 +541,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     sourcePath,
                     placements,
                     fitEntireSource: source.MemberName == "DisplayImagePath",
-                    preserveVisibleSubject: true
+                    preserveVisibleSubject: true,
+                    fillOpaqueSource: true
                 );
                 var images = outputs
                     .Select((output, index) => (output.Field, Png: cuts[placements[index]]))
@@ -1113,6 +1146,25 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 Refresh();
             }
 
+            void ResizeLayer(int index, int percent)
+            {
+                var recipe = drafts[activeOutput];
+                if (index < 0 || index >= recipe.Layers.Count)
+                    return;
+                ContentEditorArtworkLayer layer = recipe.Layers[index];
+                if (
+                    !frames[activeOutput].CanScaleLayer(layer)
+                    || percent == layer.EffectiveScalePercent
+                )
+                    return;
+                selected = index;
+                RememberEdit();
+                layer.ScalePercent =
+                    percent == ContentEditorArtworkLayer.DefaultScalePercent ? 0 : percent;
+                recipe.Layers[index] = layer;
+                Refresh();
+            }
+
             void RemoveLayer()
             {
                 var recipe = drafts[activeOutput];
@@ -1328,11 +1380,10 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 {
                     var definition = definitions[layerIndex];
                     var piece = frame.GetLayer(definition);
-                    Vector2 offset =
-                        (Vector2)Vector2Int.RoundToInt(definition.Offset * size) / size;
+                    RectInt placement = frame.GetLayerBounds(definition, piece.Bounds);
                     Rect bounds = new(
-                        (Vector2)piece.Bounds.min / size + offset,
-                        (Vector2)piece.Bounds.size / size
+                        (Vector2)placement.min / size,
+                        (Vector2)placement.size / size
                     );
                     layers.Add(
                         new ArtworkEffectLayerPreview(
@@ -1341,7 +1392,10 @@ public sealed class ContentPackEditorController : MonoBehaviour
                             piece.Texture,
                             bounds,
                             definition.Offset,
-                            definition.Hidden
+                            definition.Hidden,
+                            scalePercent: frame.CanScaleLayer(definition)
+                                ? definition.EffectiveScalePercent
+                                : null
                         )
                     );
                 }
@@ -1429,6 +1483,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
                             return selected;
                         },
                         Move = (index, offset) => RunOperation(() => MoveLayer(index, offset)),
+                        Resize = (index, percent) =>
+                            RunOperation(() => ResizeLayer(index, percent)),
                         Toggle = index => RunOperation(() => ToggleLayer(index)),
                         Reorder = (index, target) =>
                             RunOperation(() => ReorderLayer(index, target)),

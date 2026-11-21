@@ -1377,7 +1377,7 @@ public static class ContentPackEditorPrefabBuilder
             panel.rectTransform.anchorMax =
             panel.rectTransform.pivot =
                 new Vector2(0.5f, 0.5f);
-        panel.rectTransform.sizeDelta = new Vector2(440, 156);
+        panel.rectTransform.sizeDelta = new Vector2(520, 156);
         Image banner = Surface("WarningBanner", panel.transform, ContentEditorColorRole.Warning);
         Stretch(banner.rectTransform);
         banner.rectTransform.anchorMin = Vector2.up;
@@ -1391,7 +1391,7 @@ public static class ContentPackEditorPrefabBuilder
             .SetRole(ContentEditorColorRole.WarningText);
         TextMeshProUGUI heading = Label("Heading", banner.transform, "WARNING", 27, true);
         heading.fontStyle = FontStyles.Bold;
-        Rect(heading.rectTransform, 66, 8, 350, 48);
+        Rect(heading.rectTransform, 66, 8, 430, 48);
         heading.alignment = TextAlignmentOptions.MidlineLeft;
         heading
             .GetComponent<ContentEditorColorBinding>()

@@ -38,6 +38,7 @@ internal static class ContentEditorArtworkCutGenerator
     /// <param name="placements">The output sizes and normalized offsets.</param>
     /// <param name="fitEntireSource">Whether to fit the whole source before applying each offset.</param>
     /// <param name="preserveVisibleSubject">Whether to fit the visible subject before applying each offset.</param>
+    /// <param name="fillOpaqueSource">Whether to crop opaque artwork so it fills the output at every placement.</param>
     /// <returns>PNG bytes keyed by each distinct size and placement.</returns>
     internal static IReadOnlyDictionary<
         (Vector2Int Size, Vector2 Offset),
@@ -46,7 +47,8 @@ internal static class ContentEditorArtworkCutGenerator
         string sourcePath,
         IEnumerable<(Vector2Int Size, Vector2 Offset)> placements,
         bool fitEntireSource,
-        bool preserveVisibleSubject
+        bool preserveVisibleSubject,
+        bool fillOpaqueSource = false
     )
     {
         if (string.IsNullOrWhiteSpace(sourcePath))
@@ -69,7 +71,8 @@ internal static class ContentEditorArtworkCutGenerator
             if (!ImageConversion.LoadImage(sourceTexture, File.ReadAllBytes(source), false))
                 throw new InvalidDataException("The source image could not be decoded.");
             sourceTexture.wrapMode = TextureWrapMode.Clamp;
-            RectInt contentBounds = GetVisibleContentBounds(sourceTexture);
+            RectInt contentBounds = GetVisibleContentBounds(sourceTexture, out bool opaque);
+            bool fillFrame = fillOpaqueSource && opaque;
             return targets.ToDictionary(
                 target => target,
                 target =>
@@ -79,7 +82,8 @@ internal static class ContentEditorArtworkCutGenerator
                         target.Size,
                         target.Offset,
                         fitEntireSource,
-                        preserveVisibleSubject
+                        preserveVisibleSubject,
+                        fillFrame
                     )
             );
         }
@@ -98,6 +102,7 @@ internal static class ContentEditorArtworkCutGenerator
     /// <param name="offset">The artwork displacement in output proportions.</param>
     /// <param name="fitEntireSource">Whether the complete source canvas must remain visible.</param>
     /// <param name="preserveVisibleSubject">Whether to fit artwork that would be clipped by the cover crop.</param>
+    /// <param name="fillFrame">Whether to constrain placement to a fully filled crop.</param>
     /// <returns>The encoded PNG bytes.</returns>
     private static byte[] CreatePngCut(
         Texture2D source,
@@ -105,11 +110,18 @@ internal static class ContentEditorArtworkCutGenerator
         Vector2Int target,
         Vector2 offset,
         bool fitEntireSource,
-        bool preserveVisibleSubject
+        bool preserveVisibleSubject,
+        bool fillFrame
     )
     {
         Rect crop = GetSubjectCenteredCrop(source, contentBounds, target);
-        if (fitEntireSource)
+        if (fillFrame)
+        {
+            crop.x = Mathf.Clamp(crop.x - crop.width * offset.x, 0, source.width - crop.width);
+            crop.y = Mathf.Clamp(crop.y - crop.height * offset.y, 0, source.height - crop.height);
+            offset = Vector2.zero;
+        }
+        else if (fitEntireSource)
             crop = new Rect(0, 0, source.width, source.height);
         else if (
             preserveVisibleSubject
@@ -160,16 +172,19 @@ internal static class ContentEditorArtworkCutGenerator
     /// Finds the smallest source rectangle containing pixels that contribute visible alpha.
     /// </summary>
     /// <param name="source">The readable source texture.</param>
+    /// <param name="opaque">Whether all source pixels are fully opaque.</param>
     /// <returns>The visible bounds, or the full canvas when the source is fully transparent.</returns>
-    private static RectInt GetVisibleContentBounds(Texture2D source)
+    private static RectInt GetVisibleContentBounds(Texture2D source, out bool opaque)
     {
         int minimumX = source.width;
         int minimumY = source.height;
         int maximumX = -1;
         int maximumY = -1;
+        opaque = true;
         Color32[] pixels = source.GetPixels32();
         for (int index = 0; index < pixels.Length; index++)
         {
+            opaque &= pixels[index].a == byte.MaxValue;
             if (pixels[index].a <= 1)
                 continue;
             int x = index % source.width;

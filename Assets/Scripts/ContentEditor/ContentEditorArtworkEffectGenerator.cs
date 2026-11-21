@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEngine;
 
 internal enum ContentEditorArtworkEffect
@@ -213,7 +214,8 @@ internal static class ContentEditorArtworkEffectGenerator
 
             Vector2Int target = size ?? new Vector2Int(source.width, source.height);
             Color[] subject = FitToCanvas(source, target, stretchSource);
-            RectInt bounds = FindSubject(subject, target);
+            RectInt bounds = FindSubject(subject, target, out bool hasSilhouette);
+            hasSilhouette = hasSilhouette && HasSourceTransparency(source);
             System.Random random = new(seed);
             Color[] effect =
                 ReadExistingEffect(existingEffectPath, target)
@@ -224,7 +226,8 @@ internal static class ContentEditorArtworkEffectGenerator
                             subject,
                             target,
                             bounds,
-                            random
+                            random,
+                            hasSilhouette: hasSilhouette
                         ),
                         ContentEditorArtworkEffectStyle.Damage => DrawDamage(
                             subject,
@@ -260,19 +263,27 @@ internal static class ContentEditorArtworkEffectGenerator
                 switch (style)
                 {
                     case ContentEditorArtworkEffectStyle.FacilityTravel:
-                        effect[index] = Over(effect[index], entity);
+                        effect[index] = hasSilhouette
+                            ? Over(effect[index], entity)
+                            : Over(entity, effect[index]);
                         if (includePreview)
                             preview[index] = effect[index];
                         break;
                     case ContentEditorArtworkEffectStyle.PersonnelTravel:
                         Color field = effect[index];
-                        field.a *= 1f - entity.a;
+                        if (hasSilhouette)
+                            field.a *= 1f - entity.a;
                         effect[index] = field;
                         if (includePreview)
-                            preview[index] = Over(Over(_previewBackground, field), entity);
+                            preview[index] = hasSilhouette
+                                ? Over(Over(_previewBackground, field), entity)
+                                : Over(Over(_previewBackground, entity), field);
                         break;
                     default:
-                        if (style == ContentEditorArtworkEffectStyle.RegimentTravel)
+                        if (
+                            style == ContentEditorArtworkEffectStyle.RegimentTravel
+                            && hasSilhouette
+                        )
                             effect[index].a *= 1f - entity.a;
                         if (includePreview)
                             preview[index] = Over(
@@ -352,7 +363,12 @@ internal static class ContentEditorArtworkEffectGenerator
                 : null;
             if (registeredFacility && facilityPatternSubject != null)
                 subject = facilityPatternSubject;
-            RectInt bounds = FindSubject(subject, target);
+            bool hasSilhouette = true;
+            RectInt bounds = hasSubject
+                ? FindSubject(subject, target, out hasSilhouette)
+                : new RectInt(0, 0, target.x, target.y);
+            if (hasSubject && !(registeredFacility && facilityPatternSubject != null))
+                hasSilhouette = hasSilhouette && HasSourceTransparency(source);
             System.Random random = new(seed);
             bool personnel = style == ContentEditorArtworkEffectStyle.PersonnelTravel;
             bool regiment = style == ContentEditorArtworkEffectStyle.RegimentTravel;
@@ -366,9 +382,10 @@ internal static class ContentEditorArtworkEffectGenerator
                 && (registeredFacility || registeredPersonnel)
                     ? ReadExistingEffect(travelPattern.Image, target)
                     : null;
+            bool useSubjectMask = hasSilhouette || (facility && imported != null);
             int clearance = 0;
             int[] silhouetteDistance = null;
-            if (facility && facilityClearance != 0)
+            if (facility && useSubjectMask && facilityClearance != 0)
             {
                 int referenceRadius = Mathf.Max(1, Mathf.RoundToInt(target.x * 10f / 302));
                 silhouetteDistance = GetSilhouetteDistance(
@@ -410,6 +427,9 @@ internal static class ContentEditorArtworkEffectGenerator
             {
                 exportBackground = new Color[subject.Length];
                 Array.Fill(exportBackground, Color.black);
+                if (facility && !useSubjectMask)
+                    for (int index = 0; index < subject.Length; index++)
+                        exportBackground[index] = Over(Color.black, subject[index]);
                 background = exportBackground;
             }
             if (registeredCard != null)
@@ -450,16 +470,17 @@ internal static class ContentEditorArtworkEffectGenerator
                 switch (style)
                 {
                     case ContentEditorArtworkEffectStyle.ShipTravel:
-                        Color[] wake = completeTravel
-                            ? FitTravelWake(
-                                travelPattern,
-                                sourcePath,
-                                subject,
-                                bounds,
-                                target,
-                                variant
-                            )
-                            : null;
+                        Color[] wake =
+                            completeTravel && hasSilhouette
+                                ? FitTravelWake(
+                                    travelPattern,
+                                    sourcePath,
+                                    subject,
+                                    bounds,
+                                    target,
+                                    variant
+                                )
+                                : null;
                         if (wake != null)
                         {
                             IReadOnlyList<Color[]> layers = SplitOverlay(wake, target);
@@ -473,7 +494,15 @@ internal static class ContentEditorArtworkEffectGenerator
                                 pieces.AddRange(layers);
                         }
                         else
-                            DrawShipTravel(subject, target, bounds, random, pieces, variant);
+                            DrawShipTravel(
+                                subject,
+                                target,
+                                bounds,
+                                random,
+                                pieces,
+                                variant,
+                                hasSilhouette
+                            );
                         break;
                     case ContentEditorArtworkEffectStyle.Damage:
                         DrawDamage(subject, target, bounds, random, pieces);
@@ -493,7 +522,7 @@ internal static class ContentEditorArtworkEffectGenerator
                             );
                             FitVisibleTravelStreaks(
                                 field,
-                                subject,
+                                useSubjectMask ? subject : null,
                                 target,
                                 facility ? silhouetteDistance : null,
                                 clearance,
@@ -510,7 +539,7 @@ internal static class ContentEditorArtworkEffectGenerator
                                         : DrawStreaks(target, style, random, variant, band, 3)
                                 );
                         }
-                        if (facility)
+                        if (facility && useSubjectMask)
                         {
                             Color[] foreground = (Color[])subject.Clone();
                             if (clearance > 0)
@@ -525,7 +554,7 @@ internal static class ContentEditorArtworkEffectGenerator
             {
                 Color backing = background?[index] ?? _previewBackground;
                 preview[index] =
-                    facility || personnel || regiment
+                    facility || ((personnel || regiment) && useSubjectMask)
                         ? Over(Color.black, backing)
                         : Over(backing, subject[index]);
             }
@@ -535,12 +564,13 @@ internal static class ContentEditorArtworkEffectGenerator
                 subject,
                 exportBackground,
                 CreateTexture(target, preview),
-                personnel || regiment ? CreateTexture(target, subject) : null,
+                (personnel || regiment) && useSubjectMask ? CreateTexture(target, subject) : null,
                 pieces,
                 imported ?? registeredCard,
                 variant,
                 legacyStreaks,
-                clearance
+                clearance,
+                useSubjectMask
             );
         }
         finally
@@ -560,6 +590,7 @@ internal static class ContentEditorArtworkEffectGenerator
         private readonly Color[] imported;
         private readonly int variant;
         private readonly bool legacyStreaks;
+        private readonly bool useSubjectMask;
         private bool[] streakObstacles;
         private readonly List<(Texture2D Texture, RectInt Bounds)> defaults = new();
         private readonly Dictionary<int, (Texture2D Texture, RectInt Bounds)> additions = new();
@@ -570,7 +601,9 @@ internal static class ContentEditorArtworkEffectGenerator
         internal int FacilityClearance { get; }
         internal int DefaultLayerCount => defaults.Count;
         internal int FacilityLayerIndex =>
-            style == ContentEditorArtworkEffectStyle.FacilityTravel ? defaults.Count - 1 : -1;
+            style == ContentEditorArtworkEffectStyle.FacilityTravel && useSubjectMask
+                ? defaults.Count - 1
+                : -1;
 
         /// <summary>
         /// Captures the rendered layers and their original positions.
@@ -586,6 +619,7 @@ internal static class ContentEditorArtworkEffectGenerator
         /// <param name="variant">The selected motion composition.</param>
         /// <param name="legacyStreaks">Whether to re-create the geometry of an earlier draft.</param>
         /// <param name="facilityClearance">The facility silhouette margin in source pixels.</param>
+        /// <param name="useSubjectMask">Whether effects should leave room for the subject.</param>
         internal EditableFrame(
             Vector2Int size,
             ContentEditorArtworkEffectStyle style,
@@ -597,7 +631,8 @@ internal static class ContentEditorArtworkEffectGenerator
             Color[] imported,
             int variant,
             bool legacyStreaks,
-            int facilityClearance
+            int facilityClearance,
+            bool useSubjectMask
         )
         {
             Size = size;
@@ -607,6 +642,7 @@ internal static class ContentEditorArtworkEffectGenerator
             this.imported = imported;
             this.variant = variant;
             this.legacyStreaks = legacyStreaks;
+            this.useSubjectMask = useSubjectMask;
             FacilityClearance = facilityClearance;
             BaseImage = baseImage;
             SubjectOverlay = subjectOverlay;
@@ -656,6 +692,32 @@ internal static class ContentEditorArtworkEffectGenerator
         }
 
         /// <summary>
+        /// Determines whether the layer is an effect rather than the facility's subject artwork.
+        /// </summary>
+        /// <param name="layer">The draft layer.</param>
+        /// <returns>Whether the artwork inspector can resize this layer.</returns>
+        internal bool CanScaleLayer(ContentEditorArtworkLayer layer) =>
+            layer.Source < 0 || layer.Source != FacilityLayerIndex;
+
+        /// <summary>
+        /// Calculates the pixel-aligned placement used by both the canvas and the exported image.
+        /// </summary>
+        /// <param name="layer">The authored scale and position.</param>
+        /// <param name="source">The original crop bounds.</param>
+        /// <returns>The destination rectangle in output pixels.</returns>
+        internal RectInt GetLayerBounds(ContentEditorArtworkLayer layer, RectInt source)
+        {
+            Vector2Int offset = Vector2Int.RoundToInt(layer.Offset * Size);
+            float scale = CanScaleLayer(layer) ? layer.EffectiveScalePercent / 100f : 1f;
+            Vector2Int dimensions = Vector2Int.Max(
+                Vector2Int.one,
+                Vector2Int.RoundToInt((Vector2)source.size * scale)
+            );
+            Vector2Int inset = Vector2Int.RoundToInt((Vector2)(source.size - dimensions) * 0.5f);
+            return new RectInt(source.position + inset + offset, dimensions);
+        }
+
+        /// <summary>
         /// Finds the spaces where newly added streaks can be seen around the installed artwork.
         /// </summary>
         /// <returns>The blocked pixels in the default layout, including the subject and existing strokes.</returns>
@@ -664,7 +726,7 @@ internal static class ContentEditorArtworkEffectGenerator
             bool[] blocked = new bool[subject.Length];
             for (int i = 0; i < blocked.Length; i++)
                 blocked[i] =
-                    subject[i].a > 0.1f
+                    (useSubjectMask && subject[i].a > 0.1f)
                     || (
                         style == ContentEditorArtworkEffectStyle.PersonnelTravel
                         && imported?[i].a < 0.9f
@@ -690,8 +752,13 @@ internal static class ContentEditorArtworkEffectGenerator
         /// <param name="random">The repeatable source of exhaust dimensions.</param>
         private void DrawExtraWake(Color[] pixels, System.Random random)
         {
-            RectInt hull = FindSubject(subject, Size);
-            Vector2 direction = GetShipAxis(subject, Size, hull);
+            RectInt hull = new(0, 0, Size.x, Size.y);
+            Vector2 direction = Vector2.right;
+            if (useSubjectMask && TryGetTravelBounds(subject, Size, out RectInt silhouette))
+            {
+                hull = silhouette;
+                direction = GetShipAxis(subject, Size, hull);
+            }
             if (Mathf.Abs(direction.y) <= 0.26f)
                 direction = Vector2.right;
             Vector2 across = new(-direction.y, direction.x);
@@ -737,21 +804,30 @@ internal static class ContentEditorArtworkEffectGenerator
                 var piece = GetLayer(layer);
                 if (piece.Texture == null)
                     continue;
-                int x0 = piece.Bounds.x + Mathf.RoundToInt(layer.Offset.x * Size.x);
-                int y0 = piece.Bounds.y + Mathf.RoundToInt(layer.Offset.y * Size.y);
+                RectInt bounds = GetLayerBounds(layer, piece.Bounds);
+                int sourceWidth = piece.Bounds.width;
+                int sourceHeight = piece.Bounds.height;
                 Color[] pixels = piece.Texture.GetPixels();
-                for (int y = Mathf.Max(0, y0); y < Mathf.Min(Size.y, y0 + piece.Bounds.height); y++)
-                for (int x = Mathf.Max(0, x0); x < Mathf.Min(Size.x, x0 + piece.Bounds.width); x++)
+                int right = Mathf.Min(Size.x, bounds.xMax);
+                int left = Mathf.Max(0, bounds.xMin);
+                for (int y = Mathf.Max(0, bounds.yMin); y < Mathf.Min(Size.y, bounds.yMax); y++)
                 {
-                    int index = y * Size.x + x;
-                    result[index] = Over(
-                        result[index],
-                        pixels[(y - y0) * piece.Bounds.width + x - x0]
-                    );
+                    int sourceY = (2 * (y - bounds.yMin) + 1) * sourceHeight / (2 * bounds.height);
+                    for (int x = left; x < right; x++)
+                    {
+                        int sourceX =
+                            (2 * (x - bounds.xMin) + 1) * sourceWidth / (2 * bounds.width);
+                        int index = y * Size.x + x;
+                        result[index] = Over(
+                            result[index],
+                            pixels[sourceY * sourceWidth + sourceX]
+                        );
+                    }
                 }
             }
             if (
                 imported == null
+                && useSubjectMask
                 && style
                     is (
                         ContentEditorArtworkEffectStyle.PersonnelTravel
@@ -1186,8 +1262,8 @@ internal static class ContentEditorArtworkEffectGenerator
     {
         try
         {
-            bounds = FindSubject(pixels, size);
-            return true;
+            bounds = FindSubject(pixels, size, out bool hasSilhouette);
+            return hasSilhouette;
         }
         catch (InvalidDataException)
         {
@@ -1563,7 +1639,7 @@ internal static class ContentEditorArtworkEffectGenerator
                 if (
                     x < size.x
                     && field[index].a > 0f
-                    && subject[index].a < 0.5f
+                    && (subject?[index].a ?? 0f) < 0.5f
                     && (distance == null || distance[index] > clearance)
                 )
                 {
@@ -1699,13 +1775,15 @@ internal static class ContentEditorArtworkEffectGenerator
     /// <returns>A transparent wake layer aligned to the ship.</returns>
     /// <param name="pieces">Receives the separate wakes when building an editable draft.</param>
     /// <param name="variant">The wake's reach and spread composition.</param>
+    /// <param name="hasSilhouette">Whether the artwork has a silhouette to fit the wake to.</param>
     private static Color[] DrawShipTravel(
         Color[] subject,
         Vector2Int size,
         RectInt bounds,
         System.Random random,
         List<Color[]> pieces = null,
-        int variant = 0
+        int variant = 0,
+        bool hasSilhouette = true
     )
     {
         float reach =
@@ -1716,6 +1794,12 @@ internal static class ContentEditorArtworkEffectGenerator
             variant == 1 ? 0.64f
             : variant == 2 ? 1.38f
             : 1f;
+        if (!hasSilhouette)
+        {
+            Color[] arc = DrawTravelArc(subject, size, bounds, random, reach, spread);
+            pieces?.Add(arc);
+            return arc;
+        }
         Vector2 direction = GetShipAxis(subject, size, bounds);
         if (Mathf.Abs(direction.y) > 0.26f)
         {
@@ -1975,18 +2059,27 @@ internal static class ContentEditorArtworkEffectGenerator
     }
 
     /// <summary>
-    /// Locates the unit's alpha silhouette in the output frame.
+    /// Checks the imported pixels for transparency before any padding has been added.
+    /// </summary>
+    /// <param name="source">The decoded source artwork.</param>
+    /// <returns>True when the original image has transparent pixels.</returns>
+    private static bool HasSourceTransparency(Texture2D source) =>
+        source.format != TextureFormat.RGB24 && source.GetPixels32().Any(pixel => pixel.a < 26);
+
+    /// <summary>
+    /// Locates the unit's visible artwork in the output frame.
     /// </summary>
     /// <param name="pixels">The unit pixels.</param>
     /// <param name="size">The complete canvas dimensions.</param>
+    /// <param name="hasTransparency">Whether the artwork has transparent pixels to locate the silhouette.</param>
     /// <returns>The rectangle containing the visible subject.</returns>
-    private static RectInt FindSubject(Color[] pixels, Vector2Int size)
+    private static RectInt FindSubject(Color[] pixels, Vector2Int size, out bool hasTransparency)
     {
         int left = size.x;
         int right = -1;
         int bottom = size.y;
         int top = -1;
-        bool hasTransparency = false;
+        hasTransparency = false;
         for (int index = 0; index < pixels.Length; index++)
         {
             if (pixels[index].a < 0.1f)
@@ -2000,10 +2093,8 @@ internal static class ContentEditorArtworkEffectGenerator
             bottom = Mathf.Min(bottom, y);
             top = Mathf.Max(top, y);
         }
-        if (right < left || !hasTransparency)
-            throw new InvalidDataException(
-                "Choose normal unit artwork with a visible subject on a transparent background."
-            );
+        if (right < left)
+            throw new InvalidDataException("Choose unit artwork with visible pixels.");
         return new RectInt(left, bottom, right - left + 1, top - bottom + 1);
     }
 
@@ -2750,11 +2841,14 @@ internal sealed class ContentEditorArtworkRecipe
 }
 
 /// <summary>
-/// Identifies a generated source layer or seeded extra effect and its normalized displacement.
+/// Identifies a generated source layer or seeded extra effect and its authored transform.
 /// </summary>
 [Serializable]
 internal struct ContentEditorArtworkLayer
 {
+    internal const int MinimumScalePercent = 10;
+    internal const int MaximumScalePercent = 200;
+    internal const int DefaultScalePercent = 100;
     public int Source;
     public int Seed;
     public bool MeasuredStreaks;
@@ -2762,4 +2856,10 @@ internal struct ContentEditorArtworkLayer
     public bool Hidden;
     public string Name;
     public Vector2 Offset;
+    public int ScalePercent;
+
+    internal int EffectiveScalePercent =>
+        ScalePercent == 0
+            ? DefaultScalePercent
+            : Mathf.Clamp(ScalePercent, MinimumScalePercent, MaximumScalePercent);
 }

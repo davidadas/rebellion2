@@ -165,6 +165,37 @@ namespace Rebellion.Tests.ContentEditor
             );
         }
 
+        [Test]
+        public void Bake_ResizedShipWake_MatchesItsPreviewBounds()
+        {
+            string imported = WriteEffectImage(
+                (x, y) =>
+                    x >= 78 && x < 92 && y >= 12 && y < 18
+                        ? new Color32(3, 251, 251, 255)
+                        : new Color32(0, 0, 0, 0)
+            );
+            using var frame = ContentEditorArtworkEffectGenerator.CreateEditableFrame(
+                sourcePath,
+                null,
+                ContentEditorArtworkEffectStyle.ShipTravel,
+                148,
+                false,
+                null,
+                imported
+            );
+            var layer = new ContentEditorArtworkLayer { Source = 0, ScalePercent = 50 };
+            RectInt bounds = frame.GetLayerBounds(layer, frame.GetLayer(layer).Bounds);
+            Color32[] baked = DecodePixels(frame.Bake(new[] { layer }));
+
+            Assert.That(bounds.size, Is.EqualTo(new Vector2Int(7, 3)));
+            for (int y = 0; y < frame.Size.y; y++)
+            for (int x = 0; x < frame.Size.x; x++)
+                Assert.That(
+                    baked[y * frame.Size.x + x].a != 0,
+                    Is.EqualTo(bounds.Contains(new Vector2Int(x, y)))
+                );
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void Bake_ExcludedShipOverlayLayer_KeepsTheOtherLayer(bool hideRatherThanRemove)
@@ -231,7 +262,9 @@ namespace Rebellion.Tests.ContentEditor
         public void Bake_MovedPersonnelStreakOntoTransparentArea_PreservesTheVisibleEdit()
         {
             Color32 streak = new(80, 120, 240, 255);
-            string imported = WriteEffectImage((x, y) => y == 4 ? streak : default);
+            string imported = WriteEffectImage(
+                (x, y) => y == 4 && x is >= 1 and <= 6 ? streak : default
+            );
             using var frame = ContentEditorArtworkEffectGenerator.CreateEditableFrame(
                 sourcePath,
                 null,
@@ -538,6 +571,34 @@ namespace Rebellion.Tests.ContentEditor
 
             Assert.AreEqual(new Color32(0, 0, 0, 255), pixels[42 * _width + 40]);
             Assert.AreEqual(new Color32(31, 72, 81, 255), pixels[39 * _width + 40]);
+        }
+
+        [TestCase("ShipTravel")]
+        [TestCase("Damage")]
+        [TestCase("FacilityTravel")]
+        [TestCase("PersonnelTravel")]
+        [TestCase("RegimentTravel")]
+        public void Bake_OpaqueUnregisteredArtwork_GeneratesAVisibleEffect(string format)
+        {
+            Color32 sourceColor = new(143, 31, 45, 255);
+            string image = WriteEffectImage((_, _) => sourceColor);
+            using var frame = ContentEditorArtworkEffectGenerator.CreateEditableFrame(
+                image,
+                new Vector2Int(_width, _height),
+                Enum.Parse<ContentEditorArtworkEffectStyle>(format),
+                seed: 17,
+                stretchSource: false,
+                backdrop: null,
+                completeTravel: true
+            );
+            var layers = Enumerable
+                .Range(0, frame.DefaultLayerCount)
+                .Select(index => new ContentEditorArtworkLayer { Source = index })
+                .ToArray();
+
+            Color32[] pixels = DecodePixels(frame.Bake(layers));
+
+            Assert.IsTrue(pixels.Any(pixel => pixel.a > 0 && !pixel.Equals(sourceColor)));
         }
 
         [Test]

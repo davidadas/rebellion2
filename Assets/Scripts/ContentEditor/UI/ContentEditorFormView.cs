@@ -1317,6 +1317,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
         {
             "MessageImagePath" => "message",
             "DisplayImagePath" => "display",
+            "BattleResultImagePath" => "battle result",
+            "SmallDisplayImagePath" => "small display",
             _ => "encyclopedia",
         };
         artworkCutsButton.GetComponentInChildren<TMP_Text>().text =

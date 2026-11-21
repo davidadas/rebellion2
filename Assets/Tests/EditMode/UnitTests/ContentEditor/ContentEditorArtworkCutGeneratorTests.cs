@@ -62,6 +62,33 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void GeneratePlacedPngCuts_OpaqueSourceAndOffset_FillsTheOutput()
+        {
+            string source = WriteSolidPng(Color.green, 8, 4);
+            Vector2Int size = new(8, 2);
+            Vector2 offset = new(0.5f, 0.5f);
+            var outputs = ContentEditorArtworkCutGenerator.GeneratePlacedPngCuts(
+                source,
+                new[] { (size, offset) },
+                fitEntireSource: true,
+                preserveVisibleSubject: true,
+                fillOpaqueSource: true
+            );
+            Texture2D output = Decode(outputs[(size, offset)]);
+            try
+            {
+                Assert.That(
+                    output.GetPixels32(),
+                    Has.All.Matches<Color32>(pixel => pixel.a == 255)
+                );
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(output);
+            }
+        }
+
+        [Test]
         public void GeneratePngCuts_MultipleOutputs_CreatesExactSizesAndPreservesAlpha()
         {
             string source = WriteSolidPng(new Color(0.2f, 0.4f, 0.6f, 0.25f), 8, 4);

@@ -59,6 +59,7 @@ public sealed class ActionDialogView : MonoBehaviour, ICancelable
     /// <param name="secondary">The optional alternate action.</param>
     /// <param name="allowCancel">Whether the prompt may be dismissed without choosing an action.</param>
     /// <param name="title">The optional attention banner above the message.</param>
+    /// <param name="cancelText">The visible label for dismissing the prompt.</param>
     public void Show(
         string text,
         string primaryText,
@@ -66,7 +67,8 @@ public sealed class ActionDialogView : MonoBehaviour, ICancelable
         string secondaryText = null,
         Action secondary = null,
         bool allowCancel = true,
-        string title = null
+        string title = null,
+        string cancelText = "Cancel"
     )
     {
         BindControls();
@@ -76,6 +78,7 @@ public sealed class ActionDialogView : MonoBehaviour, ICancelable
         float headerHeight = string.IsNullOrEmpty(title) ? 0 : 64;
         canCancel = allowCancel;
         cancelButton.gameObject.SetActive(allowCancel);
+        cancelButton.GetComponentInChildren<TextMeshProUGUI>(true).text = cancelText;
         Bind(primaryButton, primaryText, primary);
         Bind(secondaryButton, secondaryText, secondary);
         RectTransform panel = (RectTransform)message.transform.parent;
@@ -87,16 +90,18 @@ public sealed class ActionDialogView : MonoBehaviour, ICancelable
         message.rectTransform.anchoredPosition = new Vector2(20, -18 - headerHeight);
         panel.sizeDelta = new Vector2(panel.rect.width, height + headerHeight + 92);
         float right = panel.rect.width - 20;
+        int buttonCount = 1 + (secondary != null ? 1 : 0) + (allowCancel ? 1 : 0);
+        float maximumWidth = (panel.rect.width - 40 - (buttonCount - 1) * 8) / buttonCount;
         foreach (Button button in new[] { primaryButton, secondaryButton, cancelButton })
         {
             if (!button.gameObject.activeSelf)
                 continue;
             RectTransform rect = (RectTransform)button.transform;
-            rect.anchoredPosition = new Vector2(
-                right - rect.rect.width,
-                -height - headerHeight - 38
-            );
-            right -= rect.rect.width + 8;
+            TextMeshProUGUI label = button.GetComponentInChildren<TextMeshProUGUI>(true);
+            float width = Mathf.Clamp(label.preferredWidth + 24, 104, maximumWidth);
+            rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
+            rect.anchoredPosition = new Vector2(right - width, -height - headerHeight - 38);
+            right -= width + 8;
         }
         gameObject.SetActive(true);
         transform.SetAsLastSibling();

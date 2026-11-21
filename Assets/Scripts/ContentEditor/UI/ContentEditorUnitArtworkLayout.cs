@@ -14,12 +14,15 @@ internal static class ContentEditorUnitArtworkLayout
         "MessageImagePath",
         "DisplayImagePath",
         "EncyclopediaImagePath",
+        "SmallDisplayImagePath",
     };
     private static readonly IReadOnlyList<string> _unitGenerationSources = new[]
     {
         "DisplayImagePath",
         "MessageImagePath",
         "EncyclopediaImagePath",
+        "BattleResultImagePath",
+        "SmallDisplayImagePath",
     };
     private static readonly IReadOnlyList<string> _headquartersIconMembers = new[]
     {
@@ -119,6 +122,18 @@ internal static class ContentEditorUnitArtworkLayout
     /// <returns>False for icon-only records and true for ordinary unit artwork.</returns>
     internal static bool SupportsStandardCuts(ContentPackEditorRecord record) =>
         !IsHeadquartersIcon(record);
+
+    /// <summary>
+    /// Checks whether a field can supply or receive a standard artwork cut.
+    /// </summary>
+    /// <param name="field">The unit image field being evaluated.</param>
+    /// <returns>True for an ordinary fixed-size image in the unit's artwork workflow.</returns>
+    internal static bool IsStandardCut(ContentPackEditorField field) =>
+        SupportsStandardCuts(field.Record)
+        && SupportsMember(field.Record, field.MemberName)
+        && field.MemberName != BackgroundMember
+        && !IsStateSpecific(field.MemberName)
+        && ContentPackEditorFieldMetadata.TryGetExpectedImageDimensions(field, out _);
 
     /// <summary>
     /// Gets the stable workflow position of one artwork member.

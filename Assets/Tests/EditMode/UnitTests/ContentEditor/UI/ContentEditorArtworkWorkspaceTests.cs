@@ -53,6 +53,21 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
+        public void ShowGeneratedArtwork_DecreaseScale_ResizesTheSelectedWake()
+        {
+            (int, int)? requested = null;
+            var workspace = ShowArtwork(
+                new ArtworkEffectActions
+                {
+                    Resize = (index, percent) => requested = (index, percent),
+                }
+            );
+            GetButton(workspace, "DecreaseLayerScale").onClick.Invoke();
+
+            Assert.That(requested, Is.EqualTo((1, 90)));
+        }
+
+        [Test]
         public void TryCancel_UnsavedArtwork_PresentsSaveOrDiscard()
         {
             var workspace = ShowArtwork(changed: true);
@@ -152,7 +167,8 @@ namespace Rebellion.Tests.ContentEditor.UI
                     1,
                     "Upper wake",
                     sizeSpecificLayers ? null : small,
-                    new Rect(0, 0, 1, 1)
+                    new Rect(0, 0, 1, 1),
+                    scalePercent: 100
                 ),
                 new ArtworkEffectLayerPreview(
                     2,

@@ -63,6 +63,21 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
     private TMP_InputField yInput;
 
     [SerializeField]
+    private RectTransform scaleControls;
+
+    [SerializeField]
+    private TMP_Text scaleCaption;
+
+    [SerializeField]
+    private TMP_Text scaleValue;
+
+    [SerializeField]
+    private Button decreaseScale;
+
+    [SerializeField]
+    private Button increaseScale;
+
+    [SerializeField]
     private Button back;
 
     [SerializeField]
@@ -210,6 +225,8 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         varyShipWakes.onClick.AddListener(() => actions?.VaryShipWakes?.Invoke());
         xInput.onEndEdit.AddListener(value => Position(value, true));
         yInput.onEndEdit.AddListener(value => Position(value, false));
+        decreaseScale.onClick.AddListener(() => ChangeScale(-10));
+        increaseScale.onClick.AddListener(() => ChangeScale(10));
         for (int i = 0; i < outputButtons.Length; i++)
         {
             int index = i;
@@ -357,7 +374,30 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         backward.interactable = canEdit && GetReorderTarget(-1) >= 0;
         add.interactable = rebuild.interactable = varyShipWakes.interactable = !comparing;
         scope.text = selectedLayer?.Locked == true ? "Locked" : "Pixels";
+        int? percent = selectedLayer?.ScalePercent;
+        scaleControls.gameObject.SetActive(canEdit && percent.HasValue && actions.Resize != null);
+        scaleValue.text = percent.HasValue ? $"{percent}%" : string.Empty;
+        decreaseScale.interactable = percent > ContentEditorArtworkLayer.MinimumScalePercent;
+        increaseScale.interactable = percent < ContentEditorArtworkLayer.MaximumScalePercent;
         UpdateCanvasHint();
+    }
+
+    /// <summary>
+    /// Resizes the selected effect about its center while keeping its authored position.
+    /// </summary>
+    /// <param name="delta">The increase or decrease in percentage points.</param>
+    private void ChangeScale(int delta)
+    {
+        if (comparing || selectedLayer?.ScalePercent is not int percent)
+            return;
+        actions?.Resize?.Invoke(
+            selectedIndex,
+            Mathf.Clamp(
+                percent + delta,
+                ContentEditorArtworkLayer.MinimumScalePercent,
+                ContentEditorArtworkLayer.MaximumScalePercent
+            )
+        );
     }
 
     /// <summary>
@@ -528,7 +568,10 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         for (int i = 0; i < layerButtons.Length; i++)
             Place(layerButtons[i].transform, 16 + i * (actionWidth + 5), 0, actionWidth, 32);
         float positionY = controlsY + 48;
-        float positionWidth = narrow ? sideWidth * 0.49f - 20 : sideWidth - 32;
+        float transformWidth = narrow ? sideWidth * 0.49f - 20 : sideWidth - 32;
+        float scaleWidth = Mathf.Min(112, transformWidth * 0.43f);
+        float positionWidth =
+            actions.Resize == null ? transformWidth : transformWidth - scaleWidth - 12;
         Place(positionCaption.transform, 16, positionY, positionWidth * 0.52f, 23);
         Place(scope.transform, 16 + positionWidth * 0.52f, positionY, positionWidth * 0.48f, 23);
         float fieldWidth = positionWidth * 0.5f - 27;
@@ -536,6 +579,13 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         Place(xInput.transform, 36, positionY + 27, fieldWidth, 32);
         Place(yCaption.transform, 25 + positionWidth * 0.5f, positionY + 27, 18, 32);
         Place(yInput.transform, 45 + positionWidth * 0.5f, positionY + 27, fieldWidth, 32);
+        Place(scaleControls, 16 + positionWidth + 12, positionY, scaleWidth, 59);
+        Place(scaleCaption.transform, 0, 0, scaleWidth, 23);
+        const int valueWidth = 44;
+        float stepWidth = (scaleWidth - valueWidth) * 0.5f;
+        Place(decreaseScale.transform, 0, 27, stepWidth, 32);
+        Place(scaleValue.transform, stepWidth, 27, valueWidth, 32);
+        Place(increaseScale.transform, stepWidth + valueWidth, 27, stepWidth, 32);
         Place(
             rebuild.transform,
             narrow ? sideWidth * 0.5f + 8 : 16,
@@ -697,6 +747,7 @@ internal sealed class ArtworkEffectActions
     internal Action<int> Select;
     internal Func<int, int> OutputChanged;
     internal Action<int, Vector2> Move;
+    internal Action<int, int> Resize;
     internal Action<int> Toggle;
     internal Action<int, int> Reorder;
     internal Action Add;

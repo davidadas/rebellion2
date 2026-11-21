@@ -93,6 +93,14 @@ internal static class ContentEditorArtworkWorkspaceBuilder
         x.contentType = y.contentType = TMP_InputField.ContentType.IntegerNumber;
         Assign(view, "xInput", x);
         Assign(view, "yInput", y);
+        RectTransform scale = Layer("LayerScale", sidebar);
+        Assign(view, "scaleControls", scale);
+        Assign(view, "scaleCaption", Label("ScaleHeading", scale, "Scale", 17));
+        TMP_Text percent = Label("ScalePercent", scale, "", 15);
+        percent.alignment = TextAlignmentOptions.Midline;
+        Assign(view, "scaleValue", percent);
+        Assign(view, "decreaseScale", Secondary("DecreaseLayerScale", scale, "−"));
+        Assign(view, "increaseScale", Secondary("IncreaseLayerScale", scale, "+"));
         Assign(view, "rebuild", Secondary("RebuildArtwork", sidebar, "Rebuild artwork"));
         Assign(view, "varyShipWakes", Secondary("VaryShipWakes", sidebar, "Vary engine trails"));
         sidebar.SetAsLastSibling();

@@ -14,6 +14,7 @@ internal readonly struct ArtworkEffectLayerPreview
     internal Vector2 Offset { get; }
     internal bool Hidden { get; }
     internal bool Locked { get; }
+    internal int? ScalePercent { get; }
 
     /// <summary>
     /// Captures a layer's position and artwork in one preview.
@@ -25,6 +26,7 @@ internal readonly struct ArtworkEffectLayerPreview
     /// <param name="offset">The layer's authored movement from its original position.</param>
     /// <param name="hidden">Whether the layer is excluded from the exported card.</param>
     /// <param name="locked">Whether the layer represents fixed composition artwork.</param>
+    /// <param name="scalePercent">The current scale percentage for a resizable effect.</param>
     internal ArtworkEffectLayerPreview(
         int index,
         string name,
@@ -32,7 +34,8 @@ internal readonly struct ArtworkEffectLayerPreview
         Rect bounds,
         Vector2 offset = default,
         bool hidden = false,
-        bool locked = false
+        bool locked = false,
+        int? scalePercent = null
     )
     {
         Index = index;
@@ -42,6 +45,7 @@ internal readonly struct ArtworkEffectLayerPreview
         Offset = offset;
         Hidden = hidden;
         Locked = locked;
+        ScalePercent = scalePercent;
     }
 }
 
