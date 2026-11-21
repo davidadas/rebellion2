@@ -2506,10 +2506,8 @@ namespace Rebellion.Tests.ContentEditor.UI
             XElement unitTileIcons = theme
                 .Element.Element(nameof(FactionTheme.PlanetOverlayTheme))
                 .Element(nameof(PlanetOverlayTheme.UnitTileIcons));
-            unitTileIcons.Element(nameof(UnitTileIcons.FleetListSelectionImagePath)).Value =
-                "Pack/Shared/Strategy/UI/ThemeMasks/selection-fleet-list";
             unitTileIcons.Element(nameof(UnitTileIcons.FleetDetailSelectionImagePath)).Value =
-                "Pack/Shared/Strategy/UI/ThemeMasks/selection-fleet-detail";
+                unitTileIcons.Element(nameof(UnitTileIcons.FleetListSelectionImagePath)).Value;
             XElement colors = theme.Element.Element(nameof(FactionTheme.ColorScheme));
             if (colors == null)
             {
