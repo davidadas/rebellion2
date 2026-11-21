@@ -34,7 +34,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private TMP_Dropdown shipDesignDropdown;
 
     [SerializeField]
-    private TMP_Dropdown artworkStateSizeDropdown;
+    private Button[] artworkStateSizeButtons;
 
     private int artworkStateSize;
     private readonly List<int> artworkStateChoices = new();
@@ -202,7 +202,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
     > ArtworkCutsRequested;
     internal event Action<
         ContentPackEditorField,
-        ContentEditorArtworkEffect
+        ContentEditorArtworkEffect,
+        bool
     > ArtworkEffectRequested;
     public event Action<ContentPackEditorField, string> PreviewRequested;
     public event Action<ContentPackEditorField> AssetEditRequested;
@@ -216,7 +217,6 @@ public sealed class ContentEditorFormView : MonoBehaviour
         || setupCollections.Any(view => view.gameObject.activeSelf && view.HasOpenChoice)
         || collectionDropdown.IsExpanded
         || shipDesignDropdown.IsExpanded
-        || artworkStateSizeDropdown.IsExpanded
         || missionPresentationDropdown.IsExpanded
         || curveDropdown.IsExpanded
         || fieldViews.Any(view => view.gameObject.activeSelf && view.HasOpenChoice);
@@ -251,7 +251,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
             || addMessageButton == null
             || collectionDropdown == null
             || shipDesignDropdown == null
-            || artworkStateSizeDropdown == null
+            || artworkStateSizeButtons == null
+            || artworkStateSizeButtons.Length != 3
             || missionPresentationDropdown == null
             || missionReportsToggle == null
             || removeMessageButton == null
@@ -277,7 +278,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
         addMessageButton.onClick.AddListener(RequestAddMessage);
         collectionDropdown.onValueChanged.AddListener(SelectCollectionItem);
         shipDesignDropdown.onValueChanged.AddListener(SelectShipNameDesign);
-        artworkStateSizeDropdown.onValueChanged.AddListener(SelectArtworkStateSize);
+        for (int i = 0; i < artworkStateSizeButtons.Length; i++)
+        {
+            int size = i;
+            artworkStateSizeButtons[i].onClick.AddListener(() => SelectArtworkStateSize(size));
+        }
         missionPresentationDropdown.onValueChanged.AddListener(SelectMissionPresentation);
         missionReportsToggle.onClick.AddListener(ToggleMissionReports);
         removeMessageButton.onClick.AddListener(RequestRemoveMessage);
@@ -309,7 +314,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
         addMessageButton.onClick.RemoveListener(RequestAddMessage);
         collectionDropdown.onValueChanged.RemoveListener(SelectCollectionItem);
         shipDesignDropdown.onValueChanged.RemoveListener(SelectShipNameDesign);
-        artworkStateSizeDropdown.onValueChanged.RemoveListener(SelectArtworkStateSize);
+        foreach (Button button in artworkStateSizeButtons)
+            button.onClick.RemoveAllListeners();
         missionPresentationDropdown.onValueChanged.RemoveListener(SelectMissionPresentation);
         missionReportsToggle.onClick.RemoveListener(ToggleMissionReports);
         removeMessageButton.onClick.RemoveListener(RequestRemoveMessage);
@@ -443,7 +449,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
         addMessageButton.gameObject.SetActive(false);
         collectionDropdown.gameObject.SetActive(false);
         shipDesignDropdown.gameObject.SetActive(false);
-        artworkStateSizeDropdown.gameObject.SetActive(false);
+        foreach (Button button in artworkStateSizeButtons)
+            button.gameObject.SetActive(false);
         missionPresentationDropdown.gameObject.SetActive(false);
         missionReportsToggle.gameObject.SetActive(false);
         removeMessageButton.gameObject.SetActive(false);
@@ -530,7 +537,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private void FocusColorPicker(ContentPackEditorField field)
     {
         ContentEditorColorPickerView picker = colorPickers.SingleOrDefault(item =>
-            item.gameObject.activeSelf && SameField(item.Field, field)
+            item.gameObject.activeSelf && SameFactionColor(item.Field, field)
         );
         if (picker == null)
             return;
@@ -801,7 +808,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
         addMessageButton.gameObject.SetActive(false);
         collectionDropdown.gameObject.SetActive(false);
         shipDesignDropdown.gameObject.SetActive(false);
-        artworkStateSizeDropdown.gameObject.SetActive(false);
+        foreach (Button button in artworkStateSizeButtons)
+            button.gameObject.SetActive(false);
         missionPresentationDropdown.gameObject.SetActive(false);
         missionReportsToggle.gameObject.SetActive(false);
         removeMessageButton.gameObject.SetActive(false);
@@ -1156,7 +1164,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 width,
                 ref labelIndex
             );
-            y = PlaceArtworkStateSize(states, y, width, ref labelIndex);
+            y = PlaceArtworkStateSize(states, y, width);
             y = PlaceArtworkStateGallery(
                 normal,
                 states,
@@ -1709,13 +1717,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="states">The authored state outputs.</param>
     /// <param name="y">The next vertical position.</param>
     /// <param name="width">The available form width.</param>
-    /// <param name="labelIndex">The next layout label.</param>
     /// <returns>The first position below the optional size selector.</returns>
     private int PlaceArtworkStateSize(
         IReadOnlyList<ContentPackEditorField> states,
         int y,
-        float width,
-        ref int labelIndex
+        float width
     )
     {
         artworkStateChoices.Clear();
@@ -1736,27 +1742,18 @@ public sealed class ContentEditorFormView : MonoBehaviour
             return y;
 
         GetArtworkContentBounds(width, out float left, out float available);
-        y += PlaceLabel("Preview size", labelIndex++, left, y, available, false);
-        RectTransform control = (RectTransform)artworkStateSizeDropdown.transform;
-        SetFormRect(control, left, y, Mathf.Min(240, available), 34);
-        artworkStateSizeDropdown.ClearOptions();
-        artworkStateSizeDropdown.AddOptions(
-            artworkStateChoices
-                .Select(size =>
-                    size switch
-                    {
-                        1 => "Large card",
-                        2 => "Battle result",
-                        _ => "Small card",
-                    }
-                )
-                .ToList()
+        float tabWidth = Mathf.Min(
+            140,
+            (available - (artworkStateChoices.Count - 1) * 6) / artworkStateChoices.Count
         );
-        artworkStateSizeDropdown.SetValueWithoutNotify(
-            artworkStateChoices.IndexOf(artworkStateSize)
-        );
-        artworkStateSizeDropdown.RefreshShownValue();
-        artworkStateSizeDropdown.gameObject.SetActive(true);
+        for (int i = 0; i < artworkStateChoices.Count; i++)
+        {
+            int choice = artworkStateChoices[i];
+            Button tab = artworkStateSizeButtons[choice];
+            SetFormRect((RectTransform)tab.transform, left + i * (tabWidth + 6), y, tabWidth, 34);
+            tab.gameObject.SetActive(true);
+            ContentEditorArtworkWorkspace.SetSelected(tab, choice == artworkStateSize);
+        }
         return y + 46;
     }
 
@@ -1766,14 +1763,9 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="index">The size option selected by the author.</param>
     private void SelectArtworkStateSize(int index)
     {
-        if (!Commit())
-        {
-            artworkStateSizeDropdown.SetValueWithoutNotify(
-                artworkStateChoices.IndexOf(artworkStateSize)
-            );
+        if (index == artworkStateSize || !Commit())
             return;
-        }
-        artworkStateSize = artworkStateChoices[index];
+        artworkStateSize = index;
         RenderFields(true);
     }
 
@@ -1984,7 +1976,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
                                 action,
                                 action == transit
                                     ? ContentEditorArtworkEffect.Travel
-                                    : ContentEditorArtworkEffect.Damage
+                                    : ContentEditorArtworkEffect.Damage,
+                                action == transit && !hasStateArtwork
                             );
                     };
                 cardHeight +=
@@ -3281,6 +3274,21 @@ public sealed class ContentEditorFormView : MonoBehaviour
         && left.XmlAttributeName == right.XmlAttributeName;
 
     /// <summary>
+    /// Matches a faction color across form renders, including colors whose XML is still optional.
+    /// </summary>
+    /// <param name="left">The first projected setting.</param>
+    /// <param name="right">The second projected setting.</param>
+    /// <returns>True when both fields represent the same faction color.</returns>
+    private static bool SameFactionColor(
+        ContentPackEditorField left,
+        ContentPackEditorField right
+    ) =>
+        left?.Group == nameof(FactionTheme.ColorScheme)
+        && right?.Group == nameof(FactionTheme.ColorScheme)
+        && left.Record.Key == right.Record.Key
+        && left.MemberName == right.MemberName;
+
+    /// <summary>
     /// Places the dropdown for the artwork surfaces available in the selected theme.
     /// </summary>
     /// <param name="categories">The available surface names in display order.</param>
@@ -3630,8 +3638,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         if (field == null)
             return;
         ContentPackEditorField current = selectedPage?.Fields.FirstOrDefault(candidate =>
-            candidate.XmlElement == field.XmlElement
-            && candidate.XmlAttributeName == field.XmlAttributeName
+            SameField(candidate, field) || SameFactionColor(candidate, field)
         );
         if (current == null)
         {

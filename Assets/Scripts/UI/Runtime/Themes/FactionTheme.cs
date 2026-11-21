@@ -138,6 +138,41 @@ public class FactionTheme
     /// <returns>The configured planet-marker color or the faction primary color.</returns>
     public Color GetPlanetMarkerColor() =>
         ThemeColorParser.Parse(ColorScheme?.PlanetMarkerColorHex, GetPrimaryColor());
+
+    /// <summary>
+    /// Resolves the color of a mask only for themes that opt into a color scheme.
+    /// </summary>
+    /// <param name="mask">The interface role the color is applied to.</param>
+    /// <returns>The resolved color, or null to use the supplied artwork directly.</returns>
+    internal Color? GetMaskTint(FactionMaskColor mask)
+    {
+        if (ColorScheme == null)
+            return null;
+        return mask switch
+        {
+            FactionMaskColor.SelectionColorHex => GetSelectionColor(),
+            FactionMaskColor.ActiveWindowTitleColorHex => GetActiveWindowTitleColor(),
+            FactionMaskColor.InactiveWindowTitleColorHex => GetInactiveWindowTitleColor(),
+            FactionMaskColor.ActiveBuildingPaneColorHex => GetActiveBuildingPaneColor(),
+            FactionMaskColor.InactiveBuildingPaneColorHex => GetInactiveBuildingPaneColor(),
+            FactionMaskColor.PlanetMarkerColorHex => GetPlanetMarkerColor(),
+            _ => null,
+        };
+    }
+}
+
+/// <summary>
+/// Identifies the color setting responsible for a rendered faction mask.
+/// </summary>
+internal enum FactionMaskColor
+{
+    None,
+    SelectionColorHex,
+    ActiveWindowTitleColorHex,
+    InactiveWindowTitleColorHex,
+    ActiveBuildingPaneColorHex,
+    InactiveBuildingPaneColorHex,
+    PlanetMarkerColorHex,
 }
 
 /// <summary>

@@ -208,6 +208,18 @@ public sealed class UIContext
     }
 
     /// <summary>
+    /// Resolves legacy theme artwork or its color-scheme mask through the same asset source.
+    /// </summary>
+    /// <param name="path">The theme image address.</param>
+    /// <param name="theme">The faction theme supplying the image and optional scheme.</param>
+    /// <param name="mask">The color setting used by this image.</param>
+    /// <returns>The texture for this interface element.</returns>
+    internal Texture2D GetFactionMask(string path, FactionTheme theme, FactionMaskColor mask) =>
+        theme?.GetMaskTint(mask) is Color tint
+            ? GetAlphaTintedTexture(path, tint)
+            : GetTexture(path);
+
+    /// <summary>
     /// Gets the smallest texture rectangle containing every visible pixel.
     /// </summary>
     /// <param name="texture">The texture to measure.</param>

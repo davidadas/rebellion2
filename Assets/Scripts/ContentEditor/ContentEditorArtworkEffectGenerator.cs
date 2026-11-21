@@ -43,6 +43,8 @@ internal enum ContentEditorArtworkEffectStyle
 /// </summary>
 internal static class ContentEditorArtworkEffectGenerator
 {
+    private const float _shortWakeReach = 0.84f;
+    private const float _longWakeReach = 1.4f;
     private static readonly Color _previewBackground = new(0.035f, 0.04f, 0.05f);
     private static readonly Color _wakeShadow = new(0.035f, 0.14f, 0.22f, 0.82f);
     private static readonly Color _wakeEdge = new(0.015f, 0.43f, 0.51f, 0.94f);
@@ -307,6 +309,7 @@ internal static class ContentEditorArtworkEffectGenerator
     /// <param name="facilityReferencePath">The registered facility card used to sample its silhouette margin.</param>
     /// <param name="completeTravel">Whether the draft uses one complete gameplay travel pattern.</param>
     /// <param name="preserveRegisteredTravel">Whether matching travel cards retain their authored pixels.</param>
+    /// <param name="varyShipWakes">Whether to vary the reach of each authored ship wake.</param>
     /// <param name="travelPattern">The matching authored travel and display references, if available.</param>
     /// <returns>The caller-owned frame with separable artwork.</returns>
     internal static EditableFrame CreateEditableFrame(
@@ -323,7 +326,8 @@ internal static class ContentEditorArtworkEffectGenerator
         string facilityReferencePath = null,
         bool completeTravel = false,
         ContentEditorTravelPattern travelPattern = default,
-        bool preserveRegisteredTravel = false
+        bool preserveRegisteredTravel = false,
+        bool varyShipWakes = false
     )
     {
         Texture2D source = new(2, 2, TextureFormat.RGBA32, false);
@@ -457,7 +461,17 @@ internal static class ContentEditorArtworkEffectGenerator
                             )
                             : null;
                         if (wake != null)
-                            pieces.AddRange(SplitOverlay(wake, target));
+                        {
+                            IReadOnlyList<Color[]> layers = SplitOverlay(wake, target);
+                            if (varyShipWakes)
+                            {
+                                Vector2 axis = GetShipAxis(subject, target, bounds);
+                                foreach (Color[] layer in layers)
+                                    pieces.Add(VaryWakeReach(layer, subject, target, axis, random));
+                            }
+                            else
+                                pieces.AddRange(layers);
+                        }
                         else
                             DrawShipTravel(subject, target, bounds, random, pieces, variant);
                         break;
@@ -719,6 +733,8 @@ internal static class ContentEditorArtworkEffectGenerator
                     : (Color[])exportBackground.Clone();
             foreach (ContentEditorArtworkLayer layer in layers)
             {
+                if (layer.Hidden)
+                    continue;
                 var piece = GetLayer(layer);
                 if (piece.Texture == null)
                     continue;
@@ -736,21 +752,16 @@ internal static class ContentEditorArtworkEffectGenerator
                 }
             }
             if (
-                style
-                is ContentEditorArtworkEffectStyle.PersonnelTravel
-                    or ContentEditorArtworkEffectStyle.RegimentTravel
+                imported == null
+                && style
+                    is (
+                        ContentEditorArtworkEffectStyle.PersonnelTravel
+                        or ContentEditorArtworkEffectStyle.RegimentTravel
+                    )
             )
             {
                 for (int index = 0; index < result.Length; index++)
-                {
-                    if (imported == null)
-                        result[index].a *= 1f - subject[index].a;
-                    else if (
-                        style == ContentEditorArtworkEffectStyle.PersonnelTravel
-                        && imported[index].a == 0f
-                    )
-                        result[index].a = 0f;
-                }
+                    result[index].a *= 1f - subject[index].a;
             }
             Texture2D output = CreateTexture(Size, result);
             try
@@ -1265,6 +1276,74 @@ internal static class ContentEditorArtworkEffectGenerator
     }
 
     /// <summary>
+    /// Changes the reach of one wake while keeping the part attached to the hull in place.
+    /// </summary>
+    /// <param name="wake">One separable layer from the fitted wake.</param>
+    /// <param name="subject">The fitted hull under the wake.</param>
+    /// <param name="size">The output dimensions.</param>
+    /// <param name="axis">The ship's aft-facing axis.</param>
+    /// <param name="random">The saved variation stream.</param>
+    /// <returns>The authored artwork resampled to a new trail length.</returns>
+    private static Color[] VaryWakeReach(
+        Color[] wake,
+        Color[] subject,
+        Vector2Int size,
+        Vector2 axis,
+        System.Random random
+    )
+    {
+        float front = float.PositiveInfinity;
+        float lastContact = float.NegativeInfinity;
+        for (int index = 0; index < wake.Length; index++)
+        {
+            if (wake[index].a == 0f)
+                continue;
+            float position = Vector2.Dot(new Vector2(index % size.x, index / size.x), axis);
+            front = Mathf.Min(front, position);
+            if (subject[index].a >= 0.55f)
+                lastContact = Mathf.Max(lastContact, position);
+        }
+        float anchor = Mathf.Max(front, lastContact);
+
+        // Keep the longest available trail inside the card. Use the short and long wake presets
+        // as the bounds so this uses the same range as the built-in ship effects.
+        float maximum = _longWakeReach;
+        for (int index = 0; index < wake.Length; index++)
+        {
+            if (wake[index].a == 0f)
+                continue;
+            Vector2 point = new(index % size.x, index / size.x);
+            float distance = Vector2.Dot(point, axis) - anchor;
+            if (distance <= 0f)
+                continue;
+            Vector2 tail = axis * distance;
+            float right = size.x - 1 - point.x;
+            float top = size.y - 1 - point.y;
+            if (tail.x > 0f)
+                maximum = Mathf.Min(maximum, 1f + right / tail.x);
+            if (tail.y > 0f)
+                maximum = Mathf.Min(maximum, 1f + top / tail.y);
+            if (tail.y < 0f)
+                maximum = Mathf.Min(maximum, 1f - point.y / tail.y);
+        }
+
+        float correction = 1f / RandomBetween(random, _shortWakeReach, maximum) - 1f;
+        var pixels = new Color[wake.Length];
+        for (int y = 0; y < size.y; y++)
+        for (int x = 0; x < size.x; x++)
+        {
+            Vector2 point = new(x, y);
+            float distance = Vector2.Dot(point, axis) - anchor;
+            Vector2 original = point + axis * (Mathf.Max(0f, distance) * correction);
+            int sx = Mathf.RoundToInt(original.x);
+            int sy = Mathf.RoundToInt(original.y);
+            if ((uint)sx < (uint)size.x && (uint)sy < (uint)size.y)
+                pixels[y * size.x + x] = wake[sy * size.x + sx];
+        }
+        return pixels;
+    }
+
+    /// <summary>
     /// Recovers a facility's registered compact subject when both cards have baked backgrounds.
     /// </summary>
     /// <param name="pattern">The matching normal and travel cards.</param>
@@ -1631,8 +1710,8 @@ internal static class ContentEditorArtworkEffectGenerator
     )
     {
         float reach =
-            variant == 1 ? 1.4f
-            : variant == 2 ? 0.84f
+            variant == 1 ? _longWakeReach
+            : variant == 2 ? _shortWakeReach
             : 1f;
         float spread =
             variant == 1 ? 0.64f
@@ -2595,18 +2674,80 @@ internal static class ContentEditorArtworkEffectGenerator
 [Serializable]
 internal sealed class ContentEditorArtworkRecipe
 {
-    internal const int CurrentVersion = 6;
+    internal const int CurrentVersion = 7;
     public int Version = CurrentVersion;
+    public string OutputMember;
     public int Seed;
     public int NextAddition;
     public int Variant;
     public int FacilityClearance = -1;
     public bool UsesExisting;
+    public bool VaryShipWakes;
     public string[] ExistingSources;
     public string[] TravelPatterns;
     public string[] TravelSubjects;
     internal bool HasStoredSources => ExistingSources is { Length: > 0 };
     public List<ContentEditorArtworkLayer> Layers = new();
+
+    /// <summary>
+    /// Reads one artwork sidecar and isolates the sources belonging to its output.
+    /// </summary>
+    /// <param name="json">The metadata stored beside this output's PNG.</param>
+    /// <param name="member">The output field that owns the PNG.</param>
+    /// <param name="index">The output's position in legacy recipes.</param>
+    /// <param name="count">The number of outputs in the legacy recipe.</param>
+    /// <param name="shipEffects">Whether the original ship recipe format is supported.</param>
+    /// <returns>The independent draft, or null when the PNG must be opened as imported layers.</returns>
+    internal static ContentEditorArtworkRecipe ReadForOutput(
+        string json,
+        string member,
+        int index,
+        int count,
+        bool shipEffects
+    )
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
+        ContentEditorArtworkRecipe recipe;
+        try
+        {
+            recipe = JsonUtility.FromJson<ContentEditorArtworkRecipe>(json);
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+        if (
+            recipe?.Layers == null
+            || recipe.Version < (shipEffects ? 1 : 2)
+            || recipe.Version > CurrentVersion
+        )
+            return null;
+        if (!string.IsNullOrEmpty(recipe.OutputMember))
+            return
+                recipe.OutputMember == member
+                && (!recipe.HasStoredSources || recipe.ExistingSources.Length == 1)
+                ? recipe
+                : null;
+        if (recipe.HasStoredSources && recipe.ExistingSources.Length != count)
+            return null;
+
+        recipe.OutputMember = member;
+        recipe.ExistingSources = SelectSource(recipe.ExistingSources, index, count);
+        recipe.TravelPatterns = SelectSource(recipe.TravelPatterns, index, count);
+        recipe.TravelSubjects = SelectSource(recipe.TravelSubjects, index, count);
+        return recipe;
+    }
+
+    /// <summary>
+    /// Retains just the legacy artwork source for this output.
+    /// </summary>
+    /// <param name="sources">The previous collection of sources.</param>
+    /// <param name="index">The output's original source slot.</param>
+    /// <param name="count">The expected number of slots.</param>
+    /// <returns>The output's stored source, or null if it was never recorded.</returns>
+    private static string[] SelectSource(string[] sources, int index, int count) =>
+        sources?.Length == count ? new[] { sources[index] } : null;
 }
 
 /// <summary>
@@ -2619,5 +2760,7 @@ internal struct ContentEditorArtworkLayer
     public int Seed;
     public bool MeasuredStreaks;
     public bool VisibleStreakGroup;
+    public bool Hidden;
+    public string Name;
     public Vector2 Offset;
 }

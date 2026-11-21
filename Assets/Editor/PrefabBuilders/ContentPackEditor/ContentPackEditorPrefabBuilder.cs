@@ -462,12 +462,20 @@ public static class ContentPackEditorPrefabBuilder
         TMP_Dropdown shipDesign = Dropdown("ShipDesignDropdown", fields.ScrollArea.ContentRoot);
         shipDesign.gameObject.SetActive(false);
         Assign(form, "shipDesignDropdown", shipDesign);
-        TMP_Dropdown artworkStateSize = Dropdown(
-            "ArtworkStateSizeDropdown",
-            fields.ScrollArea.ContentRoot
-        );
-        artworkStateSize.gameObject.SetActive(false);
-        Assign(form, "artworkStateSizeDropdown", artworkStateSize);
+        string[] stateCaptions = { "Small card", "Large card", "Battle result" };
+        var artworkStateSizes = new Button[stateCaptions.Length];
+        for (int i = 0; i < stateCaptions.Length; i++)
+        {
+            Button size = Button(
+                "UnitArtworkSize" + i,
+                fields.ScrollArea.ContentRoot,
+                stateCaptions[i]
+            );
+            BindColor(size.GetComponentInChildren<TMP_Text>(), ContentEditorColorRole.Text);
+            size.gameObject.SetActive(false);
+            artworkStateSizes[i] = size;
+        }
+        Assign(form, "artworkStateSizeButtons", artworkStateSizes);
         TMP_Dropdown missionPresentation = Dropdown(
             "MissionPresentationDropdown",
             fields.ScrollArea.ContentRoot
@@ -589,6 +597,7 @@ public static class ContentPackEditorPrefabBuilder
         BuildWelcome(canvasRoot, view);
         BuildPackDialog(canvasRoot, view);
         BuildSelectionDialog(canvasRoot, view);
+        Assign(view, "artworkWorkspace", ContentEditorArtworkWorkspaceBuilder.Build(canvasRoot));
         BuildConfirmation(canvasRoot, view);
         BuildImagePreview(canvasRoot, view);
         BuildNotification(canvasRoot, view);
@@ -1437,22 +1446,6 @@ public static class ContentPackEditorPrefabBuilder
         ((RectTransform)close.transform).anchorMin = ((RectTransform)close.transform).anchorMax =
             Vector2.one;
         ((RectTransform)close.transform).anchoredPosition = new Vector2(-134, -18);
-        Button nextSize = BuildImagePreviewAction(
-            panel.transform,
-            "NextSize",
-            "Next size",
-            Vector2.zero,
-            24,
-            110
-        );
-        Button reroll = BuildImagePreviewAction(
-            panel.transform,
-            "Reroll",
-            "Generate full card",
-            Vector2.right,
-            -313,
-            171
-        );
         Button apply = BuildImagePreviewAction(
             panel.transform,
             "UseArtwork",
@@ -1461,87 +1454,18 @@ public static class ContentPackEditorPrefabBuilder
             -134,
             110
         );
-        image.gameObject.AddComponent<RectMask2D>();
-        RectTransform layerMarker = Layer("LayerSelection", image.transform);
-        foreach (string edge in new[] { "Top", "Bottom", "Left", "Right" })
-        {
-            Image line = Surface(edge, layerMarker, ContentEditorColorRole.Accent);
-            RectTransform rect = line.rectTransform;
-            const int strokeWidth = 2;
-            rect.anchorMin =
-                edge == "Top" ? Vector2.up
-                : edge == "Right" ? Vector2.right
-                : Vector2.zero;
-            rect.anchorMax =
-                edge == "Bottom" ? Vector2.right
-                : edge == "Left" ? Vector2.up
-                : Vector2.one;
-            rect.offsetMin = new Vector2(
-                edge == "Right" ? -strokeWidth : 0,
-                edge == "Top" ? -strokeWidth : 0
-            );
-            rect.offsetMax = new Vector2(
-                edge == "Left" ? strokeWidth : 0,
-                edge == "Bottom" ? strokeWidth : 0
-            );
-        }
-        layerMarker.gameObject.SetActive(false);
         TextMeshProUGUI layerInstructions = Label("LayerInstructions", panel.transform, "", 15);
         Stretch(layerInstructions.rectTransform, 24, 67, 500, 0);
         layerInstructions.rectTransform.anchorMax = Vector2.right;
         layerInstructions.rectTransform.offsetMin = new Vector2(24, 67);
         layerInstructions.rectTransform.offsetMax = new Vector2(-500, 102);
         layerInstructions.gameObject.SetActive(false);
-        Button nextLayer = BuildImagePreviewAction(
-            panel.transform,
-            "NextLayer",
-            "Next layer",
-            Vector2.right,
-            -488,
-            106
-        );
-        Button addLayer = BuildImagePreviewAction(
-            panel.transform,
-            "AddEffect",
-            "Add streaks",
-            Vector2.right,
-            -372,
-            106
-        );
-        Button duplicateLayer = BuildImagePreviewAction(
-            panel.transform,
-            "DuplicateLayer",
-            "Duplicate layer",
-            Vector2.right,
-            -256,
-            120
-        );
-        Button removeLayer = BuildImagePreviewAction(
-            panel.transform,
-            "RemoveEffect",
-            "Remove layer",
-            Vector2.right,
-            -128,
-            104
-        );
-        foreach (Button control in new[] { nextLayer, addLayer, duplicateLayer, removeLayer })
-        {
-            RectTransform rect = (RectTransform)control.transform;
-            rect.anchoredPosition += new Vector2(0, 42);
-        }
-        Assign(preview, "layerMarker", layerMarker);
         Assign(preview, "layerInstructions", layerInstructions);
-        Assign(preview, "addLayerButton", addLayer);
-        Assign(preview, "nextLayerButton", nextLayer);
-        Assign(preview, "duplicateLayerButton", duplicateLayer);
-        Assign(preview, "removeLayerButton", removeLayer);
         Assign(preview, "image", image);
         Assign(preview, "caption", caption);
         Assign(preview, "closeButton", close);
         Assign(preview, "artworkSlot", slot);
         Assign(preview, "previewPanel", panel.rectTransform);
-        Assign(preview, "nextSizeButton", nextSize);
-        Assign(preview, "rerollButton", reroll);
         Assign(preview, "applyButton", apply);
         Assign(view, "imagePreview", preview);
         overlay.gameObject.SetActive(false);

@@ -35,6 +35,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         string,
         Texture2D
     >(StringComparer.Ordinal);
+    private readonly Dictionary<Texture2D, FactionMaskColor> tintRoles = new();
     private readonly Dictionary<Texture2D, string> textureAddresses =
         new Dictionary<Texture2D, string>();
     private readonly Dictionary<Texture2D, RectInt> textureContentBounds =
@@ -181,14 +182,24 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     /// <param name="path">The application or pack content address.</param>
     /// <param name="color">The color applied to every visible mask pixel.</param>
     /// <returns>The tinted mask texture, or null when the source cannot be loaded.</returns>
-    public Texture2D GetAlphaTintedTexture(string path, Color32 color)
+    public Texture2D GetAlphaTintedTexture(string path, Color32 color) =>
+        GetAlphaTintedTexture(path, color, FactionMaskColor.None);
+
+    /// <summary>
+    /// Colors a shared mask and records the setting that owns this rendered texture.
+    /// </summary>
+    /// <param name="path">The application or pack content address.</param>
+    /// <param name="color">The color applied to every visible mask pixel.</param>
+    /// <param name="role">The editor setting that supplies the color, when known.</param>
+    /// <returns>The cached tinted mask, or null when its source cannot be loaded.</returns>
+    internal Texture2D GetAlphaTintedTexture(string path, Color32 color, FactionMaskColor role)
     {
         ThrowIfDisposed();
         string normalizedPath = NormalizeAddress(path);
         if (string.IsNullOrEmpty(normalizedPath))
             return null;
         string key = FormattableString.Invariant(
-            $"{normalizedPath}|{color.r:X2}{color.g:X2}{color.b:X2}{color.a:X2}"
+            $"{normalizedPath}|{color.r:X2}{color.g:X2}{color.b:X2}{color.a:X2}|{role}"
         );
         if (alphaTintedTextures.TryGetValue(key, out Texture2D tinted) && tinted != null)
             return tinted;
@@ -212,8 +223,19 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         tinted.SetPixels32(pixels);
         tinted.Apply(false, false);
         alphaTintedTextures.Add(key, tinted);
+        if (role != FactionMaskColor.None)
+            tintRoles[tinted] = role;
         return tinted;
     }
+
+    /// <summary>
+    /// Identifies the color setting used to render a faction mask.
+    /// </summary>
+    /// <param name="texture">The generated texture presented by the preview.</param>
+    /// <param name="role">The setting that supplied the texture's color.</param>
+    /// <returns>True when the texture was generated for a known color setting.</returns>
+    internal bool TryGetTintRole(Texture2D texture, out FactionMaskColor role) =>
+        tintRoles.TryGetValue(texture, out role);
 
     /// <summary>
     /// Normalizes an addressed texture without loading its file.
@@ -583,6 +605,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         readableTextures.Clear();
         smoothTextures.Clear();
         alphaTintedTextures.Clear();
+        tintRoles.Clear();
         textureAddresses.Clear();
         textureContentBounds.Clear();
         sprites.Clear();

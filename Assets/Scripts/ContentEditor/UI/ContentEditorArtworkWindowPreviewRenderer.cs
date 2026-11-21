@@ -23,10 +23,11 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
         ContentAssets assets
     )
     {
-        Texture2D title = GetAlphaTintedTexture(
+        Texture2D title = GetFactionMask(
             assets,
             theme.WindowTitleTheme?.ActiveImagePath,
-            theme.GetActiveWindowTitleColor()
+            theme,
+            FactionMaskColor.ActiveWindowTitleColorHex
         );
         StrategyHudView hud = window.GetComponentInChildren<StrategyHudView>(true);
         if (hud != null)
@@ -87,10 +88,11 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
                                     background,
                                     entity.SmallTexture,
                                     index == 0
-                                        ? GetAlphaTintedTexture(
+                                        ? GetFactionMask(
                                             assets,
                                             windowTheme?.SelectionImagePath,
-                                            theme.GetSelectionColor()
+                                            theme,
+                                            FactionMaskColor.SelectionColorHex
                                         )
                                         : null
                                 )
@@ -112,10 +114,11 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
             FleetWindowTab activeTab = FleetWindowTab.CapitalShips;
             Texture2D detailBackground = GetTexture(assets, windowTheme?.DetailBackgroundImagePath);
             Texture2D banner = GetTexture(assets, windowTheme?.BannerImagePath);
-            Texture2D detailSelection = GetAlphaTintedTexture(
+            Texture2D detailSelection = GetFactionMask(
                 assets,
                 icons?.FleetDetailSelectionImagePath,
-                theme.GetSelectionColor()
+                theme,
+                FactionMaskColor.SelectionColorHex
             );
             Texture2D constructionBackground = GetTexture(
                 assets,
@@ -150,7 +153,7 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
                     title,
                     "Preview system",
                     detailBackground,
-                    CreateFleetRows(ships, icons, theme.GetSelectionColor(), assets),
+                    CreateFleetRows(ships, icons, theme, assets),
                     activeTab,
                     0,
                     true,
@@ -203,15 +206,17 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
                 assets,
                 windowTheme?.ControlTab?.InactiveImagePath
             );
-            Texture2D activeLane = GetAlphaTintedTexture(
+            Texture2D activeLane = GetFactionMask(
                 assets,
                 laneTheme?.ActiveImagePath,
-                theme.GetActiveBuildingPaneColor()
+                theme,
+                FactionMaskColor.ActiveBuildingPaneColorHex
             );
-            Texture2D inactiveLane = GetAlphaTintedTexture(
+            Texture2D inactiveLane = GetFactionMask(
                 assets,
                 laneTheme?.InactiveImagePath,
-                theme.GetInactiveBuildingPaneColor()
+                theme,
+                FactionMaskColor.InactiveBuildingPaneColorHex
             );
             facility.Render(
                 new FacilityWindowRenderData(
@@ -258,10 +263,11 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
                                 new FacilityInventoryItemRenderData(item.SmallTexture, index == 0)
                         )
                         .ToArray(),
-                    GetAlphaTintedTexture(
+                    GetFactionMask(
                         assets,
                         windowTheme?.SelectionImagePath,
-                        theme.GetSelectionColor()
+                        theme,
+                        FactionMaskColor.SelectionColorHex
                     )
                 )
             );
@@ -317,10 +323,11 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
                 assets,
                 theme.MissionIcons?.GetImagePath(MissionIconKeys.Reconnaissance, true)
             );
-            Texture2D selection = GetAlphaTintedTexture(
+            Texture2D selection = GetFactionMask(
                 assets,
                 windowTheme?.SelectionImagePath,
-                theme.GetSelectionColor()
+                theme,
+                FactionMaskColor.SelectionColorHex
             );
             missions.Render(
                 new MissionsWindowRenderData(
@@ -895,10 +902,10 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
         );
         Texture2D[] markerStates =
         {
-            GetAlphaTintedTexture(assets, icons?.Small, theme.GetPlanetMarkerColor()),
-            GetAlphaTintedTexture(assets, icons?.Medium, theme.GetPlanetMarkerColor()),
-            GetAlphaTintedTexture(assets, icons?.Large, theme.GetPlanetMarkerColor()),
-            GetAlphaTintedTexture(assets, icons?.XL, theme.GetPlanetMarkerColor()),
+            GetFactionMask(assets, icons?.Small, theme, FactionMaskColor.PlanetMarkerColorHex),
+            GetFactionMask(assets, icons?.Medium, theme, FactionMaskColor.PlanetMarkerColorHex),
+            GetFactionMask(assets, icons?.Large, theme, FactionMaskColor.PlanetMarkerColorHex),
+            GetFactionMask(assets, icons?.XL, theme, FactionMaskColor.PlanetMarkerColorHex),
             GetTexture(assets, background?.UnexploredPlanetIconPath),
         };
         Texture2D defaultMarker = markerStates[0];
@@ -1077,13 +1084,13 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
     /// </summary>
     /// <param name="ships">The faction's representative capital ships.</param>
     /// <param name="icons">The selected faction's fleet-list state artwork.</param>
-    /// <param name="selectionColor">The selected faction's selection-frame color.</param>
+    /// <param name="theme">The faction that supplies the selection-frame color.</param>
     /// <param name="assets">The working pack's resolved artwork.</param>
     /// <returns>The populated fleet-list presentation.</returns>
     private static FleetListRowRenderData[] CreateFleetRows(
         IReadOnlyList<ContentEditorArtworkPreviewEntity> ships,
         UnitTileIcons icons,
-        Color selectionColor,
+        FactionTheme theme,
         ContentAssets assets
     )
     {
@@ -1098,7 +1105,12 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
                 GetTexture(assets, icons?.FleetStarfightersBadgeImagePath),
                 GetTexture(assets, icons?.FleetTroopsBadgeImagePath),
                 GetTexture(assets, icons?.FleetPersonnelBadgeImagePath),
-                GetAlphaTintedTexture(assets, icons?.FleetListSelectionImagePath, selectionColor),
+                GetFactionMask(
+                    assets,
+                    icons?.FleetListSelectionImagePath,
+                    theme,
+                    FactionMaskColor.SelectionColorHex
+                ),
                 0,
                 showTreeBranch: ships.Count > 0,
                 treeContinuesBelow: ships.Count > 0,
@@ -1449,20 +1461,20 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
     }
 
     /// <summary>
-    /// Resolves a shared alpha mask with a faction-configured preview color.
+    /// Resolves faction masks with the same color scheme as gameplay and keeps the setting identity.
     /// </summary>
     /// <param name="assets">The working pack's resolved artwork.</param>
-    /// <param name="address">The optional shared mask address.</param>
-    /// <param name="color">The color applied independently of the source RGB.</param>
-    /// <returns>The tinted preview texture, or null for an absent address.</returns>
-    private static Texture2D GetAlphaTintedTexture(
+    /// <param name="address">The optional artwork address.</param>
+    /// <param name="theme">The faction theme supplying the artwork and optional scheme.</param>
+    /// <param name="role">The setting that controls the tint.</param>
+    /// <returns>The texture shown by the preview.</returns>
+    private static Texture2D GetFactionMask(
         ContentAssets assets,
         string address,
-        Color color
-    )
-    {
-        return string.IsNullOrWhiteSpace(address)
-            ? null
-            : assets.GetAlphaTintedTexture(address, (Color32)color);
-    }
+        FactionTheme theme,
+        FactionMaskColor role
+    ) =>
+        theme.GetMaskTint(role) is Color tint
+            ? assets.GetAlphaTintedTexture(address, (Color32)tint, role)
+            : GetTexture(assets, address);
 }

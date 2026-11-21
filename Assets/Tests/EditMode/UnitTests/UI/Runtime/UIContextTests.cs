@@ -216,6 +216,35 @@ namespace Rebellion.Tests.UI.Runtime
         }
 
         [Test]
+        public void GetFactionMask_ThemeWithoutColorScheme_ReturnsAuthoredTexture()
+        {
+            Texture2D authored = new(1, 1);
+            UIContext context = new(
+                _game,
+                _themeLibrary,
+                _encyclopediaCatalog,
+                _ => authored,
+                loadAlphaTintedTexture: (_, _) =>
+                    throw new AssertionException("Legacy artwork was tinted.")
+            );
+            try
+            {
+                Assert.That(
+                    context.GetFactionMask(
+                        "Pack/Shared/selection",
+                        new FactionTheme { FactionPrimaryColorHex = "FF0000" },
+                        FactionMaskColor.SelectionColorHex
+                    ),
+                    Is.SameAs(authored)
+                );
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(authored);
+            }
+        }
+
+        [Test]
         public void GetEntityTexture_NullOrUnmappedEntity_ReturnsNull()
         {
             Assert.IsNull(_context.GetEntityTexture(null, false));

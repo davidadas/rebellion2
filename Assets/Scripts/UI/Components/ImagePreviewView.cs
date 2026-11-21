@@ -11,7 +11,6 @@ using UnityEngine.UI;
 public sealed class ImagePreviewView
     : MonoBehaviour,
         ICancelable,
-        IPointerClickHandler,
         IBeginDragHandler,
         IDragHandler,
         IEndDragHandler
@@ -32,56 +31,19 @@ public sealed class ImagePreviewView
     private RectTransform previewPanel;
 
     [SerializeField]
-    private Button nextSizeButton;
-
-    [SerializeField]
-    private Button rerollButton;
-
-    [SerializeField]
     private Button applyButton;
 
     [SerializeField]
     private TMP_Text layerInstructions;
 
-    [SerializeField]
-    private RectTransform layerMarker;
-
-    [SerializeField]
-    private Button nextLayerButton;
-
-    [SerializeField]
-    private Button addLayerButton;
-
-    [SerializeField]
-    private Button removeLayerButton;
-
-    [SerializeField]
-    private Button duplicateLayerButton;
-
-    private Action<int> selectLayer;
-    private Action<int, Vector2> moveLayer;
-    private Action removeLayer;
-    private Action duplicateLayer;
-    private Action undoLayerEdit;
-    private Action redoLayerEdit;
-    private Action closeDraft;
     private Vector2 dragStart;
     private RectTransform dragCanvas;
     private Vector2 cutOrigin;
-    private Rect layerOrigin;
-    private int draggedLayer = -1;
-    private int selectedLayer = -1;
     private int draggedCut = -1;
     private Action<int, Vector2> moveCut;
-
     private bool bound;
-    private IReadOnlyList<ArtworkEffectPreviewFrame> generatedPreviews;
-    private readonly List<RawImage> effectImages = new();
-    private RawImage subjectOverlay;
     private readonly List<(RectTransform Card, RawImage Image, RawImage Background)> cutCards =
         new();
-    private string generatedTitle;
-    private int previewIndex;
 
     /// <summary>
     /// Shows one cached texture in the focused artwork viewer.
@@ -93,220 +55,8 @@ public sealed class ImagePreviewView
         if (texture == null)
             throw new ArgumentNullException(nameof(texture));
         VerifyReferences();
-        ClearGenerated();
+        ClearCuts();
         Present(texture, address + "  /  " + texture.width + " x " + texture.height);
-    }
-
-    /// <summary>
-    /// Shows a live effect draft whose layers can be selected and moved over the gameplay frame.
-    /// </summary>
-    /// <param name="title">The unit and state being edited.</param>
-    /// <param name="previews">The borrowed frame textures and their positioned effects.</param>
-    /// <param name="initialFrame">The gameplay size chosen on the artwork page.</param>
-    /// <param name="selected">The layer selected in the draft.</param>
-    /// <param name="select">Records the selected layer.</param>
-    /// <param name="move">Commits a single layer translation.</param>
-    /// <param name="add">Adds another layer when the effect supports it.</param>
-    /// <param name="duplicate">Copies the selected layer.</param>
-    /// <param name="remove">Removes the selected layer.</param>
-    /// <param name="reroll">Replaces the draft with a complete generation.</param>
-    /// <param name="addLabel">The label for adding the effect type.</param>
-    /// <param name="generateLabel">The label for replacing the complete draft.</param>
-    /// <param name="save">Writes the current draft.</param>
-    /// <param name="undo">Reverts the last draft operation.</param>
-    /// <param name="redo">Repeats the last reverted draft operation.</param>
-    /// <param name="closed">Releases the draft after the preview is dismissed.</param>
-    internal void ShowGenerated(
-        string title,
-        IReadOnlyList<ArtworkEffectPreviewFrame> previews,
-        int initialFrame,
-        int selected,
-        Action<int> select,
-        Action<int, Vector2> move,
-        Action add,
-        Action duplicate,
-        Action remove,
-        Action reroll,
-        string addLabel,
-        string generateLabel,
-        Action save,
-        Action undo,
-        Action redo,
-        Action closed
-    )
-    {
-        VerifyReferences();
-        int previousIndex = generatedPreviews == null ? initialFrame : previewIndex;
-        ClearGenerated();
-        generatedPreviews = previews;
-        generatedTitle = title;
-        previewIndex = Mathf.Min(previousIndex, previews.Count - 1);
-        selectedLayer = selected;
-        selectLayer = select;
-        moveLayer = move;
-        removeLayer = remove;
-        duplicateLayer = duplicate;
-        undoLayerEdit = undo;
-        redoLayerEdit = redo;
-        closeDraft = closed;
-        SetAction(nextSizeButton, previews.Count > 1, SelectNextFrame);
-        rerollButton.GetComponentInChildren<TMP_Text>().text = generateLabel;
-        addLayerButton.GetComponentInChildren<TMP_Text>().text = addLabel;
-        SetAction(rerollButton, true, () => reroll());
-        applyButton.GetComponentInChildren<TMP_Text>().text = "Save";
-        SetAction(applyButton, true, () => save());
-        SetAction(nextLayerButton, true, SelectNextLayer);
-        SetAction(addLayerButton, add != null, () => add());
-        SetAction(duplicateLayerButton, duplicate != null, DuplicateSelectedLayer);
-        SetAction(removeLayerButton, true, RemoveSelectedLayer);
-        artworkSlot.offsetMin = new Vector2(artworkSlot.offsetMin.x, 108);
-        image.raycastTarget = true;
-        LayoutGeneratedPanel();
-        PresentGeneratedSize();
-    }
-
-    /// <summary>
-    /// Shows the next size of the same draft.
-    /// </summary>
-    private void SelectNextFrame()
-    {
-        previewIndex = (previewIndex + 1) % generatedPreviews.Count;
-        PresentGeneratedSize();
-    }
-
-    /// <summary>
-    /// Cycles through layers when their artwork overlaps.
-    /// </summary>
-    private void SelectNextLayer()
-    {
-        var layers = generatedPreviews[previewIndex].Layers;
-        if (layers.Count == 0)
-            return;
-        int position = 0;
-        for (int index = 0; index < layers.Count; index++)
-            if (layers[index].Index == selectedLayer)
-                position = (index + 1) % layers.Count;
-        SelectLayer(layers[position].Index);
-    }
-
-    /// <summary>
-    /// Removes the selected effect from the draft.
-    /// </summary>
-    private void RemoveSelectedLayer()
-    {
-        if (selectedLayer >= 0)
-            removeLayer?.Invoke();
-    }
-
-    /// <summary>
-    /// Duplicates the selected layer while keeping its current artwork and placement.
-    /// </summary>
-    private void DuplicateSelectedLayer()
-    {
-        if (selectedLayer >= 0)
-            duplicateLayer?.Invoke();
-    }
-
-    /// <summary>
-    /// Routes editor shortcuts to the active artwork draft.
-    /// </summary>
-    /// <param name="key">The incoming native key event.</param>
-    /// <returns>Whether this preview handled the key.</returns>
-    internal bool HandleKeyboardShortcut(Event key)
-    {
-        if (generatedPreviews == null || key?.type != EventType.KeyDown || key.alt)
-            return false;
-        bool command = key.control || key.command;
-        Action action = key.keyCode switch
-        {
-            KeyCode.Backspace or KeyCode.Delete => RemoveSelectedLayer,
-            KeyCode.Tab => SelectNextLayer,
-            KeyCode.D when command => DuplicateSelectedLayer,
-            KeyCode.Z when command && key.shift => redoLayerEdit,
-            KeyCode.Z when command => undoLayerEdit,
-            KeyCode.Y when command => redoLayerEdit,
-            KeyCode.S when command => () => applyButton.onClick.Invoke(),
-            _ => null,
-        };
-        if (action == null)
-            return false;
-        action();
-        key.Use();
-        return true;
-    }
-
-    /// <summary>
-    /// Selects the layer under the pointer by its visible pixels.
-    /// </summary>
-    /// <param name="eventData">The completed click.</param>
-    public void OnPointerClick(PointerEventData eventData)
-    {
-        if (
-            generatedPreviews != null
-            && dragCanvas == null
-            && !eventData.dragging
-            && eventData.button == PointerEventData.InputButton.Left
-        )
-            SelectLayer(PickLayer(eventData.position, eventData.pressEventCamera));
-    }
-
-    /// <summary>
-    /// Finds the foremost visible effect at a screen position.
-    /// </summary>
-    /// <param name="position">The pointer position.</param>
-    /// <param name="camera">The preview camera, when applicable.</param>
-    /// <returns>The draft layer index, or minus one outside the effects.</returns>
-    private int PickLayer(Vector2 position, Camera camera)
-    {
-        RectTransform rect = image.rectTransform;
-        if (
-            !RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                rect,
-                position,
-                camera,
-                out Vector2 local
-            ) || !rect.rect.Contains(local)
-        )
-            return -1;
-        Vector2 point = (local - rect.rect.min) / rect.rect.size;
-        var layers = generatedPreviews[previewIndex].Layers;
-        for (int index = layers.Count - 1; index >= 0; index--)
-        {
-            var layer = layers[index];
-            if (!layer.Bounds.Contains(point))
-                continue;
-            Vector2 uv = (point - layer.Bounds.min) / layer.Bounds.size;
-            if (layer.Texture.GetPixelBilinear(uv.x, uv.y).a > 1f / 255f)
-                return layer.Index;
-        }
-        return -1;
-    }
-
-    /// <summary>
-    /// Highlights the selected layer and updates the available commands.
-    /// </summary>
-    /// <param name="index">The draft layer index, or minus one to clear selection.</param>
-    private void SelectLayer(int index)
-    {
-        selectedLayer = index;
-        selectLayer?.Invoke(index);
-        var layers = generatedPreviews[previewIndex].Layers;
-        foreach (var layer in layers)
-            if (layer.Index == index)
-            {
-                PositionLayerOutline(layer.Bounds);
-                layerMarker.gameObject.SetActive(true);
-                layerInstructions.text = $"{layer.Name}. Drag to move.";
-                removeLayerButton.interactable = true;
-                if (duplicateLayerButton != null)
-                    duplicateLayerButton.interactable = duplicateLayer != null;
-                return;
-            }
-        layerMarker.gameObject.SetActive(false);
-        layerInstructions.text = "Select a layer on the artwork.";
-        removeLayerButton.interactable = false;
-        if (duplicateLayerButton != null)
-            duplicateLayerButton.interactable = false;
     }
 
     /// <summary>
@@ -332,22 +82,6 @@ public sealed class ImagePreviewView
             dragCanvas = cut.Background.rectTransform;
             cutOrigin = cut.Image.rectTransform.anchoredPosition;
         }
-        else if (moveLayer != null)
-        {
-            int picked = PickLayer(eventData.pressPosition, eventData.pressEventCamera);
-            if (picked < 0)
-                return;
-            SelectLayer(picked);
-            var layers = generatedPreviews[previewIndex].Layers;
-            for (int index = 0; index < layers.Count; index++)
-                if (layers[index].Index == picked)
-                {
-                    draggedLayer = index;
-                    layerOrigin = layers[index].Bounds;
-                    break;
-                }
-            dragCanvas = image.rectTransform;
-        }
         if (
             dragCanvas != null
             && !RectTransformUtility.ScreenPointToLocalPointInRectangle(
@@ -372,12 +106,6 @@ public sealed class ImagePreviewView
         if (draggedCut >= 0)
             cutCards[draggedCut].Image.rectTransform.anchoredPosition =
                 cutOrigin + offset * dragCanvas.rect.size;
-        else if (draggedLayer >= 0)
-        {
-            Rect placed = new(layerOrigin.position + ClampLayerOffset(offset), layerOrigin.size);
-            SetLayerRect(effectImages[draggedLayer].rectTransform, placed);
-            PositionLayerOutline(placed);
-        }
     }
 
     /// <summary>
@@ -396,23 +124,6 @@ public sealed class ImagePreviewView
             draggedCut = -1;
             moveCut?.Invoke(index, offset);
         }
-        else if (draggedLayer >= 0)
-        {
-            int layer = generatedPreviews[previewIndex].Layers[draggedLayer].Index;
-            draggedLayer = -1;
-            moveLayer?.Invoke(layer, ClampLayerOffset(offset));
-        }
-    }
-
-    /// <summary>
-    /// Keeps a layer's center within the editable canvas during a drag.
-    /// </summary>
-    /// <param name="offset">The proposed normalized movement.</param>
-    /// <returns>The movement applied to the layer.</returns>
-    private Vector2 ClampLayerOffset(Vector2 offset)
-    {
-        Vector2 center = layerOrigin.center + offset;
-        return new Vector2(Mathf.Clamp01(center.x), Mathf.Clamp01(center.y)) - layerOrigin.center;
     }
 
     /// <summary>
@@ -435,28 +146,6 @@ public sealed class ImagePreviewView
     }
 
     /// <summary>
-    /// Draws the selection outline around the actual effect texture.
-    /// </summary>
-    /// <param name="bounds">The visible artwork bounds in normalized image coordinates.</param>
-    private void PositionLayerOutline(Rect bounds)
-    {
-        SetLayerRect(layerMarker, bounds);
-        layerMarker.SetAsLastSibling();
-    }
-
-    /// <summary>
-    /// Places a live preview graphic in normalized canvas coordinates.
-    /// </summary>
-    /// <param name="target">The preview rectangle.</param>
-    /// <param name="bounds">The rectangle relative to the image canvas.</param>
-    private static void SetLayerRect(RectTransform target, Rect bounds)
-    {
-        target.anchorMin = bounds.min;
-        target.anchorMax = bounds.max;
-        target.offsetMin = target.offsetMax = Vector2.zero;
-    }
-
-    /// <summary>
     /// Displays all standard artwork outputs together and lets the author apply those exact files.
     /// </summary>
     /// <param name="previews">The owned generated textures, their labels, and optional borrowed backgrounds.</param>
@@ -474,7 +163,7 @@ public sealed class ImagePreviewView
     )
     {
         VerifyReferences();
-        ClearGenerated();
+        ClearCuts();
         image.gameObject.SetActive(false);
         moveCut = move;
         foreach (var preview in previews)
@@ -531,7 +220,7 @@ public sealed class ImagePreviewView
         artworkSlot.offsetMin = new Vector2(artworkSlot.offsetMin.x, moveCut == null ? 78 : 108);
         gameObject.SetActive(true);
         transform.SetAsLastSibling();
-        LayoutGeneratedPanel();
+        LayoutGallery();
     }
 
     /// <summary>
@@ -588,81 +277,24 @@ public sealed class ImagePreviewView
     }
 
     /// <summary>
-    /// Presents the active size and the default dimensions of its generated asset.
-    /// </summary>
-    private void PresentGeneratedSize()
-    {
-        ClearEffectImages();
-        var preview = generatedPreviews[previewIndex];
-        Present(
-            preview.BaseImage,
-            $"{generatedTitle}  /  {preview.Caption} ({preview.BaseImage.width} \u00D7 {preview.BaseImage.height})"
-        );
-        foreach (var layer in preview.Layers)
-        {
-            RawImage graphic = CreateCutLayer(image.rectTransform, layer.Name, layer.Texture);
-            SetLayerRect(graphic.rectTransform, layer.Bounds);
-            effectImages.Add(graphic);
-        }
-        if (preview.SubjectOverlay != null)
-        {
-            subjectOverlay = CreateCutLayer(
-                image.rectTransform,
-                "Transit subject",
-                preview.SubjectOverlay
-            );
-            SetLayerRect(subjectOverlay.rectTransform, new Rect(0, 0, 1, 1));
-        }
-        layerInstructions.gameObject.SetActive(true);
-        nextLayerButton.interactable = preview.Layers.Count > 1;
-        bool selectedIsVisible = false;
-        foreach (var layer in preview.Layers)
-            selectedIsVisible |= layer.Index == selectedLayer;
-        SelectLayer(
-            selectedIsVisible ? selectedLayer
-            : preview.Layers.Count > 0 ? preview.Layers[0].Index
-            : -1
-        );
-    }
-
-    /// <summary>
-    /// Clears the borrowed effect graphics when changing sizes or dismissing the preview.
-    /// </summary>
-    private void ClearEffectImages()
-    {
-        foreach (RawImage layer in effectImages)
-        {
-            layer.gameObject.SetActive(false);
-            ReleasePreviewObject(layer.gameObject);
-        }
-        effectImages.Clear();
-        if (subjectOverlay != null)
-        {
-            subjectOverlay.gameObject.SetActive(false);
-            ReleasePreviewObject(subjectOverlay.gameObject);
-            subjectOverlay = null;
-        }
-    }
-
-    /// <summary>
     /// Keeps the variation viewer compact as the workspace window changes size.
     /// </summary>
     private void OnRectTransformDimensionsChange()
     {
-        if (generatedPreviews != null || cutCards.Count > 0)
-            LayoutGeneratedPanel();
+        if (cutCards.Count > 0)
+            LayoutGallery();
     }
 
     /// <summary>
     /// Centers the generated image and controls in a panel sized for gameplay artwork.
     /// </summary>
-    private void LayoutGeneratedPanel()
+    private void LayoutGallery()
     {
         Rect available = ((RectTransform)transform).rect;
         previewPanel.anchorMin = previewPanel.anchorMax = new Vector2(0.5f, 0.5f);
         previewPanel.anchoredPosition = Vector2.zero;
         previewPanel.sizeDelta = new Vector2(
-            Mathf.Min(cutCards.Count > 0 ? 1120 : 840, available.width - 48),
+            Mathf.Min(1120, available.width - 48),
             Mathf.Min(440, available.height - 48)
         );
         if (cutCards.Count > 0)
@@ -732,11 +364,9 @@ public sealed class ImagePreviewView
     /// <summary>
     /// Discards all temporary canvases and restores the ordinary artwork viewer layout.
     /// </summary>
-    private void ClearGenerated()
+    private void ClearCuts()
     {
-        bool restorePanel = generatedPreviews != null || cutCards.Count > 0;
-        ClearEffectImages();
-        generatedPreviews = null;
+        bool restorePanel = cutCards.Count > 0;
         foreach (var card in cutCards)
         {
             card.Card.gameObject.SetActive(false);
@@ -753,27 +383,9 @@ public sealed class ImagePreviewView
             previewPanel.offsetMin = new Vector2(160, 100);
             previewPanel.offsetMax = new Vector2(-160, -100);
         }
-        SetAction(nextSizeButton, false, null);
-        SetAction(rerollButton, false, null);
         SetAction(applyButton, false, null);
-        SetAction(addLayerButton, false, null);
-        SetAction(duplicateLayerButton, false, null);
-        SetAction(nextLayerButton, false, null);
-        SetAction(removeLayerButton, false, null);
-        if (layerMarker != null)
-            layerMarker.gameObject.SetActive(false);
         if (layerInstructions != null)
             layerInstructions.gameObject.SetActive(false);
-        if (image != null)
-            image.raycastTarget = false;
-        moveLayer = null;
-        selectLayer = null;
-        removeLayer = null;
-        duplicateLayer = null;
-        undoLayerEdit = null;
-        redoLayerEdit = null;
-        closeDraft = null;
-        draggedLayer = -1;
         moveCut = null;
         dragCanvas = null;
         draggedCut = -1;
@@ -802,77 +414,13 @@ public sealed class ImagePreviewView
         if (!gameObject.activeSelf)
             return false;
         image.texture = null;
-        Action finished = closeDraft;
-        ClearGenerated();
+        ClearCuts();
         gameObject.SetActive(false);
-        finished?.Invoke();
         return true;
     }
 
     /// <summary>
     /// Releases any owned preview textures during workspace teardown.
     /// </summary>
-    private void OnDestroy()
-    {
-        Action finished = closeDraft;
-        ClearGenerated();
-        finished?.Invoke();
-    }
-}
-
-/// <summary>
-/// Describes the visible texture and position of one editable effect.
-/// </summary>
-internal readonly struct ArtworkEffectLayerPreview
-{
-    internal int Index { get; }
-    internal string Name { get; }
-    internal Texture2D Texture { get; }
-    internal Rect Bounds { get; }
-
-    /// <summary>
-    /// Captures a layer's position and artwork in one preview.
-    /// </summary>
-    /// <param name="index">The source draft index.</param>
-    /// <param name="name">The displayed layer name.</param>
-    /// <param name="texture">The borrowed cropped effect.</param>
-    /// <param name="bounds">Its current normalized canvas rectangle.</param>
-    internal ArtworkEffectLayerPreview(int index, string name, Texture2D texture, Rect bounds)
-    {
-        Index = index;
-        Name = name;
-        Texture = texture;
-        Bounds = bounds;
-    }
-}
-
-/// <summary>
-/// Describes a layered preview for one output size.
-/// </summary>
-internal readonly struct ArtworkEffectPreviewFrame
-{
-    internal string Caption { get; }
-    internal Texture2D BaseImage { get; }
-    internal Texture2D SubjectOverlay { get; }
-    internal IReadOnlyList<ArtworkEffectLayerPreview> Layers { get; }
-
-    /// <summary>
-    /// Captures the layer stack for one output size.
-    /// </summary>
-    /// <param name="caption">The output's label.</param>
-    /// <param name="baseImage">The fixed gameplay background.</param>
-    /// <param name="subjectOverlay">The optional unit drawn above the transit effects.</param>
-    /// <param name="layers">The editable effects in back-to-front order.</param>
-    internal ArtworkEffectPreviewFrame(
-        string caption,
-        Texture2D baseImage,
-        Texture2D subjectOverlay,
-        IReadOnlyList<ArtworkEffectLayerPreview> layers
-    )
-    {
-        Caption = caption;
-        BaseImage = baseImage;
-        SubjectOverlay = subjectOverlay;
-        Layers = layers;
-    }
+    private void OnDestroy() => ClearCuts();
 }

@@ -189,6 +189,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private ImagePreviewView imagePreview;
 
     [SerializeField]
+    private ContentEditorArtworkWorkspace artworkWorkspace;
+
+    [SerializeField]
     private AudioSource previewAudio;
 
     private readonly ContentEditorNavigation navigation = new ContentEditorNavigation();
@@ -223,7 +226,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     > ArtworkCutsRequested;
     internal event Action<
         ContentPackEditorField,
-        ContentEditorArtworkEffect
+        ContentEditorArtworkEffect,
+        bool
     > ArtworkEffectRequested;
     public event Action SaveRequested;
     internal event Action RestoreTravelArtworkRequested;
@@ -429,6 +433,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || selectionDialog == null
             || confirmation == null
             || imagePreview == null
+            || artworkWorkspace == null
             || previewAudio == null
             || resetSectionButton == null
             || generationTabs == null
@@ -668,6 +673,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             menu.TryCancel()
             || imagePreview.TryCancel()
             || confirmation.TryCancel()
+            || artworkWorkspace.TryCancel()
             || packDialog.TryCancel()
         )
             return true;
@@ -724,6 +730,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         HideValidationIssues();
         confirmation.TryCancel();
         imagePreview.TryCancel();
+        artworkWorkspace.Dismiss();
         menu.Reset();
         FinishMapEdit();
         string selectedKey = project == value ? selectedRecord?.Key : null;
@@ -1087,6 +1094,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         map.Clear();
         StopAudioPreview();
         imagePreview.TryCancel();
+        artworkWorkspace.Dismiss();
         selectedRecord = null;
         selectedPage = null;
         textRedoTarget = null;
@@ -1404,8 +1412,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 key.Use();
             return handled;
         }
-        if (imagePreview.gameObject.activeSelf && workbench.interactable)
-            return imagePreview.HandleKeyboardShortcut(key);
+        if (artworkWorkspace.gameObject.activeSelf && workbench.interactable)
+            return !confirmation.gameObject.activeSelf
+                && artworkWorkspace.HandleKeyboardShortcut(key);
         if (
             !workbench.interactable
             || packDialog.IsOpen
@@ -2032,65 +2041,48 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         imagePreview.Show(texture, address);
 
     /// <summary>
-    /// Presents an editable artwork draft in the modal preview.
+    /// Presents an editable gameplay artwork draft in the dedicated workspace.
     /// </summary>
-    /// <param name="caption">The unit and effect being edited.</param>
+    /// <param name="name">The effect edited in the workspace.</param>
+    /// <param name="unit">The selected unit and draft source.</param>
     /// <param name="previews">The previews for each destination.</param>
     /// <param name="initialFrame">The gameplay size chosen on the artwork page.</param>
     /// <param name="selected">The currently selected layer.</param>
-    /// <param name="select">Records selection changes.</param>
-    /// <param name="move">Moves an individual layer.</param>
-    /// <param name="add">Adds a layer where supported.</param>
-    /// <param name="duplicate">Copies the selected layer.</param>
-    /// <param name="remove">Removes the selected layer.</param>
-    /// <param name="regenerate">Generates a fresh draft.</param>
-    /// <param name="addLabel">The label for adding the effect type.</param>
-    /// <param name="generateLabel">The label for replacing the complete draft.</param>
-    /// <param name="save">Applies the current draft.</param>
-    /// <param name="undo">Undoes a draft operation.</param>
-    /// <param name="redo">Redoes a draft operation.</param>
-    /// <param name="closed">Releases the draft's resources.</param>
+    /// <param name="changed">Whether the draft has unsaved edits.</param>
+    /// <param name="commands">The controller's current edit operations.</param>
     internal void ShowGeneratedArtwork(
-        string caption,
+        string name,
+        string unit,
         IReadOnlyList<ArtworkEffectPreviewFrame> previews,
         int initialFrame,
         int selected,
-        Action<int> select,
-        Action<int, Vector2> move,
-        Action add,
-        Action duplicate,
-        Action remove,
-        Action regenerate,
-        string addLabel,
-        string generateLabel,
-        Action save,
-        Action undo,
-        Action redo,
-        Action closed
+        bool changed,
+        ArtworkEffectActions commands
     ) =>
-        imagePreview.ShowGenerated(
-            caption,
+        artworkWorkspace.Show(
+            name,
+            unit,
             previews,
             initialFrame,
             selected,
-            select,
-            move,
-            add,
-            duplicate,
-            remove,
-            regenerate,
-            addLabel,
-            generateLabel,
-            save,
-            undo,
-            redo,
-            closed
+            changed,
+            commands,
+            (save, discard) =>
+                confirmation.Show(
+                    "Save changes to this artwork?",
+                    "Save artwork",
+                    save,
+                    "Discard",
+                    discard
+                )
         );
 
     /// <summary>
-    /// Dismisses a successfully saved artwork draft.
+    /// Guards native window closure while a draft has unsaved edits.
     /// </summary>
-    internal void CloseArtworkDraft() => imagePreview.TryCancel();
+    /// <param name="next">Resumes closing after the artwork decision.</param>
+    /// <returns>Whether the draft is waiting on a decision.</returns>
+    internal bool ConfirmPendingArtwork(Action next) => artworkWorkspace.ConfirmPending(next);
 
     /// <summary>
     /// Gets the theme backdrop shared by personnel and troop transit cards.
@@ -2151,10 +2143,12 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// </summary>
     /// <param name="field">The state image and preview size selected by the author.</param>
     /// <param name="effect">The requested gameplay effect.</param>
+    /// <param name="generate">Whether the selected slot should be generated directly.</param>
     private void RequestArtworkEffect(
         ContentPackEditorField field,
-        ContentEditorArtworkEffect effect
-    ) => ArtworkEffectRequested?.Invoke(field, effect);
+        ContentEditorArtworkEffect effect,
+        bool generate
+    ) => ArtworkEffectRequested?.Invoke(field, effect, generate);
 
     /// <summary>
     /// Plays a clip whose loading and lifetime are owned by the application controller.

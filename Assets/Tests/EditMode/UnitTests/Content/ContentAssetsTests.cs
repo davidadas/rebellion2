@@ -154,6 +154,43 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void GetAlphaTintedTexture_SharedSourceAndColor_KeepsSeparateSettingIdentities()
+        {
+            const string address = "Application/Textures/mask";
+            string path = Path.Combine(_contentRoot, "Application", "Textures", "mask.png");
+            Texture2D source = new(1, 1, TextureFormat.RGBA32, false);
+            try
+            {
+                source.SetPixel(0, 0, Color.white);
+                source.Apply();
+                File.WriteAllBytes(path, source.EncodeToPNG());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(source);
+            }
+            using ContentAssets assets = CreateAssets();
+            var active = assets.GetAlphaTintedTexture(
+                address,
+                Color.red,
+                FactionMaskColor.ActiveWindowTitleColorHex
+            );
+            var inactive = assets.GetAlphaTintedTexture(
+                address,
+                Color.red,
+                FactionMaskColor.InactiveWindowTitleColorHex
+            );
+
+            Assert.That(
+                assets.TryGetTintRole(active, out var activeRole)
+                    && assets.TryGetTintRole(inactive, out var inactiveRole)
+                    && activeRole == FactionMaskColor.ActiveWindowTitleColorHex
+                    && inactiveRole == FactionMaskColor.InactiveWindowTitleColorHex,
+                Is.True
+            );
+        }
+
+        [Test]
         public void GetTexture_MissingAddress_ReturnsNull()
         {
             using ContentAssets assets = CreateAssets();

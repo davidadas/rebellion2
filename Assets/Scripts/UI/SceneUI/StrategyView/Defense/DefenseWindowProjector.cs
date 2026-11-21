@@ -89,11 +89,12 @@ internal sealed class DefenseWindowProjector
         return new DefenseWindowRenderData(
             window.X,
             window.Y,
-            uiContext.GetAlphaTintedTexture(
+            uiContext.GetFactionMask(
                 active ? titleTheme?.ActiveImagePath : titleTheme?.InactiveImagePath,
+                factionTheme,
                 active
-                    ? factionTheme?.GetActiveWindowTitleColor() ?? Color.white
-                    : factionTheme?.GetInactiveWindowTitleColor() ?? Color.white
+                    ? FactionMaskColor.ActiveWindowTitleColorHex
+                    : FactionMaskColor.InactiveWindowTitleColorHex
             ),
             planet?.Planet?.GetDisplayName(),
             normalizedTab,
@@ -403,7 +404,7 @@ internal sealed class DefenseWindowProjector
     {
         FactionTheme theme = uiContext.GetTheme(ownerFactionId);
         string path = theme?.StrategyWindows?.Defense?.SelectionImagePath;
-        return uiContext.GetAlphaTintedTexture(path, theme?.GetSelectionColor() ?? Color.white);
+        return uiContext.GetFactionMask(path, theme, FactionMaskColor.SelectionColorHex);
     }
 
     /// <summary>

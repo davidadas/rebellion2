@@ -1313,13 +1313,16 @@ namespace Rebellion.Tests.ContentEditor.UI
             RenderSection("Artwork");
 
             HashSet<string> members = new(StringComparer.Ordinal);
-            TMP_Dropdown size = view.GetComponentsInChildren<TMP_Dropdown>()
-                .SingleOrDefault(dropdown => dropdown.name == "ArtworkStateSizeDropdown");
-            int count = size?.options.Count ?? 1;
+            Button[] sizes = view.GetComponentsInChildren<Button>()
+                .Where(button =>
+                    button.name.StartsWith("UnitArtworkSize", StringComparison.Ordinal)
+                )
+                .ToArray();
+            int count = Math.Max(1, sizes.Length);
             for (int index = 0; index < count; index++)
             {
-                if (size != null)
-                    size.value = index;
+                if (sizes.Length > 0)
+                    sizes[index].onClick.Invoke();
                 ContentEditorFieldView[] fields =
                     view.GetComponentsInChildren<ContentEditorFieldView>();
                 Assert.IsTrue(fields.All(field => field.Field.Record.Element == unit.Element));
@@ -1752,9 +1755,9 @@ namespace Rebellion.Tests.ContentEditor.UI
                 );
             SelectRecord(unit);
             RenderSection("Artwork");
-            TMP_Dropdown size = view.GetComponentsInChildren<TMP_Dropdown>()
-                .Single(dropdown => dropdown.name == "ArtworkStateSizeDropdown");
-            size.value = size.options.FindIndex(option => option.text == "Battle result");
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "UnitArtworkSize2")
+                .onClick.Invoke();
 
             string[] fields = view.GetComponentsInChildren<ContentEditorFieldView>()
                 .Select(field => field.Field.MemberName)
@@ -2448,10 +2451,11 @@ namespace Rebellion.Tests.ContentEditor.UI
                     {
                         ContentEditorColorPickerView picker =
                             view.GetComponentsInChildren<ContentEditorColorPickerView>()
-                                .Single(item =>
-                                    item.Field.XmlElement == expected.XmlElement
-                                    && item.Field.XmlAttributeName == expected.XmlAttributeName
+                                .SingleOrDefault(item =>
+                                    item.Field.Record.Key == expected.Record.Key
+                                    && item.Field.MemberName == expected.MemberName
                                 );
+                        Assert.IsNotNull(picker, target.name + " must reveal " + expected.Name);
                         Assert.AreEqual(
                             -((RectTransform)picker.transform).anchoredPosition.y,
                             fields.ScrollArea.ContentRoot.anchoredPosition.y,

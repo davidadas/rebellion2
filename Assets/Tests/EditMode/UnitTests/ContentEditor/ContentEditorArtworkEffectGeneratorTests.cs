@@ -159,8 +159,9 @@ namespace Rebellion.Tests.ContentEditor
             );
         }
 
-        [Test]
-        public void Bake_ExistingShipOverlay_RemovingOneLayerKeepsTheOther()
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Bake_ExcludedShipOverlayLayer_KeepsTheOtherLayer(bool hideRatherThanRemove)
         {
             string imported = WriteEffectImage(
                 (x, y) =>
@@ -178,9 +179,15 @@ namespace Rebellion.Tests.ContentEditor
                 imported
             );
 
-            Color32[] pixels = DecodePixels(
-                frame.Bake(new[] { new ContentEditorArtworkLayer { Source = 1 } })
-            );
+            var visible = new ContentEditorArtworkLayer { Source = 1 };
+            var layers = hideRatherThanRemove
+                ? new[]
+                {
+                    new ContentEditorArtworkLayer { Source = 0, Hidden = true },
+                    visible,
+                }
+                : new[] { visible };
+            Color32[] pixels = DecodePixels(frame.Bake(layers));
             Assert.AreEqual(0, pixels[14 * _width + 82].a);
             Assert.AreEqual(255, pixels[34 * _width + 82].a);
         }
@@ -211,6 +218,32 @@ namespace Rebellion.Tests.ContentEditor
             CollectionAssert.AreEqual(
                 DecodePixels(File.ReadAllBytes(imported)),
                 DecodePixels(frame.Bake(layers))
+            );
+        }
+
+        [Test]
+        public void Bake_MovedPersonnelStreakOntoTransparentArea_PreservesTheVisibleEdit()
+        {
+            Color32 streak = new(80, 120, 240, 255);
+            string imported = WriteEffectImage((x, y) => y == 4 ? streak : default);
+            using var frame = ContentEditorArtworkEffectGenerator.CreateEditableFrame(
+                sourcePath,
+                null,
+                ContentEditorArtworkEffectStyle.PersonnelTravel,
+                148,
+                false,
+                null,
+                imported
+            );
+            var layer = new ContentEditorArtworkLayer
+            {
+                Source = 0,
+                Offset = new Vector2(0, 3f / _height),
+            };
+
+            Assert.That(
+                DecodePixels(frame.Bake(new[] { layer }))[7 * _width + 3],
+                Is.EqualTo(streak)
             );
         }
 
@@ -566,6 +599,40 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void Bake_VariedShipWakesWithDifferentSeeds_ChangesTrailLength()
+        {
+            string overlay = WriteShipWakeReference();
+            Color32[] shortWake = DecodePixels(BakeWakeVariation(overlay, 14));
+            Color32[] longWake = DecodePixels(BakeWakeVariation(overlay, 42));
+
+            int Length(Color32[] pixels) =>
+                Enumerable.Range(99, 21).Count(x => pixels[18 * _width + x].a > 0);
+
+            Assert.That(Length(shortWake), Is.Not.EqualTo(Length(longWake)));
+        }
+
+        [Test]
+        public void Bake_VariedShipWakesWithTheSameSeed_RecreatesTheDraft()
+        {
+            string overlay = WriteShipWakeReference();
+
+            CollectionAssert.AreEqual(
+                BakeWakeVariation(overlay, 42),
+                BakeWakeVariation(overlay, 42)
+            );
+        }
+
+        [Test]
+        public void Bake_VariedShipWakes_PreservesHullContactAndDetachedWakeOrigin()
+        {
+            string overlay = WriteShipWakeReference();
+            Color32[] pixels = DecodePixels(BakeWakeVariation(overlay, 42));
+
+            Assert.That(pixels[18 * _width + 104], Is.EqualTo(new Color32(205, 246, 255, 255)));
+            Assert.That(pixels[31 * _width + 107], Is.EqualTo(new Color32(87, 160, 230, 255)));
+        }
+
+        [Test]
         public void Bake_MissingTravelWithRegisteredFacilityCard_RebuildsTheCompleteAuthoredImage()
         {
             Color32 white = new(240, 240, 240, 255);
@@ -891,6 +958,40 @@ namespace Rebellion.Tests.ContentEditor
                     runs.Add(run);
             }
             return runs.ToArray();
+        }
+
+        private string WriteShipWakeReference() =>
+            WriteEffectImage(
+                (x, y) =>
+                {
+                    if (x == 104 && y >= 16 && y <= 20)
+                        return new Color32(205, 246, 255, 255);
+                    if (x >= 99 && x < 117 && y >= 16 && y <= 20)
+                        return new Color32(143, 221, 255, 255);
+                    if (x >= 107 && x < 115 && y >= 29 && y <= 33)
+                        return new Color32(87, 160, 230, 255);
+                    return new Color32(0, 0, 0, 0);
+                }
+            );
+
+        private byte[] BakeWakeVariation(string overlay, int seed)
+        {
+            using var frame = ContentEditorArtworkEffectGenerator.CreateEditableFrame(
+                sourcePath,
+                null,
+                ContentEditorArtworkEffectStyle.ShipTravel,
+                seed,
+                false,
+                null,
+                completeTravel: true,
+                travelPattern: new ContentEditorTravelPattern(overlay, sourcePath),
+                varyShipWakes: true
+            );
+            var layers = Enumerable
+                .Range(0, frame.DefaultLayerCount)
+                .Select(index => new ContentEditorArtworkLayer { Source = index })
+                .ToArray();
+            return frame.Bake(layers);
         }
 
         private string WriteEffectImage(Func<int, int, Color32> getPixel)

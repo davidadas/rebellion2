@@ -70,11 +70,12 @@ internal sealed class ConstructionWindowProjector
         return new ConstructionWindowRenderData(
             x,
             y,
-            uiContext.GetAlphaTintedTexture(
+            uiContext.GetFactionMask(
                 active ? titleTheme?.ActiveImagePath : titleTheme?.InactiveImagePath,
+                factionTheme,
                 active
-                    ? factionTheme?.GetActiveWindowTitleColor() ?? Color.white
-                    : factionTheme?.GetInactiveWindowTitleColor() ?? Color.white
+                    ? FactionMaskColor.ActiveWindowTitleColorHex
+                    : FactionMaskColor.InactiveWindowTitleColorHex
             ),
             GetItemTexture(uiContext, selected),
             selected?.GetDisplayName(),

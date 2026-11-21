@@ -346,6 +346,31 @@ public sealed class ContentEditorArtworkWindowPreview
         {
             if (!image.gameObject.activeInHierarchy || !image.enabled || image.texture == null)
                 continue;
+            ContentPackEditorField colorField = ResolveTintColorField(
+                image.texture,
+                themeFields,
+                assets
+            );
+            if (colorField != null)
+            {
+                ContentEditorArtworkEditTarget colorTarget =
+                    image.GetComponent<ContentEditorArtworkEditTarget>()
+                    ?? image.gameObject.AddComponent<ContentEditorArtworkEditTarget>();
+                RectInt bounds = assets.GetTextureContentBounds(image.texture as Texture2D);
+                colorTarget.Bind(
+                    colorField,
+                    colorField,
+                    OpenArtwork,
+                    bounds,
+                    bounds,
+                    null,
+                    Array.Empty<ContentEditorArtworkPlacement>(),
+                    null
+                );
+                if (!renderedFields.Contains(colorField))
+                    renderedFields.Add(colorField);
+                continue;
+            }
             Texture releasedTexture = image.texture;
             ContentPackEditorField releasedField = ResolveBoundField(image, surfaceFields);
             ContentEditorArtworkPlacement advisorPlacement = ResolveAdvisorPlacement(
@@ -363,33 +388,7 @@ public sealed class ContentEditorArtworkWindowPreview
             hoverField ??= ResolveTextureField(authoredHoverTexture, fieldsByAddress, assets);
             hoverField ??= releasedField;
             if (releasedField == null && hoverField == null)
-            {
-                ContentPackEditorField colorField = ResolveTintColorField(
-                    image.texture,
-                    themeFields,
-                    assets
-                );
-                if (colorField != null)
-                {
-                    ContentEditorArtworkEditTarget colorTarget =
-                        image.GetComponent<ContentEditorArtworkEditTarget>()
-                        ?? image.gameObject.AddComponent<ContentEditorArtworkEditTarget>();
-                    RectInt bounds = assets.GetTextureContentBounds(image.texture as Texture2D);
-                    colorTarget.Bind(
-                        colorField,
-                        colorField,
-                        OpenArtwork,
-                        bounds,
-                        bounds,
-                        null,
-                        Array.Empty<ContentEditorArtworkPlacement>(),
-                        null
-                    );
-                    if (!renderedFields.Contains(colorField))
-                        renderedFields.Add(colorField);
-                }
                 continue;
-            }
             if (state != ContentEditorArtworkPreviewState.Default)
             {
                 ContentPackEditorField stateField = ResolvePreviewStateField(
@@ -447,51 +446,15 @@ public sealed class ContentEditorArtworkWindowPreview
         ContentAssets assets
     )
     {
-        if (texture?.name.EndsWith("-tinted", StringComparison.Ordinal) != true)
-            return null;
-        foreach (
-            ContentPackEditorField maskField in themeFields.Where(field =>
-                field.MediaType == ContentPackEditorMediaType.Image
-            )
+        if (
+            texture is not Texture2D mask
+            || !assets.TryGetTintRole(mask, out FactionMaskColor role)
         )
-        {
-            Texture2D mask = ResolveFieldTexture(maskField, assets);
-            if (mask == null || mask.name + "-tinted" != texture.name)
-                continue;
-            string colorMember = ResolveTintColorMember(maskField);
-            if (colorMember == null)
-                continue;
-            return themeFields.FirstOrDefault(field =>
-                field.Group == nameof(FactionTheme.ColorScheme) && field.MemberName == colorMember
-            );
-        }
-        return null;
-    }
-
-    /// <summary>
-    /// Maps one shared mask image to the color property applied by its runtime renderer.
-    /// </summary>
-    /// <param name="field">The shared mask image field.</param>
-    /// <returns>The corresponding faction color member, or null for an untinted image.</returns>
-    private static string ResolveTintColorMember(ContentPackEditorField field)
-    {
-        string[] ancestors = field
-            .XmlElement.AncestorsAndSelf()
-            .Select(element => element.Name.LocalName)
-            .ToArray();
-        if (ancestors.Contains(nameof(WindowTitleTheme)))
-            return field.MemberName == nameof(WindowTitleTheme.InactiveImagePath)
-                ? nameof(FactionColorScheme.InactiveWindowTitleColorHex)
-                : nameof(FactionColorScheme.ActiveWindowTitleColorHex);
-        if (ancestors.Contains(nameof(ManufacturingLaneStateTheme)))
-            return field.MemberName == nameof(ManufacturingLaneStateTheme.InactiveImagePath)
-                ? nameof(FactionColorScheme.InactiveBuildingPaneColorHex)
-                : nameof(FactionColorScheme.ActiveBuildingPaneColorHex);
-        if (ancestors.Contains(nameof(PlanetIcons)) && ancestors.Contains(nameof(GalaxyBackground)))
-            return nameof(FactionColorScheme.PlanetMarkerColorHex);
-        if (field.MemberName.Contains("Selection", StringComparison.Ordinal))
-            return nameof(FactionColorScheme.SelectionColorHex);
-        return null;
+            return null;
+        string member = role.ToString();
+        return themeFields.FirstOrDefault(field =>
+            field.Group == nameof(FactionTheme.ColorScheme) && field.MemberName == member
+        );
     }
 
     /// <summary>

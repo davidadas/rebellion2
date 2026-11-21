@@ -84,9 +84,10 @@ internal sealed class MissionsWindowProjector
     {
         List<MissionListRowRenderData> rows = new List<MissionListRowRenderData>();
         FactionTheme playerTheme = uiContext.GetPlayerFactionTheme();
-        Texture selectionTexture = uiContext.GetAlphaTintedTexture(
+        Texture selectionTexture = uiContext.GetFactionMask(
             playerTheme?.StrategyWindows?.Missions?.SelectionImagePath,
-            playerTheme?.GetSelectionColor() ?? Color.white
+            playerTheme,
+            FactionMaskColor.SelectionColorHex
         );
         for (int index = 0; index < missions.Count; index++)
         {
@@ -265,11 +266,12 @@ internal sealed class MissionsWindowProjector
     {
         FactionTheme factionTheme = uiContext.GetTheme(ownerFactionId);
         WindowTitleTheme theme = factionTheme?.WindowTitleTheme;
-        return uiContext.GetAlphaTintedTexture(
+        return uiContext.GetFactionMask(
             active ? theme?.ActiveImagePath : theme?.InactiveImagePath,
+            factionTheme,
             active
-                ? factionTheme?.GetActiveWindowTitleColor() ?? Color.white
-                : factionTheme?.GetInactiveWindowTitleColor() ?? Color.white
+                ? FactionMaskColor.ActiveWindowTitleColorHex
+                : FactionMaskColor.InactiveWindowTitleColorHex
         );
     }
 

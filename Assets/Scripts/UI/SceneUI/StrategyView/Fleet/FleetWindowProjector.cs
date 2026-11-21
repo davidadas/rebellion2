@@ -154,7 +154,7 @@ internal sealed class FleetWindowProjector
         UIContext uiContext = GetUIContext();
         FactionTheme theme = uiContext.GetTheme(fleet.OwnerInstanceID);
         string path = theme?.PlanetOverlayTheme?.UnitTileIcons?.FleetDetailSelectionImagePath;
-        return uiContext.GetAlphaTintedTexture(path, theme?.GetSelectionColor() ?? Color.white);
+        return uiContext.GetFactionMask(path, theme, FactionMaskColor.SelectionColorHex);
     }
 
     /// <summary>
@@ -225,9 +225,10 @@ internal sealed class FleetWindowProjector
                         badgeIcons => badgeIcons.FleetPersonnelBadgeImagePath
                     ),
                     selected
-                        ? uiContext.GetAlphaTintedTexture(
+                        ? uiContext.GetFactionMask(
                             icons?.FleetListSelectionImagePath,
-                            theme?.GetSelectionColor() ?? Color.white
+                            theme,
+                            FactionMaskColor.SelectionColorHex
                         )
                         : null,
                     i,
@@ -271,9 +272,10 @@ internal sealed class FleetWindowProjector
                             badgeIcons => badgeIcons.FleetPersonnelBadgeImagePath
                         ),
                         session.IsFleetListItemSelected(capitalShip)
-                            ? uiContext.GetAlphaTintedTexture(
+                            ? uiContext.GetFactionMask(
                                 shipIcons?.FleetListSelectionImagePath,
-                                shipTheme?.GetSelectionColor() ?? Color.white
+                                shipTheme,
+                                FactionMaskColor.SelectionColorHex
                             )
                             : null,
                         i,
@@ -554,11 +556,12 @@ internal sealed class FleetWindowProjector
     {
         FactionTheme factionTheme = uiContext.GetTheme(ownerFactionId);
         WindowTitleTheme theme = factionTheme?.WindowTitleTheme;
-        return uiContext.GetAlphaTintedTexture(
+        return uiContext.GetFactionMask(
             active ? theme?.ActiveImagePath : theme?.InactiveImagePath,
+            factionTheme,
             active
-                ? factionTheme?.GetActiveWindowTitleColor() ?? Color.white
-                : factionTheme?.GetInactiveWindowTitleColor() ?? Color.white
+                ? FactionMaskColor.ActiveWindowTitleColorHex
+                : FactionMaskColor.InactiveWindowTitleColorHex
         );
     }
 
@@ -572,7 +575,7 @@ internal sealed class FleetWindowProjector
     {
         FactionTheme theme = uiContext.GetTheme(ownerFactionId);
         string path = theme?.PlanetOverlayTheme?.UnitTileIcons?.FleetDetailSelectionImagePath;
-        return uiContext.GetAlphaTintedTexture(path, theme?.GetSelectionColor() ?? Color.white);
+        return uiContext.GetFactionMask(path, theme, FactionMaskColor.SelectionColorHex);
     }
 
     /// <summary>

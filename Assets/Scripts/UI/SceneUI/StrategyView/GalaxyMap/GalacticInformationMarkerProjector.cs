@@ -53,9 +53,10 @@ internal static class GalacticInformationMarkerProjector
 
         FactionTheme factionTheme = context?.GetTheme(marker.FactionInstanceId);
         PlanetIcons icons = factionTheme?.GalaxyBackground?.PlanetIcons;
-        return context?.GetAlphaTintedTexture(
+        return context?.GetFactionMask(
             GetPlanetIconPath(icons, marker.Index),
-            factionTheme?.GetPlanetMarkerColor() ?? Color.white
+            factionTheme,
+            FactionMaskColor.PlanetMarkerColorHex
         );
     }
 

@@ -68,11 +68,12 @@ internal sealed class FacilityWindowProjector
         return new FacilityWindowRenderData(
             window.X,
             window.Y,
-            uiContext.GetAlphaTintedTexture(
+            uiContext.GetFactionMask(
                 window.ActiveWindow ? titleTheme?.ActiveImagePath : titleTheme?.InactiveImagePath,
+                factionTheme,
                 window.ActiveWindow
-                    ? factionTheme?.GetActiveWindowTitleColor() ?? Color.white
-                    : factionTheme?.GetInactiveWindowTitleColor() ?? Color.white
+                    ? FactionMaskColor.ActiveWindowTitleColorHex
+                    : FactionMaskColor.InactiveWindowTitleColorHex
             ),
             source?.GetDisplayName(),
             activeTab,
@@ -82,9 +83,10 @@ internal sealed class FacilityWindowProjector
             manufacturingCards,
             GetInventoryTitle(activeTab),
             inventoryItems,
-            uiContext.GetAlphaTintedTexture(
+            uiContext.GetFactionMask(
                 selectionPath,
-                factionTheme?.GetSelectionColor() ?? Color.white
+                factionTheme,
+                FactionMaskColor.SelectionColorHex
             )
         );
     }
@@ -208,11 +210,12 @@ internal sealed class FacilityWindowProjector
             ?.ManufacturingLaneState;
 
         return new ManufacturingLaneCardRenderData(
-            uiContext.GetAlphaTintedTexture(
+            uiContext.GetFactionMask(
                 selected ? stateTheme?.ActiveImagePath : stateTheme?.InactiveImagePath,
+                factionTheme,
                 selected
-                    ? factionTheme?.GetActiveBuildingPaneColor() ?? Color.white
-                    : factionTheme?.GetInactiveBuildingPaneColor() ?? Color.white
+                    ? FactionMaskColor.ActiveBuildingPaneColorHex
+                    : FactionMaskColor.InactiveBuildingPaneColorHex
             ),
             GetManufacturingTexture(uiContext, current),
             current?.GetManufacturingProgress() ?? 0,

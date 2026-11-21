@@ -56,7 +56,7 @@ public static class MainMenuPrefabBuilder
     private const string _planetCompositeMaterialPath =
         _planetAssetRoot + "/Generated/PlanetComposite.mat";
     private const string _multiplayerMaterialPath =
-        "Assets/Art/Models/MainMenu/MultiplayerAnimation.mat";
+        "Assets/Prefabs/UI/MainMenu/MultiplayerAnimation.mat";
     private const string _planetPrefabPath = _planetAssetRoot + "/Planet.prefab";
     private const string _terrestrialSurfaceMaterialPath =
         _planetAssetRoot + "/Materials/TerrestrialSurface.mat";

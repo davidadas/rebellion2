@@ -315,9 +315,10 @@ internal static class MessagesWindowProjector
             row.Type,
             row.Selected,
             row.Unread,
-            uiContext?.GetAlphaTintedTexture(
+            uiContext?.GetFactionMask(
                 theme?.SelectionImagePath,
-                factionTheme?.GetSelectionColor() ?? Color.white
+                factionTheme,
+                FactionMaskColor.SelectionColorHex
             ),
             GetTexture(uiContext, theme?.GetIconImagePath(row.Type)),
             GetTexture(uiContext, theme?.GetNormalIconImagePath(row.Type)),
