@@ -16,23 +16,27 @@ namespace Rebellion.Gameplay
         private const int _automatedOrderQuantity = 1;
 
         private readonly GameRoot _game;
-        private readonly GameDataCatalog _gameData;
+        private readonly IReadOnlyList<Building> _buildings;
+        private readonly IReadOnlyList<Regiment> _regiments;
         private readonly ManufacturingCommands _manufacturing;
 
         /// <summary>
         /// Creates the delegated advisor automation commands.
         /// </summary>
         /// <param name="game">The active game.</param>
-        /// <param name="gameData">Templates available to the selected content pack.</param>
+        /// <param name="buildings">Building templates available to the selected content pack.</param>
+        /// <param name="regiments">Regiment templates available to the selected content pack.</param>
         /// <param name="manufacturing">The manufacturing commands used to place orders.</param>
         public AdvisorAutomationCommands(
             GameRoot game,
-            GameDataCatalog gameData,
+            IReadOnlyList<Building> buildings,
+            IReadOnlyList<Regiment> regiments,
             ManufacturingCommands manufacturing
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
-            _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
+            _buildings = buildings ?? throw new ArgumentNullException(nameof(buildings));
+            _regiments = regiments ?? throw new ArgumentNullException(nameof(regiments));
             _manufacturing =
                 manufacturing ?? throw new ArgumentNullException(nameof(manufacturing));
         }
@@ -355,7 +359,7 @@ namespace Rebellion.Gameplay
         private Regiment FindRegimentTemplate(Faction faction, bool isUprising)
         {
             int unlockedOrder = faction.GetHighestUnlockedOrder(ManufacturingType.Troop);
-            IEnumerable<Regiment> candidates = _gameData.Regiments.Where(template =>
+            IEnumerable<Regiment> candidates = _regiments.Where(template =>
                 IManufacturable.CanBeManufacturedBy(template, faction.InstanceID)
                 && template.ResearchOrder <= unlockedOrder
                 && template.DefenseRating >= template.AttackRating
@@ -486,8 +490,8 @@ namespace Rebellion.Gameplay
         private Building GetAvailableBuilding(Faction faction, BuildingType buildingType)
         {
             int unlockedOrder = faction.GetHighestUnlockedOrder(ManufacturingType.Building);
-            return _gameData
-                .Buildings.Where(template =>
+            return _buildings
+                .Where(template =>
                     template.BuildingType == buildingType
                     && IManufacturable.CanBeManufacturedBy(template, faction.InstanceID)
                     && template.ResearchOrder <= unlockedOrder

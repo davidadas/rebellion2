@@ -1,0 +1,14 @@
+{
+    "name": "Rebellion.Analytics",
+    "rootNamespace": "Rebellion.Analytics",
+    "references": [
+        "Unity.Services.Core",
+        "Unity.Services.Analytics",
+        "Rebellion.Game",
+        "Rebellion.SceneGraph",
+        "Rebellion.UserSettings",
+        "Rebellion.Util"
+    ],
+    "autoReferenced": true,
+    "noEngineReferences": false
+}

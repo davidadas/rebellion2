@@ -9,7 +9,7 @@ MEMBER_ORDER_ANALYZER="${MEMBER_ORDER_ANALYZER:-Tools/Rebellion.Analyzers/bin/Re
 MEMBER_ORDER_ANALYZER_TEST_PROJECT="${MEMBER_ORDER_ANALYZER_TEST_PROJECT:-Tools/Rebellion.Analyzers.Tests/Rebellion.Analyzers.Tests.csproj}"
 ARCHITECTURE_TEST_PROJECT="${ARCHITECTURE_TEST_PROJECT:-Tools/Rebellion.Architecture.Tests/Rebellion.Architecture.Tests.csproj}"
 MEMBER_ORDER_LINT_PROJECT="${MEMBER_ORDER_LINT_PROJECT:-MemberOrder.Lint.csproj}"
-GAME_LINT_PROJECT="${GAME_LINT_PROJECT:-GameAssembly.Lint.csproj}"
+RUNTIME_LINT_PROJECT="${RUNTIME_LINT_PROJECT:-RuntimeAssemblies.Lint.csproj}"
 EDITOR_LINT_PROJECT="${EDITOR_LINT_PROJECT:-EditorAssembly.Lint.csproj}"
 UNITY_TEST_REFERENCES="${UNITY_TEST_REFERENCES:-$(cd "$PROJECT_PATH" && pwd)/Tools/UnityTestReferences.targets}"
 
@@ -153,7 +153,7 @@ do_lint() {
 
     # Full compilation check — only runs locally where Unity has generated the project files.
     # In CI the Unity test runner already proves compilation, so this is skipped.
-    if [ -f GameAssembly.csproj ]; then
+    if [ -f Rebellion.App.csproj ]; then
         # Unity-generated projects reference package assemblies through Temp/bin. Populate that
         # directory from Unity's successful compilation before asking dotnet to compile only the
         # repository-owned assemblies; some Unity packages require Unity's compiler toolchain.
@@ -162,18 +162,41 @@ do_lint() {
             cp Library/ScriptAssemblies/*.dll Temp/bin/Debug/
         fi
 
-        echo "=== GameAssembly ==="
         # Unity-generated projects share output/intermediate directories, so parallel MSBuild can
         # race dependencies and report missing metadata from another project still being compiled.
         dotnet build Rebellion.InputActions.csproj \
             -maxcpucount:1 \
             -verbosity:normal \
             "${extra_args[@]}"
-        dotnet build GameAssembly.csproj \
-            --no-dependencies \
-            -maxcpucount:1 \
-            -verbosity:normal \
-            "${extra_args[@]}"
+        local runtime_projects=(
+            Rebellion.Util
+            Rebellion.SceneGraph
+            Rebellion.Game
+            Rebellion.UserSettings
+            Rebellion.Saves
+            Rebellion.Content
+            Rebellion.Generation
+            Rebellion.Analytics
+            Rebellion.Gameplay
+            Rebellion.AI
+            Rebellion.Sessions
+            Rebellion.Networking.Transport
+            Rebellion.Multiplayer
+            Rebellion.App
+        )
+        for runtime_project in "${runtime_projects[@]}"; do
+            if [ ! -f "$runtime_project.csproj" ]; then
+                echo "Missing Unity-generated runtime project: $runtime_project.csproj" >&2
+                exit 1
+            fi
+
+            echo "=== $runtime_project ==="
+            dotnet build "$runtime_project.csproj" \
+                --no-dependencies \
+                -maxcpucount:1 \
+                -verbosity:normal \
+                "${extra_args[@]}"
+        done
         echo ""
         for test_project in UnitTests.csproj PlayModeTests.csproj NativeAudit.csproj; do
             if [ ! -f "$test_project" ]; then
@@ -234,11 +257,11 @@ do_lint() {
     # Roslynator uses a committed portable project file so it works in CI without Unity.
     # Two passes: warnings are displayed but don't fail; errors do fail.
     echo "=== Roslynator ==="
-    run_roslynator analyze "$GAME_LINT_PROJECT" \
+    run_roslynator analyze "$RUNTIME_LINT_PROJECT" \
         --analyzer-assemblies "$ROSLYNATOR_ANALYZERS" \
         --ignored-diagnostics CS0103 CS0234 CS0246 \
         --severity-level warning || true
-    run_roslynator analyze "$GAME_LINT_PROJECT" \
+    run_roslynator analyze "$RUNTIME_LINT_PROJECT" \
         --analyzer-assemblies "$ROSLYNATOR_ANALYZERS" \
         --ignored-diagnostics CS0103 CS0234 CS0246 \
         --severity-level error
@@ -277,7 +300,7 @@ do_coverage() {
         -debugCodeOptimization \
         -enableCodeCoverage \
         -coverageResultsPath "$coverage_dir" \
-        -coverageOptions "generateHtmlReport;assemblyFilters:+GameAssembly"
+        -coverageOptions "generateHtmlReport;assemblyFilters:+GameAssembly,+Rebellion.*,-Rebellion.InputActions,-Rebellion.Build.Editor"
     echo "Coverage report written to $coverage_dir/Report/index.html"
 
     # Keep thresholds in sync with .github/workflows/unity-tests.yml

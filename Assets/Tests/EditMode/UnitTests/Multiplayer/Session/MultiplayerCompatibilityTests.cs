@@ -11,7 +11,7 @@ namespace Rebellion.Tests.Multiplayer
         public void SimulationBuild_CurrentInputs_MatchesCompiledIdentity()
         {
             Assert.AreEqual(
-                SimulationBuildIdentityInputs.ComputeIdentity(),
+                SimulationBuildIdentityInputs.ComputeIdentity(Directory.GetCurrentDirectory()),
                 MultiplayerCompatibility.SimulationBuild
             );
         }

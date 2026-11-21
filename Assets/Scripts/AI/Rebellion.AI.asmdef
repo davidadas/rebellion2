@@ -1,0 +1,19 @@
+{
+    "name": "Rebellion.AI",
+    "rootNamespace": "Rebellion.AI",
+    "references": [
+        "Rebellion.Game",
+        "Rebellion.Gameplay",
+        "Rebellion.SceneGraph",
+        "Rebellion.Util"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

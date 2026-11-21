@@ -14,12 +14,16 @@
     <PackageReference Include="TngTech.ArchUnitNET.NUnit" Version="0.13.4" />
   </ItemGroup>
   <ItemGroup Condition="'$(UnityCompiledAssembliesPath)' == ''">
-    <ProjectReference Include="../../GameAssembly.csproj" />
+    <ProjectReference Include="../../Rebellion.App.csproj" />
+    <ProjectReference Include="../../Rebellion.Game.csproj" />
     <ProjectReference Include="../../ContentPackEditorAssembly.csproj" />
   </ItemGroup>
   <ItemGroup Condition="'$(UnityCompiledAssembliesPath)' != ''">
-    <Reference Include="GameAssembly">
-      <HintPath>$(UnityCompiledAssembliesPath)/GameAssembly.dll</HintPath>
+    <Reference Include="Rebellion.App">
+      <HintPath>$(UnityCompiledAssembliesPath)/Rebellion.App.dll</HintPath>
+    </Reference>
+    <Reference Include="Rebellion.Game">
+      <HintPath>$(UnityCompiledAssembliesPath)/Rebellion.Game.dll</HintPath>
     </Reference>
     <Reference Include="ContentPackEditorAssembly">
       <HintPath>$(UnityCompiledAssembliesPath)/ContentPackEditorAssembly.dll</HintPath>

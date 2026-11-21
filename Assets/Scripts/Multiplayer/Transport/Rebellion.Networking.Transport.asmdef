@@ -1,0 +1,14 @@
+{
+    "name": "Rebellion.Networking.Transport",
+    "rootNamespace": "Rebellion.Multiplayer",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

@@ -3,14 +3,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using Rebellion.Game;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEditor.Compilation;
 
 /// <summary>
-/// Recompiles the game when fingerprint inputs change outside its normal compilation dependencies.
+/// Recompiles the application when fingerprint inputs change outside its normal dependencies.
 /// </summary>
 [InitializeOnLoad]
 internal sealed class SimulationBuildIdentityInvalidator : IPreprocessBuildWithReport
@@ -43,7 +42,7 @@ internal sealed class SimulationBuildIdentityInvalidator : IPreprocessBuildWithR
     }
 
     /// <summary>
-    /// Blocks player builds until the loaded game assembly matches every fingerprint input.
+    /// Blocks player builds until the loaded application assembly matches every fingerprint input.
     /// </summary>
     /// <param name="report">The pending player build.</param>
     public void OnPreprocessBuild(BuildReport report)
@@ -83,16 +82,18 @@ internal sealed class SimulationBuildIdentityInvalidator : IPreprocessBuildWithR
     /// <summary>
     /// Requests a complete compilation only when the loaded fingerprint no longer matches its inputs.
     /// </summary>
-    /// <returns>True while a matching game assembly still needs to be compiled.</returns>
+    /// <returns>True while a matching game-model assembly still needs to be compiled.</returns>
     private static bool RecompileIfStale()
     {
         if (_compilationRequested)
             return true;
-        string actual = typeof(GameRoot)
+        string actual = typeof(AppBootstrap)
             .Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
             .FirstOrDefault(attribute => attribute.Key == SimulationBuildIdentityInputs.MetadataKey)
             ?.Value;
-        if (actual == SimulationBuildIdentityInputs.ComputeIdentity())
+        if (
+            actual == SimulationBuildIdentityInputs.ComputeIdentity(Directory.GetCurrentDirectory())
+        )
             return false;
         _compilationRequested = true;
         CompilationPipeline.RequestScriptCompilation(

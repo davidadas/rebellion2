@@ -1,0 +1,12 @@
+{
+    "name": "Rebellion.Generation",
+    "rootNamespace": "Rebellion.Generation",
+    "references": [
+        "Rebellion.Content",
+        "Rebellion.Game",
+        "Rebellion.SceneGraph",
+        "Rebellion.Util"
+    ],
+    "autoReferenced": true,
+    "noEngineReferences": false
+}
