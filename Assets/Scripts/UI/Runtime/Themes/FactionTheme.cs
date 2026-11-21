@@ -144,7 +144,7 @@ public class FactionTheme
     /// </summary>
     /// <param name="mask">The interface role the color is applied to.</param>
     /// <returns>The resolved color, or null to use the supplied artwork directly.</returns>
-    internal Color? GetMaskTint(FactionMaskColor mask)
+    public Color? GetMaskTint(FactionMaskColor mask)
     {
         if (ColorScheme == null)
             return null;
@@ -164,7 +164,7 @@ public class FactionTheme
 /// <summary>
 /// Identifies the color setting responsible for a rendered faction mask.
 /// </summary>
-internal enum FactionMaskColor
+public enum FactionMaskColor
 {
     None,
     SelectionColorHex,

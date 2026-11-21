@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
@@ -22,7 +23,7 @@ namespace Rebellion.Game.Encyclopedia
         /// <param name="regiments">The static regiment data.</param>
         /// <param name="specialForces">The static special forces data.</param>
         /// <param name="officers">The static officer data.</param>
-        /// <param name="themes">The faction themes supplying default unit artwork backgrounds.</param>
+        /// <param name="defaultBackground">Resolves the configured default for a unit and its faction.</param>
         /// <returns>The built encyclopedia catalog.</returns>
         public EncyclopediaCatalog Build(
             EncyclopediaEntries authoredEntries,
@@ -33,7 +34,7 @@ namespace Rebellion.Game.Encyclopedia
             IEnumerable<Regiment> regiments,
             IEnumerable<SpecialForces> specialForces,
             IEnumerable<Officer> officers,
-            FactionThemeLibrary themes = null
+            Func<BaseGameEntity, string, string> defaultBackground = null
         )
         {
             List<EncyclopediaEntry> generatedEntries = BuildGeneratedEntries(
@@ -44,7 +45,7 @@ namespace Rebellion.Game.Encyclopedia
                 regiments,
                 specialForces,
                 officers,
-                themes
+                defaultBackground
             );
             Dictionary<string, EncyclopediaEntry> generatedByTypeId = generatedEntries
                 .Where(entry => entry != null && !string.IsNullOrEmpty(entry.TypeID))
@@ -88,7 +89,7 @@ namespace Rebellion.Game.Encyclopedia
         /// <param name="regiments">The static regiment data.</param>
         /// <param name="specialForces">The static special forces data.</param>
         /// <param name="officers">The static officer data.</param>
-        /// <param name="themes">The faction themes supplying default unit artwork backgrounds.</param>
+        /// <param name="defaultBackground">Resolves the configured default for a unit and its faction.</param>
         /// <returns>The generated encyclopedia entries.</returns>
         private static List<EncyclopediaEntry> BuildGeneratedEntries(
             IEnumerable<PlanetSector> planetSectors,
@@ -98,17 +99,17 @@ namespace Rebellion.Game.Encyclopedia
             IEnumerable<Regiment> regiments,
             IEnumerable<SpecialForces> specialForces,
             IEnumerable<Officer> officers,
-            FactionThemeLibrary themes
+            Func<BaseGameEntity, string, string> defaultBackground
         )
         {
             List<EncyclopediaEntry> entries = new List<EncyclopediaEntry>();
             AddPlanets(entries, planetSectors);
             AddEntities(entries, buildings, EncyclopediaEntryCategory.Facility);
-            AddEntities(entries, capitalShips, EncyclopediaEntryCategory.Ship, themes);
-            AddEntities(entries, starfighters, EncyclopediaEntryCategory.Ship, themes);
+            AddEntities(entries, capitalShips, EncyclopediaEntryCategory.Ship, defaultBackground);
+            AddEntities(entries, starfighters, EncyclopediaEntryCategory.Ship, defaultBackground);
             AddEntities(entries, regiments, EncyclopediaEntryCategory.Troop);
             AddEntities(entries, specialForces, EncyclopediaEntryCategory.Troop);
-            AddEntities(entries, officers, EncyclopediaEntryCategory.Personnel, themes);
+            AddEntities(entries, officers, EncyclopediaEntryCategory.Personnel, defaultBackground);
             return entries;
         }
 
@@ -146,12 +147,12 @@ namespace Rebellion.Game.Encyclopedia
         /// <param name="entries">The entry accumulator.</param>
         /// <param name="entities">The entities to add.</param>
         /// <param name="category">The encyclopedia category for the entities.</param>
-        /// <param name="themes">The faction themes supplying default unit artwork backgrounds.</param>
+        /// <param name="defaultBackground">Resolves the configured default for a unit and its faction.</param>
         private static void AddEntities<T>(
             List<EncyclopediaEntry> entries,
             IEnumerable<T> entities,
             EncyclopediaEntryCategory category,
-            FactionThemeLibrary themes = null
+            Func<BaseGameEntity, string, string> defaultBackground = null
         )
             where T : BaseGameEntity, IEncyclopediaSource
         {
@@ -160,7 +161,7 @@ namespace Rebellion.Game.Encyclopedia
 
             foreach (T entity in entities)
             {
-                EncyclopediaEntry entry = CreateEntry(entity, category, themes);
+                EncyclopediaEntry entry = CreateEntry(entity, category, defaultBackground);
                 if (entry != null)
                     entries.Add(entry);
             }
@@ -172,12 +173,12 @@ namespace Rebellion.Game.Encyclopedia
         /// <typeparam name="T">The encyclopedia-backed entity type.</typeparam>
         /// <param name="entity">The entity to convert.</param>
         /// <param name="category">The encyclopedia category for the entity.</param>
-        /// <param name="themes">The faction themes supplying default unit artwork backgrounds.</param>
+        /// <param name="defaultBackground">Resolves the configured default for a unit and its faction.</param>
         /// <returns>The created entry, or null when no entity was provided.</returns>
         private static EncyclopediaEntry CreateEntry<T>(
             T entity,
             EncyclopediaEntryCategory category,
-            FactionThemeLibrary themes = null
+            Func<BaseGameEntity, string, string> defaultBackground = null
         )
             where T : BaseGameEntity, IEncyclopediaSource
         {
@@ -192,7 +193,7 @@ namespace Rebellion.Game.Encyclopedia
                 Category = category,
                 OwnerInstanceID = owner,
                 ImagePath = entity.EncyclopediaImagePath,
-                BackgroundImagePath = GetArtworkBackground(entity, owner, themes),
+                BackgroundImagePath = GetArtworkBackground(entity, owner, defaultBackground),
                 Stats = CloneStats(entity.EncyclopediaStats),
                 Description = GetEncyclopediaDescription(entity),
             };
@@ -203,45 +204,25 @@ namespace Rebellion.Game.Encyclopedia
         /// </summary>
         /// <param name="entity">The entity whose entry artwork is being prepared.</param>
         /// <param name="owner">The faction associated with the entry.</param>
-        /// <param name="themes">The faction themes supplying default unit artwork backgrounds.</param>
+        /// <param name="defaultBackground">Resolves the configured default for a unit and its faction.</param>
         /// <returns>The optional background image address.</returns>
         private static string GetArtworkBackground(
             BaseGameEntity entity,
             string owner,
-            FactionThemeLibrary themes
+            Func<BaseGameEntity, string, string> defaultBackground
         )
         {
-            FactionArtworkDefaults defaults =
-                !string.IsNullOrWhiteSpace(owner)
-                && themes?.TryGetTheme(owner, out var theme) == true
-                    ? theme.ArtworkDefaults
-                    : null;
-            return entity switch
+            string overridePath = entity switch
             {
-                Officer officer => PreferOverride(
-                    officer.BackgroundImagePath,
-                    defaults?.OfficerBackgroundImagePath
-                ),
-                CapitalShip ship => PreferOverride(
-                    ship.BackgroundImagePath,
-                    defaults?.CapitalShipBackgroundImagePath
-                ),
-                Starfighter fighter => PreferOverride(
-                    fighter.BackgroundImagePath,
-                    defaults?.StarfighterBackgroundImagePath
-                ),
+                Officer officer => officer.BackgroundImagePath,
+                CapitalShip ship => ship.BackgroundImagePath,
+                Starfighter fighter => fighter.BackgroundImagePath,
                 _ => null,
             };
+            return string.IsNullOrWhiteSpace(overridePath)
+                ? defaultBackground?.Invoke(entity, owner)
+                : overridePath;
         }
-
-        /// <summary>
-        /// Uses an authored image override when it contains an address.
-        /// </summary>
-        /// <param name="overridePath">The optional unit image address.</param>
-        /// <param name="defaultPath">The optional faction default image address.</param>
-        /// <returns>The selected image address.</returns>
-        private static string PreferOverride(string overridePath, string defaultPath) =>
-            string.IsNullOrWhiteSpace(overridePath) ? defaultPath : overridePath;
 
         /// <summary>
         /// Gets the owner ID to associate with an entity encyclopedia entry.

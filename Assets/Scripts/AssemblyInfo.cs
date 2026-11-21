@@ -6,4 +6,3 @@ using System.Runtime.CompilerServices;
 
 // Allows the Editor verification runner to exercise the internal ordered session protocol.
 [assembly: InternalsVisibleTo("Assembly-CSharp-Editor")]
-[assembly: InternalsVisibleTo("ContentPackEditorAssembly")]

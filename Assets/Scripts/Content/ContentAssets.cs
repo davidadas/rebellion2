@@ -164,7 +164,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     /// </summary>
     /// <param name="path">The application or pack content address.</param>
     /// <returns>The readable texture, or null if the image is unavailable.</returns>
-    internal Texture2D GetReadableTexture(string path) => GetTexture(path, readableTextures, false);
+    public Texture2D GetReadableTexture(string path) => GetTexture(path, readableTextures, false);
 
     /// <summary>
     /// Resolves and caches a mipmapped texture for artwork that is substantially reduced on screen.
@@ -192,7 +192,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     /// <param name="color">The color applied to every visible mask pixel.</param>
     /// <param name="role">The editor setting that supplies the color, when known.</param>
     /// <returns>The cached tinted mask, or null when its source cannot be loaded.</returns>
-    internal Texture2D GetAlphaTintedTexture(string path, Color32 color, FactionMaskColor role)
+    public Texture2D GetAlphaTintedTexture(string path, Color32 color, FactionMaskColor role)
     {
         ThrowIfDisposed();
         string normalizedPath = NormalizeAddress(path);
@@ -234,7 +234,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     /// <param name="texture">The generated texture presented by the preview.</param>
     /// <param name="role">The setting that supplied the texture's color.</param>
     /// <returns>True when the texture was generated for a known color setting.</returns>
-    internal bool TryGetTintRole(Texture2D texture, out FactionMaskColor role) =>
+    public bool TryGetTintRole(Texture2D texture, out FactionMaskColor role) =>
         tintRoles.TryGetValue(texture, out role);
 
     /// <summary>
@@ -242,7 +242,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     /// </summary>
     /// <param name="address">The application- or pack-relative texture address.</param>
     /// <returns>The normalized address used by the texture caches.</returns>
-    internal string GetNormalizedTextureAddress(string address)
+    public string GetNormalizedTextureAddress(string address)
     {
         ThrowIfDisposed();
         return NormalizeAddress(address);
@@ -254,7 +254,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     /// <param name="texture">A texture owned by this asset store.</param>
     /// <param name="address">Receives its normalized content address.</param>
     /// <returns>True when the texture was loaded by this asset store.</returns>
-    internal bool TryGetTextureAddress(Texture2D texture, out string address)
+    public bool TryGetTextureAddress(Texture2D texture, out string address)
     {
         ThrowIfDisposed();
         if (texture != null && textureAddresses.TryGetValue(texture, out address))

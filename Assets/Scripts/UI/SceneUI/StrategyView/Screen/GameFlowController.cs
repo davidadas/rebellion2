@@ -459,7 +459,7 @@ public sealed class GameFlowController : MonoBehaviour
             gameData.Regiments,
             gameData.SpecialForces,
             gameData.Officers,
-            themeLibrary
+            (entity, owner) => themeLibrary?.GetEncyclopediaArtworkBackground(entity, owner)
         );
         ContentAssets contentAssets = bootstrap.GetContentAssets();
         uiContext = new UIContext(

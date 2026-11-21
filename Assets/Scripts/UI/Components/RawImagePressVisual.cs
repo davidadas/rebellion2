@@ -36,7 +36,7 @@ public sealed class RawImagePressVisual
     /// <summary>
     /// Gets the texture displayed while the control is pressed.
     /// </summary>
-    internal Texture PressedTexture => downTexture;
+    public Texture PressedTexture => downTexture;
 
     /// <summary>
     /// Raised when the control enters its pressed state.

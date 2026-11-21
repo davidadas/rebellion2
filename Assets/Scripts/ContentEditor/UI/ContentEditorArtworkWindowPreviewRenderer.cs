@@ -504,38 +504,33 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
                 "CapitalShip",
                 3
             );
-            battleAlert.Render(
-                new BattleAlertWindowRenderData(
-                    BattleAlertWindowMode.Pending,
-                    0,
-                    0,
-                    GetTexture(assets, windowTheme?.ListBackgroundImagePath),
-                    GetTexture(assets, windowTheme?.FrameImagePath),
-                    theme.GetPrimaryColor(),
+            battleAlert.RenderPending(
+                Vector2Int.zero,
+                GetTexture(assets, windowTheme?.ListBackgroundImagePath),
+                GetTexture(assets, windowTheme?.FrameImagePath),
+                theme.GetPrimaryColor(),
+                new[]
+                {
+                    CreateBattleButton(windowTheme?.SummaryButton, assets),
+                    CreateBattleButton(windowTheme?.FirstForcesButton, assets),
+                    CreateBattleButton(windowTheme?.SecondForcesButton, assets),
+                    CreateBattleButton(windowTheme?.SystemAssetsButton, assets),
+                },
+                new BattleAlertPendingRenderData(
+                    BattleAlertPanel.FirstForces,
+                    "Battle at Preview system",
+                    "Friendly forces",
+                    "Choose how these forces should respond.",
+                    ships.Select(ship => new BattleAlertRowRenderData(
+                        ship.Name,
+                        ship.SmallTexture
+                    )),
                     new[]
                     {
-                        CreateBattleButton(windowTheme?.SummaryButton, assets),
-                        CreateBattleButton(windowTheme?.FirstForcesButton, assets),
-                        CreateBattleButton(windowTheme?.SecondForcesButton, assets),
-                        CreateBattleButton(windowTheme?.SystemAssetsButton, assets),
-                    },
-                    new BattleAlertPendingRenderData(
-                        BattleAlertPanel.FirstForces,
-                        "Battle at Preview system",
-                        "Friendly forces",
-                        "Choose how these forces should respond.",
-                        ships.Select(ship => new BattleAlertRowRenderData(
-                            ship.Name,
-                            ship.SmallTexture
-                        )),
-                        new[]
-                        {
-                            CreateBattleButton(windowTheme?.RetreatButton, assets),
-                            CreateBattleButton(windowTheme?.AutoResolveButton, assets),
-                            CreateBattleButton(windowTheme?.TakeCommandButton, assets),
-                        }
-                    ),
-                    null
+                        CreateBattleButton(windowTheme?.RetreatButton, assets),
+                        CreateBattleButton(windowTheme?.AutoResolveButton, assets),
+                        CreateBattleButton(windowTheme?.TakeCommandButton, assets),
+                    }
                 )
             );
             return;

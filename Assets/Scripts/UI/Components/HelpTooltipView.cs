@@ -68,7 +68,7 @@ public sealed class HelpTooltipView : MonoBehaviour, IPointerEnterHandler, IPoin
     /// <param name="caption">The laid-out caption beside the marker.</param>
     /// <param name="left">The caption's horizontal offset in the marker parent.</param>
     /// <param name="top">The caption's vertical offset in the marker parent.</param>
-    internal void PositionBeside(TMP_Text caption, int left = 0, int top = 0)
+    public void PositionBeside(TMP_Text caption, int left = 0, int top = 0)
     {
         RectTransform marker = (RectTransform)transform;
         int size = Mathf.RoundToInt(marker.rect.width);

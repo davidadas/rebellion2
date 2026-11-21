@@ -97,7 +97,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
                 null,
                 null,
                 new[] { officer },
-                themes
+                themes.GetEncyclopediaArtworkBackground
             );
 
             Assert.AreEqual(

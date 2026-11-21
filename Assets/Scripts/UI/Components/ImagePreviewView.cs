@@ -152,7 +152,7 @@ public sealed class ImagePreviewView
     /// <param name="previews">The owned generated textures, their labels, and optional borrowed backgrounds.</param>
     /// <param name="apply">The action that saves the displayed output images.</param>
     /// <param name="move">Moves one preview by a normalized displacement.</param>
-    internal void ShowCuts(
+    public void ShowCuts(
         IReadOnlyList<(
             string Caption,
             Texture2D Texture,
