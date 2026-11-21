@@ -1833,13 +1833,31 @@ public sealed class ContentEditorFormView : MonoBehaviour
         ContentPackEditorField transit = stateFields.FirstOrDefault(field =>
             field.MemberName == members.Travel
         );
+        bool officer = selectedRecord.Kind == "Officer";
+        bool largeOfficerCard = officer && artworkStateSize == 1;
         ContentPackEditorField damage = stateFields.FirstOrDefault(field =>
             field.MemberName == members.Damage
         );
-        damage ??= stateFields.FirstOrDefault(field => field.MemberName == "InjuredImagePath");
-        ContentPackEditorField captured = stateFields.FirstOrDefault(field =>
-            field.MemberName == "CapturedOverlayImagePath"
-        );
+        if (!largeOfficerCard)
+            damage ??= stateFields.FirstOrDefault(field => field.MemberName == "InjuredImagePath");
+        ContentPackEditorField captured = largeOfficerCard
+            ? null
+            : stateFields.FirstOrDefault(field => field.MemberName == "CapturedOverlayImagePath");
+        Texture2D officerTravelBackground = travelBackground;
+        if (officer)
+        {
+            ContentPackEditorField travelSource = transit;
+            if (string.IsNullOrEmpty(travelSource?.Value))
+            {
+                string fallbackMember = largeOfficerCard
+                    ? "InTransitSmallImagePath"
+                    : "InTransitImagePath";
+                travelSource = stateFields.FirstOrDefault(field =>
+                    field.MemberName == fallbackMember
+                );
+            }
+            officerTravelBackground = ResolveArtworkTexture(travelSource) ?? travelBackground;
+        }
 
         bool regiment = selectedRecord.Kind == "Regiment";
         Texture2D defenseTravel =
@@ -1854,7 +1872,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             ContentPackEditorField[] Layers,
             ContentPackEditorField Action
         )> states = new() { ("Normal", Array.Empty<ContentPackEditorField>(), null) };
-        if (selectedRecord.Kind == "Officer")
+        if (officer && transit == null)
             states.Add(("In transit", Array.Empty<ContentPackEditorField>(), null));
         if (splitTransit)
             states.Add(("In transit (Fleet)", Array.Empty<ContentPackEditorField>(), null));
@@ -1862,7 +1880,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         {
             string caption =
                 splitTransit ? "In transit (Defense)"
-                : regiment ? "In transit"
+                : regiment || officer ? "In transit"
                 : "Travel";
             states.Add((caption, new[] { transit }, transit));
         }
@@ -1916,7 +1934,9 @@ public sealed class ContentEditorFormView : MonoBehaviour
 
             int labelHeight = PlaceLabel(caption, labelIndex++, x, y, size.x, false);
             int imageY = y + labelHeight + 4;
+            bool officerTransit = officer && transit != null && layers.Contains(transit);
             Texture2D[] overlays = layers
+                .Where(field => !officerTransit || field != transit)
                 .Select(field => ResolveArtworkTexture(field))
                 .Where(texture => texture != null)
                 .ToArray();
@@ -1929,6 +1949,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
             Texture2D stateEntity = baseTexture;
             if (caption is "In transit" or "In transit (Fleet)")
                 stateBackground = travelBackground;
+            if (officerTransit || (officer && caption == "In transit"))
+                stateBackground = officerTravelBackground;
             if (action == transit && transit != null)
             {
                 if (selectedRecord.Kind == "Building" && overlays.Length > 0)
@@ -2342,13 +2364,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         if (!string.IsNullOrWhiteSpace(overrideField?.Value))
             return ResolveArtworkTexture(overrideField, readable);
         FactionTheme theme = ResolveUnitFactionTheme();
-        string address = selectedRecord.Kind switch
-        {
-            "Officer" => theme?.ArtworkDefaults?.OfficerBackgroundImagePath,
-            "CapitalShip" => theme?.ArtworkDefaults?.CapitalShipBackgroundImagePath,
-            "Starfighter" => theme?.ArtworkDefaults?.StarfighterBackgroundImagePath,
-            _ => null,
-        };
+        string address = theme?.ArtworkDefaults?.GetBackgroundImagePath(selectedRecord.Kind);
         if (string.IsNullOrWhiteSpace(address))
             return null;
         try

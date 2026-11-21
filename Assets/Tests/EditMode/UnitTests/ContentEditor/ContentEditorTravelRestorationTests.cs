@@ -59,6 +59,46 @@ namespace Rebellion.Tests.ContentEditor
             Assert.That(File.ReadAllText(target), Is.EqualTo("working travel art"));
         }
 
+        [TestCase("", 0)]
+        [TestCase(".png", 1)]
+        public void Restore_WorkingJpeg_PreservesItAndRestoresOnlyAnExplicitPng(
+            string referenceExtension,
+            int expectedFiles
+        )
+        {
+            const string member = "InTransitSmallImagePath";
+            const string logicalAddress = "Pack/Artwork/facility-in-transit";
+            string document =
+                $"<Units><Building><TypeID>BDFA01</TypeID><{member}>{logicalAddress}{referenceExtension}</{member}></Building></Units>";
+            WriteFixtureFile("Data/units.xml", document);
+            WriteFixtureFile("Artwork/facility-in-transit.png", "installed PNG");
+            ContentPackEditorProject project = CreateStandaloneProject(
+                "<Units><Building><TypeID>BDFA01</TypeID></Building></Units>"
+            );
+            string artwork = Path.Combine(project.PackRootPath, "Artwork");
+            Directory.CreateDirectory(artwork);
+            string jpeg = Path.Combine(artwork, "facility-in-transit.jpg");
+            File.WriteAllText(jpeg, "working JPEG");
+
+            Assert.That(
+                ContentEditorTravelRestoration.Restore(project),
+                Is.EqualTo((expectedFiles, 1))
+            );
+            ContentPackEditorStorage.Save(project);
+            Assert.That(File.ReadAllText(jpeg), Is.EqualTo("working JPEG"));
+            Assert.That(
+                File.Exists(Path.Combine(artwork, "facility-in-transit.png")),
+                Is.EqualTo(expectedFiles == 1)
+            );
+            XDocument saved = XDocument.Load(
+                Path.Combine(project.PackRootPath, "Data", "units.xml")
+            );
+            Assert.That(
+                saved.Descendants(member).Single().Value,
+                Is.EqualTo(logicalAddress + referenceExtension)
+            );
+        }
+
         /// <summary>
         /// Creates a writable pack containing the test units.
         /// </summary>

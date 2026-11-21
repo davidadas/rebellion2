@@ -43,6 +43,8 @@ internal static class ContentEditorUnitArtworkLayout
             "SmallDisplayImagePath",
             "MessageImagePath",
             "EncyclopediaImagePath",
+            "InTransitSmallImagePath",
+            "InTransitImagePath",
             "InjuredImagePath",
             "CapturedOverlayImagePath",
         },

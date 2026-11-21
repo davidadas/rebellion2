@@ -223,6 +223,11 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         tinted.SetPixels32(pixels);
         tinted.Apply(false, false);
         alphaTintedTextures.Add(key, tinted);
+        textureContentBounds[tinted] = CalculateTextureContentBounds(
+            tinted.width,
+            tinted.height,
+            pixels
+        );
         if (role != FactionMaskColor.None)
             tintRoles[tinted] = role;
         return tinted;
@@ -291,7 +296,11 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
             if (!ImageConversion.LoadImage(readableTexture, bytes, false))
                 return fullBounds;
 
-            bounds = CalculateTextureContentBounds(readableTexture);
+            bounds = CalculateTextureContentBounds(
+                readableTexture.width,
+                readableTexture.height,
+                readableTexture.GetPixels32()
+            );
             textureContentBounds[texture] = bounds;
             return bounds;
         }
@@ -616,22 +625,23 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     /// <summary>
     /// Calculates the smallest bottom-left-origin rectangle containing visible pixels.
     /// </summary>
-    /// <param name="texture">The readable texture.</param>
+    /// <param name="width">The texture width in pixels.</param>
+    /// <param name="height">The texture height in pixels.</param>
+    /// <param name="pixels">The bottom-up texture pixels.</param>
     /// <returns>The visible-pixel bounds, or the full texture when it is empty.</returns>
-    private static RectInt CalculateTextureContentBounds(Texture2D texture)
+    private static RectInt CalculateTextureContentBounds(int width, int height, Color32[] pixels)
     {
-        int minimumX = texture.width;
-        int minimumY = texture.height;
+        int minimumX = width;
+        int minimumY = height;
         int maximumX = -1;
         int maximumY = -1;
-        Color32[] pixels = texture.GetPixels32();
         for (int index = 0; index < pixels.Length; index++)
         {
             if (pixels[index].a == 0)
                 continue;
 
-            int x = index % texture.width;
-            int y = index / texture.width;
+            int x = index % width;
+            int y = index / width;
             minimumX = Mathf.Min(minimumX, x);
             minimumY = Mathf.Min(minimumY, y);
             maximumX = Mathf.Max(maximumX, x);
@@ -639,7 +649,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         }
 
         return maximumX < minimumX || maximumY < minimumY
-            ? new RectInt(0, 0, texture.width, texture.height)
+            ? new RectInt(0, 0, width, height)
             : new RectInt(minimumX, minimumY, maximumX - minimumX + 1, maximumY - minimumY + 1);
     }
 

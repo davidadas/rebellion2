@@ -2,6 +2,7 @@ using NUnit.Framework;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.Components
 {
@@ -45,6 +46,30 @@ namespace Rebellion.Tests.UI.Components
         {
             relay.OnScroll(new PointerEventData(null) { scrollDelta = new Vector2(0, -1) });
 
+            for (int frame = 0; frame < 30; frame++)
+                scrollArea.AdvanceScroll(0.04f);
+
+            Assert.Greater(scrollArea.ContentRoot.anchoredPosition.y, 0);
+        }
+
+        [Test]
+        public void OnScroll_ScrollbarInsideInput_MovesTheOuterForm()
+        {
+            GameObject barObject = new(
+                "Description scrollbar",
+                typeof(RectTransform),
+                typeof(Scrollbar)
+            );
+            barObject.transform.SetParent(input.transform, false);
+            relay.enabled = false;
+            input.verticalScrollbar = barObject.GetComponent<Scrollbar>();
+            relay.enabled = true;
+
+            ExecuteEvents.ExecuteHierarchy(
+                barObject,
+                new PointerEventData(null) { scrollDelta = new Vector2(0, -1) },
+                ExecuteEvents.scrollHandler
+            );
             for (int frame = 0; frame < 30; frame++)
                 scrollArea.AdvanceScroll(0.04f);
 

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Rebellion.Game.Units;
 using Rebellion.Util.Serialization;
 using UnityEngine;
 
@@ -74,7 +75,7 @@ public class FactionTheme
     private bool colorParsed;
 
     /// <summary>
-    /// Gets the parsed primary color, falling back to white for invalid configuration.
+    /// Gets the scheme primary color with the legacy primary color and white as fallbacks.
     /// </summary>
     /// <returns>The cached primary color.</returns>
     public Color GetPrimaryColor()
@@ -82,8 +83,8 @@ public class FactionTheme
         if (!colorParsed)
         {
             primaryColor = ThemeColorParser.Parse(
-                ColorScheme?.PrimaryColorHex ?? FactionPrimaryColorHex,
-                Color.white
+                ColorScheme?.PrimaryColorHex,
+                ThemeColorParser.Parse(FactionPrimaryColorHex, Color.white)
             );
             colorParsed = true;
         }
@@ -205,6 +206,20 @@ public sealed class FactionArtworkDefaults
     public string OfficerBackgroundImagePath { get; set; }
     public string CapitalShipBackgroundImagePath { get; set; }
     public string StarfighterBackgroundImagePath { get; set; }
+
+    /// <summary>
+    /// Gets the configured backdrop for the specified unit type.
+    /// </summary>
+    /// <param name="unitKind">The serialized unit type.</param>
+    /// <returns>The backdrop address, if configured for this type.</returns>
+    public string GetBackgroundImagePath(string unitKind) =>
+        unitKind switch
+        {
+            nameof(Officer) => OfficerBackgroundImagePath,
+            nameof(CapitalShip) => CapitalShipBackgroundImagePath,
+            nameof(Starfighter) => StarfighterBackgroundImagePath,
+            _ => null,
+        };
 }
 
 /// <summary>

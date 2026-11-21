@@ -127,6 +127,29 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void GetTextureContentBounds_TintedMask_ReturnsVisiblePixelBounds()
+        {
+            const string address = "Application/Textures/padded-mask";
+            string path = Path.Combine(_contentRoot, "Application", "Textures", "padded-mask.png");
+            Texture2D source = new(5, 4, TextureFormat.RGBA32, false);
+            try
+            {
+                source.SetPixels32(new Color32[20]);
+                source.SetPixel(3, 2, Color.white);
+                source.Apply();
+                File.WriteAllBytes(path, source.EncodeToPNG());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(source);
+            }
+            using ContentAssets assets = CreateAssets();
+            Texture2D tinted = assets.GetAlphaTintedTexture(address, Color.cyan);
+
+            Assert.AreEqual(new RectInt(3, 2, 1, 1), assets.GetTextureContentBounds(tinted));
+        }
+
+        [Test]
         public void GetAlphaTintedTexture_SharedMask_AppliesColorAndCachesColorVariant()
         {
             const string address = "Application/Textures/mask";

@@ -20,6 +20,8 @@ internal sealed class ContentEditorArtworkPreviewContent
     private readonly Dictionary<Texture, ContentPackEditorField> fieldsByTexture = new();
     private readonly string factionDirectory;
     private readonly string factionInstanceID;
+    private readonly FactionTheme theme;
+    private readonly ContentPackEditorProject project;
     private readonly IReadOnlyList<ContentPackEditorRecord> records;
 
     /// <summary>
@@ -38,6 +40,8 @@ internal sealed class ContentEditorArtworkPreviewContent
             throw new ArgumentNullException(nameof(project));
         if (theme == null)
             throw new ArgumentNullException(nameof(theme));
+        this.project = project;
+        this.theme = theme;
         assets = contentAssets ?? throw new ArgumentNullException(nameof(contentAssets));
         factionInstanceID = theme.FactionInstanceID;
         records = project.GetCatalogs().SelectMany(catalog => catalog.Records).ToArray();
@@ -188,9 +192,53 @@ internal sealed class ContentEditorArtworkPreviewContent
             display ?? small,
             Resolve(record, "MessageImagePath") ?? display ?? small,
             Resolve(record, "EncyclopediaImagePath") ?? display ?? small,
+            ResolveEncyclopediaBackground(record),
             record.Element.Element("EncyclopediaDescription")?.Value,
             maintenanceCost
         );
+    }
+
+    /// <summary>
+    /// Resolves the authored override or the encyclopedia entry owner's faction background.
+    /// </summary>
+    /// <param name="record">The editable record shown by the preview.</param>
+    /// <returns>The optional background texture.</returns>
+    private Texture2D ResolveEncyclopediaBackground(ContentPackEditorRecord record)
+    {
+        string assignmentMember = record.Kind switch
+        {
+            "Officer" => "RecruitingFactionInstanceIDs",
+            "CapitalShip" or "Starfighter" => "ManufacturingFactionInstanceIDs",
+            _ => null,
+        };
+        if (assignmentMember == null)
+            return null;
+
+        const string overrideMember = ContentEditorUnitArtworkLayout.BackgroundMember;
+        if (!string.IsNullOrWhiteSpace(record.Element.Element(overrideMember)?.Value))
+            return Resolve(record, overrideMember);
+
+        string owner = record.Element.Element("OwnerInstanceID")?.Value;
+        if (
+            string.IsNullOrEmpty(owner)
+            && record.Element.Element(assignmentMember) is XElement assignment
+        )
+        {
+            string[] assignedFactions = GetAssignmentValues(assignment).Take(2).ToArray();
+            if (assignedFactions.Length == 1)
+                owner = assignedFactions[0];
+        }
+
+        if (string.IsNullOrWhiteSpace(owner))
+            return null;
+        FactionTheme ownerTheme =
+            owner == factionInstanceID
+                ? theme
+                : ContentEditorPresentation
+                    .GetFactionThemes(project)
+                    .Select(item => item.Theme)
+                    .FirstOrDefault(candidate => candidate.FactionInstanceID == owner);
+        return assets.GetTexture(ownerTheme?.ArtworkDefaults?.GetBackgroundImagePath(record.Kind));
     }
 
     /// <summary>
@@ -225,6 +273,7 @@ internal sealed class ContentEditorArtworkPreviewEntity
         null,
         null,
         null,
+        null,
         string.Empty,
         0
     );
@@ -239,6 +288,8 @@ internal sealed class ContentEditorArtworkPreviewEntity
 
     internal Texture2D EncyclopediaTexture { get; }
 
+    internal Texture2D EncyclopediaBackground { get; }
+
     internal string EncyclopediaDescription { get; }
 
     internal int MaintenanceCost { get; }
@@ -251,6 +302,7 @@ internal sealed class ContentEditorArtworkPreviewEntity
     /// <param name="displayTexture">The regular gameplay texture.</param>
     /// <param name="messageTexture">The message texture.</param>
     /// <param name="encyclopediaTexture">The encyclopedia texture.</param>
+    /// <param name="encyclopediaBackground">The background rendered underneath the encyclopedia texture.</param>
     /// <param name="encyclopediaDescription">The encyclopedia description.</param>
     /// <param name="maintenanceCost">The authored maintenance cost for one instance.</param>
     internal ContentEditorArtworkPreviewEntity(
@@ -259,6 +311,7 @@ internal sealed class ContentEditorArtworkPreviewEntity
         Texture2D displayTexture,
         Texture2D messageTexture,
         Texture2D encyclopediaTexture,
+        Texture2D encyclopediaBackground,
         string encyclopediaDescription,
         int maintenanceCost
     )
@@ -268,6 +321,7 @@ internal sealed class ContentEditorArtworkPreviewEntity
         DisplayTexture = displayTexture;
         MessageTexture = messageTexture;
         EncyclopediaTexture = encyclopediaTexture;
+        EncyclopediaBackground = encyclopediaBackground;
         EncyclopediaDescription = encyclopediaDescription ?? string.Empty;
         MaintenanceCost = maintenanceCost;
     }

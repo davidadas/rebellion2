@@ -32,6 +32,8 @@ internal static class ContentEditorTravelRestoration
             .EnumerateFileAddresses("Pack/")
             .Where(address => IsTravelFileName(address) && IsImageFile(address))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var exactReferences = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var workingVariants = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var edits = new List<(ContentPackEditorDocument Document, XDocument Xml)>();
         int references = 0;
         foreach (ContentPackEditorDocument document in project.Documents)
@@ -52,7 +54,8 @@ internal static class ContentEditorTravelRestoration
             int restored = 0;
             foreach (XElement field in travelFields)
             {
-                string sourceImage = reference.ResolveFile(field.Value.Trim(), _imageExtensions);
+                string logicalAddress = field.Value.Trim();
+                string sourceImage = reference.ResolveFile(logicalAddress, _imageExtensions);
                 if (sourceImage == null || !IsImageFile(sourceImage))
                     continue;
                 string relative = reference
@@ -60,7 +63,12 @@ internal static class ContentEditorTravelRestoration
                     .First(path =>
                         !Path.IsPathRooted(path) && !path.StartsWith("..", StringComparison.Ordinal)
                     );
-                files.Add("Pack/" + relative.Replace('\\', '/'));
+                string fileAddress = "Pack/" + relative.Replace('\\', '/');
+                files.Add(fileAddress);
+                if (IsImageFile(logicalAddress))
+                    exactReferences.Add(fileAddress);
+                else if (working.ResolveFile(logicalAddress, _imageExtensions) != null)
+                    workingVariants.Add(Path.ChangeExtension(fileAddress, null));
 
                 XElement target = ContentXmlOverrides.FindEquivalent(field, edited.Root);
                 if (!string.IsNullOrWhiteSpace(target?.Value))
@@ -85,6 +93,11 @@ internal static class ContentEditorTravelRestoration
         foreach (string address in files.OrderBy(path => path, StringComparer.Ordinal))
         {
             if (working.ResolveFile(address) != null)
+                continue;
+            if (
+                !exactReferences.Contains(address)
+                && workingVariants.Contains(Path.ChangeExtension(address, null))
+            )
                 continue;
             string source = reference.ResolveFile(address);
             string destination = Path.GetFullPath(address[5..], project.PackRootPath);

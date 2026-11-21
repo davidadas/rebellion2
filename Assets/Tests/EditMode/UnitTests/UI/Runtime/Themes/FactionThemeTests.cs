@@ -156,6 +156,18 @@ namespace Rebellion.Tests.UI.Runtime.Themes
         }
 
         [Test]
+        public void GetPrimaryColor_BlankSchemePrimary_ReturnsLegacyPrimary()
+        {
+            FactionTheme theme = new()
+            {
+                FactionPrimaryColorHex = "#123456",
+                ColorScheme = new FactionColorScheme { PrimaryColorHex = string.Empty },
+            };
+
+            Assert.AreEqual(new Color32(0x12, 0x34, 0x56, 0xff), (Color32)theme.GetPrimaryColor());
+        }
+
+        [Test]
         public void GetPrimaryColor_InvalidHex_ReturnsWhite()
         {
             FactionTheme theme = new FactionTheme { FactionPrimaryColorHex = "not-a-color" };

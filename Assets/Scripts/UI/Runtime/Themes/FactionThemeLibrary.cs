@@ -117,13 +117,14 @@ public sealed class FactionThemeLibrary
     {
         if (string.IsNullOrWhiteSpace(owner) || !TryGetTheme(owner, out FactionTheme theme))
             return null;
-        return entity switch
+        string unitKind = entity switch
         {
-            Officer => theme.ArtworkDefaults?.OfficerBackgroundImagePath,
-            CapitalShip => theme.ArtworkDefaults?.CapitalShipBackgroundImagePath,
-            Starfighter => theme.ArtworkDefaults?.StarfighterBackgroundImagePath,
+            Officer => nameof(Officer),
+            CapitalShip => nameof(CapitalShip),
+            Starfighter => nameof(Starfighter),
             _ => null,
         };
+        return theme.ArtworkDefaults?.GetBackgroundImagePath(unitKind);
     }
 
     /// <summary>

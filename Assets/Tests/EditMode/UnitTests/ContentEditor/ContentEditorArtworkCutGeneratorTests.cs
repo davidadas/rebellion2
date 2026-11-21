@@ -104,6 +104,42 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void GeneratePngCuts_TransparentEdge_PreservesColorAtPartialAlpha()
+        {
+            string path = Path.Combine(folder, "edge.png");
+            Texture2D source = new(2, 1, TextureFormat.RGBA32, false);
+            try
+            {
+                source.SetPixels(new[] { Color.green, Color.clear });
+                source.Apply();
+                File.WriteAllBytes(path, source.EncodeToPNG());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(source);
+            }
+
+            Vector2Int size = new(4, 2);
+            Texture2D output = Decode(
+                ContentEditorArtworkCutGenerator.GeneratePngCuts(
+                    path,
+                    new[] { size },
+                    fitEntireSource: true
+                )[size]
+            );
+            try
+            {
+                Color edge = output.GetPixel(1, 0);
+                Assert.That(edge.a, Is.EqualTo(0.75f).Within(0.01f));
+                Assert.That(edge.g, Is.EqualTo(1f).Within(0.01f));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(output);
+            }
+        }
+
+        [Test]
         public void GeneratePngCuts_WideSource_CentersCoverCropWithoutEdgeBands()
         {
             Texture2D source = new Texture2D(6, 2, TextureFormat.RGBA32, false);

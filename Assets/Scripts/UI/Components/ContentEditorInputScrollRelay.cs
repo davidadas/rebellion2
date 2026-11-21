@@ -13,11 +13,7 @@ public sealed class ContentEditorInputScrollRelay : MonoBehaviour, IScrollHandle
     private ScrollAreaView scrollArea;
     private TMP_InputField input;
     private bool thumbLayoutDirty;
-    private EventTrigger thumbEvents;
-    private readonly EventTrigger.Entry thumbPress = new()
-    {
-        eventID = EventTriggerType.PointerDown,
-    };
+    private UIPointerGestureRelay thumbGestures;
 
     /// <summary>
     /// Observes text geometry so a pooled multiline input can size its thumb after layout.
@@ -26,7 +22,7 @@ public sealed class ContentEditorInputScrollRelay : MonoBehaviour, IScrollHandle
     {
         input = GetComponent<TMP_InputField>();
         input.textComponent.OnPreRenderText += MarkThumbLayoutDirty;
-        thumbPress.callback.AddListener(FocusFromThumb);
+        ObserveThumb(input.verticalScrollbar);
         thumbLayoutDirty = true;
     }
 
@@ -37,7 +33,6 @@ public sealed class ContentEditorInputScrollRelay : MonoBehaviour, IScrollHandle
     {
         input.textComponent.OnPreRenderText -= MarkThumbLayoutDirty;
         ObserveThumb(null);
-        thumbPress.callback.RemoveListener(FocusFromThumb);
     }
 
     /// <summary>
@@ -76,25 +71,26 @@ public sealed class ContentEditorInputScrollRelay : MonoBehaviour, IScrollHandle
     /// <param name="bar">The current native scrollbar, or null for a single-line field.</param>
     private void ObserveThumb(Scrollbar bar)
     {
-        if (thumbEvents != null && thumbEvents.gameObject == bar?.gameObject)
+        if (thumbGestures != null && thumbGestures.gameObject == bar?.gameObject)
             return;
-        if (thumbEvents != null)
-            thumbEvents.triggers.Remove(thumbPress);
-        thumbEvents = null;
+        if (thumbGestures != null)
+            thumbGestures.Pressed -= FocusFromThumb;
+        thumbGestures = null;
         if (bar == null)
             return;
-        thumbEvents =
-            bar.GetComponent<EventTrigger>() ?? bar.gameObject.AddComponent<EventTrigger>();
-        thumbEvents.triggers.Add(thumbPress);
+        thumbGestures =
+            bar.GetComponent<UIPointerGestureRelay>()
+            ?? bar.gameObject.AddComponent<UIPointerGestureRelay>();
+        thumbGestures.Pressed += FocusFromThumb;
     }
 
     /// <summary>
     /// Activates the text editor when its thumb receives a direct primary-button press.
     /// </summary>
     /// <param name="eventData">The scrollbar press.</param>
-    private void FocusFromThumb(BaseEventData eventData)
+    private void FocusFromThumb(PointerEventData eventData)
     {
-        if (eventData is PointerEventData { button: PointerEventData.InputButton.Left })
+        if (eventData.button == PointerEventData.InputButton.Left)
             input.ActivateInputField();
     }
 

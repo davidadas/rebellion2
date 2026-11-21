@@ -166,6 +166,72 @@ namespace Rebellion.Tests.UI.Runtime
             Assert.AreSame(_context.GetTexture(expected), icon);
         }
 
+        [TestCase(null)]
+        [TestCase("Pack/missing-shared-icon")]
+        public void GetMissionIconTexture_UnavailableSharedResearchIcon_ReturnsFactionIcon(
+            string sharedPath
+        )
+        {
+            const string factionPath = "Pack/faction-research";
+            FactionThemeLibrary themes = new(
+                new FactionThemes
+                {
+                    new FactionTheme
+                    {
+                        MissionIcons = new MissionIconSetTheme
+                        {
+                            Icons =
+                            {
+                                new MissionIconTheme
+                                {
+                                    Key = MissionIconKeys.ResearchFacilityDesign,
+                                    SmallImagePath = sharedPath,
+                                },
+                            },
+                        },
+                    },
+                    new FactionTheme
+                    {
+                        FactionInstanceID = _playerFactionId,
+                        MissionIcons = new MissionIconSetTheme
+                        {
+                            Icons =
+                            {
+                                new MissionIconTheme
+                                {
+                                    Key = MissionIconKeys.ResearchFacilityDesign,
+                                    SmallImagePath = factionPath,
+                                },
+                            },
+                        },
+                    },
+                }
+            );
+            Texture2D factionIcon = new(2, 2);
+            try
+            {
+                UIContext context = new(
+                    _game,
+                    themes,
+                    _encyclopediaCatalog,
+                    path => path == factionPath ? factionIcon : null
+                );
+
+                Assert.AreSame(
+                    factionIcon,
+                    context.GetMissionIconTexture(
+                        _playerFactionId,
+                        MissionIconKeys.ResearchFacilityDesign,
+                        true
+                    )
+                );
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(factionIcon);
+            }
+        }
+
         [Test]
         public void GetSmoothTexture_ConfiguredPath_ReturnsSmoothContentTexture()
         {

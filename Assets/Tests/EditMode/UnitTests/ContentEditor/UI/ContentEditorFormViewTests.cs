@@ -2269,6 +2269,113 @@ namespace Rebellion.Tests.ContentEditor.UI
             );
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Render_OfficerTravelArtwork_ShowsEditableCompactAndLargeBackgrounds(
+            bool compactArtworkAssigned
+        )
+        {
+            ContentPackEditorRecord unit = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Officer" && record.Catalog.Faction == "Alliance");
+            string compactAddress = unit.GetField("SmallDisplayImagePath").Value;
+            string largeAddress = unit.GetField("DisplayImagePath").Value;
+            project.SetField(
+                unit.GetField("InTransitSmallImagePath"),
+                compactArtworkAssigned ? compactAddress : string.Empty
+            );
+            project.SetField(unit.GetField("InTransitImagePath"), largeAddress);
+            SelectRecord(unit);
+            RenderSection("Artwork");
+
+            AssertStateActionAligned("In-transit", "InTransitSmallImagePath");
+            Assert.AreSame(
+                assets.GetTexture(compactArtworkAssigned ? compactAddress : largeAddress),
+                view.GetComponentsInChildren<RawImage>()
+                    .Single(image =>
+                        image.name == "ArticleImageTemplate-State-In-transit-Background"
+                    )
+                    .texture
+            );
+
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "UnitArtworkSize1")
+                .onClick.Invoke();
+
+            AssertStateActionAligned("In-transit", "InTransitImagePath");
+            Assert.IsFalse(
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Any(field =>
+                        field.Field.MemberName is "InjuredImagePath" or "CapturedOverlayImagePath"
+                    )
+            );
+            Assert.AreSame(
+                assets.GetTexture(largeAddress),
+                view.GetComponentsInChildren<RawImage>()
+                    .Single(image =>
+                        image.name == "ArticleImageTemplate-State-In-transit-Background"
+                    )
+                    .texture
+            );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Render_EncyclopediaPreview_UsesTheEffectiveTopicBackground(bool useOverride)
+        {
+            ContentPackEditorRecord ship = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.Kind == "CapitalShip" && record.ID == "CSAL001");
+            string defaultAddress = ship.GetField("DisplayImagePath").Value;
+            string overrideAddress = ship.GetField("SmallDisplayImagePath").Value;
+            SetFactionArtworkBackground("CapitalShipBackgroundImagePath", defaultAddress);
+            project.SetField(
+                ship.GetField("BackgroundImagePath"),
+                useOverride ? overrideAddress : string.Empty
+            );
+            ContentPackEditorRecord theme = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record =>
+                    record.Kind == "FactionTheme" && record.Catalog.Faction == "Alliance"
+                );
+            theme.Element.Add(
+                new XElement(
+                    "StrategyWindows",
+                    new XElement(
+                        "Encyclopedia",
+                        new XElement(
+                            "FacilityButton",
+                            new XElement(
+                                "UpImagePath",
+                                "Pack/Factions/Alliance/Strategy/UI/Windows/Encyclopedia/encyclopedia-window-facility-button-up"
+                            )
+                        )
+                    )
+                )
+            );
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("factions/Alliance"));
+            RenderSection("Interfaces");
+            SelectArtworkSurface("Encyclopedia");
+
+            EncyclopediaWindowView detailWindow =
+                view.GetComponentsInChildren<EncyclopediaWindowView>()
+                    .Single(window =>
+                        window.name
+                        == ContentEditorArtworkWindowPreview.EncyclopediaDetailWindowName
+                    );
+            RawImage background = detailWindow
+                .GetComponentsInChildren<RawImage>()
+                .Single(image => image.name == "DetailCardBackgroundImage");
+            Texture2D expected = assets.GetTexture(useOverride ? overrideAddress : defaultAddress);
+            Assert.IsNotNull(expected);
+            Assert.AreSame(expected, background.texture);
+        }
+
         [Test]
         public void Render_FactionArtwork_ListedFieldsHaveMatchingPreviewTargets()
         {

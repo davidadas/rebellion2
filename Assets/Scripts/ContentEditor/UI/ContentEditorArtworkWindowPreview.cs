@@ -45,12 +45,14 @@ public sealed class ContentEditorArtworkWindowPreview
         ["Status window"] = new[] { "StatusWindow" },
         ["Messages"] = new[] { "MessagesWindow" },
         ["Combat"] = new[] { "BattleAlertWindow" },
-        ["Encyclopedia"] = new[] { "EncyclopediaWindow" },
+        ["Encyclopedia"] = new[] { "EncyclopediaWindow", EncyclopediaDetailWindowName },
         ["Galactic information"] = new[] { "FinderWindow" },
         ["Advisor"] = new[] { "AdvisorReportWindow" },
         ["Strategy view"] = new[] { "StrategyView" },
         ["Shell and dialogs"] = new[] { "ConfirmDialogWindow" },
     };
+
+    public const string EncyclopediaDetailWindowName = "EncyclopediaDetailWindow";
 
     private string activeCategory;
     private Vector2Int artworkDragDelta;

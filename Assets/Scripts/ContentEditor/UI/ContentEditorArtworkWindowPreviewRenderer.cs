@@ -652,10 +652,12 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
                 "Officer",
                 "Building"
             );
+            bool showTopic =
+                window.name == ContentEditorArtworkWindowPreview.EncyclopediaDetailWindowName;
             const EncyclopediaWindowTab activeTab = EncyclopediaWindowTab.AllDatabases;
             encyclopedia.Render(
                 new EncyclopediaWindowRenderData(
-                    false,
+                    showTopic,
                     new EncyclopediaWindowFrameRenderData(
                         0,
                         0,
@@ -675,12 +677,14 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
                             CreateEncyclopediaButton(
                                 EncyclopediaWindowCommand.ShowTopic,
                                 windowTheme?.TopicButton,
-                                assets
+                                assets,
+                                showTopic
                             ),
                             CreateEncyclopediaButton(
                                 EncyclopediaWindowCommand.ShowIndex,
                                 windowTheme?.IndexButton,
-                                assets
+                                assets,
+                                !showTopic
                             ),
                         }
                     ),
@@ -715,7 +719,8 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
                         entry.EncyclopediaDescription,
                         entry.EncyclopediaTexture,
                         true,
-                        false
+                        false,
+                        entry.EncyclopediaBackground
                     )
                 )
             );
@@ -1411,17 +1416,20 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
     /// <param name="command">The represented Encyclopedia command.</param>
     /// <param name="theme">The command artwork.</param>
     /// <param name="assets">The working pack's resolved artwork.</param>
+    /// <param name="active">Whether the button represents the panel currently being shown.</param>
     /// <returns>The complete Encyclopedia command presentation.</returns>
     private static EncyclopediaDialogButtonRenderData CreateEncyclopediaButton(
         EncyclopediaWindowCommand command,
         WindowButtonImageTheme theme,
-        ContentAssets assets
+        ContentAssets assets,
+        bool active = false
     )
     {
+        Texture texture = GetTexture(assets, theme?.GetImagePath(active));
         return new EncyclopediaDialogButtonRenderData(
             command,
-            GetTexture(assets, theme?.UpImagePath),
-            GetTexture(assets, theme?.DownImagePath),
+            texture,
+            GetTexture(assets, theme?.GetImagePath(true)) ?? texture,
             GetSourceRect(theme?.SourceLayout)
         );
     }

@@ -8293,6 +8293,13 @@ public static class StrategyViewPrefabBuilder
             "StrategyWindows.Encyclopedia"
         );
         CreateArtworkWindowPreview(
+            _encyclopediaWindowPrefabPath,
+            parent,
+            PreviewTheme?.StrategyWindows?.Encyclopedia,
+            "StrategyWindows.Encyclopedia",
+            ContentEditorArtworkWindowPreview.EncyclopediaDetailWindowName
+        );
+        CreateArtworkWindowPreview(
             _finderWindowPrefabPath,
             parent,
             PreviewTheme?.StrategyWindows?.Finder,
@@ -8445,11 +8452,13 @@ public static class StrategyViewPrefabBuilder
     /// <param name="parent">The preview surface that receives the copy.</param>
     /// <param name="theme">The window-specific preview-theme branch.</param>
     /// <param name="themePath">The dotted member path to the window-specific branch.</param>
+    /// <param name="instanceName">The optional name of this preview instance.</param>
     private static void CreateArtworkWindowPreview(
         string prefabPath,
         Transform parent,
         object theme,
-        string themePath
+        string themePath,
+        string instanceName = null
     )
     {
         GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
@@ -8507,7 +8516,7 @@ public static class StrategyViewPrefabBuilder
         }
 
         GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
-        instance.name = prefab.name;
+        instance.name = instanceName ?? prefab.name;
         AttachThemeTextureBindings(instance, themePaths);
         AttachDynamicThemeTextureBindings(instance);
         foreach (CanvasGroup group in instance.GetComponentsInChildren<CanvasGroup>(true))

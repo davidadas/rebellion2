@@ -71,13 +71,20 @@ internal static class ContentEditorArtworkCutGenerator
             if (!ImageConversion.LoadImage(sourceTexture, File.ReadAllBytes(source), false))
                 throw new InvalidDataException("The source image could not be decoded.");
             sourceTexture.wrapMode = TextureWrapMode.Clamp;
-            RectInt contentBounds = GetVisibleContentBounds(sourceTexture, out bool opaque);
+            Color32[] sourcePixels = sourceTexture.GetPixels32();
+            RectInt contentBounds = GetVisibleContentBounds(
+                sourceTexture.width,
+                sourceTexture.height,
+                sourcePixels,
+                out bool opaque
+            );
             bool fillFrame = fillOpaqueSource && opaque;
             return targets.ToDictionary(
                 target => target,
                 target =>
                     CreatePngCut(
                         sourceTexture,
+                        opaque ? null : sourcePixels,
                         contentBounds,
                         target.Size,
                         target.Offset,
@@ -97,6 +104,7 @@ internal static class ContentEditorArtworkCutGenerator
     /// Samples one centered cover crop into an exact output canvas and encodes it as PNG.
     /// </summary>
     /// <param name="source">The readable decoded source texture.</param>
+    /// <param name="transparentPixels">The source pixels when alpha-aware sampling is required.</param>
     /// <param name="contentBounds">The visible subject bounds used to preserve framing.</param>
     /// <param name="target">The exact output size.</param>
     /// <param name="offset">The artwork displacement in output proportions.</param>
@@ -106,6 +114,7 @@ internal static class ContentEditorArtworkCutGenerator
     /// <returns>The encoded PNG bytes.</returns>
     private static byte[] CreatePngCut(
         Texture2D source,
+        Color32[] transparentPixels,
         RectInt contentBounds,
         Vector2Int target,
         Vector2 offset,
@@ -152,10 +161,23 @@ internal static class ContentEditorArtworkCutGenerator
                 {
                     float sampleX = (x + 0.5f - fittedX) / scale;
                     if (sampleX >= 0 && sampleX <= crop.width)
-                        pixels[row + x] = source.GetPixelBilinear(
-                            (crop.x + sampleX - 0.5f) / source.width,
-                            (crop.y + sampleY - 0.5f) / source.height
-                        );
+                    {
+                        float sourceX = crop.x + sampleX - 0.5f;
+                        float sourceY = crop.y + sampleY - 0.5f;
+                        pixels[row + x] =
+                            transparentPixels == null
+                                ? source.GetPixelBilinear(
+                                    sourceX / source.width,
+                                    sourceY / source.height
+                                )
+                                : SampleTransparentPixel(
+                                    transparentPixels,
+                                    source.width,
+                                    source.height,
+                                    sourceX,
+                                    sourceY
+                                );
+                    }
                 }
             }
             output.SetPixels(pixels);
@@ -169,33 +191,92 @@ internal static class ContentEditorArtworkCutGenerator
     }
 
     /// <summary>
+    /// Interpolates premultiplied pixels and returns straight alpha for PNG encoding.
+    /// </summary>
+    /// <param name="pixels">The source image pixels in row order.</param>
+    /// <param name="width">The source image width.</param>
+    /// <param name="height">The source image height.</param>
+    /// <param name="x">The horizontal sample coordinate in source pixels.</param>
+    /// <param name="y">The vertical sample coordinate in source pixels.</param>
+    /// <returns>The filtered straight-alpha pixel.</returns>
+    private static Color SampleTransparentPixel(
+        Color32[] pixels,
+        int width,
+        int height,
+        float x,
+        float y
+    )
+    {
+        x = Mathf.Clamp(x, 0, width - 1);
+        y = Mathf.Clamp(y, 0, height - 1);
+        int left = Mathf.FloorToInt(x);
+        int right = Mathf.Min(left + 1, width - 1);
+        int bottom = Mathf.FloorToInt(y) * width;
+        int top = Mathf.Min(bottom + width, (height - 1) * width);
+        float horizontalMix = x - left;
+        Color lower = Color.LerpUnclamped(
+            Premultiply(pixels[bottom + left]),
+            Premultiply(pixels[bottom + right]),
+            horizontalMix
+        );
+        Color upper = Color.LerpUnclamped(
+            Premultiply(pixels[top + left]),
+            Premultiply(pixels[top + right]),
+            horizontalMix
+        );
+        Color filtered = Color.LerpUnclamped(lower, upper, y - bottom / width);
+        return filtered.a > 0
+            ? new Color(
+                filtered.r / filtered.a,
+                filtered.g / filtered.a,
+                filtered.b / filtered.a,
+                filtered.a
+            )
+            : Color.clear;
+    }
+
+    /// <summary>
+    /// Weights the source color by its contribution to the filtered pixel.
+    /// </summary>
+    /// <param name="pixel">The source pixel with straight alpha.</param>
+    /// <returns>The corresponding premultiplied pixel.</returns>
+    private static Color Premultiply(Color pixel) =>
+        new(pixel.r * pixel.a, pixel.g * pixel.a, pixel.b * pixel.a, pixel.a);
+
+    /// <summary>
     /// Finds the smallest source rectangle containing pixels that contribute visible alpha.
     /// </summary>
-    /// <param name="source">The readable source texture.</param>
+    /// <param name="width">The source image width.</param>
+    /// <param name="height">The source image height.</param>
+    /// <param name="pixels">The source image pixels in row order.</param>
     /// <param name="opaque">Whether all source pixels are fully opaque.</param>
     /// <returns>The visible bounds, or the full canvas when the source is fully transparent.</returns>
-    private static RectInt GetVisibleContentBounds(Texture2D source, out bool opaque)
+    private static RectInt GetVisibleContentBounds(
+        int width,
+        int height,
+        Color32[] pixels,
+        out bool opaque
+    )
     {
-        int minimumX = source.width;
-        int minimumY = source.height;
+        int minimumX = width;
+        int minimumY = height;
         int maximumX = -1;
         int maximumY = -1;
         opaque = true;
-        Color32[] pixels = source.GetPixels32();
         for (int index = 0; index < pixels.Length; index++)
         {
             opaque &= pixels[index].a == byte.MaxValue;
             if (pixels[index].a <= 1)
                 continue;
-            int x = index % source.width;
-            int y = index / source.width;
+            int x = index % width;
+            int y = index / width;
             minimumX = Mathf.Min(minimumX, x);
             minimumY = Mathf.Min(minimumY, y);
             maximumX = Mathf.Max(maximumX, x);
             maximumY = Mathf.Max(maximumY, y);
         }
         return maximumX < minimumX || maximumY < minimumY
-            ? new RectInt(0, 0, source.width, source.height)
+            ? new RectInt(0, 0, width, height)
             : new RectInt(minimumX, minimumY, maximumX - minimumX + 1, maximumY - minimumY + 1);
     }
 

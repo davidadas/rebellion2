@@ -101,7 +101,7 @@ public sealed class UIContext
     }
 
     /// <summary>
-    /// Gets mission artwork from the theme responsible for the icon.
+    /// Gets mission artwork from the shared theme when available, with faction artwork as a fallback.
     /// </summary>
     /// <param name="factionInstanceId">The faction displaying the mission.</param>
     /// <param name="key">The mission icon key.</param>
@@ -109,10 +109,13 @@ public sealed class UIContext
     /// <returns>The resolved mission texture, when available.</returns>
     public Texture2D GetMissionIconTexture(string factionInstanceId, string key, bool small)
     {
-        FactionTheme theme = GetTheme(
-            MissionIconKeys.UsesSharedArtwork(key) ? null : factionInstanceId
-        );
-        return GetTexture(theme?.MissionIcons?.GetImagePath(key, small));
+        if (MissionIconKeys.UsesSharedArtwork(key))
+        {
+            Texture2D shared = GetTexture(GetTheme(null)?.MissionIcons?.GetImagePath(key, small));
+            if (shared != null)
+                return shared;
+        }
+        return GetTexture(GetTheme(factionInstanceId)?.MissionIcons?.GetImagePath(key, small));
     }
 
     /// <summary>
