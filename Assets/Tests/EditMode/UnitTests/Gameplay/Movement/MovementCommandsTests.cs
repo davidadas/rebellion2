@@ -2779,6 +2779,51 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsNull(specialForces.Movement);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TryRequestMove_LocalDeliveryDestination_CompletesDelivery(bool boardCarrier)
+        {
+            (GameRoot game, Planet origin, _, _, MovementCommands movement) = BuildScene();
+            Starfighter fighter = EntityFactory.CreateStarfighter("delivered-fighter", "empire");
+            fighter.ManufacturingStatus = ManufacturingStatus.Delivering;
+            game.AttachNode(fighter, origin);
+            ContainerNode destination = origin;
+            if (boardCarrier)
+            {
+                Fleet fleet = EntityFactory.CreateFleet("carrier-fleet", "empire");
+                CapitalShip carrier = CreateMovableCapitalShip("carrier");
+                carrier.StarfighterCapacity = 1;
+                carrier.MaxHullStrength = 100;
+                carrier.CurrentHullStrength = 100;
+                game.AttachNode(fleet, origin);
+                game.AttachNode(carrier, fleet);
+                destination = carrier;
+            }
+
+            Assert.IsTrue(movement.TryRequestMove(fighter, destination));
+
+            Assert.AreSame(destination, fighter.GetParent());
+            Assert.IsNull(fighter.Movement);
+            Assert.AreEqual(ManufacturingStatus.Complete, fighter.ManufacturingStatus);
+        }
+
+        [Test]
+        public void TryRequestMove_RemoteDeliveryDestination_PreservesDelivering()
+        {
+            (GameRoot game, Planet origin, Planet destination, _, MovementCommands movement) =
+                BuildScene();
+            Starfighter fighter = EntityFactory.CreateStarfighter("delivering-fighter", "empire");
+            fighter.ManufacturingStatus = ManufacturingStatus.Delivering;
+            fighter.Hyperdrive = 1;
+            game.AttachNode(fighter, origin);
+
+            Assert.IsTrue(movement.TryRequestMove(fighter, destination));
+
+            Assert.AreSame(destination, fighter.GetParent());
+            Assert.IsNotNull(fighter.Movement);
+            Assert.AreEqual(ManufacturingStatus.Delivering, fighter.ManufacturingStatus);
+        }
+
         [Test]
         public void RequestMove_ManufacturedBuildingCompletedAtBlockadedProductionPlanet_RemainsLocal()
         {
