@@ -2347,6 +2347,7 @@ namespace Rebellion.Gameplay
             if (unit.GetParent() == destination)
             {
                 unit.Movement = null;
+                CompleteManufacturingDelivery(unit);
                 if (!string.IsNullOrWhiteSpace(sourceEventInstanceID))
                     AddArrivalResults(
                         unit,
@@ -2364,6 +2365,7 @@ namespace Rebellion.Gameplay
                 MoveNode(unit, destination, results);
                 ClaimUncolonizedDestinationFromRegiment(unit, destination, results);
                 unit.Movement = null;
+                CompleteManufacturingDelivery(unit);
                 AddPlanetGarrisonChangedResults(results, unit, originPlanet);
                 if (!string.IsNullOrWhiteSpace(sourceEventInstanceID))
                     AddArrivalResults(
