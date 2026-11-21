@@ -12,7 +12,7 @@
     <WarningsAsErrors>CS1573;CS1587;CS8019</WarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="GameAssembly.Lint.csproj" />
+    <ProjectReference Include="RuntimeAssemblies.Lint.csproj" />
     <Reference Include="Unity.CompilationPipeline.Common">
       <HintPath
         Condition="Exists('$(UnityManagedAssembliesPath)/Unity.CompilationPipeline.Common.dll')"

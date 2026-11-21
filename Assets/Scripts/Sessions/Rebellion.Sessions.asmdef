@@ -1,0 +1,17 @@
+{
+    "name": "Rebellion.Sessions",
+    "rootNamespace": "Rebellion.Sessions",
+    "references": [
+        "Rebellion.AI",
+        "Rebellion.Analytics",
+        "Rebellion.Content",
+        "Rebellion.Game",
+        "Rebellion.Gameplay",
+        "Rebellion.Saves",
+        "Rebellion.SceneGraph",
+        "Rebellion.UserSettings",
+        "Rebellion.Util"
+    ],
+    "autoReferenced": true,
+    "noEngineReferences": false
+}

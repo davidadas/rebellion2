@@ -220,7 +220,7 @@ public sealed class ContentEditorPlaySession : IDisposable
             .EnumerateDirectories(directory, "*_Data")
             .Where(data =>
                 !string.Equals(Path.GetFullPath(data), Path.GetFullPath(editorDataPath), comparison)
-                && File.Exists(Path.Combine(data, "Managed", "GameAssembly.dll"))
+                && File.Exists(Path.Combine(data, "Managed", "Rebellion.App.dll"))
             )
             .Select(data => data[..^5] + extension)
             .Where(File.Exists)

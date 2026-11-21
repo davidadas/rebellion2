@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using Rebellion.Game;
 
 namespace Rebellion.Multiplayer
 {
@@ -15,8 +14,10 @@ namespace Rebellion.Multiplayer
         public const string BuildMetadataKey = "SimulationBuild";
 
         public static string SimulationBuild =>
-            typeof(GameRoot)
-                .Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+            AppDomain
+                .CurrentDomain.GetAssemblies()
+                .Single(assembly => assembly.GetName().Name == "Rebellion.App")
+                .GetCustomAttributes<AssemblyMetadataAttribute>()
                 .Single(attribute => attribute.Key == BuildMetadataKey)
                 .Value;
 

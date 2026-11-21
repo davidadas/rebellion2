@@ -149,7 +149,7 @@ def collect_files(root, platform, game_name="rebellion2", architecture="x64"):
         # Both players share UnityPlayer; Linux keeps a Mono runtime in each player's data.
         # IL2CPP companions cannot share a single native GameAssembly library.
         require(
-            (data / "Managed" / "GameAssembly.dll").is_file(),
+            (data / "Managed" / "Rebellion.App.dll").is_file(),
             "Shared desktop bundles require Mono builds",
         )
         if platform == "StandaloneLinux64":

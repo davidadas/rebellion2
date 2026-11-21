@@ -193,10 +193,10 @@ namespace Rebellion.Tests.ContentEditor
                 "Managed"
             );
             Directory.CreateDirectory(managed);
-            File.WriteAllText(Path.Combine(managed, "GameAssembly.dll"), "fixture");
+            File.WriteAllText(Path.Combine(managed, "Rebellion.App.dll"), "fixture");
             string editorManaged = Path.Combine(install, "rebellion2-editor_Data", "Managed");
             Directory.CreateDirectory(editorManaged);
-            File.WriteAllText(Path.Combine(editorManaged, "GameAssembly.dll"), "fixture");
+            File.WriteAllText(Path.Combine(editorManaged, "Rebellion.App.dll"), "fixture");
             File.WriteAllText(
                 Path.Combine(install, "rebellion2-editor" + Path.GetExtension(executable)),
                 "fixture"

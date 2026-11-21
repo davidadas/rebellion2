@@ -4,7 +4,7 @@
         "Editor"
     ],
     "references": [
-        "GameAssembly",
+        "Rebellion.App",
         "Unity.Rebellion.Build.CodeGen",
         "NativeAudit",
         "ContentPackEditorAssembly",
@@ -15,7 +15,20 @@
         "Unity.RenderPipelines.HighDefinition.Runtime",
         "Unity.Services.Core",
         "UnityEditor.TestRunner",
-        "UnityEngine.TestRunner"
+        "UnityEngine.TestRunner",
+        "Rebellion.Util",
+        "Rebellion.SceneGraph",
+        "Rebellion.Game",
+        "Rebellion.UserSettings",
+        "Rebellion.Saves",
+        "Rebellion.Content",
+        "Rebellion.Generation",
+        "Rebellion.Analytics",
+        "Rebellion.Sessions",
+        "Rebellion.Multiplayer",
+        "Rebellion.Gameplay",
+        "Rebellion.AI",
+        "Rebellion.Networking.Transport"
     ],
     "overrideReferences": true,
     "precompiledReferences": [

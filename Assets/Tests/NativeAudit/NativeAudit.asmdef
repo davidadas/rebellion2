@@ -2,12 +2,19 @@
     "name": "NativeAudit",
     "rootNamespace": "Rebellion.Tests.NativeAudit",
     "references": [
-        "GameAssembly",
+        "Rebellion.App",
         "com.Epic.OnlineServices",
         "com.playeveryware.eos.core",
         "Unity.InputSystem",
         "Unity.TextMeshPro",
-        "UnityEngine.UI"
+        "UnityEngine.UI",
+        "Rebellion.Game",
+        "Rebellion.Saves",
+        "Rebellion.Sessions",
+        "Rebellion.Multiplayer",
+        "Rebellion.Gameplay",
+        "Rebellion.AI",
+        "Rebellion.Networking.Transport"
     ],
     "includePlatforms": [
         "Editor",

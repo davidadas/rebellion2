@@ -1,0 +1,21 @@
+{
+    "name": "Rebellion.Multiplayer",
+    "rootNamespace": "Rebellion.Multiplayer",
+    "references": [
+        "com.Epic.OnlineServices",
+        "com.playeveryware.eos.core",
+        "com.playeveryware.eos",
+        "Rebellion.Analytics",
+        "Rebellion.Content",
+        "Rebellion.Game",
+        "Rebellion.Gameplay",
+        "Rebellion.Networking.Transport",
+        "Rebellion.Saves",
+        "Rebellion.SceneGraph",
+        "Rebellion.Sessions",
+        "Rebellion.UserSettings",
+        "Rebellion.Util"
+    ],
+    "autoReferenced": true,
+    "noEngineReferences": false
+}

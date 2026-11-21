@@ -44,7 +44,7 @@ class PackageDesktopTests(unittest.TestCase):
             else:
                 self.write(name + suffix).chmod(0o755)
             data = packager.player_data(self.root, name, platform, game_name)
-            self.write((data / "Managed/GameAssembly.dll").relative_to(self.root))
+            self.write((data / "Managed/Rebellion.App.dll").relative_to(self.root))
             if platform == "StandaloneLinux64":
                 self.write(
                     (
@@ -151,7 +151,7 @@ class PackageDesktopTests(unittest.TestCase):
         self.write("Content/catalog.xml", b"private")
         self.write("anything-private.txt", b"private")
         self.write("Rebellion 2_BurstDebugInformation_DoNotShip/secret.txt", b"private")
-        self.write("rebellion2_Data/Managed/GameAssembly.pdb", b"private")
+        self.write("rebellion2_Data/Managed/Rebellion.App.pdb", b"private")
         files = packager.collect_files(self.root, "StandaloneWindows64")
         self.assertTrue(files)
         self.assertFalse(any(path.read_bytes() == b"private" for path in files))
@@ -309,7 +309,7 @@ class PackageDesktopTests(unittest.TestCase):
         self.create_build()
         self.write("Mods/user/pack.xml", b"user")
         self.write("Rebellion 2_BurstDebugInformation_DoNotShip/source.txt", b"debug")
-        self.write("rebellion2_Data/Managed/GameAssembly.pdb", b"debug")
+        self.write("rebellion2_Data/Managed/Rebellion.App.pdb", b"debug")
         destination = Path(self.temporary.name) / "staged"
 
         packager.stage(self.root, "StandaloneWindows64", destination)

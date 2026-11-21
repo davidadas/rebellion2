@@ -2,9 +2,16 @@
     "name": "ContentPackEditorAssembly",
     "rootNamespace": "",
     "references": [
-        "GameAssembly",
+        "Rebellion.App",
+        "Rebellion.SceneGraph",
+        "Rebellion.Game",
+        "Rebellion.Content",
+        "Rebellion.Generation",
+        "Rebellion.Sessions",
+        "Rebellion.Gameplay",
         "Unity.TextMeshPro",
-        "UnityEngine.UI"
+        "UnityEngine.UI",
+        "Rebellion.Util"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
