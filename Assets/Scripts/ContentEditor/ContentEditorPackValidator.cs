@@ -473,6 +473,9 @@ internal static class ContentEditorPackValidator
     {
         if (project.IsDirty)
             throw new InvalidOperationException("Save the content pack before validating it.");
+        IReadOnlyList<ContentPackEditorCatalog> catalogs = project.GetCatalogs();
+        foreach (ContentPackEditorCatalog catalog in catalogs)
+            catalog.ValidateAuthoredTypeIDs();
         ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
             project.ContentRootPath,
             project.PackRootPath,
@@ -482,8 +485,7 @@ internal static class ContentEditorPackValidator
         IReadOnlyDictionary<string, string> traits = project.GetTraitOptions();
         List<ContentEditorValidationIssue> issues = new List<ContentEditorValidationIssue>();
         foreach (
-            ContentPackEditorRecord record in project
-                .GetCatalogs()
+            ContentPackEditorRecord record in catalogs
                 .SelectMany(catalog => catalog.Records)
                 .SelectMany(record => new[] { record }.Concat(record.Planets))
         )

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 using Rebellion.Game;
@@ -55,6 +56,28 @@ public sealed class ContentPackEditorCatalog
         string[] parts = document.Address.Split('/');
         Faction = parts.Length > 3 && parts[1] == "Factions" ? parts[2] : "Shared";
         RefreshRecords();
+    }
+
+    /// <summary>
+    /// Rejects repeated TypeID selectors in authored XML rather than its merged effective values.
+    /// </summary>
+    /// <param name="typeID">The selected identity, or null to validate the entire catalog.</param>
+    internal void ValidateAuthoredTypeIDs(string typeID = null)
+    {
+        if (recordName == null || Document.AuthoredText == null)
+            return;
+        HashSet<string> identifiers = new HashSet<string>(StringComparer.Ordinal);
+        foreach (XElement record in XElement.Parse(Document.AuthoredText).Elements(recordName))
+        {
+            string identifier =
+                (string)record.Element("TypeID") ?? (string)record.Attribute("TypeID");
+            if (identifier == null || typeID != null && identifier != typeID)
+                continue;
+            if (!identifiers.Add(identifier))
+                throw new InvalidDataException(
+                    $"Duplicate TypeID '{identifier}' in {Document.Address}. Combine the records into one entry."
+                );
+        }
     }
 
     /// <summary>

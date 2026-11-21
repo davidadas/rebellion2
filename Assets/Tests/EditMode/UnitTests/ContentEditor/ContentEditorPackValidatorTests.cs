@@ -13,6 +13,47 @@ namespace Rebellion.Tests.ContentEditor
     [TestFixture]
     public sealed class ContentEditorPackValidatorTests : ContentPackEditorTestBase
     {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ValidateFields_DuplicateAuthoredTypeID_ReportsIdentifierAndFile(
+            bool attributeIdentity
+        )
+        {
+            var overlay = CreateShipOverlay(true, attributeIdentity);
+            Assert.AreEqual(
+                1,
+                XElement
+                    .Parse(
+                        overlay
+                            .Project.Documents.Single(document =>
+                                document.Address == overlay.Address
+                            )
+                            .Text
+                    )
+                    .Elements("CapitalShip")
+                    .Count(record =>
+                        ((string)record.Element("TypeID") ?? (string)record.Attribute("TypeID"))
+                        == overlay.TypeID
+                    )
+            );
+
+            InvalidDataException error = Assert.Throws<InvalidDataException>(() =>
+                ContentEditorPackValidator.ValidateFields(overlay.Project)
+            );
+
+            StringAssert.Contains("Duplicate TypeID", error.Message);
+            StringAssert.Contains(overlay.TypeID, error.Message);
+            StringAssert.Contains(overlay.Address, error.Message);
+        }
+
+        [Test]
+        public void ValidateFields_SingleOverrideOfInheritedTypeID_Passes()
+        {
+            var overlay = CreateShipOverlay(false, false);
+
+            Assert.DoesNotThrow(() => ContentEditorPackValidator.ValidateFields(overlay.Project));
+        }
+
         [Test]
         public async Task ValidateAsync_UnknownFactionInSavedXml_RejectsThePackAsync()
         {
@@ -448,6 +489,50 @@ namespace Rebellion.Tests.ContentEditor
             Assert.That(
                 warnings,
                 Has.Some.Contains("Faction theme 'FNALL1' has no usable bookmark rows")
+            );
+        }
+
+        /// <summary>
+        /// Writes a saved ship overlay independently of the editor's effective XML.
+        /// </summary>
+        /// <param name="duplicate">Whether to split the edits into two records with the same identity.</param>
+        /// <param name="attributeIdentity">Whether the authored records use attribute identities.</param>
+        /// <returns>The reopened project and the authored identity and address.</returns>
+        private (ContentPackEditorProject Project, string TypeID, string Address) CreateShipOverlay(
+            bool duplicate,
+            bool attributeIdentity
+        )
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorRecord ship = Records(project)
+                .First(record => record.Kind == "CapitalShip");
+            XElement first = new XElement(
+                "CapitalShip",
+                new XElement("TypeID", ship.ID),
+                new XElement("DisplayName", "Edited ship")
+            );
+            XElement second = new XElement(
+                "CapitalShip",
+                new XElement("TypeID", ship.ID),
+                new XElement("ResearchOrder", 10)
+            );
+            if (attributeIdentity)
+                foreach (XElement record in new[] { first, second })
+                {
+                    record.Element("TypeID").Remove();
+                    record.SetAttributeValue("TypeID", ship.ID);
+                }
+            XElement xml = new XElement("CapitalShips", new XAttribute("Inherit", true), first);
+            if (duplicate)
+                xml.Add(second);
+            else
+                first.Add(second.Element("ResearchOrder"));
+            Directory.CreateDirectory(Path.GetDirectoryName(ship.Catalog.Document.TargetPath));
+            File.WriteAllText(ship.Catalog.Document.TargetPath, xml.ToString());
+            return (
+                ContentPackEditorStorage.OpenFolder(project.ContentRootPath, project.PackRootPath),
+                ship.ID,
+                ship.Catalog.Document.Address
             );
         }
 
