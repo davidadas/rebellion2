@@ -171,6 +171,7 @@ namespace Rebellion.Tests.UserSettings
                 Bloom = false,
                 MotionBlur = false,
                 HdrOutput = true,
+                SmoothScaledArtwork = true,
             };
 
             settings.RestoreGraphicsDefaults();
@@ -184,6 +185,7 @@ namespace Rebellion.Tests.UserSettings
             Assert.IsTrue(settings.Bloom);
             Assert.IsTrue(settings.MotionBlur);
             Assert.IsFalse(settings.HdrOutput);
+            Assert.IsFalse(settings.SmoothScaledArtwork);
         }
 
         /// <summary>

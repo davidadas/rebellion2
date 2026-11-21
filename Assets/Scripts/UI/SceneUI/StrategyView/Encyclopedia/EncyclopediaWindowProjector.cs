@@ -61,7 +61,7 @@ internal static class EncyclopediaWindowProjector
             new EncyclopediaWindowDetailRenderData(
                 selectedEntry?.DisplayName,
                 selectedEntry?.GetInfoText(),
-                uiContext.GetTexture(selectedEntry?.ImagePath),
+                uiContext.GetScaledTexture(selectedEntry?.ImagePath),
                 session.SelectedIndex <= 0,
                 session.SelectedIndex < 0
                     || session.SelectedIndex >= session.ProjectedEntries.Count - 1

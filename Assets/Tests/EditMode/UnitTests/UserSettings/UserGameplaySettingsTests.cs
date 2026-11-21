@@ -19,6 +19,7 @@ namespace Rebellion.Tests.UserSettings
             settings.UserInterface.ShowFrameRate = true;
             settings.UserInterface.KeepIdleBarAboveWindows = true;
             settings.UserInterface.QuickOpenMapItems = true;
+            settings.Video.SmoothScaledArtwork = true;
             settings.Gameplay.GameLaunchSpeed = GameLaunchSpeed.Fast;
             settings.Gameplay.ShowMissionOdds = false;
 
@@ -35,6 +36,7 @@ namespace Rebellion.Tests.UserSettings
             Assert.IsTrue(restored.UserInterface.ShowFrameRate);
             Assert.IsTrue(restored.UserInterface.KeepIdleBarAboveWindows);
             Assert.IsTrue(restored.UserInterface.QuickOpenMapItems);
+            Assert.IsTrue(restored.Video.SmoothScaledArtwork);
             Assert.AreEqual(GameLaunchSpeed.Fast, restored.Gameplay.GameLaunchSpeed);
             Assert.IsFalse(restored.Gameplay.ShowMissionOdds);
         }

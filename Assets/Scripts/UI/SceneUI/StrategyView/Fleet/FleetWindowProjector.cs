@@ -309,8 +309,8 @@ internal sealed class FleetWindowProjector
             tabs.Add(
                 new FleetWindowTabRenderData(
                     tab,
-                    uiContext.GetTexture(tabTheme?.GetImagePathForContent(!empty, active)),
-                    uiContext.GetTexture(
+                    uiContext.GetScaledTexture(tabTheme?.GetImagePathForContent(!empty, active)),
+                    uiContext.GetScaledTexture(
                         tabTheme?.GetImagePathForContent(hasItems: true, active: true)
                     )
                 )
@@ -467,7 +467,7 @@ internal sealed class FleetWindowProjector
             UnitTileIcons icons = uiContext
                 .GetTheme(item.GetOwnerInstanceID())
                 ?.PlanetOverlayTheme?.UnitTileIcons;
-            return uiContext.GetTexture(icons?.FleetConstructionSmallImagePath);
+            return uiContext.GetScaledTexture(icons?.FleetConstructionSmallImagePath);
         }
 
         bool enroute = IsItemInTransit(fleet, item);
@@ -483,7 +483,7 @@ internal sealed class FleetWindowProjector
             return personnelBackground;
 
         string path = SelectStatusPath(item.InTransitSmallImagePath, item.InTransitImagePath);
-        return uiContext.GetTexture(path) ?? personnelEnrouteBackground;
+        return uiContext.GetScaledTexture(path) ?? personnelEnrouteBackground;
     }
 
     /// <summary>
@@ -506,7 +506,7 @@ internal sealed class FleetWindowProjector
         )
             return null;
 
-        return uiContext.GetTexture(
+        return uiContext.GetScaledTexture(
             SelectStatusPath(item.InTransitSmallImagePath, item.InTransitImagePath)
         );
     }
@@ -525,13 +525,13 @@ internal sealed class FleetWindowProjector
         )
             return null;
         if (item is Officer { InjuryPoints: > 0 } && !string.IsNullOrEmpty(item.InjuredImagePath))
-            return uiContext.GetTexture(item.InjuredImagePath);
+            return uiContext.GetScaledTexture(item.InjuredImagePath);
 
         bool damaged =
             item is CapitalShip capitalShip && capitalShip.IsDamaged()
             || item is Starfighter starfighter && starfighter.HasLosses();
         return damaged
-            ? uiContext.GetTexture(
+            ? uiContext.GetScaledTexture(
                 SelectStatusPath(item.DamagedSmallImagePath, item.DamagedImagePath)
             )
             : null;
@@ -612,7 +612,7 @@ internal sealed class FleetWindowProjector
 
             return usesSummaryBanner
                 ? GetFleetBannerStatusTexture(uiContext, ownerFactionId, damaged: false)
-                : uiContext.GetTexture(capitalShip.InTransitImagePath);
+                : uiContext.GetScaledTexture(capitalShip.InTransitImagePath);
         }
 
         return bannerStatusSource is Fleet && IsFleetInTransit(fleet)
@@ -642,7 +642,7 @@ internal sealed class FleetWindowProjector
 
             return usesSummaryBanner
                 ? GetFleetBannerStatusTexture(uiContext, ownerFactionId, damaged: true)
-                : uiContext.GetTexture(capitalShip.DamagedImagePath);
+                : uiContext.GetScaledTexture(capitalShip.DamagedImagePath);
         }
 
         if (
@@ -668,7 +668,7 @@ internal sealed class FleetWindowProjector
     )
     {
         StatusWindowTheme status = uiContext.GetTheme(ownerFactionId)?.StrategyWindows?.Status;
-        return uiContext.GetTexture(
+        return uiContext.GetScaledTexture(
             damaged ? status?.FleetBannerDamagedImagePath : status?.FleetBannerEnrouteImagePath
         );
     }

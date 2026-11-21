@@ -272,7 +272,7 @@ internal sealed class DefenseWindowProjector
         bool active
     )
     {
-        return uiContext.GetTexture(theme?.GetImagePath(enabled, active));
+        return uiContext.GetScaledTexture(theme?.GetImagePath(enabled, active));
     }
 
     /// <summary>
@@ -335,7 +335,7 @@ internal sealed class DefenseWindowProjector
             UnitTileIcons icons = uiContext
                 .GetTheme(item.GetOwnerInstanceID())
                 ?.PlanetOverlayTheme?.UnitTileIcons;
-            return uiContext.GetTexture(icons?.FleetConstructionSmallImagePath);
+            return uiContext.GetScaledTexture(icons?.FleetConstructionSmallImagePath);
         }
 
         if (IsItemInTransit(item))
@@ -359,7 +359,7 @@ internal sealed class DefenseWindowProjector
         if (item is IManufacturable { ManufacturingStatus: ManufacturingStatus.Building })
             return null;
 
-        return uiContext.GetTexture(
+        return uiContext.GetScaledTexture(
             SelectStatusPath(item.InTransitSmallImagePath, item.InTransitImagePath)
         );
     }
@@ -378,13 +378,13 @@ internal sealed class DefenseWindowProjector
         )
             return null;
         if (item is Officer { InjuryPoints: > 0 } && !string.IsNullOrEmpty(item.InjuredImagePath))
-            return uiContext.GetTexture(item.InjuredImagePath);
+            return uiContext.GetScaledTexture(item.InjuredImagePath);
 
         bool damaged =
             item is CapitalShip capitalShip && capitalShip.IsDamaged()
             || item is Starfighter starfighter && starfighter.HasLosses();
         return damaged
-            ? uiContext.GetTexture(
+            ? uiContext.GetScaledTexture(
                 SelectStatusPath(item.DamagedSmallImagePath, item.DamagedImagePath)
             )
             : null;

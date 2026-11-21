@@ -39,6 +39,7 @@ internal sealed class OptionsSettingsSession
     private int _snapshotQualityLevel;
     private bool _snapshotGraphicsPresetCustomized;
     private int _snapshotAntiAliasingMode;
+    private bool _snapshotSmoothScaledArtwork;
     private int _snapshotFrameRateLimit;
     private bool _snapshotVerticalSync;
     private bool _snapshotRayTracing;
@@ -128,6 +129,7 @@ internal sealed class OptionsSettingsSession
         Video.QualityLevel = _snapshotQualityLevel;
         Video.GraphicsPresetCustomized = _snapshotGraphicsPresetCustomized;
         Video.AntiAliasingMode = _snapshotAntiAliasingMode;
+        Video.SmoothScaledArtwork = _snapshotSmoothScaledArtwork;
         Video.FrameRateLimit = _snapshotFrameRateLimit;
         Video.VerticalSync = _snapshotVerticalSync;
         Video.RayTracing = _snapshotRayTracing;
@@ -402,6 +404,9 @@ internal sealed class OptionsSettingsSession
                     Enum.GetValues(typeof(UserAntiAliasingMode)).Length
                 );
                 break;
+            case UserGraphicsSetting.ArtworkFiltering:
+                Video.SmoothScaledArtwork = !Video.SmoothScaledArtwork;
+                break;
             case UserGraphicsSetting.VerticalSync:
                 Video.VerticalSync = !Video.VerticalSync;
                 break;
@@ -476,6 +481,7 @@ internal sealed class OptionsSettingsSession
         _snapshotQualityLevel = Video.QualityLevel;
         _snapshotGraphicsPresetCustomized = Video.GraphicsPresetCustomized;
         _snapshotAntiAliasingMode = Video.AntiAliasingMode;
+        _snapshotSmoothScaledArtwork = Video.SmoothScaledArtwork;
         _snapshotFrameRateLimit = Video.FrameRateLimit;
         _snapshotVerticalSync = Video.VerticalSync;
         _snapshotRayTracing = Video.RayTracing;
@@ -543,6 +549,7 @@ internal sealed class OptionsSettingsSession
             || Video.QualityLevel != _snapshotQualityLevel
             || Video.GraphicsPresetCustomized != _snapshotGraphicsPresetCustomized
             || Video.AntiAliasingMode != _snapshotAntiAliasingMode
+            || Video.SmoothScaledArtwork != _snapshotSmoothScaledArtwork
             || Video.FrameRateLimit != _snapshotFrameRateLimit
             || Video.VerticalSync != _snapshotVerticalSync
             || Video.RayTracing != _snapshotRayTracing
@@ -732,6 +739,7 @@ internal sealed class OptionsSettingsSession
                 UserAntiAliasingMode.Taa => "TAA",
                 _ => "Off",
             },
+            UserGraphicsSetting.ArtworkFiltering => GetToggleLabel(Video.SmoothScaledArtwork),
             UserGraphicsSetting.VerticalSync => GetToggleLabel(Video.VerticalSync),
             UserGraphicsSetting.FrameRateLimit => Video.FrameRateLimit == 0
                 ? "Unlimited"

@@ -550,7 +550,7 @@ internal sealed class BattleResultTableProjector
     /// <returns>The loaded texture, or null when unavailable.</returns>
     private static Texture2D GetTexture(UIContext uiContext, string path)
     {
-        return uiContext?.GetTexture(path);
+        return uiContext?.GetScaledTexture(path);
     }
 
     /// <summary>

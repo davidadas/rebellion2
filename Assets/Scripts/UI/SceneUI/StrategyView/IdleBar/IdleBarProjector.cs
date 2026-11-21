@@ -215,7 +215,7 @@ internal sealed class IdleBarProjector
         Texture2D texture = entity switch
         {
             Planet planet => uiContext?.GetPlanetTexture(planet),
-            Fleet fleet => uiContext?.GetTexture(
+            Fleet fleet => uiContext?.GetScaledTexture(
                 GetFleetTexturePath(uiContext.GetTheme(fleet.OwnerInstanceID))
             ),
             _ => uiContext?.GetEntityTexture(entity, true),

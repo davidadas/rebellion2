@@ -164,6 +164,77 @@ namespace Rebellion.Tests.UI.Runtime
         }
 
         [Test]
+        public void GetScaledTexture_SmoothingDisabled_ReturnsPointFilteredTexture()
+        {
+            string path = _context.GetPlayerFactionTheme().ConfirmDialogTheme.BackgroundImagePath;
+
+            Texture2D texture = _context.GetScaledTexture(path);
+
+            Assert.AreSame(_context.GetTexture(path), texture);
+            Assert.AreEqual(FilterMode.Point, texture.filterMode);
+        }
+
+        [Test]
+        public void GetScaledTexture_SmoothingEnabled_ReturnsSmoothTexture()
+        {
+            UIContext context = new UIContext(
+                _game,
+                _themeLibrary,
+                _encyclopediaCatalog,
+                TestContent.Assets.GetTexture,
+                TestContent.Assets.GetTextureContentBounds,
+                TestContent.Assets.GetSmoothTexture,
+                () => true
+            );
+            string path = context.GetPlayerFactionTheme().ConfirmDialogTheme.BackgroundImagePath;
+
+            Texture2D texture = context.GetScaledTexture(path);
+
+            Assert.AreSame(context.GetSmoothTexture(path), texture);
+            Assert.AreEqual(FilterMode.Trilinear, texture.filterMode);
+        }
+
+        [Test]
+        public void GetPlanetTexture_SmoothingEnabled_ReturnsSmoothTexture()
+        {
+            UIContext context = new UIContext(
+                _game,
+                _themeLibrary,
+                _encyclopediaCatalog,
+                TestContent.Assets.GetTexture,
+                TestContent.Assets.GetTextureContentBounds,
+                TestContent.Assets.GetSmoothTexture,
+                () => true
+            );
+            string path = context.GetPlayerFactionTheme().GalaxyBackground.DestroyedPlanetIconPath;
+            Planet planet = new Planet();
+
+            Texture2D texture = context.GetPlanetTexture(planet, path);
+
+            Assert.AreSame(context.GetSmoothTexture(path), texture);
+        }
+
+        [Test]
+        public void GetEntityTexture_SmoothingEnabled_ReturnsSmoothCompactArtwork()
+        {
+            UIContext context = new UIContext(
+                _game,
+                _themeLibrary,
+                _encyclopediaCatalog,
+                TestContent.Assets.GetTexture,
+                TestContent.Assets.GetTextureContentBounds,
+                TestContent.Assets.GetSmoothTexture,
+                () => true
+            );
+            string path = context.GetPlayerFactionTheme().GalaxyBackground.DestroyedPlanetIconPath;
+            Officer officer = new Officer { DisplayImagePath = path, SmallDisplayImagePath = path };
+
+            Texture2D texture = context.GetEntityTexture(officer, true);
+
+            Assert.AreSame(context.GetSmoothTexture(path), texture);
+        }
+
+        [Test]
         public void GetEntityTexture_NullOrUnmappedEntity_ReturnsNull()
         {
             Assert.IsNull(_context.GetEntityTexture(null, false));

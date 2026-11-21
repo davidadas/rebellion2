@@ -144,14 +144,18 @@ internal sealed class ConstructionWindowProjector
     {
         if (item is CapitalShip capitalShip)
         {
-            Texture2D battleResultTexture = uiContext.GetTexture(capitalShip.BattleResultImagePath);
+            Texture2D battleResultTexture = uiContext.GetScaledTexture(
+                capitalShip.BattleResultImagePath
+            );
             if (battleResultTexture != null)
                 return battleResultTexture;
         }
 
         if (item is Starfighter starfighter)
         {
-            Texture2D battleResultTexture = uiContext.GetTexture(starfighter.BattleResultImagePath);
+            Texture2D battleResultTexture = uiContext.GetScaledTexture(
+                starfighter.BattleResultImagePath
+            );
             if (battleResultTexture != null)
                 return battleResultTexture;
         }

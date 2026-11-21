@@ -488,6 +488,15 @@ public static class OptionsMenuPrefabBuilder
             previousButtons,
             nextButtons
         );
+        AppendGraphicsFieldRow(
+            graphicsContent,
+            UserGraphicsSetting.ArtworkFiltering,
+            "Smooth Scaled Artwork",
+            ref nextRowY,
+            valueFields,
+            previousButtons,
+            nextButtons
+        );
         AppendOptionsSectionHeader(
             graphicsContent,
             "RayTracingHeader",

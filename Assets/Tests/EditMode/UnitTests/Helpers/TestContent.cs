@@ -28,11 +28,13 @@ internal static class TestContent
     /// <param name="game">The game.</param>
     /// <param name="themeLibrary">The theme library.</param>
     /// <param name="encyclopediaCatalog">The encyclopedia catalog.</param>
+    /// <param name="smoothScaledArtwork">Whether scaled artwork should use smooth filtering.</param>
     /// <returns>The created ui context.</returns>
     internal static UIContext CreateUIContext(
         GameRoot game,
         FactionThemeLibrary themeLibrary,
-        EncyclopediaCatalog encyclopediaCatalog
+        EncyclopediaCatalog encyclopediaCatalog,
+        bool smoothScaledArtwork = false
     )
     {
         return new UIContext(
@@ -41,7 +43,8 @@ internal static class TestContent
             encyclopediaCatalog,
             Assets.GetTexture,
             Assets.GetTextureContentBounds,
-            Assets.GetSmoothTexture
+            Assets.GetSmoothTexture,
+            () => smoothScaledArtwork
         );
     }
 

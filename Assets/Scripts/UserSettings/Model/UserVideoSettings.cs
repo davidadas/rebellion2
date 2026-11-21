@@ -26,6 +26,8 @@ public enum UserGraphicsSetting
 
     AntiAliasing,
 
+    ArtworkFiltering,
+
     VerticalSync,
 
     FrameRateLimit,
@@ -68,6 +70,7 @@ public sealed class UserVideoSettings
     public int QualityLevel = DefaultQualityLevel;
     public bool GraphicsPresetCustomized;
     public int AntiAliasingMode = (int)UserAntiAliasingMode.Taa;
+    public bool SmoothScaledArtwork;
     public int FrameRateLimit;
     public bool VerticalSync = true;
     public bool RayTracing;
@@ -190,6 +193,7 @@ public sealed class UserVideoSettings
         Bloom = true;
         MotionBlur = true;
         HdrOutput = false;
+        SmoothScaledArtwork = false;
     }
 
     /// <summary>

@@ -154,6 +154,35 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsFalse(_session.IsDirty);
         }
 
+        [Test]
+        public void StepGraphics_ArtworkFiltering_TogglesSmoothScaledArtwork()
+        {
+            Assert.AreEqual(
+                "Off",
+                _session.GetGraphicsValues()[UserGraphicsSetting.ArtworkFiltering].Label
+            );
+
+            _session.StepGraphics(UserGraphicsSetting.ArtworkFiltering, 1);
+
+            Assert.IsTrue(_session.Video.SmoothScaledArtwork);
+            Assert.AreEqual(
+                "On",
+                _session.GetGraphicsValues()[UserGraphicsSetting.ArtworkFiltering].Label
+            );
+            Assert.IsTrue(_session.IsDirty);
+        }
+
+        [Test]
+        public void Revert_ArtworkFilteringChanged_RestoresSnapshot()
+        {
+            _session.StepGraphics(UserGraphicsSetting.ArtworkFiltering, 1);
+
+            _session.Revert();
+
+            Assert.IsFalse(_session.Video.SmoothScaledArtwork);
+            Assert.IsFalse(_session.IsDirty);
+        }
+
         /// <summary>
         /// Verifies stepping the quality preset updates all preset-owned settings.
         /// </summary>
@@ -255,12 +284,14 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             _session.StepGraphics(UserGraphicsSetting.AntiAliasing, 1);
             _session.StepGraphics(UserGraphicsSetting.VerticalSync, 1);
             _session.StepGraphics(UserGraphicsSetting.FrameRateLimit, 1);
+            _session.StepGraphics(UserGraphicsSetting.ArtworkFiltering, 1);
 
             _session.RestoreDefaults(OptionsMenuTab.Graphics);
 
             Assert.AreEqual((int)UserAntiAliasingMode.Taa, _session.Video.AntiAliasingMode);
             Assert.AreEqual(0, _session.Video.FrameRateLimit);
             Assert.IsTrue(_session.Video.VerticalSync);
+            Assert.IsFalse(_session.Video.SmoothScaledArtwork);
             Assert.AreEqual((int)FullScreenMode.FullScreenWindow, _session.Video.FullScreenMode);
         }
 

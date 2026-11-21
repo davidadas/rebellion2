@@ -18,6 +18,7 @@ public sealed class UIContext
     private readonly FactionThemeLibrary themeLibrary;
     private readonly Func<string, Texture2D> loadTexture;
     private readonly Func<string, Texture2D> loadSmoothTexture;
+    private readonly Func<bool> useSmoothScaledArtwork;
     private readonly Func<Texture2D, RectInt> getTextureContentBounds;
     private IReadOnlyList<Faction> factionPresentations;
     private string playerFactionInstanceId;
@@ -34,14 +35,16 @@ public sealed class UIContext
     /// <param name="encyclopediaCatalog">The Encyclopedia catalog.</param>
     /// <param name="loadTexture">The active content texture resolver.</param>
     /// <param name="getTextureContentBounds">The optional visible-pixel bounds resolver.</param>
-    /// <param name="loadSmoothTexture">The optional resolver for substantially reduced artwork.</param>
+    /// <param name="loadSmoothTexture">The optional resolver for smoothly filtered artwork.</param>
+    /// <param name="useSmoothScaledArtwork">Returns whether scaled artwork should use smooth filtering.</param>
     public UIContext(
         GameRoot game,
         FactionThemeLibrary themeLibrary,
         EncyclopediaCatalog encyclopediaCatalog,
         Func<string, Texture2D> loadTexture,
         Func<Texture2D, RectInt> getTextureContentBounds = null,
-        Func<string, Texture2D> loadSmoothTexture = null
+        Func<string, Texture2D> loadSmoothTexture = null,
+        Func<bool> useSmoothScaledArtwork = null
     )
     {
         if (game == null)
@@ -59,6 +62,7 @@ public sealed class UIContext
         this.themeLibrary = themeLibrary;
         this.loadTexture = loadTexture;
         this.loadSmoothTexture = loadSmoothTexture ?? loadTexture;
+        this.useSmoothScaledArtwork = useSmoothScaledArtwork ?? (() => false);
         this.getTextureContentBounds =
             getTextureContentBounds
             ?? (
@@ -163,7 +167,7 @@ public sealed class UIContext
     }
 
     /// <summary>
-    /// Resolves artwork through the loader intended for substantial on-screen reduction.
+    /// Resolves artwork through the smoothly filtered texture loader.
     /// </summary>
     /// <param name="path">The resource path.</param>
     /// <returns>The smoothly filtered texture, or <see langword="null"/>.</returns>
@@ -173,6 +177,19 @@ public sealed class UIContext
             return null;
 
         return loadSmoothTexture(path);
+    }
+
+    /// <summary>
+    /// Resolves artwork that is intentionally displayed at a different size from its source.
+    /// </summary>
+    /// <param name="path">The resource path.</param>
+    /// <returns>The point- or smoothly filtered texture selected by the active interface setting.</returns>
+    public Texture2D GetScaledTexture(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return null;
+
+        return useSmoothScaledArtwork() ? loadSmoothTexture(path) : loadTexture(path);
     }
 
     /// <summary>
@@ -202,16 +219,16 @@ public sealed class UIContext
 
         if (small)
         {
-            Texture2D configuredSmallTexture = GetTexture(node.SmallDisplayImagePath);
+            Texture2D configuredSmallTexture = GetScaledTexture(node.SmallDisplayImagePath);
             if (configuredSmallTexture != null)
                 return configuredSmallTexture;
 
-            Texture2D smallTexture = GetTexture(GetSmallTexturePath(path));
+            Texture2D smallTexture = GetScaledTexture(GetSmallTexturePath(path));
             if (smallTexture != null)
                 return smallTexture;
         }
 
-        return GetTexture(path);
+        return GetScaledTexture(path);
     }
 
     /// <summary>
@@ -222,7 +239,7 @@ public sealed class UIContext
     /// <returns>The resolved status texture, or <see langword="null"/>.</returns>
     public Texture2D GetEntityStatusTexture(ISceneNode node, bool small)
     {
-        return GetTexture(GetEntityStatusImagePath(node, small));
+        return GetScaledTexture(GetEntityStatusImagePath(node, small));
     }
 
     /// <summary>
@@ -233,7 +250,7 @@ public sealed class UIContext
     public Texture2D GetEntityCapturedOverlayTexture(ISceneNode node)
     {
         return node is Officer { IsCaptured: true }
-            ? GetTexture(node.CapturedOverlayImagePath)
+            ? GetScaledTexture(node.CapturedOverlayImagePath)
             : null;
     }
 
@@ -252,7 +269,7 @@ public sealed class UIContext
             ? GetPlayerFactionTheme()?.GalaxyBackground?.DestroyedPlanetIconPath
             : iconPath;
 
-        return GetTexture(path);
+        return GetScaledTexture(path);
     }
 
     /// <summary>

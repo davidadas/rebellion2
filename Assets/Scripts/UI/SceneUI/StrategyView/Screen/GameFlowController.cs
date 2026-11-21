@@ -467,7 +467,8 @@ public sealed class GameFlowController : MonoBehaviour
             encyclopediaCatalog,
             contentAssets.GetTexture,
             contentAssets.GetTextureContentBounds,
-            contentAssets.GetSmoothTexture
+            contentAssets.GetSmoothTexture,
+            () => bootstrap.GetUserSettingsManager().Settings.Video.SmoothScaledArtwork
         );
 
         if (activeGameManager != null)

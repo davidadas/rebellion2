@@ -155,7 +155,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     }
 
     /// <summary>
-    /// Resolves and caches a mipmapped texture for artwork that is substantially reduced on screen.
+    /// Resolves and caches a mipmapped texture for artwork displayed at a different size.
     /// </summary>
     /// <param name="path">The application or pack content address.</param>
     /// <returns>The smoothly filtered texture, or null when the address cannot be loaded.</returns>

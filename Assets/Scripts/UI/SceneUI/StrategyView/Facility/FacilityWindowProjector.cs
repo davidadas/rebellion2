@@ -314,7 +314,7 @@ internal sealed class FacilityWindowProjector
 
         if (building.Movement != null)
         {
-            Texture movementTexture = uiContext.GetTexture(building.InTransitSmallImagePath);
+            Texture movementTexture = uiContext.GetScaledTexture(building.InTransitSmallImagePath);
             if (movementTexture != null)
                 return movementTexture;
         }
@@ -324,7 +324,7 @@ internal sealed class FacilityWindowProjector
             string constructionPath = uiContext
                 .GetTheme(ownerFactionId)
                 ?.StrategyWindows?.Facility?.GetConstructionImagePath(building.GetTypeID());
-            Texture constructionTexture = uiContext.GetTexture(constructionPath);
+            Texture constructionTexture = uiContext.GetScaledTexture(constructionPath);
             if (constructionTexture != null)
                 return constructionTexture;
         }
