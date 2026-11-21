@@ -622,7 +622,7 @@ namespace Rebellion.Gameplay
                 _movement.TryRequestMove(assignment.Key, assignment.Value);
             }
 
-            _withdrawalResolver.ApplyFighterRecovery(plan);
+            _withdrawalResolver.ApplyFighterRecovery(plan.FighterRecoveryAssignments);
         }
 
         /// <summary>
@@ -1145,33 +1145,18 @@ namespace Rebellion.Gameplay
             List<CapitalShip> survivingCarriers = participatingShips
                 .Where(ship => !destroyedCarriers.Contains(ship) && ship.StarfighterCapacity > 0)
                 .ToList();
-            List<Starfighter> existingFighters = survivingCarriers
-                .SelectMany(ship => ship.GetChildren<Starfighter>())
-                .Where(SpaceCombatQueries.IsActiveStarfighter)
-                .Distinct()
-                .ToList();
-            List<Starfighter> recoveryOrder = existingFighters
-                .Concat(displacedFighters)
-                .Distinct()
-                .ToList();
-            HashSet<Starfighter> fightersRequiringCapacity = recoveryOrder.ToHashSet();
             Dictionary<Starfighter, CapitalShip> recoveryAssignments =
                 SpaceCombatWithdrawalPlanner.GetRecoveryAssignments(
                     survivingCarriers,
-                    recoveryOrder,
-                    fightersRequiringCapacity
+                    displacedFighters,
+                    displacedFighters.ToHashSet()
                 );
 
+            _withdrawalResolver.ApplyFighterRecovery(recoveryAssignments);
             foreach (Starfighter fighter in displacedFighters)
             {
-                if (
-                    recoveryAssignments.TryGetValue(fighter, out CapitalShip recoveryCarrier)
-                    && recoveryCarrier != null
-                )
-                {
-                    _game.MoveNode(fighter, recoveryCarrier);
+                if (recoveryAssignments.ContainsKey(fighter))
                     continue;
-                }
 
                 if (
                     fighter.Hyperdrive > 0
