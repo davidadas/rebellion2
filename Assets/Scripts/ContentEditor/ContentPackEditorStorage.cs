@@ -10,6 +10,7 @@ using System.Text;
 /// </summary>
 public static class ContentPackEditorStorage
 {
+    private const string _defaultGameConfigAddress = "Pack/Shared/Data/game-config.xml";
     private const string _packDefinitionAddress = "Pack/pack.xml";
 
     /// <summary>
@@ -177,11 +178,7 @@ public static class ContentPackEditorStorage
         ContentPackDefinition definition
     )
     {
-        IEnumerable<string> addresses = resolver
-            .EnumerateFileAddresses("Pack/")
-            .Where(address => address.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
-            .Append(_packDefinitionAddress)
-            .Distinct(StringComparer.Ordinal)
+        IEnumerable<string> addresses = GetReferencedDocumentAddresses(resolver, definition)
             .OrderBy(address => address, StringComparer.Ordinal);
 
         List<ContentPackEditorDocument> result = addresses
@@ -201,7 +198,7 @@ public static class ContentPackEditorStorage
             .ToList();
         if (
             string.IsNullOrWhiteSpace(definition.GameConfigPath)
-            && !result.Any(document => document.Address == "Pack/Shared/Data/game-config.xml")
+            && !result.Any(document => document.Address == _defaultGameConfigAddress)
         )
         {
             string defaultRules = resolver.ResolveFile("Application/Rules/game.xml");
@@ -210,7 +207,7 @@ public static class ContentPackEditorStorage
                 string defaults = ContentXmlOverrides.Load(resolver, "Application/Rules/game.xml");
                 result.Add(
                     new ContentPackEditorDocument(
-                        "Pack/Shared/Data/game-config.xml",
+                        _defaultGameConfigAddress,
                         defaultRules,
                         Path.Combine(resolver.PackRootPath, "Shared", "Data", "game-config.xml"),
                         File.ReadAllText(defaultRules),
@@ -225,6 +222,97 @@ public static class ContentPackEditorStorage
             }
         }
         return result;
+    }
+
+    /// <summary>
+    /// Follows the selected pack manifest to every XML document used by the pack.
+    /// </summary>
+    /// <param name="resolver">The selected pack's layered resolver.</param>
+    /// <param name="definition">The selected pack manifest.</param>
+    /// <returns>The referenced document addresses, including the root manifest.</returns>
+    private static IReadOnlyCollection<string> GetReferencedDocumentAddresses(
+        ContentFileResolver resolver,
+        ContentPackDefinition definition
+    )
+    {
+        HashSet<string> addresses = new HashSet<string>(StringComparer.Ordinal)
+        {
+            _packDefinitionAddress,
+        };
+        AddDocumentAddress(addresses, definition.GameConfigPath);
+        AddDocumentAddress(addresses, definition.PlanetSectorsPath);
+        AddDocumentAddress(addresses, definition.BuildingsPath);
+        AddDocumentAddress(addresses, definition.OfficerTraitsPath);
+        AddDocumentAddress(addresses, definition.GameEventsPath);
+        AddDocumentAddress(addresses, definition.MessageDefinitionsPath);
+        AddDocumentAddress(addresses, definition.EncyclopediaEntriesPath);
+        AddDocumentAddress(addresses, definition.NeutralThemePath);
+        if (
+            string.IsNullOrWhiteSpace(definition.GameConfigPath)
+            && resolver.ResolveFile(_defaultGameConfigAddress) != null
+        )
+            addresses.Add(_defaultGameConfigAddress);
+
+        foreach (string path in definition.FactionPaths)
+        {
+            string address = AddDocumentAddress(addresses, path);
+            ContentFactionDefinition faction =
+                DeserializeReferencedDefinition<ContentFactionDefinition>(resolver, address);
+            AddDocumentAddress(addresses, faction.FactionDataPath);
+            AddDocumentAddress(addresses, faction.CapitalShipsPath);
+            AddDocumentAddress(addresses, faction.StarfightersPath);
+            AddDocumentAddress(addresses, faction.RegimentsPath);
+            AddDocumentAddress(addresses, faction.SpecialForcesPath);
+            AddDocumentAddress(addresses, faction.OfficersPath);
+            AddDocumentAddress(addresses, faction.EncyclopediaEntriesPath);
+            AddDocumentAddress(addresses, faction.ThemePath);
+        }
+
+        foreach (string path in definition.ScenarioPaths)
+        {
+            string address = AddDocumentAddress(addresses, path);
+            ContentScenarioDefinition scenario =
+                DeserializeReferencedDefinition<ContentScenarioDefinition>(resolver, address);
+            AddDocumentAddress(addresses, scenario.GenerationConfigPath);
+        }
+
+        foreach (ContentPreloadDefinition preload in definition.Preloads)
+            AddDocumentAddress(addresses, preload?.Path);
+
+        return addresses;
+    }
+
+    /// <summary>
+    /// Adds a pack-relative document path to the discovered address set.
+    /// </summary>
+    /// <param name="addresses">The discovered logical addresses.</param>
+    /// <param name="relativePath">The path declared by a pack manifest.</param>
+    /// <returns>The logical address, or null when the path is empty.</returns>
+    private static string AddDocumentAddress(ISet<string> addresses, string relativePath)
+    {
+        if (string.IsNullOrWhiteSpace(relativePath))
+            return null;
+        string address = "Pack/" + relativePath.Replace('\\', '/');
+        addresses.Add(address);
+        return address;
+    }
+
+    /// <summary>
+    /// Reads a referenced definition after composing its inherited content layers.
+    /// </summary>
+    /// <typeparam name="T">The referenced definition type.</typeparam>
+    /// <param name="resolver">The selected pack's layered resolver.</param>
+    /// <param name="address">The definition's logical address.</param>
+    /// <returns>The resolved definition.</returns>
+    private static T DeserializeReferencedDefinition<T>(
+        ContentFileResolver resolver,
+        string address
+    )
+        where T : class
+    {
+        return ContentDefinitionSerializer.DeserializeText<T>(
+            ContentXmlOverrides.Load(resolver, address)
+        );
     }
 
     /// <summary>

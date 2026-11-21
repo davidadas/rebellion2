@@ -52,6 +52,11 @@ namespace Rebellion.Tests.ContentEditor
                 "Data/theme.xml",
                 "<FactionTheme><StrategyAdvisor><AudioRoot>Pack/Advisor/Audio</AudioRoot><InvalidOrderRejected><AudioOptions><Path>existing</Path></AudioOptions></InvalidOrderRejected></StrategyAdvisor></FactionTheme>"
             );
+            string manifestPath = Path.Combine(contentRoot, "Packs", "BasePack", "pack.xml");
+            ContentPackDefinition definition =
+                ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(manifestPath);
+            definition.NeutralThemePath = "Data/theme.xml";
+            ContentDefinitionSerializer.Serialize(manifestPath, definition);
             WriteFixtureFile("Advisor/Audio/existing.wav", "fixture");
             string source = Path.Combine(
                 Directory.GetParent(contentRoot).FullName,
@@ -260,6 +265,117 @@ namespace Rebellion.Tests.ContentEditor
             );
         }
 
+        [Test]
+        public void OpenFolder_UnreferencedSettingOverride_IgnoresAndPreservesTheFile()
+        {
+            ContentPackEditorProject project = CreateWorkingProject();
+            string unrelatedPath = Path.Combine(
+                project.PackRootPath,
+                "KelsFiles",
+                "Data",
+                "renamed.xml"
+            );
+            Directory.CreateDirectory(Path.GetDirectoryName(unrelatedPath));
+            const string unrelated = "<Buildings Inherit=\"true\"><Building /></Buildings>";
+            File.WriteAllText(unrelatedPath, unrelated);
+
+            ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                project.PackRootPath
+            );
+            ContentPackEditorStorage.Save(reopened);
+
+            Assert.IsFalse(
+                reopened.Documents.Any(document =>
+                    string.Equals(
+                        document.TargetPath,
+                        unrelatedPath,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
+            );
+            Assert.AreEqual(unrelated, File.ReadAllText(unrelatedPath));
+        }
+
+        [Test]
+        public void Create_ReferencedDefinitions_OpensTheirNestedDocuments()
+        {
+            string packRoot = Path.Combine(contentRoot, "Packs", "BasePack");
+            ContentPackDefinition definition =
+                ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(
+                    Path.Combine(packRoot, "pack.xml")
+                );
+            definition.FactionPaths.Add("Definitions/faction.xml");
+            definition.ScenarioPaths.Add("Definitions/scenario.xml");
+            definition.Preloads.Add(
+                new ContentPreloadDefinition { ID = "strategy", Path = "Definitions/preload.xml" }
+            );
+            ContentDefinitionSerializer.Serialize(Path.Combine(packRoot, "pack.xml"), definition);
+            Directory.CreateDirectory(Path.Combine(packRoot, "Definitions"));
+            ContentDefinitionSerializer.Serialize(
+                Path.Combine(packRoot, "Definitions", "faction.xml"),
+                new ContentFactionDefinition
+                {
+                    ID = "faction",
+                    FactionDataPath = "Nested/faction-data.xml",
+                    CapitalShipsPath = "Nested/capital-ships.xml",
+                    StarfightersPath = "Nested/starfighters.xml",
+                    RegimentsPath = "Nested/regiments.xml",
+                    SpecialForcesPath = "Nested/special-forces.xml",
+                    OfficersPath = "Nested/officers.xml",
+                    EncyclopediaEntriesPath = "Nested/encyclopedia.xml",
+                    ThemePath = "Nested/theme.xml",
+                }
+            );
+            ContentDefinitionSerializer.Serialize(
+                Path.Combine(packRoot, "Definitions", "scenario.xml"),
+                new ContentScenarioDefinition
+                {
+                    ID = "standard",
+                    GenerationConfigPath = "Nested/generation.xml",
+                }
+            );
+            ContentDefinitionSerializer.Serialize(
+                Path.Combine(packRoot, "Definitions", "preload.xml"),
+                new ContentPreloadManifest()
+            );
+            string[] nestedPaths =
+            {
+                "faction-data.xml",
+                "capital-ships.xml",
+                "starfighters.xml",
+                "regiments.xml",
+                "special-forces.xml",
+                "officers.xml",
+                "encyclopedia.xml",
+                "theme.xml",
+                "generation.xml",
+            };
+            foreach (string path in nestedPaths)
+                WriteFixtureFile("Nested/" + path, "<Fixture />");
+
+            ContentPackEditorProject project = CreateWorkingProject();
+
+            CollectionAssert.IsSubsetOf(
+                new[]
+                {
+                    "Pack/Definitions/faction.xml",
+                    "Pack/Definitions/scenario.xml",
+                    "Pack/Definitions/preload.xml",
+                    "Pack/Nested/faction-data.xml",
+                    "Pack/Nested/capital-ships.xml",
+                    "Pack/Nested/starfighters.xml",
+                    "Pack/Nested/regiments.xml",
+                    "Pack/Nested/special-forces.xml",
+                    "Pack/Nested/officers.xml",
+                    "Pack/Nested/encyclopedia.xml",
+                    "Pack/Nested/theme.xml",
+                    "Pack/Nested/generation.xml",
+                },
+                project.Documents.Select(document => document.Address)
+            );
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void Save_ChangingTheBasePack_RefreshesInheritedDocumentsAndKeepsLocalOverrides(
@@ -282,6 +398,8 @@ namespace Rebellion.Tests.ContentEditor
                     ID = "another-base",
                     Version = "1.0.0",
                     DisplayName = "Another base",
+                    PlanetSectorsPath = "Data/new.xml",
+                    BuildingsPath = "Data/units.xml",
                 }
             );
             File.WriteAllText(
@@ -294,10 +412,15 @@ namespace Rebellion.Tests.ContentEditor
             );
             project.SetDocumentText(
                 manifest,
-                manifest.Text.Replace(
-                    "<BasePackID>base-pack</BasePackID>",
-                    "<BasePackID>another-base</BasePackID>"
-                )
+                manifest
+                    .Text.Replace(
+                        "<BasePackID>base-pack</BasePackID>",
+                        "<BasePackID>another-base</BasePackID>"
+                    )
+                    .Replace(
+                        "<PlanetSectorsPath>Data/units.xml</PlanetSectorsPath>",
+                        "<PlanetSectorsPath>Data/new.xml</PlanetSectorsPath>"
+                    )
             );
 
             ContentPackEditorStorage.Save(project);

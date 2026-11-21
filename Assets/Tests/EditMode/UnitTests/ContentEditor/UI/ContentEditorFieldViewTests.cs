@@ -30,6 +30,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                     + "<IsRecruitable>false</IsRecruitable>"
                     + "<RecruitingFactionInstanceIDs /></Officer></Officers>"
             );
+            UpdateBaseFactionDefinition(faction => faction.OfficersPath = "Data/officers.xml");
             project = CreateWorkingProject();
             officer = project.GetCatalogs().Single(c => c.Name == "Officers").Records.Single();
             control = UIComponentTestHelper.InstantiatePrefabComponent<ContentEditorFieldView>(

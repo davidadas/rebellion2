@@ -96,6 +96,40 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         /// <summary>
+        /// Updates the base pack manifest used by the current fixture.
+        /// </summary>
+        /// <param name="update">The manifest mutation.</param>
+        protected void UpdateBasePackDefinition(Action<ContentPackDefinition> update)
+        {
+            string path = Path.Combine(contentRoot, "Packs", "BasePack", "pack.xml");
+            ContentPackDefinition definition =
+                ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(path);
+            update(definition);
+            ContentDefinitionSerializer.Serialize(path, definition);
+        }
+
+        /// <summary>
+        /// Updates the faction manifest used to reference faction-owned fixture documents.
+        /// </summary>
+        /// <param name="update">The faction manifest mutation.</param>
+        protected void UpdateBaseFactionDefinition(Action<ContentFactionDefinition> update)
+        {
+            const string relativePath = "Factions/Fixture/faction.xml";
+            string path = Path.Combine(contentRoot, "Packs", "BasePack", relativePath);
+            ContentFactionDefinition definition = File.Exists(path)
+                ? ContentDefinitionSerializer.Deserialize<ContentFactionDefinition>(path)
+                : new ContentFactionDefinition { ID = "fixture" };
+            update(definition);
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
+            ContentDefinitionSerializer.Serialize(path, definition);
+            UpdateBasePackDefinition(pack =>
+            {
+                if (!pack.FactionPaths.Contains(relativePath, StringComparer.Ordinal))
+                    pack.FactionPaths.Add(relativePath);
+            });
+        }
+
+        /// <summary>
         /// Writes the minimal installed inheritance source for each test.
         /// </summary>
         private void WriteBasePack()
