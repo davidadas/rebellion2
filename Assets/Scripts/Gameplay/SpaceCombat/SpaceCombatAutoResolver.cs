@@ -1001,7 +1001,7 @@ namespace Rebellion.Gameplay
                 _capitalCommandBonus =
                     config.AdmiralLeadershipDivisor > 0
                     && (command.AdmiralShip != null || command.AdmiralLeadership > 0)
-                        ? Math.Clamp(9.0 - scaledLeadership, 1, 9)
+                        ? Math.Clamp(1.0 + scaledLeadership, 1, 9)
                         : 1;
                 _requiresAdmiralCarrier = command.AdmiralShip != null;
                 PlanetDestroyers = (ships ?? Array.Empty<CapitalShip>())
