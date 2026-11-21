@@ -2779,20 +2779,26 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsNull(specialForces.Movement);
         }
 
-        [TestCase(false)]
-        [TestCase(true)]
-        public void TryRequestMove_LocalDeliveryDestination_CompletesDelivery(bool boardCarrier)
+        [TestCase(false, ManufacturingStatus.Delivering, 1)]
+        [TestCase(true, ManufacturingStatus.Delivering, 1)]
+        [TestCase(false, ManufacturingStatus.Complete, 0)]
+        [TestCase(true, ManufacturingStatus.Complete, 0)]
+        public void TryRequestMove_LocalDeliveryDestination_PublishesDeploymentOnlyOnCompletion(
+            bool boardCarrier,
+            ManufacturingStatus initialStatus,
+            int expectedDeployments
+        )
         {
             (GameRoot game, Planet origin, _, _, MovementCommands movement) = BuildScene();
             Starfighter fighter = EntityFactory.CreateStarfighter("delivered-fighter", "empire");
-            fighter.ManufacturingStatus = ManufacturingStatus.Delivering;
+            fighter.ManufacturingStatus = initialStatus;
             game.AttachNode(fighter, origin);
             ContainerNode destination = origin;
             if (boardCarrier)
             {
                 Fleet fleet = EntityFactory.CreateFleet("carrier-fleet", "empire");
                 CapitalShip carrier = CreateMovableCapitalShip("carrier");
-                carrier.StarfighterCapacity = 1;
+                carrier.StarfighterCapacity = 2;
                 carrier.MaxHullStrength = 100;
                 carrier.CurrentHullStrength = 100;
                 game.AttachNode(fleet, origin);
@@ -2805,6 +2811,22 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreSame(destination, fighter.GetParent());
             Assert.IsNull(fighter.Movement);
             Assert.AreEqual(ManufacturingStatus.Complete, fighter.ManufacturingStatus);
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+            Assert.AreEqual(
+                expectedDeployments,
+                results
+                    .OfType<GameObjectDeployedResult>()
+                    .Count(result => result.GameObject == fighter)
+            );
+
+            Assert.IsTrue(movement.TryRequestMove(fighter, destination));
+            Assert.IsEmpty(
+                new MovementTickProcessor(movement)
+                    .ProcessTick(game)
+                    .OfType<GameObjectDeployedResult>()
+            );
         }
 
         [Test]
@@ -2815,6 +2837,7 @@ namespace Rebellion.Tests.Gameplay
             Starfighter fighter = EntityFactory.CreateStarfighter("delivering-fighter", "empire");
             fighter.ManufacturingStatus = ManufacturingStatus.Delivering;
             fighter.Hyperdrive = 1;
+            game.Config.Movement.SameSectorMinTransitTicks = 3;
             game.AttachNode(fighter, origin);
 
             Assert.IsTrue(movement.TryRequestMove(fighter, destination));
@@ -2822,6 +2845,11 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreSame(destination, fighter.GetParent());
             Assert.IsNotNull(fighter.Movement);
             Assert.AreEqual(ManufacturingStatus.Delivering, fighter.ManufacturingStatus);
+            Assert.IsEmpty(
+                new MovementTickProcessor(movement)
+                    .ProcessTick(game)
+                    .OfType<GameObjectDeployedResult>()
+            );
         }
 
         [Test]

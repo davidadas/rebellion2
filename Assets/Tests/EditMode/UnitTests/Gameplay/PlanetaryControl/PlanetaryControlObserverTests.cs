@@ -543,10 +543,15 @@ namespace Rebellion.Tests.Gameplay
             _commands.OwnershipChanging += _observer.ObserveOwnershipChange;
 
             PlanetOwnershipChangedResult change = _commands.TransferPlanet(_targetPlanet, _rebels);
-            _observer.HandleResults(new[] { change });
+            List<GameResult> results = _observer.HandleResults(new[] { change });
 
             Assert.AreSame(carrier, fighter.GetParent());
             Assert.IsNull(fighter.Movement);
+            GameObjectDeployedResult deployment = results
+                .OfType<GameObjectDeployedResult>()
+                .Single();
+            Assert.AreSame(fighter, deployment.GameObject);
+            Assert.AreEqual(_game.CurrentTick, deployment.Tick);
             if (reload)
             {
                 GameSerializer serializer = new GameSerializer(typeof(GameRoot));

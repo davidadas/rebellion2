@@ -1954,7 +1954,14 @@ namespace Rebellion.Gameplay
         /// Marks a manufactured item as complete after its initial delivery finishes.
         /// </summary>
         /// <param name="movable">The delivered unit.</param>
-        private static void CompleteManufacturingDelivery(IMovable movable)
+        /// <param name="results">
+        /// The collection receiving deployment when the enclosing manufacturing or arrival operation
+        /// does not publish it separately.
+        /// </param>
+        private void CompleteManufacturingDelivery(
+            IMovable movable,
+            ICollection<GameResult> results = null
+        )
         {
             if (
                 movable is IManufacturable
@@ -1964,6 +1971,9 @@ namespace Rebellion.Gameplay
             )
             {
                 manufacturable.ManufacturingStatus = ManufacturingStatus.Complete;
+                results?.Add(
+                    new GameObjectDeployedResult { GameObject = movable, Tick = _game.CurrentTick }
+                );
             }
         }
 
@@ -2347,7 +2357,7 @@ namespace Rebellion.Gameplay
             if (unit.GetParent() == destination)
             {
                 unit.Movement = null;
-                CompleteManufacturingDelivery(unit);
+                CompleteManufacturingDelivery(unit, results);
                 if (!string.IsNullOrWhiteSpace(sourceEventInstanceID))
                     AddArrivalResults(
                         unit,
@@ -2365,7 +2375,7 @@ namespace Rebellion.Gameplay
                 MoveNode(unit, destination, results);
                 ClaimUncolonizedDestinationFromRegiment(unit, destination, results);
                 unit.Movement = null;
-                CompleteManufacturingDelivery(unit);
+                CompleteManufacturingDelivery(unit, results);
                 AddPlanetGarrisonChangedResults(results, unit, originPlanet);
                 if (!string.IsNullOrWhiteSpace(sourceEventInstanceID))
                     AddArrivalResults(

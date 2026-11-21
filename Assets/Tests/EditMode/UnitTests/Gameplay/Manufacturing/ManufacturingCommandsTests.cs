@@ -1588,7 +1588,8 @@ namespace Rebellion.Tests.Gameplay
                 _movement
             );
             mfg.Enqueue(planet, regiment, planet);
-            CreateTickProcessor(mfg).ProcessTick(_game);
+            List<GameResult> results = CreateTickProcessor(mfg).ProcessTick(_game).ToList();
+            results.AddRange(new MovementTickProcessor(_movement).ProcessTick(_game));
 
             Assert.AreEqual(ManufacturingStatus.Complete, regiment.ManufacturingStatus);
             Assert.AreEqual(
@@ -1597,6 +1598,10 @@ namespace Rebellion.Tests.Gameplay
                 "Regiment should be on the production planet."
             );
             Assert.IsNull(regiment.Movement, "No _movement needed for same-planet destination.");
+            Assert.AreSame(
+                regiment,
+                results.OfType<GameObjectDeployedResult>().Single().GameObject
+            );
             Assert.IsTrue(
                 planet.GetChildren<Regiment>().Contains(regiment),
                 "Regiment should be in planet's regiment list."
