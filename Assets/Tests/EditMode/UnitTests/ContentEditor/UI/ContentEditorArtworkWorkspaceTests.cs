@@ -12,6 +12,9 @@ namespace Rebellion.Tests.ContentEditor.UI
         private Texture2D small;
         private Texture2D large;
 
+        /// <summary>
+        /// Releases the fixture textures and editor view.
+        /// </summary>
         [TearDown]
         public void ReleaseImages()
         {
@@ -127,6 +130,13 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.That(requested, Is.EqualTo((0, 2)));
         }
 
+        /// <summary>
+        /// Opens the artwork workspace with the fixture layer stacks.
+        /// </summary>
+        /// <param name="commands">The actions assigned to the workspace.</param>
+        /// <param name="changed">Whether the draft starts with unsaved changes.</param>
+        /// <param name="sizeSpecificLayers">Whether each output shows a different layer stack.</param>
+        /// <returns>The rendered workspace.</returns>
         private ContentEditorArtworkWorkspace ShowArtwork(
             ArtworkEffectActions commands = null,
             bool changed = false,
@@ -180,6 +190,11 @@ namespace Rebellion.Tests.ContentEditor.UI
             return view.GetComponentInChildren<ContentEditorArtworkWorkspace>();
         }
 
+        /// <summary>
+        /// Reads the active layer rows in display order.
+        /// </summary>
+        /// <param name="workspace">The artwork workspace.</param>
+        /// <returns>The visible layer names.</returns>
         private static string[] GetLayerNames(ContentEditorArtworkWorkspace workspace) =>
             workspace
                 .GetComponentsInChildren<Button>()
@@ -187,6 +202,13 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .Select(button => button.GetComponentInChildren<TMP_Text>().text)
                 .ToArray();
 
+        /// <summary>
+        /// Finds a button in the artwork workspace.
+        /// </summary>
+        /// <param name="workspace">The artwork workspace.</param>
+        /// <param name="name">The button's object name.</param>
+        /// <param name="includeInactive">Whether to include inactive objects.</param>
+        /// <returns>The matching button.</returns>
         private static Button GetButton(
             ContentEditorArtworkWorkspace workspace,
             string name,

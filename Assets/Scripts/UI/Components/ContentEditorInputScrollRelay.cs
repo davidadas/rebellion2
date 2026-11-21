@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -42,6 +43,7 @@ public sealed class ContentEditorInputScrollRelay : MonoBehaviour, IScrollHandle
     /// <summary>
     /// Requests a thumb update after the input's viewport changes size.
     /// </summary>
+    [SuppressMessage("Roslynator", "RCS1213", Justification = "Invoked by Unity.")]
     private void OnRectTransformDimensionsChange() => thumbLayoutDirty = true;
 
     /// <summary>

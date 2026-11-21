@@ -11,6 +11,9 @@ namespace Rebellion.Tests.ContentEditor.UI
         private GameObject canvas;
         private GameObject eventSystem;
 
+        /// <summary>
+        /// Creates a color wheel and event system for pointer gestures.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -28,6 +31,9 @@ namespace Rebellion.Tests.ContentEditor.UI
             );
         }
 
+        /// <summary>
+        /// Destroys the fixture canvas and event system.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -279,6 +280,7 @@ public sealed class ImagePreviewView
     /// <summary>
     /// Keeps the variation viewer compact as the workspace window changes size.
     /// </summary>
+    [SuppressMessage("Roslynator", "RCS1213", Justification = "Invoked by Unity.")]
     private void OnRectTransformDimensionsChange()
     {
         if (cutCards.Count > 0)

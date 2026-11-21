@@ -59,6 +59,11 @@ namespace Rebellion.Tests.ContentEditor
             Assert.That(File.ReadAllText(target), Is.EqualTo("working travel art"));
         }
 
+        /// <summary>
+        /// Creates a writable pack containing the test units.
+        /// </summary>
+        /// <param name="units">The XML describing the units.</param>
+        /// <returns>The opened pack project.</returns>
         private ContentPackEditorProject CreateStandaloneProject(string units)
         {
             string folder = Path.Combine(Directory.GetParent(contentRoot).FullName, "WorkingPack");

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -151,6 +152,7 @@ public sealed class ContentEditorArtworkCanvas
     /// <summary>
     /// Refits or constrains the current view when the desktop window changes size.
     /// </summary>
+    [SuppressMessage("Roslynator", "RCS1213", Justification = "Invoked by Unity.")]
     private void OnRectTransformDimensionsChange()
     {
         if (artwork != null && frame.BaseImage != null)

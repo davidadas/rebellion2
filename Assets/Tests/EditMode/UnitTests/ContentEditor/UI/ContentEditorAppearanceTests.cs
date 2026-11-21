@@ -190,6 +190,11 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.IsTrue(inputs.All(input => !input.onFocusSelectAll));
         }
 
+        /// <summary>
+        /// Checks whether the component belongs to the editor chrome.
+        /// </summary>
+        /// <param name="component">The component to inspect.</param>
+        /// <returns>True when the component is outside the artwork preview.</returns>
         private static bool IsOutsideArtworkPreview(Component component) =>
             component.GetComponentInParent<ContentEditorArtworkWindowPreview>(true) == null;
     }

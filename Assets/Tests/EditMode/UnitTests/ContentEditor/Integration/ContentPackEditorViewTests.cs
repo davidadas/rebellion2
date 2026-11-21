@@ -2609,6 +2609,11 @@ namespace Rebellion.Tests.ContentEditor.Integration
             );
         }
 
+        /// <summary>
+        /// Shows the mission in its faction's mission presentation page.
+        /// </summary>
+        /// <param name="navigation">The fixture navigation tree.</param>
+        /// <param name="mission">The mission node to open.</param>
         private void SelectFactionMission(
             ContentEditorNavigation navigation,
             ContentEditorTreeNode mission

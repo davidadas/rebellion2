@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -43,6 +44,7 @@ public sealed class ContentEditorColorWheel
     /// <summary>
     /// Updates the selection indicator after a layout change.
     /// </summary>
+    [SuppressMessage("Roslynator", "RCS1213", Justification = "Invoked by Unity.")]
     private void OnRectTransformDimensionsChange()
     {
         if (isActiveAndEnabled)

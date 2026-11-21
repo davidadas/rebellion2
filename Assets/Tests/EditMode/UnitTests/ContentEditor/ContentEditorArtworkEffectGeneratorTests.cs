@@ -14,6 +14,9 @@ namespace Rebellion.Tests.ContentEditor
         private const int _height = 48;
         private string sourcePath;
 
+        /// <summary>
+        /// Creates a source image for artwork effects.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -34,6 +37,9 @@ namespace Rebellion.Tests.ContentEditor
             }
         }
 
+        /// <summary>
+        /// Removes the source image and its effect fixtures.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -932,9 +938,25 @@ namespace Rebellion.Tests.ContentEditor
             Assert.IsTrue(result.Skip(23 * _width + 94).Take(24).All(pixel => pixel.a == 0));
         }
 
+        /// <summary>
+        /// Measures the longest continuous blue streak.
+        /// </summary>
+        /// <param name="pixels">The source pixel buffer.</param>
+        /// <param name="width">The image width.</param>
+        /// <param name="height">The image height.</param>
+        /// <param name="vertical">Whether to measure vertical runs.</param>
+        /// <returns>The length of the longest run.</returns>
         private static int LongestBlueRun(Color32[] pixels, int width, int height, bool vertical) =>
             GetBlueRuns(pixels, width, height, vertical).DefaultIfEmpty().Max();
 
+        /// <summary>
+        /// Measures continuous blue streaks in the selected direction.
+        /// </summary>
+        /// <param name="pixels">The source pixel buffer.</param>
+        /// <param name="width">The image width.</param>
+        /// <param name="height">The image height.</param>
+        /// <param name="vertical">Whether to measure vertical runs.</param>
+        /// <returns>The lengths of the detected runs.</returns>
         private static int[] GetBlueRuns(Color32[] pixels, int width, int height, bool vertical)
         {
             List<int> runs = new();
@@ -960,6 +982,10 @@ namespace Rebellion.Tests.ContentEditor
             return runs.ToArray();
         }
 
+        /// <summary>
+        /// Writes the reference ship wake for variation tests.
+        /// </summary>
+        /// <returns>The reference PNG path.</returns>
         private string WriteShipWakeReference() =>
             WriteEffectImage(
                 (x, y) =>
@@ -974,6 +1000,12 @@ namespace Rebellion.Tests.ContentEditor
                 }
             );
 
+        /// <summary>
+        /// Renders a seeded wake from the reference overlay.
+        /// </summary>
+        /// <param name="overlay">The reference overlay path.</param>
+        /// <param name="seed">The variation seed.</param>
+        /// <returns>The rendered wake PNG.</returns>
         private byte[] BakeWakeVariation(string overlay, int seed)
         {
             using var frame = ContentEditorArtworkEffectGenerator.CreateEditableFrame(
@@ -994,6 +1026,11 @@ namespace Rebellion.Tests.ContentEditor
             return frame.Bake(layers);
         }
 
+        /// <summary>
+        /// Writes the effect image supplied by a pixel function.
+        /// </summary>
+        /// <param name="getPixel">The color provider for each pixel.</param>
+        /// <returns>The fixture PNG path.</returns>
         private string WriteEffectImage(Func<int, int, Color32> getPixel)
         {
             string path = Path.ChangeExtension(sourcePath, ".effect.png");
@@ -1015,6 +1052,11 @@ namespace Rebellion.Tests.ContentEditor
             }
         }
 
+        /// <summary>
+        /// Decodes the pixels of a rendered effect.
+        /// </summary>
+        /// <param name="png">The encoded effect image.</param>
+        /// <returns>The decoded pixels.</returns>
         private static Color32[] DecodePixels(byte[] png)
         {
             Texture2D texture = new(2, 2, TextureFormat.RGBA32, false);
@@ -1029,6 +1071,11 @@ namespace Rebellion.Tests.ContentEditor
             }
         }
 
+        /// <summary>
+        /// Renders an artwork effect and returns its pixels.
+        /// </summary>
+        /// <param name="style">The effect style to render.</param>
+        /// <returns>The rendered pixels.</returns>
         private Color32[] ReadPixels(ContentEditorArtworkEffectStyle style)
         {
             var image = ContentEditorArtworkEffectGenerator.Generate(

@@ -13,7 +13,7 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
     /// Runs the copied window's normal render path with selected-faction artwork.
     /// </summary>
     /// <param name="window">The copied gameplay-window root.</param>
-    /// <param name="project">The working pack whose records supply representative content.</param>
+    /// <param name="content">The representative records and artwork for the selected pack.</param>
     /// <param name="theme">The selected faction theme.</param>
     /// <param name="assets">The working pack's resolved artwork.</param>
     internal static void Render(

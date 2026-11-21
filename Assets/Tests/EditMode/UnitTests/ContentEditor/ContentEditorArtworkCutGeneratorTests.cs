@@ -11,6 +11,9 @@ namespace Rebellion.Tests.ContentEditor
     {
         private string folder;
 
+        /// <summary>
+        /// Creates a temporary folder for the generated cut fixtures.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -21,6 +24,9 @@ namespace Rebellion.Tests.ContentEditor
             Directory.CreateDirectory(folder);
         }
 
+        /// <summary>
+        /// Removes the generated cut fixtures.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -219,6 +225,13 @@ namespace Rebellion.Tests.ContentEditor
             }
         }
 
+        /// <summary>
+        /// Writes a uniformly colored source image.
+        /// </summary>
+        /// <param name="color">The image color.</param>
+        /// <param name="width">The source width.</param>
+        /// <param name="height">The source height.</param>
+        /// <returns>The temporary PNG path.</returns>
         private string WriteSolidPng(Color color, int width, int height)
         {
             Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
@@ -238,6 +251,13 @@ namespace Rebellion.Tests.ContentEditor
             }
         }
 
+        /// <summary>
+        /// Checks the generated cut dimensions and opacity.
+        /// </summary>
+        /// <param name="bytes">The encoded cut.</param>
+        /// <param name="expectedWidth">The expected width.</param>
+        /// <param name="expectedHeight">The expected height.</param>
+        /// <param name="expectedAlpha">The expected opacity at the first pixel.</param>
         private static void AssertCut(
             byte[] bytes,
             int expectedWidth,
@@ -258,6 +278,11 @@ namespace Rebellion.Tests.ContentEditor
             }
         }
 
+        /// <summary>
+        /// Loads a generated cut into a readable texture.
+        /// </summary>
+        /// <param name="bytes">The encoded cut.</param>
+        /// <returns>The decoded texture.</returns>
         private static Texture2D Decode(byte[] bytes)
         {
             Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
