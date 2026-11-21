@@ -491,8 +491,7 @@ public static class ContentPackEditorStorage
     {
         if (
             project == null
-            || field == null
-            || !field.IsMedia
+            || field?.IsMedia != true
             || field.IsMediaDirectory
             || field.IsList
             || string.IsNullOrWhiteSpace(field.Value)

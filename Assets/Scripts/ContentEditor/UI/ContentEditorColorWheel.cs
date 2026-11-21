@@ -14,7 +14,7 @@ public sealed class ContentEditorColorWheel
         IDragHandler,
         IPointerUpHandler
 {
-    private const int TextureSize = 192;
+    private const int _textureSize = 192;
 
     [SerializeField]
     private RectTransform selector;
@@ -120,19 +120,19 @@ public sealed class ContentEditorColorWheel
         if (texture != null)
             return;
 
-        texture = new Texture2D(TextureSize, TextureSize, TextureFormat.RGBA32, false)
+        texture = new Texture2D(_textureSize, _textureSize, TextureFormat.RGBA32, false)
         {
             name = "Content editor color wheel",
             filterMode = FilterMode.Bilinear,
             wrapMode = TextureWrapMode.Clamp,
             hideFlags = HideFlags.HideAndDontSave,
         };
-        Color32[] pixels = new Color32[TextureSize * TextureSize];
-        float center = (TextureSize - 1) * 0.5f;
-        for (int y = 0; y < TextureSize; y++)
+        Color32[] pixels = new Color32[_textureSize * _textureSize];
+        float center = (_textureSize - 1) * 0.5f;
+        for (int y = 0; y < _textureSize; y++)
         {
             float normalizedY = (y - center) / center;
-            for (int x = 0; x < TextureSize; x++)
+            for (int x = 0; x < _textureSize; x++)
             {
                 float normalizedX = (x - center) / center;
                 float radius = Mathf.Sqrt(
@@ -140,7 +140,7 @@ public sealed class ContentEditorColorWheel
                 );
                 if (radius > 1f)
                 {
-                    pixels[(y * TextureSize) + x] = Color.clear;
+                    pixels[(y * _textureSize) + x] = Color.clear;
                     continue;
                 }
 
@@ -148,7 +148,7 @@ public sealed class ContentEditorColorWheel
                     Mathf.Atan2(normalizedY, normalizedX) / (Mathf.PI * 2f),
                     1f
                 );
-                pixels[(y * TextureSize) + x] = Color.HSVToRGB(pixelHue, radius, 1f);
+                pixels[(y * _textureSize) + x] = Color.HSVToRGB(pixelHue, radius, 1f);
             }
         }
         texture.SetPixels32(pixels);

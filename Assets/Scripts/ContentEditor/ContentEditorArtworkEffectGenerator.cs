@@ -667,8 +667,7 @@ internal static class ContentEditorArtworkEffectGenerator
                     subject[i].a > 0.1f
                     || (
                         style == ContentEditorArtworkEffectStyle.PersonnelTravel
-                        && imported != null
-                        && imported[i].a < 0.9f
+                        && imported?[i].a < 0.9f
                     );
 
             foreach (var piece in defaults)
@@ -1428,13 +1427,13 @@ internal static class ContentEditorArtworkEffectGenerator
             int sx = (x + phase) % size.x;
             int index = y * size.x + sx;
             Color pixel = reference[index];
-            bool blocked = (donor != null && donor[index].a >= 0.5f) || pixel.a < 0.1f;
+            bool blocked = donor?[index].a >= 0.5f || pixel.a < 0.1f;
             if (blocked)
             {
                 if (registered && phase == 0)
                     continue;
                 int other = ((y + shadowPhase) % size.y) * size.x + sx;
-                if (donor != null && donor[other].a >= 0.5f)
+                if (donor?[other].a >= 0.5f)
                     continue;
                 pixel = reference[other];
             }
