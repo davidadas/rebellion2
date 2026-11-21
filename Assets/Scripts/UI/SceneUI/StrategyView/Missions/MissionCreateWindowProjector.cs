@@ -292,10 +292,11 @@ internal sealed class MissionCreateWindowProjector
         StrategyMissionChoice choice
     )
     {
-        string path = uiContext
-            .GetPlayerFactionTheme()
-            ?.MissionIcons?.GetImagePath(choice?.IconKey, false);
-        return uiContext.GetTexture(path);
+        return uiContext.GetMissionIconTexture(
+            uiContext.GetPlayerFactionInstanceID(),
+            choice?.IconKey,
+            small: false
+        );
     }
 
     /// <summary>

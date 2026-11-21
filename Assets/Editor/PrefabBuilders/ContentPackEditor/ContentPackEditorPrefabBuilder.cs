@@ -263,6 +263,9 @@ public static class ContentPackEditorPrefabBuilder
             "Ship names",
             "Messages",
             "Encyclopedia",
+            "Default backgrounds",
+            "Colors",
+            "Mission presentation",
         };
         Button[] tabButtons = new Button[sections.Length];
         for (int i = 0; i < sections.Length; i++)
@@ -289,6 +292,9 @@ public static class ContentPackEditorPrefabBuilder
         Assign(view, "shipNamesTab", tabButtons[6]);
         Assign(view, "factionMessagesTab", tabButtons[7]);
         Assign(view, "referenceTab", tabButtons[8]);
+        Assign(view, "defaultBackgroundsTab", tabButtons[9]);
+        Assign(view, "colorsTab", tabButtons[10]);
+        Assign(view, "missionPresentationTab", tabButtons[11]);
         Button[] generationTabs = ContentPackEditorView
             .GenerationSections.Select(
                 (caption, index) =>
@@ -323,6 +329,45 @@ public static class ContentPackEditorPrefabBuilder
         ContentEditorFieldView fieldTemplate = BuildField(fields.ScrollArea.ContentRoot);
         fieldTemplate.gameObject.SetActive(false);
         Assign(form, "fieldScroll", fields);
+        ContentEditorColorPickerView colorPickerTemplate = BuildColorPicker(
+            fields.ScrollArea.ContentRoot
+        );
+        colorPickerTemplate.gameObject.SetActive(false);
+        Assign(form, "colorPickerTemplate", colorPickerTemplate);
+        RawImage artworkPanelTemplate = Layer("ArtworkPanelTemplate", fields.ScrollArea.ContentRoot)
+            .gameObject.AddComponent<RawImage>();
+        artworkPanelTemplate.raycastTarget = false;
+        BindColor(artworkPanelTemplate, ContentEditorColorRole.Panel);
+        Outline artworkPanelOutline = artworkPanelTemplate.gameObject.AddComponent<Outline>();
+        artworkPanelOutline.effectColor = new Color32(88, 88, 90, 255);
+        artworkPanelOutline.effectDistance = new Vector2(1, -1);
+        artworkPanelTemplate.gameObject.AddComponent<ContentEditorCardView>();
+        artworkPanelTemplate.gameObject.SetActive(false);
+        Assign(form, "artworkPanelTemplate", artworkPanelTemplate);
+        UICheckboxView outputBackgroundToggle = Checkbox(fields.ScrollArea.ContentRoot);
+        outputBackgroundToggle.name = "ImagesBackgroundToggle";
+        outputBackgroundToggle.GetComponentInChildren<TextMeshProUGUI>().text = "Show background";
+        Rect(
+            outputBackgroundToggle.GetComponentInChildren<TextMeshProUGUI>().rectTransform,
+            34,
+            0,
+            140,
+            24
+        );
+        outputBackgroundToggle.gameObject.SetActive(false);
+        Assign(form, "outputBackgroundToggle", outputBackgroundToggle);
+        UICheckboxView stateBackgroundToggle = Checkbox(fields.ScrollArea.ContentRoot);
+        stateBackgroundToggle.name = "GameplayStatesBackgroundToggle";
+        stateBackgroundToggle.GetComponentInChildren<TextMeshProUGUI>().text = "Show background";
+        Rect(
+            stateBackgroundToggle.GetComponentInChildren<TextMeshProUGUI>().rectTransform,
+            34,
+            0,
+            140,
+            24
+        );
+        stateBackgroundToggle.gameObject.SetActive(false);
+        Assign(form, "stateBackgroundToggle", stateBackgroundToggle);
         TMP_Dropdown generationTask = Dropdown("SetupTask", fields.ScrollArea.ContentRoot);
         generationTask.gameObject.SetActive(false);
         Assign(form, "generationTask", generationTask);
@@ -336,6 +381,73 @@ public static class ContentPackEditorPrefabBuilder
         );
         units.gameObject.SetActive(false);
         Assign(form, "setupUnitsTemplate", units);
+        RectTransform artworkViewSelector = Layer(
+            "ArtworkViewSelector",
+            fields.ScrollArea.ContentRoot
+        );
+        Image selectorFrame = artworkViewSelector.gameObject.AddComponent<Image>();
+        BindColor(selectorFrame, ContentEditorColorRole.Panel);
+        selectorFrame.raycastTarget = false;
+        Button previousArtworkView = Button("PreviousArtworkView", artworkViewSelector, "<");
+        Rect((RectTransform)previousArtworkView.transform, 0, 0, 52, 38);
+        Button nextArtworkView = Button("NextArtworkView", artworkViewSelector, ">");
+        RectTransform nextArtworkRect = (RectTransform)nextArtworkView.transform;
+        nextArtworkRect.anchorMin = nextArtworkRect.anchorMax = nextArtworkRect.pivot = Vector2.one;
+        nextArtworkRect.anchoredPosition = Vector2.zero;
+        nextArtworkRect.sizeDelta = new Vector2(52, 38);
+        TextMeshProUGUI artworkViewCaption = Label(
+            "ArtworkViewCaption",
+            artworkViewSelector,
+            "",
+            17
+        );
+        artworkViewCaption.alignment = TextAlignmentOptions.Center;
+        Stretch(artworkViewCaption.rectTransform, 58, 0, 58, 0);
+        artworkViewCaption.raycastTarget = false;
+        OptionsChoiceFieldView artworkChoice =
+            artworkViewSelector.gameObject.AddComponent<OptionsChoiceFieldView>();
+        Assign(artworkChoice, "valueField", artworkViewCaption);
+        Assign(artworkChoice, "previousButton", previousArtworkView);
+        Assign(artworkChoice, "nextButton", nextArtworkView);
+        artworkViewSelector.gameObject.SetActive(false);
+        Assign(form, "artworkViewSelector", artworkChoice);
+        RawImage artworkSectorSurface = Layer("ArtworkSectorPreview", fields.ScrollArea.ContentRoot)
+            .gameObject.AddComponent<RawImage>();
+        BindColor(artworkSectorSurface, ContentEditorColorRole.Panel);
+        artworkSectorSurface.raycastTarget = true;
+        ContentEditorSectorPreview artworkSectorPreview =
+            artworkSectorSurface.gameObject.AddComponent<ContentEditorSectorPreview>();
+        PlanetSectorWindowView artworkSectorWindow = StrategyViewPrefabBuilder.CreateSectorPreview(
+            artworkSectorSurface.transform
+        );
+        Assign(artworkSectorPreview, "window", artworkSectorWindow);
+        artworkSectorSurface.gameObject.SetActive(false);
+        Assign(form, "artworkSectorPreview", artworkSectorPreview);
+        RawImage artworkWindowSurface = Layer("ArtworkWindowPreview", fields.ScrollArea.ContentRoot)
+            .gameObject.AddComponent<RawImage>();
+        artworkWindowSurface.gameObject.AddComponent<RectMask2D>();
+        artworkWindowSurface.color = Color.clear;
+        artworkWindowSurface.raycastTarget = true;
+        ContentEditorArtworkWindowPreview artworkWindowPreview =
+            artworkWindowSurface.gameObject.AddComponent<ContentEditorArtworkWindowPreview>();
+        StrategyViewPrefabBuilder.CreateArtworkWindowPreviews(artworkWindowSurface.transform);
+        artworkWindowSurface.gameObject.SetActive(false);
+        Assign(form, "artworkWindowPreview", artworkWindowPreview);
+        RawImage artworkDisabledWindowSurface = Layer(
+            "ArtworkDisabledWindowPreview",
+            fields.ScrollArea.ContentRoot
+        )
+            .gameObject.AddComponent<RawImage>();
+        artworkDisabledWindowSurface.gameObject.AddComponent<RectMask2D>();
+        artworkDisabledWindowSurface.color = Color.clear;
+        artworkDisabledWindowSurface.raycastTarget = true;
+        ContentEditorArtworkWindowPreview artworkDisabledWindowPreview =
+            artworkDisabledWindowSurface.gameObject.AddComponent<ContentEditorArtworkWindowPreview>();
+        StrategyViewPrefabBuilder.CreateArtworkWindowPreviews(
+            artworkDisabledWindowSurface.transform
+        );
+        artworkDisabledWindowSurface.gameObject.SetActive(false);
+        Assign(form, "artworkDisabledWindowPreview", artworkDisabledWindowPreview);
         Button addMessage = Button(
             "AddFactionMessage",
             fields.ScrollArea.ContentRoot,
@@ -347,6 +459,36 @@ public static class ContentPackEditorPrefabBuilder
         TMP_Dropdown collection = Dropdown("CollectionSelection", fields.ScrollArea.ContentRoot);
         collection.gameObject.SetActive(false);
         Assign(form, "collectionDropdown", collection);
+        TMP_Dropdown shipDesign = Dropdown("ShipDesignDropdown", fields.ScrollArea.ContentRoot);
+        shipDesign.gameObject.SetActive(false);
+        Assign(form, "shipDesignDropdown", shipDesign);
+        string[] stateCaptions = { "Small card", "Large card", "Battle result" };
+        Button[] artworkStateSizes = new Button[stateCaptions.Length];
+        for (int i = 0; i < stateCaptions.Length; i++)
+        {
+            Button size = Button(
+                "UnitArtworkSize" + i,
+                fields.ScrollArea.ContentRoot,
+                stateCaptions[i]
+            );
+            BindColor(size.GetComponentInChildren<TMP_Text>(), ContentEditorColorRole.Text);
+            size.gameObject.SetActive(false);
+            artworkStateSizes[i] = size;
+        }
+        Assign(form, "artworkStateSizeButtons", artworkStateSizes);
+        TMP_Dropdown missionPresentation = Dropdown(
+            "MissionPresentationDropdown",
+            fields.ScrollArea.ContentRoot
+        );
+        missionPresentation.gameObject.SetActive(false);
+        Assign(form, "missionPresentationDropdown", missionPresentation);
+        Button missionReports = Button(
+            "MissionReportsToggle",
+            fields.ScrollArea.ContentRoot,
+            "Show reports"
+        );
+        missionReports.gameObject.SetActive(false);
+        Assign(form, "missionReportsToggle", missionReports);
         Button removeMessage = PlainButton(
             "RemoveStartingMessage",
             fields.ScrollArea.ContentRoot,
@@ -455,6 +597,7 @@ public static class ContentPackEditorPrefabBuilder
         BuildWelcome(canvasRoot, view);
         BuildPackDialog(canvasRoot, view);
         BuildSelectionDialog(canvasRoot, view);
+        Assign(view, "artworkWorkspace", ContentEditorArtworkWorkspaceBuilder.Build(canvasRoot));
         BuildConfirmation(canvasRoot, view);
         BuildImagePreview(canvasRoot, view);
         BuildNotification(canvasRoot, view);
@@ -522,6 +665,16 @@ public static class ContentPackEditorPrefabBuilder
         AddInputScrollbar(input);
         input.gameObject.AddComponent<ContentEditorInputScrollRelay>();
         Stretch((RectTransform)input.transform, 244, 8, 14, 22);
+        TextMeshProUGUI selectedMedia = Label("SelectedMedia", root, "No file selected", 14);
+        selectedMedia.overflowMode = TextOverflowModes.Ellipsis;
+        selectedMedia.textWrappingMode = TextWrappingModes.NoWrap;
+        selectedMedia.gameObject.SetActive(false);
+        OverflowTextTooltip selectedMediaOverflow =
+            selectedMedia.gameObject.AddComponent<OverflowTextTooltip>();
+        selectedMediaOverflow.Configure(selectedMedia);
+        selectedMedia
+            .gameObject.AddComponent<OverflowTextTooltipTrigger>()
+            .Configure(selectedMediaOverflow);
         Button import = Button("Import", root, "Import...");
         Rect((RectTransform)import.transform, 0, 8, 86, 34);
         ((RectTransform)import.transform).anchorMin = ((RectTransform)import.transform).anchorMax =
@@ -554,6 +707,7 @@ public static class ContentPackEditorPrefabBuilder
         Assign(field, "selectItemsButton", selectItems);
         Assign(field, "label", label);
         Assign(field, "input", input);
+        Assign(field, "selectedMedia", selectedMedia);
         Assign(field, "checkbox", checkbox);
         Assign(field, "error", error);
         Assign(field, "importButton", import);
@@ -562,6 +716,227 @@ public static class ContentPackEditorPrefabBuilder
         Assign(field, "choiceDropdown", choice);
         Assign(field, "help", HelpIcon(root));
         return field;
+    }
+
+    /// <summary>
+    /// Authors the dedicated faction-color card with a live sample and color wheel.
+    /// </summary>
+    /// <param name="parent">The scrolling form root.</param>
+    /// <returns>The reusable color-picker card.</returns>
+    private static ContentEditorColorPickerView BuildColorPicker(Transform parent)
+    {
+        RectTransform root = Layer("ColorPickerTemplate", parent);
+        Rect(root, 0, 0, 560, 264);
+        Image background = root.gameObject.AddComponent<Image>();
+        background.raycastTarget = false;
+        BindColor(background, ContentEditorColorRole.Panel);
+        Outline outline = root.gameObject.AddComponent<Outline>();
+        outline.effectColor = new Color32(88, 88, 90, 255);
+        outline.effectDistance = new Vector2(1, -1);
+        ContentEditorColorPickerView picker =
+            root.gameObject.AddComponent<ContentEditorColorPickerView>();
+
+        TextMeshProUGUI title = Label("Title", root, "Selection frames", 17);
+        title.fontStyle = FontStyles.Bold;
+        SetTopStretch(title.rectTransform, 16, 10, 16, 26);
+        TextMeshProUGUI description = Label("Description", root, "Color description", 13, true);
+        description.textWrappingMode = TextWrappingModes.Normal;
+        description.overflowMode = TextOverflowModes.Overflow;
+        SetTopStretch(description.rectTransform, 16, 38, 16, 40);
+
+        Image sampleBackground = Surface("SampleBackground", root, ContentEditorColorRole.Input);
+        Rect(sampleBackground.rectTransform, 16, 88, 142, 160);
+        RawImage sample = Layer("Sample", sampleBackground.transform)
+            .gameObject.AddComponent<RawImage>();
+        sample.raycastTarget = false;
+        Stretch(sample.rectTransform, 12, 12, 12, 12);
+        AspectRatioFitter sampleFitter = sample.gameObject.AddComponent<AspectRatioFitter>();
+        sampleFitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+
+        Image swatch = Surface("Swatch", root, Color.white);
+        swatch.raycastTarget = false;
+        RectTransform wheelRect = Layer("ColorWheel", root);
+        Rect(wheelRect, 174, 88, 160, 160);
+        RawImage wheelImage = wheelRect.gameObject.AddComponent<RawImage>();
+        wheelImage.raycastTarget = true;
+        ContentEditorColorWheel wheel =
+            wheelRect.gameObject.AddComponent<ContentEditorColorWheel>();
+        RectTransform selector = BuildColorWheelSelector(wheelRect);
+        Assign(wheel, "selector", selector);
+
+        Rect(swatch.rectTransform, 350, 88, 40, 34);
+        TMP_InputField hex = Input("Hex", root, "RRGGBB");
+        RectTransform hexRect = (RectTransform)hex.transform;
+        hexRect.anchorMin = new Vector2(0, 1);
+        hexRect.anchorMax = Vector2.one;
+        hexRect.offsetMin = new Vector2(400, -122);
+        hexRect.offsetMax = new Vector2(-16, -88);
+
+        Slider brightness = BuildColorSlider(
+            root,
+            "Brightness",
+            "Brightness",
+            350,
+            132,
+            out TextMeshProUGUI brightnessValue
+        );
+        TextMeshProUGUI hueLabel = Label("HueLabel", root, "Hue", 13);
+        Rect(hueLabel.rectTransform, 350, 174, 90, 24);
+        TextMeshProUGUI hueValue = Label("HueValue", root, "0\u00B0", 13, true);
+        hueValue.alignment = TextAlignmentOptions.MidlineRight;
+        SetTopStretch(hueValue.rectTransform, 446, 174, 16, 24);
+        TextMeshProUGUI saturationLabel = Label("SaturationLabel", root, "Saturation", 13);
+        Rect(saturationLabel.rectTransform, 350, 202, 90, 24);
+        TextMeshProUGUI saturationValue = Label("SaturationValue", root, "0%", 13, true);
+        saturationValue.alignment = TextAlignmentOptions.MidlineRight;
+        SetTopStretch(saturationValue.rectTransform, 446, 202, 16, 24);
+        TextMeshProUGUI error = Label("Error", root, string.Empty, 12);
+        error.color = new Color32(255, 127, 127, 255);
+        BindColor(error, ContentEditorColorRole.Error);
+        SetTopStretch(error.rectTransform, 350, 232, 16, 24);
+
+        Assign(picker, "title", title);
+        Assign(picker, "description", description);
+        Assign(picker, "sample", sample);
+        Assign(picker, "swatch", swatch);
+        Assign(picker, "hexInput", hex);
+        Assign(picker, "colorWheel", wheel);
+        Assign(picker, "brightnessSlider", brightness);
+        Assign(picker, "hueValue", hueValue);
+        Assign(picker, "saturationValue", saturationValue);
+        Assign(picker, "brightnessValue", brightnessValue);
+        Assign(picker, "error", error);
+        return picker;
+    }
+
+    /// <summary>
+    /// Authors a hollow high-contrast selector over the color wheel.
+    /// </summary>
+    /// <param name="parent">The color wheel transform.</param>
+    /// <returns>The movable selector root.</returns>
+    private static RectTransform BuildColorWheelSelector(Transform parent)
+    {
+        RectTransform selector = Layer("Selector", parent);
+        selector.anchorMin = selector.anchorMax = selector.pivot = new Vector2(0.5f, 0.5f);
+        selector.sizeDelta = new Vector2(18, 18);
+        selector.anchoredPosition = Vector2.zero;
+        BuildColorWheelSelectorEdge(selector, "Top", new Vector2(0, 8), new Vector2(14, 2));
+        BuildColorWheelSelectorEdge(selector, "Bottom", new Vector2(0, -8), new Vector2(14, 2));
+        BuildColorWheelSelectorEdge(selector, "Left", new Vector2(-8, 0), new Vector2(2, 14));
+        BuildColorWheelSelectorEdge(selector, "Right", new Vector2(8, 0), new Vector2(2, 14));
+        return selector;
+    }
+
+    /// <summary>
+    /// Authors one outlined edge of the hollow color-wheel selector.
+    /// </summary>
+    /// <param name="parent">The selector root.</param>
+    /// <param name="name">The edge name.</param>
+    /// <param name="position">The local edge position.</param>
+    /// <param name="size">The edge size.</param>
+    private static void BuildColorWheelSelectorEdge(
+        Transform parent,
+        string name,
+        Vector2 position,
+        Vector2 size
+    )
+    {
+        Image edge = Surface(name, parent, Color.white);
+        edge.raycastTarget = false;
+        RectTransform rect = edge.rectTransform;
+        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = size;
+        rect.anchoredPosition = position;
+        Outline outline = edge.gameObject.AddComponent<Outline>();
+        outline.effectColor = Color.black;
+        outline.effectDistance = new Vector2(1, -1);
+    }
+
+    /// <summary>
+    /// Authors one labeled normalized slider for the faction-color editor.
+    /// </summary>
+    /// <param name="parent">The color-card root.</param>
+    /// <param name="name">The control name.</param>
+    /// <param name="caption">The visible caption.</param>
+    /// <param name="left">The card-relative left position.</param>
+    /// <param name="top">The card-relative top position.</param>
+    /// <param name="valueLabel">Receives the numeric value label.</param>
+    /// <returns>The configured normalized slider.</returns>
+    private static Slider BuildColorSlider(
+        Transform parent,
+        string name,
+        string caption,
+        int left,
+        int top,
+        out TextMeshProUGUI valueLabel
+    )
+    {
+        RectTransform root = Layer(name + "Slider", parent);
+        root.anchorMin = new Vector2(0, 1);
+        root.anchorMax = Vector2.one;
+        root.pivot = Vector2.up;
+        root.offsetMin = new Vector2(left, -top - 28);
+        root.offsetMax = new Vector2(-16, -top);
+        Slider slider = root.gameObject.AddComponent<Slider>();
+        slider.minValue = 0;
+        slider.maxValue = 1;
+        slider.wholeNumbers = false;
+        slider.direction = Slider.Direction.LeftToRight;
+        root.gameObject.AddComponent<ContentEditorSliderCommit>();
+
+        TextMeshProUGUI label = Label("Label", root, caption, 13);
+        Rect(label.rectTransform, 0, 0, 78, 28);
+        TextMeshProUGUI value = Label("Value", root, "0", 13, true);
+        value.alignment = TextAlignmentOptions.MidlineRight;
+        value.rectTransform.anchorMin = new Vector2(1, 0);
+        value.rectTransform.anchorMax = Vector2.one;
+        value.rectTransform.pivot = Vector2.right;
+        value.rectTransform.anchoredPosition = Vector2.zero;
+        value.rectTransform.sizeDelta = new Vector2(48, 28);
+
+        RectTransform trackRoot = Layer("Track", root);
+        trackRoot.anchorMin = new Vector2(0, 0.5f);
+        trackRoot.anchorMax = new Vector2(1, 0.5f);
+        trackRoot.offsetMin = new Vector2(84, -4);
+        trackRoot.offsetMax = new Vector2(-56, 4);
+        Image track = trackRoot.gameObject.AddComponent<Image>();
+        BindColor(track, ContentEditorColorRole.Input);
+
+        RectTransform fillArea = Layer("FillArea", trackRoot);
+        Stretch(fillArea, 0, 0, 0, 0);
+        Image fill = Surface("Fill", fillArea, ContentEditorColorRole.Accent);
+        Stretch(fill.rectTransform);
+
+        RectTransform handleArea = Layer("HandleArea", trackRoot);
+        Stretch(handleArea, 0, 0, 0, 0);
+        Image handle = Surface("Handle", handleArea, ContentEditorColorRole.Button);
+        RectTransform handleRect = handle.rectTransform;
+        handleRect.anchorMin = handleRect.anchorMax = new Vector2(0, 0.5f);
+        handleRect.sizeDelta = new Vector2(14, 22);
+        handleRect.anchoredPosition = Vector2.zero;
+
+        slider.fillRect = fill.rectTransform;
+        slider.handleRect = handleRect;
+        slider.targetGraphic = handle;
+        valueLabel = value;
+        return slider;
+    }
+
+    /// <summary>
+    /// Anchors a label to the top edge of a responsive card.
+    /// </summary>
+    /// <param name="rect">The label transform.</param>
+    /// <param name="left">The left inset.</param>
+    /// <param name="top">The top inset.</param>
+    /// <param name="right">The right inset.</param>
+    /// <param name="height">The label height.</param>
+    private static void SetTopStretch(RectTransform rect, int left, int top, int right, int height)
+    {
+        rect.anchorMin = new Vector2(0, 1);
+        rect.anchorMax = Vector2.one;
+        rect.pivot = Vector2.up;
+        rect.offsetMin = new Vector2(left, -top - height);
+        rect.offsetMax = new Vector2(-right, -top);
     }
 
     /// <summary>
@@ -1002,7 +1377,7 @@ public static class ContentPackEditorPrefabBuilder
             panel.rectTransform.anchorMax =
             panel.rectTransform.pivot =
                 new Vector2(0.5f, 0.5f);
-        panel.rectTransform.sizeDelta = new Vector2(440, 156);
+        panel.rectTransform.sizeDelta = new Vector2(520, 156);
         Image banner = Surface("WarningBanner", panel.transform, ContentEditorColorRole.Warning);
         Stretch(banner.rectTransform);
         banner.rectTransform.anchorMin = Vector2.up;
@@ -1016,7 +1391,7 @@ public static class ContentPackEditorPrefabBuilder
             .SetRole(ContentEditorColorRole.WarningText);
         TextMeshProUGUI heading = Label("Heading", banner.transform, "WARNING", 27, true);
         heading.fontStyle = FontStyles.Bold;
-        Rect(heading.rectTransform, 66, 8, 350, 48);
+        Rect(heading.rectTransform, 66, 8, 430, 48);
         heading.alignment = TextAlignmentOptions.MidlineLeft;
         heading
             .GetComponent<ContentEditorColorBinding>()
@@ -1071,10 +1446,56 @@ public static class ContentPackEditorPrefabBuilder
         ((RectTransform)close.transform).anchorMin = ((RectTransform)close.transform).anchorMax =
             Vector2.one;
         ((RectTransform)close.transform).anchoredPosition = new Vector2(-134, -18);
+        Button apply = BuildImagePreviewAction(
+            panel.transform,
+            "UseArtwork",
+            "Save",
+            Vector2.right,
+            -134,
+            110
+        );
+        TextMeshProUGUI layerInstructions = Label("LayerInstructions", panel.transform, "", 15);
+        Stretch(layerInstructions.rectTransform, 24, 67, 500, 0);
+        layerInstructions.rectTransform.anchorMax = Vector2.right;
+        layerInstructions.rectTransform.offsetMin = new Vector2(24, 67);
+        layerInstructions.rectTransform.offsetMax = new Vector2(-500, 102);
+        layerInstructions.gameObject.SetActive(false);
+        Assign(preview, "layerInstructions", layerInstructions);
         Assign(preview, "image", image);
         Assign(preview, "caption", caption);
         Assign(preview, "closeButton", close);
+        Assign(preview, "artworkSlot", slot);
+        Assign(preview, "previewPanel", panel.rectTransform);
+        Assign(preview, "applyButton", apply);
         Assign(view, "imagePreview", preview);
         overlay.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Places one optional control in the space beneath the generated image.
+    /// </summary>
+    /// <param name="parent">The image viewer panel.</param>
+    /// <param name="name">The button hierarchy name.</param>
+    /// <param name="text">The visible button label.</param>
+    /// <param name="anchor">The bottom corner supplying the horizontal origin.</param>
+    /// <param name="x">The horizontal offset from that corner.</param>
+    /// <param name="width">The width reserved for the button label.</param>
+    /// <returns>The initially hidden optional button.</returns>
+    private static Button BuildImagePreviewAction(
+        Transform parent,
+        string name,
+        string text,
+        Vector2 anchor,
+        float x,
+        float width
+    )
+    {
+        Button button = Button(name, parent, text);
+        RectTransform rect = (RectTransform)button.transform;
+        Rect(rect, 0, 0, width, 36);
+        rect.anchorMin = rect.anchorMax = anchor;
+        rect.anchoredPosition = new Vector2(x, 60);
+        button.gameObject.SetActive(false);
+        return button;
     }
 }

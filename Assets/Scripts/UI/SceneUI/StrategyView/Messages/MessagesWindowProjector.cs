@@ -304,6 +304,7 @@ internal static class MessagesWindowProjector
         MessageWindowRowRenderData row
     )
     {
+        FactionTheme factionTheme = uiContext?.GetPlayerFactionTheme();
         Color32 color =
             row.Selected ? theme?.GetSelectedRowTextColor() ?? Color.white
             : row.Unread ? Color.white
@@ -314,7 +315,11 @@ internal static class MessagesWindowProjector
             row.Type,
             row.Selected,
             row.Unread,
-            GetTexture(uiContext, theme?.SelectionImagePath),
+            uiContext?.GetFactionMask(
+                theme?.SelectionImagePath,
+                factionTheme,
+                FactionMaskColor.SelectionColorHex
+            ),
             GetTexture(uiContext, theme?.GetIconImagePath(row.Type)),
             GetTexture(uiContext, theme?.GetNormalIconImagePath(row.Type)),
             color

@@ -457,22 +457,22 @@ internal static class ContentEditorPackValidator
     /// <param name="project">The saved project or immutable play/export snapshot.</param>
     internal static void ValidateFields(ContentPackEditorProject project)
     {
+        if (project.IsDirty)
+            throw new InvalidOperationException("Save the content pack before validating it.");
         ContentEditorValidationIssue issue = GetFieldErrors(project).FirstOrDefault();
         if (issue != null)
             throw issue.Exception;
     }
 
     /// <summary>
-    /// Collects every independently invalid authored field before dependent startup checks run.
+    /// Checks current document fields and their media references without saving the pack.
     /// </summary>
-    /// <param name="project">The saved project or immutable play/export snapshot.</param>
+    /// <param name="project">The working pack or a saved snapshot.</param>
     /// <returns>All field failures from the completed structural pass.</returns>
     internal static IReadOnlyList<ContentEditorValidationIssue> GetFieldErrors(
         ContentPackEditorProject project
     )
     {
-        if (project.IsDirty)
-            throw new InvalidOperationException("Save the content pack before validating it.");
         ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
             project.ContentRootPath,
             project.PackRootPath,

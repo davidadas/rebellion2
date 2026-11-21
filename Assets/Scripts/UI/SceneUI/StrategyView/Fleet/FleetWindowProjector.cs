@@ -152,10 +152,9 @@ internal sealed class FleetWindowProjector
             return null;
 
         UIContext uiContext = GetUIContext();
-        string path = uiContext
-            .GetTheme(fleet.OwnerInstanceID)
-            ?.PlanetOverlayTheme?.UnitTileIcons?.FleetDetailSelectionImagePath;
-        return uiContext.GetTexture(path);
+        FactionTheme theme = uiContext.GetTheme(fleet.OwnerInstanceID);
+        string path = theme?.PlanetOverlayTheme?.UnitTileIcons?.FleetDetailSelectionImagePath;
+        return uiContext.GetFactionMask(path, theme, FactionMaskColor.SelectionColorHex);
     }
 
     /// <summary>
@@ -225,7 +224,13 @@ internal sealed class FleetWindowProjector
                         fleet.GetOfficers().Any() || fleet.GetSpecialForces().Any(),
                         badgeIcons => badgeIcons.FleetPersonnelBadgeImagePath
                     ),
-                    selected ? uiContext.GetTexture(icons?.FleetListSelectionImagePath) : null,
+                    selected
+                        ? uiContext.GetFactionMask(
+                            icons?.FleetListSelectionImagePath,
+                            theme,
+                            FactionMaskColor.SelectionColorHex
+                        )
+                        : null,
                     i,
                     showTreeBranch: expanded,
                     treeHasHorizontalBranch: expanded,
@@ -239,9 +244,8 @@ internal sealed class FleetWindowProjector
             for (int shipIndex = 0; shipIndex < capitalShips.Count; shipIndex++)
             {
                 CapitalShip capitalShip = capitalShips[shipIndex];
-                UnitTileIcons shipIcons = uiContext
-                    .GetTheme(capitalShip.GetOwnerInstanceID())
-                    ?.PlanetOverlayTheme?.UnitTileIcons;
+                FactionTheme shipTheme = uiContext.GetTheme(capitalShip.GetOwnerInstanceID());
+                UnitTileIcons shipIcons = shipTheme?.PlanetOverlayTheme?.UnitTileIcons;
                 rows.Add(
                     new FleetListRowRenderData(
                         capitalShip.GetDisplayName(),
@@ -268,7 +272,11 @@ internal sealed class FleetWindowProjector
                             badgeIcons => badgeIcons.FleetPersonnelBadgeImagePath
                         ),
                         session.IsFleetListItemSelected(capitalShip)
-                            ? uiContext.GetTexture(shipIcons?.FleetListSelectionImagePath)
+                            ? uiContext.GetFactionMask(
+                                shipIcons?.FleetListSelectionImagePath,
+                                shipTheme,
+                                FactionMaskColor.SelectionColorHex
+                            )
                             : null,
                         i,
                         isCapitalShip: true,
@@ -373,11 +381,7 @@ internal sealed class FleetWindowProjector
                     entityTexture: uiContext.GetEntityTexture(item, true),
                     capturedOverlayTexture: uiContext.GetEntityCapturedOverlayTexture(item),
                     selectionTexture: selected
-                        ? uiContext.GetTexture(
-                            uiContext
-                                .GetTheme(fleet.OwnerInstanceID)
-                                ?.PlanetOverlayTheme?.UnitTileIcons?.FleetDetailSelectionImagePath
-                        )
+                        ? GetDetailSelectionTexture(uiContext, fleet.OwnerInstanceID)
                         : null,
                     entityFrameYOffset: session.ActiveTab == FleetWindowTab.CapitalShips ? -1 : 0,
                     starfighterBadgeTexture: GetBadgeTexture(
@@ -550,8 +554,28 @@ internal sealed class FleetWindowProjector
         bool active
     )
     {
-        WindowTitleTheme theme = uiContext.GetTheme(ownerFactionId)?.WindowTitleTheme;
-        return uiContext.GetTexture(active ? theme?.ActiveImagePath : theme?.InactiveImagePath);
+        FactionTheme factionTheme = uiContext.GetTheme(ownerFactionId);
+        WindowTitleTheme theme = factionTheme?.WindowTitleTheme;
+        return uiContext.GetFactionMask(
+            active ? theme?.ActiveImagePath : theme?.InactiveImagePath,
+            factionTheme,
+            active
+                ? FactionMaskColor.ActiveWindowTitleColorHex
+                : FactionMaskColor.InactiveWindowTitleColorHex
+        );
+    }
+
+    /// <summary>
+    /// Resolves a fleet detail selection mask using the owning faction's configured color.
+    /// </summary>
+    /// <param name="uiContext">The current presentation context.</param>
+    /// <param name="ownerFactionId">The fleet owner's faction identifier.</param>
+    /// <returns>The tinted selection frame, or null when no path is configured.</returns>
+    private static Texture2D GetDetailSelectionTexture(UIContext uiContext, string ownerFactionId)
+    {
+        FactionTheme theme = uiContext.GetTheme(ownerFactionId);
+        string path = theme?.PlanetOverlayTheme?.UnitTileIcons?.FleetDetailSelectionImagePath;
+        return uiContext.GetFactionMask(path, theme, FactionMaskColor.SelectionColorHex);
     }
 
     /// <summary>

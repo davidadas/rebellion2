@@ -79,6 +79,197 @@ namespace Rebellion.Tests.ContentEditor
             Assert.DoesNotThrow(() => project.SetFieldValues(field, new[] { stored }));
         }
 
+        [TestCase("Pack/Assets/current.png")]
+        [TestCase("Pack/Assets/current")]
+        public void ReplaceAsset_PackOwnedImage_OverwritesFileAndPreservesAddress(string address)
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Starfighter")
+                .GetField("DisplayImagePath");
+            string target = Path.Combine(project.PackRootPath, "Assets", "current.png");
+            Directory.CreateDirectory(Path.GetDirectoryName(target));
+            File.WriteAllText(target, "old image");
+            project.SetField(field, address);
+            string source = Path.Combine(Directory.GetParent(contentRoot).FullName, "new.png");
+            File.WriteAllText(source, "new image");
+
+            Assert.IsTrue(ContentPackEditorStorage.CanReplaceAsset(project, field));
+            ContentPackEditorStorage.ReplaceAsset(project, source, field);
+
+            Assert.AreEqual("new image", File.ReadAllText(target));
+            Assert.AreEqual(address, field.Value);
+        }
+
+        [Test]
+        public void ReadGeneratedLayers_ReplacedImage_IgnoresThePreviousRecipe()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Starfighter")
+                .GetField("DamagedSmallImagePath");
+            string address = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                new byte[] { 1, 2, 3 },
+                preservePrevious: true,
+                layerRecipe: "{}"
+            );
+            project.SetField(field, address);
+            string source = Path.Combine(Directory.GetParent(contentRoot).FullName, "new.png");
+            File.WriteAllBytes(source, new byte[] { 4, 5, 6 });
+
+            ContentPackEditorStorage.ReplaceAsset(project, source, field);
+
+            Assert.IsNull(ContentPackEditorStorage.ReadGeneratedLayers(project, field));
+        }
+
+        [Test]
+        public void ReplaceAsset_DifferentFileType_RejectsWithoutChangingCurrentFile()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Starfighter")
+                .GetField("DisplayImagePath");
+            string target = Path.Combine(project.PackRootPath, "Assets", "current.png");
+            Directory.CreateDirectory(Path.GetDirectoryName(target));
+            File.WriteAllText(target, "old image");
+            project.SetField(field, "Pack/Assets/current.png");
+            string source = Path.Combine(Directory.GetParent(contentRoot).FullName, "new.jpg");
+            File.WriteAllText(source, "new image");
+
+            Assert.Throws<ArgumentException>(() =>
+                ContentPackEditorStorage.ReplaceAsset(project, source, field)
+            );
+
+            Assert.AreEqual("old image", File.ReadAllText(target));
+        }
+
+        [Test]
+        public void WriteGeneratedPng_UnitOutput_UsesStablePackPathAndOverwritesIt()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Starfighter")
+                .GetField("DisplayImagePath");
+
+            string first = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                new byte[] { 1, 2, 3 }
+            );
+            string second = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                new byte[] { 4, 5 }
+            );
+
+            Assert.AreEqual(first, second);
+            StringAssert.StartsWith(
+                "Pack/Assets/Generated/starfighter/" + field.Record.ID.ToLowerInvariant() + "/",
+                first
+            );
+            StringAssert.EndsWith("/display.png", first);
+            CollectionAssert.AreEqual(
+                new byte[] { 4, 5 },
+                File.ReadAllBytes(Path.Combine(project.PackRootPath, first[5..]))
+            );
+        }
+
+        [Test]
+        public void WriteGeneratedPng_LayerRecipe_ReopensWithTheSelectedArtworkVersion()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Starfighter")
+                .GetField("DamagedSmallImagePath");
+            const string firstRecipe = "{\"Version\":1,\"Seed\":8}";
+            const string nextRecipe = "{\"Version\":1,\"Seed\":9}";
+            byte[] image = { 1, 2, 3 };
+            string first = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                image,
+                preservePrevious: true,
+                layerRecipe: firstRecipe
+            );
+            string next = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                image,
+                preservePrevious: true,
+                layerRecipe: nextRecipe
+            );
+            Assert.AreNotEqual(first, next);
+
+            project.SetField(field, first);
+            ContentPackEditorStorage.Save(project);
+            ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
+                project.ContentRootPath,
+                project.PackRootPath
+            );
+            ContentPackEditorField saved = reopened
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.Kind == "Starfighter" && record.ID == field.Record.ID)
+                .GetField("DamagedSmallImagePath");
+            Assert.AreEqual(
+                firstRecipe,
+                ContentPackEditorStorage.ReadGeneratedLayers(reopened, saved)
+            );
+        }
+
+        [Test]
+        public void WriteGeneratedPng_PreservedVariations_KeepsPreviousBytesAtTheirAddress()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Starfighter")
+                .GetField("DamagedSmallImagePath");
+            byte[] firstImage = { 1, 2, 3 };
+            byte[] nextImage = { 4, 5 };
+
+            string first = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                firstImage,
+                preservePrevious: true
+            );
+            string second = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                nextImage,
+                preservePrevious: true
+            );
+
+            Assert.AreNotEqual(first, second);
+            CollectionAssert.AreEqual(
+                firstImage,
+                File.ReadAllBytes(Path.Combine(project.PackRootPath, first[5..]))
+            );
+            Assert.AreEqual(
+                first,
+                ContentPackEditorStorage.WriteGeneratedPng(
+                    project,
+                    field,
+                    firstImage,
+                    preservePrevious: true
+                )
+            );
+        }
+
         [Test]
         public void Create_DefaultLocation_UsesModsAndCanBeResolvedByTheGame()
         {

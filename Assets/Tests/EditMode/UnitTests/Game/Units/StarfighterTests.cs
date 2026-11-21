@@ -33,6 +33,19 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(7, source.FormationPriority);
         }
 
+        [Test]
+        public void CreateCopy_WithArtworkBackground_PreservesBackground()
+        {
+            Starfighter source = new Starfighter
+            {
+                BackgroundImagePath = "Pack/Art/starfighter-background",
+            };
+
+            Starfighter copy = (Starfighter)source.CreateCopy();
+
+            Assert.AreEqual(source.BackgroundImagePath, copy.BackgroundImagePath);
+        }
+
         [TestCase(null)]
         [TestCase(3)]
         public void Serialize_FormationMetadata_RetainsRolesAndOptionalPriority(int? priority)

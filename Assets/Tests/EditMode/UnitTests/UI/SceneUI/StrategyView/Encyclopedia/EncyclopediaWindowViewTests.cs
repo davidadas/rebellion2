@@ -273,6 +273,53 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
         }
 
         [Test]
+        public void Render_WithImageBackground_PlacesItInTheArtworkSlot()
+        {
+            _detailPanel.Render(
+                new EncyclopediaWindowDetailRenderData(
+                    "Officer",
+                    "",
+                    _texture,
+                    true,
+                    true,
+                    _texture
+                ),
+                0
+            );
+
+            RawImage card = FindComponent<RawImage>("DetailCardImage");
+            RawImage background = FindComponent<RawImage>("DetailCardBackgroundImage");
+            Assert.AreSame(_texture, background.texture);
+            Assert.AreEqual(
+                UILayout.GetSourceRect(card.rectTransform),
+                UILayout.GetSourceRect(background.rectTransform)
+            );
+            Assert.Less(background.transform.GetSiblingIndex(), card.transform.GetSiblingIndex());
+        }
+
+        [Test]
+        public void Render_AfterImageBackground_HidesItWhenTheNextEntryHasNone()
+        {
+            _detailPanel.Render(
+                new EncyclopediaWindowDetailRenderData(
+                    "Officer",
+                    "",
+                    _texture,
+                    true,
+                    false,
+                    _texture
+                ),
+                0
+            );
+            _detailPanel.Render(
+                new EncyclopediaWindowDetailRenderData("System", "", _texture, false, true),
+                1
+            );
+
+            Assert.IsFalse(FindObject("DetailCardBackgroundImage").activeSelf);
+        }
+
+        [Test]
         public void Render_ShorterDetailText_HidesUnusedCachedTextFields()
         {
             _view.Render(

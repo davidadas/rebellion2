@@ -89,8 +89,12 @@ internal sealed class DefenseWindowProjector
         return new DefenseWindowRenderData(
             window.X,
             window.Y,
-            uiContext.GetTexture(
-                active ? titleTheme?.ActiveImagePath : titleTheme?.InactiveImagePath
+            uiContext.GetFactionMask(
+                active ? titleTheme?.ActiveImagePath : titleTheme?.InactiveImagePath,
+                factionTheme,
+                active
+                    ? FactionMaskColor.ActiveWindowTitleColorHex
+                    : FactionMaskColor.InactiveWindowTitleColorHex
             ),
             planet?.Planet?.GetDisplayName(),
             normalizedTab,
@@ -398,10 +402,9 @@ internal sealed class DefenseWindowProjector
     /// <returns>The selection-frame texture.</returns>
     private static Texture GetSelectionTexture(UIContext uiContext, string ownerFactionId)
     {
-        string path = uiContext
-            .GetTheme(ownerFactionId)
-            ?.StrategyWindows?.Defense?.SelectionImagePath;
-        return uiContext.GetTexture(path);
+        FactionTheme theme = uiContext.GetTheme(ownerFactionId);
+        string path = theme?.StrategyWindows?.Defense?.SelectionImagePath;
+        return uiContext.GetFactionMask(path, theme, FactionMaskColor.SelectionColorHex);
     }
 
     /// <summary>

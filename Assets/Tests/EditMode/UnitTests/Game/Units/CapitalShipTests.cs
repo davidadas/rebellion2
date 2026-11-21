@@ -348,6 +348,16 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void CreateCopy_BackgroundImagePath_PreservesOverride()
+        {
+            _capitalShip.BackgroundImagePath = "Pack/Art/capital-ship-background";
+
+            CapitalShip copy = (CapitalShip)_capitalShip.CreateCopy();
+
+            Assert.AreEqual(_capitalShip.BackgroundImagePath, copy.BackgroundImagePath);
+        }
+
+        [Test]
         public void SerializeAndDeserialize_CapitalShipWithChildren_MaintainsState()
         {
             _capitalShip.ManufacturingQueueSequence = 7;

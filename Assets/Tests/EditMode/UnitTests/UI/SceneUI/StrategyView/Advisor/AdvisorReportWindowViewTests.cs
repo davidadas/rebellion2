@@ -27,6 +27,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
         {
             _viewObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             _view = _viewObject.GetComponent<AdvisorReportWindowView>();
+            _view.InitializeContent(TestContent.Assets);
             _backgroundTexture = new Texture2D(420, 300);
             _galaxyTexture = new Texture2D(160, 120);
             _rowTexture = new Texture2D(48, 48);

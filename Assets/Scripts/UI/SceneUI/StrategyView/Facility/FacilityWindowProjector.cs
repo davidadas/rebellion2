@@ -61,16 +61,19 @@ internal sealed class FacilityWindowProjector
             activeTab == FacilityWindowTab.Manufacturing
                 ? new List<FacilityInventoryItemRenderData>()
                 : CreateInventoryItems(uiContext, session, ownerFactionId);
-        WindowTitleTheme titleTheme = uiContext.GetTheme(ownerFactionId)?.WindowTitleTheme;
-        string selectionPath = uiContext
-            .GetTheme(ownerFactionId)
-            ?.StrategyWindows?.Facility?.SelectionImagePath;
+        FactionTheme factionTheme = uiContext.GetTheme(ownerFactionId);
+        WindowTitleTheme titleTheme = factionTheme?.WindowTitleTheme;
+        string selectionPath = factionTheme?.StrategyWindows?.Facility?.SelectionImagePath;
 
         return new FacilityWindowRenderData(
             window.X,
             window.Y,
-            uiContext.GetTexture(
-                window.ActiveWindow ? titleTheme?.ActiveImagePath : titleTheme?.InactiveImagePath
+            uiContext.GetFactionMask(
+                window.ActiveWindow ? titleTheme?.ActiveImagePath : titleTheme?.InactiveImagePath,
+                factionTheme,
+                window.ActiveWindow
+                    ? FactionMaskColor.ActiveWindowTitleColorHex
+                    : FactionMaskColor.InactiveWindowTitleColorHex
             ),
             source?.GetDisplayName(),
             activeTab,
@@ -80,7 +83,11 @@ internal sealed class FacilityWindowProjector
             manufacturingCards,
             GetInventoryTitle(activeTab),
             inventoryItems,
-            uiContext.GetTexture(selectionPath)
+            uiContext.GetFactionMask(
+                selectionPath,
+                factionTheme,
+                FactionMaskColor.SelectionColorHex
+            )
         );
     }
 
@@ -196,13 +203,19 @@ internal sealed class FacilityWindowProjector
         );
         int? cardIndex = FacilityManufacturingLaneCatalog.GetCardIndex(manufacturingTab);
         bool selected = cardIndex.HasValue && selectedCards?.Contains(cardIndex.Value) == true;
-        ManufacturingLaneStateTheme stateTheme = uiContext
-            .GetTheme(ownerFactionId)
-            ?.PlanetWindowTheme?.BuildingsPane?.ManufacturingLaneState;
+        FactionTheme factionTheme = uiContext.GetTheme(ownerFactionId);
+        ManufacturingLaneStateTheme stateTheme = factionTheme
+            ?.PlanetWindowTheme
+            ?.BuildingsPane
+            ?.ManufacturingLaneState;
 
         return new ManufacturingLaneCardRenderData(
-            uiContext.GetTexture(
-                selected ? stateTheme?.ActiveImagePath : stateTheme?.InactiveImagePath
+            uiContext.GetFactionMask(
+                selected ? stateTheme?.ActiveImagePath : stateTheme?.InactiveImagePath,
+                factionTheme,
+                selected
+                    ? FactionMaskColor.ActiveBuildingPaneColorHex
+                    : FactionMaskColor.InactiveBuildingPaneColorHex
             ),
             GetManufacturingTexture(uiContext, current),
             current?.GetManufacturingProgress() ?? 0,

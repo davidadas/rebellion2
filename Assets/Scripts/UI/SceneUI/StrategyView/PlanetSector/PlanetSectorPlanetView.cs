@@ -397,10 +397,7 @@ public sealed class PlanetSectorPlanetView
     /// <param name="eventData">The pointer event.</param>
     /// <param name="element">Receives the semantic presentation element.</param>
     /// <returns>True when a visible planet element was hit.</returns>
-    internal bool TryCreateElement(
-        PointerEventData eventData,
-        out PlanetSectorWindowElement element
-    )
+    public bool TryCreateElement(PointerEventData eventData, out PlanetSectorWindowElement element)
     {
         element = CreateElement(null, eventData, true);
         return element != null;

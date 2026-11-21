@@ -22,6 +22,13 @@ public static class MissionIconKeys
     public const string Assassination = "Assassination";
 
     /// <summary>
+    /// Identifies the mission artwork supplied by the shared theme.
+    /// </summary>
+    /// <param name="key">The mission icon key.</param>
+    /// <returns>True when every faction uses the neutral theme's icon.</returns>
+    public static bool UsesSharedArtwork(string key) => key == ResearchFacilityDesign;
+
+    /// <summary>
     /// Gets the faction-theme icon key for a mission type and optional research discipline.
     /// </summary>
     /// <param name="missionTypeID">The mission type identifier.</param>
