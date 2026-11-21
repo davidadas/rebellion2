@@ -1,0 +1,12 @@
+{
+    "name": "Rebellion.Content",
+    "rootNamespace": "Rebellion.Content",
+    "references": [
+        "glTFast",
+        "Rebellion.Game",
+        "Rebellion.SceneGraph",
+        "Rebellion.Util"
+    ],
+    "autoReferenced": true,
+    "noEngineReferences": false
+}
