@@ -47,16 +47,16 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [TestCase(0, 10, false, 98)]
-        [TestCase(0, 10, true, 82)]
-        [TestCase(10, 10, true, 84)]
-        [TestCase(13, 10, true, 84)]
+        [TestCase(0, 10, true, 98)]
+        [TestCase(10, 10, true, 96)]
+        [TestCase(13, 10, true, 95)]
         [TestCase(40, 10, true, 90)]
-        [TestCase(50, 10, true, 92)]
-        [TestCase(50, 10, false, 92)]
-        [TestCase(80, 10, true, 98)]
-        [TestCase(86, 10, true, 98)]
-        [TestCase(90, 10, true, 98)]
-        [TestCase(100, 10, true, 98)]
+        [TestCase(50, 10, true, 88)]
+        [TestCase(50, 10, false, 88)]
+        [TestCase(80, 10, true, 82)]
+        [TestCase(86, 10, true, 82)]
+        [TestCase(90, 10, true, 82)]
+        [TestCase(100, 10, true, 82)]
         [TestCase(100, 25, true, 90)]
         [TestCase(50, 0, true, 98)]
         [TestCase(50, -1, true, 98)]
@@ -97,6 +97,7 @@ namespace Rebellion.Tests.Gameplay
         public void Resolve_FractionalAdmiralManeuver_RoundsBeforeComparingTarget()
         {
             CapitalShip attacker = CreateShip("attacker", 100, 0);
+            attacker.Maneuverability = 2;
             attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 8;
             attacker.WeaponRecharge = 80;
             Starfighter target = CreateFighter("target", 12, 0);
@@ -109,7 +110,7 @@ namespace Rebellion.Tests.Gameplay
                 Array.Empty<Starfighter>(),
                 Array.Empty<CapitalShip>(),
                 new[] { target },
-                attackerCommand: new SpaceCombatCommandModifiers(27, 0, attacker)
+                attackerCommand: new SpaceCombatCommandModifiers(33, 0, attacker)
             );
 
             Assert.AreEqual(4, GetFighterOutcome(result, target).SquadronSizeAfter);
