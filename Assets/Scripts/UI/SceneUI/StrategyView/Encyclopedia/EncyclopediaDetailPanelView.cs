@@ -13,6 +13,9 @@ public sealed class EncyclopediaDetailPanelView : MonoBehaviour, IContentInitial
     private RawImage cardImage;
 
     [SerializeField]
+    private RawImage cardBackgroundImage;
+
+    [SerializeField]
     private RawImage previousButtonImage;
 
     [SerializeField]
@@ -146,6 +149,10 @@ public sealed class EncyclopediaDetailPanelView : MonoBehaviour, IContentInitial
 
         VerifyReferences();
         gameObject.SetActive(true);
+        UILayout.SetImageTexture(
+            cardBackgroundImage,
+            data.Image != null ? data.ImageBackground : null
+        );
         UILayout.SetImageTexture(cardImage, data.Image);
         RenderNavigationButton(
             previousButtonImage,
@@ -492,6 +499,8 @@ public sealed class EncyclopediaDetailPanelView : MonoBehaviour, IContentInitial
     {
         if (cardImage == null)
             throw new MissingReferenceException($"{name}/CardImage is missing.");
+        if (cardBackgroundImage == null)
+            throw new MissingReferenceException($"{name}/CardBackgroundImage is missing.");
         if (previousButtonImage == null)
             throw new MissingReferenceException($"{name}/PreviousButtonImage is missing.");
         if (previousButton == null)

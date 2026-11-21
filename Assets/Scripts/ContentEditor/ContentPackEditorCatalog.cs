@@ -546,6 +546,54 @@ public sealed class ContentPackEditorCatalog
     }
 
     /// <summary>
+    /// Adds a scoped mission article to the faction's encyclopedia.
+    /// </summary>
+    /// <param name="missionID">The mission associated with the article.</param>
+    /// <param name="factionID">The faction allowed to see the article.</param>
+    /// <returns>The title field of the new entry.</returns>
+    internal ContentPackEditorField AddMissionArticle(string missionID, string factionID)
+    {
+        if (recordName != "EncyclopediaEntry" || Records.Any(record => record.ID == missionID))
+            throw new InvalidOperationException(
+                "The encyclopedia already has an entry for this mission or is unavailable."
+            );
+
+        XElement article = new(
+            recordName,
+            new XElement("TypeID", missionID),
+            new XElement("DisplayName", ContentPackEditorField.FormatName(missionID)),
+            new XElement("Category", "Mission"),
+            new XElement("VisibleFactionInstanceID", factionID),
+            new XElement("ImagePath"),
+            new XElement("Description")
+        );
+        xml.Root.Add(article);
+        Commit();
+        RefreshRecords();
+        return Records.Single(record => record.Element == article).GetField("DisplayName");
+    }
+
+    /// <summary>
+    /// Copies an authored report, keeping its existing presentation and runtime selectors.
+    /// </summary>
+    /// <param name="shared">The shared definition to customize.</param>
+    /// <param name="faction">The recipient faction.</param>
+    internal void AddMissionReportOverride(
+        ContentPackEditorRecord shared,
+        ContentPackEditorRecord faction
+    )
+    {
+        RequireAttachedRecord(shared);
+        XElement report = new(shared.Element);
+        report.Element("InstanceID")?.Remove();
+        report.SetElementValue("DisplayName", shared.Name + " (" + faction.Name + ")");
+        report.SetElementValue("FactionInstanceID", faction.ID);
+        shared.Element.AddAfterSelf(report);
+        Commit();
+        RefreshRecords();
+    }
+
+    /// <summary>
     /// Rebuilds stable record wrappers after adding or removing an entry.
     /// </summary>
     private void RefreshRecords()

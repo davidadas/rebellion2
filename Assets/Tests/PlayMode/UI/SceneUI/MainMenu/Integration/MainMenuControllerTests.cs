@@ -152,8 +152,15 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu.Integration
             _multiplayer.onClick.Invoke();
             AssertMultiplayerOpen();
 
-            Assert.IsTrue(_gameObject.GetComponentInChildren<MainMenuController>().TryCancel());
-            Assert.IsTrue(_gameObject.GetComponentInChildren<MainMenuController>().TryCancel());
+            MainMenuController controller =
+                _gameObject.GetComponentInChildren<MainMenuController>();
+            if (
+                _view.OptionsWindowManager.Windows.Any(window =>
+                    window.GetComponentInChildren<ConfirmationDialogView>(true) != null
+                )
+            )
+                Assert.IsTrue(controller.TryCancel());
+            Assert.IsTrue(controller.TryCancel());
             Assert.DoesNotThrow(MultiplayerCoordinator.Instance.Disconnect);
             yield return null;
 

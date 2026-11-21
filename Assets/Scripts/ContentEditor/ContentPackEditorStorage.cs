@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Text;
 
 /// <summary>
 /// Persists authored pack documents and imported files without owning editing or presentation state.
@@ -468,8 +469,344 @@ public static class ContentPackEditorStorage
         )
             throw new ArgumentException("Unsupported file type.");
         string root = field.MediaRoot;
-        string address = ImportAssetToFolder(project, sourcePath, root ?? "Pack/Assets");
+        string folder =
+            ContentEditorContentSections.IsFactionMissionIcon(field)
+            && field.Record.Catalog.Faction != "Shared"
+                ? "Pack/Factions/" + field.Record.Catalog.Faction + "/Assets"
+                : "Pack/Assets";
+        string address = ImportAssetToFolder(project, sourcePath, root ?? folder);
         return root == null ? address : address[(root.TrimEnd('/').Length + 1)..];
+    }
+
+    /// <summary>
+    /// Reports whether a scalar media field currently points to a writable file in this pack.
+    /// </summary>
+    /// <param name="project">The project that owns the working pack.</param>
+    /// <param name="field">The media field whose current file may be replaced.</param>
+    /// <returns>True when the current value resolves to an existing pack-owned file.</returns>
+    public static bool CanReplaceAsset(
+        ContentPackEditorProject project,
+        ContentPackEditorField field
+    ) => GetReplaceableAssetPath(project, field) != null;
+
+    /// <summary>
+    /// Resolves a media field to its writable file, including an extensionless reference.
+    /// </summary>
+    /// <param name="project">The working pack.</param>
+    /// <param name="field">The media field to resolve.</param>
+    /// <returns>The local file, or null for a missing or inherited asset.</returns>
+    internal static string GetReplaceableAssetPath(
+        ContentPackEditorProject project,
+        ContentPackEditorField field
+    )
+    {
+        if (
+            project == null
+            || field?.IsMedia != true
+            || field.IsMediaDirectory
+            || field.IsList
+            || string.IsNullOrWhiteSpace(field.Value)
+        )
+            return null;
+        string address = field.GetMediaAddress(field.Value);
+        if (!address.StartsWith("Pack/", StringComparison.Ordinal))
+            return null;
+        if (
+            ContentEditorContentSections.IsFactionMissionIcon(field)
+            && !address.StartsWith(
+                "Pack/Factions/" + field.Record.Catalog.Faction + "/",
+                StringComparison.Ordinal
+            )
+        )
+            return null;
+        try
+        {
+            string target = Path.GetFullPath(address[5..], project.PackRootPath);
+            string resolved = File.Exists(target)
+                ? target
+                : field
+                    .MediaExtensions.Select(extension => target + extension)
+                    .FirstOrDefault(File.Exists);
+            if (resolved != null)
+                ContentEditorPaths.VerifyWritePath(project, resolved);
+            return resolved;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Checks whether replacement can keep the original media format and address.
+    /// </summary>
+    /// <param name="sourcePath">The selected media file.</param>
+    /// <param name="targetPath">The current media file.</param>
+    /// <returns>True for the same format, including the two JPEG extensions.</returns>
+    internal static bool HasMatchingMediaFormat(string sourcePath, string targetPath)
+    {
+        string source = Path.GetExtension(sourcePath).ToLowerInvariant();
+        string target = Path.GetExtension(targetPath).ToLowerInvariant();
+        return source == target || (source is ".jpg" or ".jpeg" && target is ".jpg" or ".jpeg");
+    }
+
+    /// <summary>
+    /// Replaces the current pack-owned media file while preserving its existing content address.
+    /// </summary>
+    /// <param name="project">The project that owns the working pack.</param>
+    /// <param name="sourcePath">The replacement local media file.</param>
+    /// <param name="field">The scalar media field whose current file is replaced.</param>
+    public static void ReplaceAsset(
+        ContentPackEditorProject project,
+        string sourcePath,
+        ContentPackEditorField field
+    )
+    {
+        project.RequireOwnedRecord(field.Record);
+        string target =
+            GetReplaceableAssetPath(project, field)
+            ?? throw new IOException(
+                "The current media file is not writable in this content pack."
+            );
+        string source = Path.GetFullPath(sourcePath);
+        if (!File.Exists(source))
+            throw new FileNotFoundException("The selected media file does not exist.", source);
+        if (!HasMatchingMediaFormat(source, target))
+            throw new ArgumentException(
+                "Replacing a media file requires the same file type as the current asset."
+            );
+        if (string.Equals(source, target, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        ContentEditorPaths.VerifyWritePath(project, target);
+        string temporary = Path.Combine(
+            Path.GetDirectoryName(target),
+            "." + Path.GetFileName(target) + "." + Guid.NewGuid().ToString("N") + ".tmp"
+        );
+        ContentEditorPaths.VerifyWritePath(project, temporary);
+        try
+        {
+            File.Copy(source, temporary);
+            File.Replace(temporary, target, null);
+        }
+        finally
+        {
+            if (File.Exists(temporary))
+                File.Delete(temporary);
+        }
+    }
+
+    /// <summary>
+    /// Writes a generated PNG to a pack-owned output and returns its stored value.
+    /// </summary>
+    /// <param name="project">The project receiving the generated image.</param>
+    /// <param name="field">The unit image field represented by the output.</param>
+    /// <param name="pngBytes">The complete encoded PNG file.</param>
+    /// <param name="preservePrevious">Whether to give each distinct image a reusable address for undo.</param>
+    /// <returns>The pack-scoped or media-root-relative value to store in the field.</returns>
+    /// <param name="layerRecipe">Optional editor layer data that belongs to this exact output.</param>
+    public static string WriteGeneratedPng(
+        ContentPackEditorProject project,
+        ContentPackEditorField field,
+        byte[] pngBytes,
+        bool preservePrevious = false,
+        string layerRecipe = null
+    )
+    {
+        if (project == null)
+            throw new ArgumentNullException(nameof(project));
+        if (field == null)
+            throw new ArgumentNullException(nameof(field));
+        if (pngBytes == null || pngBytes.Length == 0)
+            throw new ArgumentException("Generated image data is required.", nameof(pngBytes));
+        project.RequireOwnedRecord(field.Record);
+        if (
+            field.MediaType != ContentPackEditorMediaType.Image
+            || field.IsMediaDirectory
+            || field.IsList
+        )
+            throw new ArgumentException("Choose one image field.", nameof(field));
+
+        string root = field.MediaRoot?.TrimEnd('/') ?? "Pack/Assets";
+        if (!root.StartsWith("Pack/", StringComparison.Ordinal))
+            throw new IOException("Generated images require a writable pack media folder.");
+        string fileName = GetGeneratedPathSegment(GetGeneratedMemberName(field.MemberName));
+        if (preservePrevious)
+            fileName += "-" + GetArtworkRevision(pngBytes, layerRecipe);
+        string address = string.Join(
+            "/",
+            root,
+            "Generated",
+            GetGeneratedPathSegment(field.Record.Kind),
+            GetGeneratedPathSegment(field.Record.ID),
+            fileName + ".png"
+        );
+        string target = Path.GetFullPath(address[5..], project.PackRootPath);
+        ContentEditorPaths.VerifyWritePath(project, target);
+        Directory.CreateDirectory(Path.GetDirectoryName(target));
+        WriteBytesAtomically(target, pngBytes);
+        if (layerRecipe != null)
+            WriteBytesAtomically(
+                target + ".layers.json",
+                System.Text.Encoding.UTF8.GetBytes(layerRecipe)
+            );
+        return field.MediaRoot == null ? address : address[(root.Length + 1)..];
+    }
+
+    /// <summary>
+    /// Stores the exact source image needed to reconstruct imported layers after reopening a pack.
+    /// </summary>
+    /// <param name="project">The pack receiving the layer source.</param>
+    /// <param name="sourcePath">The resolved original state image.</param>
+    /// <returns>The immutable pack address of the captured source image.</returns>
+    internal static string StoreArtworkLayerSource(
+        ContentPackEditorProject project,
+        string sourcePath
+    )
+    {
+        byte[] image = File.ReadAllBytes(sourcePath);
+        using SHA256 hash = SHA256.Create();
+        string key = BitConverter
+            .ToString(hash.ComputeHash(image))
+            .Replace("-", "")
+            .ToLowerInvariant();
+        string address =
+            "Pack/Assets/ArtworkSources/" + key + Path.GetExtension(sourcePath).ToLowerInvariant();
+        string target = Path.GetFullPath(address[5..], project.PackRootPath);
+        ContentEditorPaths.VerifyWritePath(project, target);
+        if (!File.Exists(target))
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(target));
+            WriteBytesAtomically(target, image);
+        }
+        return address;
+    }
+
+    /// <summary>
+    /// Reads editable layers associated with a current generated artwork reference.
+    /// </summary>
+    /// <param name="project">The writable project being edited.</param>
+    /// <param name="field">The field containing the current runtime artwork path.</param>
+    /// <returns>The sidecar data, or null for artwork without editable layers.</returns>
+    internal static string ReadGeneratedLayers(
+        ContentPackEditorProject project,
+        ContentPackEditorField field
+    )
+    {
+        if (string.IsNullOrWhiteSpace(field.Value))
+            return null;
+        string address = field.GetMediaAddress(field.Value);
+        if (
+            !address.StartsWith("Pack/", StringComparison.Ordinal)
+            || !address.Contains("/Generated/", StringComparison.Ordinal)
+            || !address.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
+        )
+            return null;
+        string imagePath = Path.GetFullPath(address[5..], project.PackRootPath);
+        string sidecar = imagePath + ".layers.json";
+        ContentEditorPaths.VerifyWritePath(project, sidecar);
+        if (!File.Exists(sidecar) || !File.Exists(imagePath))
+            return null;
+        ContentEditorPaths.VerifyWritePath(project, imagePath);
+        string recipe = File.ReadAllText(sidecar);
+        return Path.GetFileNameWithoutExtension(imagePath)
+            .EndsWith(
+                "-" + GetArtworkRevision(File.ReadAllBytes(imagePath), recipe),
+                StringComparison.Ordinal
+            )
+            ? recipe
+            : null;
+    }
+
+    /// <summary>
+    /// Identifies the exact generated image and its optional editor recipe.
+    /// </summary>
+    /// <param name="png">The saved PNG data.</param>
+    /// <param name="recipe">The optional layers associated with the PNG.</param>
+    /// <returns>The revision suffix used in the generated file name.</returns>
+    private static string GetArtworkRevision(byte[] png, string recipe)
+    {
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        hash.AppendData(png);
+        if (recipe != null)
+            hash.AppendData(System.Text.Encoding.UTF8.GetBytes(recipe));
+        return BitConverter
+            .ToString(hash.GetHashAndReset(), 0, 12)
+            .Replace("-", "")
+            .ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// Removes the conventional image suffix from a generated output member name.
+    /// </summary>
+    /// <param name="member">The serialized image member.</param>
+    /// <returns>The semantic portion used by the generated filename.</returns>
+    private static string GetGeneratedMemberName(string member)
+    {
+        const string suffix = "ImagePath";
+        return member.EndsWith(suffix, StringComparison.Ordinal)
+            ? member[..^suffix.Length]
+            : member;
+    }
+
+    /// <summary>
+    /// Converts an authored identifier into a stable readable directory or filename segment.
+    /// </summary>
+    /// <param name="value">The authored identifier.</param>
+    /// <returns>A lowercase path-safe segment.</returns>
+    private static string GetGeneratedPathSegment(string value)
+    {
+        StringBuilder result = new StringBuilder();
+        bool separator = false;
+        char previous = '\0';
+        foreach (char character in value ?? string.Empty)
+        {
+            if (!char.IsLetterOrDigit(character))
+            {
+                separator = result.Length > 0;
+                continue;
+            }
+            if (
+                result.Length > 0
+                && (separator || char.IsUpper(character) && char.IsLower(previous))
+                && result[^1] != '-'
+            )
+                result.Append('-');
+            result.Append(char.ToLowerInvariant(character));
+            separator = false;
+            previous = character;
+        }
+        return result.Length == 0 ? "item" : result.ToString();
+    }
+
+    /// <summary>
+    /// Replaces or creates one generated file without exposing a partially written image.
+    /// </summary>
+    /// <param name="target">The verified absolute pack path.</param>
+    /// <param name="bytes">The complete encoded file.</param>
+    private static void WriteBytesAtomically(string target, byte[] bytes)
+    {
+        string temporary = Path.Combine(
+            Path.GetDirectoryName(target),
+            "." + Path.GetFileName(target) + "." + Guid.NewGuid().ToString("N") + ".tmp"
+        );
+        try
+        {
+            File.WriteAllBytes(temporary, bytes);
+            if (File.Exists(target))
+                File.Replace(temporary, target, null);
+            else
+                File.Move(temporary, target);
+        }
+        finally
+        {
+            if (File.Exists(temporary))
+                File.Delete(temporary);
+        }
     }
 
     /// <summary>

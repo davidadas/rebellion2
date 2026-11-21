@@ -83,20 +83,20 @@ internal sealed class MissionsWindowProjector
     )
     {
         List<MissionListRowRenderData> rows = new List<MissionListRowRenderData>();
-        Texture selectionTexture = uiContext.GetTexture(
-            uiContext.GetPlayerFactionTheme()?.StrategyWindows?.Missions?.SelectionImagePath
+        FactionTheme playerTheme = uiContext.GetPlayerFactionTheme();
+        Texture selectionTexture = uiContext.GetFactionMask(
+            playerTheme?.StrategyWindows?.Missions?.SelectionImagePath,
+            playerTheme,
+            FactionMaskColor.SelectionColorHex
         );
         for (int index = 0; index < missions.Count; index++)
         {
             Mission mission = missions[index];
             string iconKey = GetMissionIconKey(mission);
-            string iconPath = uiContext
-                .GetTheme(mission.OwnerInstanceID)
-                ?.MissionIcons?.GetImagePath(iconKey, true);
             rows.Add(
                 new MissionListRowRenderData(
                     mission.GetDisplayName(),
-                    uiContext.GetTexture(iconPath),
+                    uiContext.GetMissionIconTexture(mission.OwnerInstanceID, iconKey, small: true),
                     index == selectedMissionIndex ? selectionTexture : null
                 )
             );
@@ -264,8 +264,15 @@ internal sealed class MissionsWindowProjector
     /// <returns>The resolved title texture.</returns>
     private static Texture GetTitleTexture(UIContext uiContext, string ownerFactionId, bool active)
     {
-        WindowTitleTheme theme = uiContext.GetTheme(ownerFactionId)?.WindowTitleTheme;
-        return uiContext.GetTexture(active ? theme?.ActiveImagePath : theme?.InactiveImagePath);
+        FactionTheme factionTheme = uiContext.GetTheme(ownerFactionId);
+        WindowTitleTheme theme = factionTheme?.WindowTitleTheme;
+        return uiContext.GetFactionMask(
+            active ? theme?.ActiveImagePath : theme?.InactiveImagePath,
+            factionTheme,
+            active
+                ? FactionMaskColor.ActiveWindowTitleColorHex
+                : FactionMaskColor.InactiveWindowTitleColorHex
+        );
     }
 
     /// <summary>

@@ -13,6 +13,43 @@ namespace Rebellion.Tests.ContentEditor.UI
     public sealed class ContentPackEditorViewTests : ContentEditorViewTestBase
     {
         [Test]
+        public void ShowArtworkCuts_WithThreeOutputs_DisplaysEveryFullFrameBeforeApply()
+        {
+            ContentPackEditorRecord officer = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Officer");
+            SelectRecord(officer);
+            var cuts = new[]
+            {
+                (officer.GetField("EncyclopediaImagePath"), new Texture2D(60, 30)),
+                (officer.GetField("DisplayImagePath"), new Texture2D(30, 30)),
+                (officer.GetField("SmallDisplayImagePath"), new Texture2D(40, 16)),
+            };
+            int applications = 0;
+
+            view.ShowArtworkCuts(cuts, () => applications++);
+            Canvas.ForceUpdateCanvases();
+
+            ImagePreviewView preview = view.GetComponentInChildren<ImagePreviewView>();
+            RawImage[] artwork = preview
+                .GetComponentsInChildren<RawImage>()
+                .Where(image => image.name == "CutArtwork")
+                .ToArray();
+            CollectionAssert.AreEqual(
+                cuts.Select(cut => cut.Item2),
+                artwork.Select(image => image.texture)
+            );
+            Assert.IsTrue(artwork.All(image => image.uvRect == new Rect(0, 0, 1, 1)));
+            Assert.AreEqual(0, applications);
+            preview
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "UseArtwork")
+                .onClick.Invoke();
+            Assert.AreEqual(1, applications);
+        }
+
+        [Test]
         public void RenderValidationResult_NoWarnings_DoesNotOpenADialog()
         {
             view.RenderValidationResult(

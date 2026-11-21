@@ -245,6 +245,37 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     }
 
     /// <summary>
+    /// Displays a pending battle using the same presentation path as a live battle alert.
+    /// </summary>
+    /// <param name="position">The source-space window position.</param>
+    /// <param name="background">The active panel background texture.</param>
+    /// <param name="frame">The active window frame texture.</param>
+    /// <param name="titleColor">The faction-themed title color.</param>
+    /// <param name="buttons">The four primary panel buttons.</param>
+    /// <param name="pending">The pending combat panel data.</param>
+    public void RenderPending(
+        Vector2Int position,
+        Texture2D background,
+        Texture2D frame,
+        Color titleColor,
+        IEnumerable<BattleAlertButtonRenderData> buttons,
+        BattleAlertPendingRenderData pending
+    ) =>
+        Render(
+            new BattleAlertWindowRenderData(
+                BattleAlertWindowMode.Pending,
+                position.x,
+                position.y,
+                background,
+                frame,
+                titleColor,
+                buttons,
+                pending,
+                null
+            )
+        );
+
+    /// <summary>
     /// Applies a complete immutable battle-alert presentation.
     /// </summary>
     /// <param name="data">The presentation to apply.</param>

@@ -983,6 +983,73 @@ public sealed class ContentPackEditorProject
     }
 
     /// <summary>
+    /// Creates one editable encyclopedia article for a faction's mission.
+    /// </summary>
+    /// <param name="catalog">The faction's linked encyclopedia catalog.</param>
+    /// <param name="theme">The faction theme represented by the mission page.</param>
+    /// <param name="missionID">The mission icon key also used by the encyclopedia.</param>
+    /// <returns>The field for editing the article title.</returns>
+    internal ContentPackEditorField AddMissionArticle(
+        ContentPackEditorCatalog catalog,
+        ContentPackEditorRecord theme,
+        string missionID
+    )
+    {
+        RequireOwnedCatalog(catalog);
+        RequireOwnedRecord(theme);
+        string factionID = theme.Element.Element(nameof(FactionTheme.FactionInstanceID))?.Value;
+        if (
+            theme.Kind != nameof(FactionTheme)
+            || catalog.Faction == "Shared"
+            || catalog.Faction != theme.Catalog.Faction
+            || string.IsNullOrWhiteSpace(factionID)
+            || !ContentEditorContentSections.FactionMissionIconKeys.Contains(missionID)
+        )
+            throw new ArgumentException("Choose a faction mission.");
+        using (BeginEdit("Add mission encyclopedia entry"))
+            return catalog.AddMissionArticle(missionID, factionID);
+    }
+
+    /// <summary>
+    /// Creates or removes the recipient-specific copy of a shared Espionage report.
+    /// </summary>
+    /// <param name="faction">The current faction gameplay record.</param>
+    /// <param name="report">The exact report variant requested by the faction page.</param>
+    /// <param name="customize">Whether to create a faction copy or return to the shared report.</param>
+    internal void SetMissionReportOverride(
+        ContentPackEditorRecord faction,
+        ContentEditorMissionReport report,
+        bool customize
+    )
+    {
+        RequireOwnedRecord(faction);
+        if (faction.Kind != "Faction" || faction.Element.Element("InstanceID") == null)
+            throw new ArgumentException("Choose a faction.");
+        RequireOwnedRecord(report.Shared);
+        if (
+            report.Shared.Catalog.Document.Address
+            != "Pack/" + Definition.MessageDefinitionsPath?.Replace('\\', '/')
+        )
+            throw new ArgumentException("Choose a report from this pack.");
+        ContentPackEditorCatalog catalog = report.Shared.Catalog;
+        ContentEditorMissionReport current = ContentEditorMissionReport
+            .Create(catalog.Records, faction.ID)
+            .SingleOrDefault(candidate => candidate.Key == report.Key);
+        if (current?.Shared?.Element != report.Shared.Element)
+            throw new ArgumentException("Choose a current shared report.");
+        if (customize && current.Custom == null)
+        {
+            using (BeginEdit("Customize Espionage report"))
+                catalog.AddMissionReportOverride(current.Shared, faction);
+        }
+        else if (!customize && current.Custom != null)
+        {
+            using (BeginEdit("Use shared Espionage report"))
+                catalog.Remove(current.Custom);
+        }
+    }
+
+    /// <summary>
     /// Clears a set of owned fields after validating every proposed change, preserving one undo step.
     /// </summary>
     /// <param name="fields">The fields to clear.</param>
@@ -1210,8 +1277,36 @@ public sealed class ContentPackEditorProject
             .Where(address => !retained.Contains(address))
             .ToHashSet(StringComparer.Ordinal);
         XDocument xml = XDocument.Parse(manifest.Document.Text);
+        HashSet<string> removedFactionIDs = removed
+            .SelectMany(declaration =>
+                GetCatalogs()
+                    .Where(catalog =>
+                        catalog.Document.Address
+                        == "Pack/"
+                            + declaration
+                                .DocumentRecord.Element.Element("FactionDataPath")
+                                ?.Value.Replace('\\', '/')
+                    )
+            )
+            .SelectMany(catalog => catalog.Records)
+            .Where(faction => faction.Kind == "Faction")
+            .Select(faction => faction.ID)
+            .ToHashSet(StringComparer.Ordinal);
+        ContentPackEditorRecord[] removedReports = GetCatalogs()
+            .Where(catalog =>
+                catalog.Document.Address
+                == "Pack/" + Definition.MessageDefinitionsPath?.Replace('\\', '/')
+            )
+            .SelectMany(catalog => catalog.Records)
+            .Where(report =>
+                ContentEditorMissionReport.IsEspionageReport(report)
+                && removedFactionIDs.Contains(ContentEditorMissionReport.GetFactionID(report))
+            )
+            .ToArray();
         using (BeginEdit("Delete " + record.Name))
         {
+            foreach (ContentPackEditorRecord report in removedReports)
+                report.Catalog.Remove(report);
             xml.Root.Element("FactionPaths")
                 ?.Elements()
                 .Where(path =>

@@ -16,7 +16,7 @@ internal enum BattleAlertWindowMode
 /// <summary>
 /// Identifies a pending battle-alert panel selected by the player.
 /// </summary>
-internal enum BattleAlertPanel
+public enum BattleAlertPanel
 {
     Summary,
     FirstForces,
@@ -133,7 +133,7 @@ internal static class BattleResultCategoryCatalog
 /// <summary>
 /// Describes one themed button without exposing mutable theme configuration to the view.
 /// </summary>
-internal sealed class BattleAlertButtonRenderData
+public sealed class BattleAlertButtonRenderData
 {
     public RectInt? Bounds { get; }
 
@@ -175,7 +175,7 @@ internal sealed class BattleAlertButtonRenderData
 /// <summary>
 /// Describes one pending-combat list row.
 /// </summary>
-internal sealed class BattleAlertRowRenderData
+public sealed class BattleAlertRowRenderData
 {
     public string Text { get; }
 
@@ -287,7 +287,7 @@ internal sealed class BattleResultCategoryRenderData
 /// <summary>
 /// Contains immutable presentation for one pending-combat panel.
 /// </summary>
-internal sealed class BattleAlertPendingRenderData
+public sealed class BattleAlertPendingRenderData
 {
     public BattleAlertPanel Panel { get; }
 

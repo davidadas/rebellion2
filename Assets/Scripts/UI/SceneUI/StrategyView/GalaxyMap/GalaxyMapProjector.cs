@@ -172,10 +172,11 @@ public sealed class GalaxyMapProjector
             context.GetTexture(background?.DestroyedPlanetIconPath);
 
             PlanetIcons icons = background?.PlanetIcons;
-            context.GetTexture(icons?.Small);
-            context.GetTexture(icons?.Medium);
-            context.GetTexture(icons?.Large);
-            context.GetTexture(icons?.XL);
+
+            context.GetFactionMask(icons?.Small, theme, FactionMaskColor.PlanetMarkerColorHex);
+            context.GetFactionMask(icons?.Medium, theme, FactionMaskColor.PlanetMarkerColorHex);
+            context.GetFactionMask(icons?.Large, theme, FactionMaskColor.PlanetMarkerColorHex);
+            context.GetFactionMask(icons?.XL, theme, FactionMaskColor.PlanetMarkerColorHex);
             context.GetTexture(icons?.Mixed);
             context.GetTexture(theme?.PlanetOverlayTheme?.GalaxyHeadquartersImagePath);
         }

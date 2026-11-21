@@ -586,6 +586,7 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
                 );
 
             Texture upTexture = tab.Texture;
+            tabImages[i].gameObject.SetActive(true);
             UILayout.SetInteractiveImageTexture(tabImages[i], upTexture);
             tabPressVisuals[i].SetTextures(upTexture, tab.PressedTexture);
         }

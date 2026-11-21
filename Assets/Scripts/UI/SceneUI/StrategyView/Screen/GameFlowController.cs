@@ -458,7 +458,8 @@ public sealed class GameFlowController : MonoBehaviour
             gameData.Starfighters,
             gameData.Regiments,
             gameData.SpecialForces,
-            gameData.Officers
+            gameData.Officers,
+            (entity, owner) => themeLibrary?.GetEncyclopediaArtworkBackground(entity, owner)
         );
         ContentAssets contentAssets = bootstrap.GetContentAssets();
         uiContext = new UIContext(
@@ -467,7 +468,8 @@ public sealed class GameFlowController : MonoBehaviour
             encyclopediaCatalog,
             contentAssets.GetTexture,
             contentAssets.GetTextureContentBounds,
-            contentAssets.GetSmoothTexture
+            contentAssets.GetSmoothTexture,
+            contentAssets.GetAlphaTintedTexture
         );
 
         if (activeGameManager != null)

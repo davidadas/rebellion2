@@ -78,6 +78,21 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void GetFieldErrors_UnsavedField_ReportsTheWorkingValueWithoutSaving()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorRecord officer = Records(project)
+                .First(item => item.Kind == "Officer");
+            RewriteField(project, officer, "CurrentRank", "UnsavedUnknownRank");
+
+            IReadOnlyList<ContentEditorValidationIssue> issues =
+                ContentEditorPackValidator.GetFieldErrors(project);
+
+            Assert.That(issues, Has.Some.Property("Message").Contains("UnsavedUnknownRank"));
+            Assert.IsTrue(project.IsDirty);
+        }
+
+        [Test]
         public async Task ValidateAsync_CancelledBeforeStartup_ReturnsControlAndPreservesTheProjectAsync()
         {
             ContentPackEditorProject project = CreateLoadableProject();

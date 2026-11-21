@@ -2490,6 +2490,62 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual("missing-body:Sabotage:Yavin", message.Body);
         }
 
+        [TestCase(true, true)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(false, false)]
+        public void CreateMessages_EspionageReport_UsesOverrideOnlyForItsRecipient(
+            bool sendToOverrideRecipient,
+            bool sharedFirst
+        )
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            Faction recipient = sendToOverrideRecipient ? alliance : empire;
+            Mission mission = new EspionageMission
+            {
+                ConfigKey = EspionageMission.MissionTypeID,
+                DisplayName = "Espionage",
+                OwnerInstanceID = recipient.InstanceID,
+            };
+            game.AttachNode(mission, target);
+            MessageDefinition shared = Definition(
+                MessageResultType.MissionReport,
+                MessageType.Mission,
+                "Espionage",
+                "Shared report for {system}",
+                outcome: MessageResultOutcome.Success,
+                missionTypeId: EspionageMission.MissionTypeID
+            );
+            MessageDefinition custom = Definition(
+                MessageResultType.MissionReport,
+                MessageType.Mission,
+                "Espionage",
+                "Faction report for {system}",
+                outcome: MessageResultOutcome.Success,
+                missionTypeId: EspionageMission.MissionTypeID
+            );
+            custom.FactionInstanceID = alliance.InstanceID;
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    sharedFirst ? new[] { shared, custom } : new[] { custom, shared },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        Outcome = MissionOutcome.Success,
+                    }
+                ),
+                recipient
+            );
+
+            Assert.AreEqual(
+                sendToOverrideRecipient ? "Faction report for Yavin" : "Shared report for Yavin",
+                message.Body
+            );
+        }
+
         [Test]
         public void CreateMessages_MissionReportWithReturningPersonnel_AppendsDestinationStatus()
         {

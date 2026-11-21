@@ -45,6 +45,7 @@ public sealed class OptionsChoiceFieldView : MonoBehaviour
     /// <param name="value">The player-facing value.</param>
     public void Render(string value)
     {
+        BindControls();
         UILayout.SetTextContent(valueField, value ?? string.Empty);
     }
 

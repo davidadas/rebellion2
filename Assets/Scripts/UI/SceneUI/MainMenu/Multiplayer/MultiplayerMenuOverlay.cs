@@ -311,7 +311,10 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
                 passwordDialog.SetActive(false);
                 saveDialog.SetActive(false);
                 if (!dialog && !joining)
+                {
                     CloseRequested?.Invoke();
+                    return true;
+                }
                 Render();
                 return true;
             }
@@ -379,7 +382,7 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
         /// </summary>
         private void Render()
         {
-            if (_coordinator == null)
+            if (!isActiveAndEnabled || _coordinator == null)
                 return;
             bool signedIn = _coordinator.PlayerSession != null;
             bool inLobby = _coordinator.Lobby != null && !_coordinator.IsConnecting;
