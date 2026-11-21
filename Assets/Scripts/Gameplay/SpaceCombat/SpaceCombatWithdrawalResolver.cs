@@ -149,23 +149,29 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Places withdrawn dependent fighters aboard their reserved carriers.
+        /// Places surviving fighters aboard reserved carriers after releasing reassigned bays.
         /// </summary>
-        /// <param name="plan">The applied withdrawal plan.</param>
-        internal void ApplyFighterRecovery(SpaceCombatWithdrawalPlan plan)
+        /// <param name="assignments">The reserved fighter-to-carrier assignments.</param>
+        internal void ApplyFighterRecovery(
+            IReadOnlyDictionary<Starfighter, CapitalShip> assignments
+        )
         {
-            foreach (
-                KeyValuePair<Starfighter, CapitalShip> assignment in (
-                    plan?.FighterRecoveryAssignments ?? new Dictionary<Starfighter, CapitalShip>()
-                ).Where(assignment =>
+            if (assignments == null)
+                return;
+
+            List<KeyValuePair<Starfighter, CapitalShip>> transfers = assignments
+                .Where(assignment =>
                     !ReferenceEquals(
                         assignment.Key.GetParentOfType<CapitalShip>(),
                         assignment.Value
                     )
                 )
-            )
+                .ToList();
+            foreach (KeyValuePair<Starfighter, CapitalShip> assignment in transfers)
+                _game.DetachNode(assignment.Key);
+            foreach (KeyValuePair<Starfighter, CapitalShip> assignment in transfers)
             {
-                _game.MoveNode(assignment.Key, assignment.Value);
+                _game.AttachNode(assignment.Key, assignment.Value);
             }
         }
 

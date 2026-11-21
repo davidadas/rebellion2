@@ -2660,8 +2660,9 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(attackingShip.MaxHullStrength, attackingShip.CurrentHullStrength);
         }
 
-        [Test]
-        public void ResolvePending_WithdrawingFleetCarriesNonHyperdriveFighter_PreservesFighter()
+        [TestCase(0)]
+        [TestCase(60)]
+        public void ResolvePending_WithdrawingFleetCarriesFighter_PreservesFighter(int hyperdrive)
         {
             GameRoot game = CreateAutomaticCombatGame();
             game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 0.75;
@@ -2719,7 +2720,7 @@ namespace Rebellion.Tests.Gameplay
                 MaxSquadronSize = 12,
                 CurrentSquadronSize = 12,
                 ShieldStrength = 1,
-                Hyperdrive = 0,
+                Hyperdrive = hyperdrive,
                 SublightSpeed = 10,
                 LaserCannon = 1,
             };
@@ -3203,6 +3204,155 @@ namespace Rebellion.Tests.Gameplay
             Assert.Less(ship.CurrentHullStrength, 500);
             Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID));
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Fleet>("alliance-fleet"));
+        }
+
+        [TestCase(0)]
+        [TestCase(60)]
+        public void ResolvePendingRetreat_CarriedFighter_BoardsRetreatingCarrier(int hyperdrive)
+        {
+            (
+                GameRoot game,
+                _,
+                Planet home,
+                Fleet fleet,
+                IReadOnlyList<CapitalShip> carriers,
+                SpaceCombatCommands commands
+            ) = CreateCarrierWithdrawal("empire", 1);
+            Starfighter fighter = AttachWithdrawalFighter(game, carriers[0], "fighter", hyperdrive);
+
+            new SpaceCombatTickProcessor(commands).ProcessTick(game);
+            List<GameResult> results = commands.ResolvePendingRetreat("empire");
+
+            Assert.IsNotNull(results);
+            Assert.AreSame(home, fleet.GetParentOfType<Planet>());
+            Assert.IsNotNull(fleet.Movement);
+            Assert.AreSame(carriers[0], fighter.GetParent());
+            Assert.IsNull(fighter.Movement);
+        }
+
+        [Test]
+        public void Resolve_SurvivingCarrierWithHyperdriveFighter_PreservesOccupiedBay()
+        {
+            (
+                GameRoot game,
+                Planet combat,
+                _,
+                Fleet fleet,
+                IReadOnlyList<CapitalShip> carriers,
+                SpaceCombatCommands commands
+            ) = CreateCarrierWithdrawal("empire", 1, 1);
+            CapitalShip destroyedCarrier = carriers[0];
+            destroyedCarrier.MaxHullStrength = 1;
+            destroyedCarrier.CurrentHullStrength = 1;
+            destroyedCarrier.ShieldRechargeRate = 0;
+            destroyedCarrier.WeaponRecharge = 2;
+            CapitalShip survivor = carriers[1];
+            survivor.MaxHullStrength = 1000000;
+            survivor.CurrentHullStrength = 1000000;
+            survivor.ShieldRechargeRate = 0;
+            survivor.WeaponRecharge = 1;
+            survivor.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 1000, 0, 0, 0, 100 };
+            Starfighter displaced = AttachWithdrawalFighter(game, destroyedCarrier, "displaced", 0);
+            Starfighter resident = AttachWithdrawalFighter(game, survivor, "resident", 60);
+            Fleet enemy = combat.GetChildren<Fleet>().Single(candidate => candidate != fleet);
+            enemy.GetChildren<CapitalShip>().Single().ShieldRechargeRate = 0;
+
+            TryResolveCombat(commands, enemy, fleet, out List<GameResult> results);
+
+            Assert.AreEqual(
+                SpaceCombatSideOutcome.Active,
+                GetCombatResult(results).DefenderOutcome
+            );
+            Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>(destroyedCarrier.InstanceID));
+            Assert.AreSame(
+                resident,
+                game.GetSceneNodeByInstanceID<Starfighter>(resident.InstanceID)
+            );
+            Assert.AreSame(survivor, resident.GetParent());
+            Assert.IsNull(resident.Movement);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(displaced.InstanceID));
+            Assert.AreEqual(1, survivor.GetChildren<Starfighter>().Count);
+        }
+
+        [Test]
+        public void ResolvePendingRetreat_HyperdriveFighter_UsesFirstCarrierWithSpace()
+        {
+            (
+                GameRoot game,
+                _,
+                _,
+                _,
+                IReadOnlyList<CapitalShip> carriers,
+                SpaceCombatCommands commands
+            ) = CreateCarrierWithdrawal("empire", 1, 1);
+            Starfighter fighter = AttachWithdrawalFighter(game, carriers[1], "fighter", 60);
+
+            new SpaceCombatTickProcessor(commands).ProcessTick(game);
+            commands.ResolvePendingRetreat("empire");
+
+            Assert.AreSame(carriers[0], fighter.GetParent());
+            Assert.IsEmpty(carriers[1].GetChildren<Starfighter>());
+            Assert.IsNull(fighter.Movement);
+        }
+
+        [Test]
+        public void ResolvePendingRetreat_LimitedCarrierSpace_OnlyOverflowTravelsIndependently()
+        {
+            (
+                GameRoot game,
+                Planet combat,
+                Planet home,
+                _,
+                IReadOnlyList<CapitalShip> carriers,
+                SpaceCombatCommands commands
+            ) = CreateCarrierWithdrawal("empire", 1);
+            Starfighter first = AttachWithdrawalFighter(game, combat, "first", 60);
+            Starfighter overflow = AttachWithdrawalFighter(game, combat, "overflow", 60);
+
+            new SpaceCombatTickProcessor(commands).ProcessTick(game);
+            commands.ResolvePendingRetreat("empire");
+
+            Assert.AreSame(carriers[0], first.GetParent());
+            Assert.IsNull(first.Movement);
+            Assert.AreSame(home, overflow.GetParent());
+            Assert.IsNotNull(overflow.Movement);
+            Assert.AreEqual(1, carriers[0].GetChildren<Starfighter>().Count);
+        }
+
+        [TestCase("empire")]
+        [TestCase("alliance")]
+        [TestCase(null)]
+        public void ResolvePendingRetreat_RedistributedFighters_RespectsOccupiedBays(
+            string combatOwner
+        )
+        {
+            (
+                GameRoot game,
+                _,
+                _,
+                _,
+                IReadOnlyList<CapitalShip> carriers,
+                SpaceCombatCommands commands
+            ) = CreateCarrierWithdrawal(combatOwner, 1, 1, 1);
+            carriers[0].Hyperdrive = 0;
+            Starfighter dependent = AttachWithdrawalFighter(game, carriers[0], "dependent", 0);
+            Starfighter mobile = AttachWithdrawalFighter(game, carriers[1], "mobile", 60);
+
+            new SpaceCombatTickProcessor(commands).ProcessTick(game);
+            commands.ResolvePendingRetreat("empire");
+
+            Assert.AreSame(carriers[1], dependent.GetParent());
+            Assert.AreSame(carriers[2], mobile.GetParent());
+            Assert.IsNull(dependent.Movement);
+            Assert.IsNull(mobile.Movement);
+            Assert.AreSame(
+                dependent,
+                game.GetSceneNodeByInstanceID<Starfighter>(dependent.InstanceID)
+            );
+            Assert.AreSame(mobile, game.GetSceneNodeByInstanceID<Starfighter>(mobile.InstanceID));
+            Assert.AreEqual(2, game.GetSceneNodesByType<Starfighter>().Count);
+            Assert.AreEqual(1, carriers[1].GetChildren<Starfighter>().Count);
+            Assert.AreEqual(1, carriers[2].GetChildren<Starfighter>().Count);
         }
 
         [TestCase(FleetOrderType.Attack)]
@@ -4385,6 +4535,72 @@ namespace Rebellion.Tests.Gameplay
         private static SpaceCombatResult GetCombatResult(IEnumerable<GameResult> results)
         {
             return results.OfType<SpaceCombatResult>().Single();
+        }
+
+        /// <summary>
+        /// Creates a pending human-controlled encounter with carrier bays and a friendly fallback.
+        /// </summary>
+        /// <param name="combatOwner">The owner of the contested planet.</param>
+        /// <param name="capacities">The fighter capacity of each participating carrier.</param>
+        /// <returns>The game, combat planet, fallback, fleet, carriers, and combat commands.</returns>
+        private (
+            GameRoot game,
+            Planet combat,
+            Planet home,
+            Fleet fleet,
+            IReadOnlyList<CapitalShip> carriers,
+            SpaceCombatCommands commands
+        ) CreateCarrierWithdrawal(string combatOwner, params int[] capacities)
+        {
+            GameRoot game = CreateGame();
+            game.Random = new SequenceRNG();
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
+            (Planet combat, _) = CreatePlanet(game, "combat", owner: combatOwner);
+            (Planet home, _) = CreatePlanet(game, "empire-home", owner: "empire");
+            home.PositionX = 100;
+            CreatePlanet(game, "alliance-home", owner: "alliance");
+            Fleet fleet = CreateFleet(
+                game,
+                "empire-fleet",
+                "empire",
+                combat,
+                capacities.Length,
+                100,
+                1
+            );
+            CreateFleet(game, "alliance-fleet", "alliance", combat, 1, 1000, 100);
+            IReadOnlyList<CapitalShip> carriers = fleet.GetChildren<CapitalShip>();
+            for (int i = 0; i < capacities.Length; i++)
+                carriers[i].StarfighterCapacity = capacities[i];
+            return (game, combat, home, fleet, carriers, MakeSpaceCombat(game));
+        }
+
+        /// <summary>
+        /// Attaches a completed squadron to the supplied combat location.
+        /// </summary>
+        /// <param name="game">The owning scene graph.</param>
+        /// <param name="parent">The carrier or planet receiving the fighter.</param>
+        /// <param name="id">The fighter identity.</param>
+        /// <param name="hyperdrive">The fighter's independent travel rating.</param>
+        /// <returns>The attached fighter.</returns>
+        private static Starfighter AttachWithdrawalFighter(
+            GameRoot game,
+            ContainerNode parent,
+            string id,
+            int hyperdrive
+        )
+        {
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = id,
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                Hyperdrive = hyperdrive,
+            };
+            game.AttachNode(fighter, parent);
+            return fighter;
         }
 
         /// <summary>
