@@ -2209,6 +2209,58 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     }
 
     /// <summary>
+    /// Routes a dropped image to the visible artwork draft or image slot at the drop position.
+    /// </summary>
+    /// <param name="position">The drop point in Unity screen pixels.</param>
+    /// <param name="paths">The files delivered by the operating system.</param>
+    /// <param name="import">The normal import action for an image field.</param>
+    /// <returns>Whether the editor routed the drop.</returns>
+    internal bool TryImportDroppedImage(
+        Vector2 position,
+        IReadOnlyList<string> paths,
+        Action<ContentPackEditorField, string> import
+    )
+    {
+        EventSystem events = EventSystem.current;
+        if (
+            events == null
+            || !workbench.interactable
+            || packDialog.IsOpen
+            || selectionDialog.IsOpen
+            || confirmation.gameObject.activeSelf
+            || imagePreview.gameObject.activeSelf
+        )
+            return false;
+        List<RaycastResult> hits = new();
+        events.RaycastAll(new PointerEventData(events) { position = position }, hits);
+        GameObject target = hits.Count == 0 ? null : hits[0].gameObject;
+        if (target == null)
+            return false;
+        if (paths.Count != 1)
+        {
+            RenderStatus("Drop one image at a time.", true);
+            return false;
+        }
+        if (artworkWorkspace.gameObject.activeInHierarchy)
+        {
+            if (artworkWorkspace.TryImportDroppedImage(target.transform, paths[0]))
+                return true;
+        }
+        else
+        {
+            ContentPackEditorField field = form.FindImageDropField(target);
+            if (field != null)
+            {
+                if (CommitFields())
+                    import(field, paths[0]);
+                return true;
+            }
+        }
+        RenderStatus("Drop an image onto an image slot or the artwork draft canvas.", true);
+        return false;
+    }
+
+    /// <summary>
     /// Requests a preview of the exact standard artwork cuts before any output is replaced.
     /// </summary>
     /// <param name="source">The large image supplying the generated pixels.</param>

@@ -222,6 +222,9 @@ PNG and JPEG files become independent layers you can move, scale, hide, and reor
 When you save the artwork, the editor copies the source image into the pack and saves the layer
 with that output so you can edit it again later.
 
+Image pickers reopen in the last folder you imported from. On Windows and macOS, you can
+also drag a PNG or JPEG onto an image slot or onto the artwork canvas to add a layer.
+
 ## Sharing a mod
 
 Package the mod folder containing `mod.xml` and `Content`; players install it by extracting that

@@ -27,6 +27,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     private int audioPreviewRequest;
     private string previewAudioAddress;
     private ContentEditorSettingsManager settingsManager;
+    private ContentEditorFileDrops fileDrops;
     private const string _colorModePreference = "ContentEditor.ColorMode";
     private const string _alphaNoticePreference = "ContentEditor.AlphaNoticeAcknowledged";
 
@@ -59,6 +60,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
         view.PreviewRequested += PreviewMedia;
         view.PreviewCancelled += InvalidateMediaPreview;
         Application.wantsToQuit += CanQuit;
+        fileDrops = ContentEditorFileDrops.Create(Application.platform);
     }
 
     /// <summary>
@@ -130,10 +132,27 @@ public sealed class ContentPackEditorController : MonoBehaviour
     }
 
     /// <summary>
+    /// Dispatches native file drops through the editor's current image import targets.
+    /// </summary>
+    private void Update()
+    {
+        if (fileDrops == null || !fileDrops.TryRead(out var drop))
+            return;
+        RunOperation(() =>
+        {
+            if (project == null)
+                return;
+            Vector2 position = drop.Position * new Vector2(Screen.width, Screen.height);
+            view.TryImportDroppedImage(position, drop.Files, ImportSelectedMedia);
+        });
+    }
+
+    /// <summary>
     /// Releases all subscriptions before destroying project-owned media.
     /// </summary>
     private void OnDestroy()
     {
+        fileDrops?.Dispose();
         operationCancellation?.Cancel();
         Application.wantsToQuit -= CanQuit;
         if (view != null)
@@ -385,30 +404,78 @@ public sealed class ContentPackEditorController : MonoBehaviour
             if (project == null || !view.CommitFields())
                 return;
             string source = ContentEditorFileDialog.OpenFile(
-                GetAssetPickerDirectory(field),
+                field.MediaType == ContentPackEditorMediaType.Image
+                    ? GetImageImportDirectory()
+                    : GetAssetPickerDirectory(field),
                 field.MediaExtensions
             );
-            if (string.IsNullOrEmpty(source))
-                return;
-            string current = ContentPackEditorStorage.GetReplaceableAssetPath(project, field);
-            if (current != null)
-            {
-                Action replace = ContentPackEditorStorage.HasMatchingMediaFormat(source, current)
-                    ? () => RunOperation(() => ApplyMediaImport(field, source, true))
-                    : null;
-                view.ConfirmMediaReplacement(
-                    Path.GetFileName(current),
-                    replace,
-                    () => RunOperation(() => ApplyMediaImport(field, source, false))
-                );
-                return;
-            }
-            ApplyMediaImport(field, source, false);
+            if (!string.IsNullOrEmpty(source))
+                ImportSelectedMedia(field, source);
         });
     }
 
     /// <summary>
-    /// Opens replacement imports beside the image currently resolved by the pack.
+    /// Uses the same preview and replacement flow for selected and dropped files.
+    /// </summary>
+    /// <param name="field">The media slot receiving the file.</param>
+    /// <param name="source">The selected or dropped file.</param>
+    private void ImportSelectedMedia(ContentPackEditorField field, string source)
+    {
+        if (
+            !field.MediaExtensions.Contains(
+                Path.GetExtension(source),
+                StringComparer.OrdinalIgnoreCase
+            )
+        )
+            throw new ArgumentException("Unsupported file type.");
+        if (!File.Exists(source))
+            throw new FileNotFoundException("The selected media file does not exist.", source);
+        string current = ContentPackEditorStorage.GetReplaceableAssetPath(project, field);
+        if (current == null)
+        {
+            ApplyMediaImport(field, source, false);
+            return;
+        }
+        Action replace = ContentPackEditorStorage.HasMatchingMediaFormat(source, current)
+            ? () => RunOperation(() => ApplyMediaImport(field, source, true))
+            : null;
+        view.ConfirmMediaReplacement(
+            Path.GetFileName(current),
+            replace,
+            () => RunOperation(() => ApplyMediaImport(field, source, false))
+        );
+    }
+
+    /// <summary>
+    /// Opens image imports in the last source folder, falling back to the current pack.
+    /// </summary>
+    /// <returns>The starting directory for an image picker.</returns>
+    private string GetImageImportDirectory()
+    {
+        string previous = settingsManager.Load().ImageImportDirectory;
+        return Directory.Exists(previous) ? previous : project.PackRootPath;
+    }
+
+    /// <summary>
+    /// Records the source folder without interrupting a successful image import.
+    /// </summary>
+    /// <param name="source">The successfully imported image.</param>
+    private void RememberImageImportDirectory(string source)
+    {
+        try
+        {
+            settingsManager.SaveImageImportDirectory(Path.GetDirectoryName(source));
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            GameLogger.Warning(
+                "The image import folder could not be remembered: " + exception.Message
+            );
+        }
+    }
+
+    /// <summary>
+    /// Opens non-image imports beside the asset currently resolved by the pack.
     /// </summary>
     /// <param name="field">The field being changed.</param>
     /// <returns>The current file's folder, or the pack folder for a new image.</returns>
@@ -445,6 +512,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
         if (replace)
         {
             ContentPackEditorStorage.ReplaceAsset(project, source, field);
+            if (field.MediaType == ContentPackEditorMediaType.Image)
+                RememberImageImportDirectory(source);
             OpenProject(project);
             return;
         }
@@ -458,6 +527,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
             );
         else
             project.SetField(field, address);
+        if (field.MediaType == ContentPackEditorMediaType.Image)
+            RememberImageImportDirectory(source);
         workspace.RenderProject(project, assets);
         if (emptyCuts.Length > 0)
             view.ConfirmFirstArtworkCuts(
@@ -797,7 +868,6 @@ public sealed class ContentPackEditorController : MonoBehaviour
             ContentEditorArtworkEffectGenerator.EditableFrame[] currentFrames = null;
             ContentEditorTravelPattern[] travelPatterns = null;
             Dictionary<string, byte[]> pendingLayerSources = new(StringComparer.Ordinal);
-            string layerPickerDirectory = null;
             Stack<(int Output, string Recipe)> undo = new();
             Stack<(int Output, string Recipe)> redo = new();
             int selected = -1;
@@ -1219,18 +1289,23 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 Refresh();
             }
 
-            void ImportLayer()
+            void PickLayerImage()
             {
-                ContentPackEditorField field = outputs[activeOutput].Field;
-                string[] extensions = field.MediaExtensions;
                 string path = ContentEditorFileDialog.OpenFile(
-                    layerPickerDirectory ?? GetAssetPickerDirectory(field),
-                    extensions
+                    GetImageImportDirectory(),
+                    outputs[activeOutput].Field.MediaExtensions
                 );
-                if (string.IsNullOrEmpty(path))
-                    return;
+                if (!string.IsNullOrEmpty(path))
+                    ImportLayer(path);
+            }
+
+            void ImportLayer(string path)
+            {
                 string extension = Path.GetExtension(path);
-                if (!extensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+                if (
+                    !outputs[activeOutput]
+                        .Field.MediaExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase)
+                )
                     throw new ArgumentException("Choose a PNG or JPEG image.");
 
                 byte[] image = File.ReadAllBytes(path);
@@ -1255,9 +1330,9 @@ public sealed class ContentPackEditorController : MonoBehaviour
                         pendingLayerSources.Remove(address);
                     throw;
                 }
-                layerPickerDirectory = Path.GetDirectoryName(path);
                 RememberEdit();
                 InsertLayer(layer);
+                RememberImageImportDirectory(path);
             }
 
             void DuplicateLayer()
@@ -1570,7 +1645,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
                         Reorder = (index, target) =>
                             RunOperation(() => ReorderLayer(index, target)),
                         Add = () => RunOperation(AddLayer),
-                        Import = () => RunOperation(ImportLayer),
+                        Import = () => RunOperation(PickLayerImage),
+                        ImportDroppedImage = path => RunOperation(() => ImportLayer(path)),
                         Duplicate = () => RunOperation(DuplicateLayer),
                         Remove = () => RunOperation(RemoveLayer),
                         Rebuild = () => RunOperation(() => Regenerate(false)),

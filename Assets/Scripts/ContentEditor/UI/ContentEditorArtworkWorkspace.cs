@@ -152,6 +152,24 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
     internal bool HasUnsavedChanges => gameObject.activeSelf && dirty;
 
     /// <summary>
+    /// Adds a dropped file to the active draft when it lands in the canvas or layer inspector.
+    /// </summary>
+    /// <param name="target">The visible control beneath the drop.</param>
+    /// <param name="path">The dropped image file.</param>
+    /// <returns>Whether the draft received the file.</returns>
+    internal bool TryImportDroppedImage(Transform target, string path)
+    {
+        if (
+            comparing
+            || actions?.ImportDroppedImage == null
+            || (!target.IsChildOf(artworkCanvas.transform) && !target.IsChildOf(sidebar))
+        )
+            return false;
+        actions.ImportDroppedImage(path);
+        return true;
+    }
+
+    /// <summary>
     /// Opens or refreshes the artwork editor while preserving the active output and canvas.
     /// </summary>
     /// <param name="name">The effect being edited.</param>
@@ -757,6 +775,7 @@ internal sealed class ArtworkEffectActions
     internal Action<int, int> Reorder;
     internal Action Add;
     internal Action Import;
+    internal Action<string> ImportDroppedImage;
     internal Action Duplicate;
     internal Action Remove;
     internal Action Rebuild;

@@ -134,6 +134,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private ContentEditorNumericGrid probabilityGrid;
 
     private readonly List<RawImage> articleImages = new List<RawImage>();
+    private readonly Dictionary<GameObject, ContentPackEditorField> imageDropTargets = new();
 
     private readonly List<RawImage> tableRows = new List<RawImage>();
 
@@ -440,6 +441,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             field.Clear();
         foreach (TextMeshProUGUI label in groupLabels)
             label.gameObject.SetActive(false);
+        imageDropTargets.Clear();
         foreach (RawImage image in articleImages)
         {
             image.texture = null;
@@ -832,6 +834,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             group.gameObject.SetActive(false);
         foreach (ContentEditorColorPickerView picker in colorPickers)
             picker.Clear();
+        imageDropTargets.Clear();
         foreach (RawImage image in articleImages)
             image.gameObject.SetActive(false);
         foreach (RawImage row in tableRows)
@@ -1645,7 +1648,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     entity,
                     Array.Empty<Texture2D>(),
                     ref imageIndex,
-                    fitEntity: true
+                    fitEntity: true,
+                    dropField: output.Field
                 );
                 if (entity == null)
                     PlaceArtworkPlaceholder(
@@ -1986,7 +1990,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 stateEntity,
                 overlays,
                 ref imageIndex,
-                fitEntity: selectedRecord.Kind == "Officer"
+                fitEntity: selectedRecord.Kind == "Officer",
+                dropField: action
             );
             if (stateEntity == null && stateBackground == null && overlays.Length == 0)
                 PlaceArtworkPlaceholder("Empty image slot", labelIndex++, x, imageY, size.x);
@@ -2062,6 +2067,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="overlays">The travel, damage, injury, or captured layers in render order.</param>
     /// <param name="imageIndex">The next reusable preview image.</param>
     /// <param name="fitEntity">Whether the normal image must fit entirely within the preview.</param>
+    /// <param name="dropField">The editable image slot represented by this preview, when available.</param>
     private void PlaceArtworkComposition(
         string name,
         int x,
@@ -2073,10 +2079,13 @@ public sealed class ContentEditorFormView : MonoBehaviour
         Texture2D entity,
         IReadOnlyList<Texture2D> overlays,
         ref int imageIndex,
-        bool fitEntity = false
+        bool fitEntity = false,
+        ContentPackEditorField dropField = null
     )
     {
         RawImage backing = GetArtworkPreviewImage(ref imageIndex, name + "-Backing");
+        if (dropField != null)
+            BindImageDropTarget(backing, dropField);
         backing.texture = null;
         backing.color =
             entity == null && background == null && overlays.Count == 0
@@ -2311,6 +2320,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
             articleImages.Add(image);
         }
         RawImage preview = articleImages[imageIndex++];
+        imageDropTargets.Remove(preview.gameObject);
+        preview.raycastTarget = false;
         preview.name = articleImageTemplate.name + "-" + imageName;
         if (activeArtworkPanel != null)
         {
@@ -2324,6 +2335,34 @@ public sealed class ContentEditorFormView : MonoBehaviour
         preview.enabled = true;
         preview.gameObject.SetActive(true);
         return preview;
+    }
+
+    /// <summary>
+    /// Maps a preview graphic to the same field used by its image picker.
+    /// </summary>
+    /// <param name="image">The visible drop surface.</param>
+    /// <param name="field">The image slot represented by the surface.</param>
+    private void BindImageDropTarget(RawImage image, ContentPackEditorField field)
+    {
+        imageDropTargets[image.gameObject] = field;
+        image.raycastTarget = true;
+    }
+
+    /// <summary>
+    /// Resolves an image preview, field row, or editable interface image selected by a drop.
+    /// </summary>
+    /// <param name="target">The topmost visible object at the drop position.</param>
+    /// <returns>The exact image field to import into, when available.</returns>
+    internal ContentPackEditorField FindImageDropField(GameObject target)
+    {
+        if (imageDropTargets.TryGetValue(target, out ContentPackEditorField field))
+            return field;
+        field =
+            target.GetComponentInParent<ContentEditorFieldView>()?.Field
+            ?? target.GetComponentInParent<ContentEditorArtworkEditTarget>()?.Field;
+        return field?.MediaType == ContentPackEditorMediaType.Image && !field.IsMediaDirectory
+            ? field
+            : null;
     }
 
     /// <summary>
@@ -2579,6 +2618,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 ref imageIndex,
                 "Selected-" + field.MemberName
             );
+            BindImageDropTarget(preview, field);
             preview.texture = texture;
             preview.color = Color.white;
             current = new Vector2Int(texture.width, texture.height);
@@ -2631,7 +2671,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 null,
                 null,
                 Array.Empty<Texture2D>(),
-                ref imageIndex
+                ref imageIndex,
+                dropField: field
             );
             PlaceArtworkPlaceholder(
                 invalid || address != null ? "Image unavailable" : "Empty image slot",
