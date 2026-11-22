@@ -3266,7 +3266,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             y +=
                 PlaceLabel(
                     category.Name == "Strategy view"
-                            ? "Ctrl/Command + scroll to zoom. Space + drag to pan. Drag artwork to reposition it, or double-click to edit it."
+                            ? "Scroll to zoom. Drag to pan or move artwork. Alt/Option + drag moves a custom galaxy background."
                         : neutral && sector
                             ? "Double-click an outlined icon to open its image settings below."
                         : "Double-click outlined artwork to edit it. Drag artwork with placement controls to move it. Press and hold a control to see its pressed artwork.",

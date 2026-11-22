@@ -3668,18 +3668,58 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.IsNotNull(strategyPreview.GetComponent<RectMask2D>());
             float fittedScale = strategySurface.localScale.x;
             Rect viewport = ((RectTransform)strategyPreview.transform).rect;
-            view.GetComponentsInChildren<Button>()
-                .Single(button => button.name == "ZoomIn")
-                .onClick.Invoke();
+            RectTransform viewportTransform = (RectTransform)strategyPreview.transform;
+            Vector2 center = RectTransformUtility.WorldToScreenPoint(
+                null,
+                viewportTransform.TransformPoint(viewportTransform.rect.center)
+            );
+            strategyPreview.OnScroll(
+                new PointerEventData(null) { position = center, scrollDelta = Vector2.up }
+            );
             Assert.That(
                 strategySurface.localScale.x,
-                Is.EqualTo(fittedScale * 1.25f).Within(0.001f)
+                Is.EqualTo(fittedScale * 1.05f).Within(0.001f)
             );
             Assert.AreEqual(viewport, ((RectTransform)strategyPreview.transform).rect);
+            Vector2 fittedPosition = strategySurface.anchoredPosition;
+            PointerEventData pan = new(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                pressPosition = center,
+                position = center,
+            };
+            strategyPreview.OnBeginDrag(pan);
+            pan.position += new Vector2(24, 12);
+            strategyPreview.OnDrag(pan);
+            strategyPreview.OnEndDrag(pan);
+            Assert.Greater(strategySurface.anchoredPosition.x, fittedPosition.x);
+            Assert.IsFalse(project.IsDirty);
             view.GetComponentsInChildren<Button>()
                 .Single(button => button.name == "FitPreview")
                 .onClick.Invoke();
             Assert.That(strategySurface.localScale.x, Is.EqualTo(fittedScale).Within(0.001f));
+            RectTransform speedImage = strategyHud
+                .GetComponentsInChildren<RawImage>()
+                .Single(image => image.name == "SpeedIndicatorImage")
+                .rectTransform;
+            Vector2 speedPosition = speedImage.anchoredPosition;
+            Vector2 speedCenter = RectTransformUtility.WorldToScreenPoint(
+                null,
+                speedImage.TransformPoint(speedImage.rect.center)
+            );
+            PointerEventData placement = new(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                pressPosition = speedCenter,
+                position = speedCenter + new Vector2(10, 5),
+            };
+            fittedPosition = strategySurface.anchoredPosition;
+            strategyPreview.OnBeginDrag(placement);
+            strategyPreview.OnDrag(placement);
+            Assert.Greater(speedImage.anchoredPosition.x, speedPosition.x);
+            Assert.AreEqual(fittedPosition, strategySurface.anchoredPosition);
+            placement.position = speedCenter;
+            strategyPreview.OnEndDrag(placement);
             string[] opaqueMissingImages = strategyPreview
                 .GetComponentsInChildren<RawImage>()
                 .Where(image => image.enabled && image.texture == null && image.color.a > 0.01f)

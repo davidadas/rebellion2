@@ -1161,9 +1161,12 @@ namespace Rebellion.Tests.ContentEditor.Integration
                         .ToArray();
                 }
                 if (section == "Colors")
-                    Assert.AreEqual(
-                        fields.Length,
-                        view.GetComponentsInChildren<ContentEditorColorPickerView>().Length
+                    CollectionAssert.AreEquivalent(
+                        fields.Select(field => field.MemberName),
+                        view.GetComponentsInChildren<ContentEditorColorPickerView>()
+                            .SelectMany(picker => new[] { picker.Field, picker.LinkField })
+                            .Where(field => field != null)
+                            .Select(field => field.MemberName)
                     );
                 else
                     Assert.AreEqual(

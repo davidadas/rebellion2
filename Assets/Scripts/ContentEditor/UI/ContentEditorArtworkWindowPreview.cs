@@ -35,7 +35,7 @@ public sealed class ContentEditorArtworkWindowPreview
     private const int _surfacePadding = 12;
     private const int _windowGap = 12;
     private const float _maximumStrategyZoom = 4f;
-    private const float _zoomStep = 1.25f;
+    private const float _zoomStep = 0.05f;
 
     private static readonly IReadOnlyDictionary<string, string[]> _windowNames = new Dictionary<
         string,
@@ -73,11 +73,18 @@ public sealed class ContentEditorArtworkWindowPreview
     [SerializeField]
     private TMP_Text zoomLabel;
 
+    private Texture2D grabCursor;
+    private Texture2D grabbingCursor;
+    private Texture2D appliedCursor;
+    private ContentEditorMacMagnification macMagnification;
     private float strategyZoom = 1f;
     private Vector2 strategyPan;
     private Vector2 panPointer;
     private bool panning;
-    private bool CanZoom => activeCategory == "Strategy view" && zoomToolbar != null;
+    private bool pointerInPreview;
+    private Vector2 pointerPosition;
+    private Camera pointerCamera;
+    internal bool CanZoom => activeCategory == "Strategy view" && zoomToolbar != null;
 
     private string activeCategory;
     private Vector2Int artworkDragDelta;
@@ -117,9 +124,13 @@ public sealed class ContentEditorArtworkWindowPreview
         base.Awake();
         if (zoomToolbar == null)
             return;
-        zoomIn.onClick.AddListener(() => ChangeZoom(_zoomStep, Vector2.zero));
-        zoomOut.onClick.AddListener(() => ChangeZoom(1f / _zoomStep, Vector2.zero));
+        zoomIn.onClick.AddListener(() => ChangeZoom(strategyZoom + _zoomStep, Vector2.zero));
+        zoomOut.onClick.AddListener(() => ChangeZoom(strategyZoom - _zoomStep, Vector2.zero));
         fitZoom.onClick.AddListener(FitStrategyView);
+        grabCursor = ContentEditorHandCursor.Create(closed: false);
+        grabbingCursor = ContentEditorHandCursor.Create(closed: true);
+        if (Application.platform == RuntimePlatform.OSXPlayer)
+            macMagnification = new ContentEditorMacMagnification();
     }
 
     /// <summary>
@@ -156,13 +167,13 @@ public sealed class ContentEditorArtworkWindowPreview
     /// <summary>
     /// Changes the Strategy zoom while keeping an inspection point under the pointer.
     /// </summary>
-    /// <param name="factor">The multiplier to apply to the current zoom.</param>
+    /// <param name="scale">The requested zoom relative to fit.</param>
     /// <param name="anchor">The viewport point measured from the center.</param>
-    private void ChangeZoom(float factor, Vector2 anchor)
+    private void ChangeZoom(float scale, Vector2 anchor)
     {
-        if (!CanZoom || draggedTarget != null)
+        if (!CanZoom || draggedTarget != null || panning)
             return;
-        float next = Mathf.Clamp(strategyZoom * factor, 1f, _maximumStrategyZoom);
+        float next = Mathf.Clamp(scale, 1f, _maximumStrategyZoom);
         strategyPan = anchor + (strategyPan - anchor) * (next / strategyZoom);
         strategyZoom = next;
         ResetHover();
@@ -180,6 +191,73 @@ public sealed class ContentEditorArtworkWindowPreview
         zoomOut.interactable = strategyZoom > 1f;
         fitZoom.interactable = strategyZoom > 1f;
         zoomIn.interactable = strategyZoom < _maximumStrategyZoom;
+    }
+
+    /// <summary>
+    /// Reports whether a primary-button drag will move the targeted artwork.
+    /// </summary>
+    /// <param name="target">The artwork hit by the pointer.</param>
+    /// <returns>True for movable artwork and for the galaxy backdrop while Alt is held.</returns>
+    private static bool CanDragArtwork(ContentEditorArtworkEditTarget target) =>
+        target?.CanMove == true
+        && (
+            !target.IsGalaxyBackdrop
+            || Input.GetKey(KeyCode.LeftAlt)
+            || Input.GetKey(KeyCode.RightAlt)
+        );
+
+    /// <summary>
+    /// Shows the hand over panning areas and the regular pointer over movable artwork.
+    /// </summary>
+    private void RefreshCursor()
+    {
+        if (!Application.isPlaying)
+            return;
+        Texture2D cursor =
+            panning ? grabbingCursor
+            : CanZoom && pointerInPreview && draggedTarget == null && !CanDragArtwork(hoveredTarget)
+                ? grabCursor
+            : null;
+        if (cursor == appliedCursor)
+            return;
+        appliedCursor = cursor;
+        Cursor.SetCursor(
+            cursor,
+            cursor == null ? Vector2.zero : new Vector2(16, 16),
+            CursorMode.Auto
+        );
+    }
+
+    /// <summary>
+    /// Refreshes the cursor during modifier changes and applies macOS trackpad zoom.
+    /// </summary>
+    private void LateUpdate()
+    {
+        if (!pointerInPreview || !CanZoom)
+            return;
+        RefreshCursor();
+        if (macMagnification == null)
+            return;
+        if (!Application.isFocused)
+        {
+            macMagnification.Detach();
+            return;
+        }
+        if (
+            macMagnification.TryRead(out float factor)
+            && TryGetPreviewPoint(pointerPosition, pointerCamera, out Vector2 point)
+        )
+            ChangeZoom(strategyZoom * factor, point);
+    }
+
+    /// <summary>
+    /// Releases cursor textures created for this preview.
+    /// </summary>
+    protected override void OnDestroy()
+    {
+        ContentEditorHandCursor.Release(grabCursor);
+        ContentEditorHandCursor.Release(grabbingCursor);
+        base.OnDestroy();
     }
 
     /// <summary>
@@ -309,6 +387,7 @@ public sealed class ContentEditorArtworkWindowPreview
         }
         activeCategory = category;
         Layout(windows);
+        RefreshCursor();
     }
 
     /// <summary>
@@ -334,10 +413,13 @@ public sealed class ContentEditorArtworkWindowPreview
     {
         CancelArtworkMove();
         panning = false;
+        pointerInPreview = false;
+        macMagnification?.Detach();
         if (zoomToolbar != null)
             zoomToolbar.gameObject.SetActive(false);
         renderedFields.Clear();
         activeCategory = null;
+        RefreshCursor();
         foreach (Transform child in transform)
             child.gameObject.SetActive(false);
         gameObject.SetActive(false);
@@ -350,6 +432,9 @@ public sealed class ContentEditorArtworkWindowPreview
     {
         CancelArtworkMove();
         panning = false;
+        pointerInPreview = false;
+        macMagnification?.Detach();
+        RefreshCursor();
         ResetHover();
         base.OnDisable();
     }
@@ -841,13 +926,25 @@ public sealed class ContentEditorArtworkWindowPreview
     /// Routes entry through transparent gameplay hit areas to the literal rendered artwork below.
     /// </summary>
     /// <param name="eventData">The pointer-enter event.</param>
-    public void OnPointerEnter(PointerEventData eventData) => UpdatePointerTarget(eventData);
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        OnPointerMove(eventData);
+        RefreshCursor();
+    }
 
     /// <summary>
     /// Keeps the outlined edit target synchronized while the pointer crosses composed controls.
     /// </summary>
     /// <param name="eventData">The pointer-move event.</param>
-    public void OnPointerMove(PointerEventData eventData) => UpdatePointerTarget(eventData);
+    public void OnPointerMove(PointerEventData eventData)
+    {
+        if (eventData == null)
+            return;
+        pointerInPreview = true;
+        pointerPosition = eventData.position;
+        pointerCamera = eventData.enterEventCamera;
+        UpdatePointerTarget(eventData);
+    }
 
     /// <summary>
     /// Clears preview-routed hover state after the pointer leaves the composed surface.
@@ -857,6 +954,9 @@ public sealed class ContentEditorArtworkWindowPreview
     {
         hoveredTarget?.SetHovered(false);
         hoveredTarget = null;
+        pointerInPreview = false;
+        macMagnification?.Detach();
+        RefreshCursor();
     }
 
     /// <summary>
@@ -872,29 +972,32 @@ public sealed class ContentEditorArtworkWindowPreview
     }
 
     /// <summary>
-    /// Begins moving the topmost authored image beneath a primary-button grab.
+    /// Pans from the preview's backdrop or moves the artwork beneath a primary-button grab.
     /// </summary>
     /// <param name="eventData">The initial drag event.</param>
     public void OnBeginDrag(PointerEventData eventData)
     {
-        if (
-            CanZoom
-            && strategyZoom > 1f
-            && eventData != null
-            && (
-                eventData.button != PointerEventData.InputButton.Left || Input.GetKey(KeyCode.Space)
-            )
-            && TryGetPreviewPointer(eventData, out panPointer)
-        )
+        if (eventData == null)
+            return;
+        bool primary = eventData.button == PointerEventData.InputButton.Left;
+        if (primary)
+            UpdatePointerTarget(eventData, fromPress: true);
+        if (CanZoom && (!primary || !CanDragArtwork(hoveredTarget)))
         {
-            panning = true;
-            ResetHover();
+            if (
+                strategyZoom > 1f
+                && TryGetPreviewPointer(eventData, out panPointer, fromPress: true)
+            )
+            {
+                panning = true;
+                ResetHover();
+                RefreshCursor();
+            }
             eventData.Use();
             return;
         }
-        if (eventData?.button != PointerEventData.InputButton.Left)
+        if (!primary)
             return;
-        UpdatePointerTarget(eventData);
         ContentEditorArtworkEditTarget target = hoveredTarget;
         RectTransform window = GetWindows(activeCategory)
             .FirstOrDefault(candidate => target?.transform.IsChildOf(candidate) == true);
@@ -902,7 +1005,7 @@ public sealed class ContentEditorArtworkWindowPreview
             target == null
             || window == null
             || !target.BeginMove()
-            || !TryGetSourcePoint(window, eventData, out artworkDragOrigin)
+            || !TryGetSourcePoint(window, eventData, out artworkDragOrigin, fromPress: true)
         )
         {
             target?.CancelMove();
@@ -912,6 +1015,7 @@ public sealed class ContentEditorArtworkWindowPreview
         draggedTarget = target;
         draggedWindow = window;
         artworkDragDelta = Vector2Int.zero;
+        RefreshCursor();
         eventData.Use();
     }
 
@@ -953,6 +1057,9 @@ public sealed class ContentEditorArtworkWindowPreview
         if (panning)
         {
             panning = false;
+            if (pointerInPreview)
+                UpdatePointerTarget(eventData);
+            RefreshCursor();
             eventData?.Use();
             return;
         }
@@ -968,27 +1075,25 @@ public sealed class ContentEditorArtworkWindowPreview
         artworkDragDelta = Vector2Int.zero;
         if (changes.Count > 0)
             ArtworkMoved?.Invoke(changes);
+        if (pointerInPreview)
+            UpdatePointerTarget(eventData);
+        RefreshCursor();
         eventData?.Use();
     }
 
     /// <summary>
-    /// Zooms the Strategy preview with the platform modifier and forwards ordinary inspector scrolling.
+    /// Zooms the Strategy preview under the pointer or forwards scrolling to the inspector.
     /// </summary>
     /// <param name="eventData">The pointer wheel gesture.</param>
     public void OnScroll(PointerEventData eventData)
     {
-        if (
-            CanZoom
-            && (
-                Input.GetKey(KeyCode.LeftControl)
-                || Input.GetKey(KeyCode.RightControl)
-                || Input.GetKey(KeyCode.LeftCommand)
-                || Input.GetKey(KeyCode.RightCommand)
-            )
-            && TryGetPreviewPointer(eventData, out Vector2 point)
-        )
+        if (CanZoom && TryGetPreviewPointer(eventData, out Vector2 point))
         {
-            ChangeZoom(Mathf.Pow(_zoomStep, eventData.scrollDelta.y), point);
+            if (eventData.scrollDelta.y != 0f)
+            {
+                ChangeZoom(strategyZoom + _zoomStep * eventData.scrollDelta.y, point);
+                OnPointerMove(eventData);
+            }
             eventData.Use();
             return;
         }
@@ -1004,14 +1109,33 @@ public sealed class ContentEditorArtworkWindowPreview
     /// </summary>
     /// <param name="eventData">The pointer gesture.</param>
     /// <param name="point">Receives the editable viewport point.</param>
+    /// <param name="fromPress">Whether to use the initial button-down position.</param>
     /// <returns>Whether the pointer position could be projected.</returns>
-    private bool TryGetPreviewPointer(PointerEventData eventData, out Vector2 point)
+    private bool TryGetPreviewPointer(
+        PointerEventData eventData,
+        out Vector2 point,
+        bool fromPress = false
+    ) =>
+        TryGetPreviewPoint(
+            fromPress ? eventData.pressPosition : eventData.position,
+            eventData.pressEventCamera ?? eventData.enterEventCamera,
+            out point
+        );
+
+    /// <summary>
+    /// Converts a screen point to an offset from the center of the preview viewport.
+    /// </summary>
+    /// <param name="position">The point in screen coordinates.</param>
+    /// <param name="camera">The camera used to project the pointer.</param>
+    /// <param name="point">The resulting viewport offset.</param>
+    /// <returns>Whether the screen point could be projected.</returns>
+    private bool TryGetPreviewPoint(Vector2 position, Camera camera, out Vector2 point)
     {
         RectTransform viewport = (RectTransform)transform;
         bool relative = RectTransformUtility.ScreenPointToLocalPointInRectangle(
             viewport,
-            eventData.position,
-            eventData.pressEventCamera ?? eventData.enterEventCamera,
+            position,
+            camera,
             out point
         );
         point -= viewport.rect.center;
@@ -1024,11 +1148,13 @@ public sealed class ContentEditorArtworkWindowPreview
     /// <param name="window">The source-sized gameplay window.</param>
     /// <param name="eventData">The pointer event to convert.</param>
     /// <param name="point">Receives the source-space point.</param>
+    /// <param name="fromPress">Whether to use the initial button-down position.</param>
     /// <returns>True when the pointer can be converted.</returns>
     private static bool TryGetSourcePoint(
         RectTransform window,
         PointerEventData eventData,
-        out Vector2 point
+        out Vector2 point,
+        bool fromPress = false
     )
     {
         point = default;
@@ -1037,7 +1163,7 @@ public sealed class ContentEditorArtworkWindowPreview
             || eventData == null
             || !RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 window,
-                eventData.position,
+                fromPress ? eventData.pressPosition : eventData.position,
                 eventData.pressEventCamera ?? eventData.enterEventCamera,
                 out Vector2 local
             )
@@ -1063,15 +1189,17 @@ public sealed class ContentEditorArtworkWindowPreview
     /// Selects the highest visible authored image beneath the pointer.
     /// </summary>
     /// <param name="eventData">The current pointer event.</param>
-    private void UpdatePointerTarget(PointerEventData eventData)
+    /// <param name="fromPress">Whether to locate the image beneath the original press.</param>
+    private void UpdatePointerTarget(PointerEventData eventData, bool fromPress = false)
     {
-        if (eventData == null)
+        if (eventData == null || panning || draggedTarget != null)
             return;
         Camera camera = eventData.pressEventCamera ?? eventData.enterEventCamera;
+        Vector2 position = fromPress ? eventData.pressPosition : eventData.position;
         ContentEditorArtworkEditTarget next =
             GetComponentsInChildren<ContentEditorArtworkEditTarget>()
                 .Where(target => target.Field != null)
-                .Where(target => target.ContainsScreenPoint(eventData.position, camera))
+                .Where(target => target.ContainsScreenPoint(position, camera))
                 .OrderByDescending(target => target.GetComponent<RawImage>().depth)
                 .ThenBy(target =>
                 {
