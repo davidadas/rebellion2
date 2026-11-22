@@ -20,6 +20,7 @@ using UnityEngine;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class MovementCommandsTests
     {
         [Test]

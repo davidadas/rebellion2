@@ -22,6 +22,7 @@ using UnityEngine;
 namespace Rebellion.Tests.Gameplay.Scripting
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class GameActionCommandsTests
     {
         private GameRoot _game;

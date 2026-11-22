@@ -5,6 +5,7 @@ using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 {
+    [Category("RequiresMedia")]
     public sealed class OptionsSaveListViewTests
     {
         private GameObject _root;

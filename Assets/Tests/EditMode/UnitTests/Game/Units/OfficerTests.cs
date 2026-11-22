@@ -16,6 +16,7 @@ namespace Rebellion.Tests.Game.Units
         [TestCase(79, false)]
         [TestCase(80, true)]
         [TestCase(81, true)]
+        [Category("RequiresMedia")]
         public void ForceValue_RankCrossesDiscoveryThreshold_UpdatesBeforeNextTick(
             int rank,
             bool expectedDiscovery
@@ -35,6 +36,7 @@ namespace Rebellion.Tests.Game.Units
         [TestCase(29, false)]
         [TestCase(30, true)]
         [TestCase(31, true)]
+        [Category("RequiresMedia")]
         public void ForceTrainingAdjustment_RankCrossesDiscoveryThreshold_UpdatesBeforeNextTick(
             int adjustment,
             bool expectedDiscovery
@@ -52,6 +54,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void IsCaptured_ActiveScanner_CancelsDiscoveryImmediately()
         {
             (_, Officer officer) = RegisterDiscoveryOfficer(80);
@@ -63,6 +66,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void IsCaptured_ReleasedScanner_ArmsFromActualReleaseTick()
         {
             (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
@@ -76,6 +80,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void Movement_CompletedBetweenTicks_ArmsFromActualCompletionTick()
         {
             (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
@@ -89,6 +94,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void IsEnabled_ReenabledScanner_ArmsFromActualTick()
         {
             (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
@@ -102,6 +108,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void SetParent_AssignedToMission_CancelsDiscoveryImmediately()
         {
             (_, Officer officer) = RegisterDiscoveryOfficer(80);
@@ -116,6 +123,7 @@ namespace Rebellion.Tests.Game.Units
 
         [TestCase(true)]
         [TestCase(false)]
+        [Category("RequiresMedia")]
         public void Movement_ContainingTransportCompletes_ArmsPassengerDiscovery(bool fleetTransit)
         {
             (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
@@ -141,6 +149,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void IsEnabled_ContainingShipBecomesInactive_CancelsPassengerDiscovery()
         {
             (_, Officer officer) = RegisterDiscoveryOfficer(80);
@@ -164,6 +173,7 @@ namespace Rebellion.Tests.Game.Units
         [TestCase(true, 79, false)]
         [TestCase(true, 80, true)]
         [TestCase(true, -1, false)]
+        [Category("RequiresMedia")]
         public void HealsFast_ForceRankThreshold_DoesNotRequireSensitivity(
             bool sensitive,
             int forceRank,
@@ -178,6 +188,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void HealsFast_NonzeroRankFallsBelowThreshold_ClearsEligibility()
         {
             Officer officer = RegisterHealingOfficer(new Officer { ForceValue = 80 });
@@ -188,6 +199,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void HealsFast_ConfigurationInjectedAfterRegistration_UsesInjectedRules()
         {
             GameRoot game = new();
@@ -202,6 +214,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void HealsFast_ConfigurationRebound_UsesCurrentThreshold()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -475,6 +488,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void Serialize_ComputedOfficerRatings_DoesNotWriteDerivedValues()
         {
             Officer officer = RegisterHealingOfficer(CreateForceRatingOfficer());
@@ -612,6 +626,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void TryCapture_WhenStationary_SetsCaptureState()
         {
             Officer officer = new Officer();
@@ -630,6 +645,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void TryCapture_NewNonEscapingCapture_ConsumesInitialIntervalBeforeCancellation()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -645,6 +661,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void TryCapture_EscapableOfficer_ArmsTimerBeforeReturning()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -659,6 +676,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void TryCapture_FixedEscapeInterval_DoesNotAdvanceRandomStream()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -673,6 +691,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void TryCapture_ExistingEscapePermission_PreservesPendingTimer()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -689,6 +708,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void TryCapture_DisabledEscapePermission_CancelsPendingTimer()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -700,6 +720,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void TryCapture_AfterRelease_ArmsNewEscapeTimer()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -717,6 +738,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void TryCapture_WithDirectMovement_RejectsCapture()
         {
             Officer officer = new Officer
@@ -736,6 +758,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void TryCapture_AboardMovingFleet_RejectsCapture()
         {
             Officer officer = new Officer

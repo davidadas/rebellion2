@@ -28,6 +28,7 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class GameSessionTests
     {
         private GameRoot _game;

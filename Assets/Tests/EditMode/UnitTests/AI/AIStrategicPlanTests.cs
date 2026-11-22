@@ -10,6 +10,7 @@ using Rebellion.Tests.AI.Helpers;
 namespace Rebellion.Tests.AI
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class AIStrategicPlanTests
     {
         [TestCase(ManufacturingStatus.Complete)]

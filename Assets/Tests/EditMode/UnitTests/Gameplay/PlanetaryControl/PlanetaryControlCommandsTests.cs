@@ -17,6 +17,7 @@ using Rebellion.Util.Random;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class PlanetaryControlCommandsTests
     {
         private GameRoot _game;

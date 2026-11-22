@@ -10,6 +10,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class PlanetSectorWindowViewTests
     {
         private const string _prefabPath =

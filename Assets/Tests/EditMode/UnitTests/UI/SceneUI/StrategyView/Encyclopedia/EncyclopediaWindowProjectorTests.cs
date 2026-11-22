@@ -9,6 +9,7 @@ using UnityEngine;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class EncyclopediaWindowProjectorTests
     {
         private const string _opposingFactionId = "FNEMP1";

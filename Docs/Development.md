@@ -6,6 +6,9 @@
 - .NET SDK
 - A Bash-compatible shell and `rg` (ripgrep)
 - Python 3.11 or later for desktop packaging
+
+Running the game, building it, or running the full test suite also requires:
+
 - Ownership of *Star Wars: Rebellion* or *Star Wars: Empire at War: Gold Pack* through GOG or Steam
 - Access to the separate `rebellion2-media` repository
 
@@ -32,7 +35,9 @@ Run these from the repository root:
 ```bash
 ./build.sh format     # Check C# formatting
 ./build.sh lint       # Run static analysis
-./build.sh test       # Run Unity EditMode and PlayMode tests
+./build.sh test-core  # Run Unity EditMode and PlayMode tests from the game repository alone
+./build.sh test-media # Run tests that require the installed media or generated UI
+./build.sh test       # Run both groups, with media installed
 ./build.sh coverage   # Run tests with coverage thresholds
 ./build.sh build      # Build and verify the game and content-pack editor
 ./build.sh clean      # Remove build artifacts
@@ -40,6 +45,12 @@ Run these from the repository root:
 ```
 
 Running `./build.sh` without a command is equivalent to `./build.sh all`.
+
+The core suite runs without the media setup above and skips UI generation. Use small checked-in or
+temporary fixtures for engine tests. Use `[Category("RequiresMedia")]` for cases whose current setup
+needs the shipped content, its assets, or generated UI. Place it on the individual case unless
+the fixture uses the media-backed setup throughout. The full media-enabled CI run still checks
+combined coverage and the shipped pack with the engine.
 
 Set `UNITY` if Unity is installed somewhere other than the detected platform default. Set `PYTHON`
 to use a different Python executable. Standalone builds use the host platform unless `BUILD_TARGET`

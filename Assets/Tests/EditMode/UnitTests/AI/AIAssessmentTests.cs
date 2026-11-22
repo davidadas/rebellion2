@@ -20,6 +20,7 @@ using Rebellion.Tests.AI.Helpers;
 namespace Rebellion.Tests.AI
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class AIAssessmentTests
     {
         [TestCase(nameof(AIAssessment.GetReadyFleetCombatValueAgainstCapitalShips))]

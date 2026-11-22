@@ -8,6 +8,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class AdvisorReportRowViewTests
     {
         private const string _prefabPath =

@@ -7,6 +7,7 @@ using Rebellion.Game.Galaxy;
 
 namespace Rebellion.Tests.Content
 {
+    [Category("RequiresMedia")]
     public sealed class GameContentBindingTests
     {
         private ContentPack _contentPack;

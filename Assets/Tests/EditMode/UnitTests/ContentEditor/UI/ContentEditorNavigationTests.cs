@@ -34,6 +34,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void Render_RulesAndMissionPages_KeepAllEditableRulesAccessible()
         {
             ContentPackEditorProject project = ContentEditorTestData.CreateProject(directory);

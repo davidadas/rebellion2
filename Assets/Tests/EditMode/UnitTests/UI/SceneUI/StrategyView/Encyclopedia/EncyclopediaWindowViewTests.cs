@@ -9,6 +9,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class EncyclopediaWindowViewTests
     {
         private const string _prefabPath =

@@ -6,6 +6,7 @@ using Rebellion.Game;
 namespace Rebellion.Tests.Content
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class SaveContentResolverTests
     {
         [Test]

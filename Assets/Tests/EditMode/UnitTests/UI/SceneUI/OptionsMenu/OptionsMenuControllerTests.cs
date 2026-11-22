@@ -20,6 +20,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class OptionsMenuControllerTests
     {
         private const string _prefabPath = "Assets/Prefabs/UI/OptionsMenu/OptionsMenu.prefab";

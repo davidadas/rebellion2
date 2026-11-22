@@ -24,6 +24,7 @@ using UnityEngine.Video;
 namespace Rebellion.Tests.Content
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class ContentLoadIntegrationTests
     {
         private const string _settingsBackupKey = "ContentLoadIntegrationTests.SettingsBackup";

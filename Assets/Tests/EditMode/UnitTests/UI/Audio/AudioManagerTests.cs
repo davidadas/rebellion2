@@ -138,6 +138,7 @@ public sealed class AudioManagerTests
     }
 
     [Test]
+    [Category("RequiresMedia")]
     public void PreloadSfx_MissingRequiredPath_Throws()
     {
         AudioManager manager = AudioManager.EnsureExists();

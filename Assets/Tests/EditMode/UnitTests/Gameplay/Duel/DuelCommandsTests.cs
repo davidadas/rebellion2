@@ -15,6 +15,7 @@ using Rebellion.Gameplay.Scripting;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class DuelCommandsTests
     {
         [Test]

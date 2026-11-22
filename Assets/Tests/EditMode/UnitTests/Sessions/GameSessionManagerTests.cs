@@ -20,6 +20,7 @@ using Rebellion.PlayerRequests;
 namespace Rebellion.Tests.Managers
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class GameSessionManagerTests
     {
         private ContentPack _contentPack;

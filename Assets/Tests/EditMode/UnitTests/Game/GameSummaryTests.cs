@@ -28,6 +28,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void CreateCopy_EditingCustomRules_DoesNotChangeSource()
         {
             GameSummary source = new GameSummary
@@ -150,6 +151,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void SerializeAndDeserialize_PopulatedSetup_MaintainsState()
         {
             GameGenerationConfig generationConfig = TestContent.Data.GenerationConfig.CreateCopy();

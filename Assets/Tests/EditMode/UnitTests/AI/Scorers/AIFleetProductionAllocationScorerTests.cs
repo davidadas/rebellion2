@@ -14,6 +14,7 @@ using Rebellion.Tests.AI.Helpers;
 namespace Rebellion.Tests.AI.Fleets
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class AIFleetProductionAllocationScorerTests
     {
         [Test]

@@ -19,30 +19,18 @@ using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
 using Rebellion.PlayerRequests;
 using Rebellion.SceneGraph;
-using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.TestTools;
 using UnityEngine.UI;
 using AssetDatabase = UnityEditor.AssetDatabase;
 
 namespace Rebellion.Tests.Multiplayer
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class MultiplayerTurnProtocolTests
     {
         private const string _hostFactionID = "FNALL1";
         private const string _guestFactionID = "FNEMP1";
-
-        /// <summary>
-        /// Leaves Play Mode even when a UI assertion fails.
-        /// </summary>
-        /// <returns>The mode-exit sequence.</returns>
-        [UnityTearDown]
-        public IEnumerator TearDownPlayMode()
-        {
-            if (Application.isPlaying)
-                yield return new ExitPlayMode();
-        }
 
         [TestCaseSource(nameof(MissionStartCases))]
         public void Pump_MissionFamilyRequest_PreservesMatchingContinuationAfterReload(
@@ -455,15 +443,6 @@ namespace Rebellion.Tests.Multiplayer
             }
             for (int day = 0; day < 5; day++)
                 AdvanceMissionDay(peers);
-        }
-
-        [UnityTest]
-        public IEnumerator ExecuteAsync_AllMissionFamiliesFromConfirmationButton_StartsMatchingMissionOnBothPeers()
-        {
-            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            yield return new EnterPlayMode();
-            yield return ConfirmMissionCases();
-            yield return new ExitPlayMode();
         }
 
         [TestCase(MultiplayerRole.Host)]
@@ -2490,10 +2469,10 @@ namespace Rebellion.Tests.Multiplayer
         }
 
         /// <summary>
-        /// Exercises authored controls after the Play Mode domain transition.
+        /// Exercises authored controls in the runtime loop.
         /// </summary>
         /// <returns>The confirmation and asynchronous UI completion sequence.</returns>
-        private IEnumerator ConfirmMissionCases()
+        public static IEnumerator RunMissionConfirmationCases()
         {
             GameObject holder = new GameObject("Mission UI audit");
             holder.SetActive(false);

@@ -15,6 +15,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.ContentEditor.UI
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class ContentPackEditorWorkspaceControllerTests : ContentEditorViewTestBase
     {
         [Test]

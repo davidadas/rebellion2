@@ -21,6 +21,7 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Tests.PlayerRequests
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class PlayerRequestExecutorTests
     {
         private const string _ownerID = "FNALL1";

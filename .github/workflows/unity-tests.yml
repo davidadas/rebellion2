@@ -292,6 +292,22 @@ jobs:
       - name: Lint
         run: UnityManagedAssembliesPath="$PWD/.unity-lint-assemblies" bash build.sh lint
 
+  test-core:
+    name: Core Unity tests
+    if: github.event_name == 'push'
+    uses: ./.github/workflows/unity-test-runner.yml
+    with:
+      checkout_ref: ${{ github.sha }}
+      core_only: true
+      save_cache: false
+    secrets:
+      UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+      UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
+
   test:
     name: Test
     if: github.event_name == 'push'

@@ -10,6 +10,7 @@ using UnityEngine;
 namespace Rebellion.Tests.UI.Runtime
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class UIContextTests
     {
         private const string _playerFactionId = "FNALL1";

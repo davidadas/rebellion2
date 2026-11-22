@@ -19,6 +19,7 @@ using GameFleet = Rebellion.Game.Units.Fleet;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class IdleBarControllerTests
     {
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";

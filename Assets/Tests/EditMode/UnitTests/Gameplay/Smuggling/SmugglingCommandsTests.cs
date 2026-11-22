@@ -12,6 +12,7 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class SmugglingCommandsTests
     {
         private GameRoot _game;

@@ -75,6 +75,7 @@ namespace Rebellion.Tests.Gameplay
         [TestCase(PlanetIntelligenceCategory.Officers, false)]
         [TestCase(PlanetIntelligenceCategory.Missions, false)]
         [TestCase(PlanetIntelligenceCategory.Missions, true)]
+        [Category("RequiresMedia")]
         public void BuildFactionView_SoleEnemyDiplomatCaptured_HidesRememberedMission(
             PlanetIntelligenceCategory category,
             bool reload

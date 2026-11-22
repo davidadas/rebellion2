@@ -9,6 +9,7 @@ namespace Rebellion.Tests.Game
     public class GameGenerationConfigTests
     {
         [Test]
+        [Category("RequiresMedia")]
         public void CreateCopy_ConfiguredGeneration_PreservesAllValues()
         {
             GameGenerationConfig source = TestContent.Data.GenerationConfig;
@@ -58,6 +59,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void CreateCopy_EditingFactionOverrides_DoesNotChangeSource()
         {
             GameGenerationConfig source = TestContent.Data.GenerationConfig.CreateCopy();

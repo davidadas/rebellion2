@@ -14,6 +14,7 @@ using Rebellion.Gameplay.Scripting;
 namespace Rebellion.Tests.Gameplay.GameEvents
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class GameEventObserverTests
     {
         [Test]

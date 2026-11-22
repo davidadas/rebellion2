@@ -25,6 +25,7 @@ namespace Rebellion.Tests.AI.Phases
     public class AIExecutionPhaseTests
     {
         [Test]
+        [Category("RequiresMedia")]
         public void ExecuteIncrementally_FleetChangesBetweenProposals_ReadsCurrentStrength()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out _);
@@ -54,6 +55,7 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void Execute_BombardmentDonorOvercomesShields_LoadsItAndEnablesLaunch()
         {
             AITurnContext context = AITestSceneBuilder.CreateBombardmentDonorContext(
@@ -103,6 +105,7 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void Execute_BombardingFleetNeedsOccupation_LoadsItsRegimentAndEnablesLaunch()
         {
             AITurnContext context = AITestSceneBuilder.CreateBombardmentReinforcementContext(
@@ -170,6 +173,7 @@ namespace Rebellion.Tests.AI.Phases
             ManufacturingType.Troop,
             false
         )]
+        [Category("RequiresMedia")]
         public void Execute_MultipleResearchersInSameDiscipline_StartsBothMissions(
             ResearchDiscipline discipline,
             BuildingType facilityType,
@@ -298,6 +302,7 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void ExecuteIncrementally_EconomyChangesBetweenManufacturingProposals_DoesNotOvercommitMaintenance()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

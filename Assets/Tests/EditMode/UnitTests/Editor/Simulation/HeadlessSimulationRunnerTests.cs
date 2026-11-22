@@ -57,6 +57,7 @@ namespace Rebellion.Tests.Editor.Simulation
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void ManufacturedUnitTracker_RecordCompletion_CountsFacilityOnce()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
@@ -137,6 +138,7 @@ namespace Rebellion.Tests.Editor.Simulation
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void MissionOutcomeTracker_RecordChangedSideDiplomacy_RecordsOwnershipAndRefresh()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction alliance);

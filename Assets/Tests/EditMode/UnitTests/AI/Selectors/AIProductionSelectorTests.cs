@@ -14,6 +14,7 @@ using Rebellion.Tests.AI.Helpers;
 namespace Rebellion.Tests.AI.Selectors
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class AIProductionSelectorTests
     {
         [Test]

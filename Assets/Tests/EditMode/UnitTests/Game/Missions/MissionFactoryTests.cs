@@ -12,6 +12,7 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Tests.Game.Missions
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class MissionFactoryTests
     {
         [TestCase(InciteUprisingMission.MissionTypeID)]

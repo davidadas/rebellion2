@@ -19,6 +19,7 @@ using Rebellion.Tests.AI.Helpers;
 namespace Rebellion.Tests.AI.Proposals
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class AIFacilityRemovalProposalTests
     {
         [Test]

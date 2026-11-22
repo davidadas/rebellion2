@@ -11,6 +11,7 @@ using Rebellion.Gameplay;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class FleetCommandsTests
     {
         private const string _ownerId = "owner";

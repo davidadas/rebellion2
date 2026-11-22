@@ -15,6 +15,7 @@ using Rebellion.Tests.AI.Helpers;
 namespace Rebellion.Tests.AI.Scorers
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class AIInfrastructurePlacementScorerTests
     {
         [Test]

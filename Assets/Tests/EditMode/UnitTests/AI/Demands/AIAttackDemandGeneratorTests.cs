@@ -9,6 +9,7 @@ using Rebellion.Tests.AI.Helpers;
 namespace Rebellion.Tests.AI.Demands
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class AIAttackDemandGeneratorTests
     {
         [TestCase(19, 0, 1100)]

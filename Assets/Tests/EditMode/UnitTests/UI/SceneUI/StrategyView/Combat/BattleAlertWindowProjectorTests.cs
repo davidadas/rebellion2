@@ -14,6 +14,7 @@ using GameFleet = Rebellion.Game.Units.Fleet;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class BattleAlertWindowProjectorTests
     {
         private const string _playerFactionId = "FNALL1";

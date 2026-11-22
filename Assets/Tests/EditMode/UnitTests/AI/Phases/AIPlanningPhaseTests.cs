@@ -26,6 +26,7 @@ namespace Rebellion.Tests.AI.Phases
         /// Verifies a budget boundary suspends work without publishing partial alternatives.
         /// </summary>
         [Test]
+        [Category("RequiresMedia")]
         public void ExecuteIncrementally_BudgetExhausted_PublishesOnlyCompletedPlannerOutput()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
@@ -53,6 +54,7 @@ namespace Rebellion.Tests.AI.Phases
         /// Verifies disabling suspension retains the complete ordered output.
         /// </summary>
         [Test]
+        [Category("RequiresMedia")]
         public void ExecuteIncrementally_ZeroBudget_CompletesPlannerBeforeYielding()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
@@ -72,6 +74,7 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void Execute_WithDiplomacyOpportunity_AddsMissionProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

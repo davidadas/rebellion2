@@ -11,6 +11,7 @@ using Rebellion.Gameplay;
 namespace Rebellion.Tests.Managers
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class GameManagerTests
     {
         [Test]

@@ -15,6 +15,7 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class GameTickProcessorTests
     {
         private GameRoot _game;

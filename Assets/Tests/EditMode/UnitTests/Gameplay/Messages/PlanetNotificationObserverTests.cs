@@ -12,6 +12,7 @@ using Rebellion.Gameplay;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class PlanetNotificationObserverTests
     {
         private GameRoot _game;

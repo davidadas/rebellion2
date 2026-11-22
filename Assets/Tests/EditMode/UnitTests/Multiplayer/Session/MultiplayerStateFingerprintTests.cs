@@ -12,6 +12,7 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Tests.Multiplayer
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class MultiplayerStateFingerprintTests
     {
         private GameSession _source;

@@ -20,6 +20,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
         [TestCase("Troops")]
         [TestCase("Special forces")]
         [TestCase("Buildings")]
+        [Category("RequiresMedia")]
         public void Save_AddedUnit_LoadsInTheRuntimeCatalog(string category)
         {
             ContentPackEditorProject project = CreateLoadableProject();
@@ -329,14 +330,17 @@ namespace Rebellion.Tests.ContentEditor.Integration
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public Task Save_ResetLegacySparseRules_PreservesUnrelatedResolvedSettingsAsync() =>
             VerifyLegacyRuleResetAsync(false);
 
         [Test]
+        [Category("RequiresMedia")]
         public Task WriteSnapshotAsync_ResetLegacySparseRules_PreservesUnrelatedResolvedSettingsAsync() =>
             VerifyLegacyRuleResetAsync(true);
 
         [Test]
+        [Category("RequiresMedia")]
         public void ResetFieldToInherited_LegacySparseRules_PreservesApplicationDefaultsWhenBasePackDiffers()
         {
             ContentPackEditorProject project = CreateLegacyRulesProject(false, 21);
@@ -359,6 +363,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void Save_EditingLegacySparseRules_KeepsUneditedDefaultsUnauthored()
         {
             ContentPackEditorProject project = CreateLegacyRulesProject();
@@ -373,6 +378,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void ResetFieldToInherited_LegacySparseRules_UndoRestoresTheOriginalAuthoredText()
         {
             ContentPackEditorProject project = CreateLegacyRulesProject();

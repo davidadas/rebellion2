@@ -15,6 +15,7 @@ using UnityEngine.TestTools;
 namespace Rebellion.Tests.Multiplayer
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class MultiplayerDisconnectedSavesTests
     {
         private string _directory;

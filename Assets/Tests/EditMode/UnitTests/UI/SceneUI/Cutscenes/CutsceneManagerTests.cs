@@ -8,6 +8,7 @@ using UnityEngine.Video;
 namespace Rebellion.Tests.UI.SceneUI.Cutscenes
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class CutsceneManagerTests
     {
         private const string _prefabPath = "Assets/Resources/UI/CutscenePlayer.prefab";

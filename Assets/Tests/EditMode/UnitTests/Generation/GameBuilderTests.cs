@@ -19,6 +19,7 @@ namespace Rebellion.Tests.Generation
     [TestFixture(GameSize.Small)]
     [TestFixture(GameSize.Medium)]
     [TestFixture(GameSize.Large)]
+    [Category("RequiresMedia")]
     public class GameBuilderTests
     {
         private readonly GameSize _size;

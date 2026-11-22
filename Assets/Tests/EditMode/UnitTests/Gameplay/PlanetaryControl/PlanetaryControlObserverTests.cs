@@ -18,6 +18,7 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class PlanetaryControlObserverTests
     {
         private GameRoot _game;

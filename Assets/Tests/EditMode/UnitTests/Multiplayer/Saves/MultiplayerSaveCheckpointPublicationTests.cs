@@ -9,6 +9,7 @@ using Rebellion.Multiplayer;
 namespace Rebellion.Tests.Multiplayer
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class MultiplayerSaveCheckpointPublicationTests
     {
         private string _directory;

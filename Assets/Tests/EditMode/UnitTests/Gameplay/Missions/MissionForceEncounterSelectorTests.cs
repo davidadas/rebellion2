@@ -25,6 +25,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void SelectPairs_AuthoredPriorities_PrefersLukeThenVader()
         {
             _config = TestContent.Data.GameConfig.Jedi;

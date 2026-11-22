@@ -12,6 +12,7 @@ using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class FinderWindowProjectorTests
     {
         private const string _playerFactionId = "FNALL1";

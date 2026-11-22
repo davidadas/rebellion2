@@ -85,6 +85,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GenerateRuntimeIdentifier_InterleavedGamesWithSameSeed_RepeatsIndependentSequence()
         {
             GameRoot first = CreateRuntimeIdentityGame(314159);
@@ -107,6 +108,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GenerateRuntimeIdentifier_DifferentSeeds_DoesNotReuseSequence()
         {
             GameRoot first = CreateRuntimeIdentityGame(314159);
@@ -119,6 +121,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GenerateRuntimeIdentifier_Enabled_DoesNotConsumeGameplayRandomness()
         {
             GameRoot game = CreateRuntimeIdentityGame(314159);
@@ -133,6 +136,7 @@ namespace Rebellion.Tests.Game
 
         [TestCase(false)]
         [TestCase(true)]
+        [Category("RequiresMedia")]
         public void GenerateRuntimeIdentifier_ConfiguredRestoredGame_ContinuesPersistedSequence(
             bool legacyName
         )
@@ -157,6 +161,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void Random_SerializedInjectedSeed_ContinuesSameStreamFromSummary()
         {
             GameRoot game = CreateRuntimeIdentityGame(123);
@@ -176,6 +181,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void AttachNode_MissingRuntimeIdentity_AssignsBeforeParentRelationship()
         {
             GameRoot game = CreateRuntimeIdentityGame(314159);
@@ -192,6 +198,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void AddSceneNodeByInstanceID_ExistingIdentity_PreservesIdentityAndSequence()
         {
             GameRoot game = CreateRuntimeIdentityGame(314159);
@@ -204,6 +211,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void AddSceneNodeByInstanceID_MissingIdentity_UsesGameSequence()
         {
             GameRoot game = CreateRuntimeIdentityGame(314159);
@@ -217,6 +225,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GenerateRuntimeIdentifier_UnattachedCopiesAndQueries_DoNotAdvanceGameSequence()
         {
             GameRoot game = CreateRuntimeIdentityGame(314159);
@@ -233,6 +242,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GenerateRuntimeIdentifier_InterleavedSessions_PreservesFleetAndMessageIdentities()
         {
             GameRoot first = CreateRuntimeIdentityGame(314159);
@@ -1031,6 +1041,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetPlayerFaction_NoHumanPlayer_DoesNotUseSummaryFaction()
         {
             GameRoot game = TestGame.Create(
@@ -1365,6 +1376,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void RebuildSceneState_SerializedDisabledFleet_RestoresDisabledHierarchy()
         {
             Fleet fleet = new Fleet
@@ -1431,6 +1443,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void RebuildSceneState_SerializedDestroyedPlanet_ClearsControlAndPreservesOrbitingFleet()
         {
             _game.AttachNode(_planetSector, _game.Galaxy);

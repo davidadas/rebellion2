@@ -22,6 +22,7 @@ namespace Rebellion.Tests.Gameplay
     public class MovementQueriesTests
     {
         [Test]
+        [Category("RequiresMedia")]
         public void CanSetFleetWaypointRoute_CapitalShipInTransit_DoesNotLogWarnings()
         {
             (GameRoot game, Planet origin, Planet destination, _, MovementQueries movement) =
@@ -49,6 +50,7 @@ namespace Rebellion.Tests.Gameplay
         [TestCase(true, false)]
         [TestCase(false, true)]
         [TestCase(true, true)]
+        [Category("RequiresMedia")]
         public void TryEstimateRetargetedTransitTicks_InboundJourney_IncludesUnfinishedLeg(
             bool legacyMovement,
             bool fighter
@@ -100,6 +102,7 @@ namespace Rebellion.Tests.Gameplay
 
         [TestCase(0)]
         [TestCase(1)]
+        [Category("RequiresMedia")]
         public void TryEstimateRetargetedTransitTicks_ContinuedFighterJourney_IncludesUnfinishedLeg(
             int hyperdrive
         )
@@ -141,6 +144,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetPreviousLocation_ClearedSavedLocation_DoesNotReviveGraphHistory()
         {
             var scene = BuildScene();
@@ -156,6 +160,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetPreviousLocation_OlderDelivery_ResolvesProducerWithoutParentHistory()
         {
             var scene = BuildScene();
@@ -171,6 +176,7 @@ namespace Rebellion.Tests.Gameplay
 
         [TestCase(false)]
         [TestCase(true)]
+        [Category("RequiresMedia")]
         public void TryGetSelectionTransitTicks_UnavailableDestination_DoesNotLogWarnings(
             bool fleetDestination
         )
@@ -202,6 +208,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void TryGetTransitTicks_ValidDestination_DoesNotMoveUnit()
         {
             (
@@ -225,6 +232,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void TryGetTransitTicks_OfficerWithTravelTrait_HalvesTransitTime()
         {
             (
@@ -255,6 +263,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void TryGetTransitTicks_OfficerGroupWithTravelTrait_HalvesEntireGroupTransitTime()
         {
             (
@@ -287,6 +296,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void TryGetTransitTicks_OfficerGroupWithPersonalTravelTrait_UsesNormalTime()
         {
             (
@@ -319,6 +329,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void TryGetTransitTicks_OfficerGroupWithSpecialForces_DoesNotApplyTravelTrait()
         {
             (
@@ -676,6 +687,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void TryEstimateManufacturedTransitTicks_ValidDestination_DoesNotAssignMovement()
         {
             (
@@ -699,6 +711,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void TryEstimateManufacturedTransitTicks_ViewFleetDestination_UsesLiveFleetLocation()
         {
             (
@@ -727,6 +740,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void TryEstimateManufacturedTransitTicks_ViewOriginAndDestinationAtSamePlanet_ReturnsZero()
         {
             (GameRoot game, Planet origin, Planet _, Officer officer, MovementQueries movement) =
@@ -745,6 +759,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void TryEstimateManufacturedTransitTicks_HostilePlanetDestination_ReturnsFalse()
         {
             (
@@ -769,6 +784,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void TryEstimateManufacturedTransitTicks_StarfighterToEnemyBlockadedPlanet_ReturnsFalse()
         {
             (
@@ -795,6 +811,7 @@ namespace Rebellion.Tests.Gameplay
         [TestCase(false, false, true)]
         [TestCase(true, false, false)]
         [TestCase(false, true, false)]
+        [Category("RequiresMedia")]
         public void TryEstimateManufacturedTransitTicks_UnownedTemplate_UsesProspectiveOwner(
             bool hostile,
             bool blockaded,
@@ -826,6 +843,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetPersonnelEncounterOdds_HostileDetector_ReturnsCompleteProjection()
         {
             GameConfig config = TestConfig.Create();
@@ -862,6 +880,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetPersonnelEncounterOdds_MixedDefenders_UsesOnlyCapitalShipsAndCarriedFighters()
         {
             (
@@ -902,6 +921,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetPersonnelEncounterOdds_HostileFleetForceUser_ReturnsOnlyShipDetector()
         {
             GameConfig config = TestConfig.Create();
@@ -930,6 +950,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetPersonnelEncounterOdds_CompletedDetectionBlocker_ReturnsNoDetectors()
         {
             (
@@ -967,6 +988,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void FindSafeRelocationDestinations_InTransitUnit_RanksFromCurrentPosition()
         {
             (
@@ -1010,6 +1032,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void CanUseSafeRelocationDestination_AlreadyAtAllowedOrigin_ReturnsTrue()
         {
             (_, Planet origin, _, Officer officer, MovementQueries movement) = BuildScene();
@@ -1025,6 +1048,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void CanSetFleetWaypointRoute_ValidRoute_DoesNotMutateFleet()
         {
             (
@@ -1049,6 +1073,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void CanSetFleetWaypointRoute_CapitalShip_DoesNotChangeFleetMembership()
         {
             (
@@ -1101,6 +1126,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void TryGetSelectionTransitTicks_StarfighterToEnemyBlockadedPlanet_ReturnsFalse()
         {
             (

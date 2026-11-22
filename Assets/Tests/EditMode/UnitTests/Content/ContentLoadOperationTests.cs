@@ -10,6 +10,7 @@ using UnityEngine;
 namespace Rebellion.Tests.Content
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class ContentLoadOperationTests
     {
         private string _directory;

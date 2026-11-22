@@ -36,6 +36,24 @@ jobs:
               },
             });
 
+  trusted-core:
+    name: Test trusted PR without media
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    uses: ./.github/workflows/unity-test-runner.yml
+    with:
+      base_sha: ${{ github.event.pull_request.base.sha }}
+      reviewed_head_sha: ${{ github.event.pull_request.head.sha }}
+      reviewed_head_repository: ${{ github.event.pull_request.head.repo.full_name }}
+      core_only: true
+      save_cache: false
+    secrets:
+      UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+      UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
+
   trusted-media:
     name: Resolve trusted PR media
     if: github.event.pull_request.head.repo.full_name == github.repository

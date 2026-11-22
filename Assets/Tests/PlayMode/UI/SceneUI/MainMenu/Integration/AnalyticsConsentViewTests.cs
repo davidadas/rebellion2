@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using NUnit.Framework;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.TestTools;
@@ -11,6 +10,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.SceneUI.MainMenu
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class AnalyticsConsentViewTests
     {
         private const string _prefabPath = "Assets/Prefabs/UI/MainMenu/MainMenuRoot.prefab";
@@ -23,15 +23,11 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         private CanvasGroup _canvasGroup;
 
         /// <summary>
-        /// Enters play mode and instantiates the authored consent overlay with an event system.
+        /// Instantiates the authored consent overlay with an event system.
         /// </summary>
-        /// <returns>The play-mode setup sequence.</returns>
-        [UnitySetUp]
-        public IEnumerator SetUp()
+        [SetUp]
+        public void SetUp()
         {
-            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            yield return new EnterPlayMode();
-
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(_prefabPath);
             if (prefab == null)
                 throw new InvalidOperationException($"Missing test prefab at {_prefabPath}.");
@@ -50,7 +46,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         /// <summary>
-        /// Destroys the instantiated consent overlay and leaves play mode.
+        /// Destroys the instantiated consent overlay.
         /// </summary>
         /// <returns>The play-mode cleanup sequence.</returns>
         [UnityTearDown]
@@ -60,7 +56,6 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             UnityEngine.Object.Destroy(_instance);
             UnityEngine.Object.Destroy(_eventSystemObject);
             yield return null;
-            yield return new ExitPlayMode();
         }
 
         [Test]

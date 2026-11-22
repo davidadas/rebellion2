@@ -13,6 +13,7 @@ using UnityEngine;
 
 namespace Rebellion.Tests.Multiplayer
 {
+    [Category("RequiresMedia")]
     public sealed class MultiplayerRecoveryStoreTests
     {
         private string _directory;

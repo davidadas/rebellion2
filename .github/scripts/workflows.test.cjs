@@ -118,11 +118,28 @@ test('default-branch and reviewed PR tests share the complete Unity and coverage
   const steps = runner.jobs.test.steps;
   const gameci = steps.find(step => step.uses === 'game-ci/unity-test-runner@v4');
   assert.equal(gameci.with.testMode, 'all');
-  assert.equal(gameci.with.coverageEnabled, true);
-  assert.ok(steps.find(step => step.name === 'Check coverage threshold'));
-  assert.ok(steps.find(step => step.name === 'Check compiled architecture'));
+  assert.equal(gameci.with.coverageEnabled, "${{ inputs.media_sha != '' }}");
+  assert.equal(steps.find(step => step.name === 'Check coverage threshold').if, "inputs.media_sha != ''");
+  assert.equal(steps.find(step => step.name === 'Check compiled architecture').if, "inputs.media_sha != ''");
   assert.equal(runner.env.UNITY_VERSION, ci.env.UNITY_VERSION);
   assert.equal(runner.env.UNITY_IMAGE_VERSION, ci.env.UNITY_IMAGE_VERSION);
+});
+
+test('core Unity tests run without a media checkout or content credentials', () => {
+  for (const job of [ci.jobs['test-core'], dispatcher.jobs['trusted-core']]) {
+    assert.equal(job.uses, './.github/workflows/unity-test-runner.yml');
+    assert.equal(job.with.core_only, true);
+    assert.equal(job.with.media_sha, undefined);
+    assert.deepEqual(needs(job), []);
+    assert.deepEqual(Object.keys(job.secrets).sort(), ['UNITY_EMAIL', 'UNITY_PASSWORD']);
+  }
+  const steps = runner.jobs.test.steps;
+  for (const name of ['Checkout media (git only, no LFS)', 'Pull media LFS', 'Install media']) {
+    assert.equal(steps.find(step => step.name === name).if, "inputs.media_sha != ''");
+  }
+  const gameci = steps.find(step => step.uses === 'game-ci/unity-test-runner@v4');
+  assert.match(gameci.with.customParameters, /-testCategory !\^RequiresMedia\$/);
+  assert.equal(steps.find(step => step.name === 'Verify media is absent').if, "inputs.media_sha == ''");
 });
 
 test('the shared runner stages optional native math after the verified merge and before Unity', () => {

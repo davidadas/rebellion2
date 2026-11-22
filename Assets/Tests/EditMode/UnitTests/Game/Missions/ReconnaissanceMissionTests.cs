@@ -15,6 +15,7 @@ using Rebellion.Util.Random;
 namespace Rebellion.Tests.Game.Missions
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class ReconnaissanceMissionTests
     {
         [Test]

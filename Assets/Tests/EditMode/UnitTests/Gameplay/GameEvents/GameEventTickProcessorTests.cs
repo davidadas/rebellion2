@@ -19,6 +19,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void ProcessTick_NullGame_ThrowsArgumentNullException()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -31,6 +32,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void ProcessTick_EligibleScheduledEvent_ActivatesEvent()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());

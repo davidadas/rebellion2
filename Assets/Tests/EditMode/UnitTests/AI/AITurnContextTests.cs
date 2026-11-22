@@ -44,6 +44,7 @@ namespace Rebellion.Tests.AI
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void SetProductionDemands_DeferredCurrentBatch_PreservesInput()
         {
             AITurnContext context = AITestSceneBuilder.CreateProductionComparison(
@@ -62,6 +63,7 @@ namespace Rebellion.Tests.AI
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void SetProductionDemands_ReplacingBatch_PreservesPreviousSnapshot()
         {
             AITurnContext context = AITestSceneBuilder.CreateProductionComparison(
@@ -79,6 +81,7 @@ namespace Rebellion.Tests.AI
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetMissionOdds_ValidProposal_ReturnsObjectiveProbability()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);

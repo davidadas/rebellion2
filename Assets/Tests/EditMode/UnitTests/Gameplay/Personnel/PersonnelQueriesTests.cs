@@ -10,6 +10,7 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class PersonnelQueriesTests
     {
         private const string _ownerId = "owner";

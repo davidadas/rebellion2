@@ -11,6 +11,7 @@ using UnityEngine;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class MessagesWindowProjectorTests
     {
         private const string _playerFactionId = "FNALL1";

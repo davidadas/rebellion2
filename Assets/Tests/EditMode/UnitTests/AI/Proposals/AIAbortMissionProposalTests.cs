@@ -15,6 +15,7 @@ using Rebellion.Tests.AI.Helpers;
 namespace Rebellion.Tests.AI.Proposals
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class AIAbortMissionProposalTests
     {
         [Test]

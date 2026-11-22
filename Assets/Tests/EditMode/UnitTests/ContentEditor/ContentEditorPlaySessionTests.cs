@@ -11,6 +11,7 @@ using UnityEngine;
 namespace Rebellion.Tests.ContentEditor
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class ContentEditorPlaySessionTests
     {
         private string folder;

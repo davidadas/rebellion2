@@ -6,6 +6,7 @@ using NUnit.Framework;
 namespace Rebellion.Tests.ContentEditor.UI
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class ContentEditorNumericGridTests
     {
         private string folder;

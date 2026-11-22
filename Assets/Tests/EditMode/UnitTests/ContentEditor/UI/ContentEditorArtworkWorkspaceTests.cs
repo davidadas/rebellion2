@@ -7,6 +7,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.ContentEditor.UI
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class ContentEditorArtworkWorkspaceTests : ContentEditorViewTestBase
     {
         private Texture2D small;

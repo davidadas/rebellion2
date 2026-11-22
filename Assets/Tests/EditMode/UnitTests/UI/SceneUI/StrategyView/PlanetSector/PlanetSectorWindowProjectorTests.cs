@@ -18,6 +18,7 @@ using GameFleet = Rebellion.Game.Units.Fleet;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class PlanetSectorWindowProjectorTests
     {
         private const string _opposingFactionId = "FNEMP1";

@@ -13,6 +13,7 @@ using Rebellion.Gameplay;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class GameResultPipelineTests
     {
         private GameResultBus _bus;

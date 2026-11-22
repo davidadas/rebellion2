@@ -24,6 +24,7 @@ using UnityEngine.TestTools;
 namespace Rebellion.Tests.Gameplay.GameEvents
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class GameEventCommandsTests
     {
         private GameRoot _game;

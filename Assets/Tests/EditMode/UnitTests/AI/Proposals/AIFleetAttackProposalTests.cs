@@ -22,6 +22,7 @@ using Rebellion.Util.Random;
 namespace Rebellion.Tests.AI.Fleets
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class AIFleetAttackProposalTests
     {
         [TestCase(20, false)]

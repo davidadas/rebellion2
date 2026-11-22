@@ -19,6 +19,7 @@ namespace Rebellion.Tests.Gameplay
     /// Tests for JediCommands force discovery state and force user discovery scanning.
     /// </summary>
     [TestFixture]
+    [Category("RequiresMedia")]
     public class JediCommandsTests
     {
         private GameRoot _game;

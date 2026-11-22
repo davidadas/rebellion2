@@ -18,6 +18,7 @@ using UnityEngine;
 namespace Rebellion.Tests.Gameplay.Scripting
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class GameConditionEvaluatorTests
     {
         private GameRoot _game;

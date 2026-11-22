@@ -16,6 +16,7 @@ using GameFleet = Rebellion.Game.Units.Fleet;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class GalaxyMapProjectorTests
     {
         private const string _opposingFactionId = "FNEMP1";

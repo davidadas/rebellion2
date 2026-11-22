@@ -19,6 +19,7 @@ using GameFleet = Rebellion.Game.Units.Fleet;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class ConfirmDialogWindowControllerTests
     {
         private const string _playerFactionId = "FNALL1";

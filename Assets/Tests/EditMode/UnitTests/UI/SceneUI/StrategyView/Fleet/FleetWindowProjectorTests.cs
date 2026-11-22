@@ -15,6 +15,7 @@ using GameFleet = Rebellion.Game.Units.Fleet;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class FleetWindowProjectorTests
     {
         private const string _ownerId = "FNALL1";

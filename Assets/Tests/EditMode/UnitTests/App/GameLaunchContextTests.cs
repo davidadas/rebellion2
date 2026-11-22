@@ -5,6 +5,7 @@ using Rebellion.Game;
 namespace Rebellion.Tests.UI.SceneUI
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class GameLaunchContextTests
     {
         /// <summary>

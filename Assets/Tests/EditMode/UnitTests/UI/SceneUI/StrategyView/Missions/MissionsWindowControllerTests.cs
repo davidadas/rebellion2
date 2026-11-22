@@ -15,6 +15,7 @@ using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class MissionsWindowControllerTests
     {
         private const string _playerFactionId = "FNALL1";

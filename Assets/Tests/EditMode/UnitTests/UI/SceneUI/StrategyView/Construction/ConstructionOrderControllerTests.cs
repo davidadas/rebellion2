@@ -13,6 +13,7 @@ using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class ConstructionOrderControllerTests
     {
         private const int _destinationEnergyCapacity = 2;

@@ -17,6 +17,7 @@ namespace Rebellion.Tests.UI.Input
 {
     [TestFixture]
     [Category("Integration")]
+    [Category("RequiresMedia")]
     public sealed class QueuedMouseInputModuleTests
     {
         private GameObject _root;

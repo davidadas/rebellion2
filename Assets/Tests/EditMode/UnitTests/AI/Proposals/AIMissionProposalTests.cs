@@ -95,6 +95,7 @@ namespace Rebellion.Tests.AI.Proposals
 
         [TestCase(false)]
         [TestCase(true)]
+        [Category("RequiresMedia")]
         public void CanSelect_HeldMainParticipantOrDecoy_RejectsMission(bool holdDecoy)
         {
             var (game, _, target, main, _) = MissionSceneBuilder.Build();

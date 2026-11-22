@@ -21,6 +21,7 @@ using OfficerRating = Rebellion.Game.Units.SkillRating;
 namespace Rebellion.Tests.AI.Planners
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class AIMissionPlannerTests
     {
         [Test]

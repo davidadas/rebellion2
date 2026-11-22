@@ -645,6 +645,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void TryCreateMission_NullContext_ReturnsFalseAndNoMission()
         {
             MissionQueries queries = new MissionQueries(TestGame.Create(TestConfig.Create()));
@@ -656,6 +657,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetObjectiveSuccessProbability_NullMission_ThrowsArgumentNullException()
         {
             MissionQueries queries = new MissionQueries(TestGame.Create(TestConfig.Create()));
@@ -1298,6 +1300,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetMissionOdds_Diplomacy_UsesObservedPlanetSupport()
         {
             (GameRoot game, Planet _, Planet target, Officer diplomat, MissionQueries missions) =
@@ -1321,6 +1324,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetMissionOdds_Default_DoesNotExposeHiddenBetrayalState()
         {
             (
@@ -1360,6 +1364,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetMissionOdds_Reconnaissance_UsesItsGuaranteedCompletionRule()
         {
             (GameRoot game, Planet origin, Planet target, Officer _, MissionQueries missions) =
@@ -1386,6 +1391,7 @@ namespace Rebellion.Tests.Gameplay
 
         [TestCase(AbductionMission.MissionTypeID, 80)]
         [TestCase(AssassinationMission.MissionTypeID, 20)]
+        [Category("RequiresMedia")]
         public void GetMissionOdds_OfficerTargetMission_UsesObservedTargetRating(
             string missionTypeId,
             double expectedProbability
@@ -1431,6 +1437,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetMissionOdds_AssassinationOfMainCharacter_CannotReportSuccess()
         {
             (
@@ -1460,6 +1467,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetMissionOdds_Assassination_AppliesOneKillCheckAfterAnyParticipantHits()
         {
             (
@@ -1496,6 +1504,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetAvailableMissionOptions_OwnPlanetResearch_ReturnsResearchOptions()
         {
             (GameRoot game, Planet planet, Officer officer) = BuildScene(factionOwnsPlanet: true);
@@ -1525,6 +1534,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetAvailableMissionOptions_ResearchWithSingleMatchingRating_ReturnsMatchingResearchOption()
         {
             (GameRoot game, Planet planet, Officer officer) = BuildScene(factionOwnsPlanet: true);
@@ -1544,6 +1554,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetAvailableMissionOptions_ExhaustedResearch_ExcludesResearchOption()
         {
             (GameRoot game, Planet planet, Officer officer) = BuildScene(factionOwnsPlanet: true);
@@ -1566,6 +1577,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetAvailableMissionOptions_TroopTrainingWithoutFacility_ExcludesResearchOption()
         {
             (GameRoot game, Planet planet, Officer officer) = BuildScene(factionOwnsPlanet: true);
@@ -1582,6 +1594,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetAvailableMissionOptions_ResearchWithoutMatchingRating_ExcludesResearchOptions()
         {
             (GameRoot game, Planet planet, Officer officer) = BuildScene(factionOwnsPlanet: true);
@@ -1597,6 +1610,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetAvailableMissionOptions_DisallowedResearch_ExcludesResearchOptions()
         {
             (GameRoot game, Planet planet, Officer officer) = BuildScene(factionOwnsPlanet: true);
@@ -1617,6 +1631,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetAvailableMissionOptions_EnemyPlanetRecruitment_ExcludesRecruitmentOption()
         {
             (
@@ -1647,6 +1662,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetAvailableMissionOptions_PlanetOnlySabotageTarget_ExcludesSabotageOption()
         {
             (
@@ -1670,6 +1686,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetAvailableMissionOptions_ManufacturableSabotageTarget_ReturnsSabotageOption()
         {
             (
@@ -1693,6 +1710,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetAvailableMissionOptions_SelectedTrainerWithoutStudent_ExcludesJediTrainingOption()
         {
             (GameRoot game, Planet planet, Officer officer) = BuildScene(factionOwnsPlanet: true);
@@ -1712,6 +1730,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetAvailableMissionOptions_ReconnaissanceSpecialForces_ReturnsReconnaissanceOption()
         {
             GameConfig config = TestConfig.Create();
@@ -1766,6 +1785,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void CanCreateMission_StaleCompletedViewTarget_ReturnsTrue()
         {
             (
@@ -1799,6 +1819,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void CanCreateMission_StaleStationaryOfficerViewWithLiveTransit_ReturnsTrue()
         {
             (
@@ -1828,6 +1849,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void CanCreateMission_InactiveOfficer_ReturnsFalse()
         {
             (
@@ -1854,6 +1876,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetMissionOdds_InciteStrongGarrison_ReturnsZeroForBothRiskDetailLevels()
         {
             (GameRoot game, Planet _, Planet target, Officer officer, MissionQueries queries) =
@@ -1881,6 +1904,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetMissionOdds_IncitePartialControlChance_CombinesSkillAndIncidentProbabilities()
         {
             (GameRoot game, Planet _, Planet target, Officer officer, MissionQueries queries) =
@@ -1918,6 +1942,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetMissionOdds_ObservedGarrison_DoesNotReadHiddenLiveRegiments()
         {
             (GameRoot game, Planet _, Planet target, Officer officer, MissionQueries queries) =
@@ -1953,6 +1978,7 @@ namespace Rebellion.Tests.Gameplay
 
         [TestCase(1, 50)]
         [TestCase(2, 75)]
+        [Category("RequiresMedia")]
         public void GetMissionOdds_InciteTeam_CombinesIndependentSkillRolls(
             int participantCount,
             double expected
@@ -1992,6 +2018,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetMissionOdds_NullContext_ReturnsNull()
         {
             MissionQueries queries = new MissionQueries(TestGame.Create(TestConfig.Create()));
@@ -2000,6 +2027,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetMissionOdds_UnstartedInciteProposal_DoesNotConsumeInstanceIdentifiers()
         {
             (GameRoot game, Planet _, Planet target, Officer officer, MissionQueries queries) =
@@ -2036,6 +2064,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetMissionOdds_SharedPlanetAssessment_KeepsEachTeamsSkillProbability()
         {
             (GameRoot game, Planet origin, Planet target, Officer first, MissionQueries queries) =

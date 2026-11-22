@@ -15,6 +15,7 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class MessageFactoryTests
     {
         private static readonly Dictionary<Message, MessageDelivery> _deliveriesByMessage =

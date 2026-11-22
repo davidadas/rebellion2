@@ -23,6 +23,7 @@ using Rebellion.Util.Random;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class MissionCommandsTests
     {
         [TestCase(true)]

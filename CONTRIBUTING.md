@@ -14,9 +14,14 @@ copyrighted game assets**.
 
 ## Pull request checks
 
-Public checks start automatically for pull requests. Full Unity tests on fork contributions wait
-for a maintainer to approve **Review private test access** in the **Fork PR tests** environment.
-Review the displayed commit before approving it; a new push requires a new approval.
+Public checks start automatically for pull requests. The core Unity job runs on same-repository
+PRs and default-branch pushes without a media checkout. Run the same EditMode and PlayMode group
+locally with `./build.sh test-core` from a game-only checkout.
+
+The full Unity job validates both groups with pinned media and checks combined coverage. On fork
+PRs, this job waits for a maintainer to approve **Review private test access** in the **Fork PR
+tests** environment. Review the displayed commit before approving it. A new push requires a new
+approval.
 
 Maintainers can also start the **CI** workflow manually with the PR number and its full head SHA.
 The test result is reported on that PR commit. Stale requests are rejected before loading private

@@ -12,7 +12,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void CreateCopy_ConfiguredRules_PreservesAllValues()
         {
-            GameConfig source = TestContent.Data.GameConfig;
+            GameConfig source = CreateConfiguredRules();
 
             GameConfig copy = source.CreateCopy();
 
@@ -25,7 +25,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void CreateCopy_EditingNestedRules_DoesNotChangeSource()
         {
-            GameConfig source = TestContent.Data.GameConfig.CreateCopy();
+            GameConfig source = CreateConfiguredRules();
             string before = SerializationHelper.Serialize(source);
             GameConfig copy = source.CreateCopy();
 
@@ -42,6 +42,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void Serialize_ConfiguredIncidentIntelligence_PreservesCombinedCategories()
         {
             GameConfig config = TestConfig.Create();
@@ -61,6 +62,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void Serialize_ConfiguredSuppressionRegiments_PreservesMappings()
         {
             GameConfig config = TestConfig.Create();
@@ -212,12 +214,34 @@ namespace Rebellion.Tests.Game
         [TestCase(-1, ForceRankLabel.ForceMaster)]
         [TestCase(-32768, ForceRankLabel.ForceMaster)]
         [TestCase(65536, ForceRankLabel.None)]
+        [Category("RequiresMedia")]
         public void GetRankLabel_StoredRatingBoundary_UsesDisplayRepresentation(
             int forceRank,
             ForceRankLabel expected
         )
         {
             Assert.AreEqual(expected, TestContent.Data.GameConfig.Jedi.GetRankLabel(forceRank));
+        }
+
+        /// <summary>
+        /// Supplies mutable rules and collections for the configuration copy tests.
+        /// </summary>
+        /// <returns>An independent configuration for the test.</returns>
+        private static GameConfig CreateConfiguredRules()
+        {
+            GameConfig config = new GameConfig();
+            config.AI.Selection.TechnologyUtility.Building.Capability.Curve.Exponent = 2;
+            config.Captive.EscapeAttemptInterval.Minimum = 3;
+            config.Captive.EscapeTable.Add(0, 15);
+            config.Jedi.MissionEncounterPriorityOfficerInstanceIDs.Add("test-officer");
+            config.DifficultyModifiers.Add(
+                GameDifficulty.Hard,
+                new DifficultyModifiers { ManufacturingSpeedPercent = 125 }
+            );
+            config.Movement.DistanceDivisor = 4;
+            config.Uprising.SuppressionRegiments.Add("test-guard", "test-faction");
+            config.Uprising.IncidentIntelligence.Add(PlanetIntelligenceCategory.Officers);
+            return config;
         }
     }
 }

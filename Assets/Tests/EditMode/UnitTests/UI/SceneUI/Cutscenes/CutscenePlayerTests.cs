@@ -10,6 +10,7 @@ using UnityEngine.Video;
 namespace Rebellion.Tests.UI.SceneUI.Cutscenes
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class CutscenePlayerTests
     {
         private const string _clipPath =
