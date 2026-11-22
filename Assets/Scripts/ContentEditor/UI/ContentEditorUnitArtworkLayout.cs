@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 
 /// <summary>
 /// Defines the persisted output and state-specific artwork fields shown for each unit.
@@ -135,7 +136,40 @@ internal static class ContentEditorUnitArtworkLayout
         && SupportsMember(field.Record, field.MemberName)
         && field.MemberName != BackgroundMember
         && !IsStateSpecific(field.MemberName)
+        && (field.Record.Kind is not ("CapitalShip" or "Starfighter") || !IsIllustration(field))
         && ContentPackEditorFieldMetadata.TryGetExpectedImageDimensions(field, out _);
+
+    /// <summary>
+    /// Identifies the large report and encyclopedia illustrations for a unit.
+    /// </summary>
+    /// <param name="field">The artwork field being evaluated.</param>
+    /// <returns>Whether the field belongs in the illustrations gallery.</returns>
+    internal static bool IsIllustration(ContentPackEditorField field) =>
+        field.MemberName is "MessageImagePath" or "EncyclopediaImagePath";
+
+    /// <summary>
+    /// Finds the output size when two artwork slots support a cut at the source's resolution.
+    /// </summary>
+    /// <param name="source">The unit image supplying pixels.</param>
+    /// <param name="target">The unit image slot receiving the cut.</param>
+    /// <param name="sourceSize">The decoded width and height of the source image.</param>
+    /// <param name="dimensions">The pixel dimensions of the eligible output.</param>
+    /// <returns>True when the target can be generated at the source resolution.</returns>
+    internal static bool TryGetCutDimensions(
+        ContentPackEditorField source,
+        ContentPackEditorField target,
+        Vector2Int sourceSize,
+        out Vector2Int dimensions
+    )
+    {
+        dimensions = default;
+        return target.Record.Element == source.Record.Element
+            && target.MemberName != source.MemberName
+            && IsStandardCut(source)
+            && IsStandardCut(target)
+            && ContentPackEditorFieldMetadata.TryGetExpectedImageDimensions(target, out dimensions)
+            && ContentEditorArtworkCutGenerator.CanFitSource(sourceSize, dimensions);
+    }
 
     /// <summary>
     /// Gets the stable workflow position of one artwork member.

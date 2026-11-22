@@ -529,6 +529,20 @@ public sealed class ContentPackEditorController : MonoBehaviour
             project.SetField(field, address);
         if (field.MediaType == ContentPackEditorMediaType.Image)
             RememberImageImportDirectory(source);
+        if (emptyCuts.Length > 0)
+        {
+            Vector2Int sourceSize = GetArtworkSourceSize(field);
+            emptyCuts = emptyCuts
+                .Where(target =>
+                    ContentEditorUnitArtworkLayout.TryGetCutDimensions(
+                        field,
+                        target,
+                        sourceSize,
+                        out _
+                    )
+                )
+                .ToArray();
+        }
         workspace.RenderProject(project, assets);
         if (emptyCuts.Length > 0)
             view.ConfirmFirstArtworkCuts(
@@ -538,7 +552,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     }
 
     /// <summary>
-    /// Finds the empty standard slots to offer after importing a unit's first image.
+    /// Finds the empty standard slots to check after importing a unit's first image.
     /// </summary>
     /// <param name="source">The field receiving the image.</param>
     /// <returns>The empty cut destinations, when the unit has no previous artwork.</returns>
@@ -580,6 +594,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             string sourcePath =
                 ResolveArtworkFile(source)
                 ?? throw new FileNotFoundException("The selected source image could not be found.");
+            Vector2Int sourceSize = GetArtworkSourceSize(source);
 
             var outputs = targets
                 .Distinct()
@@ -589,14 +604,16 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     if (field.Record.Element != source.Record.Element)
                         throw new ArgumentException("Artwork outputs must belong to one unit.");
                     if (
-                        field.MemberName == source.MemberName
-                        || !ContentEditorUnitArtworkLayout.IsStandardCut(field)
+                        !ContentEditorUnitArtworkLayout.TryGetCutDimensions(
+                            source,
+                            field,
+                            sourceSize,
+                            out Vector2Int dimensions
+                        )
                     )
-                        throw new ArgumentException("Choose ordinary fixed-size artwork outputs.");
-                    ContentPackEditorFieldMetadata.TryGetExpectedImageDimensions(
-                        field,
-                        out Vector2Int dimensions
-                    );
+                        throw new ArgumentException(
+                            "Choose compatible artwork outputs within the source resolution."
+                        );
                     return new { Field = field, Dimensions = dimensions };
                 })
                 .ToArray();
@@ -613,7 +630,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     placements,
                     fitEntireSource: source.MemberName == "DisplayImagePath",
                     preserveVisibleSubject: true,
-                    fillOpaqueSource: true
+                    fillOpaqueSource: true,
+                    preventUpscaling: true
                 );
                 var images = outputs
                     .Select((output, index) => (output.Field, Png: cuts[placements[index]]))
@@ -656,6 +674,17 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 }
             }
         });
+    }
+
+    /// <summary>
+    /// Reads the decoded pixel dimensions through the same cache used by the artwork previews.
+    /// </summary>
+    /// <param name="field">The field supplying the source image.</param>
+    /// <returns>The source dimensions, or zero when the image could not be decoded.</returns>
+    private Vector2Int GetArtworkSourceSize(ContentPackEditorField field)
+    {
+        Texture2D texture = assets.GetTexture(field.GetMediaAddress(field.Value));
+        return texture == null ? Vector2Int.zero : new Vector2Int(texture.width, texture.height);
     }
 
     /// <summary>
