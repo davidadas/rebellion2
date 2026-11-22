@@ -57,12 +57,11 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
         Texture2D destroyedPlanetTexture = ResolveFieldTexture(destroyedPlanetField, assets);
         FactionTheme neutral = ContentEditorPresentation.GetNeutralTheme(project);
         FactionTheme activeTheme = theme ?? neutral;
+        bool factionPreview =
+            activeTheme != null
+            && (neutral == null || activeTheme.FactionInstanceID != neutral.FactionInstanceID);
         int neutralIndex = -1;
-        if (
-            editableFields != null
-            && neutral != null
-            && activeTheme.FactionInstanceID != neutral.FactionInstanceID
-        )
+        if (editableFields != null && neutral != null && factionPreview)
         {
             int available = planets.Length - (destroyedPlanetTexture != null ? 1 : 0);
             if (available > 1)
@@ -82,6 +81,7 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
                                 energy,
                                 materials,
                                 index == neutralIndex ? neutral : activeTheme,
+                                factionPreview && index != neutralIndex,
                                 index == planets.Length - 1 ? destroyedPlanetTexture : null
                             )
                     )
@@ -409,6 +409,7 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
     /// <param name="energy">The maximum available energy.</param>
     /// <param name="materials">The maximum available raw materials.</param>
     /// <param name="theme">The theme providing text colors and overlay icons.</param>
+    /// <param name="hasOwner">Whether to show faction-owned overlays on this sample planet.</param>
     /// <param name="destroyedPlanetTexture">The optional destroyed state shown on the representative final planet.</param>
     /// <returns>The gameplay renderer's planet presentation.</returns>
     private static PlanetSectorPlanetRenderData CreatePlanet(
@@ -419,18 +420,22 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
         int energy,
         int materials,
         FactionTheme theme,
+        bool hasOwner,
         Texture2D destroyedPlanetTexture
     )
     {
         string image = planet.Element.Element("PlanetIconPath")?.Value ?? planet.ImageAddress;
         Color factionColor = theme?.GetPrimaryColor() ?? Color.white;
         PlanetOverlayTheme overlays = theme?.PlanetOverlayTheme;
+        PlanetOverlayIcons factionIcons = hasOwner ? overlays?.PlanetOverlayIcons : null;
         return new PlanetSectorPlanetRenderData(
             planetIndex: index,
             galaxyOffset: new Vector2Int(planet.X - sector.X, planet.Y - sector.Y),
             planetTexture: destroyedPlanetTexture
                 ?? (string.IsNullOrEmpty(image) ? null : assets.GetTexture(image)),
-            uprisingTexture: LoadTexture(assets, overlays?.PlanetSectorUprisingImagePath),
+            uprisingTexture: hasOwner
+                ? LoadTexture(assets, overlays?.PlanetSectorUprisingImagePath)
+                : null,
             facilityTexture: LoadSmoothTexture(
                 assets,
                 overlays?.PlanetOverlayIcons?.Buildings?.NormalImagePath
@@ -447,23 +452,16 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
                 assets,
                 overlays?.PlanetOverlayIcons?.Defenses?.HoverImagePath
             ),
-            fleetTexture: LoadSmoothTexture(
-                assets,
-                overlays?.PlanetOverlayIcons?.Fleets?.NormalImagePath
-            ),
-            fleetPressedTexture: LoadSmoothTexture(
-                assets,
-                overlays?.PlanetOverlayIcons?.Fleets?.HoverImagePath
-            ),
-            missionTexture: LoadSmoothTexture(
-                assets,
-                overlays?.PlanetOverlayIcons?.Missions?.NormalImagePath
-            ),
+            fleetTexture: LoadSmoothTexture(assets, factionIcons?.Fleets?.NormalImagePath),
+            fleetPressedTexture: LoadSmoothTexture(assets, factionIcons?.Fleets?.HoverImagePath),
+            missionTexture: LoadSmoothTexture(assets, factionIcons?.Missions?.NormalImagePath),
             missionPressedTexture: LoadSmoothTexture(
                 assets,
-                overlays?.PlanetOverlayIcons?.Missions?.HoverImagePath
+                factionIcons?.Missions?.HoverImagePath
             ),
-            headquartersTexture: LoadTexture(assets, overlays?.PlanetSectorHeadquartersImagePath),
+            headquartersTexture: hasOwner
+                ? LoadTexture(assets, overlays?.PlanetSectorHeadquartersImagePath)
+                : null,
             name: planet.Name,
             nameColor: factionColor,
             selectedIcon: PlanetIcon.None,

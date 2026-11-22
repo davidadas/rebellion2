@@ -109,15 +109,15 @@ internal static class ContentEditorContentSections
         && field.MediaType == ContentPackEditorMediaType.Image
         && !field.IsMediaDirectory
         && (
-            neutral
-            || field.Group != nameof(FactionTheme.MissionIcons)
-            || !MissionIconKeys.UsesSharedArtwork(
-                field
-                    .XmlElement.Ancestors(nameof(MissionIconTheme))
-                    .FirstOrDefault()
-                    ?.Element(nameof(MissionIconTheme.Key))
-                    ?.Value
-            )
+            field.Group != nameof(FactionTheme.MissionIcons)
+            || neutral
+                == MissionIconKeys.UsesSharedArtwork(
+                    field
+                        .XmlElement.Ancestors(nameof(MissionIconTheme))
+                        .FirstOrDefault()
+                        ?.Element(nameof(MissionIconTheme.Key))
+                        ?.Value
+                )
         );
 
     /// <summary>
@@ -221,18 +221,42 @@ internal static class ContentEditorContentSections
     /// Identifies faction-theme images that are rendered by an interface surface.
     /// </summary>
     /// <param name="field">A faction-theme image field.</param>
-    /// <param name="neutral">Whether the neutral theme can edit shared artwork.</param>
+    /// <param name="neutral">Whether the fields belong to the neutral theme.</param>
     /// <returns>Whether the field belongs to the interface browser.</returns>
     internal static bool IsFactionInterfaceField(
         ContentPackEditorField field,
         bool neutral = false
     ) =>
-        IsAdvisorPlacementField(field)
+        !neutral && IsAdvisorPlacementField(field)
         || IsFactionArtworkField(field, neutral)
             && !IsFactionBackgroundField(field)
             && !IsUnusedUnitTileField(field)
             && !IsRemovedMixedPlanetMarker(field)
-            && (neutral || IsFactionOwnedArtworkAddress(field.Value));
+            && (
+                neutral
+                    ? IsNeutralInterfaceArtwork(field)
+                    : IsFactionOwnedArtworkAddress(field.Value)
+            );
+
+    /// <summary>
+    /// Selects the artwork for interfaces that use the neutral theme instead of the player's theme.
+    /// </summary>
+    /// <param name="field">A neutral-theme image field.</param>
+    /// <returns>Whether the field belongs to a neutral interface surface.</returns>
+    private static bool IsNeutralInterfaceArtwork(ContentPackEditorField field) =>
+        FactionArtworkCategory(field, neutral: true) switch
+        {
+            "Strategy view" or "Advisor" => false,
+            "Planet sector" => field.Group == nameof(FactionTheme.StrategyBookmarkIcons)
+                || (
+                    field.XmlElement.Parent?.Parent?.Name.LocalName
+                        == nameof(PlanetOverlayTheme.PlanetOverlayIcons)
+                    && field.XmlElement.Parent.Name.LocalName
+                        is nameof(PlanetOverlayIcons.Buildings)
+                            or nameof(PlanetOverlayIcons.Defenses)
+                ),
+            _ => true,
+        };
 
     /// <summary>
     /// Identifies a coordinate stored in one of the strategy advisor's placement rectangles.
@@ -380,8 +404,12 @@ internal static class ContentEditorContentSections
     /// Assigns faction artwork to the game surface where the image is displayed.
     /// </summary>
     /// <param name="field">A faction-theme image field.</param>
+    /// <param name="neutral">Whether to group shared artwork independently of the player's strategy view.</param>
     /// <returns>The artwork browser category.</returns>
-    internal static string FactionArtworkCategory(ContentPackEditorField field)
+    internal static string FactionArtworkCategory(
+        ContentPackEditorField field,
+        bool neutral = false
+    )
     {
         if (field.Group == nameof(FactionTheme.ArtworkDefaults))
             return "Default backgrounds";
@@ -401,8 +429,11 @@ internal static class ContentEditorContentSections
         if (IsAdvisorPlacementField(field))
             return "Strategy view";
         if (root == nameof(FactionTheme.GalaxyBackground))
-            return field.MemberName == nameof(GalaxyBackground.DestroyedPlanetIconPath)
-                ? "Planet sector"
+            return neutral
+                && field.XmlElement.Parent?.Name.LocalName == nameof(GalaxyBackground.PlanetIcons)
+                    ? "Galaxy map icons"
+                : field.MemberName == nameof(GalaxyBackground.DestroyedPlanetIconPath)
+                    ? "Planet sector"
                 : "Strategy view";
         if (root == nameof(FactionTheme.PlanetOverlayTheme))
         {
@@ -426,7 +457,7 @@ internal static class ContentEditorContentSections
         if (root == nameof(FactionTheme.PlanetWindowTheme))
             return PlanetWindowArtworkCategory(field);
         if (root == nameof(FactionTheme.MissionIcons))
-            return "Missions";
+            return neutral ? "Shared mission icons" : "Missions";
         if (root == nameof(FactionTheme.GalacticInformationDisplay))
             return "Galactic information";
         if (root is nameof(FactionTheme.StrategyAdvisor) or nameof(FactionTheme.StrategyBriefing))
@@ -660,6 +691,8 @@ internal static class ContentEditorContentSections
         {
             "Planet sector" =>
                 "Destroyed planets, the composed planet-sector window, map overlays, and bookmarks.",
+            "Galaxy map icons" => "Star markers for neutral planets on the galaxy map.",
+            "Shared mission icons" => "Facility research artwork used by all factions.",
             "Strategy view" =>
                 "The complete strategy interface, including its frame, controls, speed indicators, message notifications, and context menus.",
             "Defense window" =>

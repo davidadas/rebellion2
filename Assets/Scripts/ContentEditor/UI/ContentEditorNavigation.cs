@@ -231,6 +231,7 @@ public sealed class ContentEditorNavigation
                                     neutral: true
                                 )
                             )
+                            .Where(field => field.Group != nameof(FactionTheme.TacticalHUDLayout))
                             .ToArray(),
                         new[] { neutral }
                     )

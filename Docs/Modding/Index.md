@@ -203,8 +203,10 @@ color, selected menu text color, and individual interface tints. **Reset colors*
 restores the inherited or default colors for that theme.
 
 Open **Factions > Neutral theme** to preview and edit shared interface artwork.
-Double-click an outlined icon to open its image settings. Use **Colors** for the
-neutral palette and **Advanced** for XML settings such as HUD coordinates.
+Double-click an outlined sector icon to open its image settings. Use
+**Galaxy map icons** for neutral star markers and **Shared mission icons** for
+facility research artwork. Player HUD artwork is under each faction's
+**Interfaces > Strategy view**.
 
 ## Sharing a mod
 

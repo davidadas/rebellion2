@@ -2730,7 +2730,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             string[] configuredCategories = theme
                 .GetFields()
                 .Where(field => field.MemberName == "DisabledImagePath")
-                .Select(ContentEditorContentSections.FactionArtworkCategory)
+                .Select(field => ContentEditorContentSections.FactionArtworkCategory(field))
                 .Distinct()
                 .OrderBy(category => category, StringComparer.Ordinal)
                 .ToArray();
@@ -3067,6 +3067,29 @@ namespace Rebellion.Tests.ContentEditor.UI
                 defense.GetComponent<ContentEditorArtworkEditTarget>();
             Assert.AreSame(page.Record.Element, target.Field.Record.Element);
             Assert.AreEqual(defensePath, target.Field.Value);
+        }
+
+        [Test]
+        public void Render_NeutralSectorWithUprisingArtwork_HidesTheFactionOverlay()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find(ContentEditorContentSections.NeutralThemePageKey));
+            FactionTheme neutral = ContentEditorPresentation.GetNeutralTheme(project);
+            Assert.IsNotNull(
+                assets.GetTexture(neutral.PlanetOverlayTheme.PlanetSectorUprisingImagePath)
+            );
+
+            RenderSection("Interfaces");
+            SelectArtworkSurface("Planet sector");
+
+            ContentEditorSectorPreview preview =
+                view.GetComponentInChildren<ContentEditorSectorPreview>();
+            Assert.IsFalse(
+                preview
+                    .GetComponentsInChildren<RawImage>()
+                    .Any(image => image.name == "UprisingImage")
+            );
         }
 
         [Test]

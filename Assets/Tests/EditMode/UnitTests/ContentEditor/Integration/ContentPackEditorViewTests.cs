@@ -1029,6 +1029,64 @@ namespace Rebellion.Tests.ContentEditor.Integration
         }
 
         [Test]
+        public void SelectPage_NeutralThemeWithHud_HidesPlayerStrategyView()
+        {
+            ContentPackEditorRecord neutral = ContentEditorPresentation.GetNeutralThemeRecord(
+                project.GetCatalogs()
+            );
+            neutral.Element.Add(
+                new XElement(
+                    nameof(FactionTheme.TacticalHUDLayout),
+                    new XElement(
+                        nameof(TacticalHUDLayout.ImagePath),
+                        "Pack/Factions/Alliance/Strategy/UI/Hud/background"
+                    )
+                )
+            );
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = navigation.Find(
+                ContentEditorContentSections.NeutralThemePageKey
+            );
+
+            SelectPage(page);
+
+            TMP_Dropdown surfaces = view.GetComponentsInChildren<TMP_Dropdown>()
+                .Single(dropdown => dropdown.name == "ArtworkViewSelector");
+            CollectionAssert.DoesNotContain(
+                surfaces.options.Select(option => option.text).ToArray(),
+                "Strategy view"
+            );
+        }
+
+        [Test]
+        public void SelectPage_NeutralGalaxyMapIcons_ShowsEditableStarMarkers()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find(ContentEditorContentSections.NeutralThemePageKey));
+            TMP_Dropdown surfaces = view.GetComponentsInChildren<TMP_Dropdown>()
+                .Single(dropdown => dropdown.name == "ArtworkViewSelector");
+
+            int index = surfaces.options.FindIndex(option => option.text == "Galaxy map icons");
+            Assert.GreaterOrEqual(index, 0);
+            surfaces.value = index;
+
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    nameof(PlanetIcons.Small),
+                    nameof(PlanetIcons.Medium),
+                    nameof(PlanetIcons.Large),
+                    nameof(PlanetIcons.XL),
+                },
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Where(field => field.Field.MediaType == ContentPackEditorMediaType.Image)
+                    .Select(field => field.Field.MemberName)
+            );
+        }
+
+        [Test]
         public void ShowField_NeutralThemeCoordinate_OpensAdvancedXml()
         {
             ContentPackEditorRecord neutral = ContentEditorPresentation.GetNeutralThemeRecord(

@@ -3190,7 +3190,9 @@ public sealed class ContentEditorFormView : MonoBehaviour
         bool neutral = selectedPage.Key == ContentEditorContentSections.NeutralThemePageKey;
         IEnumerable<string> categoryNames = ContentEditorContentSections.FactionArtworkCategories;
         if (neutral)
-            categoryNames = categoryNames.Append("Other artwork");
+            categoryNames = categoryNames
+                .Concat(new[] { "Galaxy map icons", "Other artwork", "Shared mission icons" })
+                .OrderBy(name => name, StringComparer.Ordinal);
         var categories = categoryNames
             .Select(name => new
             {
@@ -3198,7 +3200,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 Fields = selectedPage
                     .Fields.Where(field =>
                         ContentEditorContentSections.IsFactionInterfaceField(field, neutral)
-                        && ContentEditorContentSections.FactionArtworkCategory(field) == name
+                        && ContentEditorContentSections.FactionArtworkCategory(field, neutral)
+                            == name
                     )
                     .ToArray(),
             })
@@ -3223,7 +3226,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
         }
 
         if (!categories.Any(category => category.Name == selectedFactionArtworkCategory))
-            selectedFactionArtworkCategory = categories[0].Name;
+            selectedFactionArtworkCategory =
+                neutral
+                && categories.Any(category => category.Name == _defaultFactionArtworkCategory)
+                    ? _defaultFactionArtworkCategory
+                    : categories[0].Name;
         y = PlaceFactionArtworkViewSelector(
             categories.Select(category => category.Name).ToArray(),
             y,
@@ -3236,7 +3243,9 @@ public sealed class ContentEditorFormView : MonoBehaviour
         bool window = artworkWindowPreview.Supports(category.Name);
         y +=
             PlaceLabel(
-                ContentEditorContentSections.FactionArtworkCategoryDescription(category.Name),
+                neutral && sector
+                    ? "Facility and defense icons for neutral planets, plus bookmark artwork."
+                    : ContentEditorContentSections.FactionArtworkCategoryDescription(category.Name),
                 labelIndex++,
                 4,
                 y,
@@ -3449,7 +3458,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         try
         {
             FactionTheme factionTheme = ContentEditorPresentation.GetFactionTheme(theme);
-            PlaceStrategyBackdrop(factionTheme);
+            PlaceStrategyBackdrop(neutral ? null : factionTheme);
             artworkSectorPreview.Render(project, sector, assets, factionTheme, editableFields);
         }
         catch (ArgumentException)
@@ -3502,13 +3511,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
             .GetFields()
             .Concat(selectedPage.Fields.Where(field => field.Record.Kind == "FactionTheme"))
             .ToArray();
+        bool neutral = selectedPage.Key == ContentEditorContentSections.NeutralThemePageKey;
         ContentPackEditorField[] surfaceFields = themeFields
             .Where(field =>
-                ContentEditorContentSections.IsFactionInterfaceField(
-                    field,
-                    selectedPage.Key == ContentEditorContentSections.NeutralThemePageKey
-                )
-                && ContentEditorContentSections.FactionArtworkCategory(field) == category
+                ContentEditorContentSections.IsFactionInterfaceField(field, neutral)
+                && ContentEditorContentSections.FactionArtworkCategory(field, neutral) == category
             )
             .ToArray();
         bool hasConfiguredDisabledArtwork = surfaceFields.Any(field =>
@@ -3665,11 +3672,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <summary>
     /// Places the faction's galaxy artwork behind the translucent sector window without distortion.
     /// </summary>
-    /// <param name="theme">The selected faction presentation.</param>
+    /// <param name="theme">The selected faction presentation, when a player backdrop applies.</param>
     private void PlaceStrategyBackdrop(FactionTheme theme)
     {
         RawImage backdrop = artworkSectorPreview.GetComponent<RawImage>();
-        string address = theme.GalaxyBackground?.ImagePath;
+        string address = theme?.GalaxyBackground?.ImagePath;
         Texture2D texture = string.IsNullOrWhiteSpace(address) ? null : assets.GetTexture(address);
         backdrop.texture = texture;
         backdrop.color = texture == null ? Color.black : Color.white;
@@ -3735,7 +3742,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
             FocusColorPicker(current);
             return;
         }
-        string category = ContentEditorContentSections.FactionArtworkCategory(current);
+        string category = ContentEditorContentSections.FactionArtworkCategory(
+            current,
+            selectedPage.Key == ContentEditorContentSections.NeutralThemePageKey
+        );
         if (category != selectedFactionArtworkCategory)
         {
             selectedFactionArtworkCategory = category;

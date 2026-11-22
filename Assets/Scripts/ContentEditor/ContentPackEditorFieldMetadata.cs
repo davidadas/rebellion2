@@ -573,6 +573,18 @@ internal static class ContentPackEditorFieldMetadata
     /// <returns>The supported media category.</returns>
     internal static ContentPackEditorMediaType GetMediaType(ContentPackEditorField field)
     {
+        if (
+            field.XmlElement.Parent?.Name.LocalName == nameof(GalaxyBackground.PlanetIcons)
+            && field.XmlElement.Parent.Parent?.Name.LocalName
+                == nameof(FactionTheme.GalaxyBackground)
+            && field.MemberName
+                is nameof(PlanetIcons.Small)
+                    or nameof(PlanetIcons.Medium)
+                    or nameof(PlanetIcons.Large)
+                    or nameof(PlanetIcons.XL)
+        )
+            return ContentPackEditorMediaType.Image;
+
         string ancestry = string.Join(
             "/",
             field.XmlElement.AncestorsAndSelf().Select(parent => parent.Name.LocalName)
