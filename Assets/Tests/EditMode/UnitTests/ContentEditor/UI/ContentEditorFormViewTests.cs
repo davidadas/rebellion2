@@ -3086,8 +3086,8 @@ namespace Rebellion.Tests.ContentEditor.UI
 
             RenderSection("Interfaces");
 
-            RectTransform artworkSurface = view.GetComponentsInChildren<RectTransform>()
-                .Single(rect => rect.name == "ArtworkViewSelector");
+            MenuDropdown artworkSurface = view.GetComponentsInChildren<MenuDropdown>()
+                .Single(dropdown => dropdown.name == "ArtworkViewSelector");
             CollectionAssert.IsSubsetOf(
                 new[]
                 {
@@ -3100,6 +3100,11 @@ namespace Rebellion.Tests.ContentEditor.UI
                 view.ArtworkViewOptions.ToArray()
             );
             Assert.AreEqual("Planet sector", view.ArtworkViewSelection);
+            CollectionAssert.AreEqual(
+                view.ArtworkViewOptions,
+                artworkSurface.options.Select(option => option.text).ToArray()
+            );
+            Assert.IsNotNull(artworkSurface.template.GetComponent<ScrollRect>().verticalScrollbar);
             RectInt selectorRect = UILayout.GetSourceRect((RectTransform)artworkSurface.transform);
             float selectorViewportWidth = artworkSurface
                 .GetComponentInParent<ScrollAreaView>()
@@ -3114,7 +3119,6 @@ namespace Rebellion.Tests.ContentEditor.UI
                 view.GetComponentsInChildren<TMP_Text>()
                     .Any(label => label.text.StartsWith("Planet sector ("))
             );
-            Assert.AreEqual(2, artworkSurface.GetComponentsInChildren<Button>().Length);
             ContentEditorSectorPreview sectorPreview =
                 view.GetComponentInChildren<ContentEditorSectorPreview>();
             Assert.IsNotNull(sectorPreview);
@@ -3917,16 +3921,13 @@ namespace Rebellion.Tests.ContentEditor.UI
         /// <param name="caption">The exact interface surface caption.</param>
         private void SelectArtworkSurface(string caption)
         {
-            CollectionAssert.Contains(view.ArtworkViewOptions, caption);
-            for (
-                int attempt = 0;
-                attempt < view.ArtworkViewOptions.Count && view.ArtworkViewSelection != caption;
-                attempt++
-            )
-                view.GetComponentsInChildren<Button>()
-                    .Single(button => button.name == "NextArtworkView")
-                    .onClick.Invoke();
+            MenuDropdown selector = view.GetComponentsInChildren<MenuDropdown>()
+                .Single(dropdown => dropdown.name == "ArtworkViewSelector");
+            int index = selector.options.FindIndex(option => option.text == caption);
+            Assert.GreaterOrEqual(index, 0, caption);
+            selector.value = index;
             Assert.AreEqual(caption, view.ArtworkViewSelection);
+            Assert.AreEqual(caption, selector.captionText.text);
             Canvas.ForceUpdateCanvases();
         }
 
