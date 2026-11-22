@@ -209,7 +209,7 @@ public sealed class ContentEditorNavigation
                 factions.Children.Add(
                     new ContentEditorTreeNode(
                         ContentEditorContentSections.NeutralThemePageKey,
-                        "Neutral theme",
+                        "Neutral",
                         1,
                         neutral,
                         neutral.Catalog,

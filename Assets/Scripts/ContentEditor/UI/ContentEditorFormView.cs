@@ -3201,7 +3201,14 @@ public sealed class ContentEditorFormView : MonoBehaviour
         IEnumerable<string> categoryNames = ContentEditorContentSections.FactionArtworkCategories;
         if (neutral)
             categoryNames = categoryNames
-                .Concat(new[] { "Galaxy map icons", "Other artwork", "Shared mission icons" })
+                .Concat(
+                    new[]
+                    {
+                        "Galaxy map icons",
+                        "Other artwork",
+                        ContentEditorContentSections.FacilityResearchIconsArtworkCategory,
+                    }
+                )
                 .OrderBy(name => name, StringComparer.Ordinal);
         var categories = categoryNames
             .Select(name => new

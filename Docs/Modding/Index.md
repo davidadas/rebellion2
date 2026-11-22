@@ -209,9 +209,9 @@ or use the zoom buttons. Drag wherever the hand cursor appears to pan. Drag
 movable artwork directly, or hold Alt (Option on Mac) and drag to move a custom
 galaxy background. **Fit to view** restores the full scene.
 
-Open **Factions > Neutral theme** to preview and edit shared interface artwork.
+Open **Factions > Neutral** to preview and edit shared interface artwork.
 Double-click an outlined sector icon to open its image settings. Use
-**Galaxy map icons** for neutral star markers and **Shared mission icons** for
+**Galaxy map icons** for neutral star markers and **Facility research icons** for
 facility research artwork. Player HUD artwork is under each faction's
 **Interfaces > Strategy view**.
 
