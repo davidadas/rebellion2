@@ -18,6 +18,67 @@ namespace Rebellion.Tests.ContentEditor.UI
     public sealed class ContentPackEditorWorkspaceControllerTests : ContentEditorViewTestBase
     {
         [Test]
+        public void SelectRecord_DuplicateAuthoredTypeID_PreservesFormAndShowsValidationError()
+        {
+            project = ContentEditorTestData.CreateLoadableProject(
+                Path.Combine(folder, "InheritedContent")
+            );
+            ContentPackEditorRecord ship = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "CapitalShip");
+            XElement overlay = new XElement(
+                "CapitalShips",
+                new XAttribute("Inherit", true),
+                new XElement(
+                    "CapitalShip",
+                    new XElement("TypeID", ship.ID),
+                    new XElement("DisplayName", "Edited ship")
+                ),
+                new XElement(
+                    "CapitalShip",
+                    new XElement("TypeID", ship.ID),
+                    new XElement("ResearchOrder", 10)
+                )
+            );
+            Directory.CreateDirectory(Path.GetDirectoryName(ship.Catalog.Document.TargetPath));
+            File.WriteAllText(ship.Catalog.Document.TargetPath, overlay.ToString());
+            project = ContentPackEditorStorage.OpenFolder(
+                project.ContentRootPath,
+                project.PackRootPath
+            );
+            workspace.RenderProject(project, assets);
+            ContentPackEditorRecord previous = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "CapitalShip" && record.ID != ship.ID);
+            SelectRecord(previous);
+            ContentPackEditorRecord duplicate = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.ID == ship.ID);
+
+            Assert.DoesNotThrow(() => SelectRecord(duplicate));
+
+            Assert.IsTrue(
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Any(field => field.Field?.Record.ID == previous.ID)
+            );
+            Assert.IsFalse(
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Any(field => field.Field?.Record.ID == duplicate.ID)
+            );
+            Assert.IsTrue(
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Any(text =>
+                        text.text.Contains("Duplicate TypeID")
+                        && text.text.Contains(ship.ID)
+                        && text.text.Contains(ship.Catalog.Document.Address)
+                    )
+            );
+        }
+
+        [Test]
         public void RenderFieldError_SnapshotInvalidChoice_RevealsAndFocusesItsDropdown()
         {
             GameObject eventSystem = new GameObject("EventSystem");

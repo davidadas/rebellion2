@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -274,6 +275,21 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         ContentPackEditorRecord sector
     )
     {
+        string typeID =
+            (string)record?.Element.Element("TypeID")
+            ?? (string)record?.Element.Attribute("TypeID");
+        if (typeID != null)
+        {
+            try
+            {
+                record.Catalog.ValidateAuthoredTypeIDs(typeID);
+            }
+            catch (InvalidDataException exception)
+            {
+                view.RenderStatus(exception.Message, true);
+                return;
+            }
+        }
         session.Select(record, page, sector);
         view.RenderSelection(session.Selection);
     }
