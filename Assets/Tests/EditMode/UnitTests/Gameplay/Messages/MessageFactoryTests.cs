@@ -3131,6 +3131,62 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual("recon-unit-image", message.OverlayImagePath);
         }
 
+        [TestCase(MissionOutcome.Failed)]
+        [TestCase(MissionOutcome.Foiled)]
+        public void CreateMessages_UnsuccessfulReconnaissanceMission_NavigatesToMissionPlanet(
+            MissionOutcome outcome
+        )
+        {
+            (GameRoot game, Faction alliance, _, Planet origin, Planet target) =
+                BuildTwoFactionMessageScene();
+            Mission mission = new ReconnaissanceMission
+            {
+                ConfigKey = ReconnaissanceMission.MissionTypeID,
+                DisplayName = "Reconnaissance",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            SpecialForces reconUnit = new SpecialForces
+            {
+                InstanceID = "RECON-UNIT",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(mission, target);
+            game.AttachNode(reconUnit, origin);
+            MessageResultOutcome messageOutcome =
+                outcome == MissionOutcome.Foiled
+                    ? MessageResultOutcome.Foiled
+                    : MessageResultOutcome.Failed;
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.MissionReport,
+                            MessageType.Mission,
+                            "title",
+                            "body",
+                            outcome: messageOutcome,
+                            missionTypeId: ReconnaissanceMission.MissionTypeID
+                        ),
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionName = "Reconnaissance",
+                        MissionTypeID = ReconnaissanceMission.MissionTypeID,
+                        Outcome = outcome,
+                        Participants = new List<IMissionParticipant> { reconUnit },
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual(target.InstanceID, message.EventLocationInstanceID);
+            Assert.AreEqual(target.InstanceID, message.NavigationTargetInstanceID);
+        }
+
         [Test]
         public void CreateMessages_JediTrainingReport_UsesTrainerAsReporter()
         {
