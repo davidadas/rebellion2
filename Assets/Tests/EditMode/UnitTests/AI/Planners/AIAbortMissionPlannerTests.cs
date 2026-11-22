@@ -16,13 +16,16 @@ using Rebellion.Tests.AI.Helpers;
 namespace Rebellion.Tests.AI.Planners
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public class AIAbortMissionPlannerTests
     {
         [Test]
         public void Plan_WithUnknownMissionTarget_AddsAbortProposal()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction rebels,
+                TestConfig.Create()
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
@@ -46,7 +49,11 @@ namespace Rebellion.Tests.AI.Planners
         [Test]
         public void Plan_WithSafeSpecialForcesMission_DoesNotAddAbortProposal()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction _,
+                TestConfig.Create()
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet planet = AITestSceneBuilder.AddPlanet(game, system, "planet", empire.InstanceID);
             SpecialForces specialForces = AITestSceneBuilder.CreateSpecialForces(
@@ -74,7 +81,11 @@ namespace Rebellion.Tests.AI.Planners
         [Test]
         public void Plan_WithTravelingReconnaissanceMission_DoesNotAddAbortProposal()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction rebels,
+                TestConfig.Create()
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             SpecialForces probe = AITestSceneBuilder.CreateSpecialForces(

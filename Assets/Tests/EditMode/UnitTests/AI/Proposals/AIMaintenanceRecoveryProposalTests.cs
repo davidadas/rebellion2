@@ -13,7 +13,6 @@ using Rebellion.Tests.AI.Helpers;
 namespace Rebellion.Tests.AI.Proposals
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public class AIMaintenanceRecoveryProposalTests
     {
         private GameRoot _game;
@@ -27,7 +26,7 @@ namespace Rebellion.Tests.AI.Proposals
         [SetUp]
         public void SetUp()
         {
-            _game = AITestSceneBuilder.CreateGame(out _faction, out Faction _);
+            _game = AITestSceneBuilder.CreateGame(out _faction, out Faction _, TestConfig.Create());
             _game.Summary = new GameSummary { Difficulty = GameDifficulty.Hard };
             _game.SetFactionController(_faction.InstanceID, "ai", PlayerControllerType.AI);
             _game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers

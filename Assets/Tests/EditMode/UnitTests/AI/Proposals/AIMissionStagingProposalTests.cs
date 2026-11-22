@@ -11,7 +11,6 @@ using Rebellion.Tests.AI.Helpers;
 namespace Rebellion.Tests.AI.Proposals
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public class AIMissionStagingProposalTests
     {
         [Test]
@@ -201,7 +200,11 @@ namespace Rebellion.Tests.AI.Proposals
             AIMissionStagingProposal Proposal
         ) CreateStagingContext()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction rebels,
+                TestConfig.Create()
+            );
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet firstOrigin = AITestSceneBuilder.AddPlanet(
                 game,

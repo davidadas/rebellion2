@@ -131,7 +131,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void GetSummaryImagePath_DestroyedDefender_ReturnsAttackerVictoryArtwork()
         {
             BattleAlertWindowTheme theme = CreateTheme();

@@ -261,10 +261,14 @@ namespace Rebellion.Tests.AI.Helpers
         /// Arranges a construction lane with a shield competing against industrial expansion.
         /// </summary>
         /// <param name="order">Receives the unfinished shield.</param>
+        /// <param name="config">The rules for this test. Omit for shipped rules.</param>
         /// <returns>The faction turn containing the current manufacturing order.</returns>
-        public static AITurnContext CreateProductionComparison(out Building order)
+        public static AITurnContext CreateProductionComparison(
+            out Building order,
+            GameConfig config = null
+        )
         {
-            GameRoot game = CreateGame(out Faction faction, out _);
+            GameRoot game = CreateGame(out Faction faction, out _, config);
             game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
             game.Config.AI.Selection.DemandUtility.Weight = 1;
@@ -367,10 +371,15 @@ namespace Rebellion.Tests.AI.Helpers
         /// </summary>
         /// <param name="empire">Receives the empire.</param>
         /// <param name="rebels">Receives the rebels.</param>
+        /// <param name="config">The rules for this test. Omit for shipped rules.</param>
         /// <returns>The created game.</returns>
-        public static GameRoot CreateGame(out Faction empire, out Faction rebels)
+        public static GameRoot CreateGame(
+            out Faction empire,
+            out Faction rebels,
+            GameConfig config = null
+        )
         {
-            GameRoot game = TestGame.Create(TestConfig.Create());
+            GameRoot game = TestGame.Create(config ?? TestContent.CreateGameConfig());
             empire = new Faction { InstanceID = "empire" };
             rebels = new Faction { InstanceID = "rebels" };
             empire.Settings.ResourceProcessingPointsPerFacility = 50;

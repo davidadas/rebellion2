@@ -12,7 +12,6 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public class SmugglingCommandsTests
     {
         private GameRoot _game;
@@ -26,7 +25,7 @@ namespace Rebellion.Tests.Gameplay
         [SetUp]
         public void SetUp()
         {
-            _game = TestGame.Create(TestContent.Data.GameConfig);
+            _game = TestGame.Create(TestConfig.Create());
             _game.Random = new StubRNG();
             _controller = new Faction { InstanceID = "FACTION1" };
             _game.GetFactions().Add(_controller);

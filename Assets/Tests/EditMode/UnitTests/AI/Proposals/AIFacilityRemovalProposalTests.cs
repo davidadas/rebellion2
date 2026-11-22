@@ -19,7 +19,6 @@ using Rebellion.Tests.AI.Helpers;
 namespace Rebellion.Tests.AI.Proposals
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public sealed class AIFacilityRemovalProposalTests
     {
         [Test]
@@ -233,7 +232,11 @@ namespace Rebellion.Tests.AI.Proposals
         /// <returns>The faction turn with scrapping and manufacturing services.</returns>
         private static AITurnContext CreateResourceHubContext(out Planet hub)
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction faction,
+                out _,
+                TestConfig.Create()
+            );
             game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 0;
             game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount = 0;
             game.Config.AI.Selection.MaintenanceHeadroomTarget = 1000;
@@ -308,7 +311,11 @@ namespace Rebellion.Tests.AI.Proposals
             int maintenanceCost
         )
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction _,
+                TestConfig.Create()
+            );
             game.Config.AI.Selection.MaintenanceRecovery.Enabled = false;
             game.Config.AI.Infrastructure.ShipyardPrimaryHubTargetCount = 1;
             game.Config.AI.Infrastructure.ShipyardSecondaryHubTargetCount = 0;

@@ -16,7 +16,6 @@ namespace Rebellion.Tests.Game.Units
         [TestCase(79, false)]
         [TestCase(80, true)]
         [TestCase(81, true)]
-        [Category("RequiresMedia")]
         public void ForceValue_RankCrossesDiscoveryThreshold_UpdatesBeforeNextTick(
             int rank,
             bool expectedDiscovery

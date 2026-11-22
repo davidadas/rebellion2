@@ -2039,6 +2039,8 @@ namespace Rebellion.Tests.Gameplay
             config.AI.Garrison.SupportThreshold = 50;
             config.AI.Garrison.GarrisonDivisor = 10;
             config.AI.Garrison.UprisingMultiplier = 2;
+            config.AI.Garrison.MinimumGarrisonTarget = 1;
+            config.AI.Garrison.ResourceFacilitiesPerGarrison = 2;
             GameRoot game = TestGame.Create(config);
             Faction faction = new Faction
             {

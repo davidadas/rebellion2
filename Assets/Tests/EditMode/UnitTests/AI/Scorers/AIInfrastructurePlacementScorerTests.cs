@@ -15,13 +15,16 @@ using Rebellion.Tests.AI.Helpers;
 namespace Rebellion.Tests.AI.Scorers
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public class AIInfrastructurePlacementScorerTests
     {
         [Test]
         public void SelectDestination_WithUnrepresentedSystem_PrefersSystemCoverage()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction _,
+                TestConfig.Create()
+            );
             PlanetSector developedSystem = AITestSceneBuilder.AddSector(game, "developed-system");
             PlanetSector uncoveredSystem = AITestSceneBuilder.AddSector(game, "uncovered-system");
             Planet existingHub = AITestSceneBuilder.AddPlanet(
@@ -59,7 +62,11 @@ namespace Rebellion.Tests.AI.Scorers
         [Test]
         public void SelectDestination_WithinRepresentedSystem_PrefersExistingHub()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction _,
+                TestConfig.Create()
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet existingHub = AITestSceneBuilder.AddPlanet(
                 game,
@@ -95,7 +102,11 @@ namespace Rebellion.Tests.AI.Scorers
         [Test]
         public void SelectDestination_ForConstructionFacility_PrefersCompoundingHub()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction _,
+                TestConfig.Create()
+            );
             PlanetSector developedSystem = AITestSceneBuilder.AddSector(game, "developed-system");
             PlanetSector uncoveredSystem = AITestSceneBuilder.AddSector(game, "uncovered-system");
             Planet existingHub = AITestSceneBuilder.AddPlanet(
@@ -132,7 +143,11 @@ namespace Rebellion.Tests.AI.Scorers
         [Test]
         public void SelectDestination_WithEquivalentShipyardSites_PreservesResourceWorld()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction _,
+                TestConfig.Create()
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet resourceWorld = AITestSceneBuilder.AddPlanet(
                 game,
@@ -162,7 +177,11 @@ namespace Rebellion.Tests.AI.Scorers
         [Test]
         public void RankHubDestinations_WithUnassignedAlternative_AvoidsMixingFacilityCategories()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction _,
+                TestConfig.Create()
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet mixedPlanet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -207,7 +226,11 @@ namespace Rebellion.Tests.AI.Scorers
         [Test]
         public void RankHubDestinations_WithMixedTargetFacility_PrefersExistingHub()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction _,
+                TestConfig.Create()
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet existingHub = AITestSceneBuilder.AddPlanet(
                 game,
@@ -268,7 +291,11 @@ namespace Rebellion.Tests.AI.Scorers
             int targetCount
         )
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction faction,
+                out Faction _,
+                TestConfig.Create()
+            );
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet smallSite = AITestSceneBuilder.AddPlanet(
                 game,
@@ -313,7 +340,11 @@ namespace Rebellion.Tests.AI.Scorers
         [Test]
         public void RankHubDestinations_WithExistingHubUnableToReachTarget_PrefersViableSite()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction _,
+                TestConfig.Create()
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet constrainedHub = AITestSceneBuilder.AddPlanet(
                 game,

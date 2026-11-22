@@ -15,13 +15,16 @@ using Rebellion.Tests.AI.Helpers;
 namespace Rebellion.Tests.AI.Proposals
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public class AIAbortMissionProposalTests
     {
         [Test]
         public void Execute_WithActiveOwnedMission_AbortsMission()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction _,
+                TestConfig.Create()
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet planet = AITestSceneBuilder.AddPlanet(game, system, "planet", empire.InstanceID);
             Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
@@ -46,7 +49,11 @@ namespace Rebellion.Tests.AI.Proposals
         [Test]
         public void CanSelect_WithDetachedMission_ReturnsFalse()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction _,
+                TestConfig.Create()
+            );
             StubMission mission = EntityFactory.CreateMission(
                 "mission",
                 empire.InstanceID,

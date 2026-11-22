@@ -46,11 +46,11 @@ Run these from the repository root:
 
 Running `./build.sh` without a command is equivalent to `./build.sh all`.
 
-The core suite runs without the media setup above and skips UI generation. Use small checked-in or
-temporary fixtures for engine tests. Use `[Category("RequiresMedia")]` for cases whose current setup
-needs the shipped content, its assets, or generated UI. Place it on the individual case unless
-the fixture uses the media-backed setup throughout. The full media-enabled CI run still checks
-combined coverage and the shipped pack with the engine.
+PR CI runs the core suite without a media checkout or UI generation. Use small checked-in or
+temporary fixtures for engine tests. Use `[Category("RequiresMedia")]` for cases that exercise
+shipped content, its assets, or generated UI. Place it on the individual case unless the fixture uses
+the media-backed setup throughout. Default-branch CI runs both groups with the pinned pack and checks
+combined coverage.
 
 Set `UNITY` if Unity is installed somewhere other than the detected platform default. Set `PYTHON`
 to use a different Python executable. Standalone builds use the host platform unless `BUILD_TARGET`

@@ -12,7 +12,6 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public class HeadquartersCommandsTests
     {
         [Test]

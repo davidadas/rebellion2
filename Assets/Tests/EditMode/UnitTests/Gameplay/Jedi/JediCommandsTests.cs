@@ -19,7 +19,6 @@ namespace Rebellion.Tests.Gameplay
     /// Tests for JediCommands force discovery state and force user discovery scanning.
     /// </summary>
     [TestFixture]
-    [Category("RequiresMedia")]
     public class JediCommandsTests
     {
         private GameRoot _game;
@@ -34,7 +33,7 @@ namespace Rebellion.Tests.Gameplay
         [SetUp]
         public void SetUp()
         {
-            GameConfig config = TestContent.Data.GameConfig;
+            GameConfig config = TestConfig.Create();
             _game = TestGame.Create(config);
             _system = new JediCommands(_game, new FixedRNG());
 
@@ -74,6 +73,7 @@ namespace Rebellion.Tests.Gameplay
         [TestCase("DARTH_VADER", true)]
         [TestCase("EMPEROR_PALPATINE", false)]
         [TestCase("LEIA_ORGANA", false)]
+        [Category("RequiresMedia")]
         public void ProcessTick_AuthoredOfficerAtDiscoveryRank_UsesTrainerQualification(
             string instanceID,
             bool expectedDiscovery
@@ -584,6 +584,7 @@ namespace Rebellion.Tests.Gameplay
         [TestCase("LUKE_SKYWALKER", false, false)]
         [TestCase("LUKE_SKYWALKER", true, true)]
         [TestCase("OTHER_TRAINER", true, false)]
+        [Category("RequiresMedia")]
         public void ProcessTick_AuthoredDiscoveryRequirements_RequiresDiscovererAndEncounter(
             string discovererID,
             bool hasEncountered,

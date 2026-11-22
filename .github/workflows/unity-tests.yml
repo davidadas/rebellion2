@@ -309,7 +309,7 @@ jobs:
       pull-requests: write
 
   test:
-    name: Test
+    name: Shipped pack compatibility
     if: github.event_name == 'push'
     needs: resolve-media
     uses: ./.github/workflows/unity-test-runner.yml
@@ -351,7 +351,7 @@ jobs:
               number: process.env.PR_NUMBER, headSha: process.env.PR_HEAD_SHA });
 
   approve-pr:
-    name: Review private test access
+    name: Review fork Unity tests
     needs: pr-plan
     runs-on: ubuntu-latest
     environment:
@@ -365,7 +365,6 @@ jobs:
     outputs:
       base_sha: ${{ steps.approve.outputs.base_sha }}
       head_repository: ${{ steps.approve.outputs.head_repository }}
-      media_branch: ${{ steps.approve.outputs.media_branch }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -384,35 +383,27 @@ jobs:
               number: process.env.PR_NUMBER, headSha: process.env.PR_HEAD_SHA,
               checkId: process.env.CHECK_ID });
 
-  resolve-pr-media:
-    name: Resolve approved PR media
-    needs: approve-pr
-    uses: ./.github/workflows/resolve-media.yml
-    with:
-      branch: ${{ needs.approve-pr.outputs.media_branch }}
-    secrets: inherit
-    permissions:
-      contents: read
-
   test-pr:
     name: Test reviewed PR
-    needs: [approve-pr, resolve-pr-media]
+    needs: approve-pr
     uses: ./.github/workflows/unity-test-runner.yml
     with:
       base_sha: ${{ needs.approve-pr.outputs.base_sha }}
       reviewed_head_sha: ${{ inputs.head_sha }}
       reviewed_head_repository: ${{ needs.approve-pr.outputs.head_repository }}
-      media_sha: ${{ needs.resolve-pr-media.outputs.sha }}
+      core_only: true
       publish_checks: false
       save_cache: false
-    secrets: inherit
+    secrets:
+      UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+      UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
     permissions:
       contents: read
 
   pr-result:
     name: Report reviewed PR tests
     if: always() && github.event_name == 'workflow_dispatch' && needs.pr-plan.outputs.check_id != ''
-    needs: [pr-plan, approve-pr, resolve-pr-media, test-pr]
+    needs: [pr-plan, approve-pr, test-pr]
     runs-on: ubuntu-latest
     permissions:
       checks: write
@@ -426,11 +417,10 @@ jobs:
         env:
           CHECK_ID: ${{ needs.pr-plan.outputs.check_id }}
           TEST_RESULT: ${{ needs.test-pr.result }}
-          MEDIA_RESULT: ${{ needs.resolve-pr-media.result }}
           APPROVAL_RESULT: ${{ needs.approve-pr.result }}
         with:
           script: |
             const { report } = require('./.github/scripts/pr-tests.cjs');
             await report({ github, context, checkId: process.env.CHECK_ID,
-              testResult: process.env.TEST_RESULT, mediaResult: process.env.MEDIA_RESULT,
+              testResult: process.env.TEST_RESULT,
               approvalResult: process.env.APPROVAL_RESULT });

@@ -17,7 +17,6 @@ namespace Rebellion.Tests.Gameplay.Scripting
     public class GameBindingResolverTests
     {
         [Test]
-        [Category("RequiresMedia")]
         public void Bind_DuplicateAlias_ConsumesRollBeforeRejectingAlias()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());

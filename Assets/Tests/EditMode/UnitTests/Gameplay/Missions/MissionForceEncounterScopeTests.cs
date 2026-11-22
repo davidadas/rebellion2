@@ -15,7 +15,6 @@ namespace Rebellion.Tests.Gameplay
     /// Verifies physical candidate scope independently of encounter probability and consequences.
     /// </summary>
     [TestFixture]
-    [Category("RequiresMedia")]
     public sealed class MissionForceEncounterScopeTests
     {
         private GameRoot _game;

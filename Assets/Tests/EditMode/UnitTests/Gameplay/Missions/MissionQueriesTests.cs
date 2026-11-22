@@ -645,7 +645,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void TryCreateMission_NullContext_ReturnsFalseAndNoMission()
         {
             MissionQueries queries = new MissionQueries(TestGame.Create(TestConfig.Create()));

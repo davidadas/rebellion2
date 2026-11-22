@@ -15,7 +15,6 @@ namespace Rebellion.Tests.Gameplay
     public class SpaceCombatQueriesTests : CombatTestBase
     {
         [Test]
-        [Category("RequiresMedia")]
         public void CanRetreatForces_FriendlyDestination_DoesNotMoveForces()
         {
             (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =

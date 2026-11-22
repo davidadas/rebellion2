@@ -13,7 +13,6 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public class ManufacturingCommandsTests
     {
         private GameRoot _game;
@@ -30,7 +29,7 @@ namespace Rebellion.Tests.Gameplay
         public void SetUp()
         {
             // Create game with galaxy
-            GameConfig config = TestContent.Data.GameConfig;
+            GameConfig config = TestConfig.Create();
             _game = TestGame.Create(config);
             _game.Summary.Difficulty = GameDifficulty.Medium;
             GalaxyMap galaxy = _game.Galaxy;
@@ -333,7 +332,7 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void ProcessTick_EmptyGame_ReturnsNoResults()
         {
-            GameConfig config = TestContent.Data.GameConfig;
+            GameConfig config = TestConfig.Create();
             GameRoot emptyGame = TestGame.Create(config);
             ManufacturingCommands emptyManager = new ManufacturingCommands(
                 emptyGame,

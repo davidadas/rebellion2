@@ -13,7 +13,6 @@ using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public class FacilityWindowProjectorTests
     {
         private const string _ownerId = "FNALL1";

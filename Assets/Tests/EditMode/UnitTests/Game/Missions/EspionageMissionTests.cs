@@ -13,7 +13,6 @@ using Rebellion.Gameplay;
 namespace Rebellion.Tests.Game.Missions
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public class EspionageMissionTests
     {
         [Test]

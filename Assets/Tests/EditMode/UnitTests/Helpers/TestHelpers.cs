@@ -4,8 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Xml;
-using System.Xml.Schema;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
@@ -382,54 +380,30 @@ public class FixedRandomProvider : IRandomNumberProvider
 
 public static class TestConfig
 {
-    private static string SchemaPath =>
-        Path.Combine(TestContent.Pack.ContentRootPath, "Application", "Schemas", "game-config.xsd");
+    private static readonly Lazy<GameConfig> _fixture = new(() =>
+    {
+        string file = Path.Combine(
+            Application.dataPath,
+            "Tests/EditMode/UnitTests/ContentEditor/Fixtures/EditorPack/Shared/Data/game-config.xml"
+        );
+        GameConfig config = SerializationHelper.Deserialize<GameConfig>(File.ReadAllText(file));
+        config.DifficultyModifiers.Clear();
+        config.AI.Garrison = new GameConfig.GarrisonConfig
+        {
+            SupportThreshold = 60,
+            GarrisonDivisor = 10,
+            UprisingMultiplier = 2,
+        };
+        return config;
+    });
 
     /// <summary>
-    /// Creates the requested operation.
+    /// Creates an isolated copy of the checked-in test rules.
     /// </summary>
-    /// <returns>The created value.</returns>
+    /// <returns>A configuration the caller can customize.</returns>
     public static GameConfig Create()
     {
-        GameConfig config = ContentPackLoader.LoadGameConfig(
-            TestContent.Pack.ContentRootPath,
-            TestContent.Pack.PackRootPath,
-            TestContent.Pack.Definition.GameConfigPath
-        );
-        config.DifficultyModifiers.Clear();
-        return config;
-    }
-
-    /// <summary>
-    /// Creates with schema.
-    /// </summary>
-    /// <returns>The created with schema.</returns>
-    public static GameConfig CreateWithSchema()
-    {
-        return Create();
-    }
-
-    /// <summary>
-    /// Deserializes with schema.
-    /// </summary>
-    /// <param name="xml">The xml.</param>
-    public static void DeserializeWithSchema(string xml)
-    {
-        GameSerializerSettings settings = BuildSchemaSettings();
-        GameSerializer serializer = new GameSerializer(typeof(GameConfig), settings);
-        using StringReader reader = new StringReader(xml);
-        serializer.Deserialize(reader);
-    }
-
-    /// <summary>
-    /// Builds schema settings.
-    /// </summary>
-    /// <returns>The constructed schema settings.</returns>
-    private static GameSerializerSettings BuildSchemaSettings()
-    {
-        XmlSchemaSet schemas = new XmlSchemaSet();
-        schemas.Add(null, XmlReader.Create(new StringReader(File.ReadAllText(SchemaPath))));
-        return new GameSerializerSettings { Schemas = schemas };
+        return _fixture.Value.CreateCopy();
     }
 }
 
@@ -694,11 +668,13 @@ public static class TestSystems
     /// <param name="game">The game state used by every system in the graph.</param>
     /// <param name="provider">The random number provider used by missions and uprisings.</param>
     /// <param name="movement">The movement system used by mission and control behavior.</param>
+    /// <param name="data">The test catalog for scripted units and messages.</param>
     /// <returns>A mission system with all required dependencies.</returns>
     public static MissionCommands CreateMissionCommands(
         GameRoot game,
         IRandomNumberProvider provider,
-        MovementCommands movement
+        MovementCommands movement,
+        GameDataCatalog data = null
     )
     {
         PlanetaryControlCommands control = new PlanetaryControlCommands(
@@ -712,7 +688,7 @@ public static class TestSystems
             control,
             new JediCommands(game, provider)
         );
-        return CreateMissionCommands(game, provider, movement, uprising);
+        return CreateMissionCommands(game, provider, movement, uprising, data);
     }
 
     /// <summary>
@@ -722,14 +698,17 @@ public static class TestSystems
     /// <param name="provider">The random number provider used by mission resolution.</param>
     /// <param name="movement">The movement system used by mission behavior.</param>
     /// <param name="uprising">The uprising resolver shared with mission resolution.</param>
+    /// <param name="data">The test catalog for scripted units and messages.</param>
     /// <returns>A mission system paired with its lifecycle resolver.</returns>
     public static MissionCommands CreateMissionCommands(
         GameRoot game,
         IRandomNumberProvider provider,
         MovementCommands movement,
-        UprisingResolver uprising
+        UprisingResolver uprising,
+        GameDataCatalog data = null
     )
     {
+        data ??= TestGameData.Create(game.Config);
         MissionQueries queries = new MissionQueries(game);
         PersonnelCommands personnelCommands = new PersonnelCommands(
             game,
@@ -758,11 +737,11 @@ public static class TestSystems
                 game,
                 provider,
                 new UnitFactory(
-                    TestContent.Data.Buildings,
-                    TestContent.Data.CapitalShips,
-                    TestContent.Data.Starfighters,
-                    TestContent.Data.Regiments,
-                    TestContent.Data.SpecialForces
+                    data.Buildings,
+                    data.CapitalShips,
+                    data.Starfighters,
+                    data.Regiments,
+                    data.SpecialForces
                 ),
                 movement,
                 new PlanetaryControlCommands(
@@ -771,7 +750,7 @@ public static class TestSystems
                     new FogOfWarQueries(game)
                 ),
                 duels,
-                new MessageCommands(game, new MessageFactory(TestContent.Data.MessageDefinitions)),
+                new MessageCommands(game, new MessageFactory(data.MessageDefinitions)),
                 resolver,
                 new BlockadeTransitionResolver(game)
             )

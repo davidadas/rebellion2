@@ -12,7 +12,6 @@ using Rebellion.Game.Units;
 namespace Rebellion.Tests.Game.Missions
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public class ResearchMissionTests
     {
         private GameRoot _game;

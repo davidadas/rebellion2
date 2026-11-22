@@ -17,7 +17,6 @@ using Rebellion.Util.Random;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public sealed class MissionObserverTests
     {
         [TestCase(false)]

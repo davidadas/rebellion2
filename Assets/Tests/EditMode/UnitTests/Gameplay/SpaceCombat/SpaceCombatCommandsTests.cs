@@ -20,7 +20,6 @@ namespace Rebellion.Tests.Gameplay
     public class SpaceCombatCommandsTests : CombatTestBase
     {
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_TwoFactionFleets_RunsSpaceCombat()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());

@@ -340,12 +340,10 @@ jobs:
           retention-days: 7
 
       - uses: actions/setup-dotnet@v4
-        if: inputs.media_sha != ''
         with:
           dotnet-version: '8.0.x'
 
       - name: Check compiled architecture
-        if: inputs.media_sha != ''
         run: |
           set -euo pipefail
           if [ -f Assets/Scripts/Rebellion.App.asmdef ]; then

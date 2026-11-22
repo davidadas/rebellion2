@@ -26,7 +26,6 @@ using AssetDatabase = UnityEditor.AssetDatabase;
 namespace Rebellion.Tests.Multiplayer
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public sealed class MultiplayerTurnProtocolTests
     {
         private const string _hostFactionID = "FNALL1";

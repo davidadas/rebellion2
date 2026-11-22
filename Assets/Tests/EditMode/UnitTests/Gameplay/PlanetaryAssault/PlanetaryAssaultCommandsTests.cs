@@ -12,7 +12,6 @@ using Rebellion.Gameplay;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public class PlanetaryAssaultCommandsTests : CombatTestBase
     {
         [Test]

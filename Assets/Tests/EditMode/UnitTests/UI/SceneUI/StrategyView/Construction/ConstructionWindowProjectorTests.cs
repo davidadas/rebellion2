@@ -10,7 +10,6 @@ using UnityEngine;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public class ConstructionWindowProjectorTests
     {
         private const string _ownerId = "owner";

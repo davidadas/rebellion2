@@ -19,7 +19,6 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ProcessTick_NullGame_ThrowsArgumentNullException()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());

@@ -21,7 +21,6 @@ using UnityEngine.TestTools;
 namespace Rebellion.Tests.Gameplay.Scripting
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public class GameActionInterpreterTests
     {
         [Test]
