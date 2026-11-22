@@ -155,7 +155,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private Button setupUnitsTemplate;
 
     [SerializeField]
-    private OptionsChoiceFieldView artworkViewSelector;
+    private TMP_Dropdown artworkViewSelector;
 
     internal IReadOnlyList<string> ArtworkViewOptions { get; private set; } = Array.Empty<string>();
 
@@ -214,6 +214,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     public event Action<string> ValidationFailed;
     public bool HasOpenChoice =>
         generationTask.IsExpanded
+        || artworkViewSelector.IsExpanded
         || setupCollections.Any(view => view.gameObject.activeSelf && view.HasOpenChoice)
         || collectionDropdown.IsExpanded
         || shipDesignDropdown.IsExpanded
@@ -288,7 +289,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         removeMessageButton.onClick.AddListener(RequestRemoveMessage);
         curveDropdown.onValueChanged.AddListener(SelectCurve);
         addScoreButton.onClick.AddListener(AddScore);
-        artworkViewSelector.StepRequested += SelectRelativeFactionArtworkCategory;
+        artworkViewSelector.onValueChanged.AddListener(SelectFactionArtworkCategory);
         artworkSectorPreview.ArtworkOpened += OpenWindowArtwork;
         artworkWindowPreview.ArtworkOpened += OpenWindowArtwork;
         artworkWindowPreview.ArtworkMoved += MoveWindowArtwork;
@@ -321,7 +322,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         removeMessageButton.onClick.RemoveListener(RequestRemoveMessage);
         curveDropdown.onValueChanged.RemoveListener(SelectCurve);
         addScoreButton.onClick.RemoveListener(AddScore);
-        artworkViewSelector.StepRequested -= SelectRelativeFactionArtworkCategory;
+        artworkViewSelector.onValueChanged.RemoveListener(SelectFactionArtworkCategory);
         artworkSectorPreview.ArtworkOpened -= OpenWindowArtwork;
         artworkWindowPreview.ArtworkOpened -= OpenWindowArtwork;
         artworkWindowPreview.ArtworkMoved -= MoveWindowArtwork;
@@ -3330,7 +3331,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
             height
         );
         ArtworkViewOptions = categories;
-        artworkViewSelector.Render(selectedFactionArtworkCategory);
+        List<string> options = categories.ToList();
+        artworkViewSelector.ClearOptions();
+        artworkViewSelector.AddOptions(options);
+        artworkViewSelector.SetValueWithoutNotify(options.IndexOf(selectedFactionArtworkCategory));
+        artworkViewSelector.RefreshShownValue();
         artworkViewSelector.gameObject.SetActive(true);
         return y + height + 8;
     }
@@ -3636,14 +3641,22 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <summary>
     /// Switches the lazy artwork surface after accepting edits in the current one.
     /// </summary>
-    /// <param name="offset">The amount to advance in the ordered interface list.</param>
-    private void SelectRelativeFactionArtworkCategory(int offset)
+    /// <param name="index">The interface selected in the dropdown.</param>
+    private void SelectFactionArtworkCategory(int index)
     {
-        int count = ArtworkViewOptions.Count;
-        if (count < 2 || !Commit())
+        if (index < 0 || index >= ArtworkViewOptions.Count)
             return;
-        int current = ArtworkViewOptions.ToList().IndexOf(selectedFactionArtworkCategory);
-        selectedFactionArtworkCategory = ArtworkViewOptions[(current + offset + count) % count];
+        string category = ArtworkViewOptions[index];
+        if (!Commit())
+        {
+            artworkViewSelector.SetValueWithoutNotify(
+                artworkViewSelector.options.FindIndex(option =>
+                    option.text == selectedFactionArtworkCategory
+                )
+            );
+            return;
+        }
+        selectedFactionArtworkCategory = category;
         RenderFields(true);
     }
 

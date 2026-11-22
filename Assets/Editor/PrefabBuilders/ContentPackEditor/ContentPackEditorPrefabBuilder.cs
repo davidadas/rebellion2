@@ -381,36 +381,12 @@ public static class ContentPackEditorPrefabBuilder
         );
         units.gameObject.SetActive(false);
         Assign(form, "setupUnitsTemplate", units);
-        RectTransform artworkViewSelector = Layer(
+        TMP_Dropdown artworkViewSelector = Dropdown(
             "ArtworkViewSelector",
             fields.ScrollArea.ContentRoot
         );
-        Image selectorFrame = artworkViewSelector.gameObject.AddComponent<Image>();
-        BindColor(selectorFrame, ContentEditorColorRole.Panel);
-        selectorFrame.raycastTarget = false;
-        Button previousArtworkView = Button("PreviousArtworkView", artworkViewSelector, "<");
-        Rect((RectTransform)previousArtworkView.transform, 0, 0, 52, 38);
-        Button nextArtworkView = Button("NextArtworkView", artworkViewSelector, ">");
-        RectTransform nextArtworkRect = (RectTransform)nextArtworkView.transform;
-        nextArtworkRect.anchorMin = nextArtworkRect.anchorMax = nextArtworkRect.pivot = Vector2.one;
-        nextArtworkRect.anchoredPosition = Vector2.zero;
-        nextArtworkRect.sizeDelta = new Vector2(52, 38);
-        TextMeshProUGUI artworkViewCaption = Label(
-            "ArtworkViewCaption",
-            artworkViewSelector,
-            "",
-            17
-        );
-        artworkViewCaption.alignment = TextAlignmentOptions.Center;
-        Stretch(artworkViewCaption.rectTransform, 58, 0, 58, 0);
-        artworkViewCaption.raycastTarget = false;
-        OptionsChoiceFieldView artworkChoice =
-            artworkViewSelector.gameObject.AddComponent<OptionsChoiceFieldView>();
-        Assign(artworkChoice, "valueField", artworkViewCaption);
-        Assign(artworkChoice, "previousButton", previousArtworkView);
-        Assign(artworkChoice, "nextButton", nextArtworkView);
         artworkViewSelector.gameObject.SetActive(false);
-        Assign(form, "artworkViewSelector", artworkChoice);
+        Assign(form, "artworkViewSelector", artworkViewSelector);
         RawImage artworkSectorSurface = Layer("ArtworkSectorPreview", fields.ScrollArea.ContentRoot)
             .gameObject.AddComponent<RawImage>();
         BindColor(artworkSectorSurface, ContentEditorColorRole.Panel);
