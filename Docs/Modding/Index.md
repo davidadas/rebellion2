@@ -202,6 +202,11 @@ In the Content Pack Editor, open a faction's **Colors** tab to set its primary
 color, selected menu text color, and individual interface tints. **Reset colors**
 restores the inherited or default colors for that theme.
 
+Use **Use primary color** to link a color to the primary palette. Matching
+colors start linked and existing custom colors start independent. In
+**Interfaces > Strategy view**, use the zoom buttons to inspect artwork,
+hold Space while dragging to pan, and choose **Fit to view** to see the full scene.
+
 Open **Factions > Neutral theme** to preview and edit shared interface artwork.
 Double-click an outlined sector icon to open its image settings. Use
 **Galaxy map icons** for neutral star markers and **Shared mission icons** for

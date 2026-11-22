@@ -12,6 +12,7 @@ using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay.GameEvents;
 using Rebellion.Util.Serialization;
+using UnityEngine;
 
 /// <summary>
 /// Owns the editable documents and validation state for one authored content pack.
@@ -139,8 +140,82 @@ public sealed class ContentPackEditorProject
         }
         using (BeginEdit(field.Name))
         {
-            field.SetValue(value);
+            if (field.IsFactionColor && field.Value != value)
+                SetFactionColor(field, value);
+            else
+                field.SetValue(value);
             LinkRulesOverride(field.Document);
+        }
+    }
+
+    /// <summary>
+    /// Applies a scheme field edit while preserving existing link choices.
+    /// </summary>
+    /// <param name="field">The validated color or link field.</param>
+    /// <param name="value">The proposed value.</param>
+    private static void SetFactionColor(ContentPackEditorField field, string value)
+    {
+        ContentPackEditorRecord record = field.Record;
+        FactionTheme before = ContentEditorPresentation.GetFactionTheme(record);
+        string previousValue = field.Value;
+        field.SetValue(value);
+        FactionTheme after = ContentEditorPresentation.GetFactionTheme(record);
+        var colors = ContentEditorContentSections
+            .FactionColorFields(record)
+            .ToDictionary(member => member.MemberName, StringComparer.Ordinal);
+        foreach (ContentPackEditorField color in colors.Values)
+        {
+            string linkName = ContentEditorContentSections.FactionColorLinkMember(color.MemberName);
+            if (linkName == null)
+                continue;
+            ContentPackEditorField link = colors[linkName];
+            if (
+                field.MemberName == nameof(FactionColorScheme.PrimaryColorHex)
+                && link.Value.Length == 0
+            )
+            {
+                bool wasLinked = ContentEditorContentSections.FactionColorFollowsPrimary(
+                    before,
+                    color.MemberName,
+                    null
+                );
+                if (
+                    wasLinked
+                    != ContentEditorContentSections.FactionColorFollowsPrimary(
+                        after,
+                        color.MemberName,
+                        null
+                    )
+                )
+                    link.SetValue(XmlConvert.ToString(wasLinked));
+            }
+            else if (
+                field.MemberName == linkName
+                && bool.TryParse(value, out bool followsPrimary)
+                && !followsPrimary
+                && ContentEditorContentSections.FactionColorFollowsPrimary(
+                    before,
+                    color.MemberName,
+                    previousValue
+                )
+            )
+            {
+                Color primary = before.GetPrimaryColor();
+                color.SetValue(
+                    primary.a == 1f
+                        ? ColorUtility.ToHtmlStringRGB(primary)
+                        : ColorUtility.ToHtmlStringRGBA(primary)
+                );
+            }
+            else if (
+                field.MemberName == color.MemberName
+                && ContentEditorContentSections.FactionColorFollowsPrimary(
+                    after,
+                    color.MemberName,
+                    link.Value
+                )
+            )
+                link.SetValue("false");
         }
     }
 

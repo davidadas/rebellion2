@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -27,11 +28,14 @@ public sealed class ContentEditorArtworkWindowPreview
         IPointerClickHandler,
         IBeginDragHandler,
         IDragHandler,
-        IEndDragHandler
+        IEndDragHandler,
+        IScrollHandler
 {
     private const float _maximumScale = 3f;
     private const int _surfacePadding = 12;
     private const int _windowGap = 12;
+    private const float _maximumStrategyZoom = 4f;
+    private const float _zoomStep = 1.25f;
 
     private static readonly IReadOnlyDictionary<string, string[]> _windowNames = new Dictionary<
         string,
@@ -53,6 +57,27 @@ public sealed class ContentEditorArtworkWindowPreview
     };
 
     public const string EncyclopediaDetailWindowName = "EncyclopediaDetailWindow";
+
+    [SerializeField]
+    private RectTransform zoomToolbar;
+
+    [SerializeField]
+    private Button zoomIn;
+
+    [SerializeField]
+    private Button zoomOut;
+
+    [SerializeField]
+    private Button fitZoom;
+
+    [SerializeField]
+    private TMP_Text zoomLabel;
+
+    private float strategyZoom = 1f;
+    private Vector2 strategyPan;
+    private Vector2 panPointer;
+    private bool panning;
+    private bool CanZoom => activeCategory == "Strategy view" && zoomToolbar != null;
 
     private string activeCategory;
     private Vector2Int artworkDragDelta;
@@ -83,6 +108,79 @@ public sealed class ContentEditorArtworkWindowPreview
     /// <param name="category">The faction-artwork category.</param>
     /// <returns>True when at least one matching window exists.</returns>
     public bool Supports(string category) => GetWindows(category).Count > 0;
+
+    /// <summary>
+    /// Binds the Strategy view's own zoom controls.
+    /// </summary>
+    protected override void Awake()
+    {
+        base.Awake();
+        if (zoomToolbar == null)
+            return;
+        zoomIn.onClick.AddListener(() => ChangeZoom(_zoomStep, Vector2.zero));
+        zoomOut.onClick.AddListener(() => ChangeZoom(1f / _zoomStep, Vector2.zero));
+        fitZoom.onClick.AddListener(FitStrategyView);
+    }
+
+    /// <summary>
+    /// Shows the zoom controls above the Strategy view.
+    /// </summary>
+    /// <param name="top">The toolbar's top offset in the inspector.</param>
+    /// <param name="width">The available inspector width.</param>
+    internal void PlaceZoomControls(int top, int width)
+    {
+        if (!CanZoom)
+            return;
+        const int toolbarWidth = 254;
+        UILayout.SetSourceRect(
+            zoomToolbar,
+            Mathf.Max(4, (width - toolbarWidth) / 2),
+            top,
+            toolbarWidth,
+            34
+        );
+        zoomToolbar.gameObject.SetActive(true);
+        RefreshZoomControls();
+    }
+
+    /// <summary>
+    /// Restores the full unpanned Strategy view.
+    /// </summary>
+    private void FitStrategyView()
+    {
+        strategyZoom = 1f;
+        strategyPan = Vector2.zero;
+        Layout(GetWindows(activeCategory));
+    }
+
+    /// <summary>
+    /// Changes the Strategy zoom while keeping an inspection point under the pointer.
+    /// </summary>
+    /// <param name="factor">The multiplier to apply to the current zoom.</param>
+    /// <param name="anchor">The viewport point measured from the center.</param>
+    private void ChangeZoom(float factor, Vector2 anchor)
+    {
+        if (!CanZoom || draggedTarget != null)
+            return;
+        float next = Mathf.Clamp(strategyZoom * factor, 1f, _maximumStrategyZoom);
+        strategyPan = anchor + (strategyPan - anchor) * (next / strategyZoom);
+        strategyZoom = next;
+        ResetHover();
+        Layout(GetWindows(activeCategory));
+    }
+
+    /// <summary>
+    /// Updates the visible zoom percentage and enables only applicable controls.
+    /// </summary>
+    private void RefreshZoomControls()
+    {
+        if (zoomToolbar == null)
+            return;
+        zoomLabel.text = Mathf.RoundToInt(strategyZoom * 100f) + "%";
+        zoomOut.interactable = strategyZoom > 1f;
+        fitZoom.interactable = strategyZoom > 1f;
+        zoomIn.interactable = strategyZoom < _maximumStrategyZoom;
+    }
 
     /// <summary>
     /// Reports whether the currently rendered controls can visibly represent another artwork state.
@@ -235,6 +333,9 @@ public sealed class ContentEditorArtworkWindowPreview
     public void Clear()
     {
         CancelArtworkMove();
+        panning = false;
+        if (zoomToolbar != null)
+            zoomToolbar.gameObject.SetActive(false);
         renderedFields.Clear();
         activeCategory = null;
         foreach (Transform child in transform)
@@ -248,6 +349,7 @@ public sealed class ContentEditorArtworkWindowPreview
     protected override void OnDisable()
     {
         CancelArtworkMove();
+        panning = false;
         ResetHover();
         base.OnDisable();
     }
@@ -298,12 +400,28 @@ public sealed class ContentEditorArtworkWindowPreview
             (bounds.height - _surfacePadding * 2f) / sourceHeight
         );
         scale = Mathf.Max(0.1f, scale);
+        Vector2 offset = Vector2.zero;
+        if (CanZoom)
+        {
+            scale *= strategyZoom;
+            Vector2 overflow = Vector2.Max(
+                Vector2.zero,
+                (new Vector2(sourceWidth, sourceHeight) * scale - bounds.size) * 0.5f
+            );
+            strategyPan = new Vector2(
+                Mathf.Clamp(strategyPan.x, -overflow.x, overflow.x),
+                Mathf.Clamp(strategyPan.y, -overflow.y, overflow.y)
+            );
+            offset = strategyPan;
+            RefreshZoomControls();
+        }
         float displayedWidth = sourceWidth * scale;
-        float x = (bounds.width - displayedWidth) * 0.5f;
+        float x = (bounds.width - displayedWidth) * 0.5f + offset.x;
         foreach (RectTransform window in windows)
         {
             RectInt source = GetSourceRect(window);
-            float y = Mathf.Max(_surfacePadding, (bounds.height - source.height * scale) * 0.5f);
+            float centered = (bounds.height - source.height * scale) * 0.5f;
+            float y = CanZoom ? centered - offset.y : Mathf.Max(_surfacePadding, centered);
             window.anchorMin = window.anchorMax = window.pivot = Vector2.up;
             window.anchoredPosition = new Vector2(x, -y);
             window.localScale = Vector3.one * scale;
@@ -759,6 +877,21 @@ public sealed class ContentEditorArtworkWindowPreview
     /// <param name="eventData">The initial drag event.</param>
     public void OnBeginDrag(PointerEventData eventData)
     {
+        if (
+            CanZoom
+            && strategyZoom > 1f
+            && eventData != null
+            && (
+                eventData.button != PointerEventData.InputButton.Left || Input.GetKey(KeyCode.Space)
+            )
+            && TryGetPreviewPointer(eventData, out panPointer)
+        )
+        {
+            panning = true;
+            ResetHover();
+            eventData.Use();
+            return;
+        }
         if (eventData?.button != PointerEventData.InputButton.Left)
             return;
         UpdatePointerTarget(eventData);
@@ -788,6 +921,14 @@ public sealed class ContentEditorArtworkWindowPreview
     /// <param name="eventData">The current drag event.</param>
     public void OnDrag(PointerEventData eventData)
     {
+        if (panning && TryGetPreviewPointer(eventData, out Vector2 local))
+        {
+            strategyPan += local - panPointer;
+            panPointer = local;
+            Layout(GetWindows(activeCategory));
+            eventData.Use();
+            return;
+        }
         if (
             draggedTarget == null
             || draggedWindow == null
@@ -809,6 +950,12 @@ public sealed class ContentEditorArtworkWindowPreview
     /// <param name="eventData">The final drag event.</param>
     public void OnEndDrag(PointerEventData eventData)
     {
+        if (panning)
+        {
+            panning = false;
+            eventData?.Use();
+            return;
+        }
         if (draggedTarget == null)
             return;
         if (eventData?.button == PointerEventData.InputButton.Left)
@@ -822,6 +969,53 @@ public sealed class ContentEditorArtworkWindowPreview
         if (changes.Count > 0)
             ArtworkMoved?.Invoke(changes);
         eventData?.Use();
+    }
+
+    /// <summary>
+    /// Zooms the Strategy preview with the platform modifier and forwards ordinary inspector scrolling.
+    /// </summary>
+    /// <param name="eventData">The pointer wheel gesture.</param>
+    public void OnScroll(PointerEventData eventData)
+    {
+        if (
+            CanZoom
+            && (
+                Input.GetKey(KeyCode.LeftControl)
+                || Input.GetKey(KeyCode.RightControl)
+                || Input.GetKey(KeyCode.LeftCommand)
+                || Input.GetKey(KeyCode.RightCommand)
+            )
+            && TryGetPreviewPointer(eventData, out Vector2 point)
+        )
+        {
+            ChangeZoom(Mathf.Pow(_zoomStep, eventData.scrollDelta.y), point);
+            eventData.Use();
+            return;
+        }
+        ExecuteEvents.ExecuteHierarchy(
+            transform.parent.gameObject,
+            eventData,
+            ExecuteEvents.scrollHandler
+        );
+    }
+
+    /// <summary>
+    /// Locates a pointer relative to the preview center in viewport coordinates.
+    /// </summary>
+    /// <param name="eventData">The pointer gesture.</param>
+    /// <param name="point">Receives the editable viewport point.</param>
+    /// <returns>Whether the pointer position could be projected.</returns>
+    private bool TryGetPreviewPointer(PointerEventData eventData, out Vector2 point)
+    {
+        RectTransform viewport = (RectTransform)transform;
+        bool relative = RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            viewport,
+            eventData.position,
+            eventData.pressEventCamera ?? eventData.enterEventCamera,
+            out point
+        );
+        point -= viewport.rect.center;
+        return relative;
     }
 
     /// <summary>

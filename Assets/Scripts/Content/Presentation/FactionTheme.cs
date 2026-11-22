@@ -97,58 +97,54 @@ public class FactionTheme
     /// </summary>
     /// <returns>The authored highlight, legacy theme color, or white.</returns>
     public Color GetHighlightTextColor() =>
-        ThemeColorParser.Parse(
-            ColorScheme?.HighlightTextColorHex,
-            ThemeColorParser.Parse(FactionPrimaryColorHex, Color.white)
-        );
+        ColorScheme?.HighlightTextFollowsPrimary == true
+            ? GetPrimaryColor()
+            : ThemeColorParser.Parse(
+                ColorScheme?.HighlightTextColorHex,
+                ThemeColorParser.Parse(FactionPrimaryColorHex, Color.white)
+            );
 
     /// <summary>
     /// Gets the color applied to shared selection-frame masks.
     /// </summary>
     /// <returns>The configured selection color or the faction primary color.</returns>
     public Color GetSelectionColor() =>
-        ThemeColorParser.Parse(ColorScheme?.SelectionColorHex, GetPrimaryColor());
+        GetMaskTint(FactionMaskColor.SelectionColorHex) ?? GetPrimaryColor();
 
     /// <summary>
     /// Gets the color applied to the shared active-window title mask.
     /// </summary>
     /// <returns>The configured active-title color or the faction primary color.</returns>
     public Color GetActiveWindowTitleColor() =>
-        ThemeColorParser.Parse(ColorScheme?.ActiveWindowTitleColorHex, GetPrimaryColor());
+        GetMaskTint(FactionMaskColor.ActiveWindowTitleColorHex) ?? GetPrimaryColor();
 
     /// <summary>
     /// Gets the color applied to the shared inactive-window title mask.
     /// </summary>
     /// <returns>The configured inactive-title color or the active-title color.</returns>
     public Color GetInactiveWindowTitleColor() =>
-        ThemeColorParser.Parse(
-            ColorScheme?.InactiveWindowTitleColorHex,
-            GetActiveWindowTitleColor()
-        );
+        GetMaskTint(FactionMaskColor.InactiveWindowTitleColorHex) ?? GetActiveWindowTitleColor();
 
     /// <summary>
     /// Gets the color applied to the shared active manufacturing-lane mask.
     /// </summary>
     /// <returns>The configured active-lane color or the faction primary color.</returns>
     public Color GetActiveBuildingPaneColor() =>
-        ThemeColorParser.Parse(ColorScheme?.ActiveBuildingPaneColorHex, GetPrimaryColor());
+        GetMaskTint(FactionMaskColor.ActiveBuildingPaneColorHex) ?? GetPrimaryColor();
 
     /// <summary>
     /// Gets the color applied to the shared inactive manufacturing-lane mask.
     /// </summary>
     /// <returns>The configured inactive-lane color or the active-lane color.</returns>
     public Color GetInactiveBuildingPaneColor() =>
-        ThemeColorParser.Parse(
-            ColorScheme?.InactiveBuildingPaneColorHex,
-            GetActiveBuildingPaneColor()
-        );
+        GetMaskTint(FactionMaskColor.InactiveBuildingPaneColorHex) ?? GetActiveBuildingPaneColor();
 
     /// <summary>
     /// Gets the color applied to shared faction planet-marker masks.
     /// </summary>
     /// <returns>The configured planet-marker color or the faction primary color.</returns>
     public Color GetPlanetMarkerColor() =>
-        ThemeColorParser.Parse(ColorScheme?.PlanetMarkerColorHex, GetPrimaryColor());
+        GetMaskTint(FactionMaskColor.PlanetMarkerColorHex) ?? GetPrimaryColor();
 
     /// <summary>
     /// Resolves an explicitly configured tint for a shared interface mask.
@@ -157,18 +153,36 @@ public class FactionTheme
     /// <returns>The resolved color, or null to use the supplied artwork directly.</returns>
     public Color? GetMaskTint(FactionMaskColor mask)
     {
-        string value = mask switch
+        (string value, bool? followsPrimary) = mask switch
         {
-            FactionMaskColor.SelectionColorHex => ColorScheme?.SelectionColorHex,
-            FactionMaskColor.ActiveWindowTitleColorHex => ColorScheme?.ActiveWindowTitleColorHex,
-            FactionMaskColor.InactiveWindowTitleColorHex =>
+            FactionMaskColor.SelectionColorHex => (
+                ColorScheme?.SelectionColorHex,
+                ColorScheme?.SelectionFollowsPrimary
+            ),
+            FactionMaskColor.ActiveWindowTitleColorHex => (
+                ColorScheme?.ActiveWindowTitleColorHex,
+                ColorScheme?.ActiveWindowTitleFollowsPrimary
+            ),
+            FactionMaskColor.InactiveWindowTitleColorHex => (
                 ColorScheme?.InactiveWindowTitleColorHex,
-            FactionMaskColor.ActiveBuildingPaneColorHex => ColorScheme?.ActiveBuildingPaneColorHex,
-            FactionMaskColor.InactiveBuildingPaneColorHex =>
+                ColorScheme?.InactiveWindowTitleFollowsPrimary
+            ),
+            FactionMaskColor.ActiveBuildingPaneColorHex => (
+                ColorScheme?.ActiveBuildingPaneColorHex,
+                ColorScheme?.ActiveBuildingPaneFollowsPrimary
+            ),
+            FactionMaskColor.InactiveBuildingPaneColorHex => (
                 ColorScheme?.InactiveBuildingPaneColorHex,
-            FactionMaskColor.PlanetMarkerColorHex => ColorScheme?.PlanetMarkerColorHex,
-            _ => null,
+                ColorScheme?.InactiveBuildingPaneFollowsPrimary
+            ),
+            FactionMaskColor.PlanetMarkerColorHex => (
+                ColorScheme?.PlanetMarkerColorHex,
+                ColorScheme?.PlanetMarkerFollowsPrimary
+            ),
+            _ => (null, null),
         };
+        if (followsPrimary == true)
+            return GetPrimaryColor();
         return ThemeColorParser.TryParse(value, out Color color) ? color : null;
     }
 }
@@ -208,6 +222,20 @@ public sealed class FactionColorScheme
     public string InactiveBuildingPaneColorHex { get; set; }
 
     public string PlanetMarkerColorHex { get; set; }
+
+    public bool? HighlightTextFollowsPrimary { get; set; }
+
+    public bool? SelectionFollowsPrimary { get; set; }
+
+    public bool? ActiveWindowTitleFollowsPrimary { get; set; }
+
+    public bool? InactiveWindowTitleFollowsPrimary { get; set; }
+
+    public bool? ActiveBuildingPaneFollowsPrimary { get; set; }
+
+    public bool? InactiveBuildingPaneFollowsPrimary { get; set; }
+
+    public bool? PlanetMarkerFollowsPrimary { get; set; }
 }
 
 /// <summary>

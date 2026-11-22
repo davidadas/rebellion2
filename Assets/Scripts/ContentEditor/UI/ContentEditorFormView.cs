@@ -407,7 +407,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             .Concat(
                 colorPickers
                     .Where(picker => picker.gameObject.activeSelf)
-                    .Select(picker => picker.Field)
+                    .SelectMany(picker => new[] { picker.Field, picker.LinkField })
             )
             .Where(field => field?.CanResetToDefault == true)
             .Distinct()
@@ -2719,14 +2719,17 @@ public sealed class ContentEditorFormView : MonoBehaviour
         }
 
         FactionTheme theme = ContentEditorPresentation.GetFactionTheme(themeRecord);
-        ContentPackEditorField[] fields = selectedPage
-            .Fields.Where(field => field.Group == nameof(FactionTheme.ColorScheme))
+        var scheme = ContentEditorContentSections
+            .FactionColorFields(themeRecord)
+            .ToDictionary(field => field.MemberName, StringComparer.Ordinal);
+        ContentPackEditorField[] fields = scheme
+            .Values.Where(field => !field.IsBoolean)
             .OrderBy(FactionColorOrder)
             .ThenBy(field => field.Caption, StringComparer.Ordinal)
             .ToArray();
         int columnCount = width >= 940 ? 2 : 1;
         const int gap = 16;
-        const int cardHeight = 264;
+        const int cardHeight = 296;
         float cardWidth = (width - 8 - gap * (columnCount - 1)) / columnCount;
         for (int index = 0; index < fields.Length; index++)
         {
@@ -2734,16 +2737,23 @@ public sealed class ContentEditorFormView : MonoBehaviour
             int row = index / columnCount;
             ContentEditorColorPickerView picker = GetColorPicker(index);
             ContentPackEditorField field = fields[index];
+            string linkName = ContentEditorContentSections.FactionColorLinkMember(field.MemberName);
+            ContentPackEditorField link = linkName == null ? null : scheme[linkName];
             picker.Render(
                 field,
                 ResolveFactionColorSample(field, theme),
-                field.MemberName switch
-                {
-                    nameof(FactionColorScheme.PrimaryColorHex) => theme.GetPrimaryColor(),
-                    nameof(FactionColorScheme.HighlightTextColorHex) =>
-                        theme.GetHighlightTextColor(),
-                    _ => Color.white,
-                },
+                ContentEditorContentSections.FactionColorValue(theme, field.MemberName)
+                    ?? Color.white,
+                (
+                    link,
+                    link != null
+                        && ContentEditorContentSections.FactionColorFollowsPrimary(
+                            theme,
+                            field.MemberName,
+                            link.Value
+                        ),
+                    theme.GetPrimaryColor()
+                ),
                 (submittedField, value) => SubmitField(submittedField, new[] { value }),
                 HandleFieldChanged,
                 ReportValidationError
@@ -3255,8 +3265,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
         if (sector || window)
             y +=
                 PlaceLabel(
-                    neutral && sector
-                        ? "Double-click an outlined icon to open its image settings below."
+                    category.Name == "Strategy view"
+                            ? "Ctrl/Command + scroll to zoom. Space + drag to pan. Drag artwork to reposition it, or double-click to edit it."
+                        : neutral && sector
+                            ? "Double-click an outlined icon to open its image settings below."
                         : "Double-click outlined artwork to edit it. Drag artwork with placement controls to move it. Press and hold a control to see its pressed artwork.",
                     labelIndex++,
                     4,
@@ -3507,6 +3519,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
         if (theme == null)
             return y;
 
+        int zoomToolbarTop = y;
+        if (category == "Strategy view")
+            y += 42;
+
         ContentPackEditorField[] themeFields = theme
             .GetFields()
             .Concat(selectedPage.Fields.Where(field => field.Record.Kind == "FactionTheme"))
@@ -3615,6 +3631,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 themeFields,
                 surfaceFields
             );
+            artworkWindowPreview.PlaceZoomControls(zoomToolbarTop, Mathf.FloorToInt(width));
             if (hasDisabledArtwork)
             {
                 UILayout.SetSourceRect(

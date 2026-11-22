@@ -3666,6 +3666,20 @@ namespace Rebellion.Tests.ContentEditor.UI
             ContentEditorArtworkWindowPreview strategyPreview =
                 view.GetComponentInChildren<ContentEditorArtworkWindowPreview>();
             Assert.IsNotNull(strategyPreview.GetComponent<RectMask2D>());
+            float fittedScale = strategySurface.localScale.x;
+            Rect viewport = ((RectTransform)strategyPreview.transform).rect;
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "ZoomIn")
+                .onClick.Invoke();
+            Assert.That(
+                strategySurface.localScale.x,
+                Is.EqualTo(fittedScale * 1.25f).Within(0.001f)
+            );
+            Assert.AreEqual(viewport, ((RectTransform)strategyPreview.transform).rect);
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "FitPreview")
+                .onClick.Invoke();
+            Assert.That(strategySurface.localScale.x, Is.EqualTo(fittedScale).Within(0.001f));
             string[] opaqueMissingImages = strategyPreview
                 .GetComponentsInChildren<RawImage>()
                 .Where(image => image.enabled && image.texture == null && image.color.a > 0.01f)

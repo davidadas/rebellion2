@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
 using Rebellion.Game.Missions;
+using UnityEngine;
 
 /// <summary>
 /// Projects related authored content into task-oriented inspector and navigation sections.
@@ -328,11 +329,7 @@ internal static class ContentEditorContentSections
             return Array.Empty<ContentPackEditorField>();
         List<ContentPackEditorField> fields = theme
             .GetFields()
-            .Where(field =>
-                IsFactionArtworkField(field, neutral)
-                || IsAdvisorPlacementField(field)
-                || field.Group == nameof(FactionTheme.ColorScheme)
-            )
+            .Where(field => IsFactionArtworkField(field, neutral) || IsAdvisorPlacementField(field))
             .ToList();
         XElement defaults = theme.Element.Element(nameof(FactionTheme.ArtworkDefaults));
         XElement owner = defaults ?? new XElement(nameof(FactionTheme.ArtworkDefaults));
@@ -366,39 +363,113 @@ internal static class ContentEditorContentSections
                 )
             );
         }
-        XElement colors = theme.Element.Element(nameof(FactionTheme.ColorScheme));
-        XElement colorOwner = colors ?? new XElement(nameof(FactionTheme.ColorScheme));
-        foreach (string member in _factionColorMembers)
-        {
-            if (
-                fields.Any(field =>
-                    field.Group == nameof(FactionTheme.ColorScheme) && field.MemberName == member
-                )
-            )
-                continue;
-            XElement element = colors?.Element(member) ?? new XElement(member);
-            fields.Add(
-                new ContentPackEditorField(
-                    theme,
-                    element,
-                    nameof(FactionTheme.ColorScheme) + " / " + member,
-                    attach: () =>
-                    {
-                        if (colorOwner.Parent == null)
-                            theme.Element.Add(colorOwner);
-                        if (element.Parent == null)
-                            colorOwner.Add(element);
-                    },
-                    valueTypeOverride: typeof(string),
-                    groupOverride: nameof(FactionTheme.ColorScheme),
-                    caption: ContentPackEditorField.FormatName(member),
-                    sectionPath: new[] { "Color scheme" },
-                    parentOverride: colorOwner
-                )
-            );
-        }
+        fields.AddRange(FactionColorFields(theme));
         return fields;
     }
+
+    /// <summary>
+    /// Projects colors and their optional primary-color links from a common editable scheme.
+    /// </summary>
+    /// <param name="theme">The theme owning the scheme.</param>
+    /// <returns>The editable fields keyed by serialized member.</returns>
+    internal static IEnumerable<ContentPackEditorField> FactionColorFields(
+        ContentPackEditorRecord theme
+    )
+    {
+        XElement owner =
+            theme.Element.Element(nameof(FactionTheme.ColorScheme))
+            ?? new XElement(nameof(FactionTheme.ColorScheme));
+        foreach (
+            string member in _factionColorMembers.Concat(
+                _factionColorMembers.Select(FactionColorLinkMember).Where(name => name != null)
+            )
+        )
+        {
+            XElement element = owner.Element(member) ?? new XElement(member);
+            bool link = !_factionColorMembers.Contains(member);
+            yield return new ContentPackEditorField(
+                theme,
+                element,
+                nameof(FactionTheme.ColorScheme) + " / " + member,
+                attach: () =>
+                {
+                    if (owner.Parent == null)
+                        theme.Element.Add(owner);
+                    if (element.Parent == null)
+                        owner.Add(element);
+                },
+                detach: link ? () => element.Remove() : null,
+                valueTypeOverride: link ? typeof(bool) : typeof(string),
+                groupOverride: nameof(FactionTheme.ColorScheme),
+                caption: ContentPackEditorField.FormatName(member),
+                sectionPath: new[] { "Color scheme" },
+                parentOverride: owner
+            );
+        }
+    }
+
+    /// <summary>
+    /// Maps a secondary color field to its optional link setting.
+    /// </summary>
+    /// <param name="member">The serialized color field name.</param>
+    /// <returns>The corresponding link member, or null for a primary or unrelated field.</returns>
+    internal static string FactionColorLinkMember(string member) =>
+        member switch
+        {
+            nameof(FactionColorScheme.HighlightTextColorHex) => nameof(
+                FactionColorScheme.HighlightTextFollowsPrimary
+            ),
+            nameof(FactionColorScheme.SelectionColorHex) => nameof(
+                FactionColorScheme.SelectionFollowsPrimary
+            ),
+            nameof(FactionColorScheme.ActiveWindowTitleColorHex) => nameof(
+                FactionColorScheme.ActiveWindowTitleFollowsPrimary
+            ),
+            nameof(FactionColorScheme.InactiveWindowTitleColorHex) => nameof(
+                FactionColorScheme.InactiveWindowTitleFollowsPrimary
+            ),
+            nameof(FactionColorScheme.ActiveBuildingPaneColorHex) => nameof(
+                FactionColorScheme.ActiveBuildingPaneFollowsPrimary
+            ),
+            nameof(FactionColorScheme.InactiveBuildingPaneColorHex) => nameof(
+                FactionColorScheme.InactiveBuildingPaneFollowsPrimary
+            ),
+            nameof(FactionColorScheme.PlanetMarkerColorHex) => nameof(
+                FactionColorScheme.PlanetMarkerFollowsPrimary
+            ),
+            _ => null,
+        };
+
+    /// <summary>
+    /// Gets the effective color shown for a scheme member, including inherited defaults.
+    /// </summary>
+    /// <param name="theme">The effective theme.</param>
+    /// <param name="member">The serialized color field name.</param>
+    /// <returns>The rendered color, or null when the interface uses the authored image directly.</returns>
+    internal static Color? FactionColorValue(FactionTheme theme, string member) =>
+        member switch
+        {
+            nameof(FactionColorScheme.PrimaryColorHex) => theme.GetPrimaryColor(),
+            nameof(FactionColorScheme.HighlightTextColorHex) => theme.GetHighlightTextColor(),
+            _ => Enum.TryParse(member, out FactionMaskColor mask) ? theme.GetMaskTint(mask) : null,
+        };
+
+    /// <summary>
+    /// Defaults an unconfigured link to checked only when the rendered colors already match.
+    /// </summary>
+    /// <param name="theme">The effective theme.</param>
+    /// <param name="color">The secondary color field name.</param>
+    /// <param name="linkValue">The optional authored link setting.</param>
+    /// <returns>Whether the color is linked to primary.</returns>
+    internal static bool FactionColorFollowsPrimary(
+        FactionTheme theme,
+        string color,
+        string linkValue
+    ) =>
+        bool.TryParse(linkValue, out bool linked)
+            ? linked
+            : FactionColorValue(theme, color) is Color value
+                && ((Color32)value).Equals((Color32)theme.GetPrimaryColor());
 
     /// <summary>
     /// Assigns faction artwork to the game surface where the image is displayed.
