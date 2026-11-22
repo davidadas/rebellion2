@@ -239,6 +239,50 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
+        public void ResetSection_HighlightOverrideWithoutInheritedColorScheme_RestoresBaseAndSupportsUndo()
+        {
+            project = ContentEditorTestData.CreateLoadableProject(
+                Path.Combine(folder, "InheritedContent")
+            );
+            ContentPackEditorRecord theme = GetAllianceTheme();
+            Assert.IsNull(theme.Element.Element(nameof(FactionTheme.ColorScheme)));
+            Color defaultHighlight = ContentEditorPresentation
+                .GetFactionTheme(theme)
+                .GetHighlightTextColor();
+            ContentPackEditorField highlight = ContentEditorContentSections
+                .FactionArtworkFields(theme)
+                .Single(field =>
+                    field.MemberName == nameof(FactionColorScheme.HighlightTextColorHex)
+                );
+            project.SetField(highlight, "ABCDEF");
+            workspace.RenderProject(project, assets);
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("factions/Alliance"));
+            view.RenderSection("Colors");
+            Button reset = view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "ResetSection");
+            Assert.AreEqual("Reset colors", reset.GetComponentInChildren<TMP_Text>().text);
+
+            reset.onClick.Invoke();
+
+            Assert.AreEqual(
+                defaultHighlight,
+                ContentEditorPresentation
+                    .GetFactionTheme(GetAllianceTheme())
+                    .GetHighlightTextColor()
+            );
+            Assert.IsFalse(reset.gameObject.activeSelf);
+            Assert.IsTrue(project.Undo());
+            ContentPackEditorField restored = GetAllianceTheme()
+                .GetFields()
+                .Single(field =>
+                    field.MemberName == nameof(FactionColorScheme.HighlightTextColorHex)
+                );
+            Assert.AreEqual("ABCDEF", restored.Value);
+        }
+
+        [Test]
         public void SelectGenerationTask_TaskWithOverride_ShowsSectionResetImmediately()
         {
             project = ContentEditorTestData.CreateLoadableProject(

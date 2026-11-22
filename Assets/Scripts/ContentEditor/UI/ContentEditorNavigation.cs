@@ -202,6 +202,39 @@ public sealed class ContentEditorNavigation
                 factions = new ContentEditorTreeNode("factions", "Factions", 0);
                 roots.Add(factions);
             }
+            ContentPackEditorRecord neutral = ContentEditorPresentation.GetNeutralThemeRecord(
+                catalogs
+            );
+            if (neutral != null)
+                factions.Children.Add(
+                    new ContentEditorTreeNode(
+                        ContentEditorContentSections.NeutralThemePageKey,
+                        "Neutral theme",
+                        1,
+                        neutral,
+                        neutral.Catalog,
+                        neutral
+                            .GetFields()
+                            .Where(field =>
+                                field.MemberName != nameof(FactionTheme.FactionInstanceID)
+                                && field.MemberName != nameof(FactionTheme.FactionPrimaryColorHex)
+                                && !ContentEditorContentSections.IsFactionArtworkField(
+                                    field,
+                                    neutral: true
+                                )
+                                && !ContentEditorContentSections.IsAdvisorPlacementField(field)
+                                && !field.IsFactionColor
+                            )
+                            .Concat(
+                                ContentEditorContentSections.FactionArtworkFields(
+                                    neutral,
+                                    neutral: true
+                                )
+                            )
+                            .ToArray(),
+                        new[] { neutral }
+                    )
+                );
             factions.Children.Add(
                 new ContentEditorTreeNode("factions/add", "+ Add faction", 1, creationCatalog: pack)
             );

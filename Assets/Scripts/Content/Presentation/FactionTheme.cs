@@ -93,6 +93,16 @@ public class FactionTheme
     }
 
     /// <summary>
+    /// Gets the color for selected and highlighted menu text.
+    /// </summary>
+    /// <returns>The authored highlight, legacy theme color, or white.</returns>
+    public Color GetHighlightTextColor() =>
+        ThemeColorParser.Parse(
+            ColorScheme?.HighlightTextColorHex,
+            ThemeColorParser.Parse(FactionPrimaryColorHex, Color.white)
+        );
+
+    /// <summary>
     /// Gets the color applied to shared selection-frame masks.
     /// </summary>
     /// <returns>The configured selection color or the faction primary color.</returns>
@@ -141,24 +151,25 @@ public class FactionTheme
         ThemeColorParser.Parse(ColorScheme?.PlanetMarkerColorHex, GetPrimaryColor());
 
     /// <summary>
-    /// Resolves the color of a mask only for themes that opt into a color scheme.
+    /// Resolves an explicitly configured tint for a shared interface mask.
     /// </summary>
     /// <param name="mask">The interface role the color is applied to.</param>
     /// <returns>The resolved color, or null to use the supplied artwork directly.</returns>
     public Color? GetMaskTint(FactionMaskColor mask)
     {
-        if (ColorScheme == null)
-            return null;
-        return mask switch
+        string value = mask switch
         {
-            FactionMaskColor.SelectionColorHex => GetSelectionColor(),
-            FactionMaskColor.ActiveWindowTitleColorHex => GetActiveWindowTitleColor(),
-            FactionMaskColor.InactiveWindowTitleColorHex => GetInactiveWindowTitleColor(),
-            FactionMaskColor.ActiveBuildingPaneColorHex => GetActiveBuildingPaneColor(),
-            FactionMaskColor.InactiveBuildingPaneColorHex => GetInactiveBuildingPaneColor(),
-            FactionMaskColor.PlanetMarkerColorHex => GetPlanetMarkerColor(),
+            FactionMaskColor.SelectionColorHex => ColorScheme?.SelectionColorHex,
+            FactionMaskColor.ActiveWindowTitleColorHex => ColorScheme?.ActiveWindowTitleColorHex,
+            FactionMaskColor.InactiveWindowTitleColorHex =>
+                ColorScheme?.InactiveWindowTitleColorHex,
+            FactionMaskColor.ActiveBuildingPaneColorHex => ColorScheme?.ActiveBuildingPaneColorHex,
+            FactionMaskColor.InactiveBuildingPaneColorHex =>
+                ColorScheme?.InactiveBuildingPaneColorHex,
+            FactionMaskColor.PlanetMarkerColorHex => ColorScheme?.PlanetMarkerColorHex,
             _ => null,
         };
+        return ThemeColorParser.TryParse(value, out Color color) ? color : null;
     }
 }
 
@@ -183,6 +194,8 @@ public enum FactionMaskColor
 public sealed class FactionColorScheme
 {
     public string PrimaryColorHex { get; set; }
+
+    public string HighlightTextColorHex { get; set; }
 
     public string SelectionColorHex { get; set; }
 

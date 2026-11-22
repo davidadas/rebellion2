@@ -31,6 +31,7 @@ internal static class ContentEditorContentSections
     private static readonly string[] _factionColorMembers =
     {
         nameof(FactionColorScheme.PrimaryColorHex),
+        nameof(FactionColorScheme.HighlightTextColorHex),
         nameof(FactionColorScheme.SelectionColorHex),
         nameof(FactionColorScheme.ActiveWindowTitleColorHex),
         nameof(FactionColorScheme.InactiveWindowTitleColorHex),
@@ -67,6 +68,8 @@ internal static class ContentEditorContentSections
         "Strategy view",
     };
 
+    internal const string NeutralThemePageKey = "factions/neutral-theme";
+
     /// <summary>
     /// Separates faction authoring tasks while retaining their existing XML documents.
     /// </summary>
@@ -92,13 +95,18 @@ internal static class ContentEditorContentSections
     /// Identifies discrete image artwork authored by a faction theme.
     /// </summary>
     /// <param name="field">A theme property.</param>
+    /// <param name="neutral">Whether the field belongs to the pack's neutral theme.</param>
     /// <returns>Whether the property is editable standalone faction artwork.</returns>
-    internal static bool IsFactionArtworkField(ContentPackEditorField field) =>
+    internal static bool IsFactionArtworkField(
+        ContentPackEditorField field,
+        bool neutral = false
+    ) =>
         field.Record.Kind == "FactionTheme"
         && field.MediaType == ContentPackEditorMediaType.Image
         && !field.IsMediaDirectory
         && (
-            field.Group != nameof(FactionTheme.MissionIcons)
+            neutral
+            || field.Group != nameof(FactionTheme.MissionIcons)
             || !MissionIconKeys.UsesSharedArtwork(
                 field
                     .XmlElement.Ancestors(nameof(MissionIconTheme))
@@ -209,14 +217,18 @@ internal static class ContentEditorContentSections
     /// Identifies faction-theme images that are rendered by an interface surface.
     /// </summary>
     /// <param name="field">A faction-theme image field.</param>
+    /// <param name="neutral">Whether the neutral theme can edit shared artwork.</param>
     /// <returns>Whether the field belongs to the interface browser.</returns>
-    internal static bool IsFactionInterfaceField(ContentPackEditorField field) =>
+    internal static bool IsFactionInterfaceField(
+        ContentPackEditorField field,
+        bool neutral = false
+    ) =>
         IsAdvisorPlacementField(field)
-        || IsFactionArtworkField(field)
+        || IsFactionArtworkField(field, neutral)
             && !IsFactionBackgroundField(field)
             && !IsUnusedUnitTileField(field)
             && !IsRemovedMixedPlanetMarker(field)
-            && IsFactionOwnedArtworkAddress(field.Value);
+            && (neutral || IsFactionOwnedArtworkAddress(field.Value));
 
     /// <summary>
     /// Identifies a coordinate stored in one of the strategy advisor's placement rectangles.
@@ -277,9 +289,11 @@ internal static class ContentEditorContentSections
     /// Projects all faction image properties while retaining their authored hierarchy.
     /// </summary>
     /// <param name="theme">The effective faction theme.</param>
+    /// <param name="neutral">Whether this is the pack's neutral theme.</param>
     /// <returns>The icon fields backed by their existing XML elements.</returns>
     internal static IReadOnlyList<ContentPackEditorField> FactionArtworkFields(
-        ContentPackEditorRecord theme
+        ContentPackEditorRecord theme,
+        bool neutral = false
     )
     {
         if (theme == null)
@@ -287,14 +301,14 @@ internal static class ContentEditorContentSections
         List<ContentPackEditorField> fields = theme
             .GetFields()
             .Where(field =>
-                IsFactionArtworkField(field)
+                IsFactionArtworkField(field, neutral)
                 || IsAdvisorPlacementField(field)
                 || field.Group == nameof(FactionTheme.ColorScheme)
             )
             .ToList();
         XElement defaults = theme.Element.Element(nameof(FactionTheme.ArtworkDefaults));
         XElement owner = defaults ?? new XElement(nameof(FactionTheme.ArtworkDefaults));
-        foreach (string member in _factionArtworkDefaultMembers)
+        foreach (string member in neutral ? Array.Empty<string>() : _factionArtworkDefaultMembers)
         {
             if (
                 fields.Any(field =>

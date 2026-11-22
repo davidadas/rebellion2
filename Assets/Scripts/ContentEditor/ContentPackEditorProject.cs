@@ -154,7 +154,7 @@ public sealed class ContentPackEditorProject
     }
 
     /// <summary>
-    /// Removes every local override in one inspector section as a single reversible edit.
+    /// Restores inherited settings and standalone color defaults in one reversible edit.
     /// </summary>
     /// <param name="fields">The project-owned settings displayed by the section.</param>
     public void ResetFieldsToInherited(IReadOnlyList<ContentPackEditorField> fields)
@@ -165,7 +165,7 @@ public sealed class ContentPackEditorProject
     /// <summary>
     /// Validates and removes a group of local setting overrides before rebuilding project wrappers.
     /// </summary>
-    /// <param name="fields">The project-owned settings to return to inheritance.</param>
+    /// <param name="fields">The project-owned settings to restore to their defaults.</param>
     /// <param name="description">The operation shown in edit history.</param>
     private void ResetFieldsToInherited(
         IReadOnlyList<ContentPackEditorField> fields,
@@ -180,10 +180,12 @@ public sealed class ContentPackEditorProject
             if (field == null)
                 throw new ArgumentException("Choose current settings.", nameof(fields));
             RequireOwnedRecord(field.Record);
-            if (!field.CanInherit)
+            if (!field.CanInherit && !field.IsFactionColor)
                 throw new InvalidOperationException("This setting cannot inherit independently.");
         }
-        ContentPackEditorField[] overridden = distinct.Where(field => !field.IsInherited).ToArray();
+        ContentPackEditorField[] overridden = distinct
+            .Where(field => field.CanResetToDefault)
+            .ToArray();
         if (overridden.Length == 0)
             return;
         using (BeginEdit(description))
@@ -207,6 +209,11 @@ public sealed class ContentPackEditorProject
     /// <param name="field">The current project-owned setting.</param>
     private static void ResetFieldOverride(ContentPackEditorField field)
     {
+        if (!field.CanInherit)
+        {
+            field.SetValue(string.Empty);
+            return;
+        }
         if (field.Record.Kind == "Building" && field.MemberName == nameof(Building.BuildingType))
         {
             ContentPackEditorField production = field.Record.GetField(

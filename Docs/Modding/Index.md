@@ -196,6 +196,16 @@ in an existing replacement retains its other authored values. `pack.xml` and `mo
 complete identity and dependency manifests. Packs using setting overlays require game and editor
 builds that support this format; distribution metadata must require a compatible game version.
 
+### Faction and neutral themes
+
+In the Content Pack Editor, open a faction's **Colors** tab to set its primary
+color, selected menu text color, and individual interface tints. **Reset colors**
+restores the inherited or default colors for that theme.
+
+Open **Factions > Neutral theme > Interfaces** to edit neutral interface artwork.
+The **Planet sector** preview shows neutral planetary icons alongside the
+faction artwork, including the text colors used in the game.
+
 ## Sharing a mod
 
 Package the mod folder containing `mod.xml` and `Content`; players install it by extracting that

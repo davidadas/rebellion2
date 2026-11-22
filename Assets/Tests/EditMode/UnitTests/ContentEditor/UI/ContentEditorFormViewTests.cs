@@ -2395,7 +2395,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                         .ToArray();
                 string[] missing = view.GetComponentsInChildren<ContentEditorFieldView>()
                     .Select(field => field.Field)
-                    .Where(ContentEditorContentSections.IsFactionInterfaceField)
+                    .Where(field => ContentEditorContentSections.IsFactionInterfaceField(field))
                     .Where(field =>
                         !represented.Any(candidate =>
                             candidate.XmlElement == field.XmlElement
@@ -2957,7 +2957,14 @@ namespace Rebellion.Tests.ContentEditor.UI
 
             ContentEditorColorPickerView[] pickers =
                 view.GetComponentsInChildren<ContentEditorColorPickerView>();
-            Assert.IsNotEmpty(pickers);
+            CollectionAssert.IsSubsetOf(
+                new[]
+                {
+                    nameof(FactionColorScheme.PrimaryColorHex),
+                    nameof(FactionColorScheme.HighlightTextColorHex),
+                },
+                pickers.Select(picker => picker.Field.MemberName)
+            );
             foreach (ContentEditorColorPickerView picker in pickers)
             {
                 ContentEditorColorWheel wheel =
@@ -3026,6 +3033,40 @@ namespace Rebellion.Tests.ContentEditor.UI
                     option
                 );
             }
+        }
+
+        [Test]
+        public void Render_NeutralSectorArtwork_ExposesTheNeutralDefenseIcon()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = navigation.Find(
+                ContentEditorContentSections.NeutralThemePageKey
+            );
+            Assert.IsNotNull(page);
+            SelectPage(page);
+
+            RenderSection("Interfaces");
+            SelectArtworkSurface("Planet sector");
+
+            ContentEditorSectorPreview preview =
+                view.GetComponentInChildren<ContentEditorSectorPreview>();
+            FactionTheme neutral = ContentEditorPresentation.GetNeutralTheme(project);
+            string defensePath = neutral
+                .PlanetOverlayTheme
+                .PlanetOverlayIcons
+                .Defenses
+                .NormalImagePath;
+            Texture2D expected = assets.GetSmoothTexture(defensePath);
+            Assert.IsNotNull(expected, defensePath);
+            RawImage defense = preview
+                .GetComponentsInChildren<RawImage>()
+                .First(image => image.name == "DefenseImage");
+            Assert.AreSame(expected, defense.texture);
+            ContentEditorArtworkEditTarget target =
+                defense.GetComponent<ContentEditorArtworkEditTarget>();
+            Assert.AreSame(page.Record.Element, target.Field.Record.Element);
+            Assert.AreEqual(defensePath, target.Field.Value);
         }
 
         [Test]
@@ -3129,6 +3170,19 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .GetFactionThemes(project)
                 .Single(theme => theme.Name == "Alliance")
                 .Theme;
+            TMP_Text planetName = sectorPreview
+                .GetComponentsInChildren<TMP_Text>()
+                .First(label => label.name == "PlanetNameTextField");
+            Assert.AreEqual(factionTheme.GetPrimaryColor(), planetName.color);
+            FactionTheme neutralTheme = ContentEditorPresentation.GetNeutralTheme(project);
+            Texture2D neutralDefense = assets.GetSmoothTexture(
+                neutralTheme.PlanetOverlayTheme.PlanetOverlayIcons.Defenses.NormalImagePath
+            );
+            Assert.IsTrue(
+                sectorPreview
+                    .GetComponentsInChildren<RawImage>()
+                    .Any(image => image.name == "DefenseImage" && image.texture == neutralDefense)
+            );
             Texture2D fleetOverlay = assets.GetSmoothTexture(
                 factionTheme.PlanetOverlayTheme.PlanetOverlayIcons.Fleets.NormalImagePath
             );

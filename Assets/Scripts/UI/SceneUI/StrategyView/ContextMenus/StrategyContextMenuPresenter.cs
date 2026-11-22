@@ -235,7 +235,8 @@ public sealed class StrategyContextMenuPresenter : MonoBehaviour, ICancelable
     private ContextMenuView.ContextMenuVisuals BuildVisuals()
     {
         FactionTheme playerTheme = uiContext?.GetPlayerFactionTheme();
-        Color32? activeColor = playerTheme == null ? null : (Color32)playerTheme.GetPrimaryColor();
+        Color32? activeColor =
+            playerTheme == null ? null : (Color32)playerTheme.GetHighlightTextColor();
         return contextMenuView.CreateVisuals(activeColor);
     }
 

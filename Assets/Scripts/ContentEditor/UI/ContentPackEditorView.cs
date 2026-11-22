@@ -1756,6 +1756,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             audioTab.gameObject.SetActive(false);
         }
         bool faction = selectedPage?.Key.StartsWith("factions/", StringComparison.Ordinal) == true;
+        bool neutral = selectedPage?.Key == ContentEditorContentSections.NeutralThemePageKey;
         bool generation = selectedRecord.Kind == "GameGenerationConfig";
         bool missionRulesOnly =
             selectedPage?.MissionID != null
@@ -1763,14 +1764,17 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             && selectedPage.Fields.All(field => field.Record.Kind == "GameConfig");
         artworkTab.GetComponentInChildren<TMP_Text>().text = faction ? "Interfaces" : "Artwork";
         propertiesTab.GetComponentInChildren<TMP_Text>().text =
-            faction ? "Faction"
+            neutral ? "Theme"
+            : faction ? "Faction"
             : selectedPage?.IsMissionPresentation == true ? "Presentation"
             : "General";
         defaultBackgroundsTab.GetComponentInChildren<TMP_Text>().text = "Default backgrounds";
         propertiesTab.gameObject.SetActive(!generation && !missionRulesOnly);
         if (faction)
             artworkTab.gameObject.SetActive(
-                selectedPage.Fields.Any(ContentEditorContentSections.IsFactionInterfaceField)
+                selectedPage.Fields.Any(field =>
+                    ContentEditorContentSections.IsFactionInterfaceField(field, neutral)
+                )
             );
         defaultBackgroundsTab.gameObject.SetActive(
             faction
@@ -1787,7 +1791,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             audioTab.gameObject.SetActive(false);
         }
         rulesTab.gameObject.SetActive(
-            faction
+            faction && !neutral
                 || selectedPage?.MissionID != null
                     && selectedPage.Fields.Any(field => field.Record.Kind == "GameConfig")
         );
@@ -2926,6 +2930,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             && form.GetOverriddenFields().Count > 0;
         resetSectionButton.gameObject.SetActive(canReset);
         resetSectionButton.interactable = canReset;
+        resetSectionButton.GetComponentInChildren<TMP_Text>(true).text =
+            section == "Colors" ? "Reset colors" : "Reset section";
     }
 
     /// <summary>

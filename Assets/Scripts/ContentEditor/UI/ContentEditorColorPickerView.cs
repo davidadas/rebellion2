@@ -45,6 +45,7 @@ public sealed class ContentEditorColorPickerView : MonoBehaviour
     private Action<ContentPackEditorField, string> submitted;
     private Action changed;
     private Action<string> validationFailed;
+    private Color fallbackColor;
     private bool bound;
     private bool rendering;
 
@@ -63,12 +64,14 @@ public sealed class ContentEditorColorPickerView : MonoBehaviour
     /// </summary>
     /// <param name="value">The color field.</param>
     /// <param name="sampleTexture">The interface mask used to preview the selected color.</param>
+    /// <param name="defaultColor">The color shown when the field has no valid authored value.</param>
     /// <param name="onSubmitted">The validated color submission.</param>
     /// <param name="onChanged">The notification after a successful change.</param>
     /// <param name="onValidationFailed">The validation failure notification.</param>
     public void Render(
         ContentPackEditorField value,
         Texture2D sampleTexture,
+        Color defaultColor,
         Action<ContentPackEditorField, string> onSubmitted,
         Action onChanged,
         Action<string> onValidationFailed
@@ -78,6 +81,7 @@ public sealed class ContentEditorColorPickerView : MonoBehaviour
         submitted = onSubmitted ?? throw new ArgumentNullException(nameof(onSubmitted));
         changed = onChanged;
         validationFailed = onValidationFailed;
+        fallbackColor = defaultColor;
         BindControls();
         title.text = field.Caption;
         description.text = field.HelpText;
@@ -161,7 +165,9 @@ public sealed class ContentEditorColorPickerView : MonoBehaviour
         rendering = true;
         try
         {
-            Color color = TryParseColor(field?.Value, out Color accepted) ? accepted : Color.white;
+            Color color = TryParseColor(field?.Value, out Color accepted)
+                ? accepted
+                : fallbackColor;
             Color.RGBToHSV(color, out float hue, out float saturation, out float brightness);
             colorWheel.SetValueWithoutNotify(hue, saturation);
             brightnessSlider.SetValueWithoutNotify(brightness);

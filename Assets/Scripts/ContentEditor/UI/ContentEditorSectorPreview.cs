@@ -55,9 +55,19 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
             field.MemberName == nameof(GalaxyBackground.DestroyedPlanetIconPath)
         );
         Texture2D destroyedPlanetTexture = ResolveFieldTexture(destroyedPlanetField, assets);
-        Color neutral = (
-            theme ?? ContentEditorPresentation.GetNeutralTheme(project)
-        ).GetPrimaryColor();
+        FactionTheme neutral = ContentEditorPresentation.GetNeutralTheme(project);
+        FactionTheme activeTheme = theme ?? neutral;
+        int neutralIndex = -1;
+        if (
+            editableFields != null
+            && neutral != null
+            && activeTheme.FactionInstanceID != neutral.FactionInstanceID
+        )
+        {
+            int available = planets.Length - (destroyedPlanetTexture != null ? 1 : 0);
+            if (available > 1)
+                neutralIndex = available - 1;
+        }
         window.Render(
             new PlanetSectorWindowRenderData(
                 sector.Name,
@@ -71,8 +81,7 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
                                 assets,
                                 energy,
                                 materials,
-                                neutral,
-                                theme?.PlanetOverlayTheme,
+                                index == neutralIndex ? neutral : activeTheme,
                                 index == planets.Length - 1 ? destroyedPlanetTexture : null
                             )
                     )
@@ -95,7 +104,11 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
                 () => DragEnded?.Invoke()
             );
         }
-        AttachEditCommands(editableFields ?? Array.Empty<ContentPackEditorField>(), assets);
+        AttachEditCommands(
+            editableFields ?? Array.Empty<ContentPackEditorField>(),
+            assets,
+            neutralIndex >= 0 ? views[neutralIndex].transform : null
+        );
         Fit();
     }
 
@@ -130,9 +143,11 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
     /// </summary>
     /// <param name="editableFields">The faction-interface fields available on the selected page.</param>
     /// <param name="assets">The working pack's resolved artwork.</param>
+    /// <param name="neutralSample">A preview borrowing artwork owned by the separate neutral theme.</param>
     private void AttachEditCommands(
         IReadOnlyList<ContentPackEditorField> editableFields,
-        ContentAssets assets
+        ContentAssets assets,
+        Transform neutralSample
     )
     {
         renderedFields.Clear();
@@ -149,6 +164,8 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
 
         foreach (RawImage image in GetComponentsInChildren<RawImage>(true))
         {
+            if (neutralSample != null && image.transform.IsChildOf(neutralSample))
+                continue;
             ContentPackEditorField releasedField = ResolvePlanetOverlayField(
                 image,
                 editableFields,
@@ -391,8 +408,7 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
     /// <param name="assets">The artwork source.</param>
     /// <param name="energy">The maximum available energy.</param>
     /// <param name="materials">The maximum available raw materials.</param>
-    /// <param name="neutral">The pack's neutral support color.</param>
-    /// <param name="overlays">The optional faction overlay artwork.</param>
+    /// <param name="theme">The theme providing text colors and overlay icons.</param>
     /// <param name="destroyedPlanetTexture">The optional destroyed state shown on the representative final planet.</param>
     /// <returns>The gameplay renderer's planet presentation.</returns>
     private static PlanetSectorPlanetRenderData CreatePlanet(
@@ -402,12 +418,13 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
         ContentAssets assets,
         int energy,
         int materials,
-        Color neutral,
-        PlanetOverlayTheme overlays,
+        FactionTheme theme,
         Texture2D destroyedPlanetTexture
     )
     {
         string image = planet.Element.Element("PlanetIconPath")?.Value ?? planet.ImageAddress;
+        Color factionColor = theme?.GetPrimaryColor() ?? Color.white;
+        PlanetOverlayTheme overlays = theme?.PlanetOverlayTheme;
         return new PlanetSectorPlanetRenderData(
             planetIndex: index,
             galaxyOffset: new Vector2Int(planet.X - sector.X, planet.Y - sector.Y),
@@ -448,7 +465,7 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
             ),
             headquartersTexture: LoadTexture(assets, overlays?.PlanetSectorHeadquartersImagePath),
             name: planet.Name,
-            nameColor: Color.white,
+            nameColor: factionColor,
             selectedIcon: PlanetIcon.None,
             hoveredIcon: PlanetIcon.None,
             energyBar: new PlanetSectorBarRenderData(
@@ -476,9 +493,9 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
                 0,
                 0,
                 0,
-                neutral,
+                factionColor,
                 Color.clear,
-                neutral,
+                factionColor,
                 "Popular Support 0/100"
             )
         );

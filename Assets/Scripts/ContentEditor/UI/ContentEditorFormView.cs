@@ -403,7 +403,15 @@ public sealed class ContentEditorFormView : MonoBehaviour
             fields = fields
                 .Where(field => !probabilityGrid.ContainsTableField(field))
                 .Concat(probabilityGrid.ResetFields);
-        return fields.Where(field => field.CanInherit && !field.IsInherited).Distinct().ToArray();
+        return fields
+            .Concat(
+                colorPickers
+                    .Where(picker => picker.gameObject.activeSelf)
+                    .Select(picker => picker.Field)
+            )
+            .Where(field => field?.CanResetToDefault == true)
+            .Distinct()
+            .ToArray();
     }
 
     /// <summary>
@@ -2678,10 +2686,14 @@ public sealed class ContentEditorFormView : MonoBehaviour
         float width = fieldScroll.ScrollArea.ViewportWidth;
         int labelIndex = 0;
         int y = 4;
-        y += PlaceLabel("Faction colors", labelIndex++, 4, y, width - 8, true);
+        string heading =
+            selectedPage.Key == ContentEditorContentSections.NeutralThemePageKey
+                ? "Neutral colors"
+                : "Faction colors";
+        y += PlaceLabel(heading, labelIndex++, 4, y, width - 8, true);
         y +=
             PlaceLabel(
-                "Choose the colors applied to shared interface masks. Each card previews the shape used by the interface.",
+                "Set the faction color, menu text highlight, and individual interface tints.",
                 labelIndex++,
                 4,
                 y,
@@ -2725,6 +2737,13 @@ public sealed class ContentEditorFormView : MonoBehaviour
             picker.Render(
                 field,
                 ResolveFactionColorSample(field, theme),
+                field.MemberName switch
+                {
+                    nameof(FactionColorScheme.PrimaryColorHex) => theme.GetPrimaryColor(),
+                    nameof(FactionColorScheme.HighlightTextColorHex) =>
+                        theme.GetHighlightTextColor(),
+                    _ => Color.white,
+                },
                 (submittedField, value) => SubmitField(submittedField, new[] { value }),
                 HandleFieldChanged,
                 ReportValidationError
@@ -2802,12 +2821,13 @@ public sealed class ContentEditorFormView : MonoBehaviour
         field.MemberName switch
         {
             nameof(FactionColorScheme.PrimaryColorHex) => 0,
-            nameof(FactionColorScheme.SelectionColorHex) => 1,
-            nameof(FactionColorScheme.ActiveWindowTitleColorHex) => 2,
-            nameof(FactionColorScheme.InactiveWindowTitleColorHex) => 3,
-            nameof(FactionColorScheme.ActiveBuildingPaneColorHex) => 4,
-            nameof(FactionColorScheme.InactiveBuildingPaneColorHex) => 5,
-            nameof(FactionColorScheme.PlanetMarkerColorHex) => 6,
+            nameof(FactionColorScheme.HighlightTextColorHex) => 1,
+            nameof(FactionColorScheme.SelectionColorHex) => 2,
+            nameof(FactionColorScheme.ActiveWindowTitleColorHex) => 3,
+            nameof(FactionColorScheme.InactiveWindowTitleColorHex) => 4,
+            nameof(FactionColorScheme.ActiveBuildingPaneColorHex) => 5,
+            nameof(FactionColorScheme.InactiveBuildingPaneColorHex) => 6,
+            nameof(FactionColorScheme.PlanetMarkerColorHex) => 7,
             _ => 100,
         };
 
@@ -3167,13 +3187,17 @@ public sealed class ContentEditorFormView : MonoBehaviour
     {
         previewPane.SetActive(false);
         float width = fieldScroll.ScrollArea.ViewportWidth;
-        var categories = ContentEditorContentSections
-            .FactionArtworkCategories.Select(name => new
+        bool neutral = selectedPage.Key == ContentEditorContentSections.NeutralThemePageKey;
+        IEnumerable<string> categoryNames = ContentEditorContentSections.FactionArtworkCategories;
+        if (neutral)
+            categoryNames = categoryNames.Append("Other artwork");
+        var categories = categoryNames
+            .Select(name => new
             {
                 Name = name,
                 Fields = selectedPage
                     .Fields.Where(field =>
-                        ContentEditorContentSections.IsFactionInterfaceField(field)
+                        ContentEditorContentSections.IsFactionInterfaceField(field, neutral)
                         && ContentEditorContentSections.FactionArtworkCategory(field) == name
                     )
                     .ToArray(),
@@ -3246,7 +3270,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         ContentPackEditorField[] visibleFields = category
             .Fields.Where(field => renderedFields.Any(rendered => SameField(rendered, field)))
             .ToArray();
-        if (visibleFields.Length == 0)
+        if (visibleFields.Length == 0 && !neutral)
         {
             y += PlaceLabel(
                 "This preview does not contain a faction-owned editable image in its current state.",
@@ -3258,9 +3282,23 @@ public sealed class ContentEditorFormView : MonoBehaviour
             );
         }
 
+        ContentPackEditorField[] fields = neutral
+            ? visibleFields.Concat(category.Fields.Except(visibleFields)).ToArray()
+            : visibleFields;
         IReadOnlyList<string> previousSections = Array.Empty<string>();
-        foreach (ContentPackEditorField field in visibleFields)
+        for (int index = 0; index < fields.Length; index++)
         {
+            if (
+                neutral
+                && index == visibleFields.Length
+                && artworkWindowPreview.Supports(category.Name)
+            )
+            {
+                y +=
+                    PlaceLabel("Additional theme artwork", labelIndex++, 4, y, width - 8, true) + 8;
+                previousSections = Array.Empty<string>();
+            }
+            ContentPackEditorField field = fields[index];
             IReadOnlyList<string> sections = ContentEditorContentSections.FactionArtworkSections(
                 field
             );
@@ -3366,7 +3404,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
                         ?.Value.Contains("asteroid", StringComparison.OrdinalIgnoreCase) != true
                 )
             )
-            .OrderBy(record => record.Planets.Count)
+            .OrderBy(record => record.Planets.Count < 3)
+            .ThenBy(record => record.Planets.Count)
             .ThenBy(record => record.Name, StringComparer.Ordinal)
             .FirstOrDefault();
         ContentPackEditorRecord theme = selectedPage.RelatedRecords.FirstOrDefault(record =>
@@ -3454,7 +3493,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
             .ToArray();
         ContentPackEditorField[] surfaceFields = themeFields
             .Where(field =>
-                ContentEditorContentSections.IsFactionInterfaceField(field)
+                ContentEditorContentSections.IsFactionInterfaceField(
+                    field,
+                    selectedPage.Key == ContentEditorContentSections.NeutralThemePageKey
+                )
                 && ContentEditorContentSections.FactionArtworkCategory(field) == category
             )
             .ToArray();
@@ -3933,7 +3975,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 IReadOnlyList<string> sections = collection
                     ? Array.Empty<string>()
                     : field.SectionPath;
-                if (record.Kind == "FactionTheme")
+                if (
+                    record.Kind == "FactionTheme"
+                    && selectedPage.Key != ContentEditorContentSections.NeutralThemePageKey
+                )
                     sections = Array.Empty<string>();
                 if (
                     selectedPage.Key.StartsWith("factions/", StringComparison.Ordinal)
