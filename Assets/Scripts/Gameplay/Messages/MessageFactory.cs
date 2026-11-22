@@ -341,7 +341,7 @@ namespace Rebellion.Gameplay
                     bodyTemplate: reporter == null ? definition?.UnattributedBody : null
                 ),
                 target,
-                GetMissionNavigationTarget(result, game),
+                GetMissionNavigationTarget(result, target, game),
                 result.Mission
             );
 
@@ -1370,10 +1370,12 @@ namespace Rebellion.Gameplay
         /// Resolves the scene node opened from a completed mission message.
         /// </summary>
         /// <param name="result">The completed mission result.</param>
+        /// <param name="missionTarget">The planet where the mission was performed.</param>
         /// <param name="game">The game state used to resolve mission-specific targets.</param>
         /// <returns>The mission-specific target, first participant, or mission itself.</returns>
         private static ISceneNode GetMissionNavigationTarget(
             MissionCompletedResult result,
+            Planet missionTarget,
             GameRoot game
         )
         {
@@ -1388,6 +1390,15 @@ namespace Rebellion.Gameplay
                 );
                 if (recruitedOfficer != null)
                     return recruitedOfficer;
+            }
+
+            if (
+                result?.Outcome != MissionOutcome.Success
+                && result?.Mission is ReconnaissanceMission
+                && missionTarget != null
+            )
+            {
+                return missionTarget;
             }
 
             return (result?.Participants ?? Enumerable.Empty<IMissionParticipant>())
