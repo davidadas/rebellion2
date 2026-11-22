@@ -42,19 +42,6 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
-        public void IsDamaged_ComponentDamage_ReturnsTrue()
-        {
-            CapitalShip ship = new CapitalShip
-            {
-                CurrentHullStrength = 100,
-                MaxHullStrength = 100,
-                SystemDamage = new CapitalShipSystemDamage { TractorBeam = 1 },
-            };
-
-            Assert.IsTrue(ship.IsDamaged());
-        }
-
-        [Test]
         public void RepairComponent_SelectedDamageLevel_DecrementsComponent()
         {
             CapitalShipSystemDamage damage = new CapitalShipSystemDamage

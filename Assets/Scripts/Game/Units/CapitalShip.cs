@@ -809,10 +809,10 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Returns true if this ship has hull or component damage that can be repaired.
+        /// Returns true if this ship has hull damage that can be repaired.
         /// </summary>
-        /// <returns>True when hull strength is reduced or at least one installed system is damaged.</returns>
-        public bool IsDamaged() => CurrentHullStrength < MaxHullStrength || SystemDamage?.Total > 0;
+        /// <returns>True if current hull strength is below maximum hull strength.</returns>
+        public bool IsDamaged() => CurrentHullStrength < MaxHullStrength;
 
         /// <summary>
         /// Repairs hull damage by the specified amount, capped at MaxHullStrength.
