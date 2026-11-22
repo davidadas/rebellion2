@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 
 /// <summary>
 /// Loads and provides access to all faction themes defined in FactionThemes.xml.
@@ -103,6 +105,26 @@ public sealed class FactionThemeLibrary
         }
 
         return themesByFactionId.TryGetValue(factionInstanceId, out theme);
+    }
+
+    /// <summary>
+    /// Resolves the faction background for a unit's encyclopedia artwork.
+    /// </summary>
+    /// <param name="entity">The unit shown by the entry.</param>
+    /// <param name="owner">The faction assigned to the entry.</param>
+    /// <returns>The background address, when configured for the unit type.</returns>
+    internal string GetEncyclopediaArtworkBackground(BaseGameEntity entity, string owner)
+    {
+        if (string.IsNullOrWhiteSpace(owner) || !TryGetTheme(owner, out FactionTheme theme))
+            return null;
+        string unitKind = entity switch
+        {
+            Officer => nameof(Officer),
+            CapitalShip => nameof(CapitalShip),
+            Starfighter => nameof(Starfighter),
+            _ => null,
+        };
+        return theme.ArtworkDefaults?.GetBackgroundImagePath(unitKind);
     }
 
     /// <summary>

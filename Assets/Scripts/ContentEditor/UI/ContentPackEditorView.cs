@@ -98,6 +98,12 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private Button artworkTab;
 
     [SerializeField]
+    private Button defaultBackgroundsTab;
+
+    [SerializeField]
+    private Button colorsTab;
+
+    [SerializeField]
     private Button audioTab;
 
     [SerializeField]
@@ -117,6 +123,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
 
     [SerializeField]
     private Button referenceTab;
+
+    [SerializeField]
+    private Button missionPresentationTab;
 
     [SerializeField]
     private Button[] generationTabs;
@@ -180,6 +189,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private ImagePreviewView imagePreview;
 
     [SerializeField]
+    private ContentEditorArtworkWorkspace artworkWorkspace;
+
+    [SerializeField]
     private AudioSource previewAudio;
 
     private readonly ContentEditorNavigation navigation = new ContentEditorNavigation();
@@ -208,8 +220,19 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     public event Action OpenRequested;
     public event Action<string> BrowseFolderRequested;
     public event Action<ContentPackEditorField> ImportRequested;
+    public event Action<
+        ContentPackEditorField,
+        IReadOnlyList<ContentPackEditorField>
+    > ArtworkCutsRequested;
+    internal event Action<
+        ContentPackEditorField,
+        ContentEditorArtworkEffect,
+        bool
+    > ArtworkEffectRequested;
     public event Action SaveRequested;
+    internal event Action RestoreTravelArtworkRequested;
     public event Action ValidateRequested;
+    internal event Action QuickValidationRequested;
     public event Action<ContentEditorMapLayout> MapLayoutRequested;
     public event Action UndoRequested;
     public event Action RedoRequested;
@@ -229,12 +252,25 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     internal event Action<ContentPackEditorCatalog, Vector2Int> AddSectorRequested;
     internal event Action<ContentPackEditorRecord, Vector2Int> AddPlanetRequested;
     internal event Action<ContentPackEditorRecord, MessageType> AddMessageRequested;
+    internal event Action<
+        ContentPackEditorCatalog,
+        ContentPackEditorRecord,
+        string
+    > AddMissionArticleRequested;
+    internal event Action<
+        ContentPackEditorRecord,
+        ContentEditorMissionReport,
+        bool
+    > MissionReportOverrideRequested;
     internal event Action<ContentPackEditorRecord> AddNamePoolRequested;
     internal event Action<ContentPackEditorField> RemoveMessageRequested;
     internal event Action<IReadOnlyList<ContentPackEditorField>> ClearFieldsRequested;
     internal event Action<ContentPackEditorRecord> DeleteRequested;
     internal event Action<ContentEditorXmlScope, string, int> XmlSubmitted;
     internal event Action<ContentPackEditorField, IReadOnlyList<string>> FieldSubmitted;
+    internal event Action<
+        IReadOnlyList<ContentEditorArtworkPlacementChange>
+    > ArtworkPlacementSubmitted;
     internal event Action<ContentPackEditorField> FieldValidationRequested;
     internal event Action<IReadOnlyList<ContentPackEditorField>> SectionInheritanceResetRequested;
     internal event Action<ContentPackEditorRecord> MapEditStarted;
@@ -370,6 +406,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || recordSubtitle == null
             || propertiesTab == null
             || artworkTab == null
+            || defaultBackgroundsTab == null
+            || colorsTab == null
             || audioTab == null
             || advancedTab == null
             || encyclopediaTab == null
@@ -377,6 +415,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || shipNamesTab == null
             || factionMessagesTab == null
             || referenceTab == null
+            || missionPresentationTab == null
             || xml == null
             || checkmark == null
             || tabRoot == null
@@ -394,6 +433,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || selectionDialog == null
             || confirmation == null
             || imagePreview == null
+            || artworkWorkspace == null
             || previewAudio == null
             || resetSectionButton == null
             || generationTabs == null
@@ -415,33 +455,54 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         searchInput.onValueChanged.AddListener(HandleSearchChanged);
         clearSearchButton.onClick.AddListener(ClearSearch);
         propertiesTab.onClick.AddListener(() => ShowSection("General"));
-        artworkTab.onClick.AddListener(() => ShowSection("Artwork"));
+        colorsTab.onClick.AddListener(() => ShowSection("Colors"));
+        artworkTab.onClick.AddListener(() =>
+            ShowSection(
+                selectedPage?.Key.StartsWith("factions/", StringComparison.Ordinal) == true
+                    ? "Interfaces"
+                    : "Artwork"
+            )
+        );
+        defaultBackgroundsTab.onClick.AddListener(() => ShowSection("Default backgrounds"));
         audioTab.onClick.AddListener(() => ShowSection("Audio"));
         advancedTab.onClick.AddListener(() => ShowSection("Advanced"));
         encyclopediaTab.onClick.AddListener(() => ShowSection("Encyclopedia"));
         rulesTab.onClick.AddListener(() => ShowSection("Rules"));
         shipNamesTab.onClick.AddListener(() => ShowSection("Ship names"));
         factionMessagesTab.onClick.AddListener(() => ShowSection("Messages"));
-        referenceTab.onClick.AddListener(() => ShowSection("Encyclopedia"));
+        missionPresentationTab.onClick.AddListener(() => ShowSection("Mission presentation"));
+        referenceTab.onClick.AddListener(() =>
+            ShowSection(
+                selectedPage?.IsMissionPresentation == true
+                    ? ContentEditorMissionReport.Section
+                    : "Encyclopedia"
+            )
+        );
         for (int index = 0; index < generationTabs.Length; index++)
         {
             string caption = ContentEditorContentSections.GenerationSections[index];
             generationTabs[index].onClick.AddListener(() => ShowSection(caption));
         }
         form.AddMessageRequested += ShowAddMessageMenu;
+        form.MissionReportOverrideRequested += ForwardMissionReportOverride;
         form.AddNamePoolRequested += RequestNamePool;
         form.RemoveMessageRequested += ConfirmRemoveMessage;
         form.ClearFieldsRequested += ForwardClearFields;
         form.Changed += HandleFieldChanged;
         form.PresentationChanged += UpdateResetSectionPresentation;
         form.FieldSubmitted += SubmitField;
+        form.ArtworkPlacementSubmitted += SubmitArtworkPlacement;
         form.SelectionRequested += ShowFieldSelection;
         form.UnitSelectionRequested += ShowUnitSelection;
         form.CollectionAddRequested += ForwardCollectionAdd;
         form.CollectionRemoveRequested += ConfirmCollectionRemove;
         form.FieldValidationRequested += ValidateField;
         form.ImportRequested += ImportMedia;
+        form.ArtworkCutsRequested += RequestArtworkCuts;
+        form.ArtworkEffectRequested += RequestArtworkEffect;
         form.PreviewRequested += PreviewMedia;
+        form.AssetEditRequested += OpenAssetEditor;
+        form.SectionRequested += ShowSection;
         form.ValidationFailed += ReportFieldError;
         expandAllButton.onClick.AddListener(() => SetTreeExpansion(true));
         collapseAllButton.onClick.AddListener(() => SetTreeExpansion(false));
@@ -509,19 +570,25 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             xml.ScopeRequested -= RequestXmlScope;
             form.WidthChanged -= HandleFieldAreaResize;
             form.AddMessageRequested -= ShowAddMessageMenu;
+            form.MissionReportOverrideRequested -= ForwardMissionReportOverride;
             form.AddNamePoolRequested -= RequestNamePool;
             form.RemoveMessageRequested -= ConfirmRemoveMessage;
             form.ClearFieldsRequested -= ForwardClearFields;
             form.Changed -= HandleFieldChanged;
             form.PresentationChanged -= UpdateResetSectionPresentation;
             form.FieldSubmitted -= SubmitField;
+            form.ArtworkPlacementSubmitted -= SubmitArtworkPlacement;
             form.SelectionRequested -= ShowFieldSelection;
             form.UnitSelectionRequested -= ShowUnitSelection;
             form.CollectionAddRequested -= ForwardCollectionAdd;
             form.CollectionRemoveRequested -= ConfirmCollectionRemove;
             form.FieldValidationRequested -= ValidateField;
             form.ImportRequested -= ImportMedia;
+            form.ArtworkCutsRequested -= RequestArtworkCuts;
+            form.ArtworkEffectRequested -= RequestArtworkEffect;
             form.PreviewRequested -= PreviewMedia;
+            form.AssetEditRequested -= OpenAssetEditor;
+            form.SectionRequested -= ShowSection;
             form.ValidationFailed -= ReportFieldError;
             workbenchLayout.Changed -= HandleWorkbenchChanged;
             menu.CommandSelected -= HandleMenuSelection;
@@ -606,6 +673,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             menu.TryCancel()
             || imagePreview.TryCancel()
             || confirmation.TryCancel()
+            || artworkWorkspace.TryCancel()
             || packDialog.TryCancel()
         )
             return true;
@@ -662,6 +730,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         HideValidationIssues();
         confirmation.TryCancel();
         imagePreview.TryCancel();
+        artworkWorkspace.Dismiss();
         menu.Reset();
         FinishMapEdit();
         string selectedKey = project == value ? selectedRecord?.Key : null;
@@ -768,7 +837,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 ? "Starting setup"
                 : selectedPage?.Caption ?? selectedRecord.Name;
         string kind =
-            selectedPage?.MissionID != null ? "Mission"
+            selectedPage?.IsMissionPresentation == true ? "Mission presentation"
+            : selectedPage?.MissionID != null ? "Mission"
             : selectedRecord.Kind is "PlanetSector" or "PlanetSectors" ? "Galaxy"
             : selectedRecord.Kind == "GameConfig" ? "Game rules"
             : selectedRecord.Kind == "GameGenerationConfig" ? "New-game settings"
@@ -921,6 +991,17 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 shortcut: ShortcutModifier + "+S"
             ),
             new ContentEditorMenuCommand(
+                "Restore missing travel artwork",
+                () => RestoreTravelArtworkRequested?.Invoke(),
+                project != null
+            ),
+            new ContentEditorMenuCommand(
+                "Quick validation",
+                () => QuickValidationRequested?.Invoke(),
+                project != null,
+                shortcut: ShortcutModifier + "+Shift+V"
+            ),
+            new ContentEditorMenuCommand(
                 "Validate pack",
                 () => ValidateRequested?.Invoke(),
                 project != null
@@ -981,6 +1062,40 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     }
 
     /// <summary>
+    /// Asks whether a selected media file should replace the current pack file or be imported separately.
+    /// </summary>
+    /// <param name="fileName">The current pack-owned file name.</param>
+    /// <param name="replace">The action that overwrites the current file.</param>
+    /// <param name="importNew">The action that imports a separate file and updates the field.</param>
+    public void ConfirmMediaReplacement(string fileName, Action replace, Action importNew)
+    {
+        confirmation.Show(
+            replace == null
+                ? $"The selected file uses a different format from {fileName}. Import it for this field?"
+                : $"Replace {fileName} everywhere this pack uses it, or import the selected file for this field only?",
+            replace == null ? "Import as new" : "Replace file",
+            replace ?? importNew,
+            replace == null ? null : "Import as new",
+            replace == null ? null : importNew,
+            title: "Existing media"
+        );
+    }
+
+    /// <summary>
+    /// Offers to generate the remaining standard artwork from the first imported image.
+    /// </summary>
+    /// <param name="count">The number of empty slots the cuts will fill.</param>
+    /// <param name="generate">The action that opens the generated previews.</param>
+    internal void ConfirmFirstArtworkCuts(int count, Action generate) =>
+        confirmation.Show(
+            $"Fill the remaining artwork slots ({count}) from this image? You can adjust the crops before saving.",
+            "Preview cuts",
+            generate,
+            title: "Generate artwork cuts",
+            cancelText: "Skip"
+        );
+
+    /// <summary>
     /// Clears project-owned forms before the controller releases their assets.
     /// </summary>
     public void ClearProject()
@@ -993,6 +1108,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         map.Clear();
         StopAudioPreview();
         imagePreview.TryCancel();
+        artworkWorkspace.Dismiss();
         selectedRecord = null;
         selectedPage = null;
         textRedoTarget = null;
@@ -1310,6 +1426,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 key.Use();
             return handled;
         }
+        if (artworkWorkspace.gameObject.activeSelf && workbench.interactable)
+            return !confirmation.gameObject.activeSelf
+                && artworkWorkspace.HandleKeyboardShortcut(key);
         if (
             !workbench.interactable
             || packDialog.IsOpen
@@ -1331,6 +1450,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             KeyCode.Z => () => UndoRequested?.Invoke(),
             KeyCode.Y => () => RedoRequested?.Invoke(),
             KeyCode.S => () => SaveRequested?.Invoke(),
+            KeyCode.V when key.shift && project != null => () => QuickValidationRequested?.Invoke(),
             KeyCode.O => RequestOpenPack,
             KeyCode.N => ShowNewPackDialog,
             KeyCode.W => () => CloseRequested?.Invoke(),
@@ -1532,7 +1652,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         tabRoot.gameObject.SetActive(record != null);
         form.gameObject.SetActive(record != null);
         resetSectionButton.gameObject.SetActive(false);
-        duplicateButton.interactable = record?.Catalog.CanDuplicate == true;
+        duplicateButton.interactable =
+            page?.IsMissionPresentation != true && record?.Catalog.CanDuplicate == true;
         deleteButton.interactable = record?.Kind == "Faction" || duplicateButton.interactable;
         if (record == null)
         {
@@ -1636,11 +1757,29 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         }
         bool faction = selectedPage?.Key.StartsWith("factions/", StringComparison.Ordinal) == true;
         bool generation = selectedRecord.Kind == "GameGenerationConfig";
-        propertiesTab.gameObject.SetActive(!generation);
+        bool missionRulesOnly =
+            selectedPage?.MissionID != null
+            && selectedPage.Fields.Count > 0
+            && selectedPage.Fields.All(field => field.Record.Kind == "GameConfig");
+        artworkTab.GetComponentInChildren<TMP_Text>().text = faction ? "Interfaces" : "Artwork";
+        propertiesTab.GetComponentInChildren<TMP_Text>().text =
+            faction ? "Faction"
+            : selectedPage?.IsMissionPresentation == true ? "Presentation"
+            : "General";
+        defaultBackgroundsTab.GetComponentInChildren<TMP_Text>().text = "Default backgrounds";
+        propertiesTab.gameObject.SetActive(!generation && !missionRulesOnly);
         if (faction)
             artworkTab.gameObject.SetActive(
-                selectedPage.Fields.Any(ContentEditorContentSections.IsFactionArtworkField)
+                selectedPage.Fields.Any(ContentEditorContentSections.IsFactionInterfaceField)
             );
+        defaultBackgroundsTab.gameObject.SetActive(
+            faction
+                && selectedPage.Fields.Any(ContentEditorContentSections.IsFactionBackgroundField)
+        );
+        colorsTab.gameObject.SetActive(
+            faction
+                && selectedPage.Fields.Any(field => field.Group == nameof(FactionTheme.ColorScheme))
+        );
         if (generation)
         {
             encyclopediaTab.gameObject.SetActive(false);
@@ -1664,9 +1803,15 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                     record.Kind == "Faction" && record.Element.Element("InstanceID") != null
                 )
         );
+        missionPresentationTab.gameObject.SetActive(faction && selectedPage.MissionPages.Count > 0);
         referenceTab.gameObject.SetActive(
             faction && selectedPage.RelatedRecords.Any(record => record.Kind == "EncyclopediaEntry")
+                || selectedPage?.MissionReports.Count > 0
         );
+        referenceTab.GetComponentInChildren<TMP_Text>().text =
+            selectedPage?.IsMissionPresentation == true
+                ? ContentEditorMissionReport.Section
+                : "Encyclopedia";
         foreach (Button tab in generationTabs)
             tab.gameObject.SetActive(generation);
         Button[] tabs =
@@ -1675,14 +1820,26 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 ? new[]
                 {
                     propertiesTab,
+                    colorsTab,
                     rulesTab,
                     shipNamesTab,
                     factionMessagesTab,
+                    missionPresentationTab,
                     artworkTab,
+                    defaultBackgroundsTab,
                     referenceTab,
                     advancedTab,
                 }
-            : new[] { propertiesTab, encyclopediaTab, artworkTab, audioTab, rulesTab, advancedTab };
+            : new[]
+            {
+                propertiesTab,
+                encyclopediaTab,
+                artworkTab,
+                audioTab,
+                rulesTab,
+                referenceTab,
+                advancedTab,
+            };
         string[] names =
             generation
                 ? ContentEditorContentSections
@@ -1692,20 +1849,32 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 ? new[]
                 {
                     "General",
+                    "Colors",
                     "Rules",
                     "Ship names",
                     "Messages",
-                    "Artwork",
+                    "Mission presentation",
+                    "Interfaces",
+                    "Default backgrounds",
                     "Encyclopedia",
                     "Advanced",
                 }
-            : new[] { "General", "Encyclopedia", "Artwork", "Audio", "Rules", "Advanced" };
+            : new[]
+            {
+                "General",
+                "Encyclopedia",
+                "Artwork",
+                "Audio",
+                "Rules",
+                ContentEditorMissionReport.Section,
+                "Advanced",
+            };
         if (
             !Enumerable
                 .Range(0, tabs.Length)
                 .Any(index => tabs[index].gameObject.activeSelf && names[index] == section)
         )
-            SectionRequested?.Invoke(names[0]);
+            SectionRequested?.Invoke(missionRulesOnly ? "Rules" : names[0]);
         List<(RectTransform Rect, float Width)> layout = new();
         for (int i = 0; i < tabs.Length; i++)
         {
@@ -1886,6 +2055,116 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         imagePreview.Show(texture, address);
 
     /// <summary>
+    /// Presents an editable gameplay artwork draft in the dedicated workspace.
+    /// </summary>
+    /// <param name="name">The effect edited in the workspace.</param>
+    /// <param name="unit">The selected unit and draft source.</param>
+    /// <param name="previews">The previews for each destination.</param>
+    /// <param name="initialFrame">The gameplay size chosen on the artwork page.</param>
+    /// <param name="selected">The currently selected layer.</param>
+    /// <param name="changed">Whether the draft has unsaved edits.</param>
+    /// <param name="commands">The controller's current edit operations.</param>
+    internal void ShowGeneratedArtwork(
+        string name,
+        string unit,
+        IReadOnlyList<ArtworkEffectPreviewFrame> previews,
+        int initialFrame,
+        int selected,
+        bool changed,
+        ArtworkEffectActions commands
+    ) =>
+        artworkWorkspace.Show(
+            name,
+            unit,
+            previews,
+            initialFrame,
+            selected,
+            changed,
+            commands,
+            (save, discard) =>
+                confirmation.Show(
+                    "Save changes to this artwork?",
+                    "Save artwork",
+                    save,
+                    "Discard",
+                    discard
+                )
+        );
+
+    /// <summary>
+    /// Guards native window closure while a draft has unsaved edits.
+    /// </summary>
+    /// <param name="next">Resumes closing after the artwork decision.</param>
+    /// <returns>Whether the draft is waiting on a decision.</returns>
+    internal bool ConfirmPendingArtwork(Action next) => artworkWorkspace.ConfirmPending(next);
+
+    /// <summary>
+    /// Gets the theme backdrop shared by personnel and troop transit cards.
+    /// </summary>
+    /// <returns>The readable theme image, or null when unavailable.</returns>
+    internal Texture2D GetPersonnelTransitBackground() =>
+        form.ResolveUnitCompactBackground(inTransit: true, readable: true);
+
+    /// <summary>
+    /// Resolves the shared transit backdrop used when previewing troop travel artwork.
+    /// </summary>
+    /// <returns>A readable backdrop, or null if the faction has no configured backdrop.</returns>
+    internal Texture2D GetTroopTransitBackground() =>
+        form.ResolveUnitCompactBackground(inTransit: true, readable: true, defense: true);
+
+    /// <summary>
+    /// Returns the shared gameplay travel artwork address for the selected unit.
+    /// </summary>
+    /// <returns>The theme's travel image, when configured.</returns>
+    internal string GetUnitTravelBackgroundAddress() =>
+        form.GetUnitCompactBackgroundAddress(inTransit: true, defense: true);
+
+    /// <summary>
+    /// Resolves the backdrop behind generated ship states using the artwork page's current setting.
+    /// </summary>
+    /// <returns>The configured override or faction default, when visible.</returns>
+    internal Texture2D GetShipEffectBackground() => form.GetShipEffectBackground();
+
+    /// <summary>
+    /// Shows the exact output cuts with the same backgrounds as the unit artwork gallery.
+    /// </summary>
+    /// <param name="cuts">The destination fields and owned preview textures.</param>
+    /// <param name="apply">The action that saves the displayed cuts.</param>
+    /// <param name="move">Moves one preview by a normalized displacement.</param>
+    internal void ShowArtworkCuts(
+        IReadOnlyList<(ContentPackEditorField Field, Texture2D Texture)> cuts,
+        Action apply,
+        Action<int, Vector2> move = null
+    )
+    {
+        var previews = cuts.Select(cut =>
+            {
+                Vector2Int dimensions = new(cut.Texture.width, cut.Texture.height);
+                var background = form.GetArtworkCutBackground(cut.Field, dimensions);
+                return (
+                    ContentEditorFormView.GetArtworkOutputCaption(cut.Field, dimensions),
+                    cut.Texture,
+                    background.Texture,
+                    background.Uv
+                );
+            })
+            .ToArray();
+        imagePreview.ShowCuts(previews, apply, move);
+    }
+
+    /// <summary>
+    /// Requests an effect preview for the selected unit artwork.
+    /// </summary>
+    /// <param name="field">The state image and preview size selected by the author.</param>
+    /// <param name="effect">The requested gameplay effect.</param>
+    /// <param name="generate">Whether the selected slot should be generated directly.</param>
+    private void RequestArtworkEffect(
+        ContentPackEditorField field,
+        ContentEditorArtworkEffect effect,
+        bool generate
+    ) => ArtworkEffectRequested?.Invoke(field, effect, generate);
+
+    /// <summary>
     /// Plays a clip whose loading and lifetime are owned by the application controller.
     /// </summary>
     /// <param name="clip">The resolved audio clip.</param>
@@ -1916,6 +2195,20 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     {
         if (CommitFields())
             ImportRequested?.Invoke(field);
+    }
+
+    /// <summary>
+    /// Requests a preview of the exact standard artwork cuts before any output is replaced.
+    /// </summary>
+    /// <param name="source">The large image supplying the generated pixels.</param>
+    /// <param name="targets">The standard output fields to generate.</param>
+    private void RequestArtworkCuts(
+        ContentPackEditorField source,
+        IReadOnlyList<ContentPackEditorField> targets
+    )
+    {
+        if (CommitFields())
+            ArtworkCutsRequested?.Invoke(source, targets);
     }
 
     /// <summary>
@@ -2075,6 +2368,17 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <param name="anchor">The form command that owns the popup.</param>
     private void ShowAddMessageMenu(Button anchor)
     {
+        ContentEditorTreeNode mission = form.ActiveMissionPage;
+        if (mission != null)
+        {
+            if (CommitFields())
+                AddMissionArticleRequested?.Invoke(
+                    mission.MissionArticleCatalog,
+                    mission.Record,
+                    mission.Key[(mission.Key.LastIndexOf('/') + 1)..]
+                );
+            return;
+        }
         ShowMenu(
             anchor,
             Enum.GetValues(typeof(MessageType))
@@ -2086,6 +2390,18 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 .ToArray()
         );
     }
+
+    /// <summary>
+    /// Forwards the faction report edit to the workspace that owns the pack.
+    /// </summary>
+    /// <param name="faction">The recipient faction.</param>
+    /// <param name="report">The selected Espionage report variant.</param>
+    /// <param name="customize">Whether the faction should use its own report.</param>
+    private void ForwardMissionReportOverride(
+        ContentPackEditorRecord faction,
+        ContentEditorMissionReport report,
+        bool customize
+    ) => MissionReportOverrideRequested?.Invoke(faction, report, customize);
 
     /// <summary>
     /// Adds a starting message and reveals its editable title without copying another message.
@@ -2461,6 +2777,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         ContentPackEditorRecord record
     )
     {
+        if (page?.IsMissionPresentation == true)
+            return field.Record.Kind == "MessageDefinition"
+                ? ContentEditorMissionReport.Section
+                : "General";
         if (page?.Key.StartsWith("factions/", StringComparison.Ordinal) == true)
             return ContentEditorContentSections.FactionSection(field);
         if (record.Kind == "GameGenerationConfig")
@@ -2476,6 +2796,22 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         return field.MediaType == ContentPackEditorMediaType.Audio ? "Audio"
             : field.IsMedia ? "Artwork"
             : "General";
+    }
+
+    /// <summary>
+    /// Opens the owning record's artwork inspector and focuses a rendered asset's exact field.
+    /// </summary>
+    /// <param name="field">The field supplying the clicked preview image.</param>
+    private void OpenAssetEditor(ContentPackEditorField field)
+    {
+        if (field == null)
+            return;
+        SelectRecord(field.Record);
+        if (selectedRecord?.Element != field.Record.Element)
+            return;
+        ShowSection("Artwork");
+        if (section == "Artwork")
+            form.FocusField(field);
     }
 
     /// <summary>
@@ -2562,6 +2898,14 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <param name="values">The complete proposed values.</param>
     private void SubmitField(ContentPackEditorField field, IReadOnlyList<string> values) =>
         FieldSubmitted?.Invoke(field, values);
+
+    /// <summary>
+    /// Forwards one composed-preview placement to the project-owning controller.
+    /// </summary>
+    /// <param name="changes">The authored source-coordinate replacements.</param>
+    private void SubmitArtworkPlacement(
+        IReadOnlyList<ContentEditorArtworkPlacementChange> changes
+    ) => ArtworkPlacementSubmitted?.Invoke(changes);
 
     /// <summary>
     /// Forwards unchanged-field validation without mutating project data in the view.

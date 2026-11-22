@@ -61,6 +61,7 @@ internal static class ContentEditorUnitFactory
         if (kind == "Officer")
         {
             unit.Add(
+                new XElement(nameof(Officer.BackgroundImagePath)),
                 new XElement("IsMain", false),
                 new XElement("IsRecruitable", true),
                 new XElement("CanBetray", true),
@@ -85,6 +86,7 @@ internal static class ContentEditorUnitFactory
         {
             case "Starfighter":
                 unit.Add(
+                    new XElement(nameof(Starfighter.BackgroundImagePath)),
                     new XElement("Roles"),
                     new XElement("MaxSquadronSize", 1),
                     new XElement("CurrentSquadronSize", 1),
@@ -107,6 +109,7 @@ internal static class ContentEditorUnitFactory
                 break;
             case "CapitalShip":
                 unit.Add(
+                    new XElement(nameof(CapitalShip.BackgroundImagePath)),
                     new XElement("MaxHullStrength", 1),
                     new XElement("CurrentHullStrength", 1),
                     Zeroes(

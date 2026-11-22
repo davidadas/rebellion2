@@ -145,7 +145,12 @@ public static class UIBuilderMenu
         foreach (
             string guid in AssetDatabase.FindAssets(
                 "t:Prefab",
-                new[] { "Assets/Prefabs/UI/Common", "Assets/Prefabs/UI/ContentPackEditor" }
+                new[]
+                {
+                    "Assets/Prefabs/UI/Common",
+                    "Assets/Prefabs/UI/ContentPackEditor",
+                    "Assets/Prefabs/UI/StrategyView",
+                }
             )
         )
             RemoveDevelopmentContentReferences(AssetDatabase.GUIDToAssetPath(guid));

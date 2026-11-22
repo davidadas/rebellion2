@@ -93,7 +93,7 @@ public sealed class ContentPackEditorField
         : MediaType == ContentPackEditorMediaType.Video ? new[] { ".mp4", ".webm" }
         : new[] { ".png", ".jpg", ".jpeg" };
     public bool IsMultiline =>
-        MemberName == "Body"
+        MemberName is "Body" or "UnattributedBody"
         || element.Name.LocalName.Contains("Description", StringComparison.Ordinal)
         || Value.Contains('\n');
     public string Section { get; }
@@ -158,7 +158,6 @@ public sealed class ContentPackEditorField
             ?? element.Elements().FirstOrDefault()?.Name
             ?? ContentPackEditorFieldSchema.GetItemName(record.Element, element);
         Name = name;
-        Caption = ContentPackEditorFieldMetadata.GetCaption(this, caption ?? name);
         SectionPath = sectionPath ?? Array.Empty<string>();
         IsBoolean =
             !this.list
@@ -178,6 +177,7 @@ public sealed class ContentPackEditorField
                         || valueType == typeof(decimal)
             );
         MediaType = ContentPackEditorFieldMetadata.GetMediaType(this);
+        Caption = ContentPackEditorFieldMetadata.GetCaption(this, caption ?? name);
         Section = ContentPackEditorFieldMetadata.GetSection(this);
     }
 

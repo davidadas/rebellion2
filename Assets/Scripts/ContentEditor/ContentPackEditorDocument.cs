@@ -147,6 +147,17 @@ public sealed class ContentPackEditorDocument
             != null;
 
     /// <summary>
+    /// Gets an individual artwork reference from the record beneath the working pack.
+    /// </summary>
+    /// <param name="record">The effective record in the editor.</param>
+    /// <param name="member">The serialized member name.</param>
+    /// <returns>The inherited value, when that record defines one.</returns>
+    internal string GetInheritedRecordMember(XElement record, string member) =>
+        inheritedText == null
+            ? null
+            : ContentXmlOverrides.FindEquivalent(record, InheritedRoot)?.Element(member)?.Value;
+
+    /// <summary>
     /// Checks which layer owns one displayed field.
     /// </summary>
     /// <param name="element">The displayed member.</param>

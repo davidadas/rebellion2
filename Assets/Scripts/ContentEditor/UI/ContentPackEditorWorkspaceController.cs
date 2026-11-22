@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -33,12 +34,15 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.AddSectorRequested += AddSector;
         view.AddPlanetRequested += AddPlanet;
         view.AddMessageRequested += AddMessage;
+        view.AddMissionArticleRequested += AddMissionArticle;
+        view.MissionReportOverrideRequested += SetMissionReportOverride;
         view.AddNamePoolRequested += AddNamePool;
         view.RemoveMessageRequested += RemoveMessage;
         view.ClearFieldsRequested += ClearFields;
         view.DeleteRequested += DeleteRecord;
         view.XmlSubmitted += ApplyXml;
         view.FieldSubmitted += ApplyField;
+        view.ArtworkPlacementSubmitted += ApplyArtworkPlacement;
         view.FieldValidationRequested += ValidateField;
         view.SectionInheritanceResetRequested += ResetSectionInheritance;
         view.CollectionAddRequested += AddCollectionEntry;
@@ -165,6 +169,27 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
             Project.SetFieldValues(field, values);
         else
             Project.SetField(field, values.Single());
+    }
+
+    /// <summary>
+    /// Applies every coordinate changed by one artwork drag as a single reversible edit.
+    /// </summary>
+    /// <param name="changes">The distinct authored source-coordinate replacements.</param>
+    internal void ApplyArtworkPlacement(IReadOnlyList<ContentEditorArtworkPlacementChange> changes)
+    {
+        if (changes == null)
+            throw new ArgumentNullException(nameof(changes));
+        if (changes.Count == 0)
+            return;
+
+        ContentPackEditorProject current =
+            Project ?? throw new InvalidOperationException("Open a content pack first.");
+        using (current.BeginEdit("Move interface artwork"))
+        {
+            foreach (ContentEditorArtworkPlacementChange change in changes)
+                current.SetField(change.Field, change.Value.ToString(CultureInfo.InvariantCulture));
+        }
+        view.RefreshInspector();
     }
 
     /// <summary>
@@ -362,6 +387,39 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
     }
 
     /// <summary>
+    /// Adds a mission article and focuses its title in the current faction presentation.
+    /// </summary>
+    /// <param name="catalog">The linked faction encyclopedia.</param>
+    /// <param name="theme">The owning faction theme.</param>
+    /// <param name="missionID">The mission identifier.</param>
+    private void AddMissionArticle(
+        ContentPackEditorCatalog catalog,
+        ContentPackEditorRecord theme,
+        string missionID
+    )
+    {
+        ContentPackEditorField title = Project.AddMissionArticle(catalog, theme, missionID);
+        view.RenderProject(Project, assets);
+        view.FocusField(title);
+    }
+
+    /// <summary>
+    /// Changes the report used for a faction and refreshes the visible text editor.
+    /// </summary>
+    /// <param name="faction">The recipient faction.</param>
+    /// <param name="report">The selected authored report.</param>
+    /// <param name="customize">Whether to create a local copy or restore the shared report.</param>
+    private void SetMissionReportOverride(
+        ContentPackEditorRecord faction,
+        ContentEditorMissionReport report,
+        bool customize
+    )
+    {
+        Project.SetMissionReportOverride(faction, report, customize);
+        view.RenderProject(Project, assets);
+    }
+
+    /// <summary>
     /// Applies a grouped field clear before rebuilding the current inspector from its edited definitions.
     /// </summary>
     /// <param name="fields">The fields requested by the inspector.</param>
@@ -438,12 +496,15 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.AddSectorRequested -= AddSector;
         view.AddPlanetRequested -= AddPlanet;
         view.AddMessageRequested -= AddMessage;
+        view.AddMissionArticleRequested -= AddMissionArticle;
+        view.MissionReportOverrideRequested -= SetMissionReportOverride;
         view.AddNamePoolRequested -= AddNamePool;
         view.RemoveMessageRequested -= RemoveMessage;
         view.ClearFieldsRequested -= ClearFields;
         view.DeleteRequested -= DeleteRecord;
         view.XmlSubmitted -= ApplyXml;
         view.FieldSubmitted -= ApplyField;
+        view.ArtworkPlacementSubmitted -= ApplyArtworkPlacement;
         view.FieldValidationRequested -= ValidateField;
         view.SectionInheritanceResetRequested -= ResetSectionInheritance;
         view.CollectionAddRequested -= AddCollectionEntry;

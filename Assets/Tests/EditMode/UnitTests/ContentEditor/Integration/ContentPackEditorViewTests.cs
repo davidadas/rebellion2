@@ -133,6 +133,170 @@ namespace Rebellion.Tests.ContentEditor.Integration
         }
 
         [Test]
+        public void RenderProject_NewFactionMissionPresentation_ExposesBothUnsetIconSlots()
+        {
+            ContentPackEditorRecord faction = project.AddFaction();
+            workspace.RenderProject(project, assets);
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = navigation.Find(
+                "mission-presentation/" + faction.Catalog.Faction + "/Espionage"
+            );
+            SelectFactionMission(navigation, page);
+
+            ContentEditorFieldView[] fields =
+                view.GetComponentsInChildren<ContentEditorFieldView>();
+            CollectionAssert.AreEquivalent(
+                new[] { "LargeImagePath", "SmallImagePath" },
+                fields.Select(field => field.Field.MemberName)
+            );
+            Assert.IsTrue(
+                fields.All(field =>
+                    field
+                        .GetComponentsInChildren<Button>()
+                        .Any(button =>
+                            button.GetComponentInChildren<TMP_Text>()?.text == "Choose image..."
+                        )
+                )
+            );
+            Assert.IsNull(page.Record.Element.Element(nameof(FactionTheme.MissionIcons)));
+        }
+
+        [Test]
+        public void RenderProject_NewFactionIconEdits_SaveBothSizesOnOneRuntimeKey()
+        {
+            ContentPackEditorRecord faction = project.AddFaction();
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = navigation.Find(
+                "mission-presentation/" + faction.Catalog.Faction + "/Espionage"
+            );
+            string source = Path.Combine(folder, "mission-art.png");
+            Texture2D image = new(2, 2);
+            try
+            {
+                File.WriteAllBytes(source, image.EncodeToPNG());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(image);
+            }
+            ContentPackEditorField large = page.Fields.Single(field =>
+                field.MemberName == "LargeImagePath"
+            );
+            ContentPackEditorField small = page.Fields.Single(field =>
+                field.MemberName == "SmallImagePath"
+            );
+            project.SetField(large, ContentPackEditorStorage.ImportAsset(project, source, large));
+            project.SetField(small, ContentPackEditorStorage.ImportAsset(project, source, small));
+            ContentPackEditorStorage.Save(project);
+
+            XDocument saved = XDocument.Load(page.Record.Catalog.Document.TargetPath);
+            XElement icon = saved.Descendants(nameof(MissionIconTheme)).Single();
+            Assert.AreEqual(MissionIconKeys.Espionage, (string)icon.Element("Key"));
+            string expected =
+                "Pack/Factions/" + faction.Catalog.Faction + "/Assets/mission-art.png";
+            Assert.AreEqual(expected, (string)icon.Element("LargeImagePath"));
+            Assert.AreEqual(expected, (string)icon.Element("SmallImagePath"));
+            Assert.IsTrue(File.Exists(Path.Combine(project.PackRootPath, expected[5..])));
+        }
+
+        [Test]
+        public void RenderProject_NewFactionMissionArticle_AddsAnEditableFactionScopedEntry()
+        {
+            ContentPackEditorRecord faction = project.AddFaction();
+            workspace.RenderProject(project, assets);
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectFactionMission(
+                navigation,
+                navigation.Find("mission-presentation/" + faction.Catalog.Faction + "/Espionage")
+            );
+
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "AddMissionArticle")
+                .onClick.Invoke();
+
+            ContentPackEditorField description =
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Single(field => field.Field.MemberName == "Description")
+                    .Field;
+            Assert.AreEqual("Espionage", description.Record.ID);
+            Assert.AreEqual(
+                faction.ID,
+                (string)description.Record.Element.Element("VisibleFactionInstanceID")
+            );
+        }
+
+        [Test]
+        public void RenderProject_EspionageReportText_CustomizesOneOutcomeForTheNewFaction()
+        {
+            ContentPackEditorDocument definitions = project.Documents.Single(document =>
+                document.Address == "Pack/" + project.Definition.MessageDefinitionsPath
+            );
+            XDocument authored = XDocument.Parse(definitions.Text);
+            foreach (string outcome in new[] { "Success", "Failed" })
+                authored.Root.Add(
+                    new XElement(
+                        "MessageDefinition",
+                        new XElement("DisplayName", "Shared Espionage " + outcome),
+                        new XElement("ResultType", "MissionReport"),
+                        new XElement("Outcome", outcome),
+                        new XElement("MissionTypeID", "Espionage"),
+                        new XElement("MessageType", "Mission"),
+                        new XElement("Subject", "Report for {system}"),
+                        new XElement("Body", "Shared " + outcome + " {details}"),
+                        new XElement("BackgroundImage", new XAttribute("Key", "mission_report"))
+                    )
+                );
+            project.SetDocumentText(definitions, authored.ToString());
+            ContentPackEditorRecord faction = project.AddFaction();
+            workspace.RenderProject(project, assets);
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectFactionMission(
+                navigation,
+                navigation.Find("mission-presentation/" + faction.Catalog.Faction + "/Espionage")
+            );
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.GetComponentInChildren<TMP_Text>()?.text == "Show reports")
+                .onClick.Invoke();
+            TMP_Dropdown outcomes = view.GetComponentsInChildren<TMP_Dropdown>()
+                .Single(dropdown => dropdown.name == "CollectionSelection");
+            outcomes.value = outcomes.options.FindIndex(option => option.text == "Failed");
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "CustomizeEspionageReport")
+                .onClick.Invoke();
+            TMP_InputField input = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.Field.MemberName == "Body")
+                .GetComponentInChildren<TMP_InputField>();
+            Assert.AreEqual("Shared Failed {details}", input.text);
+            input.SetTextWithoutNotify("Faction report {system}");
+            input.onEndEdit.Invoke(input.text);
+            ContentPackEditorStorage.Save(project);
+            XDocument saved = XDocument.Load(definitions.TargetPath);
+            XElement custom = saved
+                .Root.Elements()
+                .Single(entry => (string)entry.Element("FactionInstanceID") == faction.ID);
+            Assert.AreEqual("Failed", (string)custom.Element("Outcome"));
+            Assert.AreEqual("Faction report {system}", (string)custom.Element("Body"));
+            Assert.AreEqual(
+                "mission_report",
+                (string)custom.Element("BackgroundImage").Attribute("Key")
+            );
+
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "ResetEspionageReport")
+                .onClick.Invoke();
+            Assert.IsFalse(
+                XDocument
+                    .Parse(definitions.Text)
+                    .Root.Elements()
+                    .Any(entry => (string)entry.Element("FactionInstanceID") == faction.ID)
+            );
+        }
+
+        [Test]
         public void AddFaction_OneExistingFaction_CreatesWithoutAWarning()
         {
             ContentPackEditorRecord removed = project
@@ -563,7 +727,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
         }
 
         [Test]
-        public void RenderProject_MissionPages_CombineFactionArticlesAndExcludeAiWeights()
+        public void RenderProject_MissionPages_SeparateFactionPresentationFromSharedRules()
         {
             ContentEditorNavigation navigation = new ContentEditorNavigation();
             navigation.Render(project.GetCatalogs());
@@ -585,17 +749,28 @@ namespace Rebellion.Tests.ContentEditor.Integration
                     .Single(page => page.Caption == "Difficulty")
                     .Fields.Any(field => field.MemberName == "MissionSuccessChancePoints")
             );
-            ContentEditorTreeNode research = pages.Single(page => page.MissionID == "Diplomacy");
-            Assert.IsTrue(research.Fields.Any(field => field.SectionPath.Contains("Diplomacy")));
-            Assert.IsFalse(research.Fields.Any(field => field.Group == "AI"));
-            Assert.AreEqual(2, research.RelatedRecords.Count);
-            Assert.IsEmpty(research.Children);
-            SelectPage(research);
-            foreach (ContentPackEditorRecord article in research.RelatedRecords)
+            ContentEditorTreeNode diplomacy = pages.Single(page => page.MissionID == "Diplomacy");
+            Assert.IsTrue(diplomacy.Fields.Any(field => field.SectionPath.Contains("Diplomacy")));
+            Assert.IsTrue(
+                diplomacy.Fields.All(field =>
+                    field.Record.Kind == "GameConfig" && field.Group != "AI"
+                )
+            );
+            foreach (string faction in new[] { "Alliance", "Empire" })
+            {
+                ContentEditorTreeNode presentation = navigation.Find(
+                    "mission-presentation/" + faction + "/Diplomacy"
+                );
+                ContentPackEditorRecord article = presentation
+                    .Fields.Single(field => field.MemberName == "Description")
+                    .Record;
+                Assert.AreEqual(faction, article.Catalog.Faction);
+                SelectFactionMission(navigation, presentation);
                 Assert.IsTrue(
                     view.GetComponentsInChildren<RawImage>()
                         .Any(image => image.texture == assets.GetTexture(article.ImageAddress))
                 );
+            }
             Assert.AreEqual(
                 1,
                 view.GetComponentsInChildren<ContentEditorRecordRowView>()
@@ -802,16 +977,50 @@ namespace Rebellion.Tests.ContentEditor.Integration
         }
 
         [Test]
+        public void RenderProject_ShipNames_ChangesTheSelectedDesignPoolInline()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("factions/Alliance"));
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.GetComponentInChildren<TMP_Text>()?.text == "Ship names")
+                .onClick.Invoke();
+
+            TMP_Dropdown designs = view.GetComponentsInChildren<TMP_Dropdown>()
+                .Single(dropdown => dropdown.name == "ShipDesignDropdown");
+            Assert.Greater(designs.options.Count, 1);
+            int selected = (designs.value + 1) % designs.options.Count;
+            string selectedName = designs.options[selected].text;
+            designs.value = selected;
+            ContentEditorFieldView pool = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.Field.MemberName == "ShipNamePoolID");
+            Assert.AreEqual(selectedName, pool.Field.Record.Name);
+            TMP_Dropdown choices = pool.GetComponentInChildren<TMP_Dropdown>();
+            int target = choices.options.FindIndex(option =>
+                option.text.StartsWith("Pool ", StringComparison.Ordinal)
+                && option.text != choices.options[choices.value].text
+            );
+            Assert.GreaterOrEqual(target, 0);
+            string expected = choices.options[target].text["Pool ".Length..];
+            choices.value = target;
+
+            Assert.AreEqual(expected, pool.Field.Value);
+            Assert.IsTrue(designs.gameObject.activeInHierarchy);
+        }
+
+        [Test]
         public void RenderProject_FactionTabs_SeparateAuthoringTasks()
         {
             foreach (
                 (string section, string tab) in new[]
                 {
                     ("General", "Tab0"),
+                    ("Colors", "Tab10"),
                     ("Rules", "Tab5"),
                     ("Ship names", "Tab6"),
                     ("Messages", "Tab7"),
-                    ("Artwork", "Tab1"),
+                    ("Interfaces", "Tab1"),
+                    ("Default backgrounds", "Tab9"),
                     ("Encyclopedia", "Tab8"),
                 }
             )
@@ -833,6 +1042,16 @@ namespace Rebellion.Tests.ContentEditor.Integration
                             is not ("TypeID" or "Category" or "VisibleFactionInstanceID")
                     )
                     .ToArray();
+                if (section == "Interfaces")
+                {
+                    fields = fields
+                        .Where(field =>
+                            ContentEditorContentSections.IsFactionInterfaceField(field)
+                            && ContentEditorContentSections.FactionArtworkCategory(field)
+                                == "Planet sector"
+                        )
+                        .ToArray();
+                }
                 Assert.IsNotEmpty(fields);
                 if (section is "Ship names" or "Messages")
                 {
@@ -844,10 +1063,20 @@ namespace Rebellion.Tests.ContentEditor.Integration
                         .Where(field => field.XmlElement.AncestorsAndSelf().Contains(selected))
                         .ToArray();
                 }
-                Assert.AreEqual(
-                    fields.Length,
-                    view.GetComponentsInChildren<ContentEditorFieldView>().Length
-                );
+                if (section == "Colors")
+                    Assert.AreEqual(
+                        fields.Length,
+                        view.GetComponentsInChildren<ContentEditorColorPickerView>().Length
+                    );
+                else
+                    Assert.AreEqual(
+                        fields.Length,
+                        view.GetComponentsInChildren<ContentEditorFieldView>()
+                            .Count(field =>
+                                section != "Ship names"
+                                || field.Field.MemberName != "ShipNamePoolID"
+                            )
+                    );
                 string[] headings = view.GetComponentsInChildren<TMP_Text>()
                     .Select(text => text.text)
                     .ToArray();
@@ -858,9 +1087,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
                 );
                 if (section == "Ship names")
                 {
-                    Assert.IsTrue(
-                        headings.Any(text => text.StartsWith("Pool ") && text.Contains(" — "))
-                    );
+                    CollectionAssert.Contains(headings, "Ship assignments");
                     Assert.IsFalse(headings.Any(text => text.StartsWith("Name pool 1")));
                 }
                 if (section == "Encyclopedia")
@@ -1370,12 +1597,18 @@ namespace Rebellion.Tests.ContentEditor.Integration
                 window.GetComponentsInChildren<PlanetSectorPlanetView>();
             Assert.AreEqual(sector.Planets.Count, planets.Length);
             ContentPackEditorRecord[] records = sector.Planets.ToArray();
-            int maximumEnergy = project
+            XElement defaultResourceProfile = project
                 .GetCatalogs()
                 .SelectMany(catalog => catalog.Records)
                 .Where(record => record.Kind == "GameGenerationConfig")
-                .SelectMany(record => record.Element.Descendants("EnergyMax"))
-                .Max(element => int.Parse(element.Value));
+                .SelectMany(record => record.Element.Descendants(nameof(PlanetResourceProfile)))
+                .Single(element =>
+                    element.Element(nameof(PlanetResourceProfile.Availability))?.Value
+                    == GameResourceAvailability.Normal.ToString()
+                );
+            int defaultEnergy = int.Parse(
+                defaultResourceProfile.Element(nameof(PlanetResourceProfile.EnergyMax)).Value
+            );
             for (int i = 0; i < planets.Length; i++)
             {
                 Assert.IsTrue(
@@ -1390,9 +1623,15 @@ namespace Rebellion.Tests.ContentEditor.Integration
                     ContentEditorPresentation.GetNeutralTheme(project).GetPrimaryColor(),
                     support.color
                 );
+                Assert.IsFalse(
+                    planets[i].transform.Find("EnergyValueTextField").gameObject.activeSelf
+                );
                 Assert.AreEqual(
-                    $"0/{maximumEnergy}",
-                    planets[i].transform.Find("EnergyValueTextField").GetComponent<TMP_Text>().text
+                    defaultEnergy,
+                    planets[i]
+                        .transform.Find("EnergyBar")
+                        .GetComponentsInChildren<Image>()
+                        .Count(image => image.name.StartsWith("Segment", StringComparison.Ordinal))
                 );
                 RectInt imageRect = planets[i].GetRenderedPlanetImageSourceRect();
                 Vector2Int offset = window.UnprojectPlanetPosition(
@@ -1834,7 +2073,12 @@ namespace Rebellion.Tests.ContentEditor.Integration
                 .GetCatalogs()
                 .First(catalog => catalog.Name == "Officers");
             SelectRecord(
-                project.GetCatalogs().First(catalog => catalog.Name == "Buildings").Records.First()
+                project
+                    .GetCatalogs()
+                    .First(catalog => catalog.Name == "Buildings")
+                    .Records.First(record =>
+                        !ContentEditorUnitArtworkLayout.IsHeadquartersIcon(record)
+                    )
             );
             int count = roster.Records.Count;
             ChooseUnitCategory(roster);
@@ -2345,15 +2589,48 @@ namespace Rebellion.Tests.ContentEditor.Integration
             workspace.RenderProject(project, assets);
             ContentEditorNavigation navigation = new ContentEditorNavigation();
             navigation.Render(project.GetCatalogs());
-            SelectPage(navigation.Find("missions/reference-only-mission"));
-            Assert.IsFalse(
-                view.GetComponentsInChildren<Button>()
-                    .Any(button => button.GetComponentInChildren<TMP_Text>()?.text == "Rules")
-            );
+            string key =
+                catalog.Faction == "Shared"
+                    ? "missions/reference-only-mission"
+                    : "mission-presentation/" + catalog.Faction + "/reference-only-mission";
+            if (catalog.Faction == "Shared")
+            {
+                SelectPage(navigation.Find(key));
+                Assert.IsFalse(
+                    view.GetComponentsInChildren<Button>()
+                        .Any(button => button.GetComponentInChildren<TMP_Text>()?.text == "Rules")
+                );
+            }
+            else
+                SelectFactionMission(navigation, navigation.Find(key));
             Assert.IsTrue(
                 view.GetComponentsInChildren<ContentEditorFieldView>()
                     .Any(field => field.Field.MemberName == "Description")
             );
+        }
+
+        /// <summary>
+        /// Shows the mission in its faction's mission presentation page.
+        /// </summary>
+        /// <param name="navigation">The fixture navigation tree.</param>
+        /// <param name="mission">The mission node to open.</param>
+        private void SelectFactionMission(
+            ContentEditorNavigation navigation,
+            ContentEditorTreeNode mission
+        )
+        {
+            string factionKey = "factions/" + mission.Key.Split('/')[1];
+            SelectPage(navigation.Find(factionKey));
+            view.GetComponentsInChildren<Button>()
+                .Single(button =>
+                    button.GetComponentInChildren<TMP_Text>()?.text == "Mission presentation"
+                )
+                .onClick.Invoke();
+            TMP_Dropdown selector = view.GetComponentsInChildren<TMP_Dropdown>()
+                .Single(dropdown => dropdown.name == "MissionPresentationDropdown");
+            int index = selector.options.FindIndex(item => item.text == mission.Caption);
+            Assert.GreaterOrEqual(index, 0, mission.Key);
+            selector.value = index;
         }
     }
 }

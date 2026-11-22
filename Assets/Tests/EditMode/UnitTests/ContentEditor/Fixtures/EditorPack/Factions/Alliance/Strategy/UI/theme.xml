@@ -46,16 +46,16 @@
           <HoverImagePath>Pack/Factions/Alliance/Strategy/UI/Windows/Fleet/planet-fleet-highlighted</HoverImagePath>
         </Fleets>
         <Defenses>
-          <NormalImagePath>Pack/Factions/Alliance/Strategy/UI/Windows/Defense/defense-icon</NormalImagePath>
-          <HoverImagePath>Pack/Factions/Alliance/Strategy/UI/Windows/Defense/planetsector-planet-defense-pressed</HoverImagePath>
+          <NormalImagePath>Pack/Factions/Alliance/Strategy/UI/Windows/Defense/planet-garrison-normal</NormalImagePath>
+          <HoverImagePath>Pack/Factions/Alliance/Strategy/UI/Windows/Defense/planet-garrison-highlighted</HoverImagePath>
         </Defenses>
         <Missions>
-          <NormalImagePath>Pack/Factions/Alliance/Strategy/UI/Windows/Missions/mission-icon</NormalImagePath>
-          <HoverImagePath>Pack/Factions/Alliance/Strategy/UI/Windows/Missions/planetsector-planet-mission-pressed</HoverImagePath>
+          <NormalImagePath>Pack/Factions/Alliance/Strategy/UI/Windows/Missions/planet-mission-normal</NormalImagePath>
+          <HoverImagePath>Pack/Factions/Alliance/Strategy/UI/Windows/Missions/planet-mission-highlighted</HoverImagePath>
         </Missions>
         <Buildings>
-          <NormalImagePath>Pack/Factions/Alliance/Strategy/UI/Shared/building-icon</NormalImagePath>
-          <HoverImagePath>Pack/Factions/Alliance/Strategy/UI/Windows/Facility/planetsector-planet-facility-pressed</HoverImagePath>
+          <NormalImagePath>Pack/Factions/Alliance/Strategy/UI/Shared/planet-manufacturing-normal</NormalImagePath>
+          <HoverImagePath>Pack/Factions/Alliance/Strategy/UI/Windows/Facility/planet-manufacturing-highlighted</HoverImagePath>
         </Buildings>
       </PlanetOverlayIcons>
     </PlanetOverlayTheme>

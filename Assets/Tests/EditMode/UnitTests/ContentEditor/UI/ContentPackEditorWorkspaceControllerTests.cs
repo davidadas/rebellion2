@@ -159,6 +159,33 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
+        public void ApplyArtworkPlacement_GalaxyBackgroundMove_ChangesBothCoordinatesAsOneEdit()
+        {
+            ContentPackEditorRecord theme = GetAllianceTheme();
+            ContentPackEditorField[] fields = theme.GetFields().ToArray();
+            ContentPackEditorField xField = GetGalaxyPositionField(fields, "X");
+            ContentPackEditorField yField = GetGalaxyPositionField(fields, "Y");
+            int originalX = int.Parse(xField.Value);
+            int originalY = int.Parse(yField.Value);
+
+            workspace.ApplyArtworkPlacement(
+                new[]
+                {
+                    new ContentEditorArtworkPlacementChange(xField, originalX + 11),
+                    new ContentEditorArtworkPlacementChange(yField, originalY + 7),
+                }
+            );
+
+            Assert.AreEqual((originalX + 11).ToString(), xField.Value);
+            Assert.AreEqual((originalY + 7).ToString(), yField.Value);
+            Assert.AreEqual("Move interface artwork", project.UndoDescription);
+            Assert.IsTrue(project.Undo());
+            ContentPackEditorField[] restored = GetAllianceTheme().GetFields().ToArray();
+            Assert.AreEqual(originalX.ToString(), GetGalaxyPositionField(restored, "X").Value);
+            Assert.AreEqual(originalY.ToString(), GetGalaxyPositionField(restored, "Y").Value);
+        }
+
+        [Test]
         public void ResetSection_VisibleButton_ResetsOnlyTheCurrentSectionAndSupportsUndo()
         {
             project = ContentEditorTestData.CreateLoadableProject(
@@ -370,6 +397,41 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.AreEqual(
                 before,
                 string.Join("\n", project.Documents.Select(document => document.Text))
+            );
+        }
+
+        /// <summary>
+        /// Finds the Alliance theme in the fixture-owned project.
+        /// </summary>
+        /// <returns>The editable Alliance theme record.</returns>
+        private ContentPackEditorRecord GetAllianceTheme()
+        {
+            return project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record =>
+                    record.Kind == "FactionTheme"
+                    && record.Element.Element("FactionInstanceID")?.Value == "FNALL1"
+                );
+        }
+
+        /// <summary>
+        /// Finds one coordinate beneath the Galaxy background's source position.
+        /// </summary>
+        /// <param name="fields">The theme fields to search.</param>
+        /// <param name="member">The X or Y coordinate member.</param>
+        /// <returns>The matching authored coordinate field.</returns>
+        private static ContentPackEditorField GetGalaxyPositionField(
+            ContentPackEditorField[] fields,
+            string member
+        )
+        {
+            return fields.Single(field =>
+                field.MemberName == member
+                && field.XmlElement.Parent?.Name.LocalName == "SourcePosition"
+                && field
+                    .XmlElement.Ancestors()
+                    .Any(element => element.Name.LocalName == "GalaxyBackground")
             );
         }
     }

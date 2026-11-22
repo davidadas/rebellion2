@@ -55,6 +55,8 @@ public static class MainMenuPrefabBuilder
     private const string _renderTexturePath = _planetAssetRoot + "/Generated/Planet.renderTexture";
     private const string _planetCompositeMaterialPath =
         _planetAssetRoot + "/Generated/PlanetComposite.mat";
+    private const string _multiplayerMaterialPath =
+        "Assets/Prefabs/UI/MainMenu/MultiplayerAnimation.mat";
     private const string _planetPrefabPath = _planetAssetRoot + "/Planet.prefab";
     private const string _terrestrialSurfaceMaterialPath =
         _planetAssetRoot + "/Materials/TerrestrialSurface.mat";
@@ -933,6 +935,7 @@ public static class MainMenuPrefabBuilder
         image.rectTransform.offsetMin = image.rectTransform.offsetMax = Vector2.zero;
         image.rectTransform.localRotation = Quaternion.identity;
         image.Configure(corners, surface.Transform(corners.ToMatrix()));
+        image.material = LoadOrCreateMaterial(_multiplayerMaterialPath, "UI/Crisp Sprite");
         SetBoundSprite(image, "Application/MainMenu/UI/ui_mainmenu_multiplayer_icon");
         Button button = buttonObject.GetComponent<Button>();
         button.transition = Selectable.Transition.SpriteSwap;

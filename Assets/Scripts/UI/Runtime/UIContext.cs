@@ -18,6 +18,7 @@ public sealed class UIContext
     private readonly FactionThemeLibrary themeLibrary;
     private readonly Func<string, Texture2D> loadTexture;
     private readonly Func<string, Texture2D> loadSmoothTexture;
+    private readonly Func<string, Color32, Texture2D> loadAlphaTintedTexture;
     private readonly Func<Texture2D, RectInt> getTextureContentBounds;
     private IReadOnlyList<Faction> factionPresentations;
     private string playerFactionInstanceId;
@@ -35,13 +36,15 @@ public sealed class UIContext
     /// <param name="loadTexture">The active content texture resolver.</param>
     /// <param name="getTextureContentBounds">The optional visible-pixel bounds resolver.</param>
     /// <param name="loadSmoothTexture">The optional resolver for substantially reduced artwork.</param>
+    /// <param name="loadAlphaTintedTexture">The optional resolver for colorized shared alpha masks.</param>
     public UIContext(
         GameRoot game,
         FactionThemeLibrary themeLibrary,
         EncyclopediaCatalog encyclopediaCatalog,
         Func<string, Texture2D> loadTexture,
         Func<Texture2D, RectInt> getTextureContentBounds = null,
-        Func<string, Texture2D> loadSmoothTexture = null
+        Func<string, Texture2D> loadSmoothTexture = null,
+        Func<string, Color32, Texture2D> loadAlphaTintedTexture = null
     )
     {
         if (game == null)
@@ -59,6 +62,7 @@ public sealed class UIContext
         this.themeLibrary = themeLibrary;
         this.loadTexture = loadTexture;
         this.loadSmoothTexture = loadSmoothTexture ?? loadTexture;
+        this.loadAlphaTintedTexture = loadAlphaTintedTexture;
         this.getTextureContentBounds =
             getTextureContentBounds
             ?? (
@@ -94,6 +98,24 @@ public sealed class UIContext
     public FactionTheme GetPlayerFactionTheme()
     {
         return GetTheme(playerFactionInstanceId);
+    }
+
+    /// <summary>
+    /// Gets mission artwork from the shared theme when available, with faction artwork as a fallback.
+    /// </summary>
+    /// <param name="factionInstanceId">The faction displaying the mission.</param>
+    /// <param name="key">The mission icon key.</param>
+    /// <param name="small">Whether the compact icon is requested.</param>
+    /// <returns>The resolved mission texture, when available.</returns>
+    public Texture2D GetMissionIconTexture(string factionInstanceId, string key, bool small)
+    {
+        if (MissionIconKeys.UsesSharedArtwork(key))
+        {
+            Texture2D shared = GetTexture(GetTheme(null)?.MissionIcons?.GetImagePath(key, small));
+            if (shared != null)
+                return shared;
+        }
+        return GetTexture(GetTheme(factionInstanceId)?.MissionIcons?.GetImagePath(key, small));
     }
 
     /// <summary>
@@ -174,6 +196,31 @@ public sealed class UIContext
 
         return loadSmoothTexture(path);
     }
+
+    /// <summary>
+    /// Resolves a shared alpha mask using one faction-configured color.
+    /// </summary>
+    /// <param name="path">The shared mask content address.</param>
+    /// <param name="color">The color applied independently of the mask's source RGB.</param>
+    /// <returns>The tinted texture, or the regular texture when no tint resolver is configured.</returns>
+    public Texture2D GetAlphaTintedTexture(string path, Color color)
+    {
+        if (string.IsNullOrEmpty(path))
+            return null;
+        return loadAlphaTintedTexture?.Invoke(path, (Color32)color) ?? GetTexture(path);
+    }
+
+    /// <summary>
+    /// Resolves legacy theme artwork or its color-scheme mask through the same asset source.
+    /// </summary>
+    /// <param name="path">The theme image address.</param>
+    /// <param name="theme">The faction theme supplying the image and optional scheme.</param>
+    /// <param name="mask">The color setting used by this image.</param>
+    /// <returns>The texture for this interface element.</returns>
+    internal Texture2D GetFactionMask(string path, FactionTheme theme, FactionMaskColor mask) =>
+        theme?.GetMaskTint(mask) is Color tint
+            ? GetAlphaTintedTexture(path, tint)
+            : GetTexture(path);
 
     /// <summary>
     /// Gets the smallest texture rectangle containing every visible pixel.

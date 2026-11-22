@@ -219,6 +219,6 @@ internal static class ContentEditorGenerationLayout
             names.Add("Entry " + (index + 1));
         if (entry.Element("Count") is XElement count)
             names.Add("× " + count.Value);
-        return string.Join(" — ", names);
+        return string.Join(": ", names);
     }
 }

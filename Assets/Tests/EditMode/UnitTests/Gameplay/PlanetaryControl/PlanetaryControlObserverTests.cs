@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -12,6 +13,7 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -519,6 +521,49 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsNull(fighter.Movement);
             Assert.IsTrue(fighter.IsActive());
             Assert.AreEqual(_empire.InstanceID, fighter.OwnerInstanceID);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void HandleResults_ManufacturedDeliveryDisplacedToLocalCarrier_KeepsFighterOperational(
+            bool reload
+        )
+        {
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            (_, Fleet fleet, CapitalShip carrier) = AddNearbyCarrier("local", 0, 1, 0);
+            _game.MoveNode(fleet, _targetPlanet);
+            Starfighter fighter = EntityFactory.CreateStarfighter("delivering", _empire.InstanceID);
+            fighter.MaxSquadronSize = 12;
+            fighter.CurrentSquadronSize = 12;
+            fighter.ManufacturingStatus = ManufacturingStatus.Delivering;
+            _game.AttachNode(fighter, _targetPlanet);
+            _movementSystem.RequestMove(fighter, _targetPlanet, _empirePlanet);
+            Assert.IsNotNull(fighter.Movement);
+            fighter.Movement.SetPosition(new Point(1, 0));
+            _commands.OwnershipChanging += _observer.ObserveOwnershipChange;
+
+            PlanetOwnershipChangedResult change = _commands.TransferPlanet(_targetPlanet, _rebels);
+            List<GameResult> results = _observer.HandleResults(new[] { change });
+
+            Assert.AreSame(carrier, fighter.GetParent());
+            Assert.IsNull(fighter.Movement);
+            GameObjectDeployedResult deployment = results
+                .OfType<GameObjectDeployedResult>()
+                .Single();
+            Assert.AreSame(fighter, deployment.GameObject);
+            Assert.AreEqual(_game.CurrentTick, deployment.Tick);
+            if (reload)
+            {
+                GameSerializer serializer = new GameSerializer(typeof(GameRoot));
+                using StringWriter output = new StringWriter();
+                serializer.Serialize(output, _game);
+                using StringReader input = new StringReader(output.ToString());
+                GameRoot restored = (GameRoot)serializer.Deserialize(input);
+                fighter = restored.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID);
+            }
+
+            Assert.IsTrue(SpaceCombatQueries.IsActiveStarfighter(fighter));
+            Assert.IsTrue(new CombatUnitSnapshot(fighter).WasOperational);
         }
 
         [Test]

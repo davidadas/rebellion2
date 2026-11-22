@@ -316,6 +316,23 @@ public sealed class ScrollAreaView : MonoBehaviour
     }
 
     /// <summary>
+    /// Aligns a content position with the top of the viewport.
+    /// </summary>
+    /// <param name="contentTop">The top offset to align inside the content.</param>
+    public void AlignContentTop(float contentTop)
+    {
+        VerifyRequiredReferences();
+
+        float targetTop = Mathf.Max(0f, contentTop);
+        float requiredHeight = targetTop + GetViewportHeight();
+        if (requiredHeight > GetContentHeight())
+            SetContentHeight(requiredHeight, scrollStep, false, preserveScrollOffset: true);
+
+        ApplyScrollOffset(targetTop);
+        SynchronizeScrollTarget();
+    }
+
+    /// <summary>
     /// Validates the authored control graph before runtime use.
     /// </summary>
     private void Awake()
